@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PlusCircle, Users, Tv, Projector, Mic, Monitor, LoaderCircle, Trash2, Pencil } from "lucide-react";
+import { PlusCircle, Users, Tv, Projector, Mic, Monitor, LoaderCircle, Trash2, Pencil, Calendar as CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -54,18 +54,49 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
   const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [isWholeDay, setIsWholeDay] = useState(false);
+
+  // Generate time slots
+  const timeSlots = React.useMemo(() => {
+    const slots = [];
+    for (let h = 6; h <= 21; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        if (h === 21 && m > 0) continue;
+        const hour = h.toString().padStart(2, '0');
+        const minute = m.toString().padStart(2, '0');
+        const value = `${hour}:${minute}`;
+        
+        const displayHour = h % 12 || 12;
+        const ampm = h < 12 ? 'AM' : 'PM';
+        const display = `${displayHour}:${minute.padStart(2, '0')} ${ampm}`;
+
+        slots.push({ value, display });
+      }
+    }
+    return slots;
+  }, []);
 
   const handleSave = () => {
-    if (!date || !room || !title || !startTime || !endTime || !user) return;
+    if (!date || !room || !title || !user) return;
     
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
+    let finalStartTime = startTime;
+    let finalEndTime = endTime;
+
+    if (isWholeDay) {
+        finalStartTime = '06:00';
+        finalEndTime = '21:00';
+    }
+
+    if (!finalStartTime || !finalEndTime) return;
+
+    const [startH, startM] = finalStartTime.split(':').map(Number);
+    const [endH, endM] = finalEndTime.split(':').map(Number);
 
     const start = new Date(date);
-    start.setHours(startH, startM);
+    start.setHours(startH, startM, 0, 0);
 
     const end = new Date(date);
-    end.setHours(endH, endM);
+    end.setHours(endH, endM, 0, 0);
     
     onSave({
         roomId: room,
@@ -101,18 +132,35 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button variant={"outline"} className={cn("col-span-3 justify-start text-left font-normal", !date && "text-muted-foreground")}>
-                            <Calendar className="mr-2 h-4 w-4" />
+                            <CalendarIcon className="mr-2 h-4 w-4" />
                             {date ? format(date, "PPP") : <span>Pick a date</span>}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={date} onSelect={setDate} initialFocus /></PopoverContent>
                 </Popover>
             </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+                <div />
+                <div className="col-span-3 flex items-center space-x-2">
+                    <Checkbox id="whole-day" checked={isWholeDay} onCheckedChange={(checked) => setIsWholeDay(!!checked)} />
+                    <Label htmlFor="whole-day" className="font-normal">Book for whole day (6:00 AM - 9:00 PM)</Label>
+                </div>
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">Time</Label>
                 <div className="col-span-3 grid grid-cols-2 gap-2">
-                    <Input id="start-time" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
-                    <Input id="end-time" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+                    <Select value={startTime} onValueChange={setStartTime} disabled={isWholeDay}>
+                        <SelectTrigger><SelectValue placeholder="Start Time" /></SelectTrigger>
+                        <SelectContent>
+                            {timeSlots.map(slot => <SelectItem key={`start-${slot.value}`} value={slot.value}>{slot.display}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={endTime} onValueChange={setEndTime} disabled={isWholeDay}>
+                        <SelectTrigger><SelectValue placeholder="End Time" /></SelectTrigger>
+                        <SelectContent>
+                            {timeSlots.slice(1).map(slot => <SelectItem key={`end-${slot.value}`} value={slot.value}>{slot.display}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
         </div>
@@ -210,6 +258,7 @@ export default function RoomsPage() {
     const { isSuperAdmin, viewAsRole } = useUserRole();
     const isAdmin = viewAsRole === 'Admin' || isSuperAdmin;
     const firestore = useFirestore();
+    const { user } = useUser();
 
     const [sheetState, setSheetState] = useState<'booking' | 'addRoom' | 'editRoom' | 'addEquipment' | null>(null);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -225,7 +274,17 @@ export default function RoomsPage() {
 
     const handleSaveBooking = (bookingData: any) => {
         if (!bookingData.roomId) return;
+        // The booking itself has status 'Pending'
         addDocumentNonBlocking(collection(firestore, 'rooms', bookingData.roomId, 'reservations'), bookingData);
+        
+        // Create a corresponding approval request
+        addDocumentNonBlocking(collection(firestore, 'approvals'), {
+            requester: user?.displayName || 'Unknown User',
+            type: 'Room Booking',
+            details: `"${bookingData.title}" for room: ${rooms?.find(r => r.id === bookingData.roomId)?.name}`,
+            date: serverTimestamp(), // use server timestamp
+            status: 'Pending'
+        });
     };
 
     const handleSaveRoom = (roomData: Partial<Room>) => {
@@ -277,7 +336,7 @@ export default function RoomsPage() {
                                         mode="single" className="p-0"
                                         classNames={{ day: "h-12 w-12 text-base md:h-16 md:w-16 md:text-lg", head_cell: "w-12 md:w-16" }}
                                         components={{ DayContent: ({ date }) => {
-                                            const dayBookings = bookings?.filter(b => format((b.start as any).toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
+                                            const dayBookings = bookings?.filter(b => b.start && format((b.start as any).toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
                                             return <div className="relative h-full w-full flex items-center justify-center">
                                                 <span>{date.getDate()}</span>
                                                 {dayBookings && dayBookings.length > 0 && 
