@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PlusCircle, Users, Tv, Projector, Mic } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
