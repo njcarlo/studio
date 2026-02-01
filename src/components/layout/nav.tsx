@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { WorkerRole } from "@/lib/types";
 
-const allRoles: WorkerRole[] = ['Volunteer', 'Clergy', 'Admin', 'Full-time', 'On-call', 'Ministry Head', 'Super Admin'];
+export const allRoles: WorkerRole[] = ['Volunteer', 'Clergy', 'Admin', 'Full-time', 'On-call', 'Ministry Head', 'Super Admin'];
 
 const navItems: { href: string; icon: React.ElementType; label: string; roles: WorkerRole[] }[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", roles: allRoles },
