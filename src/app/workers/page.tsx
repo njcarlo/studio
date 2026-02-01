@@ -107,7 +107,7 @@ const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | 
             <SelectValue placeholder="Select a ministry" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None</SelectItem>
+            <SelectItem value="none">None</SelectItem>
             {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -119,7 +119,7 @@ const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | 
             <SelectValue placeholder="Select a ministry" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None</SelectItem>
+            <SelectItem value="none">None</SelectItem>
             {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -179,10 +179,18 @@ export default function WorkersPage() {
   };
 
   const handleSaveWorker = (workerData: Partial<Worker>) => {
+    const dataToSave = { ...workerData };
+    if (dataToSave.primaryMinistryId === 'none') {
+      dataToSave.primaryMinistryId = '';
+    }
+    if (dataToSave.secondaryMinistryId === 'none') {
+      dataToSave.secondaryMinistryId = '';
+    }
+
     if (selectedWorker?.id) {
-        updateDocumentNonBlocking(doc(firestore, "worker_profiles", selectedWorker.id), workerData);
+        updateDocumentNonBlocking(doc(firestore, "worker_profiles", selectedWorker.id), dataToSave);
     } else {
-        addDocumentNonBlocking(collection(firestore, "worker_profiles"), workerData);
+        addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
     }
     setIsSheetOpen(false);
   };
