@@ -42,7 +42,7 @@ export default function SignUpPage() {
     try {
       const workersCollectionRef = collection(firestore, "worker_profiles");
       const workersSnapshot = await getDocs(workersCollectionRef);
-      const newWorkerId = String(200000 + workersSnapshot.size).padStart(6, '0');
+      const newWorkerId = String(20000 + workersSnapshot.size).padStart(6, '0');
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;

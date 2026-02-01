@@ -238,7 +238,7 @@ export default function WorkersPage() {
               description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
           });
       } else {
-          const newWorkerId = String(200000 + (workers?.length || 0)).padStart(6, '0');
+          const newWorkerId = String(20000 + (workers?.length || 0)).padStart(6, '0');
           const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId };
           const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSaveWithId);
           if (newWorkerRef && userProfile) {
