@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { collection, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ScanLine, ArrowLeft, LoaderCircle, User, SwitchCamera } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -18,13 +16,13 @@ export default function QRScannerPage() {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [scannedData, setScannedData] = useState('');
     const [scannedWorker, setScannedWorker] = useState<Worker | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     
     // New state for camera switching
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
+    const [isBarcodeDetectorSupported, setIsBarcodeDetectorSupported] = useState(true);
     
     const firestore = useFirestore();
 
@@ -35,17 +33,14 @@ export default function QRScannerPage() {
     useEffect(() => {
         const getDevices = async () => {
           try {
-            // First, get permission to ensure the device list isn't empty
             await navigator.mediaDevices.getUserMedia({ video: true });
             setHasCameraPermission(true);
             
-            // Then, enumerate devices
             const allDevices = await navigator.mediaDevices.enumerateDevices();
             const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
             setDevices(videoDevices);
 
             if (videoDevices.length > 0 && !selectedDeviceId) {
-                // Set the first camera as the default if one isn't already selected
                 setSelectedDeviceId(videoDevices[0].deviceId);
             }
           } catch (error) {
@@ -58,6 +53,26 @@ export default function QRScannerPage() {
             });
           }
         };
+
+        if (typeof navigator.mediaDevices?.enumerateDevices === 'undefined') {
+            toast({
+                variant: 'destructive',
+                title: 'Camera Not Supported',
+                description: 'Your browser does not support camera access.',
+            });
+            setHasCameraPermission(false);
+            return;
+        }
+
+        if (typeof (window as any).BarcodeDetector === 'undefined') {
+            setIsBarcodeDetectorSupported(false);
+            toast({
+                variant: 'destructive',
+                title: 'QR Scanner Not Supported',
+                description: 'Your browser does not support built-in QR code scanning. Please use a recent version of Chrome or Edge.',
+                duration: 5000,
+            });
+        }
     
         getDevices();
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,13 +116,12 @@ export default function QRScannerPage() {
         setSelectedDeviceId(devices[nextIndex].deviceId);
     };
 
-    const resetScanner = () => {
-        setScannedData('');
+    const resetScanner = useCallback(() => {
         setScannedWorker(null);
         setIsProcessing(false);
-    };
+    }, []);
 
-    const handleScan = async (data: string) => {
+    const handleScan = useCallback(async (data: string) => {
         if (!data || isProcessing) return;
         
         setIsProcessing(true);
@@ -117,7 +131,7 @@ export default function QRScannerPage() {
             const stubId = data.split(':')[1];
             if (!stubId) {
                 toast({ variant: 'destructive', title: 'Invalid Meal Stub QR Code' });
-                resetScanner();
+                setTimeout(() => resetScanner(), 2000);
                 return;
             }
             const stubRef = doc(firestore, "mealstubs", stubId);
@@ -132,20 +146,20 @@ export default function QRScannerPage() {
             } catch (e) {
                 toast({ variant: "destructive", title: "Error", description: "Could not process meal stub." });
             } finally {
-                resetScanner();
+                setTimeout(() => resetScanner(), 2000);
             }
         }
         // Room Check-in (placeholder)
         else if (data.startsWith('ROOM_CHECKIN:')) {
             const bookingId = data.split(':')[1];
             toast({ title: 'Room Check-in Scanned', description: `Booking ID: ${bookingId}. (This feature is not yet fully implemented)` });
-            resetScanner();
+            setTimeout(() => resetScanner(), 2000);
         }
         // Worker ID for Attendance
         else {
             if (workersLoading) {
                 toast({ title: "Please wait", description: "Worker data is still loading." });
-                setIsProcessing(false);
+                setIsProcessing(false); // Allow re-scanning if data is not ready
                 return;
             }
             const worker = workers?.find(w => w.id === data || w.workerId === data);
@@ -153,11 +167,42 @@ export default function QRScannerPage() {
                 setScannedWorker(worker);
             } else {
                 toast({ variant: 'destructive', title: 'Worker Not Found', description: 'The scanned ID does not correspond to any worker.' });
-                setScannedData('');
+                setTimeout(() => resetScanner(), 2000);
             }
-            setIsProcessing(false);
         }
-    };
+    }, [isProcessing, workers, firestore, toast, workersLoading, resetScanner]);
+
+     // Effect for continuous QR code scanning
+    useEffect(() => {
+        if (!videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || isProcessing || scannedWorker) {
+            return;
+        }
+
+        const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+        let animationFrameId: number;
+
+        const detectQrCode = async () => {
+            if (videoRef.current && videoRef.current.readyState === 4) {
+                try {
+                    const barcodes = await barcodeDetector.detect(videoRef.current);
+                    if (barcodes.length > 0 && barcodes[0].rawValue) {
+                        handleScan(barcodes[0].rawValue);
+                        return; // Stop scanning once a code is found and being processed
+                    }
+                } catch (error) {
+                    console.error("Barcode detection failed:", error);
+                }
+            }
+            animationFrameId = requestAnimationFrame(detectQrCode);
+        };
+
+        animationFrameId = requestAnimationFrame(detectQrCode);
+
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, [hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedWorker, handleScan]);
+
 
     const handleRecordAttendance = (type: 'Clock In' | 'Clock Out') => {
         if (!scannedWorker) return;
@@ -194,7 +239,7 @@ export default function QRScannerPage() {
                     </div>
                     <CardTitle className="font-headline text-2xl">QR Scanner</CardTitle>
                     <CardDescription>
-                        Position a QR code in the frame, or enter an ID manually.
+                        Position a QR code in the frame to scan.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -237,14 +282,21 @@ export default function QRScannerPage() {
                                 )}
                             </div>
                             
-                            {hasCameraPermission === false && (
+                            {hasCameraPermission === false ? (
                                  <Alert variant="destructive">
                                     <AlertTitle>Camera Access Required</AlertTitle>
                                     <AlertDescription>
                                         Please allow camera access to use this feature.
                                     </AlertDescription>
                                 </Alert>
-                            )}
+                            ) : !isBarcodeDetectorSupported ? (
+                                <Alert variant="destructive">
+                                   <AlertTitle>Scanner Not Supported</AlertTitle>
+                                   <AlertDescription>
+                                       Your browser does not support built-in QR scanning. Try using Chrome or Edge.
+                                   </AlertDescription>
+                               </Alert>
+                            ) : null}
                         </>
                     )}
                 </CardContent>
