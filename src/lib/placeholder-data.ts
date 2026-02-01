@@ -1,4 +1,4 @@
-import type { Worker, Room, Booking, MealStub, ApprovalRequest } from './types';
+import type { Worker, Room, Booking, MealStub, ApprovalRequest, Ministry } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const getAvatar = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || '';
@@ -34,6 +34,33 @@ export const approvalRequests: ApprovalRequest[] = [
   { id: 'A1', type: 'New Worker', requester: 'Mary Williams', details: 'New volunteer application.', date: new Date(new Date().setDate(new Date().getDate() - 1)) },
   { id: 'A2', type: 'Room Booking', requester: 'John Doe', details: 'Booking request for Main Hall for Charity Bake Sale Prep.', date: new Date() },
   { id: 'A3', type: 'Profile Update', requester: 'Jane Smith', details: 'Request to change phone number.', date: new Date(new Date().setDate(new Date().getDate() - 2)) },
+];
+
+export const ministries: Ministry[] = [
+  { 
+    id: 'MIN1', 
+    name: 'Sunday Service', 
+    description: 'Handles the main weekly worship service.', 
+    leaderId: '3', // Peter Jones
+    type: 'Primary', 
+    memberIds: ['1', '3'] 
+  },
+  { 
+    id: 'MIN2', 
+    name: 'Youth Outreach', 
+    description: 'Programs and events for young people in the community.', 
+    leaderId: '2', // Jane Smith
+    type: 'Secondary', 
+    memberIds: ['2'] 
+  },
+  {
+    id: 'MIN3',
+    name: 'Community Pantry',
+    description: 'Provides food and supplies to those in need.',
+    leaderId: '1', // John Doe
+    type: 'Secondary',
+    memberIds: ['1', '4']
+  }
 ];
 
 export const attendanceChartData = [

@@ -6,6 +6,7 @@ import {
   Calendar,
   UtensilsCrossed,
   QrCode,
+  HeartHandshake,
 } from "lucide-react";
 
 import {
@@ -21,6 +22,7 @@ const allRoles: WorkerRole[] = ['Volunteer', 'Clergy', 'Admin', 'Full-time', 'On
 const navItems: { href: string; icon: React.ElementType; label: string; roles: WorkerRole[] }[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", roles: allRoles },
   { href: "/workers", icon: Users, label: "Worker Profiles", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
+  { href: "/ministries", icon: HeartHandshake, label: "Ministries", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
   { href: "/approvals", icon: CheckSquare, label: "Approvals", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
   { href: "/rooms", icon: Calendar, label: "Room Reservations", roles: allRoles },
   { href: "/meals", icon: UtensilsCrossed, label: "Mealstubs", roles: ['Admin', 'Super Admin'] },

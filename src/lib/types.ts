@@ -45,3 +45,14 @@ export type ApprovalRequest = {
   details: string;
   date: Date;
 };
+
+export type MinistryType = 'Primary' | 'Secondary';
+
+export type Ministry = {
+  id: string;
+  name: string;
+  description: string;
+  leaderId: string; // Worker ID
+  type: MinistryType;
+  memberIds: string[]; // Worker IDs
+};
