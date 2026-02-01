@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ScanLine, ArrowLeft, LoaderCircle, User } from "lucide-react";
+import { ScanLine, ArrowLeft, LoaderCircle, User, CameraReverse } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import type { Worker } from "@/lib/types";
@@ -22,19 +22,31 @@ export default function QRScannerPage() {
     const [scannedWorker, setScannedWorker] = useState<Worker | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     
+    // New state for camera switching
+    const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
+    
     const firestore = useFirestore();
 
     const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
     const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
+    // Effect to get permissions and enumerate devices
     useEffect(() => {
-        const getCameraPermission = async () => {
+        const getDevices = async () => {
           try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            // First, get permission to ensure the device list isn't empty
+            await navigator.mediaDevices.getUserMedia({ video: true });
             setHasCameraPermission(true);
-    
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
+            
+            // Then, enumerate devices
+            const allDevices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
+            setDevices(videoDevices);
+
+            if (videoDevices.length > 0 && !selectedDeviceId) {
+                // Set the first camera as the default if one isn't already selected
+                setSelectedDeviceId(videoDevices[0].deviceId);
             }
           } catch (error) {
             console.error('Error accessing camera:', error);
@@ -47,8 +59,47 @@ export default function QRScannerPage() {
           }
         };
     
-        getCameraPermission();
+        getDevices();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [toast]);
+    
+    // Effect to set up the stream when the selected device changes
+    useEffect(() => {
+        if (selectedDeviceId && videoRef.current) {
+            let stream: MediaStream;
+            const constraints = {
+                video: {
+                    deviceId: { exact: selectedDeviceId }
+                }
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(s => {
+                    stream = s;
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error switching camera:', err);
+                });
+            
+            // Cleanup: stop the stream when the component unmounts or device changes
+            return () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            }
+        }
+    }, [selectedDeviceId]);
+
+    const handleSwitchCamera = () => {
+        if (devices.length < 2) return; // No other cameras to switch to
+
+        const currentIndex = devices.findIndex(device => device.deviceId === selectedDeviceId);
+        const nextIndex = (currentIndex + 1) % devices.length;
+        setSelectedDeviceId(devices[nextIndex].deviceId);
+    };
 
     const resetScanner = () => {
         setScannedData('');
@@ -175,6 +226,15 @@ export default function QRScannerPage() {
                                 </div>
                                 {isProcessing && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin text-white"/></div>}
                                 <div className="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 animate-pulse" />
+                                
+                                {devices.length > 1 && (
+                                    <div className="absolute bottom-4 right-4">
+                                        <Button size="icon" onClick={handleSwitchCamera}>
+                                            <CameraReverse className="h-5 w-5" />
+                                            <span className="sr-only">Switch Camera</span>
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                             
                             {hasCameraPermission === false && (
@@ -182,32 +242,4 @@ export default function QRScannerPage() {
                                     <AlertTitle>Camera Access Required</AlertTitle>
                                     <AlertDescription>
                                         Please allow camera access to use this feature.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-
-                            <div className="mt-4 text-center text-sm text-muted-foreground">
-                                <p>Or enter data manually:</p>
-                            </div>
-                            <div className="grid gap-2 mt-2">
-                                <Label htmlFor="qr-data">Scanned Data</Label>
-                                <div className="flex gap-2">
-                                    <Input 
-                                        id="qr-data"
-                                        placeholder="Paste data from QR code"
-                                        value={scannedData}
-                                        onChange={(e) => setScannedData(e.target.value)}
-                                        disabled={isProcessing}
-                                    />
-                                    <Button onClick={() => handleScan(scannedData)} disabled={isProcessing || !scannedData}>
-                                        {isProcessing ? <LoaderCircle className="animate-spin" /> : "Process"}
-                                    </Button>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
+                                    </Aler
