@@ -74,7 +74,7 @@ service cloud.firestore {
     match /approvals/{approvalId} {
       allow get, list: if isAdmin();
       allow create: if isSignedIn(); // Any signed-in user can create a request
-      allow update, delete: if isAdmin(); // Only admins can approve/deny/delete
+      allow update, delete: if isSuperAdmin() || isAdmin(); // SuperAdmins and Admins can approve/deny/delete
     }
 
     match /rooms/{roomId} {
