@@ -42,6 +42,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Worker, WorkerRole, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<Worker> | null; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; }) => {
   const [formData, setFormData] = useState<Partial<Worker>>(worker || {
@@ -70,93 +71,100 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
   };
 
   return (
-    <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="firstName" className="text-right">First Name</Label>
-        <Input id="firstName" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="col-span-3" />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="lastName" className="text-right">Last Name</Label>
-        <Input id="lastName" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="col-span-3" />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="email" className="text-right">Email</Label>
-        <Input id="email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="col-span-3" />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="phone" className="text-right">Phone</Label>
-        <Input id="phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="col-span-3" />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="role" className="text-right">Role</Label>
-        <Select value={formData.role} onValueChange={(value: WorkerRole) => setFormData({...formData, role: value})}>
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Select a role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Mentee">Mentee</SelectItem>
-            <SelectItem value="Volunteer">Volunteer</SelectItem>
-            <SelectItem value="Full-time">Full-time Worker</SelectItem>
-            <SelectItem value="On-call">On-call Worker</SelectItem>
-            <SelectItem value="Clergy">Clergy</SelectItem>
-            <SelectItem value="Ministry Head">Ministry Head</SelectItem>
-            <SelectItem value="Department Head">Department Head</SelectItem>
-            <SelectItem value="Admin">Admin</SelectItem>
-            <SelectItem value="Super Admin">Super Admin</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="primaryMinistry" className="text-right">Primary Ministry</Label>
-        <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value})}>
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Select a ministry" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="secondaryMinistry" className="text-right">Secondary Ministry</Label>
-        <Select value={formData.secondaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, secondaryMinistryId: value})}>
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Select a ministry" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label className="text-right pt-2">Permissions</Label>
-        <div className="col-span-3 space-y-2">
-            {['Room Booking', 'Manage Workers', 'Approve All'].map(p => (
-                 <div key={p} className="flex items-center space-x-2">
-                    <Checkbox 
-                        id={`perm-${p}`} 
-                        checked={formData.permissions?.includes(p)}
-                        onCheckedChange={(checked) => handlePermissionsChange(p, !!checked)}
-                    />
-                    <label htmlFor={`perm-${p}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{p}</label>
-                </div>
-            ))}
+    <>
+      <SheetHeader>
+        <SheetTitle className="font-headline">{worker ? 'Edit Worker' : 'Add New Worker'}</SheetTitle>
+        <SheetDescription>
+          {worker ? 'Update the details for this worker.' : 'Fill in the details for the new worker.'}
+        </SheetDescription>
+      </SheetHeader>
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="firstName" className="text-right">First Name</Label>
+          <Input id="firstName" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="col-span-3" />
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="lastName" className="text-right">Last Name</Label>
+          <Input id="lastName" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="col-span-3" />
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="email" className="text-right">Email</Label>
+          <Input id="email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="col-span-3" />
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="phone" className="text-right">Phone</Label>
+          <Input id="phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="col-span-3" />
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="role" className="text-right">Role</Label>
+          <Select value={formData.role} onValueChange={(value: WorkerRole) => setFormData({...formData, role: value})}>
+            <SelectTrigger className="col-span-3">
+              <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Mentee">Mentee</SelectItem>
+              <SelectItem value="Volunteer">Volunteer</SelectItem>
+              <SelectItem value="Full-time">Full-time Worker</SelectItem>
+              <SelectItem value="On-call">On-call Worker</SelectItem>
+              <SelectItem value="Clergy">Clergy</SelectItem>
+              <SelectItem value="Ministry Head">Ministry Head</SelectItem>
+              <SelectItem value="Department Head">Department Head</SelectItem>
+              <SelectItem value="Admin">Admin</SelectItem>
+              <SelectItem value="Super Admin">Super Admin</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="primaryMinistry" className="text-right">Primary Ministry</Label>
+          <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value})}>
+            <SelectTrigger className="col-span-3">
+              <SelectValue placeholder="Select a ministry" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="secondaryMinistry" className="text-right">Secondary Ministry</Label>
+          <Select value={formData.secondaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, secondaryMinistryId: value})}>
+            <SelectTrigger className="col-span-3">
+              <SelectValue placeholder="Select a ministry" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-4 items-start gap-4">
+          <Label className="text-right pt-2">Permissions</Label>
+          <div className="col-span-3 space-y-2">
+              {['Room Booking', 'Manage Workers', 'Approve All'].map(p => (
+                  <div key={p} className="flex items-center space-x-2">
+                      <Checkbox 
+                          id={`perm-${p}`} 
+                          checked={formData.permissions?.includes(p)}
+                          onCheckedChange={(checked) => handlePermissionsChange(p, !!checked)}
+                      />
+                      <label htmlFor={`perm-${p}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{p}</label>
+                  </div>
+              ))}
+          </div>
         </div>
       </div>
       <SheetFooter>
-        <SheetClose asChild>
-          <Button type="button" variant="secondary">Cancel</Button>
-        </SheetClose>
+        <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
         <Button onClick={handleSave}>Save changes</Button>
       </SheetFooter>
-    </div>
+    </>
   );
 };
 
 export default function WorkersPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
   const { data: workers, isLoading } = useCollection<Worker>(workersRef);
 
@@ -183,6 +191,15 @@ export default function WorkersPage() {
   };
 
   const handleSaveWorker = (workerData: Partial<Worker>) => {
+    if (!workerData.firstName || !workerData.lastName || !workerData.email) {
+      toast({
+        variant: "destructive",
+        title: "Missing required fields",
+        description: "Please fill out first name, last name, and email.",
+      });
+      return;
+    }
+
     const dataToSave = { ...workerData };
     if (dataToSave.primaryMinistryId === 'none') {
       dataToSave.primaryMinistryId = '';
@@ -194,6 +211,8 @@ export default function WorkersPage() {
     if (selectedWorker?.id) {
         updateDocumentNonBlocking(doc(firestore, "worker_profiles", selectedWorker.id), dataToSave);
     } else {
+        // For new workers, you might want to create them with an ID, but here we let Firestore auto-generate it.
+        // If you were creating an auth user at the same time, you'd use their UID as the doc ID.
         addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
     }
   };
@@ -276,13 +295,12 @@ export default function WorkersPage() {
 
        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="font-headline">{selectedWorker ? 'Edit Worker' : 'Add New Worker'}</SheetTitle>
-            <SheetDescription>
-              {selectedWorker ? 'Update the details for this worker.' : 'Fill in the details for the new worker.'}
-            </SheetDescription>
-          </SheetHeader>
-          <WorkerForm worker={selectedWorker} ministries={ministries} onSave={handleSaveWorker} onClose={() => setIsSheetOpen(false)} />
+          <WorkerForm 
+            key={selectedWorker?.id || 'new'}
+            worker={selectedWorker} 
+            ministries={ministries} 
+            onSave={handleSaveWorker} 
+            onClose={() => setIsSheetOpen(false)} />
         </SheetContent>
       </Sheet>
 
