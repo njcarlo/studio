@@ -43,7 +43,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { Worker, WorkerRole, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 
-const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | null; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void }) => {
+const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<Worker> | null; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; }) => {
   const [formData, setFormData] = useState<Partial<Worker>>(worker || {
     firstName: '', lastName: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: 'https://picsum.photos/seed/105/100/100',
     primaryMinistryId: '', secondaryMinistryId: ''
@@ -51,6 +51,7 @@ const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | 
 
   const handleSave = () => {
     onSave(formData);
+    onClose();
   };
   
   const handlePermissionsChange = (permission: string, checked: boolean) => {
@@ -195,7 +196,6 @@ export default function WorkersPage() {
     } else {
         addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
     }
-    setIsSheetOpen(false);
   };
 
   return (
@@ -282,7 +282,7 @@ export default function WorkersPage() {
               {selectedWorker ? 'Update the details for this worker.' : 'Fill in the details for the new worker.'}
             </SheetDescription>
           </SheetHeader>
-          <WorkerForm worker={selectedWorker} ministries={ministries} onSave={handleSaveWorker} />
+          <WorkerForm worker={selectedWorker} ministries={ministries} onSave={handleSaveWorker} onClose={() => setIsSheetOpen(false)} />
         </SheetContent>
       </Sheet>
 
