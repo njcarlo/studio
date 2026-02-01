@@ -1,4 +1,4 @@
-export type WorkerRole = 'Volunteer' | 'Clergy' | 'Admin' | 'Full-time' | 'On-call' | 'Ministry Head' | 'Super Admin';
+export type WorkerRole = 'Volunteer' | 'Clergy' | 'Admin' | 'Full-time' | 'On-call' | 'Ministry Head' | 'Super Admin' | 'Department Head';
 
 export type Worker = {
   id: string;
@@ -9,6 +9,8 @@ export type Worker = {
   phone: string;
   status: 'Active' | 'Inactive' | 'Pending Approval';
   permissions: string[];
+  primaryMinistryId?: string;
+  secondaryMinistryId?: string;
 };
 
 export type Room = {
@@ -53,8 +55,6 @@ export type ApprovalRequest = {
   status: 'Approved' | 'Pending' | 'Rejected';
 };
 
-export type MinistryType = 'Primary' | 'Secondary';
-
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
 
 export type Ministry = {
@@ -62,7 +62,6 @@ export type Ministry = {
   name: string;
   description: string;
   leaderId: string; // Worker ID
-  type: MinistryType;
   memberIds: string[]; // Worker IDs
   department: Department;
 };

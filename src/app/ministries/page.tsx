@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HeartHandshake, User, Users, LoaderCircle, PlusCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
-import type { Ministry, Worker, Department, MinistryType } from "@/lib/types";
+import type { Ministry, Worker, Department } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,6 @@ const MinistryForm = ({ workers, departments, onSave }: { workers: Worker[], dep
     name: '',
     description: '',
     leaderId: '',
-    type: 'Primary',
     department: 'Worship',
     memberIds: [],
   });
@@ -70,18 +69,6 @@ const MinistryForm = ({ workers, departments, onSave }: { workers: Worker[], dep
           </SelectTrigger>
           <SelectContent>
             {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="type" className="text-right">Type</Label>
-        <Select value={formData.type} onValueChange={(value: MinistryType) => setFormData({...formData, type: value})}>
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Select a type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Primary">Primary</SelectItem>
-            <SelectItem value="Secondary">Secondary</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -118,7 +105,7 @@ export default function MinistriesPage() {
   const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
   const { viewAsRole } = useUserRole();
-  const canManageMinistries = ['Admin', 'Super Admin', 'Ministry Head'].includes(viewAsRole);
+  const canManageMinistries = ['Admin', 'Super Admin', 'Ministry Head', 'Department Head'].includes(viewAsRole);
 
   const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
   
@@ -174,11 +161,6 @@ export default function MinistriesPage() {
                           </div>
                           <div>
                             <CardTitle className="text-lg">{ministry.name}</CardTitle>
-                            <CardDescription>
-                              <Badge variant={ministry.type === 'Primary' ? 'default' : 'secondary'}>
-                                {ministry.type} Ministry
-                              </Badge>
-                            </CardDescription>
                           </div>
                         </div>
                       </CardHeader>

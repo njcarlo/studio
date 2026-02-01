@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,12 +40,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Worker, WorkerRole } from "@/lib/types";
+import type { Worker, WorkerRole, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 
-const WorkerForm = ({ worker, onSave }: { worker: Partial<Worker> | null; onSave: (worker: Partial<Worker>) => void }) => {
+const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | null; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void }) => {
   const [formData, setFormData] = useState<Partial<Worker>>(worker || {
-    name: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: 'https://picsum.photos/seed/105/100/100'
+    name: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: 'https://picsum.photos/seed/105/100/100',
+    primaryMinistryId: '', secondaryMinistryId: ''
   });
 
   const handleSave = () => {
@@ -93,8 +94,33 @@ const WorkerForm = ({ worker, onSave }: { worker: Partial<Worker> | null; onSave
             <SelectItem value="On-call">On-call Worker</SelectItem>
             <SelectItem value="Clergy">Clergy</SelectItem>
             <SelectItem value="Ministry Head">Ministry Head</SelectItem>
+            <SelectItem value="Department Head">Department Head</SelectItem>
             <SelectItem value="Admin">Admin</SelectItem>
             <SelectItem value="Super Admin">Super Admin</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+       <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="primaryMinistry" className="text-right">Primary Ministry</Label>
+        <Select value={formData.primaryMinistryId} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value})}>
+          <SelectTrigger className="col-span-3">
+            <SelectValue placeholder="Select a ministry" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">None</SelectItem>
+            {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="secondaryMinistry" className="text-right">Secondary Ministry</Label>
+        <Select value={formData.secondaryMinistryId} onValueChange={(value) => setFormData({...formData, secondaryMinistryId: value})}>
+          <SelectTrigger className="col-span-3">
+            <SelectValue placeholder="Select a ministry" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">None</SelectItem>
+            {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -129,6 +155,10 @@ export default function WorkersPage() {
   const firestore = useFirestore();
   const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
   const { data: workers, isLoading } = useCollection<Worker>(workersRef);
+
+  const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
+  const { data: ministriesData } = useCollection<Ministry>(ministriesRef);
+  const ministries = ministriesData || [];
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -241,7 +271,7 @@ export default function WorkersPage() {
               {selectedWorker ? 'Update the details for this worker.' : 'Fill in the details for the new worker.'}
             </SheetDescription>
           </SheetHeader>
-          <WorkerForm worker={selectedWorker} onSave={handleSaveWorker} />
+          <WorkerForm worker={selectedWorker} ministries={ministries} onSave={handleSaveWorker} />
         </SheetContent>
       </Sheet>
 

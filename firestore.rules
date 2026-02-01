@@ -52,8 +52,8 @@ service cloud.firestore {
       return isSignedIn() && (getRole(request.auth.uid) == 'Admin' || isSuperAdmin());
     }
 
-     function isMinistryHead() {
-      return isSignedIn() && (getRole(request.auth.uid) == 'Ministry Head' || isAdmin());
+     function canManageMinistries() {
+      return isSignedIn() && (getRole(request.auth.uid) == 'Ministry Head' || getRole(request.auth.uid) == 'Department Head' || isAdmin());
     }
 
 
@@ -111,7 +111,7 @@ service cloud.firestore {
     
     match /ministries/{ministryId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isMinistryHead();
+      allow create, update, delete: if canManageMinistries();
     }
   }
 }

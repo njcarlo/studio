@@ -37,6 +37,14 @@
         "avatarUrl": {
             "type": "string",
             "description": "URL for the worker's avatar image."
+        },
+        "primaryMinistryId": {
+          "type": "string",
+          "description": "The ID of the worker's primary ministry."
+        },
+        "secondaryMinistryId": {
+          "type": "string",
+          "description": "The ID of the worker's secondary ministry."
         }
       },
       "required": [
@@ -250,11 +258,6 @@
           "type": "string",
           "description": "The ID of the worker who leads the ministry."
         },
-        "type": {
-          "type": "string",
-          "enum": ["Primary", "Secondary"],
-          "description": "The type of ministry."
-        },
         "memberIds": {
           "type": "array",
           "items": {
@@ -268,7 +271,7 @@
             "enum": ["Worship", "Outreach", "Relationship", "Discipleship", "Administration"]
         }
       },
-      "required": ["name", "description", "leaderId", "type", "memberIds", "department"]
+      "required": ["name", "description", "leaderId", "memberIds", "department"]
     }
   },
   "auth": {
