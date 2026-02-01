@@ -16,6 +16,11 @@ import {
   SheetFooter,
   SheetClose,
 } from "@/components/ui/sheet";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,6 +54,7 @@ const equipmentIcons: { [key: string]: React.ElementType } = {
 const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booking: any) => Promise<boolean>, onClose: () => void }) => {
   const { user } = useUser();
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [room, setRoom] = useState<string>('');
   const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -74,6 +80,11 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
     }
     return slots;
   }, []);
+
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    setDate(selectedDate);
+    setIsDatePickerOpen(false);
+  }
 
   const handleSave = async () => {
     if (!date || !room || !title || !user) return;
@@ -127,12 +138,28 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
             </div>
             <div className="space-y-2">
                 <Label>Date</Label>
-                <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    className="rounded-md border"
-                />
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !date && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date ? format(date, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={handleDateSelect}
+                            initialFocus
+                        />
+                    </PopoverContent>
+                </Popover>
             </div>
              <div className="flex items-center space-x-2">
                 <Checkbox id="whole-day" checked={isWholeDay} onCheckedChange={(checked) => setIsWholeDay(!!checked)} />
@@ -179,10 +206,16 @@ const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms
     }
 
     const sortedBookings = useMemo(() => {
-        const newBookings = [...bookings];
-        newBookings.sort((a,b) => (a.start as any).seconds - (b.start as any).seconds);
-        return newBookings;
+        // Create a new array to avoid modifying the original one during sort
+        const bookingsToSort = [...bookings];
+        // Ensure that a and b have a valid 'start' property before sorting
+        return bookingsToSort.sort((a, b) => {
+            const timeA = a.start ? (a.start as any).seconds : 0;
+            const timeB = b.start ? (b.start as any).seconds : 0;
+            return timeA - timeB;
+        });
     }, [bookings]);
+
 
     return (
         <div className="space-y-4">
@@ -321,7 +354,7 @@ export default function RoomsPage() {
             <div className="mt-4 space-y-4">
                 {isLoading && <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>}
                 {!isLoading && rooms && (
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-[auto_1fr] gap-6">
                         <Card>
                             <CardHeader>
                                 <CardTitle className="font-headline">Calendar</CardTitle>
@@ -333,7 +366,7 @@ export default function RoomsPage() {
                                     selected={selectedDate}
                                     onSelect={setSelectedDate}
                                     className="p-0"
-                                    classNames={{ day: "h-12 w-12 text-base", head_cell: "w-12" }}
+                                    classNames={{ day: "h-12 w-12 text-base", head_cell: "w-12 text-center" }}
                                     components={{ DayContent: ({ date }) => {
                                         const bookingsOnDay = bookingsByDate.get(format(date, 'yyyy-MM-dd'));
                                         return <div className="relative h-full w-full flex items-center justify-center">
