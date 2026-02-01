@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -78,9 +79,11 @@ export function UserNav() {
               Change Password
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem>
-            Settings
-          </DropdownMenuItem>
+          {isSuperAdmin && (
+            <DropdownMenuItem asChild>
+              <Link href="/settings">Settings</Link>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>

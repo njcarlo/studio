@@ -1,108 +1,18 @@
+
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { collection } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { HeartHandshake, User, Users, LoaderCircle, PlusCircle } from "lucide-react";
+import { HeartHandshake, User, Users, LoaderCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import type { Ministry, Worker, Department } from "@/lib/types";
-import { useUserRole } from "@/hooks/use-user-role";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose,
-} from "@/components/ui/sheet";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-
-
-const MinistryForm = ({ workers, departments, onSave, onClose }: { workers: Worker[], departments: Department[], onSave: (ministry: Partial<Ministry>) => void, onClose: () => void }) => {
-  const { toast } = useToast();
-  const [formData, setFormData] = useState<Partial<Ministry>>({
-    name: '',
-    description: '',
-    leaderId: '',
-    department: 'Worship',
-    memberIds: [],
-  });
-
-  const handleSave = () => {
-    if (!formData.name || !formData.leaderId) {
-        toast({
-          variant: "destructive",
-          title: "Missing required fields",
-          description: "A ministry must have a name and a leader.",
-        });
-        return;
-    }
-    onSave(formData);
-    onClose();
-  };
-
-  return (
-    <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="name" className="text-right">Name</Label>
-        <Input id="name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="col-span-3" />
-      </div>
-       <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor="description" className="text-right pt-2">Description</Label>
-        <Textarea id="description" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="col-span-3" />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="department" className="text-right">Department</Label>
-        <Select value={formData.department} onValueChange={(value: Department) => setFormData({...formData, department: value})}>
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Select a department" />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="leader" className="text-right">Leader</Label>
-        <Select value={formData.leaderId} onValueChange={(value: string) => setFormData({...formData, leaderId: value})}>
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Select a leader" />
-          </SelectTrigger>
-          <SelectContent>
-            {workers.map(w => <SelectItem key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <SheetFooter>
-        <SheetClose asChild>
-          <Button type="button" variant="secondary">Cancel</Button>
-        </SheetClose>
-        <Button onClick={handleSave}>Save Ministry</Button>
-      </SheetFooter>
-    </div>
-  );
-};
-
 
 export default function MinistriesPage() {
   const firestore = useFirestore();
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
   const { data: ministries, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
@@ -110,29 +20,16 @@ export default function MinistriesPage() {
   const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
   const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
-  const { viewAsRole } = useUserRole();
-  const canManageMinistries = ['Admin', 'Super Admin', 'Ministry Head', 'Department Head'].includes(viewAsRole);
-
   const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
   
   const isLoading = ministriesLoading || workersLoading;
 
   const departments: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
 
-  const handleSaveMinistry = (ministryData: Partial<Ministry>) => {
-    addDocumentNonBlocking(collection(firestore, 'ministries'), ministryData);
-  };
-
-
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Ministries</h1>
-        {canManageMinistries && (
-          <Button onClick={() => setIsSheetOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Ministry
-          </Button>
-        )}
       </div>
       
       {isLoading && (
@@ -141,7 +38,7 @@ export default function MinistriesPage() {
         </div>
       )}
 
-      <div className="space-y-8">
+      <div className="space-y-8 mt-4">
         {!isLoading && departments.map(department => {
           const departmentMinistries = ministries?.filter(m => m.department === department);
           
@@ -225,19 +122,6 @@ export default function MinistriesPage() {
           );
         })}
       </div>
-
-       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle className="font-headline">Add New Ministry</SheetTitle>
-            <SheetDescription>
-              Fill in the details for the new ministry.
-            </SheetDescription>
-          </SheetHeader>
-          {workers && <MinistryForm workers={workers} departments={departments} onSave={handleSaveMinistry} onClose={() => setIsSheetOpen(false)} />}
-        </SheetContent>
-      </Sheet>
-
     </AppLayout>
   );
 }
