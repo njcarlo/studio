@@ -54,6 +54,7 @@ export type ApprovalRequest = {
   details: string;
   date: Date;
   status: 'Approved' | 'Pending' | 'Rejected';
+  workerId?: string;
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';

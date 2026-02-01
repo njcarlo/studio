@@ -86,6 +86,10 @@
         "status": {
           "type": "string",
           "description": "The current status of the approval (e.g., 'pending', 'approved', 'rejected')."
+        },
+        "workerId": {
+            "type": "string",
+            "description": "The ID of the worker profile this approval is for, if applicable."
         }
       },
       "required": [

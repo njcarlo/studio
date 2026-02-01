@@ -20,7 +20,7 @@ const getIconForType = (type: ApprovalRequest['type']) => {
     }
 }
 
-const ApprovalCard = ({ request, onApprove, onDeny }: { request: ApprovalRequest, onApprove: (id: string) => void, onDeny: (id: string) => void }) => (
+const ApprovalCard = ({ request, onApprove, onDeny }: { request: ApprovalRequest, onApprove: (request: ApprovalRequest) => void, onDeny: (request: ApprovalRequest) => void }) => (
     <Card>
         <CardHeader>
             <div className="flex items-center gap-4">
@@ -40,10 +40,10 @@ const ApprovalCard = ({ request, onApprove, onDeny }: { request: ApprovalRequest
              <p className="text-xs text-muted-foreground mt-2">{(request.date as any)?.seconds ? format(new Date((request.date as any).seconds * 1000), 'PP') : ''}</p>
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => onDeny(request.id)}>
+            <Button variant="outline" size="sm" onClick={() => onDeny(request)}>
                 <X className="mr-2 h-4 w-4" /> Deny
             </Button>
-            <Button size="sm" onClick={() => onApprove(request.id)}>
+            <Button size="sm" onClick={() => onApprove(request)}>
                 <Check className="mr-2 h-4 w-4" /> Approve
             </Button>
         </CardFooter>
@@ -60,8 +60,8 @@ const ApprovalList = ({
     requests: ApprovalRequest[] | undefined, 
     isLoading: boolean, 
     emptyMessage: string, 
-    onApprove: (id: string) => void, 
-    onDeny: (id: string) => void 
+    onApprove: (request: ApprovalRequest) => void, 
+    onDeny: (request: ApprovalRequest) => void 
 }) => {
     if (isLoading) {
         return (
@@ -95,13 +95,19 @@ export default function ApprovalsPage() {
     const approvalsRef = useMemoFirebase(() => collection(firestore, "approvals"), [firestore]);
     const { data: requests, isLoading } = useCollection<ApprovalRequest>(approvalsRef);
 
-    const handleApproval = (id: string, newStatus: 'Approved' | 'Rejected') => {
-        if (!id) return;
-        updateDocumentNonBlocking(doc(firestore, "approvals", id), { status: newStatus });
+    const handleApproval = (request: ApprovalRequest, newStatus: 'Approved' | 'Rejected') => {
+        if (!request.id) return;
+        updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { status: newStatus });
+
+        // If approving a new worker, also update their profile status to Active
+        if (request.type === 'New Worker' && newStatus === 'Approved' && request.workerId) {
+            const workerDocRef = doc(firestore, "worker_profiles", request.workerId);
+            updateDocumentNonBlocking(workerDocRef, { status: 'Active' });
+        }
     };
 
-    const onApprove = (id: string) => handleApproval(id, 'Approved');
-    const onDeny = (id: string) => handleApproval(id, 'Rejected');
+    const onApprove = (request: ApprovalRequest) => handleApproval(request, 'Approved');
+    const onDeny = (request: ApprovalRequest) => handleApproval(request, 'Rejected');
 
     const pendingRequests = requests?.filter(r => r.status === 'Pending');
     const workerMovementRequests = pendingRequests?.filter(r => r.type === 'New Worker' || r.type === 'Profile Update');

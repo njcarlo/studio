@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
+  SheetClose
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -42,6 +43,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { Worker, WorkerRole, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/use-user-role";
 
 const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<Worker> | null; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; }) => {
   const [formData, setFormData] = useState<Partial<Worker>>({
@@ -50,12 +52,19 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
   });
 
   useEffect(() => {
-    setFormData(worker || {
-        firstName: '', lastName: '', email: '', phone: '', role: 'Mentee', permissions: [], status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
-        primaryMinistryId: '', secondaryMinistryId: ''
-      });
+    if (worker) {
+        setFormData({
+            ...worker,
+            primaryMinistryId: worker.primaryMinistryId || '',
+            secondaryMinistryId: worker.secondaryMinistryId || '',
+        });
+    } else {
+        setFormData({
+            firstName: '', lastName: '', email: '', phone: '', role: 'Mentee', permissions: [], status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+            primaryMinistryId: '', secondaryMinistryId: ''
+        });
+    }
   }, [worker]);
-
 
   const handleSave = () => {
     onSave(formData);
@@ -161,7 +170,9 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
         </div>
       </div>
       <SheetFooter>
-        <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+        <SheetClose asChild>
+          <Button type="button" variant="secondary">Cancel</Button>
+        </SheetClose>
         <Button onClick={handleSave}>Save changes</Button>
       </SheetFooter>
     </>
@@ -171,6 +182,7 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
 export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { userProfile } = useUserRole();
   const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
   const { data: workers, isLoading } = useCollection<Worker>(workersRef);
 
@@ -226,16 +238,30 @@ export default function WorkersPage() {
               description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
           });
       } else {
-          await addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
+          const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
+          if (newWorkerRef && userProfile) {
+            await addDocumentNonBlocking(collection(firestore, "approvals"), {
+              requester: `${userProfile.firstName} ${userProfile.lastName}`,
+              type: 'New Worker',
+              details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
+              date: serverTimestamp(),
+              status: 'Pending',
+              workerId: newWorkerRef.id
+            });
+          }
           toast({
               title: "Worker Added",
-              description: `${dataToSave.firstName} ${dataToSave.lastName} has been added.`
+              description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`
           });
       }
       setIsSheetOpen(false);
     } catch (error) {
       console.error("Failed to save worker:", error);
-      // The error is globally handled by FirebaseErrorListener, so no need for a separate toast here.
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save worker profile. Check console for details.",
+      });
     }
   };
 
@@ -318,7 +344,7 @@ export default function WorkersPage() {
        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-lg">
           <WorkerForm 
-            key={selectedWorker?.id || 'new'}
+            key={selectedWorker?.id || 'new-worker-form'}
             worker={selectedWorker} 
             ministries={ministries} 
             onSave={handleSaveWorker} 
