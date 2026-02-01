@@ -44,15 +44,14 @@ import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonB
 import { useToast } from "@/hooks/use-toast";
 
 const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<Worker> | null; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; }) => {
-  const [formData, setFormData] = useState<Partial<Worker>>(worker || {
-    firstName: '', lastName: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: 'https://picsum.photos/seed/105/100/100',
+  const [formData, setFormData] = useState<Partial<Worker>>({
+    firstName: '', lastName: '', email: '', phone: '', role: 'Mentee', permissions: [], status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
     primaryMinistryId: '', secondaryMinistryId: ''
   });
 
-  // Effect to sync form data when the selected worker changes
   useEffect(() => {
     setFormData(worker || {
-        firstName: '', lastName: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+        firstName: '', lastName: '', email: '', phone: '', role: 'Mentee', permissions: [], status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
         primaryMinistryId: '', secondaryMinistryId: ''
       });
   }, [worker]);
