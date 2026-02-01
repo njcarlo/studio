@@ -27,7 +27,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Booking, Room, Worker, Location } from "@/lib/types";
@@ -49,7 +48,7 @@ const equipmentIcons: { [key: string]: React.ElementType } = {
 
 const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booking: any) => Promise<boolean>, onClose: () => void }) => {
   const { user } = useUser();
-  const [date, setDate] = useState<Date>();
+  const [date, setDate] = useState<Date | undefined>(new Date());
   const [room, setRoom] = useState<string>('');
   const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -130,17 +129,16 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
                 <Label htmlFor="title" className="text-right">Purpose</Label>
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Weekly Meeting" className="col-span-3" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="date" className="text-right">Date</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("col-span-3 justify-start text-left font-normal", !date && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={date} onSelect={setDate} initialFocus /></PopoverContent>
-                </Popover>
+            <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right pt-2">Date</Label>
+                <div className="col-span-3">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        className="rounded-md border"
+                    />
+                </div>
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
                 <div />
@@ -297,13 +295,18 @@ export default function RoomsPage() {
 
     const bookingsByDate = useMemo(() => {
         if (!bookings) return new Map<string, Booking[]>();
-        return bookings.reduce((acc, booking) => {
-            if (!booking.start) return acc;
+
+        const newMap = new Map<string, Booking[]>();
+        for (const booking of bookings) {
+            if (!booking.start) continue;
             const dateKey = format((booking.start as any).toDate(), 'yyyy-MM-dd');
-            const existing = acc.get(dateKey) || [];
-            acc.set(dateKey, [...existing, booking]);
-            return acc;
-        }, new Map<string, Booking[]>());
+            
+            // This is the correct way: create a new array.
+            const existing = newMap.get(dateKey) || [];
+            newMap.set(dateKey, [...existing, booking]);
+        }
+        return newMap;
+
     }, [bookings]);
 
     const dayBookings = (selectedDate && bookingsByDate.get(format(selectedDate, 'yyyy-MM-dd'))) || [];
