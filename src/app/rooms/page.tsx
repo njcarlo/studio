@@ -191,7 +191,7 @@ const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms
 
     return (
         <div className="space-y-4">
-            {bookings.sort((a,b) => (a.start as any).seconds - (b.start as any).seconds).map(booking => {
+            {[...bookings].sort((a,b) => (a.start as any).seconds - (b.start as any).seconds).map(booking => {
                 const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
                 const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
 
