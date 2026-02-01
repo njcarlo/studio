@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -157,7 +158,7 @@ const RoomForm = ({ room, equipment, onSave, onClose }: { room?: Partial<Room> |
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="room-capacity" className="text-right">Capacity</Label>
-                    <Input id="room-capacity" type="number" value={formData.capacity as number} onChange={e => setFormData({ ...formData, capacity: Number(e.target.value) })} className="col-span-3" />
+                    <Input id="room-capacity" type="number" value={formData.capacity ?? ''} onChange={e => setFormData({ ...formData, capacity: Number(e.target.value) })} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-start gap-4">
                     <Label className="text-right pt-2">Equipment</Label>
