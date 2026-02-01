@@ -140,8 +140,8 @@ export default function RoomsPage() {
                             mode="single"
                             className="p-0"
                             classNames={{
-                                day: "h-16 w-16 text-lg",
-                                head_cell: "w-16",
+                                day: "h-12 w-12 text-base md:h-16 md:w-16 md:text-lg",
+                                head_cell: "w-12 md:w-16",
                             }}
                             components={{
                                 DayContent: ({ date, ...props }) => {

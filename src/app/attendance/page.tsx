@@ -30,7 +30,7 @@ const QrScannerDialog = ({ open, onOpenChange, onScanSuccess }: { open: boolean;
             Position the QR code within the frame to record attendance.
           </DialogDescription>
         </DialogHeader>
-        <div className="relative w-full aspect-square bg-slate-900 rounded-lg overflow-hidden my-4">
+        <div className="relative w-full max-w-md mx-auto aspect-square bg-slate-900 rounded-lg overflow-hidden my-4">
             <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-64 h-64 border-4 border-dashed border-primary rounded-lg" />
             </div>
