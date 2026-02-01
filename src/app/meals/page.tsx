@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { collection, serverTimestamp, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,21 +29,23 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, QrCode, LoaderCircle, Scan } from "lucide-react";
-import type { MealStub } from "@/lib/types";
-import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase } from "@/firebase";
+import type { MealStub, Worker } from "@/lib/types";
+import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase, useDoc } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { format, isToday, subDays } from 'date-fns';
 
-const MealStubDialog = ({ stub, open, onOpenChange }: { stub: MealStub | null, open: boolean, onOpenChange: (open: boolean) => void }) => {
+const MealStubDialog = ({ stub, worker, open, onOpenChange }: { stub: MealStub | null, worker: Worker | null, open: boolean, onOpenChange: (open: boolean) => void }) => {
     if (!stub) return null;
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`MEALSTUB:${stub.id}`)}`;
+
+    const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="font-headline">Mealstub for {stub.workerName}</DialogTitle>
+                    <DialogTitle className="font-headline">Mealstub for {workerName}</DialogTitle>
                     <DialogDescription>
                         Scan this QR code to claim the meal.
                     </DialogDescription>
@@ -65,26 +67,37 @@ const MealStubDialog = ({ stub, open, onOpenChange }: { stub: MealStub | null, o
 export default function MealsPage() {
   const firestore = useFirestore();
   const mealStubsRef = useMemoFirebase(() => collection(firestore, "mealstubs"), [firestore]);
-  const { data: mealStubs, isLoading } = useCollection<MealStub>(mealStubsRef);
+  const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsRef);
+  
+  const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
+  const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
   
   const { user } = useUser();
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'worker_profiles', user.uid) : null, [firestore, user]);
+  const { data: userProfile } = useDoc<Worker>(userProfileRef);
+
   const [selectedStub, setSelectedStub] = useState<MealStub | null>(null);
+  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { viewAsRole } = useUserRole();
   const isAdmin = viewAsRole === 'Admin' || viewAsRole === 'Super Admin';
 
+  const isLoading = mealStubsLoading || workersLoading;
+
   const handleRowClick = (stub: MealStub) => {
     setSelectedStub(stub);
+    const worker = workers?.find(w => w.id === stub.workerId) || null;
+    setSelectedWorker(worker);
     setIsDialogOpen(true);
   };
   
   const generateManualStub = () => {
-      if (!user) return;
+      if (!user || !userProfile) return;
       
       const newStub = {
           workerId: user.uid,
-          workerName: user.displayName || "Unknown Worker",
+          workerName: `${userProfile.firstName} ${userProfile.lastName}`,
           date: serverTimestamp(),
           status: 'Issued',
       };
@@ -160,9 +173,12 @@ export default function MealsPage() {
                 </TableCell>
               </TableRow>
             )}
-            {mealStubs && mealStubs.map((stub) => (
+            {mealStubs && workers && mealStubs.map((stub) => {
+              const worker = workers.find(w => w.id === stub.workerId);
+              const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
+              return (
               <TableRow key={stub.id} onClick={() => handleRowClick(stub)} className="cursor-pointer">
-                <TableCell className="font-medium">{stub.workerName}</TableCell>
+                <TableCell className="font-medium">{workerName}</TableCell>
                 <TableCell>{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'PP') : ''}</TableCell>
                 <TableCell>Meal Stub</TableCell>
                 <TableCell>
@@ -171,12 +187,12 @@ export default function MealsPage() {
                   </Badge>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
           </TableBody>
         </Table>
       </div>
 
-      <MealStubDialog stub={selectedStub} open={isDialogOpen} onOpenChange={setIsDialogOpen} />
+      <MealStubDialog stub={selectedStub} worker={selectedWorker} open={isDialogOpen} onOpenChange={setIsDialogOpen} />
     </AppLayout>
   );
 }

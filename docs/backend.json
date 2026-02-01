@@ -6,9 +6,13 @@
       "type": "object",
       "description": "Represents a worker's profile with personal details, roles, and permissions.",
       "properties": {
-        "name": {
+        "firstName": {
           "type": "string",
-          "description": "The full name of the worker."
+          "description": "The first name of the worker."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the worker."
         },
         "email": {
           "type": "string",
@@ -48,7 +52,8 @@
         }
       },
       "required": [
-        "name",
+        "firstName",
+        "lastName",
         "email",
         "role",
         "permissions",

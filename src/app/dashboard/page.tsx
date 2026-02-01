@@ -160,7 +160,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {upcomingBookings?.slice(0, 3).map(booking => (
+                    {upcomingBookings?.slice(0, 3).map(booking => {
+                        const worker = workers?.find(w => w.id === (booking as any).workerProfileId);
+                        const workerName = worker ? `${worker.firstName} ${worker.lastName}` : (booking as any).workerProfileId;
+                        return (
                         <div key={booking.id} className="flex items-center space-x-4">
                             <div className="flex-shrink-0 bg-primary/10 text-primary rounded-lg p-3">
                                 <Calendar className="h-5 w-5"/>
@@ -168,12 +171,13 @@ export default function DashboardPage() {
                             <div>
                                 <p className="font-semibold">{booking.title}</p>
                                 <p className="text-sm text-muted-foreground">
-                                    {(booking.start as any)?.seconds ? format(new Date((booking.start as any).seconds * 1000), 'PP') : ''}
+                                    by {workerName} - {(booking.start as any)?.seconds ? format(new Date((booking.start as any).seconds * 1000), 'PP') : ''}
                                 </p>
                             </div>
                              <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className="ml-auto bg-green-100 text-green-800">{booking.status}</Badge>
                         </div>
-                    ))}
+                        )
+                    })}
                 </div>
             </CardContent>
           </Card>

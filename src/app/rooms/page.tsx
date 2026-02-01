@@ -31,9 +31,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Booking, Room, Equipment } from "@/lib/types";
+import type { Booking, Room, Equipment, Worker } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useFirestore, useUser, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { useFirestore, useUser, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp, Timestamp } from "firebase/firestore";
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
@@ -259,6 +259,9 @@ export default function RoomsPage() {
     const isAdmin = viewAsRole === 'Admin' || isSuperAdmin;
     const firestore = useFirestore();
     const { user } = useUser();
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'worker_profiles', user.uid) : null, [firestore, user]);
+    const { data: userProfile } = useDoc<Worker>(userProfileRef);
+
 
     const [sheetState, setSheetState] = useState<'booking' | 'addRoom' | 'editRoom' | 'addEquipment' | null>(null);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -273,13 +276,13 @@ export default function RoomsPage() {
     const { data: equipment, isLoading: equipmentLoading } = useCollection<Equipment>(equipmentRef);
 
     const handleSaveBooking = (bookingData: any) => {
-        if (!bookingData.roomId) return;
+        if (!bookingData.roomId || !userProfile) return;
         // The booking itself has status 'Pending'
         addDocumentNonBlocking(collection(firestore, 'rooms', bookingData.roomId, 'reservations'), bookingData);
         
         // Create a corresponding approval request
         addDocumentNonBlocking(collection(firestore, 'approvals'), {
-            requester: user?.displayName || 'Unknown User',
+            requester: `${userProfile.firstName} ${userProfile.lastName}` || 'Unknown User',
             type: 'Room Booking',
             details: `"${bookingData.title}" for room: ${rooms?.find(r => r.id === bookingData.roomId)?.name}`,
             date: serverTimestamp(), // use server timestamp

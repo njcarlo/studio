@@ -13,6 +13,7 @@ type UserRoleContextType = {
   isLoading: boolean;
   setViewAsRole: (role: WorkerRole) => void;
   allRoles: WorkerRole[];
+  userProfile: Worker | null;
 };
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
@@ -35,8 +36,13 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     // it means they are a new user. We'll create a default profile for them.
     if (!isUserLoading && user && !isProfileLoading && !userProfile) {
       const isSuperAdminEmail = user.email === 'njcarlo@gmail.com';
+      const nameParts = user.displayName?.split(' ') || [];
+      const firstName = nameParts[0] || 'New';
+      const lastName = nameParts.slice(1).join(' ') || 'Worker';
+
       const newProfile: Partial<Worker> = {
-        name: user.displayName || user.email || 'New Worker',
+        firstName,
+        lastName,
         email: user.email!,
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid.slice(0,5)}/100/100`,
         role: isSuperAdminEmail ? 'Super Admin' : 'Volunteer',
@@ -82,6 +88,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     setViewAsRole,
     allRoles,
+    userProfile: userProfile || null,
   };
 
   return (

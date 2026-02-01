@@ -45,7 +45,7 @@ import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonB
 
 const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | null; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void }) => {
   const [formData, setFormData] = useState<Partial<Worker>>(worker || {
-    name: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: 'https://picsum.photos/seed/105/100/100',
+    firstName: '', lastName: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: 'https://picsum.photos/seed/105/100/100',
     primaryMinistryId: '', secondaryMinistryId: ''
   });
 
@@ -71,8 +71,12 @@ const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | 
   return (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="name" className="text-right">Name</Label>
-        <Input id="name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="col-span-3" />
+        <Label htmlFor="firstName" className="text-right">First Name</Label>
+        <Input id="firstName" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="col-span-3" />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="lastName" className="text-right">Last Name</Label>
+        <Input id="lastName" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="col-span-3" />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="email" className="text-right">Email</Label>
@@ -102,7 +106,7 @@ const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | 
       </div>
        <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="primaryMinistry" className="text-right">Primary Ministry</Label>
-        <Select value={formData.primaryMinistryId} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value})}>
+        <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value})}>
           <SelectTrigger className="col-span-3">
             <SelectValue placeholder="Select a ministry" />
           </SelectTrigger>
@@ -114,7 +118,7 @@ const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | 
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="secondaryMinistry" className="text-right">Secondary Ministry</Label>
-        <Select value={formData.secondaryMinistryId} onValueChange={(value) => setFormData({...formData, secondaryMinistryId: value})}>
+        <Select value={formData.secondaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, secondaryMinistryId: value})}>
           <SelectTrigger className="col-span-3">
             <SelectValue placeholder="Select a ministry" />
           </SelectTrigger>
@@ -230,10 +234,10 @@ export default function WorkersPage() {
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={worker.avatarUrl} alt={worker.name} />
-                      <AvatarFallback>{worker.name?.charAt(0)}</AvatarFallback>
+                      <AvatarImage src={worker.avatarUrl} alt={`${worker.firstName} ${worker.lastName}`} />
+                      <AvatarFallback>{worker.firstName?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    {worker.name}
+                    {`${worker.firstName} ${worker.lastName}`}
                   </div>
                 </TableCell>
                 <TableCell>{worker.role}</TableCell>

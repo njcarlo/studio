@@ -85,7 +85,7 @@ const MinistryForm = ({ workers, departments, onSave, onClose }: { workers: Work
             <SelectValue placeholder="Select a leader" />
           </SelectTrigger>
           <SelectContent>
-            {workers.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            {workers.map(w => <SelectItem key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -180,11 +180,11 @@ export default function MinistriesPage() {
                           {leader ? (
                             <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src={leader.avatarUrl} alt={leader.name} />
-                                    <AvatarFallback>{leader.name?.charAt(0)}</AvatarFallback>
+                                    <AvatarImage src={leader.avatarUrl} alt={`${leader.firstName} ${leader.lastName}`} />
+                                    <AvatarFallback>{leader.firstName?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <p className="text-sm font-medium">{leader.name}</p>
+                                    <p className="text-sm font-medium">{`${leader.firstName} ${leader.lastName}`}</p>
                                     <p className="text-xs text-muted-foreground">{leader.role}</p>
                                 </div>
                             </div>
@@ -204,12 +204,12 @@ export default function MinistriesPage() {
                                 <Tooltip key={member.id}>
                                   <TooltipTrigger>
                                     <Avatar className="h-8 w-8 border-2 border-background">
-                                        <AvatarImage src={member.avatarUrl} alt={member.name} />
-                                        <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
+                                        <AvatarImage src={member.avatarUrl} alt={`${member.firstName} ${member.lastName}`} />
+                                        <AvatarFallback>{member.firstName?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>{member.name}</p>
+                                    <p>{`${member.firstName} ${member.lastName}`}</p>
                                   </TooltipContent>
                                 </Tooltip>
                               ))}

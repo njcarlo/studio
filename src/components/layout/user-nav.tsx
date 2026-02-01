@@ -15,11 +15,13 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Link from "next/link";
 import { useAuth, useUser } from "@/firebase";
 import { getAuth, signOut } from "firebase/auth";
+import { useUserRole } from "@/hooks/use-user-role";
 
 const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
 
 export function UserNav() {
   const { user } = useUser();
+  const { userProfile } = useUserRole();
   const auth = useAuth();
 
   const handleLogout = () => {
@@ -31,15 +33,15 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-             <AvatarImage src={user?.photoURL || userAvatar?.imageUrl} alt={user?.displayName || "User"} />
-            <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+             <AvatarImage src={userProfile?.avatarUrl || userAvatar?.imageUrl} alt={userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "User"} />
+            <AvatarFallback>{userProfile?.firstName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user?.displayName || 'User'}</p>
+            <p className="text-sm font-medium leading-none">{userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user?.email || 'No email'}
             </p>
