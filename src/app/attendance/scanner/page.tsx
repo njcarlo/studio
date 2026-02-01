@@ -242,4 +242,13 @@ export default function QRScannerPage() {
                                     <AlertTitle>Camera Access Required</AlertTitle>
                                     <AlertDescription>
                                         Please allow camera access to use this feature.
-                                    </Aler
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                        </>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
