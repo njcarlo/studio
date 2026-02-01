@@ -99,6 +99,14 @@
         "workerId": {
             "type": "string",
             "description": "The ID of the worker profile this approval is for, if applicable."
+        },
+        "roomId": {
+          "type": "string",
+          "description": "The ID of the room for a booking approval."
+        },
+        "reservationId": {
+            "type": "string",
+            "description": "The ID of the reservation for a booking approval."
         }
       },
       "required": [

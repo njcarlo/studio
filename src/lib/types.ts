@@ -63,6 +63,8 @@ export type ApprovalRequest = {
   date: Date;
   status: 'Approved' | 'Pending' | 'Rejected';
   workerId?: string;
+  roomId?: string;
+  reservationId?: string;
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';

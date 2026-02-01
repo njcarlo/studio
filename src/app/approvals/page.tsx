@@ -104,6 +104,12 @@ export default function ApprovalsPage() {
             const workerDocRef = doc(firestore, "worker_profiles", request.workerId);
             updateDocumentNonBlocking(workerDocRef, { status: 'Active' });
         }
+        
+        // If approving/rejecting a room booking, update the reservation status
+        if (request.type === 'Room Booking' && request.roomId && request.reservationId) {
+          const reservationDocRef = doc(firestore, "rooms", request.roomId, "reservations", request.reservationId);
+          updateDocumentNonBlocking(reservationDocRef, { status: newStatus });
+        }
     };
 
     const onApprove = (request: ApprovalRequest) => handleApproval(request, 'Approved');

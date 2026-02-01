@@ -36,6 +36,7 @@ import type { Booking, Room, Worker, Location } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
   Projector: Projector,
@@ -48,7 +49,7 @@ const equipmentIcons: { [key: string]: React.ElementType } = {
 
 // --- FORMS ---
 
-const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booking: any) => void, onClose: () => void }) => {
+const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booking: any) => Promise<boolean>, onClose: () => void }) => {
   const { user } = useUser();
   const [date, setDate] = useState<Date>();
   const [room, setRoom] = useState<string>('');
@@ -77,7 +78,7 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
     return slots;
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!date || !room || !title || !user) return;
     
     let finalStartTime = startTime;
@@ -99,7 +100,7 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
     const end = new Date(date);
     end.setHours(endH, endM, 0, 0);
     
-    onSave({
+    const success = await onSave({
         roomId: room,
         workerProfileId: user.uid,
         title,
@@ -107,7 +108,10 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
         end: Timestamp.fromDate(end),
         status: 'Pending',
     });
-    onClose();
+
+    if (success) {
+        onClose();
+    }
   };
   
   return (
@@ -178,6 +182,7 @@ export default function RoomsPage() {
     const { isSuperAdmin } = useUserRole();
     const firestore = useFirestore();
     const { user } = useUser();
+    const { toast } = useToast();
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'worker_profiles', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<Worker>(userProfileRef);
 
@@ -193,19 +198,54 @@ export default function RoomsPage() {
     const bookingsRef = useMemoFirebase(() => rooms?.[0]?.id ? collection(firestore, 'rooms', rooms[0].id, 'reservations') : null, [firestore, rooms]);
     const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(bookingsRef);
 
-    const handleSaveBooking = (bookingData: any) => {
-        if (!bookingData.roomId || !userProfile) return;
-        // The booking itself has status 'Pending'
-        addDocumentNonBlocking(collection(firestore, 'rooms', bookingData.roomId, 'reservations'), bookingData);
-        
-        // Create a corresponding approval request
-        addDocumentNonBlocking(collection(firestore, 'approvals'), {
-            requester: `${userProfile.firstName} ${userProfile.lastName}` || 'Unknown User',
-            type: 'Room Booking',
-            details: `"${bookingData.title}" for room: ${rooms?.find(r => r.id === bookingData.roomId)?.name}`,
-            date: serverTimestamp(), // use server timestamp
-            status: 'Pending'
-        });
+    const handleSaveBooking = async (bookingData: any): Promise<boolean> => {
+        if (!bookingData.roomId || !userProfile) {
+            toast({
+                variant: "destructive",
+                title: "Cannot save booking",
+                description: "User profile not loaded or room not selected.",
+            });
+            return false;
+        }
+    
+        try {
+            const reservationRef = await addDocumentNonBlocking(
+                collection(firestore, 'rooms', bookingData.roomId, 'reservations'), 
+                bookingData
+            );
+    
+            if (reservationRef) {
+                await addDocumentNonBlocking(collection(firestore, 'approvals'), {
+                    requester: `${userProfile.firstName} ${userProfile.lastName}` || 'Unknown User',
+                    type: 'Room Booking',
+                    details: `"${bookingData.title}" for room: ${rooms?.find(r => r.id === bookingData.roomId)?.name}`,
+                    date: serverTimestamp(),
+                    status: 'Pending',
+                    roomId: bookingData.roomId,
+                    reservationId: reservationRef.id
+                });
+    
+                toast({
+                    title: 'Booking Request Submitted',
+                    description: 'Your request has been sent for approval.',
+                });
+                return true;
+            }
+            toast({
+                variant: "destructive",
+                title: "Request Failed",
+                description: "Could not create reservation reference.",
+            });
+            return false;
+
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Request Failed",
+                description: "Could not submit booking request. A permission error might have occurred.",
+            });
+            return false;
+        }
     };
 
     const isLoading = roomsLoading || bookingsLoading || locationsLoading;
