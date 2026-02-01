@@ -271,7 +271,7 @@
             "enum": ["Worship", "Outreach", "Relationship", "Discipleship", "Administration"]
         }
       },
-      "required": ["name", "description", "leaderId", "memberIds", "department"]
+      "required": ["name", "leaderId", "memberIds", "department"]
     }
   },
   "auth": {

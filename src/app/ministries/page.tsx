@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from "react";
@@ -32,9 +31,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 
-const MinistryForm = ({ workers, departments, onSave }: { workers: Worker[], departments: Department[], onSave: (ministry: Partial<Ministry>) => void }) => {
+const MinistryForm = ({ workers, departments, onSave, onClose }: { workers: Worker[], departments: Department[], onSave: (ministry: Partial<Ministry>) => void, onClose: () => void }) => {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<Partial<Ministry>>({
     name: '',
     description: '',
@@ -44,12 +45,16 @@ const MinistryForm = ({ workers, departments, onSave }: { workers: Worker[], dep
   });
 
   const handleSave = () => {
-    if (!formData.name || !formData.description || !formData.leaderId) {
-        // Add proper validation/toast here in a real app
-        console.error("Missing required fields");
+    if (!formData.name || !formData.leaderId) {
+        toast({
+          variant: "destructive",
+          title: "Missing required fields",
+          description: "A ministry must have a name and a leader.",
+        });
         return;
     }
     onSave(formData);
+    onClose();
   };
 
   return (
@@ -88,9 +93,7 @@ const MinistryForm = ({ workers, departments, onSave }: { workers: Worker[], dep
         <SheetClose asChild>
           <Button type="button" variant="secondary">Cancel</Button>
         </SheetClose>
-        <SheetClose asChild>
-            <Button onClick={handleSave}>Save Ministry</Button>
-        </SheetClose>
+        <Button onClick={handleSave}>Save Ministry</Button>
       </SheetFooter>
     </div>
   );
@@ -118,7 +121,6 @@ export default function MinistriesPage() {
 
   const handleSaveMinistry = (ministryData: Partial<Ministry>) => {
     addDocumentNonBlocking(collection(firestore, 'ministries'), ministryData);
-    setIsSheetOpen(false);
   };
 
 
@@ -153,7 +155,7 @@ export default function MinistriesPage() {
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {departmentMinistries.map(ministry => {
                   const leader = getWorker(ministry.leaderId);
-                  const members = ministry.memberIds.map(getWorker).filter(Boolean);
+                  const members = ministry.memberIds.map(getWorker).filter(Boolean) as Worker[];
 
                   return (
                     <Card key={ministry.id}>
@@ -198,7 +200,7 @@ export default function MinistriesPage() {
                           </h4>
                           <div className="flex flex-wrap gap-2">
                             <TooltipProvider>
-                              {(members as Worker[]).map(member => member && (
+                              {members.map(member => member && (
                                 <Tooltip key={member.id}>
                                   <TooltipTrigger>
                                     <Avatar className="h-8 w-8 border-2 border-background">
@@ -232,7 +234,7 @@ export default function MinistriesPage() {
               Fill in the details for the new ministry.
             </SheetDescription>
           </SheetHeader>
-          {workers && <MinistryForm workers={workers} departments={departments} onSave={handleSaveMinistry} />}
+          {workers && <MinistryForm workers={workers} departments={departments} onSave={handleSaveMinistry} onClose={() => setIsSheetOpen(false)} />}
         </SheetContent>
       </Sheet>
 
