@@ -72,7 +72,7 @@ export default function RoomDisplayPage() {
     const currentBooking = todaysBookings.find(b => now >= b.start && now <= b.end);
     const nextBooking = todaysBookings.find(b => now < b.start);
     
-    const qrCodeUrl = currentBooking ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`ROOM_CHECKIN:${currentBooking.id}`)}&bgcolor=374151&color=ffffff&qzone=1` : '';
+    const qrCodeUrl = currentBooking ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`ROOM_CHECKIN:${currentBooking.id}`)}&bgcolor=374151&color=ffffff&qzone=1` : '';
 
     const getWorkerName = (workerId: string) => {
         const worker = workers?.find(w => w.id === workerId);
@@ -112,15 +112,15 @@ export default function RoomDisplayPage() {
                                     </p>
                                     <p className="text-lg lg:text-xl text-gray-400 mt-1">Booked by {getWorkerName((currentBooking as any).workerProfileId)}</p>
                                 </div>
-                                <div className="flex flex-col items-center gap-2 p-3 bg-gray-700 rounded-lg mt-4 lg:mt-0">
+                                <div className="flex flex-col items-center gap-2 p-4 bg-gray-700 rounded-lg mt-4 lg:mt-0">
                                     <Image 
                                         src={qrCodeUrl}
                                         alt="Check-in QR Code" 
-                                        width={120} 
-                                        height={120}
+                                        width={200} 
+                                        height={200}
                                         className="rounded-md"
                                     />
-                                    <p className="text-xs text-gray-300 font-semibold mt-1">Scan to Check In</p>
+                                    <p className="text-sm text-gray-300 font-semibold mt-2">Scan to Check In</p>
                                 </div>
                             </div>
                         ) : (
