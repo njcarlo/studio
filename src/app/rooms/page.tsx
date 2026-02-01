@@ -113,10 +113,6 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
   
   return (
     <>
-        <SheetHeader>
-            <SheetTitle className="font-headline">Book a Room</SheetTitle>
-            <SheetDescription>Fill in the details to request a room booking. Requests are subject to approval.</SheetDescription>
-        </SheetHeader>
         <div className="space-y-4 py-4">
             <div className="space-y-2">
                 <Label htmlFor="room">Room</Label>
@@ -182,9 +178,15 @@ const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms
         return rooms?.find(r => r.id === roomId)?.name || 'Unknown Room';
     }
 
+    const sortedBookings = useMemo(() => {
+        const newBookings = [...bookings];
+        newBookings.sort((a,b) => (a.start as any).seconds - (b.start as any).seconds);
+        return newBookings;
+    }, [bookings]);
+
     return (
         <div className="space-y-4">
-            {[...bookings].sort((a,b) => (a.start as any).seconds - (b.start as any).seconds).map(booking => {
+            {sortedBookings.map(booking => {
                 const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
                 const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
 
@@ -298,8 +300,7 @@ export default function RoomsPage() {
             
             const existingBookings = newMap.get(dateKey) || [];
             if (!existingBookings.find(b => b.id === booking.id)) {
-                existingBookings.push(booking);
-                newMap.set(dateKey, existingBookings);
+                newMap.set(dateKey, [...existingBookings, booking]);
             }
         }
         return newMap;
@@ -386,7 +387,17 @@ export default function RoomsPage() {
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetContent className="sm:max-w-lg overflow-y-auto">
-                {rooms && <BookingForm rooms={rooms} onSave={handleSaveBooking} onClose={() => setIsSheetOpen(false)} />}
+                <SheetHeader>
+                    <SheetTitle className="font-headline">Book a Room</SheetTitle>
+                    <SheetDescription>Fill in the details to request a room booking. Requests are subject to approval.</SheetDescription>
+                </SheetHeader>
+                {rooms ? (
+                    <BookingForm rooms={rooms} onSave={handleSaveBooking} onClose={() => setIsSheetOpen(false)} />
+                ) : (
+                    <div className="flex items-center justify-center py-10">
+                        <LoaderCircle className="h-8 w-8 animate-spin" />
+                    </div>
+                )}
               </SheetContent>
             </Sheet>
         </AppLayout>
