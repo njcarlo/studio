@@ -117,39 +117,34 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
             <SheetTitle className="font-headline">Book a Room</SheetTitle>
             <SheetDescription>Fill in the details to request a room booking. Requests are subject to approval.</SheetDescription>
         </SheetHeader>
-        <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="room" className="text-right">Room</Label>
+        <div className="space-y-4 py-4">
+            <div className="space-y-2">
+                <Label htmlFor="room">Room</Label>
                 <Select value={room} onValueChange={setRoom}>
-                    <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a room" /></SelectTrigger>
+                    <SelectTrigger id="room"><SelectValue placeholder="Select a room" /></SelectTrigger>
                     <SelectContent>{rooms.map(room => <SelectItem key={room.id} value={room.id}>{room.name}</SelectItem>)}</SelectContent>
                 </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="title" className="text-right">Purpose</Label>
-                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Weekly Meeting" className="col-span-3" />
+            <div className="space-y-2">
+                <Label htmlFor="title">Purpose</Label>
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Weekly Meeting" />
             </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-                <Label className="text-right pt-2">Date</Label>
-                <div className="col-span-3">
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        className="rounded-md border"
-                    />
-                </div>
+            <div className="space-y-2">
+                <Label>Date</Label>
+                <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    className="rounded-md border"
+                />
             </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-                <div />
-                <div className="col-span-3 flex items-center space-x-2">
-                    <Checkbox id="whole-day" checked={isWholeDay} onCheckedChange={(checked) => setIsWholeDay(!!checked)} />
-                    <Label htmlFor="whole-day" className="font-normal">Book for whole day (6:00 AM - 9:00 PM)</Label>
-                </div>
+             <div className="flex items-center space-x-2">
+                <Checkbox id="whole-day" checked={isWholeDay} onCheckedChange={(checked) => setIsWholeDay(!!checked)} />
+                <Label htmlFor="whole-day" className="font-normal">Book for whole day (6:00 AM - 9:00 PM)</Label>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Time</Label>
-                <div className="col-span-3 grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+                <Label>Time</Label>
+                <div className="grid grid-cols-2 gap-2">
                     <Select value={startTime} onValueChange={setStartTime} disabled={isWholeDay}>
                         <SelectTrigger><SelectValue placeholder="Start Time" /></SelectTrigger>
                         <SelectContent>
@@ -301,9 +296,11 @@ export default function RoomsPage() {
             if (!booking.start) continue;
             const dateKey = format((booking.start as any).toDate(), 'yyyy-MM-dd');
             
-            // This is the correct way: create a new array.
-            const existing = newMap.get(dateKey) || [];
-            newMap.set(dateKey, [...existing, booking]);
+            const existingBookings = newMap.get(dateKey) || [];
+            if (!existingBookings.find(b => b.id === booking.id)) {
+                existingBookings.push(booking);
+                newMap.set(dateKey, existingBookings);
+            }
         }
         return newMap;
 
@@ -329,7 +326,7 @@ export default function RoomsPage() {
                                 <CardTitle className="font-headline">Calendar</CardTitle>
                                 <CardDescription>Click a date to see bookings.</CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="flex justify-center overflow-x-auto">
                                 <Calendar 
                                     mode="single"
                                     selected={selectedDate}
@@ -388,7 +385,7 @@ export default function RoomsPage() {
             </div>
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-              <SheetContent className="sm:max-w-lg">
+              <SheetContent className="sm:max-w-lg overflow-y-auto">
                 {rooms && <BookingForm rooms={rooms} onSave={handleSaveBooking} onClose={() => setIsSheetOpen(false)} />}
               </SheetContent>
             </Sheet>
