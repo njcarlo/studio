@@ -43,9 +43,12 @@ export type ApprovalRequest = {
   requester: string;
   details: string;
   date: Date;
+  status: 'Approved' | 'Pending' | 'Rejected';
 };
 
 export type MinistryType = 'Primary' | 'Secondary';
+
+export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
 
 export type Ministry = {
   id: string;
@@ -54,4 +57,5 @@ export type Ministry = {
   leaderId: string; // Worker ID
   type: MinistryType;
   memberIds: string[]; // Worker IDs
+  department: Department;
 };

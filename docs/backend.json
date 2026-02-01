@@ -261,9 +261,14 @@
             "type": "string"
           },
           "description": "A list of worker IDs who are members of the ministry."
+        },
+        "department": {
+            "type": "string",
+            "description": "The department the ministry belongs to.",
+            "enum": ["Worship", "Outreach", "Relationship", "Discipleship", "Administration"]
         }
       },
-      "required": ["name", "description", "leaderId", "type", "memberIds"]
+      "required": ["name", "description", "leaderId", "type", "memberIds", "department"]
     }
   },
   "auth": {
@@ -354,6 +359,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore data structure has been updated to better support the COGApp's features. A top-level `/approvals` collection has been added to centralize all approval workflows, simplifying the logic for the approvals page. A new top-level `/ministries` collection has been introduced to store ministry data. Worker profiles remain as a top-level collection where the document ID is the worker's authentication UID, which is a robust way to link authentication with user data and secure it with ownership-based rules."
+    "reasoning": "The Firestore data structure has been updated to better support the COGApp's features. A top-level `/approvals` collection has been added to centralize all approval workflows, simplifying the logic for the approvals page. A new top-level `/ministries` collection has been introduced to store ministry data, now including a 'department' field. Worker profiles remain as a top-level collection where the document ID is the worker's authentication UID, which is a robust way to link authentication with user data and secure it with ownership-based rules."
   }
 }

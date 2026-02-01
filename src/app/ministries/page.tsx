@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HeartHandshake, User, Users, LoaderCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import type { Ministry, Worker } from "@/lib/types";
+import type { Ministry, Worker, Department } from "@/lib/types";
 
 export default function MinistriesPage() {
   const firestore = useFirestore();
@@ -24,6 +24,8 @@ export default function MinistriesPage() {
   
   const isLoading = ministriesLoading || workersLoading;
 
+  const departments: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
+
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
@@ -36,78 +38,92 @@ export default function MinistriesPage() {
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {ministries && ministries.map(ministry => {
-          const leader = getWorker(ministry.leaderId);
-          const members = ministry.memberIds.map(getWorker).filter(Boolean);
+      <div className="space-y-8">
+        {!isLoading && departments.map(department => {
+          const departmentMinistries = ministries?.filter(m => m.department === department);
+          
+          if (!departmentMinistries || departmentMinistries.length === 0) {
+            return null;
+          }
 
           return (
-            <Card key={ministry.id}>
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-lg text-primary">
-                    <HeartHandshake className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{ministry.name}</CardTitle>
-                    <CardDescription>
-                      <Badge variant={ministry.type === 'Primary' ? 'default' : 'secondary'}>
-                        {ministry.type} Ministry
-                      </Badge>
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">{ministry.description}</p>
-                
-                <div>
-                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                    <User className="h-4 w-4" />
-                    Leader
-                  </h4>
-                  {leader ? (
-                     <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                            <AvatarImage src={leader.avatarUrl} alt={leader.name} />
-                            <AvatarFallback>{leader.name?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="text-sm font-medium">{leader.name}</p>
-                            <p className="text-xs text-muted-foreground">{leader.role}</p>
+            <div key={department}>
+              <h2 className="text-xl font-headline font-semibold mb-4 border-b pb-2">{department}</h2>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {departmentMinistries.map(ministry => {
+                  const leader = getWorker(ministry.leaderId);
+                  const members = ministry.memberIds.map(getWorker).filter(Boolean);
+
+                  return (
+                    <Card key={ministry.id}>
+                      <CardHeader>
+                        <div className="flex items-center gap-4">
+                          <div className="p-3 bg-primary/10 rounded-lg text-primary">
+                            <HeartHandshake className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{ministry.name}</CardTitle>
+                            <CardDescription>
+                              <Badge variant={ministry.type === 'Primary' ? 'default' : 'secondary'}>
+                                {ministry.type} Ministry
+                              </Badge>
+                            </CardDescription>
+                          </div>
                         </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No leader assigned.</p>
-                  )}
-                </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground">{ministry.description}</p>
+                        
+                        <div>
+                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                            <User className="h-4 w-4" />
+                            Leader
+                          </h4>
+                          {leader ? (
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={leader.avatarUrl} alt={leader.name} />
+                                    <AvatarFallback>{leader.name?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="text-sm font-medium">{leader.name}</p>
+                                    <p className="text-xs text-muted-foreground">{leader.role}</p>
+                                </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No leader assigned.</p>
+                          )}
+                        </div>
 
-                <div>
-                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                     <Users className="h-4 w-4" />
-                    Members ({members.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    <TooltipProvider>
-                      {(members as Worker[]).map(member => member && (
-                        <Tooltip key={member.id}>
-                          <TooltipTrigger>
-                             <Avatar className="h-8 w-8 border-2 border-background">
-                                <AvatarImage src={member.avatarUrl} alt={member.name} />
-                                <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{member.name}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
-                    </TooltipProvider>
-                  </div>
-                </div>
-
-              </CardContent>
-            </Card>
+                        <div>
+                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                            <Users className="h-4 w-4" />
+                            Members ({members.length})
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            <TooltipProvider>
+                              {(members as Worker[]).map(member => member && (
+                                <Tooltip key={member.id}>
+                                  <TooltipTrigger>
+                                    <Avatar className="h-8 w-8 border-2 border-background">
+                                        <AvatarImage src={member.avatarUrl} alt={member.name} />
+                                        <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{member.name}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))}
+                            </TooltipProvider>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>

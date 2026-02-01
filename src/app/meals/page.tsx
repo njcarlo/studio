@@ -21,11 +21,18 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, QrCode, LoaderCircle } from "lucide-react";
+import { PlusCircle, QrCode, LoaderCircle, Scan } from "lucide-react";
 import type { MealStub } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase } from "@/firebase";
-import { format } from 'date-fns';
+import { useUserRole } from "@/hooks/use-user-role";
+import { format, isToday, subDays } from 'date-fns';
 
 const MealStubDialog = ({ stub, open, onOpenChange }: { stub: MealStub | null, open: boolean, onOpenChange: (open: boolean) => void }) => {
     if (!stub) return null;
@@ -64,6 +71,9 @@ export default function MealsPage() {
   const [selectedStub, setSelectedStub] = useState<MealStub | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const { viewAsRole } = useUserRole();
+  const isAdmin = viewAsRole === 'Admin' || viewAsRole === 'Super Admin';
+
   const handleRowClick = (stub: MealStub) => {
     setSelectedStub(stub);
     setIsDialogOpen(true);
@@ -81,6 +91,14 @@ export default function MealsPage() {
       addDocumentNonBlocking(collection(firestore, "mealstubs"), newStub);
   };
 
+  const claimedStubs = mealStubs?.filter(s => s.status === 'Claimed') || [];
+  const todayScans = claimedStubs.filter(s => s.date && isToday(new Date((s.date as any).seconds * 1000))).length;
+  const weekScans = claimedStubs.filter(s => {
+      if (!s.date) return false;
+      const sevenDaysAgo = subDays(new Date(), 7);
+      return new Date((s.date as any).seconds * 1000) > sevenDaysAgo;
+  }).length;
+
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
@@ -95,11 +113,36 @@ export default function MealsPage() {
         </div>
       </div>
       
+      {isAdmin && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 my-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Today's Scans</CardTitle>
+                    <Scan className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{todayScans}</div>
+                    <p className="text-xs text-muted-foreground">Meal stubs claimed today</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">This Week's Scans</CardTitle>
+                    <Scan className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{weekScans}</div>
+                    <p className="text-xs text-muted-foreground">Meal stubs claimed in the last 7 days</p>
+                </CardContent>
+            </Card>
+        </div>
+      )}
+
       <p className="text-muted-foreground">
         Click on a row to view the QR code for the mealstub.
       </p>
       
-      <div className="rounded-lg border shadow-sm">
+      <div className="rounded-lg border shadow-sm mt-2">
         <Table>
           <TableHeader>
             <TableRow>
