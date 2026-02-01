@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useUser } from "@/firebase";
+import { PasswordChangeDialog } from "@/components/auth/password-change-dialog";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
@@ -91,6 +92,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
           {children}
         </main>
+        <PasswordChangeDialog />
       </SidebarInset>
     </SidebarProvider>
   );

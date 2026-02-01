@@ -12,6 +12,7 @@ export type Worker = {
   permissions: string[];
   primaryMinistryId?: string;
   secondaryMinistryId?: string;
+  passwordChangeRequired?: boolean;
 };
 
 export type Room = {

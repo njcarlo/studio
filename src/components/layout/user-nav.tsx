@@ -11,22 +11,43 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Link from "next/link";
 import { useAuth, useUser } from "@/firebase";
-import { getAuth, signOut } from "firebase/auth";
+import { getAuth, signOut, sendPasswordResetEmail } from "firebase/auth";
 import { useUserRole } from "@/hooks/use-user-role";
 
 const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
 
 export function UserNav() {
   const { user } = useUser();
-  const { userProfile } = useUserRole();
+  const { userProfile, isSuperAdmin } = useUserRole();
   const auth = useAuth();
+  const { toast } = useToast();
 
   const handleLogout = () => {
     signOut(auth);
   };
+
+  const handleChangePassword = async () => {
+    if (!user || !user.email) return;
+
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      toast({
+        title: 'Password Reset Email Sent',
+        description: 'Please check your inbox to reset your password.',
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to send password reset email.',
+      });
+    }
+  };
+
 
   return (
     <DropdownMenu>
@@ -52,6 +73,11 @@ export function UserNav() {
           <DropdownMenuItem>
             Profile
           </DropdownMenuItem>
+          {!isSuperAdmin && (
+             <DropdownMenuItem onSelect={handleChangePassword}>
+              Change Password
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem>
             Settings
           </DropdownMenuItem>

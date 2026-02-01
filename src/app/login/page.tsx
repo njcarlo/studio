@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useUser, initiateEmailSignIn, initiateEmailSignUp } from "@/firebase";
+import { useAuth, useUser, initiateEmailSignIn } from "@/firebase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -48,15 +48,6 @@ export default function LoginPage() {
     initiateEmailSignIn(auth, email, password);
   };
   
-  const handleSignUp = () => {
-    if (!validateFields()) return;
-    initiateEmailSignUp(auth, email, password);
-    toast({
-        title: "Account Creation Initiated",
-        description: "Your account is being created. You will be redirected upon login.",
-    });
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto max-w-sm w-full">
@@ -66,7 +57,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="font-headline text-2xl">COGApp Login</CardTitle>
           <CardDescription>
-            Enter your email below to login or sign up
+            Enter your email below to login to your account
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -103,9 +94,12 @@ export default function LoginPage() {
             <Button onClick={handleSignIn} className="w-full">
               Login
             </Button>
-            <Button onClick={handleSignUp} variant="outline" className="w-full">
-              Sign Up
-            </Button>
+          </div>
+          <div className="mt-4 text-center text-sm">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="underline">
+              Sign up
+            </Link>
           </div>
         </CardContent>
       </Card>

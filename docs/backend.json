@@ -49,6 +49,10 @@
         "secondaryMinistryId": {
           "type": "string",
           "description": "The ID of the worker's secondary ministry."
+        },
+        "passwordChangeRequired": {
+          "type": "boolean",
+          "description": "If true, the user will be prompted to change their password upon login."
         }
       },
       "required": [
