@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
-  SheetClose,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -50,9 +49,17 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
     primaryMinistryId: '', secondaryMinistryId: ''
   });
 
+  // Effect to sync form data when the selected worker changes
+  useEffect(() => {
+    setFormData(worker || {
+        firstName: '', lastName: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+        primaryMinistryId: '', secondaryMinistryId: ''
+      });
+  }, [worker]);
+
+
   const handleSave = () => {
     onSave(formData);
-    onClose();
   };
   
   const handlePermissionsChange = (permission: string, checked: boolean) => {
@@ -188,6 +195,10 @@ export default function WorkersPage() {
   const handleDelete = (workerId: string) => {
     if (!workerId) return;
     deleteDocumentNonBlocking(doc(firestore, "worker_profiles", workerId));
+    toast({
+        title: "Worker Deleted",
+        description: "The worker profile has been removed."
+    });
   };
 
   const handleSaveWorker = (workerData: Partial<Worker>) => {
@@ -210,11 +221,18 @@ export default function WorkersPage() {
 
     if (selectedWorker?.id) {
         updateDocumentNonBlocking(doc(firestore, "worker_profiles", selectedWorker.id), dataToSave);
+        toast({
+            title: "Worker Updated",
+            description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
+        });
     } else {
-        // For new workers, you might want to create them with an ID, but here we let Firestore auto-generate it.
-        // If you were creating an auth user at the same time, you'd use their UID as the doc ID.
         addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
+        toast({
+            title: "Worker Added",
+            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added.`
+        });
     }
+    setIsSheetOpen(false);
   };
 
   return (
@@ -270,7 +288,7 @@ export default function WorkersPage() {
                 <TableCell>
                   <div className="flex flex-col">
                     <span>{worker.email}</span>
-                    <span className="text-sm text-muted-foreground">{worker.phone}</span>
+                    <span className="text-muted-foreground">{worker.phone}</span>
                   </div>
                 </TableCell>
                 <TableCell>
