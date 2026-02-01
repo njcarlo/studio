@@ -233,19 +233,29 @@ export default function SettingsPage() {
 
     // Handlers for Ministries
     const handleSaveMinistry = async (ministryData: Partial<Ministry>) => {
-        if (ministryData.id) {
-          const { id, ...data } = ministryData;
-          await updateDocumentNonBlocking(doc(firestore, "ministries", id), data);
-          toast({ title: "Ministry Updated" });
-        } else {
-          await addDocumentNonBlocking(collection(firestore, "ministries"), ministryData);
-          toast({ title: "Ministry Added" });
+        try {
+            if (ministryData.id) {
+            const { id, ...data } = ministryData;
+            await updateDocumentNonBlocking(doc(firestore, "ministries", id), data);
+            toast({ title: "Ministry Updated" });
+            } else {
+            await addDocumentNonBlocking(collection(firestore, "ministries"), ministryData);
+            toast({ title: "Ministry Added" });
+            }
+            closeSheet();
+        } catch (error) {
+            console.error("Failed to save ministry:", error);
+            toast({ variant: "destructive", title: "Save Failed", description: "Could not save ministry. See console for details." });
         }
-        closeSheet();
     };
     const handleDeleteMinistry = async (id: string) => {
-        await deleteDocumentNonBlocking(doc(firestore, "ministries", id));
-        toast({ title: "Ministry Deleted" });
+        try {
+            await deleteDocumentNonBlocking(doc(firestore, "ministries", id));
+            toast({ title: "Ministry Deleted" });
+        } catch (error) {
+            console.error("Failed to delete ministry:", error);
+            toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete ministry. See console for details." });
+        }
     };
     const openMinistryForm = (ministry?: Ministry) => {
         if (!workers) return;
@@ -256,19 +266,29 @@ export default function SettingsPage() {
 
     // Handlers for Rooms
     const handleSaveRoom = async (roomData: Partial<Room>) => {
-        if (roomData.id) {
-            const { id, ...data } = roomData;
-            await updateDocumentNonBlocking(doc(firestore, "rooms", id), data);
-            toast({ title: "Room Updated" });
-        } else {
-            await addDocumentNonBlocking(collection(firestore, "rooms"), roomData);
-            toast({ title: "Room Added" });
+        try {
+            if (roomData.id) {
+                const { id, ...data } = roomData;
+                await updateDocumentNonBlocking(doc(firestore, "rooms", id), data);
+                toast({ title: "Room Updated" });
+            } else {
+                await addDocumentNonBlocking(collection(firestore, "rooms"), roomData);
+                toast({ title: "Room Added" });
+            }
+            closeSheet();
+        } catch (error) {
+            console.error("Failed to save room:", error);
+            toast({ variant: "destructive", title: "Save Failed", description: "Could not save room. See console for details." });
         }
-        closeSheet();
     };
     const handleDeleteRoom = async (id: string) => {
-        await deleteDocumentNonBlocking(doc(firestore, "rooms", id));
-        toast({ title: "Room Deleted" });
+        try {
+            await deleteDocumentNonBlocking(doc(firestore, "rooms", id));
+            toast({ title: "Room Deleted" });
+        } catch (error) {
+            console.error("Failed to delete room:", error);
+            toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete room. See console for details." });
+        }
     };
     const openRoomForm = (room?: Room) => {
         if (!equipment) return;
@@ -278,13 +298,27 @@ export default function SettingsPage() {
 
     // Handlers for Equipment
     const handleSaveEquipment = async (name: string) => {
-        await addDocumentNonBlocking(collection(firestore, "equipment"), { name, available: true });
-        toast({ title: "Equipment Added" });
-        closeSheet();
+        if (!name) {
+            toast({ variant: "destructive", title: "Validation Failed", description: "Equipment name cannot be empty."});
+            return;
+        }
+        try {
+            await addDocumentNonBlocking(collection(firestore, "equipment"), { name, available: true });
+            toast({ title: "Equipment Added" });
+            closeSheet();
+        } catch (error) {
+            console.error("Failed to save equipment:", error);
+            toast({ variant: "destructive", title: "Save Failed", description: "Could not save equipment. See console for details." });
+        }
     };
     const handleDeleteEquipment = async (id: string) => {
-        await deleteDocumentNonBlocking(doc(firestore, "equipment", id));
-        toast({ title: "Equipment Deleted" });
+        try {
+            await deleteDocumentNonBlocking(doc(firestore, "equipment", id));
+            toast({ title: "Equipment Deleted" });
+        } catch (error) {
+            console.error("Failed to delete equipment:", error);
+            toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete equipment. See console for details." });
+        }
     };
     const openEquipmentForm = () => {
         setSheetContent(<EquipmentForm onSave={handleSaveEquipment} onClose={closeSheet} />);
