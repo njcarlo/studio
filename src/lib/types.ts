@@ -1,4 +1,4 @@
-export type WorkerRole = 'Volunteer' | 'Clergy' | 'Admin' | 'Full-time' | 'On-call' | 'Ministry Head' | 'Super Admin' | 'Department Head';
+export type WorkerRole = 'Volunteer' | 'Clergy' | 'Admin' | 'Full-time' | 'On-call' | 'Ministry Head' | 'Super Admin' | 'Department Head' | 'Mentee';
 
 export type Worker = {
   id: string;

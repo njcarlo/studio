@@ -45,7 +45,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
         lastName,
         email: user.email!,
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid.slice(0,5)}/100/100`,
-        role: isSuperAdminEmail ? 'Super Admin' : 'Volunteer',
+        role: isSuperAdminEmail ? 'Super Admin' : 'Mentee',
         status: isSuperAdminEmail ? 'Active' : 'Pending Approval',
         permissions: [],
         phone: user.phoneNumber || ''

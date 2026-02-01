@@ -93,6 +93,7 @@ const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | 
             <SelectValue placeholder="Select a role" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="Mentee">Mentee</SelectItem>
             <SelectItem value="Volunteer">Volunteer</SelectItem>
             <SelectItem value="Full-time">Full-time Worker</SelectItem>
             <SelectItem value="On-call">On-call Worker</SelectItem>
