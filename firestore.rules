@@ -89,6 +89,11 @@ service cloud.firestore {
         allow delete: if isExistingDocOwner() || isAdmin();
       }
     }
+    
+    // This is required to allow the main rooms page to query all bookings from all rooms at once.
+    match /{path=**}/reservations/{reservationId} {
+      allow list: if isSignedIn();
+    }
 
     match /locations/{locationId} {
       allow get, list: if isSignedIn();
