@@ -1,0 +1,415 @@
+{
+  "entities": {
+    "WorkerProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkerProfile",
+      "type": "object",
+      "description": "Represents a worker's profile with personal details, roles, and permissions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkerProfile entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the worker."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the worker."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the worker.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The phone number of the worker."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the worker within the organization."
+        },
+        "permissions": {
+          "type": "array",
+          "description": "A list of permissions granted to the worker.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "role",
+        "permissions"
+      ]
+    },
+    "Approval": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Approval",
+      "type": "object",
+      "description": "Represents an approval record for worker registrations or profile updates.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Approval entity."
+        },
+        "workerProfileId": {
+          "type": "string",
+          "description": "Reference to WorkerProfile. (Relationship: WorkerProfile 1:N Approval)"
+        },
+        "approverId": {
+          "type": "string",
+          "description": "Reference to the approver's WorkerProfile. (Self-referential relationship: WorkerProfile 1:N Approval)"
+        },
+        "approvalDate": {
+          "type": "string",
+          "description": "The date and time when the approval was given.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the approval (e.g., 'pending', 'approved', 'rejected')."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or comments related to the approval."
+        }
+      },
+      "required": [
+        "id",
+        "workerProfileId",
+        "approverId",
+        "approvalDate",
+        "status"
+      ]
+    },
+    "Room": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Room",
+      "type": "object",
+      "description": "Represents a room that can be reserved.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Room entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the room."
+        },
+        "capacity": {
+          "type": "number",
+          "description": "The maximum capacity of the room."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the room and its features."
+        },
+        "equipmentIds": {
+          "type": "array",
+          "description": "References to Equipments. (Relationship: Room 1:N Equipment)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "capacity"
+      ]
+    },
+    "Equipment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Equipment",
+      "type": "object",
+      "description": "Represents a piece of equipment that can be borrowed.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Equipment entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the equipment."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the equipment."
+        },
+        "available": {
+          "type": "boolean",
+          "description": "Indicates whether the equipment is currently available."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "available"
+      ]
+    },
+    "Reservation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Reservation",
+      "type": "object",
+      "description": "Represents a reservation for a room.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Reservation entity."
+        },
+        "roomId": {
+          "type": "string",
+          "description": "Reference to Room. (Relationship: Room 1:N Reservation)"
+        },
+        "workerProfileId": {
+          "type": "string",
+          "description": "Reference to WorkerProfile. (Relationship: WorkerProfile 1:N Reservation)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "The start date and time of the reservation.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The end date and time of the reservation.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or comments related to the reservation."
+        },
+        "approvalId": {
+          "type": "string",
+          "description": "Reference to Approval. (Relationship: Approval 1:N Reservation)"
+        }
+      },
+      "required": [
+        "id",
+        "roomId",
+        "workerProfileId",
+        "startTime",
+        "endTime"
+      ]
+    },
+    "Mealstub": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Mealstub",
+      "type": "object",
+      "description": "Represents a mealstub generated for a worker.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Mealstub entity."
+        },
+        "workerProfileId": {
+          "type": "string",
+          "description": "Reference to WorkerProfile. (Relationship: WorkerProfile 1:N Mealstub)"
+        },
+        "generationDate": {
+          "type": "string",
+          "description": "The date when the mealstub was generated.",
+          "format": "date-time"
+        },
+        "validUntil": {
+          "type": "string",
+          "description": "The date and time until which the mealstub is valid.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of mealstub (e.g., 'automatic', 'manual')."
+        },
+        "qrCode": {
+          "type": "string",
+          "description": "The QR code associated with the mealstub."
+        },
+        "validated": {
+          "type": "boolean",
+          "description": "Indicates whether the mealstub has been validated."
+        }
+      },
+      "required": [
+        "id",
+        "workerProfileId",
+        "generationDate",
+        "validUntil",
+        "type",
+        "qrCode",
+        "validated"
+      ]
+    },
+    "AttendanceRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AttendanceRecord",
+      "type": "object",
+      "description": "Represents an attendance record for a worker.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AttendanceRecord entity."
+        },
+        "workerProfileId": {
+          "type": "string",
+          "description": "Reference to WorkerProfile. (Relationship: WorkerProfile 1:N AttendanceRecord)"
+        },
+        "clockInTime": {
+          "type": "string",
+          "description": "The date and time when the worker clocked in.",
+          "format": "date-time"
+        },
+        "clockOutTime": {
+          "type": "string",
+          "description": "The date and time when the worker clocked out.",
+          "format": "date-time"
+        },
+        "mealstubId": {
+          "type": "string",
+          "description": "Reference to Mealstub. (Relationship: Mealstub 1:N AttendanceRecord)"
+        }
+      },
+      "required": [
+        "id",
+        "workerProfileId",
+        "clockInTime"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/worker_profiles/{workerProfileId}",
+        "definition": {
+          "entityName": "WorkerProfile",
+          "schema": {
+            "$ref": "#/backend/entities/WorkerProfile"
+          },
+          "description": "Stores worker profile information. Uses path-based ownership for security. Includes worker's role and permissions, denormalized for authorization independence.",
+          "params": [
+            {
+              "name": "workerProfileId",
+              "description": "The unique ID of the worker profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/worker_profiles/{workerProfileId}/approvals/{approvalId}",
+        "definition": {
+          "entityName": "Approval",
+          "schema": {
+            "$ref": "#/backend/entities/Approval"
+          },
+          "description": "Stores approval records for worker profiles. Uses path-based ownership for security, tied to the worker profile. Includes denormalized data related to approval status and approver's permissions to ensure authorization independence.",
+          "params": [
+            {
+              "name": "workerProfileId",
+              "description": "The unique ID of the worker profile to which the approval applies."
+            },
+            {
+              "name": "approvalId",
+              "description": "The unique ID of the approval record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rooms/{roomId}",
+        "definition": {
+          "entityName": "Room",
+          "schema": {
+            "$ref": "#/backend/entities/Room"
+          },
+          "description": "Stores room information.",
+          "params": [
+            {
+              "name": "roomId",
+              "description": "The unique ID of the room."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rooms/{roomId}/reservations/{reservationId}",
+        "definition": {
+          "entityName": "Reservation",
+          "schema": {
+            "$ref": "#/backend/entities/Reservation"
+          },
+          "description": "Stores reservation information for rooms. Uses path-based ownership under the room document.",
+          "params": [
+            {
+              "name": "roomId",
+              "description": "The unique ID of the room."
+            },
+            {
+              "name": "reservationId",
+              "description": "The unique ID of the reservation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/mealstubs/{mealstubId}",
+        "definition": {
+          "entityName": "Mealstub",
+          "schema": {
+            "$ref": "#/backend/entities/Mealstub"
+          },
+          "description": "Stores mealstub information. Includes the workerProfileId to link it to a worker profile for authorization.",
+          "params": [
+            {
+              "name": "mealstubId",
+              "description": "The unique ID of the mealstub."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/attendance_records/{attendanceRecordId}",
+        "definition": {
+          "entityName": "AttendanceRecord",
+          "schema": {
+            "$ref": "#/backend/entities/AttendanceRecord"
+          },
+          "description": "Stores attendance records for workers. Includes the workerProfileId to link it to a worker profile for authorization.",
+          "params": [
+            {
+              "name": "attendanceRecordId",
+              "description": "The unique ID of the attendance record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/equipment/{equipmentId}",
+        "definition": {
+          "entityName": "Equipment",
+          "schema": {
+            "$ref": "#/backend/entities/Equipment"
+          },
+          "description": "Stores general information about equipment.",
+          "params": [
+            {
+              "name": "equipmentId",
+              "description": "The unique ID of the equipment."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the COGApp's features, focusing on worker profile management, room reservations, mealstub generation, and attendance tracking. The design prioritizes security, scalability, and ease of debugging. Authorization independence is achieved by denormalizing relevant authorization data (such as role and permissions) directly into the documents where access control is needed, avoiding `get()` calls in security rules.  Specifically, the design implements path-based ownership for entities that represent a `User 1:N Entity` relationship. For collaborative data, the design leverages membership maps when appropriate, although in this specific case, no collaborative data was apparent.  \n\n*   `/worker_profiles/{workerProfileId}`: Stores worker profiles. Approvals are located in a subcollection. This structure segregates worker data from approval workflows, which allows clear and robust security rules.\n*   `/worker_profiles/{workerProfileId}/approvals/{approvalId}`: Subcollection for approvals related to worker profiles. Authorization relies on the approver's role and permissions, denormalized into the Approval documents, which ensures that the approver has permissions to approve the specific profile changes.\n*   `/rooms/{roomId}`: Stores room details. Each room document includes information about its capacity and features. Reservations are located in a subcollection.\n*   `/rooms/{roomId}/reservations/{reservationId}`: Subcollection for room reservations. This includes the workerProfileId making the reservation and the approvalId, if applicable. Authorization relies on the worker's profile and potentially approval status (if required).\n*   `/mealstubs/{mealstubId}`: Stores mealstub details, including the workerProfileId, generation date, validity, type, QR code, and validation status.\n*   `/attendance_records/{attendanceRecordId}`: Stores attendance records, including workerProfileId, clock-in/out times, and a reference to the mealstubId (if applicable)."
+  }
+}
