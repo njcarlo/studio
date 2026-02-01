@@ -44,7 +44,8 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isSignedIn() && getRole(request.auth.uid) == 'Super Admin';
+      // Hardcode a specific email as a Super Admin for bootstrapping purposes.
+      return isSignedIn() && (getRole(request.auth.uid) == 'Super Admin' || request.auth.token.email == 'njcarlo@gmail.com');
     }
 
     function isAdmin() {

@@ -34,12 +34,13 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     // If auth is loaded, a user is present, but their profile is not yet loading and does not exist,
     // it means they are a new user. We'll create a default profile for them.
     if (!isUserLoading && user && !isProfileLoading && !userProfile) {
+      const isSuperAdminEmail = user.email === 'njcarlo@gmail.com';
       const newProfile: Partial<Worker> = {
         name: user.displayName || user.email || 'New Worker',
         email: user.email!,
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid.slice(0,5)}/100/100`,
-        role: 'Volunteer',
-        status: 'Pending Approval',
+        role: isSuperAdminEmail ? 'Super Admin' : 'Volunteer',
+        status: isSuperAdminEmail ? 'Active' : 'Pending Approval',
         permissions: [],
         phone: user.phoneNumber || ''
       };
