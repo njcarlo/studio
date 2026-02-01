@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -192,8 +192,8 @@ const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms
     return (
         <div className="space-y-4">
             {bookings.sort((a,b) => (a.start as any).seconds - (b.start as any).seconds).map(booking => {
-                const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : booking.start;
-                const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : booking.end;
+                const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
+                const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
 
                 return (
                     <div key={booking.id} className="flex items-start space-x-4 p-3 border rounded-lg">
@@ -259,7 +259,7 @@ export default function RoomsPage() {
                 bookingData
             );
     
-            if (reservationRef) {
+            if (reservationRef?.id) {
                 await addDocumentNonBlocking(collection(firestore, 'approvals'), {
                     requester: `${userProfile.firstName} ${userProfile.lastName}` || 'Unknown User',
                     type: 'Room Booking',
@@ -284,7 +284,7 @@ export default function RoomsPage() {
             return false;
 
         } catch (error) {
-            toast({
+             toast({
                 variant: "destructive",
                 title: "Request Failed",
                 description: "Could not submit booking request. A permission error might have occurred.",
@@ -294,7 +294,19 @@ export default function RoomsPage() {
     };
 
     const isLoading = roomsLoading || bookingsLoading || locationsLoading || workersLoading;
-    const dayBookings = bookings?.filter(b => b.start && selectedDate && format((b.start as any).toDate(), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')) || [];
+
+    const bookingsByDate = useMemo(() => {
+        if (!bookings) return new Map<string, Booking[]>();
+        return bookings.reduce((acc, booking) => {
+            if (!booking.start) return acc;
+            const dateKey = format((booking.start as any).toDate(), 'yyyy-MM-dd');
+            const existing = acc.get(dateKey) || [];
+            acc.set(dateKey, [...existing, booking]);
+            return acc;
+        }, new Map<string, Booking[]>());
+    }, [bookings]);
+
+    const dayBookings = (selectedDate && bookingsByDate.get(format(selectedDate, 'yyyy-MM-dd'))) || [];
     
     return (
         <AppLayout>
@@ -322,7 +334,7 @@ export default function RoomsPage() {
                                     className="p-0"
                                     classNames={{ day: "h-12 w-12 text-base", head_cell: "w-12" }}
                                     components={{ DayContent: ({ date }) => {
-                                        const bookingsOnDay = bookings?.filter(b => b.start && format((b.start as any).toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
+                                        const bookingsOnDay = bookingsByDate.get(format(date, 'yyyy-MM-dd'));
                                         return <div className="relative h-full w-full flex items-center justify-center">
                                             <span>{date.getDate()}</span>
                                             {bookingsOnDay && bookingsOnDay.length > 0 && 
