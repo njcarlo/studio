@@ -121,10 +121,10 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
               <SelectItem value="Volunteer">Volunteer</SelectItem>
               <SelectItem value="Full-time">Full-time Worker</SelectItem>
               <SelectItem value="On-call">On-call Worker</SelectItem>
-              <SelectItem value="Clergy">Clergy</SelectItem>
               <SelectItem value="Ministry Head">Ministry Head</SelectItem>
               <SelectItem value="Department Head">Department Head</SelectItem>
               <SelectItem value="Admin">Admin</SelectItem>
+              <SelectItem value="Admin Receptionist">Admin Receptionist</SelectItem>
               <SelectItem value="Super Admin">Super Admin</SelectItem>
             </SelectContent>
           </Select>
