@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useFirestore, addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, collection, serverTimestamp } from "firebase/firestore";
+import { doc, collection, serverTimestamp, getDocs } from "firebase/firestore";
 
 export default function SignUpPage() {
   const [firstName, setFirstName] = useState("");
@@ -40,10 +40,15 @@ export default function SignUpPage() {
     }
 
     try {
+      const workersCollectionRef = collection(firestore, "worker_profiles");
+      const workersSnapshot = await getDocs(workersCollectionRef);
+      const newWorkerId = String(200000 + workersSnapshot.size).padStart(6, '0');
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       const newProfile = {
+        workerId: newWorkerId,
         firstName,
         lastName,
         email,
@@ -57,7 +62,7 @@ export default function SignUpPage() {
 
       const workerRef = doc(firestore, 'worker_profiles', user.uid);
       // Use await here to ensure profile is created before moving on
-      await setDoc(workerRef, newProfile, {});
+      await setDocumentNonBlocking(workerRef, newProfile, {});
 
       await addDocumentNonBlocking(collection(firestore, "approvals"), {
         requester: `${firstName} ${lastName}`,

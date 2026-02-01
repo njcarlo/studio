@@ -6,6 +6,10 @@
       "type": "object",
       "description": "Represents a worker's profile with personal details, roles, and permissions.",
       "properties": {
+        "workerId": {
+          "type": "string",
+          "description": "A unique 6-digit public-facing identifier for the worker."
+        },
         "firstName": {
           "type": "string",
           "description": "The first name of the worker."
@@ -56,6 +60,7 @@
         }
       },
       "required": [
+        "workerId",
         "firstName",
         "lastName",
         "email",

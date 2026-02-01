@@ -238,7 +238,9 @@ export default function WorkersPage() {
               description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
           });
       } else {
-          const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
+          const newWorkerId = String(200000 + (workers?.length || 0)).padStart(6, '0');
+          const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId };
+          const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSaveWithId);
           if (newWorkerRef && userProfile) {
             await addDocumentNonBlocking(collection(firestore, "approvals"), {
               requester: `${userProfile.firstName} ${userProfile.lastName}`,
@@ -307,7 +309,7 @@ export default function WorkersPage() {
                     {`${worker.firstName} ${worker.lastName}`}
                   </div>
                 </TableCell>
-                <TableCell className="font-mono text-xs">{worker.id}</TableCell>
+                <TableCell className="font-mono text-xs">{worker.workerId}</TableCell>
                 <TableCell>{worker.role}</TableCell>
                 <TableCell>
                    <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={

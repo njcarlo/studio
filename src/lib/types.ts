@@ -2,6 +2,7 @@ export type WorkerRole = 'Volunteer' | 'Clergy' | 'Admin' | 'Full-time' | 'On-ca
 
 export type Worker = {
   id: string;
+  workerId: string;
   firstName: string;
   lastName: string;
   avatarUrl: string;
