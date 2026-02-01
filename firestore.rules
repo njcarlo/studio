@@ -8,7 +8,7 @@
  *
  * # Key Security Decisions
  * - **Role-Based Access**: Most write permissions (creating rooms, approving requests, managing ministries) are restricted to users with specific roles (e.g., 'Admin', 'Super Admin'). This is enforced by the `getRole()` helper function.
- * - **No User Enumeration**: Listing the top-level `/worker_profiles` collection is disabled to protect user privacy.
+ * - **No User Enumeration (for non-admins)**: Listing the top-level `/worker_profiles` collection is disabled for regular users to protect privacy, but allowed for admins.
  * - **Ownership via Denormalized Fields**: For user-specific documents in public collections (e.g., `reservations`, `attendance_records`), security relies on a `workerProfileId` field within the document itself.
  * - **Secure Default for Writes**: By default, writes are disallowed. Rules explicitly grant access based on ownership or role.
  *
@@ -63,7 +63,7 @@ service cloud.firestore {
 
     match /worker_profiles/{workerId} {
       allow get: if isSignedIn();
-      allow list: if false; // Prevent user enumeration
+      allow list: if isAdmin(); // Admins can list workers for management purposes.
       allow create: if isWorkerOwner(workerId);
       allow update: if isWorkerOwner(workerId) || isAdmin();
       allow delete: if isSuperAdmin();
