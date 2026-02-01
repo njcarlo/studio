@@ -52,7 +52,7 @@ export default function MinistriesPage() {
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {departmentMinistries.map(ministry => {
                   const leader = getWorker(ministry.leaderId);
-                  const members = ministry.memberIds.map(getWorker).filter(Boolean) as Worker[];
+                  const members = workers?.filter(w => w.primaryMinistryId === ministry.id || w.secondaryMinistryId === ministry.id) || [];
 
                   return (
                     <Card key={ministry.id}>

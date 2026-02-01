@@ -276,20 +276,13 @@
           "type": "string",
           "description": "The ID of the worker who leads the ministry."
         },
-        "memberIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "A list of worker IDs who are members of the ministry."
-        },
         "department": {
             "type": "string",
             "description": "The department the ministry belongs to.",
             "enum": ["Worship", "Outreach", "Relationship", "Discipleship", "Administration"]
         }
       },
-      "required": ["name", "leaderId", "memberIds", "department"]
+      "required": ["name", "leaderId", "department"]
     }
   },
   "auth": {

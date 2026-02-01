@@ -66,6 +66,5 @@ export type Ministry = {
   name: string;
   description: string;
   leaderId: string; // Worker ID
-  memberIds: string[]; // Worker IDs
   department: Department;
 };
