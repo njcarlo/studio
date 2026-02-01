@@ -39,8 +39,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { workers as initialWorkers, rooms } from "@/lib/placeholder-data";
-import type { Worker } from "@/lib/types";
+import { workers as initialWorkers } from "@/lib/placeholder-data";
+import type { Worker, WorkerRole } from "@/lib/types";
 
 const WorkerForm = ({ worker, onSave }: { worker: Partial<Worker> | null; onSave: (worker: Partial<Worker>) => void }) => {
   const [formData, setFormData] = useState<Partial<Worker>>(worker || {
@@ -82,14 +82,18 @@ const WorkerForm = ({ worker, onSave }: { worker: Partial<Worker> | null; onSave
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="role" className="text-right">Role</Label>
-        <Select value={formData.role} onValueChange={(value: Worker['role']) => setFormData({...formData, role: value})}>
+        <Select value={formData.role} onValueChange={(value: WorkerRole) => setFormData({...formData, role: value})}>
           <SelectTrigger className="col-span-3">
             <SelectValue placeholder="Select a role" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Volunteer">Volunteer</SelectItem>
-            <SelectItem value="Staff">Staff</SelectItem>
+            <SelectItem value="Full-time">Full-time Worker</SelectItem>
+            <SelectItem value="On-call">On-call Worker</SelectItem>
             <SelectItem value="Clergy">Clergy</SelectItem>
+            <SelectItem value="Ministry Head">Ministry Head</SelectItem>
+            <SelectItem value="Admin">Admin</SelectItem>
+            <SelectItem value="Super Admin">Super Admin</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -6,7 +6,6 @@ import {
   Calendar,
   UtensilsCrossed,
   QrCode,
-  Church,
 } from "lucide-react";
 
 import {
@@ -15,27 +14,36 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import type { WorkerRole } from "@/lib/types";
 
-const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/workers", icon: Users, label: "Worker Profiles" },
-  { href: "/approvals", icon: CheckSquare, label: "Approvals" },
-  { href: "/rooms", icon: Calendar, label: "Room Reservations" },
-  { href: "/meals", icon: UtensilsCrossed, label: "Mealstubs" },
-  { href: "/attendance", icon: QrCode, label: "Attendance" },
+const allRoles: WorkerRole[] = ['Volunteer', 'Clergy', 'Admin', 'Full-time', 'On-call', 'Ministry Head', 'Super Admin'];
+
+const navItems: { href: string; icon: React.ElementType; label: string; roles: WorkerRole[] }[] = [
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", roles: allRoles },
+  { href: "/workers", icon: Users, label: "Worker Profiles", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
+  { href: "/approvals", icon: CheckSquare, label: "Approvals", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
+  { href: "/rooms", icon: Calendar, label: "Room Reservations", roles: allRoles },
+  { href: "/meals", icon: UtensilsCrossed, label: "Mealstubs", roles: ['Admin', 'Super Admin'] },
+  { href: "/attendance", icon: QrCode, label: "Attendance", roles: ['Admin', 'Super Admin'] },
 ];
 
 export function Nav({
   pathname,
   className,
+  userRole,
 }: {
   pathname: string;
   className?: string;
+  userRole: WorkerRole;
 }) {
+  const accessibleNavItems = navItems.filter(item => 
+    item.roles.includes(userRole)
+  );
+
   return (
     <nav className={cn("flex flex-col", className)}>
       <SidebarMenu>
-        {navItems.map((item) => (
+        {accessibleNavItems.map((item) => (
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
               asChild

@@ -12,6 +12,13 @@ import {
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
 import { Church } from "lucide-react";
+import type { WorkerRole } from "@/lib/types";
+
+// Mock current user. Change this to see the UI for different roles.
+// Available roles: 'Volunteer', 'Clergy', 'Admin', 'Full-time', 'On-call', 'Ministry Head', 'Super Admin'
+const currentUser: { role: WorkerRole } = {
+  role: 'Admin',
+};
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   // We can't use `useSelectedLayoutSegment` here because it's a client component,
@@ -32,7 +39,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </SidebarHeader>
         <SidebarContent>
-          <Nav pathname={pathname} />
+          <Nav pathname={pathname} userRole={currentUser.role} />
         </SidebarContent>
       </Sidebar>
       <SidebarInset>

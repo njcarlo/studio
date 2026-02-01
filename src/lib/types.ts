@@ -1,8 +1,10 @@
+export type WorkerRole = 'Volunteer' | 'Clergy' | 'Admin' | 'Full-time' | 'On-call' | 'Ministry Head' | 'Super Admin';
+
 export type Worker = {
   id: string;
   name: string;
   avatarUrl: string;
-  role: 'Volunteer' | 'Staff' | 'Clergy';
+  role: WorkerRole;
   email: string;
   phone: string;
   status: 'Active' | 'Inactive' | 'Pending Approval';

@@ -5,7 +5,7 @@ const getAvatar = (id: string) => PlaceHolderImages.find(img => img.id === id)?.
 
 export const workers: Worker[] = [
   { id: '1', name: 'John Doe', avatarUrl: getAvatar('worker-avatar-1'), role: 'Volunteer', email: 'john.d@example.com', phone: '123-456-7890', status: 'Active', permissions: ['Room Booking'] },
-  { id: '2', name: 'Jane Smith', avatarUrl: getAvatar('worker-avatar-2'), role: 'Staff', email: 'jane.s@example.com', phone: '123-456-7891', status: 'Active', permissions: ['Room Booking', 'Manage Workers'] },
+  { id: '2', name: 'Jane Smith', avatarUrl: getAvatar('worker-avatar-2'), role: 'Full-time', email: 'jane.s@example.com', phone: '123-456-7891', status: 'Active', permissions: ['Room Booking', 'Manage Workers'] },
   { id: '3', name: 'Peter Jones', avatarUrl: getAvatar('worker-avatar-3'), role: 'Clergy', email: 'peter.j@example.com', phone: '123-456-7892', status: 'Active', permissions: ['Room Booking', 'Manage Workers', 'Approve All'] },
   { id: '4', name: 'Mary Williams', avatarUrl: getAvatar('worker-avatar-4'), role: 'Volunteer', email: 'mary.w@example.com', phone: '123-456-7893', status: 'Pending Approval', permissions: [] },
 ];
