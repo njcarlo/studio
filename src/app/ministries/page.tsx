@@ -1,25 +1,43 @@
 "use client";
 
 import React from "react";
+import { collection } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { workers, ministries } from "@/lib/placeholder-data";
-import { HeartHandshake, User, Users } from "lucide-react";
+import { HeartHandshake, User, Users, LoaderCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import type { Ministry, Worker } from "@/lib/types";
 
 export default function MinistriesPage() {
-  const getWorker = (workerId: string) => workers.find(w => w.id === workerId);
+  const firestore = useFirestore();
+  
+  const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
+  const { data: ministries, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
+
+  const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
+  const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
+
+  const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
+  
+  const isLoading = ministriesLoading || workersLoading;
 
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Ministries</h1>
       </div>
+      
+      {isLoading && (
+        <div className="flex justify-center py-10">
+          <LoaderCircle className="h-8 w-8 animate-spin" />
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {ministries.map(ministry => {
+        {ministries && ministries.map(ministry => {
           const leader = getWorker(ministry.leaderId);
           const members = ministry.memberIds.map(getWorker).filter(Boolean);
 
@@ -52,7 +70,7 @@ export default function MinistriesPage() {
                      <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                             <AvatarImage src={leader.avatarUrl} alt={leader.name} />
-                            <AvatarFallback>{leader.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>{leader.name?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
                             <p className="text-sm font-medium">{leader.name}</p>
@@ -71,12 +89,12 @@ export default function MinistriesPage() {
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     <TooltipProvider>
-                      {members.map(member => member && (
+                      {(members as Worker[]).map(member => member && (
                         <Tooltip key={member.id}>
                           <TooltipTrigger>
                              <Avatar className="h-8 w-8 border-2 border-background">
                                 <AvatarImage src={member.avatarUrl} alt={member.name} />
-                                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
                             </Avatar>
                           </TooltipTrigger>
                           <TooltipContent>

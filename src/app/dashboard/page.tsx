@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -29,9 +28,12 @@ import {
   ChartContainer,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { approvalRequests, workers, bookings, attendanceChartData } from "@/lib/placeholder-data";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where, Timestamp } from "firebase/firestore";
+import { format, isToday } from 'date-fns';
+import type { Booking, Worker, ApprovalRequest } from "@/lib/types";
 
 type StatsCardProps = {
   title: string;
@@ -58,6 +60,16 @@ function StatsCard({ title, value, icon: Icon, description, link }: StatsCardPro
     </Card>
   );
 }
+
+const attendanceChartData = [
+    { date: 'Mon', attendance: Math.floor(Math.random() * 20) + 30 },
+    { date: 'Tue', attendance: Math.floor(Math.random() * 20) + 35 },
+    { date: 'Wed', attendance: Math.floor(Math.random() * 20) + 40 },
+    { date: 'Thu', attendance: Math.floor(Math.random() * 20) + 38 },
+    { date: 'Fri', attendance: Math.floor(Math.random() * 20) + 42 },
+    { date: 'Sat', attendance: Math.floor(Math.random() * 20) + 60 },
+    { date: 'Sun', attendance: Math.floor(Math.random() * 20) + 75 },
+];
 
 function AttendanceChart() {
     const chartConfig = {
@@ -89,13 +101,19 @@ function AttendanceChart() {
 }
 
 export default function DashboardPage() {
-  const [todaysAttendance, setTodaysAttendance] = useState("...");
-  const [upcomingBookingsCount, setUpcomingBookingsCount] = useState("...");
+    const firestore = useFirestore();
+    
+    const approvalsRef = useMemoFirebase(() => query(collection(firestore, 'approvals'), where('status', '==', 'pending')), [firestore]);
+    const { data: approvalRequests } = useCollection<ApprovalRequest>(approvalsRef);
 
-  useEffect(() => {
-    setTodaysAttendance(Math.floor(Math.random() * 10 + 70).toString());
-    setUpcomingBookingsCount(bookings.filter(b => b.start >= new Date()).length.toString());
-  }, []);
+    const workersRef = useMemoFirebase(() => collection(firestore, 'worker_profiles'), [firestore]);
+    const { data: workers } = useCollection<Worker>(workersRef);
+
+    const bookingsRef = useMemoFirebase(() => collection(firestore, 'rooms', 'R1', 'reservations'), [firestore]); // Example for one room
+    const { data: bookings } = useCollection<Booking>(bookingsRef);
+    
+    const upcomingBookings = bookings?.filter(b => b.start && (b.start as unknown as Timestamp).toDate() > new Date());
+    const todaysAttendance = workers?.filter(w => w.status === 'Active').length || 0; // Simplified
 
   return (
     <AppLayout>
@@ -106,28 +124,28 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Pending Approvals"
-            value={approvalRequests.length.toString()}
+            value={approvalRequests?.length.toString() ?? '0'}
             icon={CheckSquare}
             description="Items needing review"
             link="/approvals"
           />
           <StatsCard
             title="Total Workers"
-            value={workers.length.toString()}
+            value={workers?.length.toString() ?? '0'}
             icon={Users}
             description="Active and pending staff"
             link="/workers"
           />
           <StatsCard
             title="Upcoming Bookings"
-            value={upcomingBookingsCount}
+            value={upcomingBookings?.length.toString() ?? '0'}
             icon={Calendar}
             description="Scheduled room reservations"
             link="/rooms"
           />
            <StatsCard
             title="Today's Attendance"
-            value={todaysAttendance}
+            value={todaysAttendance.toString()}
             icon={UserCheck}
             description="People currently present"
             link="/attendance"
@@ -142,14 +160,16 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {bookings.slice(0, 3).map(booking => (
+                    {upcomingBookings?.slice(0, 3).map(booking => (
                         <div key={booking.id} className="flex items-center space-x-4">
                             <div className="flex-shrink-0 bg-primary/10 text-primary rounded-lg p-3">
                                 <Calendar className="h-5 w-5"/>
                             </div>
                             <div>
                                 <p className="font-semibold">{booking.title}</p>
-                                <p className="text-sm text-muted-foreground">{booking.roomName} - {booking.start.toLocaleDateString()}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {(booking.start as any)?.seconds ? format(new Date((booking.start as any).seconds * 1000), 'PP') : ''}
+                                </p>
                             </div>
                              <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className="ml-auto bg-green-100 text-green-800">{booking.status}</Badge>
                         </div>

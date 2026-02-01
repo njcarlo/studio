@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { collection, serverTimestamp } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +18,10 @@ import {
   CardDescription,
   CardContent
 } from "@/components/ui/card";
-import { QrCode, LogIn, LogOut } from "lucide-react";
+import { QrCode, LogIn, LogOut, LoaderCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { format } from "date-fns";
 
 const QrScannerDialog = ({ open, onOpenChange, onScanSuccess }: { open: boolean; onOpenChange: (open: boolean) => void, onScanSuccess: (type: 'Clock In' | 'Clock Out') => void }) => {
   return (
@@ -47,15 +50,27 @@ const QrScannerDialog = ({ open, onOpenChange, onScanSuccess }: { open: boolean;
 
 export default function AttendancePage() {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
-    const [attendanceLog, setAttendanceLog] = useState([
-        { type: 'Clock In', time: new Date(new Date().setHours(8, 5, 0))},
-        { type: 'Clock Out', time: new Date(new Date().setHours(12, 30, 0))},
-        { type: 'Clock In', time: new Date(new Date().setHours(13, 15, 0))},
-    ]);
     const { toast } = useToast();
+    const firestore = useFirestore();
+    const { user } = useUser();
+    
+    const attendanceRef = useMemoFirebase(() => collection(firestore, "attendance_records"), [firestore]);
+    const { data: attendanceLog, isLoading } = useCollection<any>(attendanceRef);
 
     const handleScanSuccess = (type: 'Clock In' | 'Clock Out') => {
-        setAttendanceLog(prev => [{type, time: new Date()}, ...prev]);
+        if (!user) {
+            toast({ variant: "destructive", title: "Not logged in" });
+            return;
+        }
+        
+        const newRecord = {
+            workerProfileId: user.uid,
+            type,
+            time: serverTimestamp(),
+        };
+
+        addDocumentNonBlocking(collection(firestore, "attendance_records"), newRecord);
+        
         toast({
             title: "Success",
             description: `You have successfully ${type === 'Clock In' ? 'clocked in' : 'clocked out'}.`,
@@ -84,15 +99,16 @@ export default function AttendancePage() {
             <CardDescription>Your clock-in and clock-out records for today.</CardDescription>
         </CardHeader>
         <CardContent>
+            {isLoading && <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />}
             <div className="space-y-4">
-                {attendanceLog.map((log, index) => (
+                {attendanceLog && [...attendanceLog].sort((a,b) => b.time.seconds - a.time.seconds).map((log, index) => (
                     <div key={index} className="flex items-center space-x-4 p-3 rounded-lg bg-secondary/50">
                         <div className={`p-2 rounded-full ${log.type === 'Clock In' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
                             {log.type === 'Clock In' ? <LogIn className="h-5 w-5"/> : <LogOut className="h-5 w-5"/>}
                         </div>
                         <div>
                             <p className="font-semibold">{log.type}</p>
-                            <p className="text-sm text-muted-foreground">{log.time.toLocaleTimeString()}</p>
+                            <p className="text-sm text-muted-foreground">{format(new Date(log.time.seconds * 1000), 'p')}</p>
                         </div>
                     </div>
                 ))}

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { UserRoleProvider } from '@/hooks/use-user-role';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'COGApp',
@@ -24,10 +25,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <UserRoleProvider>
-          {children}
-          <Toaster />
-        </UserRoleProvider>
+        <FirebaseClientProvider>
+          <UserRoleProvider>
+            {children}
+            <Toaster />
+          </UserRoleProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

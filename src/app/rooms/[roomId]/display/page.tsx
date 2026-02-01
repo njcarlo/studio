@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
-import { rooms, bookings as allBookings } from '@/lib/placeholder-data';
+import { collection, doc, query, where, Timestamp } from 'firebase/firestore';
 import type { Room, Booking } from '@/lib/types';
 import { format, isToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, DoorOpen, VideoOff } from 'lucide-react';
+import { Calendar, Clock, DoorOpen, VideoOff, LoaderCircle } from 'lucide-react';
+import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 
 const ClockComponent = () => {
     const [time, setTime] = useState(new Date());
@@ -27,23 +28,29 @@ const ClockComponent = () => {
 export default function RoomDisplayPage() {
     const params = useParams();
     const roomId = params.roomId as string;
-    const [room, setRoom] = useState<Room | null>(null);
-    const [todaysBookings, setTodaysBookings] = useState<Booking[]>([]);
+    const firestore = useFirestore();
 
-    useEffect(() => {
-        const currentRoom = rooms.find(r => r.id === roomId);
-        if (currentRoom) {
-            setRoom(currentRoom);
-        }
+    const roomRef = useMemoFirebase(() => doc(firestore, 'rooms', roomId), [firestore, roomId]);
+    const { data: room, isLoading: roomLoading } = useDoc<Room>(roomRef);
 
-        const filteredBookings = allBookings
-            .filter(b => b.roomId === roomId && isToday(b.start) && b.status === 'Approved')
-            .sort((a, b) => a.start.getTime() - b.start.getTime());
-        setTodaysBookings(filteredBookings);
+    const bookingsRef = useMemoFirebase(() => query(collection(firestore, 'rooms', roomId, 'reservations'), where('status', '==', 'Approved')), [firestore, roomId]);
+    const { data: allBookings, isLoading: bookingsLoading } = useCollection<Booking>(bookingsRef);
 
-    }, [roomId]);
+    const todaysBookings = allBookings
+        ?.map(b => ({ ...b, start: (b.start as any).toDate(), end: (b.end as any).toDate() }))
+        .filter(b => isToday(b.start))
+        .sort((a, b) => a.start.getTime() - b.start.getTime()) || [];
 
+    const isLoading = roomLoading || bookingsLoading;
 
+    if (isLoading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+                <LoaderCircle className="h-12 w-12 animate-spin" />
+            </div>
+        );
+    }
+    
     if (!room) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
@@ -90,7 +97,7 @@ export default function RoomDisplayPage() {
                                     <p className="text-xl lg:text-2xl text-gray-300 mt-2">
                                         {format(currentBooking.start, 'h:mm a')} - {format(currentBooking.end, 'h:mm a')}
                                     </p>
-                                    <p className="text-lg lg:text-xl text-gray-400 mt-1">Booked by {currentBooking.workerName}</p>
+                                    <p className="text-lg lg:text-xl text-gray-400 mt-1">Booked by {currentBooking.workerProfileId}</p>
                                 </div>
                                 <div className="flex flex-col items-center gap-2 p-3 bg-gray-700 rounded-lg mt-4 lg:mt-0">
                                     <Image 
@@ -128,7 +135,7 @@ export default function RoomDisplayPage() {
                                         <div>
                                             <p className="font-semibold">{booking.title}</p>
                                             <p className="text-sm text-gray-300">{format(booking.start, 'h:mm a')} - {format(booking.end, 'h:mm a')}</p>
-                                            <p className="text-xs text-gray-400">by {booking.workerName}</p>
+                                            <p className="text-xs text-gray-400">by {booking.workerProfileId}</p>
                                         </div>
                                     </div>
                                 ))}

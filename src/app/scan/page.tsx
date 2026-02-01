@@ -2,16 +2,19 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { doc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { QrCode, ArrowLeft } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useFirestore, useDoc, updateDocumentNonBlocking } from "@/firebase";
 
 export default function ScanMealStubPage() {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+    const firestore = useFirestore();
 
     useEffect(() => {
         const getCameraPermission = async () => {
@@ -36,8 +39,9 @@ export default function ScanMealStubPage() {
         getCameraPermission();
       }, [toast]);
 
-    const handleScan = (status: 'Issued' | 'Claimed') => {
-        if (status === 'Issued') {
+    const handleScan = (stubId: string, currentStatus: 'Issued' | 'Claimed') => {
+        if (currentStatus === 'Issued') {
+            updateDocumentNonBlocking(doc(firestore, "mealstubs", stubId), { status: 'Claimed' });
             toast({
                 title: "Meal Stub Claimed!",
                 description: "The meal stub has been successfully validated and claimed.",
@@ -93,8 +97,8 @@ export default function ScanMealStubPage() {
                         <p>For demonstration purposes:</p>
                     </div>
                      <div className="flex justify-center gap-4 mt-2">
-                        <Button onClick={() => handleScan('Issued')}>Simulate Valid Scan</Button>
-                        <Button variant="outline" onClick={() => handleScan('Claimed')}>Simulate Claimed Scan</Button>
+                        <Button onClick={() => handleScan('M1', 'Issued')}>Simulate Valid Scan</Button>
+                        <Button variant="outline" onClick={() => handleScan('M2', 'Claimed')}>Simulate Claimed Scan</Button>
                     </div>
                 </CardContent>
             </Card>

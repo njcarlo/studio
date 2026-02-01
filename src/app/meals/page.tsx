@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { collection, serverTimestamp } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,9 +22,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, QrCode } from "lucide-react";
-import { mealStubs as initialMealStubs } from "@/lib/placeholder-data";
+import { PlusCircle, QrCode, LoaderCircle } from "lucide-react";
 import type { MealStub } from "@/lib/types";
+import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase } from "@/firebase";
+import { format } from 'date-fns';
 
 const MealStubDialog = ({ stub, open, onOpenChange }: { stub: MealStub | null, open: boolean, onOpenChange: (open: boolean) => void }) => {
     if (!stub) return null;
@@ -43,7 +45,7 @@ const MealStubDialog = ({ stub, open, onOpenChange }: { stub: MealStub | null, o
                     <Image src={qrCodeUrl} alt="Mealstub QR Code" width={250} height={250} />
                 </div>
                  <div className="text-center">
-                    <p className="font-semibold">Meal Stub on {stub.date.toLocaleDateString()}</p>
+                    <p className="font-semibold">Meal Stub on {stub.date ? format(new Date((stub.date as any).seconds * 1000), 'PP') : ''}</p>
                     <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
                         {stub.status}
                     </Badge>
@@ -54,13 +56,29 @@ const MealStubDialog = ({ stub, open, onOpenChange }: { stub: MealStub | null, o
 }
 
 export default function MealsPage() {
-  const [mealStubs, setMealStubs] = useState<MealStub[]>(initialMealStubs);
+  const firestore = useFirestore();
+  const mealStubsRef = useMemoFirebase(() => collection(firestore, "mealstubs"), [firestore]);
+  const { data: mealStubs, isLoading } = useCollection<MealStub>(mealStubsRef);
+  
+  const { user } = useUser();
   const [selectedStub, setSelectedStub] = useState<MealStub | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleRowClick = (stub: MealStub) => {
     setSelectedStub(stub);
     setIsDialogOpen(true);
+  };
+  
+  const generateManualStub = () => {
+      if (!user) return;
+      
+      const newStub = {
+          workerId: user.uid,
+          workerName: user.displayName || "Unknown Worker",
+          date: serverTimestamp(),
+          status: 'Issued',
+      };
+      addDocumentNonBlocking(collection(firestore, "mealstubs"), newStub);
   };
 
   return (
@@ -71,7 +89,7 @@ export default function MealsPage() {
             <Button asChild variant="outline">
                 <Link href="/scan"><QrCode className="mr-2 h-4 w-4"/> Scan Stub</Link>
             </Button>
-            <Button>
+            <Button onClick={generateManualStub}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Generate Manual Stub
             </Button>
         </div>
@@ -92,10 +110,17 @@ export default function MealsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mealStubs.map((stub) => (
+            {isLoading && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center">
+                  <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
+                </TableCell>
+              </TableRow>
+            )}
+            {mealStubs && mealStubs.map((stub) => (
               <TableRow key={stub.id} onClick={() => handleRowClick(stub)} className="cursor-pointer">
                 <TableCell className="font-medium">{stub.workerName}</TableCell>
-                <TableCell>{stub.date.toLocaleDateString()}</TableCell>
+                <TableCell>{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'PP') : ''}</TableCell>
                 <TableCell>Meal Stub</TableCell>
                 <TableCell>
                   <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>

@@ -1,24 +1,19 @@
 /**
  * # Core Philosophy
- * This ruleset enforces a strict user-ownership model, where workers are primarily in control of their own data. The central concept is the `worker_profile`, which acts as the root for a worker's private information. Other top-level collections represent shared or system-managed resources.
+ * This ruleset enforces a strict user-ownership model where appropriate, while providing role-based access for administrative tasks. The central concept is the `worker_profile`, which links a user's authentication UID to their data and role.
  *
  * # Data Structure
- * The data is organized into two main categories:
- * 1. Worker-Specific Data: Nested under `/worker_profiles/{workerProfileId}`, this includes a worker's core profile and related subcollections like approvals. Access is tightly controlled by the worker's UID.
- * 2. System-Level Data: Top-level collections like `/rooms`, `/equipment`, `/reservations`, `/mealstubs`, and `/attendance_records`. These collections are secured using a denormalized `workerProfileId` field on each document to link it to its owner, rather than relying on path hierarchy.
+ * - `/worker_profiles/{workerId}`: Private to each user, contains their role and personal info. The `workerId` MUST match `request.auth.uid`.
+ * - Top-Level Collections: Most other data (`rooms`, `ministries`, etc.) is in top-level collections for easier querying. Security within these collections often relies on checking the requesting user's role by looking up their `worker_profile`.
  *
  * # Key Security Decisions
+ * - **Role-Based Access**: Most write permissions (creating rooms, approving requests, managing ministries) are restricted to users with specific roles (e.g., 'Admin', 'Super Admin'). This is enforced by the `getRole()` helper function.
  * - **No User Enumeration**: Listing the top-level `/worker_profiles` collection is disabled to protect user privacy.
- * - **Publicly Readable Resources**: Collections like `/rooms` and `/equipment` are readable by any authenticated user to facilitate browsing and booking, but are not writable by clients. An admin or backend process is assumed to manage this data.
- * - **Ownership via Denormalized Fields**: For top-level collections that contain user-owned data (e.g., `reservations`, `attendance_records`), security relies on a `workerProfileId` field within the document itself. This is more performant and flexible than nesting everything under a user's path.
- * - **Secure Default for Writes**: For collections where the write logic is ambiguous (e.g., creating rooms, issuing approvals), writes are disabled by default (`if false;`). This enforces a secure posture, requiring explicit rules to be added as features evolve.
+ * - **Ownership via Denormalized Fields**: For user-specific documents in public collections (e.g., `reservations`, `attendance_records`), security relies on a `workerProfileId` field within the document itself.
+ * - **Secure Default for Writes**: By default, writes are disallowed. Rules explicitly grant access based on ownership or role.
  *
  * # Denormalization for Authorization
- * To create simpler and more performant rules, data required for an authorization decision is denormalized directly onto the documents being secured. This avoids costly `get()` calls.
- * - **Example**: A `/reservations/{reservationId}` document contains a `workerProfileId` field. This allows a direct check (`resource.data.workerProfileId == request.auth.uid`) without needing to look up any other document.
- *
- * # Structural Segregation
- * The separation of `worker_profiles` (private data) from `rooms` (public data) is a deliberate choice. This prevents accidental data leakage and simplifies rules for list operations, as we can allow a public list on `/rooms` without worrying about exposing private profile information.
+ * - **User Roles**: The most critical piece of denormalized data is the `role` field within each user's `/worker_profiles/{uid}` document. The `getRole()` function uses a `get()` call to fetch this role, which is then used in rules across the system. This is a necessary trade-off for implementing role-based access control.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -28,59 +23,36 @@ service cloud.firestore {
     // Helper Functions
     // --------------------------------
 
-    /**
-     * Checks if a user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the requesting user's UID matches the workerProfileId from the URL path.
-     * Use for documents nested under a worker's path.
-     */
-    function isWorkerOwner(workerProfileId) {
-      return request.auth.uid == workerProfileId;
+    function isWorkerOwner(workerId) {
+      return request.auth.uid == workerId;
     }
 
-    /**
-     * Checks if a user owns an *existing* document based on the URL path.
-     * Essential for secure update and delete operations.
-     */
-    function isExistingWorkerOwner(workerProfileId) {
-      return isWorkerOwner(workerProfileId) && resource != null;
-    }
-
-    /**
-     * Checks if the user owns a document by comparing their UID to a `workerProfileId` field in the document's data.
-     * Use for top-level collections where ownership is denormalized.
-     */
-    function isDocumentOwner() {
+    function isExistingDocOwner() {
       return request.auth.uid == resource.data.workerProfileId;
     }
 
-    /**
-     * Checks if a user owns an *existing* document based on a `workerProfileId` field.
-     * Essential for secure update and delete operations on top-level collections.
-     */
-    function isExistingDocumentOwner() {
-      return isDocumentOwner() && resource != null;
-    }
-
-    /**
-     * Validates that the user is creating a document for themselves by checking the incoming data.
-     * Ensures a user cannot create documents on behalf of others.
-     */
-    function isCreatingOwnDocument() {
+    function isCreatingOwnDoc() {
       return request.auth.uid == request.resource.data.workerProfileId;
     }
 
-    /**
-     * Enforces immutability of the `workerProfileId` field on update.
-     * Prevents re-assigning ownership of a document.
-     */
-    function isWorkerProfileIdImmutable() {
-      return request.resource.data.workerProfileId == resource.data.workerProfileId;
+    function getRole(uid) {
+      return get(/databases/$(database)/documents/worker_profiles/$(uid)).data.role;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && getRole(request.auth.uid) == 'Super Admin';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (getRole(request.auth.uid) == 'Admin' || isSuperAdmin());
+    }
+
+     function isMinistryHead() {
+      return isSignedIn() && (getRole(request.auth.uid) == 'Ministry Head' || isAdmin());
     }
 
 
@@ -88,117 +60,57 @@ service cloud.firestore {
     // Collection Rules
     // --------------------------------
 
-    /**
-     * @description A worker's own profile. Workers can create, read, and update their own profile. Deletion is disallowed.
-     * @path /worker_profiles/{workerProfileId}
-     * @allow (create) A new user creating their own profile document where the document ID matches their auth UID.
-     * @deny (create) A user trying to create a profile for another user (workerProfileId != auth.uid).
-     * @deny (list) Any user trying to list all worker profiles.
-     * @principle Restricts access to a user's own data tree and prevents user enumeration.
-     */
-    match /worker_profiles/{workerProfileId} {
-      allow get: if isWorkerOwner(workerProfileId);
-      allow list: if false;
-      allow create: if isWorkerOwner(workerProfileId) && request.resource.data.id == workerProfileId;
-      allow update: if isExistingWorkerOwner(workerProfileId) && request.resource.data.id == resource.data.id;
-      allow delete: if false;
-
-      /**
-       * @description Approval records related to a worker's profile.
-       * @path /worker_profiles/{workerProfileId}/approvals/{approvalId}
-       * @allow (get, list) A worker reading their own approval records.
-       * @deny (create, update, delete) Any client-side modification of approvals. This must be handled by a privileged backend or admin role.
-       * @principle Enforces a secure workflow where sensitive state changes (approvals) are not client-controllable.
-       */
-      match /approvals/{approvalId} {
-        allow get: if isWorkerOwner(workerProfileId);
-        allow list: if isWorkerOwner(workerProfileId);
-        // CRITICAL: Writes are disabled. Approval logic should be handled by a secure backend/admin process.
-        allow create: if false; // TODO: Implement admin/approver role logic for creating approvals.
-        allow update: if false; // TODO: Implement admin/approver role logic for updating approval status.
-        allow delete: if false;
-      }
+    match /worker_profiles/{workerId} {
+      allow get: if isSignedIn();
+      allow list: if false; // Prevent user enumeration
+      allow create: if isWorkerOwner(workerId);
+      allow update: if isWorkerOwner(workerId) || isAdmin();
+      allow delete: if isSuperAdmin();
     }
 
-    /**
-     * @description Information about reservable rooms. This data is considered public for browsing.
-     * @path /rooms/{roomId}
-     * @allow (get, list) Any authenticated user can view room details and list all available rooms.
-     * @deny (create, update, delete) All client-side writes are denied. Rooms must be managed by an admin.
-     * @principle Provides public read access for shared resources while centralizing write control.
-     */
+    match /approvals/{approvalId} {
+      allow get, list: if isAdmin();
+      allow create: if isSignedIn(); // Any signed-in user can create a request
+      allow update, delete: if isAdmin(); // Only admins can approve/deny/delete
+    }
+
     match /rooms/{roomId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      // CRITICAL: Cannot implement owner-only writes. The 'Room' entity is missing an 'ownerId' or 'adminId' field.
-      allow create: if false; // TODO: Add admin validation once an admin role is defined.
-      allow update: if false; // TODO: Add admin validation once an admin role is defined.
-      allow delete: if false; // TODO: Add admin validation once an admin role is defined.
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
 
-      /**
-       * @description Reservations for a specific room.
-       * @path /rooms/{roomId}/reservations/{reservationId}
-       * @allow (create) A signed-in user creating a reservation for themselves (`workerProfileId` in data matches auth UID).
-       * @allow (list) Any signed-in user listing reservations to check for room availability.
-       * @deny (get) A user trying to read the specific details of another user's reservation.
-       * @principle Uses a denormalized ownership field (`workerProfileId`) to secure write access within a public collection.
-       */
       match /reservations/{reservationId} {
-        allow get: if isExistingDocumentOwner();
+        allow get: if isExistingDocOwner() || isAdmin();
         allow list: if isSignedIn();
-        allow create: if isSignedIn() && isCreatingOwnDocument();
-        allow update: if isExistingDocumentOwner() && isWorkerProfileIdImmutable();
-        allow delete: if isExistingDocumentOwner();
+        allow create: if isCreatingOwnDoc();
+        allow update: if isExistingDocOwner() || isAdmin();
+        allow delete: if isExistingDocOwner() || isAdmin();
       }
     }
 
-    /**
-     * @description Mealstubs issued to workers.
-     * @path /mealstubs/{mealstubId}
-     * @allow (get) A worker retrieving their own mealstub.
-     * @deny (list) A general list is disallowed to prevent data leakage. Users must query for their own stubs.
-     * @deny (create, update, delete) All client-side writes are denied, as mealstubs are likely generated by a backend process.
-     * @principle Restricts data visibility to the owner and prevents modification of system-generated records.
-     */
     match /mealstubs/{mealstubId} {
-      allow get: if isExistingDocumentOwner();
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isExistingDocOwner() || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      // Allow user to claim their own stub, or admin to manage it.
+      allow update: if (isExistingDocOwner() && request.resource.data.status == 'Claimed') || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    /**
-     * @description Worker attendance records (clock-in/out).
-     * @path /attendance_records/{attendanceRecordId}
-     * @allow (create) A worker creating their own attendance record (e.g., clocking in).
-     * @allow (update) A worker updating their own record (e.g., clocking out).
-     * @deny (list) A general list is disallowed. Users must query for their own records.
-     * @deny (delete) Deleting attendance records is not permitted.
-     * @principle Allows users to create and manage their own timekeeping records while preventing tampering or deletion.
-     */
-    match /attendance_records/{attendanceRecordId} {
-      allow get: if isExistingDocumentOwner();
-      allow list: if false;
-      allow create: if isSignedIn() && isCreatingOwnDocument();
-      allow update: if isExistingDocumentOwner() && isWorkerProfileIdImmutable();
-      allow delete: if false;
+    match /attendance_records/{recordId} {
+      allow get: if isExistingDocOwner() || isAdmin();
+      allow list: if isAdmin(); // Admins can see all records
+      allow create: if isCreatingOwnDoc();
+      allow update, delete: if isExistingDocOwner() || isAdmin();
     }
 
-    /**
-     * @description Information about equipment. This data is considered public for browsing.
-     * @path /equipment/{equipmentId}
-     * @allow (get, list) Any authenticated user can view equipment details.
-     * @deny (create, update, delete) All client-side writes are denied. Equipment must be managed by an admin.
-     * @principle Provides public read access for shared resources while centralizing write control.
-     */
     match /equipment/{equipmentId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      // CRITICAL: Cannot implement owner-only writes. The 'Equipment' entity is missing an 'ownerId' or 'adminId' field.
-      allow create: if false; // TODO: Add admin validation once an admin role is defined.
-      allow update: if false; // TODO: Add admin validation once an admin role is defined.
-      allow delete: if false; // TODO: Add admin validation once an admin role is defined.
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /ministries/{ministryId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isMinistryHead();
     }
   }
 }

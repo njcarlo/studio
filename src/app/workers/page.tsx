@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
+import { MoreHorizontal, PlusCircle, LoaderCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,12 +40,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { workers as initialWorkers } from "@/lib/placeholder-data";
 import type { Worker, WorkerRole } from "@/lib/types";
+import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 
 const WorkerForm = ({ worker, onSave }: { worker: Partial<Worker> | null; onSave: (worker: Partial<Worker>) => void }) => {
   const [formData, setFormData] = useState<Partial<Worker>>(worker || {
-    name: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval'
+    name: '', email: '', phone: '', role: 'Volunteer', permissions: [], status: 'Pending Approval', avatarUrl: 'https://picsum.photos/seed/105/100/100'
   });
 
   const handleSave = () => {
@@ -125,7 +126,10 @@ const WorkerForm = ({ worker, onSave }: { worker: Partial<Worker> | null; onSave
 };
 
 export default function WorkersPage() {
-  const [workers, setWorkers] = useState<Worker[]>(initialWorkers);
+  const firestore = useFirestore();
+  const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
+  const { data: workers, isLoading } = useCollection<Worker>(workersRef);
+
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
 
@@ -140,19 +144,15 @@ export default function WorkersPage() {
   };
   
   const handleDelete = (workerId: string) => {
-    setWorkers(workers.filter(w => w.id !== workerId));
+    if (!workerId) return;
+    deleteDocumentNonBlocking(doc(firestore, "worker_profiles", workerId));
   };
 
   const handleSaveWorker = (workerData: Partial<Worker>) => {
-    if (selectedWorker) {
-        setWorkers(workers.map(w => w.id === selectedWorker.id ? {...w, ...workerData} as Worker : w));
+    if (selectedWorker?.id) {
+        updateDocumentNonBlocking(doc(firestore, "worker_profiles", selectedWorker.id), workerData);
     } else {
-        const newWorker: Worker = {
-            id: (workers.length + 1).toString(),
-            avatarUrl: 'https://picsum.photos/seed/105/100/100',
-            ...workerData,
-        } as Worker;
-        setWorkers([newWorker, ...workers]);
+        addDocumentNonBlocking(collection(firestore, "worker_profiles"), workerData);
     }
     setIsSheetOpen(false);
   };
@@ -180,13 +180,20 @@ export default function WorkersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {workers.map((worker) => (
+            {isLoading && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
+                </TableCell>
+              </TableRow>
+            )}
+            {workers && workers.map((worker) => (
               <TableRow key={worker.id}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
                     <Avatar>
                       <AvatarImage src={worker.avatarUrl} alt={worker.name} />
-                      <AvatarFallback>{worker.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{worker.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     {worker.name}
                   </div>

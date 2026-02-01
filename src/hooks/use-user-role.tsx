@@ -1,18 +1,16 @@
 "use client";
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import type { WorkerRole } from '@/lib/types';
+import { doc } from 'firebase/firestore';
+import type { Worker, WorkerRole } from '@/lib/types';
 import { allRoles } from '@/components/layout/nav';
-
-// Mock current user. This should be replaced with real auth logic.
-const realUser: { role: WorkerRole } = {
-  role: 'Super Admin',
-};
+import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 
 type UserRoleContextType = {
-  realUserRole: WorkerRole;
+  realUserRole: WorkerRole | null;
   viewAsRole: WorkerRole;
   isSuperAdmin: boolean;
+  isLoading: boolean;
   setViewAsRole: (role: WorkerRole) => void;
   allRoles: WorkerRole[];
 };
@@ -20,15 +18,30 @@ type UserRoleContextType = {
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
 
 export function UserRoleProvider({ children }: { children: React.ReactNode }) {
-  const [viewAsRole, setViewAsRoleState] = useState<WorkerRole>(realUser.role);
-  const isSuperAdmin = realUser.role === 'Super Admin';
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (user) {
+      return doc(firestore, 'worker_profiles', user.uid);
+    }
+    return null;
+  }, [firestore, user]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<Worker>(userProfileRef);
+
+  const realUserRole = userProfile?.role || null;
+  const isSuperAdmin = realUserRole === 'Super Admin';
+
+  // The role displayed in the UI. Defaults to the user's real role.
+  const [viewAsRole, setViewAsRoleState] = useState<WorkerRole>('Volunteer');
 
   useEffect(() => {
-    if (!isSuperAdmin) {
-        setViewAsRoleState(realUser.role);
+    // When the real role is loaded, set the viewAsRole to it.
+    if (realUserRole) {
+      setViewAsRoleState(realUserRole);
     }
-  }, [isSuperAdmin]);
-
+  }, [realUserRole]);
 
   const setViewAsRole = (role: WorkerRole) => {
     if (isSuperAdmin) {
@@ -36,10 +49,13 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isLoading = isUserLoading || isProfileLoading;
+
   const value = {
-    realUserRole: realUser.role,
+    realUserRole,
     viewAsRole,
     isSuperAdmin,
+    isLoading,
     setViewAsRole,
     allRoles,
   };

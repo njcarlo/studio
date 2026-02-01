@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { usePathname, useRouter } from 'next/navigation';
 import {
   SidebarProvider,
   Sidebar,
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
-import { Church, Eye } from "lucide-react";
+import { Church, Eye, LoaderCircle } from "lucide-react";
 import type { WorkerRole } from "@/lib/types";
 import {
   Select,
@@ -21,14 +22,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useUser } from "@/firebase";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const [pathname, setPathname] = React.useState("");
-  const { viewAsRole, setViewAsRole, isSuperAdmin, allRoles } = useUserRole();
+  const currentPathname = usePathname();
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
 
-  React.useEffect(() => {
-    setPathname(window.location.pathname);
-  }, []);
+  const { viewAsRole, setViewAsRole, isSuperAdmin, allRoles, isLoading: isRoleLoading } = useUserRole();
+
+  useEffect(() => {
+    // If auth is done loading and there's no user, redirect to login
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  // While auth or role is loading, show a full-screen loader
+  if (isUserLoading || (user && isRoleLoading)) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
+  }
+  
+  // If there's no user, we are in the process of redirecting, so don't render the layout
+  if (!user) {
+      return null;
+  }
 
   return (
     <SidebarProvider>
@@ -40,7 +62,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </SidebarHeader>
         <SidebarContent>
-          <Nav pathname={pathname} userRole={viewAsRole} />
+          <Nav pathname={currentPathname} userRole={viewAsRole} />
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
