@@ -122,7 +122,7 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="primaryMinistry" className="text-right">Primary Ministry</Label>
-          <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value})}>
+          <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value === 'none' ? '' : value})}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a ministry" />
             </SelectTrigger>
@@ -134,7 +134,7 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="secondaryMinistry" className="text-right">Secondary Ministry</Label>
-          <Select value={formData.secondaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, secondaryMinistryId: value})}>
+          <Select value={formData.secondaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, secondaryMinistryId: value === 'none' ? '' : value})}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a ministry" />
             </SelectTrigger>
@@ -200,7 +200,7 @@ export default function WorkersPage() {
     });
   };
 
-  const handleSaveWorker = (workerData: Partial<Worker>) => {
+  const handleSaveWorker = async (workerData: Partial<Worker>) => {
     if (!workerData.firstName || !workerData.lastName || !workerData.email) {
       toast({
         variant: "destructive",
@@ -218,20 +218,25 @@ export default function WorkersPage() {
       dataToSave.secondaryMinistryId = '';
     }
 
-    if (selectedWorker?.id) {
-        updateDocumentNonBlocking(doc(firestore, "worker_profiles", selectedWorker.id), dataToSave);
-        toast({
-            title: "Worker Updated",
-            description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
-        });
-    } else {
-        addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
-        toast({
-            title: "Worker Added",
-            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added.`
-        });
+    try {
+      if (selectedWorker?.id) {
+          await updateDocumentNonBlocking(doc(firestore, "worker_profiles", selectedWorker.id), dataToSave);
+          toast({
+              title: "Worker Updated",
+              description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
+          });
+      } else {
+          await addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSave);
+          toast({
+              title: "Worker Added",
+              description: `${dataToSave.firstName} ${dataToSave.lastName} has been added.`
+          });
+      }
+      setIsSheetOpen(false);
+    } catch (error) {
+      console.error("Failed to save worker:", error);
+      // The error is globally handled by FirebaseErrorListener, so no need for a separate toast here.
     }
-    setIsSheetOpen(false);
   };
 
   return (
