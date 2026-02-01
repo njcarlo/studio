@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -88,6 +89,14 @@ function AttendanceChart() {
 }
 
 export default function DashboardPage() {
+  const [todaysAttendance, setTodaysAttendance] = useState("...");
+  const [upcomingBookingsCount, setUpcomingBookingsCount] = useState("...");
+
+  useEffect(() => {
+    setTodaysAttendance(Math.floor(Math.random() * 10 + 70).toString());
+    setUpcomingBookingsCount(bookings.filter(b => b.start >= new Date()).length.toString());
+  }, []);
+
   return (
     <AppLayout>
       <div className="flex flex-col gap-4">
@@ -111,14 +120,14 @@ export default function DashboardPage() {
           />
           <StatsCard
             title="Upcoming Bookings"
-            value={bookings.filter(b => b.start >= new Date()).length.toString()}
+            value={upcomingBookingsCount}
             icon={Calendar}
             description="Scheduled room reservations"
             link="/rooms"
           />
            <StatsCard
             title="Today's Attendance"
-            value={Math.floor(Math.random() * 10 + 70).toString()}
+            value={todaysAttendance}
             icon={UserCheck}
             description="People currently present"
             link="/attendance"
