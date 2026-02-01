@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { rooms, bookings as allBookings } from '@/lib/placeholder-data';
 import type { Room, Booking } from '@/lib/types';
@@ -56,6 +57,8 @@ export default function RoomDisplayPage() {
     const now = new Date();
     const currentBooking = todaysBookings.find(b => now >= b.start && now <= b.end);
     const nextBooking = todaysBookings.find(b => now < b.start);
+    
+    const qrCodeUrl = currentBooking ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`ROOM_CHECKIN:${currentBooking.id}`)}&bgcolor=374151&color=ffffff&qzone=1` : '';
 
     return (
         <div className="min-h-screen bg-gray-900 text-white p-8 flex flex-col">
@@ -79,15 +82,27 @@ export default function RoomDisplayPage() {
                             {currentBooking ? 'Room in Use' : 'Room Available'}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="text-center">
+                    <CardContent className="flex items-center justify-center">
                         {currentBooking ? (
-                            <>
-                                <p className="text-2xl font-semibold">{currentBooking.title}</p>
-                                <p className="text-xl text-gray-300 mt-2">
-                                    {format(currentBooking.start, 'h:mm a')} - {format(currentBooking.end, 'h:mm a')}
-                                </p>
-                                <p className="text-lg text-gray-400">Booked by {currentBooking.workerName}</p>
-                            </>
+                            <div className="flex flex-col lg:flex-row items-center justify-center gap-8 p-6">
+                                <div className="text-center lg:text-left">
+                                    <p className="text-3xl font-semibold">{currentBooking.title}</p>
+                                    <p className="text-2xl text-gray-300 mt-2">
+                                        {format(currentBooking.start, 'h:mm a')} - {format(currentBooking.end, 'h:mm a')}
+                                    </p>
+                                    <p className="text-xl text-gray-400 mt-1">Booked by {currentBooking.workerName}</p>
+                                </div>
+                                <div className="flex flex-col items-center gap-2 p-4 bg-gray-700 rounded-lg">
+                                    <Image 
+                                        src={qrCodeUrl}
+                                        alt="Check-in QR Code" 
+                                        width={150} 
+                                        height={150}
+                                        className="rounded-md"
+                                    />
+                                    <p className="text-sm text-gray-300 font-semibold mt-2">Scan to Check In</p>
+                                </div>
+                            </div>
                         ) : (
                            <div className="flex flex-col items-center gap-4">
                              <DoorOpen className="h-24 w-24 text-green-400" />
