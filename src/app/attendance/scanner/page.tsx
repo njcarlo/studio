@@ -67,9 +67,9 @@ export default function AttendanceScannerPage() {
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
             <div className="absolute top-4 left-4">
                 <Button asChild variant="ghost">
-                    <Link href="/attendance">
+                    <Link href="/dashboard">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Attendance
+                        Back to App
                     </Link>
                 </Button>
             </div>

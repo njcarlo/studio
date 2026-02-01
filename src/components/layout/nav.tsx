@@ -7,6 +7,7 @@ import {
   UtensilsCrossed,
   QrCode,
   HeartHandshake,
+  ScanLine,
 } from "lucide-react";
 
 import {
@@ -27,6 +28,7 @@ const navItems: { href: string; icon: React.ElementType; label: string; roles: W
   { href: "/rooms", icon: Calendar, label: "Room Reservations", roles: allRoles },
   { href: "/meals", icon: UtensilsCrossed, label: "Mealstubs", roles: ['Admin', 'Super Admin'] },
   { href: "/attendance", icon: QrCode, label: "Attendance", roles: allRoles },
+  { href: "/attendance/scanner", icon: ScanLine, label: "Check-in Scanner", roles: allRoles },
 ];
 
 export function Nav({

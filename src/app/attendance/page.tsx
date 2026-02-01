@@ -2,10 +2,8 @@
 
 import React from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { collection, query, where } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
@@ -13,16 +11,13 @@ import {
   CardDescription,
   CardContent
 } from "@/components/ui/card";
-import { LogIn, LogOut, LoaderCircle, ScanLine } from "lucide-react";
+import { LogIn, LogOut, LoaderCircle } from "lucide-react";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { useUserRole } from "@/hooks/use-user-role";
 import { format } from "date-fns";
 
 export default function AttendancePage() {
     const firestore = useFirestore();
     const { user } = useUser();
-    const { viewAsRole } = useUserRole();
-    const canScan = viewAsRole === 'Admin' || viewAsRole === 'Super Admin';
 
     const attendanceQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -37,14 +32,6 @@ export default function AttendancePage() {
     <AppLayout>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Attendance</h1>
-        {canScan && (
-             <Button asChild>
-                <Link href="/attendance/scanner">
-                    <ScanLine className="mr-2 h-4 w-4"/>
-                    Open Scanner
-                </Link>
-            </Button>
-        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
