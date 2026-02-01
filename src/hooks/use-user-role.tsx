@@ -4,7 +4,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { doc } from 'firebase/firestore';
 import type { Worker, WorkerRole } from '@/lib/types';
 import { allRoles } from '@/components/layout/nav';
-import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useDoc, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 
 type UserRoleContextType = {
   realUserRole: WorkerRole | null;
@@ -30,7 +30,30 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<Worker>(userProfileRef);
 
-  const realUserRole = userProfile?.role || null;
+  useEffect(() => {
+    // If auth is loaded, a user is present, but their profile is not yet loading and does not exist,
+    // it means they are a new user. We'll create a default profile for them.
+    if (!isUserLoading && user && !isProfileLoading && !userProfile) {
+      const newProfile: Partial<Worker> = {
+        name: user.displayName || user.email || 'New Worker',
+        email: user.email!,
+        avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid.slice(0,5)}/100/100`,
+        role: 'Volunteer',
+        status: 'Pending Approval',
+        permissions: [],
+        phone: user.phoneNumber || ''
+      };
+
+      const workerRef = doc(firestore, 'worker_profiles', user.uid);
+      setDocumentNonBlocking(workerRef, newProfile, {}); // Non-blocking create
+    }
+  }, [user, isUserLoading, userProfile, isProfileLoading, firestore]);
+
+  // Determine the user's role, with a special override for the Super Admin email.
+  const databaseRole = userProfile?.role || null;
+  const isHardcodedSuperAdmin = user?.email === 'njcarlo@gmail.com';
+  
+  const realUserRole = isHardcodedSuperAdmin ? 'Super Admin' : databaseRole;
   const isSuperAdmin = realUserRole === 'Super Admin';
 
   // The role displayed in the UI. Defaults to the user's real role.

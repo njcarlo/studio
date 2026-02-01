@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useUser, initiateEmailSignIn } from "@/firebase";
+import { useAuth, useUser, initiateEmailSignIn, initiateEmailSignUp } from "@/firebase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -30,22 +30,32 @@ export default function LoginPage() {
       router.push("/dashboard");
     }
   }, [user, isUserLoading, router]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  
+  const validateFields = () => {
     if (!email || !password) {
       toast({
         variant: "destructive",
         title: "Missing fields",
         description: "Please enter both email and password.",
       });
-      return;
+      return false;
     }
+    return true;
+  }
+
+  const handleSignIn = () => {
+    if (!validateFields()) return;
     initiateEmailSignIn(auth, email, password);
-    // The useUser hook will detect the auth change and redirect.
-    // Error handling for login is managed by the global onAuthStateChanged listener,
-    // but for specific login failures, you might add a .catch here to show a toast.
   };
+  
+  const handleSignUp = () => {
+    if (!validateFields()) return;
+    initiateEmailSignUp(auth, email, password);
+    toast({
+        title: "Account Creation Initiated",
+        description: "Your account is being created. You will be redirected upon login.",
+    });
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -56,11 +66,11 @@ export default function LoginPage() {
           </div>
           <CardTitle className="font-headline text-2xl">COGApp Login</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Enter your email below to login or sign up
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="grid gap-4">
+          <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -90,10 +100,13 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full">
+            <Button onClick={handleSignIn} className="w-full">
               Login
             </Button>
-          </form>
+            <Button onClick={handleSignUp} variant="outline" className="w-full">
+              Sign Up
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
