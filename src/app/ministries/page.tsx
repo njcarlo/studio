@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -87,7 +88,9 @@ const MinistryForm = ({ workers, departments, onSave }: { workers: Worker[], dep
         <SheetClose asChild>
           <Button type="button" variant="secondary">Cancel</Button>
         </SheetClose>
-        <Button onClick={handleSave}><SheetClose>Save Ministry</SheetClose></Button>
+        <SheetClose asChild>
+            <Button onClick={handleSave}>Save Ministry</Button>
+        </SheetClose>
       </SheetFooter>
     </div>
   );
