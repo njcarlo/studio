@@ -54,7 +54,8 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       const workerRef = doc(firestore, 'worker_profiles', user.uid);
       setDocumentNonBlocking(workerRef, newProfile, {}); // Non-blocking create
     }
-  }, [user, isUserLoading, userProfile, isProfileLoading, firestore]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isUserLoading, isProfileLoading, firestore]);
 
   // Determine the user's role, with a special override for the Super Admin email.
   const databaseRole = userProfile?.role || null;
