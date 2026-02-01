@@ -26,7 +26,7 @@ const navItems: { href: string; icon: React.ElementType; label: string; roles: W
   { href: "/approvals", icon: CheckSquare, label: "Approvals", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
   { href: "/rooms", icon: Calendar, label: "Room Reservations", roles: allRoles },
   { href: "/meals", icon: UtensilsCrossed, label: "Mealstubs", roles: ['Admin', 'Super Admin'] },
-  { href: "/attendance", icon: QrCode, label: "Attendance", roles: ['Admin', 'Super Admin'] },
+  { href: "/attendance", icon: QrCode, label: "Attendance", roles: allRoles },
 ];
 
 export function Nav({

@@ -100,7 +100,7 @@ service cloud.firestore {
     match /attendance_records/{recordId} {
       allow get: if isExistingDocOwner() || isAdmin();
       allow list: if isAdmin(); // Admins can see all records
-      allow create: if isCreatingOwnDoc();
+      allow create: if isCreatingOwnDoc() || isAdmin();
       allow update, delete: if isExistingDocOwner() || isAdmin();
     }
 
