@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ScanLine, ArrowLeft, LoaderCircle, User, CameraReverse } from "lucide-react";
+import { ScanLine, ArrowLeft, LoaderCircle, User, SwitchCamera } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import type { Worker } from "@/lib/types";
@@ -230,7 +230,7 @@ export default function QRScannerPage() {
                                 {devices.length > 1 && (
                                     <div className="absolute bottom-4 right-4">
                                         <Button size="icon" onClick={handleSwitchCamera}>
-                                            <CameraReverse className="h-5 w-5" />
+                                            <SwitchCamera className="h-5 w-5" />
                                             <span className="sr-only">Switch Camera</span>
                                         </Button>
                                     </div>
