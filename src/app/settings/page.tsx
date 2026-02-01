@@ -43,7 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Ministry, Room, Equipment, Worker, Department } from "@/lib/types";
+import type { Ministry, Room, Equipment, Worker, Department, Location } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -119,14 +119,14 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
   );
 };
 
-const RoomForm = ({ room, equipment, onSave, onClose }: { room?: Partial<Room> | null, equipment: Equipment[], onSave: (data: Partial<Room>) => void, onClose: () => void }) => {
-    const [formData, setFormData] = useState<Partial<Room>>({});
+const RoomForm = ({ room, equipment, locations, onSave, onClose }: { room?: Partial<Room> | null, equipment: Equipment[], locations: Location[], onSave: (data: Partial<Room>) => void, onClose: () => void }) => {
+    const [formData, setFormData] = useState<Partial<Room>>({ name: '', capacity: 0, equipment: [], locationId: '' });
     
     useEffect(() => {
         if (room) {
             setFormData(room);
         } else {
-            setFormData({ name: '', capacity: 0, equipment: [] });
+            setFormData({ name: '', capacity: 0, equipment: [], locationId: '' });
         }
     }, [room]);
 
@@ -154,6 +154,15 @@ const RoomForm = ({ room, equipment, onSave, onClose }: { room?: Partial<Room> |
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="room-name" className="text-right">Name</Label>
                     <Input id="room-name" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="col-span-3" />
+                </div>
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="room-location" className="text-right">Location</Label>
+                    <Select value={formData.locationId} onValueChange={(value) => setFormData({ ...formData, locationId: value })}>
+                        <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a location" /></SelectTrigger>
+                        <SelectContent>
+                            {locations.map(loc => <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="room-capacity" className="text-right">Capacity</Label>
@@ -205,6 +214,32 @@ const EquipmentForm = ({ onSave, onClose }: { onSave: (name: string) => void, on
     )
 }
 
+const LocationForm = ({ location, onSave, onClose }: { location?: Partial<Location> | null; onSave: (data: Partial<Location>) => void; onClose: () => void }) => {
+    const [name, setName] = useState(location?.name || '');
+    const handleSave = () => {
+        if (!name) return;
+        onSave({ id: location?.id, name });
+    }
+    return (
+        <>
+            <SheetHeader>
+                <SheetTitle className="font-headline">{location?.id ? 'Edit Location' : 'Add New Location'}</SheetTitle>
+                <SheetDescription>Add a new building or location where rooms can be found.</SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="loc-name" className="text-right">Name</Label>
+                    <Input id="loc-name" value={name} onChange={e => setName(e.target.value)} className="col-span-3" placeholder="e.g., Genbless Building" />
+                </div>
+            </div>
+            <SheetFooter>
+                <SheetClose asChild><Button variant="secondary">Cancel</Button></SheetClose>
+                <Button onClick={handleSave}>Save Location</Button>
+            </SheetFooter>
+        </>
+    )
+}
+
 
 export default function SettingsPage() {
     const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
@@ -223,6 +258,9 @@ export default function SettingsPage() {
 
     const equipmentRef = useMemoFirebase(() => collection(firestore, "equipment"), [firestore]);
     const { data: equipment, isLoading: equipmentLoading } = useCollection<Equipment>(equipmentRef);
+    
+    const locationsRef = useMemoFirebase(() => collection(firestore, "locations"), [firestore]);
+    const { data: locations, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
 
     // Form / Sheet states
     const [sheetContent, setSheetContent] = useState<React.ReactNode | null>(null);
@@ -290,8 +328,8 @@ export default function SettingsPage() {
         }
     };
     const openRoomForm = (room?: Room) => {
-        if (!equipment) return;
-        setSheetContent(<RoomForm key={room?.id || 'new'} room={room} equipment={equipment} onSave={handleSaveRoom} onClose={closeSheet} />);
+        if (!equipment || !locations) return;
+        setSheetContent(<RoomForm key={room?.id || 'new'} room={room} equipment={equipment} locations={locations} onSave={handleSaveRoom} onClose={closeSheet} />);
         setIsSheetOpen(true);
     };
 
@@ -324,7 +362,38 @@ export default function SettingsPage() {
         setIsSheetOpen(true);
     };
 
-    const isLoading = isRoleLoading || ministriesLoading || workersLoading || roomsLoading || equipmentLoading;
+    // Handlers for Locations
+    const handleSaveLocation = async (locationData: Partial<Location>) => {
+        try {
+            const { id, ...data } = locationData;
+            if (id) {
+                await updateDocumentNonBlocking(doc(firestore, "locations", id), data);
+                toast({ title: "Location Updated" });
+            } else if (data.name) {
+                await addDocumentNonBlocking(collection(firestore, "locations"), data);
+                toast({ title: "Location Added" });
+            }
+            closeSheet();
+        } catch (error) {
+            console.error("Failed to save location:", error);
+            toast({ variant: "destructive", title: "Save Failed", description: "Could not save location." });
+        }
+    };
+    const handleDeleteLocation = async (id: string) => {
+        try {
+            await deleteDocumentNonBlocking(doc(firestore, "locations", id));
+            toast({ title: "Location Deleted" });
+        } catch (error) {
+            console.error("Failed to delete location:", error);
+            toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete location." });
+        }
+    };
+    const openLocationForm = (location?: Location) => {
+        setSheetContent(<LocationForm key={location?.id || 'new-location'} location={location} onSave={handleSaveLocation} onClose={closeSheet} />);
+        setIsSheetOpen(true);
+    };
+
+    const isLoading = isRoleLoading || ministriesLoading || workersLoading || roomsLoading || equipmentLoading || locationsLoading;
     
     if (isLoading) {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
@@ -346,6 +415,7 @@ export default function SettingsPage() {
                     <TabsTrigger value="ministries">Ministries</TabsTrigger>
                     <TabsTrigger value="rooms">Rooms</TabsTrigger>
                     <TabsTrigger value="equipment">Equipment</TabsTrigger>
+                    <TabsTrigger value="locations">Locations</TabsTrigger>
                 </TabsList>
                 <TabsContent value="ministries">
                     <Card>
@@ -387,11 +457,12 @@ export default function SettingsPage() {
                         </CardHeader>
                         <CardContent>
                              <Table>
-                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Capacity</TableHead><TableHead>Equipment</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Location</TableHead><TableHead>Capacity</TableHead><TableHead>Equipment</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                 <TableBody>
                                     {rooms?.map(room => (
                                         <TableRow key={room.id}>
                                             <TableCell className="font-medium">{room.name}</TableCell>
+                                            <TableCell>{locations?.find(l => l.id === room.locationId)?.name}</TableCell>
                                             <TableCell>{room.capacity}</TableCell>
                                             <TableCell>{room.equipment.join(', ')}</TableCell>
                                             <TableCell className="text-right">
@@ -423,6 +494,33 @@ export default function SettingsPage() {
                                             <TableCell className="font-medium">{item.name}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteEquipment(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                 <TabsContent value="locations">
+                    <Card>
+                         <CardHeader className="flex flex-row items-center justify-between">
+                             <div>
+                                <CardTitle className="font-headline">Manage Locations</CardTitle>
+                                <CardDescription>Add or remove buildings where rooms are located.</CardDescription>
+                            </div>
+                            <Button size="sm" onClick={() => openLocationForm()}><PlusCircle className="h-4 w-4 mr-2" />Add Location</Button>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {locations?.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-medium">{item.name}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => openLocationForm(item)}><Pencil className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteLocation(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}

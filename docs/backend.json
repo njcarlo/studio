@@ -119,6 +119,10 @@
           "type": "string",
           "description": "The name of the room."
         },
+        "locationId": {
+          "type": "string",
+          "description": "The ID of the location (building) where the room is situated."
+        },
         "capacity": {
           "type": "number",
           "description": "The maximum capacity of the room."
@@ -133,8 +137,8 @@
       },
       "required": [
         "name",
-        "capacity",
-        "equipment"
+        "locationId",
+        "capacity"
       ]
     },
     "Equipment": {
@@ -283,6 +287,21 @@
         }
       },
       "required": ["name", "leaderId", "department"]
+    },
+    "Location": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Location",
+      "type": "object",
+      "description": "Represents a physical location or building.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the location, e.g., 'Genbless Building'."
+        }
+      },
+      "required": [
+        "name"
+      ]
     }
   },
   "auth": {
@@ -371,8 +390,18 @@
           },
           "description": "Stores information about ministries."
         }
+      },
+      {
+        "path": "/locations/{locationId}",
+        "definition": {
+          "entityName": "Location",
+          "schema": {
+            "$ref": "#/entities/Location"
+          },
+          "description": "Stores information about physical locations or buildings."
+        }
       }
     ],
-    "reasoning": "The Firestore data structure has been updated to better support the COGApp's features. A top-level `/approvals` collection has been added to centralize all approval workflows, simplifying the logic for the approvals page. A new top-level `/ministries` collection has been introduced to store ministry data, now including a 'department' field. Worker profiles remain as a top-level collection where the document ID is the worker's authentication UID, which is a robust way to link authentication with user data and secure it with ownership-based rules."
+    "reasoning": "The Firestore data structure has been updated to better support the COGApp's features. A top-level `/approvals` collection has been added to centralize all approval workflows, simplifying the logic for the approvals page. A new top-level `/ministries` collection has been introduced to store ministry data, now including a 'department' field. A new `/locations` collection stores building information, and the `/rooms` collection now links to a location via `locationId`. Worker profiles remain as a top-level collection where the document ID is the worker's authentication UID, which is a robust way to link authentication with user data and secure it with ownership-based rules."
   }
 }

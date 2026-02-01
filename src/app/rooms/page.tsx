@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from "react";
@@ -6,7 +7,7 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PlusCircle, Users, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon } from "lucide-react";
+import { PlusCircle, Users, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -31,7 +32,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Booking, Room, Worker } from "@/lib/types";
+import type { Booking, Room, Worker, Location } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp, Timestamp } from "firebase/firestore";
@@ -186,6 +187,9 @@ export default function RoomsPage() {
     const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
+    const locationsRef = useMemoFirebase(() => collection(firestore, "locations"), [firestore]);
+    const { data: locations, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
+
     const bookingsRef = useMemoFirebase(() => rooms?.[0]?.id ? collection(firestore, 'rooms', rooms[0].id, 'reservations') : null, [firestore, rooms]);
     const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(bookingsRef);
 
@@ -204,7 +208,7 @@ export default function RoomsPage() {
         });
     };
 
-    const isLoading = roomsLoading || bookingsLoading;
+    const isLoading = roomsLoading || bookingsLoading || locationsLoading;
     
     return (
         <AppLayout>
@@ -246,11 +250,14 @@ export default function RoomsPage() {
                             <Card>
                                 <CardHeader><CardTitle className="font-headline">Available Rooms</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
-                                    {rooms.map(room => (
+                                    {rooms.map(room => {
+                                        const location = locations?.find(l => l.id === room.locationId);
+                                        return (
                                         <div key={room.id} className="p-3 border rounded-lg">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <h3 className="font-semibold">{room.name}</h3>
+                                                    {location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/>{location.name}</p>}
                                                     <p className="text-sm text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" /> Capacity: {room.capacity}</p>
                                                 </div>
                                                 {isSuperAdmin && <Button asChild variant="outline" size="sm"><Link href={`/rooms/${room.id}/display`}><Monitor className="mr-2 h-4 w-4"/>Display</Link></Button>}
@@ -262,7 +269,7 @@ export default function RoomsPage() {
                                                 })}
                                             </div>
                                         </div>
-                                    ))}
+                                    )})}
                                 </CardContent>
                             </Card>
                         </div>

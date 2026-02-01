@@ -90,6 +90,11 @@ service cloud.firestore {
       }
     }
 
+    match /locations/{locationId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /mealstubs/{mealstubId} {
       allow get: if isExistingDocOwner() || isAdmin();
       allow list: if isAdmin();
