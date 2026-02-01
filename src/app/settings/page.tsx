@@ -68,6 +68,17 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
     }
   }, [ministry]);
 
+  const handleMemberChange = (memberId: string, checked: boolean) => {
+    const currentMemberIds = formData.memberIds || [];
+    if (checked) {
+        if (!currentMemberIds.includes(memberId)) {
+            setFormData({ ...formData, memberIds: [...currentMemberIds, memberId] });
+        }
+    } else {
+        setFormData({ ...formData, memberIds: currentMemberIds.filter(id => id !== memberId) });
+    }
+  };
+
   const handleSave = () => {
     if (!formData.name || !formData.leaderId) {
         toast({
@@ -110,6 +121,21 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
             <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a leader" /></SelectTrigger>
             <SelectContent>{workers.map(w => <SelectItem key={w.id} value={`${w.id}`}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}</SelectContent>
           </Select>
+        </div>
+        <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right pt-2">Members</Label>
+            <div className="col-span-3 space-y-2 max-h-48 overflow-y-auto border p-3 rounded-md">
+                {workers.map(w => (
+                    <div key={w.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                            id={`member-${w.id}`}
+                            checked={formData.memberIds?.includes(w.id)}
+                            onCheckedChange={(checked) => handleMemberChange(w.id, !!checked)}
+                        />
+                        <label htmlFor={`member-${w.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{`${w.firstName} ${w.lastName}`}</label>
+                    </div>
+                ))}
+            </div>
         </div>
       </div>
        <SheetFooter>
