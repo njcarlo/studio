@@ -138,7 +138,7 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
             </div>
             <div className="space-y-2">
                 <Label>Date</Label>
-                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                 <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                     <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
@@ -340,7 +340,9 @@ export default function RoomsPage() {
 
     }, [bookings]);
 
-    const dayBookings = (selectedDate && bookingsByDate.get(format(selectedDate, 'yyyy-MM-dd'))) || [];
+    const dayBookings = useMemo(() => {
+        return (selectedDate && bookingsByDate.get(format(selectedDate, 'yyyy-MM-dd'))) || []
+    }, [selectedDate, bookingsByDate]);
     
     return (
         <AppLayout>
