@@ -64,7 +64,7 @@ service cloud.firestore {
     match /worker_profiles/{workerId} {
       allow get: if isSignedIn();
       allow list: if isAdmin(); // Admins can list workers for management purposes.
-      allow create: if isWorkerOwner(workerId);
+      allow create: if isWorkerOwner(workerId) || isAdmin();
       allow update: if isWorkerOwner(workerId) || isAdmin();
       allow delete: if isSuperAdmin();
     }
