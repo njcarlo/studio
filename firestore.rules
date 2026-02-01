@@ -45,11 +45,13 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       // Hardcode a specific email as a Super Admin for bootstrapping purposes.
-      return isSignedIn() && (getRole(request.auth.uid) == 'Super Admin' || request.auth.token.email == 'njcarlo@gmail.com');
+      // Check email first to short-circuit the get() call if possible.
+      return isSignedIn() && (request.auth.token.email == 'njcarlo@gmail.com' || getRole(request.auth.uid) == 'Super Admin');
     }
 
     function isAdmin() {
-      return isSignedIn() && (getRole(request.auth.uid) == 'Admin' || isSuperAdmin());
+      // Check for Super Admin first to leverage the short-circuiting in isSuperAdmin().
+      return isSignedIn() && (isSuperAdmin() || getRole(request.auth.uid) == 'Admin');
     }
 
      function canManageMinistries() {
