@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PlusCircle, Users, Tv, Projector, Mic } from "lucide-react";
+import { PlusCircle, Users, Tv, Projector, Mic, Monitor } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -30,6 +31,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { rooms, bookings as initialBookings } from "@/lib/placeholder-data";
 import type { Booking, Room } from "@/lib/types";
+import { useUserRole } from "@/hooks/use-user-role";
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
   Projector: Projector,
@@ -111,6 +113,7 @@ const BookingForm = ({ onSave }: { onSave: (booking: any) => void }) => {
 export default function RoomsPage() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [bookings, setBookings] = useState(initialBookings);
+    const { isSuperAdmin } = useUserRole();
 
     const handleSaveBooking = (bookingData: any) => {
         // Mock save
@@ -167,8 +170,20 @@ export default function RoomsPage() {
                         <CardContent className="space-y-4">
                             {rooms.map(room => (
                                 <div key={room.id} className="p-3 border rounded-lg">
-                                    <h3 className="font-semibold">{room.name}</h3>
-                                    <p className="text-sm text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" /> Capacity: {room.capacity}</p>
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <h3 className="font-semibold">{room.name}</h3>
+                                        <p className="text-sm text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" /> Capacity: {room.capacity}</p>
+                                      </div>
+                                      {isSuperAdmin && (
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href={`/rooms/${room.id}/display`}>
+                                                <Monitor className="mr-2 h-4 w-4"/>
+                                                Display
+                                            </Link>
+                                        </Button>
+                                      )}
+                                    </div>
                                     <div className="flex flex-wrap gap-2 mt-2">
                                         {room.equipment.map(item => {
                                             const Icon = equipmentIcons[item] || Users;

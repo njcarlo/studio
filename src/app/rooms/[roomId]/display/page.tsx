@@ -1,0 +1,132 @@
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { rooms, bookings as allBookings } from '@/lib/placeholder-data';
+import type { Room, Booking } from '@/lib/types';
+import { format, isToday } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, Clock, DoorOpen, VideoOff } from 'lucide-react';
+
+const ClockComponent = () => {
+    const [time, setTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div className="text-5xl font-bold font-mono">
+            {format(time, 'h:mm:ss a')}
+        </div>
+    );
+};
+
+export default function RoomDisplayPage() {
+    const params = useParams();
+    const roomId = params.roomId as string;
+    const [room, setRoom] = useState<Room | null>(null);
+    const [todaysBookings, setTodaysBookings] = useState<Booking[]>([]);
+
+    useEffect(() => {
+        const currentRoom = rooms.find(r => r.id === roomId);
+        if (currentRoom) {
+            setRoom(currentRoom);
+        }
+
+        const filteredBookings = allBookings
+            .filter(b => b.roomId === roomId && isToday(b.start) && b.status === 'Approved')
+            .sort((a, b) => a.start.getTime() - b.start.getTime());
+        setTodaysBookings(filteredBookings);
+
+    }, [roomId]);
+
+
+    if (!room) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+                <div className="text-center">
+                    <h1 className="text-4xl font-bold">Room Not Found</h1>
+                </div>
+            </div>
+        )
+    }
+
+    const now = new Date();
+    const currentBooking = todaysBookings.find(b => now >= b.start && now <= b.end);
+    const nextBooking = todaysBookings.find(b => now < b.start);
+
+    return (
+        <div className="min-h-screen bg-gray-900 text-white p-8 flex flex-col">
+            <header className="flex justify-between items-start mb-8">
+                <div>
+                    <h1 className="text-6xl font-bold font-headline">{room.name}</h1>
+                    <p className="text-2xl text-gray-400 flex items-center gap-2 mt-2">
+                        <Calendar className="h-6 w-6" />
+                        {format(new Date(), 'EEEE, MMMM do')}
+                    </p>
+                </div>
+                <div className="text-right">
+                    <ClockComponent />
+                </div>
+            </header>
+
+            <main className="flex-grow grid grid-cols-3 gap-8">
+                <Card className={`col-span-2 bg-gray-800 border-2 border-gray-700 text-white flex flex-col justify-center items-center ${currentBooking ? 'border-red-500' : 'border-green-500'}`}>
+                    <CardHeader className="items-center text-center">
+                        <CardTitle className="text-4xl font-headline mb-4">
+                            {currentBooking ? 'Room in Use' : 'Room Available'}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                        {currentBooking ? (
+                            <>
+                                <p className="text-2xl font-semibold">{currentBooking.title}</p>
+                                <p className="text-xl text-gray-300 mt-2">
+                                    {format(currentBooking.start, 'h:mm a')} - {format(currentBooking.end, 'h:mm a')}
+                                </p>
+                                <p className="text-lg text-gray-400">Booked by {currentBooking.workerName}</p>
+                            </>
+                        ) : (
+                           <div className="flex flex-col items-center gap-4">
+                             <DoorOpen className="h-24 w-24 text-green-400" />
+                             {nextBooking ? (
+                                 <p className="text-xl text-gray-300">Next booking at {format(nextBooking.start, 'h:mm a')}</p>
+                             ) : (
+                                <p className="text-xl text-gray-300">No more bookings for today</p>
+                             )}
+                           </div>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700 text-white">
+                    <CardHeader>
+                        <CardTitle className="font-headline text-3xl">Today's Schedule</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {todaysBookings.length > 0 ? (
+                             <div className="space-y-4">
+                                {todaysBookings.map(booking => (
+                                    <div key={booking.id} className={`p-4 rounded-lg flex items-start gap-4 ${now >= booking.start && now <= booking.end ? 'bg-red-900/50' : now > booking.end ? 'bg-gray-700 opacity-60' : 'bg-gray-700/50'}`}>
+                                        <Clock className="h-5 w-5 mt-1 text-gray-400 flex-shrink-0" />
+                                        <div>
+                                            <p className="font-semibold">{booking.title}</p>
+                                            <p className="text-sm text-gray-300">{format(booking.start, 'h:mm a')} - {format(booking.end, 'h:mm a')}</p>
+                                            <p className="text-xs text-gray-400">by {booking.workerName}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 py-10">
+                                <VideoOff className="h-16 w-16 mb-4" />
+                                <p>No bookings for today.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
+        </div>
+    );
+}
