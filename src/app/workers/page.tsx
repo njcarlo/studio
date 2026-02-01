@@ -279,6 +279,7 @@ export default function WorkersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Worker ID</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Contact</TableHead>
@@ -290,7 +291,7 @@ export default function WorkersPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={6} className="text-center">
                   <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
                 </TableCell>
               </TableRow>
@@ -306,6 +307,7 @@ export default function WorkersPage() {
                     {`${worker.firstName} ${worker.lastName}`}
                   </div>
                 </TableCell>
+                <TableCell className="font-mono text-xs">{worker.id}</TableCell>
                 <TableCell>{worker.role}</TableCell>
                 <TableCell>
                    <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
