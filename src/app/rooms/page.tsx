@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useState } from "react";
@@ -35,7 +33,7 @@ import { cn } from "@/lib/utils";
 import type { Booking, Room, Worker, Location } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase, useDoc } from "@/firebase";
-import { collection, doc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
@@ -177,26 +175,73 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
   );
 };
 
+const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined }) => {
+    if (bookings.length === 0) {
+        return <p className="text-muted-foreground text-center py-8">No bookings for this day.</p>;
+    }
+
+    const getWorkerName = (workerId: string) => {
+        const worker = workers?.find(w => w.id === workerId);
+        return worker ? `${worker.firstName} ${worker.lastName}` : 'Unknown';
+    }
+
+    const getRoomName = (roomId: string) => {
+        return rooms?.find(r => r.id === roomId)?.name || 'Unknown Room';
+    }
+
+    return (
+        <div className="space-y-4">
+            {bookings.sort((a,b) => (a.start as any).seconds - (b.start as any).seconds).map(booking => {
+                const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : booking.start;
+                const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : booking.end;
+
+                return (
+                    <div key={booking.id} className="flex items-start space-x-4 p-3 border rounded-lg">
+                         <div className={`p-2 rounded-full mt-1 ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            <CalendarIcon className="h-4 w-4" />
+                        </div>
+                        <div>
+                            <p className="font-semibold">{booking.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {getRoomName(booking.roomId)} | {format(bookingStart, 'p')} - {format(bookingEnd, 'p')}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                by {getWorkerName((booking as any).workerProfileId)}
+                            </p>
+                        </div>
+                        <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{booking.status}</Badge>
+                    </div>
+                )
+            })}
+        </div>
+    );
+};
+
 
 export default function RoomsPage() {
     const { isSuperAdmin } = useUserRole();
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
+    
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'worker_profiles', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<Worker>(userProfileRef);
-
-
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
 
     const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
     const locationsRef = useMemoFirebase(() => collection(firestore, "locations"), [firestore]);
     const { data: locations, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
+    
+    const workersRef = useMemoFirebase(() => collection(firestore, 'worker_profiles'), [firestore]);
+    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
-    const bookingsRef = useMemoFirebase(() => rooms?.[0]?.id ? collection(firestore, 'rooms', rooms[0].id, 'reservations') : null, [firestore, rooms]);
-    const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(bookingsRef);
+    const reservationsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
+    const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(reservationsQuery);
+
 
     const handleSaveBooking = async (bookingData: any): Promise<boolean> => {
         if (!bookingData.roomId || !userProfile) {
@@ -248,7 +293,8 @@ export default function RoomsPage() {
         }
     };
 
-    const isLoading = roomsLoading || bookingsLoading || locationsLoading;
+    const isLoading = roomsLoading || bookingsLoading || locationsLoading || workersLoading;
+    const dayBookings = bookings?.filter(b => b.start && selectedDate && format((b.start as any).toDate(), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')) || [];
     
     return (
         <AppLayout>
@@ -262,23 +308,26 @@ export default function RoomsPage() {
             <div className="mt-4 space-y-4">
                 {isLoading && <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>}
                 {!isLoading && rooms && (
-                    <div className="grid md:grid-cols-3 gap-6">
-                        <Card className="md:col-span-2">
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="font-headline">Calendar</CardTitle>
                                 <CardDescription>Click a date to see bookings.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <Calendar 
-                                    mode="single" className="p-0"
-                                    classNames={{ day: "h-12 w-12 text-base md:h-16 md:w-16 md:text-lg", head_cell: "w-12 md:w-16" }}
+                                    mode="single"
+                                    selected={selectedDate}
+                                    onSelect={setSelectedDate}
+                                    className="p-0"
+                                    classNames={{ day: "h-12 w-12 text-base", head_cell: "w-12" }}
                                     components={{ DayContent: ({ date }) => {
-                                        const dayBookings = bookings?.filter(b => b.start && format((b.start as any).toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
+                                        const bookingsOnDay = bookings?.filter(b => b.start && format((b.start as any).toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
                                         return <div className="relative h-full w-full flex items-center justify-center">
                                             <span>{date.getDate()}</span>
-                                            {dayBookings && dayBookings.length > 0 && 
+                                            {bookingsOnDay && bookingsOnDay.length > 0 && 
                                                 <div className="absolute bottom-1 w-full flex justify-center gap-0.5">
-                                                    {dayBookings.slice(0, 3).map(b => <div key={b.id} className="h-1.5 w-1.5 rounded-full bg-primary" />)}
+                                                    {bookingsOnDay.slice(0, 3).map(b => <div key={b.id} className="h-1.5 w-1.5 rounded-full bg-primary" />)}
                                                 </div>
                                             }
                                         </div>;
@@ -287,6 +336,12 @@ export default function RoomsPage() {
                             </CardContent>
                         </Card>
                         <div className="space-y-6">
+                             <Card>
+                                <CardHeader><CardTitle className="font-headline">Bookings for {selectedDate ? format(selectedDate, 'PPP') : 'Today'}</CardTitle></CardHeader>
+                                <CardContent>
+                                    <BookingsList bookings={dayBookings} rooms={rooms} workers={workers} />
+                                </CardContent>
+                            </Card>
                             <Card>
                                 <CardHeader><CardTitle className="font-headline">Available Rooms</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
