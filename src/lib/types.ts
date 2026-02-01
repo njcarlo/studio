@@ -18,6 +18,13 @@ export type Room = {
   equipment: string[];
 };
 
+export type Equipment = {
+  id: string;
+  name: string;
+  description?: string;
+  available: boolean;
+}
+
 export type Booking = {
   id: string;
   roomId: string;
