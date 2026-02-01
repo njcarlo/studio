@@ -24,10 +24,10 @@ export const bookings: Booking[] = [
 ];
 
 export const mealStubs: MealStub[] = [
-  { id: 'M1', workerId: '1', workerName: 'John Doe', date: new Date(), type: 'Lunch', status: 'Issued' },
-  { id: 'M2', workerId: '2', workerName: 'Jane Smith', date: new Date(), type: 'Lunch', status: 'Claimed' },
-  { id: 'M3', workerId: '2', workerName: 'Jane Smith', date: new Date(new Date().setDate(new Date().getDate() - 1)), type: 'Dinner', status: 'Claimed' },
-  { id: 'M4', workerId: '3', workerName: 'Peter Jones', date: new Date(), type: 'Lunch', status: 'Issued' },
+  { id: 'M1', workerId: '1', workerName: 'John Doe', date: new Date(), status: 'Issued' },
+  { id: 'M2', workerId: '2', workerName: 'Jane Smith', date: new Date(), status: 'Claimed' },
+  { id: 'M3', workerId: '2', workerName: 'Jane Smith', date: new Date(new Date().setDate(new Date().getDate() - 1)), status: 'Claimed' },
+  { id: 'M4', workerId: '3', workerName: 'Peter Jones', date: new Date(), status: 'Issued' },
 ];
 
 export const approvalRequests: ApprovalRequest[] = [

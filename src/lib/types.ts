@@ -34,7 +34,6 @@ export type MealStub = {
   workerId: string;
   workerName: string;
   date: Date;
-  type: 'Breakfast' | 'Lunch' | 'Dinner';
   status: 'Issued' | 'Claimed';
 };
 
