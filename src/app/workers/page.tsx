@@ -148,9 +148,7 @@ const WorkerForm = ({ worker, ministries, onSave }: { worker: Partial<Worker> | 
         <SheetClose asChild>
           <Button type="button" variant="secondary">Cancel</Button>
         </SheetClose>
-        <SheetClose asChild>
-          <Button onClick={handleSave}>Save changes</Button>
-        </SheetClose>
+        <Button onClick={handleSave}>Save changes</Button>
       </SheetFooter>
     </div>
   );
