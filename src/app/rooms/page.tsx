@@ -272,6 +272,68 @@ const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms
     )
 };
 
+const RoomScheduleList = ({ bookings, workers }: { bookings: Booking[], workers: Worker[] | undefined }) => {
+    const getWorkerName = (workerId: string) => {
+        const worker = workers?.find(w => w.id === workerId);
+        return worker ? `${worker.firstName} ${worker.lastName}` : 'Unknown';
+    };
+
+    const bookingsByDate = useMemo(() => {
+        const grouped = new Map<string, Booking[]>();
+        bookings.forEach(booking => {
+            if (!booking.start) return;
+            const dateKey = format((booking.start as any).toDate(), 'yyyy-MM-dd');
+            const dayBookings = grouped.get(dateKey) || [];
+            dayBookings.push(booking);
+            grouped.set(dateKey, dayBookings);
+        });
+        return grouped;
+    }, [bookings]);
+
+    const sortedDates = useMemo(() => Array.from(bookingsByDate.keys()).sort(), [bookingsByDate]);
+
+    if (bookings.length === 0) {
+        return <p className="text-muted-foreground text-center py-8">No upcoming bookings for this room.</p>;
+    }
+
+    return (
+        <div className="space-y-6">
+            {sortedDates.map(date => {
+                const dayBookings = bookingsByDate.get(date)!;
+                return (
+                    <div key={date}>
+                        <h4 className="font-semibold mb-3 flex items-center gap-2 text-lg">
+                           {format(new Date(date + 'T00:00:00'), 'eeee, MMMM d')}
+                        </h4>
+                        <div className="space-y-3 border-l-2 pl-6 ml-2">
+                            {dayBookings.map(booking => {
+                                const bookingStart = (booking.start as any).toDate();
+                                const bookingEnd = (booking.end as any).toDate();
+
+                                return (
+                                    <div key={booking.id} className="flex items-start space-x-4 relative">
+                                        <div className="absolute -left-[2.1rem] top-2 h-4 w-4 rounded-full bg-primary border-4 border-background" />
+                                        <div className="flex-grow">
+                                            <p className="font-semibold">{booking.title}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {format(bookingStart, 'p')} - {format(bookingEnd, 'p')}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                by {getWorkerName((booking as any).workerProfileId)}
+                                            </p>
+                                        </div>
+                                        <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{booking.status}</Badge>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
+    )
+};
+
 
 export default function RoomsPage() {
     const { isSuperAdmin } = useUserRole();
@@ -281,6 +343,8 @@ export default function RoomsPage() {
     
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState("schedule");
+    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'worker_profiles', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<Worker>(userProfileRef);
@@ -347,6 +411,11 @@ export default function RoomsPage() {
             return false;
         }
     };
+    
+    const handleViewRoomSchedule = (room: Room) => {
+        setSelectedRoom(room);
+        setActiveTab('room-schedule');
+    };
 
     const isLoading = roomsLoading || bookingsLoading || locationsLoading || workersLoading;
 
@@ -371,6 +440,22 @@ export default function RoomsPage() {
         if (!selectedDate || !bookingsByDate) return [];
         return bookingsByDate.get(format(selectedDate, 'yyyy-MM-dd')) || []
     }, [selectedDate, bookingsByDate]);
+    
+    const roomBookings = useMemo(() => {
+        if (!selectedRoom || !bookings) return [];
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return bookings
+            .filter(b => {
+                if (b.roomId !== selectedRoom.id) return false;
+                const bookingEndDate = (b.end as any)?.toDate();
+                if (!bookingEndDate) return false;
+                return bookingEndDate >= today;
+            })
+            .sort((a, b) => (a.start as any).seconds - (b.start as any).seconds);
+    }, [selectedRoom, bookings]);
     
     return (
         <AppLayout>
@@ -410,10 +495,16 @@ export default function RoomsPage() {
                             </CardContent>
                         </Card>
                         
-                        <Tabs defaultValue="schedule" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2">
+                        <Tabs value={activeTab} onValueChange={(tab) => {
+                                if (tab !== 'room-schedule') setSelectedRoom(null);
+                                setActiveTab(tab);
+                            }} className="w-full">
+                            <TabsList className="grid w-full grid-cols-3">
                                 <TabsTrigger value="schedule">Schedule for {selectedDate ? format(selectedDate, 'MMM d') : 'selected day'}</TabsTrigger>
                                 <TabsTrigger value="rooms">All Rooms</TabsTrigger>
+                                <TabsTrigger value="room-schedule" disabled={!selectedRoom}>
+                                    {selectedRoom ? `${selectedRoom.name}` : 'Room Schedule'}
+                                </TabsTrigger>
                             </TabsList>
                             <TabsContent value="schedule" className="mt-4">
                                 <Card>
@@ -439,7 +530,10 @@ export default function RoomsPage() {
                                                         {location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/>{location.name}</p>}
                                                         <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Users className="h-4 w-4" /> Capacity: {room.capacity}</p>
                                                     </div>
-                                                    {isSuperAdmin && <Button asChild variant="outline" size="sm"><Link href={`/rooms/${room.id}/display`}><Monitor className="mr-2 h-4 w-4"/>Display</Link></Button>}
+                                                     <div className="flex items-center gap-2">
+                                                        <Button variant="outline" size="sm" onClick={() => handleViewRoomSchedule(room)}><CalendarIcon className="mr-2 h-4 w-4"/>Schedule</Button>
+                                                        {isSuperAdmin && <Button asChild variant="outline" size="sm"><Link href={`/rooms/${room.id}/display`}><Monitor className="mr-2 h-4 w-4"/>Display</Link></Button>}
+                                                    </div>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 mt-3">
                                                     {room.equipment.map(item => {
@@ -452,6 +546,21 @@ export default function RoomsPage() {
                                     </CardContent>
                                 </Card>
                             </TabsContent>
+                             <TabsContent value="room-schedule" className="mt-4">
+                                {selectedRoom ? (
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="font-headline">Upcoming Schedule for {selectedRoom.name}</CardTitle>
+                                            <CardDescription>All future and current bookings for this room.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="pt-6">
+                                            <RoomScheduleList bookings={roomBookings} workers={workers} />
+                                        </CardContent>
+                                    </Card>
+                                ) : (
+                                    <div className="text-center py-10 text-muted-foreground">Select a room from the 'All Rooms' tab to see its schedule.</div>
+                                )}
+                            </TabsContent>
                         </Tabs>
                     </div>
                 )}
@@ -459,7 +568,7 @@ export default function RoomsPage() {
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetContent className="sm:max-w-lg overflow-y-auto">
-                 <SheetHeader>
+                <SheetHeader>
                     <SheetTitle className="font-headline">Book a Room</SheetTitle>
                     <SheetDescription>Fill in the details to request a room booking. Requests are subject to approval.</SheetDescription>
                 </SheetHeader>
