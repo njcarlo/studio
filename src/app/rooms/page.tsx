@@ -39,6 +39,8 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
   Projector: Projector,
@@ -192,57 +194,82 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
 };
 
 const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined }) => {
-    if (bookings.length === 0) {
-        return <p className="text-muted-foreground text-center py-8">No bookings for this day.</p>;
-    }
-
     const getWorkerName = (workerId: string) => {
         const worker = workers?.find(w => w.id === workerId);
         return worker ? `${worker.firstName} ${worker.lastName}` : 'Unknown';
     }
 
-    const getRoomName = (roomId: string) => {
-        return rooms?.find(r => r.id === roomId)?.name || 'Unknown Room';
+    const bookingsByRoom = useMemo(() => {
+        const grouped = new Map<string, Booking[]>();
+        if (!bookings || !rooms) return grouped;
+
+        // Initialize map with all rooms to maintain order
+        for (const room of rooms) {
+            grouped.set(room.id, []);
+        }
+        
+        for (const booking of bookings) {
+            if (grouped.has(booking.roomId)) {
+                const roomBookings = grouped.get(booking.roomId)!;
+                roomBookings.push(booking);
+            }
+        }
+
+        // Sort bookings within each room
+        grouped.forEach((roomBookings) => {
+            roomBookings.sort((a, b) => {
+                const timeA = a.start ? (a.start as any).seconds : 0;
+                const timeB = b.start ? (b.start as any).seconds : 0;
+                return timeA - timeB;
+            });
+        });
+        
+        return grouped;
+
+    }, [bookings, rooms]);
+    
+    if (!bookings || bookings.length === 0) {
+        return <p className="text-muted-foreground text-center py-8">No bookings for this day.</p>;
     }
 
-    const sortedBookings = useMemo(() => {
-        // Create a new array to avoid modifying the original one during sort
-        const bookingsToSort = [...bookings];
-        // Ensure that a and b have a valid 'start' property before sorting
-        return bookingsToSort.sort((a, b) => {
-            const timeA = a.start ? (a.start as any).seconds : 0;
-            const timeB = b.start ? (b.start as any).seconds : 0;
-            return timeA - timeB;
-        });
-    }, [bookings]);
-
-
     return (
-        <div className="space-y-4">
-            {sortedBookings.map(booking => {
-                const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
-                const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
+        <div className="space-y-6">
+            {rooms?.map(room => {
+                const roomBookings = bookingsByRoom.get(room.id);
+                if (!roomBookings || roomBookings.length === 0) return null;
 
                 return (
-                    <div key={booking.id} className="flex items-start space-x-4 p-3 border rounded-lg">
-                         <div className={`p-2 rounded-full mt-1 ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                            <CalendarIcon className="h-4 w-4" />
+                    <div key={room.id}>
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                           <MapPin className="h-4 w-4 text-muted-foreground"/> {room.name}
+                        </h4>
+                        <div className="space-y-3 border-l-2 pl-6 ml-2">
+                            {roomBookings.map(booking => {
+                                const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
+                                const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
+
+                                return (
+                                    <div key={booking.id} className="flex items-start space-x-4 relative">
+                                        <div className="absolute -left-[2.1rem] top-2 h-4 w-4 rounded-full bg-primary border-4 border-background" />
+                                        <div className="flex-grow">
+                                            <p className="font-semibold">{booking.title}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {format(bookingStart, 'p')} - {format(bookingEnd, 'p')}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                by {getWorkerName((booking as any).workerProfileId)}
+                                            </p>
+                                        </div>
+                                        <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{booking.status}</Badge>
+                                    </div>
+                                )
+                            })}
                         </div>
-                        <div>
-                            <p className="font-semibold">{booking.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                                {getRoomName(booking.roomId)} | {format(bookingStart, 'p')} - {format(bookingEnd, 'p')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                by {getWorkerName((booking as any).workerProfileId)}
-                            </p>
-                        </div>
-                        <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{booking.status}</Badge>
                     </div>
                 )
             })}
         </div>
-    );
+    )
 };
 
 
@@ -341,7 +368,8 @@ export default function RoomsPage() {
     }, [bookings]);
 
     const dayBookings = useMemo(() => {
-        return (selectedDate && bookingsByDate.get(format(selectedDate, 'yyyy-MM-dd'))) || []
+        if (!selectedDate || !bookingsByDate) return [];
+        return bookingsByDate.get(format(selectedDate, 'yyyy-MM-dd')) || []
     }, [selectedDate, bookingsByDate]);
     
     return (
@@ -356,11 +384,11 @@ export default function RoomsPage() {
             <div className="mt-4 space-y-4">
                 {isLoading && <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>}
                 {!isLoading && rooms && (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-[auto_1fr] gap-6">
-                        <Card>
+                    <div className="grid md:grid-cols-1 lg:grid-cols-[auto_1fr] gap-6">
+                       <Card>
                             <CardHeader>
                                 <CardTitle className="font-headline">Calendar</CardTitle>
-                                <CardDescription>Click a date to see bookings.</CardDescription>
+                                <CardDescription>Select a date to view schedules.</CardDescription>
                             </CardHeader>
                             <CardContent className="flex justify-center overflow-x-auto">
                                 <Calendar 
@@ -373,60 +401,69 @@ export default function RoomsPage() {
                                         const bookingsOnDay = bookingsByDate.get(format(date, 'yyyy-MM-dd'));
                                         return <div className="relative h-full w-full flex items-center justify-center">
                                             <span>{date.getDate()}</span>
-                                            {bookingsOnDay && bookingsOnDay.length > 0 && 
-                                                <div className="absolute bottom-1 w-full flex justify-center gap-0.5">
-                                                    {bookingsOnDay.slice(0, 3).map(b => <div key={b.id} className="h-1.5 w-1.5 rounded-full bg-primary" />)}
-                                                </div>
-                                            }
+                                            {bookingsOnDay && bookingsOnDay.length > 0 && (
+                                                <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-primary" />
+                                            )}
                                         </div>;
                                     }}}
                                 />
                             </CardContent>
                         </Card>
-                        <div className="space-y-6">
-                             <Card>
-                                <CardHeader><CardTitle className="font-headline">Bookings for {selectedDate ? format(selectedDate, 'PPP') : 'Today'}</CardTitle></CardHeader>
-                                <CardContent>
-                                    <BookingsList bookings={dayBookings} rooms={rooms} workers={workers} />
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader><CardTitle className="font-headline">Available Rooms</CardTitle></CardHeader>
-                                <CardContent className="space-y-4">
-                                    {rooms.map(room => {
-                                        const location = locations?.find(l => l.id === room.locationId);
-                                        return (
-                                        <div key={room.id} className="p-3 border rounded-lg">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="font-semibold">{room.name}</h3>
-                                                    {location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/>{location.name}</p>}
-                                                    <p className="text-sm text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" /> Capacity: {room.capacity}</p>
+                        
+                        <Tabs defaultValue="schedule" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="schedule">Schedule for {selectedDate ? format(selectedDate, 'MMM d') : 'selected day'}</TabsTrigger>
+                                <TabsTrigger value="rooms">All Rooms</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="schedule" className="mt-4">
+                                <Card>
+                                    <CardContent className="pt-6">
+                                        <BookingsList bookings={dayBookings} rooms={rooms} workers={workers} />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="rooms" className="mt-4">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="font-headline">Available Rooms</CardTitle>
+                                        <CardDescription>All bookable rooms and their equipment.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        {rooms.map(room => {
+                                            const location = locations?.find(l => l.id === room.locationId);
+                                            return (
+                                            <div key={room.id} className="p-4 border rounded-lg bg-card">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-semibold">{room.name}</h3>
+                                                        {location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/>{location.name}</p>}
+                                                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Users className="h-4 w-4" /> Capacity: {room.capacity}</p>
+                                                    </div>
+                                                    {isSuperAdmin && <Button asChild variant="outline" size="sm"><Link href={`/rooms/${room.id}/display`}><Monitor className="mr-2 h-4 w-4"/>Display</Link></Button>}
                                                 </div>
-                                                {isSuperAdmin && <Button asChild variant="outline" size="sm"><Link href={`/rooms/${room.id}/display`}><Monitor className="mr-2 h-4 w-4"/>Display</Link></Button>}
+                                                <div className="flex flex-wrap gap-2 mt-3">
+                                                    {room.equipment.map(item => {
+                                                        const Icon = equipmentIcons[item] || Users;
+                                                        return <Badge key={item} variant="secondary" className="flex items-center gap-1"><Icon className="h-3 w-3" /> {item}</Badge>
+                                                    })}
+                                                </div>
                                             </div>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {room.equipment.map(item => {
-                                                    const Icon = equipmentIcons[item] || Users;
-                                                    return <Badge key={item} variant="secondary" className="flex items-center gap-1"><Icon className="h-3 w-3" /> {item}</Badge>
-                                                })}
-                                            </div>
-                                        </div>
-                                    )})}
-                                </CardContent>
-                            </Card>
-                        </div>
+                                        )})}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
                     </div>
                 )}
             </div>
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetContent className="sm:max-w-lg overflow-y-auto">
-                <SheetHeader>
+                 <SheetHeader>
                     <SheetTitle className="font-headline">Book a Room</SheetTitle>
                     <SheetDescription>Fill in the details to request a room booking. Requests are subject to approval.</SheetDescription>
                 </SheetHeader>
-                {rooms ? (
+                {rooms && !isLoading ? (
                     <BookingForm rooms={rooms} onSave={handleSaveBooking} onClose={() => setIsSheetOpen(false)} />
                 ) : (
                     <div className="flex items-center justify-center py-10">
