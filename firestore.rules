@@ -39,6 +39,10 @@ service cloud.firestore {
       return request.auth.uid == request.resource.data.workerProfileId;
     }
 
+    function userProfileExists(uid) {
+      return exists(/databases/$(database)/documents/worker_profiles/$(uid));
+    }
+
     function getRole(uid) {
       return get(/databases/$(database)/documents/worker_profiles/$(uid)).data.role;
     }
@@ -46,12 +50,12 @@ service cloud.firestore {
     function isSuperAdmin() {
       // Hardcode a specific email as a Super Admin for bootstrapping purposes.
       // Check email first to short-circuit the get() call if possible.
-      return isSignedIn() && (request.auth.token.email == 'njcarlo@gmail.com' || getRole(request.auth.uid) == 'Super Admin');
+      return isSignedIn() && (request.auth.token.email == 'njcarlo@gmail.com' || (userProfileExists(request.auth.uid) && getRole(request.auth.uid) == 'Super Admin'));
     }
 
     function isAdmin() {
       // Check for Super Admin first to leverage the short-circuiting in isSuperAdmin().
-      return isSignedIn() && (isSuperAdmin() || getRole(request.auth.uid) == 'Admin');
+      return isSignedIn() && (isSuperAdmin() || (userProfileExists(request.auth.uid) && getRole(request.auth.uid) == 'Admin'));
     }
 
      function canManageMinistries() {
@@ -110,8 +114,9 @@ service cloud.firestore {
     }
 
     match /attendance_records/{recordId} {
-      allow get: if isExistingDocOwner() || isAdmin();
-      allow list: if isAdmin(); // Admins can see all records
+      // Admins can read anything. Users can only read their own records.
+      // This rule secures queries like `where('workerProfileId', '==', uid)`.
+      allow read: if isExistingDocOwner() || isAdmin();
       allow create: if isCreatingOwnDoc() || isAdmin();
       allow update, delete: if isExistingDocOwner() || isAdmin();
     }
