@@ -39,8 +39,7 @@ export type Equipment = {
 export type Booking = {
   id: string;
   roomId: string;
-  roomName: string;
-  workerName: string;
+  workerProfileId: string;
   start: Date;
   end: Date;
   title: string;
@@ -75,4 +74,11 @@ export type Ministry = {
   description: string;
   leaderId: string; // Worker ID
   department: Department;
+};
+
+export type AttendanceRecord = {
+  id: string;
+  workerProfileId: string;
+  type: 'Clock In' | 'Clock Out';
+  time: Date;
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -12,8 +13,6 @@ import {
   CheckSquare,
   Users,
   Calendar,
-  BarChart,
-  Activity,
   UserCheck,
 } from "lucide-react";
 import {
@@ -31,9 +30,9 @@ import {
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, Timestamp } from "firebase/firestore";
-import { format, isToday } from 'date-fns';
-import type { Booking, Worker, ApprovalRequest } from "@/lib/types";
+import { collection, query, where, Timestamp, collectionGroup } from "firebase/firestore";
+import { format, isToday, startOfDay, subDays } from 'date-fns';
+import type { Booking, Worker, ApprovalRequest, AttendanceRecord, Room } from "@/lib/types";
 
 type StatsCardProps = {
   title: string;
@@ -61,17 +60,7 @@ function StatsCard({ title, value, icon: Icon, description, link }: StatsCardPro
   );
 }
 
-const attendanceChartData = [
-    { date: 'Mon', attendance: Math.floor(Math.random() * 20) + 30 },
-    { date: 'Tue', attendance: Math.floor(Math.random() * 20) + 35 },
-    { date: 'Wed', attendance: Math.floor(Math.random() * 20) + 40 },
-    { date: 'Thu', attendance: Math.floor(Math.random() * 20) + 38 },
-    { date: 'Fri', attendance: Math.floor(Math.random() * 20) + 42 },
-    { date: 'Sat', attendance: Math.floor(Math.random() * 20) + 60 },
-    { date: 'Sun', attendance: Math.floor(Math.random() * 20) + 75 },
-];
-
-function AttendanceChart() {
+function AttendanceChart({ data }: { data: any[] }) {
     const chartConfig = {
       attendance: {
         label: "Attendance",
@@ -82,12 +71,12 @@ function AttendanceChart() {
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
         <CardTitle className="font-headline">Weekly Attendance</CardTitle>
-        <CardDescription>An overview of attendance for the last 7 days.</CardDescription>
+        <CardDescription>An overview of unique worker check-ins for the last 7 days.</CardDescription>
       </CardHeader>
       <CardContent className="pl-2">
         <ChartContainer config={chartConfig} className="h-[250px] w-full">
           <ResponsiveContainer>
-            <RechartsBarChart data={attendanceChartData}>
+            <RechartsBarChart data={data}>
               <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
               <Tooltip cursor={{fill: 'hsla(var(--primary), 0.1)'}} content={<ChartTooltipContent />} />
@@ -103,17 +92,78 @@ function AttendanceChart() {
 export default function DashboardPage() {
     const firestore = useFirestore();
     
-    const approvalsRef = useMemoFirebase(() => query(collection(firestore, 'approvals'), where('status', '==', 'pending')), [firestore]);
+    // --- QUERIES ---
+    const approvalsRef = useMemoFirebase(() => query(collection(firestore, 'approvals'), where('status', '==', 'Pending')), [firestore]);
     const { data: approvalRequests } = useCollection<ApprovalRequest>(approvalsRef);
 
     const workersRef = useMemoFirebase(() => collection(firestore, 'worker_profiles'), [firestore]);
     const { data: workers } = useCollection<Worker>(workersRef);
 
-    const bookingsRef = useMemoFirebase(() => collection(firestore, 'rooms', 'R1', 'reservations'), [firestore]); // Example for one room
-    const { data: bookings } = useCollection<Booking>(bookingsRef);
+    const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
+    const { data: rooms } = useCollection<Room>(roomsRef);
+
+    const bookingsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
+    const { data: allBookings } = useCollection<Booking>(bookingsQuery);
+
+    const attendanceQuery = useMemoFirebase(() => {
+      const sevenDaysAgo = subDays(new Date(), 6);
+      return query(
+        collection(firestore, "attendance_records"),
+        where('time', '>=', startOfDay(sevenDaysAgo)),
+        where('type', '==', 'Clock In')
+      );
+    }, [firestore]);
+    const { data: attendanceLog } = useCollection<AttendanceRecord>(attendanceQuery);
+
+
+    // --- DATA PROCESSING ---
+    const upcomingBookings = useMemo(() => {
+        if (!allBookings) return [];
+        const now = new Date();
+        return allBookings.filter(b => b.start && (b.start as unknown as Timestamp).toDate() > now);
+    }, [allBookings]);
     
-    const upcomingBookings = bookings?.filter(b => b.start && (b.start as unknown as Timestamp).toDate() > new Date());
-    const todaysAttendance = workers?.filter(w => w.status === 'Active').length || 0; // Simplified
+    const todaysAttendance = useMemo(() => {
+        if (!attendanceLog) return 0;
+        const todaysRecords = attendanceLog.filter(log => log.time && isToday((log.time as unknown as Timestamp).toDate()));
+        const uniqueWorkers = new Set(todaysRecords.map(log => log.workerProfileId));
+        return uniqueWorkers.size;
+    }, [attendanceLog]);
+
+    const attendanceChartData = useMemo(() => {
+        const last7Days = Array.from({ length: 7 }).map((_, i) => {
+            const d = subDays(new Date(), i);
+            return {
+                date: format(d, 'E'),
+                fullDate: format(d, 'yyyy-MM-dd'),
+                attendance: 0,
+            };
+        }).reverse();
+
+        if (attendanceLog) {
+            const dailyUniqueWorkers = new Map<string, Set<string>>();
+
+            for (const log of attendanceLog) {
+                if (log.time) {
+                    const logDateStr = format((log.time as unknown as Timestamp).toDate(), 'yyyy-MM-dd');
+                    if (!dailyUniqueWorkers.has(logDateStr)) {
+                        dailyUniqueWorkers.set(logDateStr, new Set());
+                    }
+                    dailyUniqueWorkers.get(logDateStr)!.add(log.workerProfileId);
+                }
+            }
+            
+            last7Days.forEach(day => {
+                day.attendance = dailyUniqueWorkers.get(day.fullDate)?.size || 0;
+            });
+        }
+        
+        return last7Days;
+    }, [attendanceLog]);
+
+    const upcomingBookingsForList = upcomingBookings
+        ?.sort((a,b) => (a.start as any).seconds - (b.start as any).seconds)
+        .slice(0, 3);
 
   return (
     <AppLayout>
@@ -147,12 +197,12 @@ export default function DashboardPage() {
             title="Today's Attendance"
             value={todaysAttendance.toString()}
             icon={UserCheck}
-            description="People currently present"
+            description="Unique workers present today"
             link="/attendance"
           />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <AttendanceChart />
+          <AttendanceChart data={attendanceChartData} />
           <Card className="col-span-1">
              <CardHeader>
                 <CardTitle className="font-headline">Upcoming Bookings</CardTitle>
@@ -160,16 +210,22 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {upcomingBookings?.slice(0, 3).map(booking => {
-                        const worker = workers?.find(w => w.id === (booking as any).workerProfileId);
-                        const workerName = worker ? `${worker.firstName} ${worker.lastName}` : (booking as any).workerProfileId;
+                    {upcomingBookingsForList?.map(booking => {
+                        const worker = workers?.find(w => w.id === booking.workerProfileId);
+                        const workerName = worker ? `${worker.firstName} ${worker.lastName}` : '...';
+                        const room = rooms?.find(r => r.id === booking.roomId);
+                        const roomName = room ? room.name : '...';
+                        
                         return (
-                        <div key={booking.id} className="flex items-center space-x-4">
+                        <div key={booking.id} className="flex items-start space-x-4">
                             <div className="flex-shrink-0 bg-primary/10 text-primary rounded-lg p-3">
                                 <Calendar className="h-5 w-5"/>
                             </div>
                             <div>
                                 <p className="font-semibold">{booking.title}</p>
+                                 <p className="text-sm text-muted-foreground">
+                                    in {roomName}
+                                </p>
                                 <p className="text-sm text-muted-foreground">
                                     by {workerName} - {(booking.start as any)?.seconds ? format(new Date((booking.start as any).seconds * 1000), 'PP') : ''}
                                 </p>
@@ -178,6 +234,9 @@ export default function DashboardPage() {
                         </div>
                         )
                     })}
+                     {!upcomingBookingsForList || upcomingBookingsForList.length === 0 && (
+                        <p className="text-sm text-center text-muted-foreground py-4">No upcoming bookings.</p>
+                    )}
                 </div>
             </CardContent>
           </Card>
