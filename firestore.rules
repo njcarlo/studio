@@ -116,9 +116,15 @@ service cloud.firestore {
     match /attendance_records/{recordId} {
       // GET: Admins can get any record. Users can only get their own.
       allow get: if isAdmin() || isExistingDocOwner();
-      // LIST: Admins can list all records for dashboards.
-      // Users can only list records belonging to themselves by using a 'where' clause.
-      allow list: if isAdmin() || (request.query.where.workerProfileId is string && request.query.where.workerProfileId == request.auth.uid);
+      
+      // LIST for Admin Dashboard: Admins can perform broad queries for the dashboard chart.
+      // This query does not filter by workerProfileId.
+      allow list: if isAdmin() && !('workerProfileId' in request.query.keys());
+
+      // LIST for User's own page: A user can list their own records.
+      // This query MUST filter by workerProfileId.
+      allow list: if request.query.where.workerProfileId == request.auth.uid;
+      
       // CREATE: A user can create their own record, or an admin can.
       allow create: if isCreatingOwnDoc() || isAdmin();
       // UPDATE/DELETE: A user can only update/delete their own record, or an admin can.
