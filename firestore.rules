@@ -114,20 +114,14 @@ service cloud.firestore {
     }
 
     match /attendance_records/{recordId} {
-      // GET: Admins can get any record. Users can only get their own.
-      allow get: if isAdmin() || isExistingDocOwner();
+      // READ: Admins can read any record. Users can only read their own.
+      // This single rule covers both `get` and `list` (queries).
+      // For `list`, Firestore ensures the client query constraints (e.g., `where('workerProfileId', '==', user.uid)`)
+      // would satisfy the rule for all returned documents.
+      allow read: if isAdmin() || isExistingDocOwner();
       
-      // LIST for Admin Dashboard: Admins can perform broad queries for the dashboard chart.
-      // This query does not filter by workerProfileId.
-      allow list: if isAdmin() && !('workerProfileId' in request.query.keys());
-
-      // LIST for User's own page: A user can list their own records.
-      // This query MUST filter by workerProfileId.
-      allow list: if request.query.where.workerProfileId == request.auth.uid;
-      
-      // CREATE: A user can create their own record, or an admin can.
+      // WRITE: A user can create their own record, or an admin can.
       allow create: if isCreatingOwnDoc() || isAdmin();
-      // UPDATE/DELETE: A user can only update/delete their own record, or an admin can.
       allow update, delete: if isExistingDocOwner() || isAdmin();
     }
 
