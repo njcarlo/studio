@@ -114,12 +114,14 @@ service cloud.firestore {
     }
 
     match /attendance_records/{recordId} {
-      // Admins can read anything. Users can only read their own records.
-      // The order of operations is important here to ensure short-circuiting.
-      // `isAdmin()` must be checked first, because `isExistingDocOwner()` will
-      // cause an error on a broad collection `list` query where `resource.data` is not available.
-      allow read: if isAdmin() || isExistingDocOwner();
+      // GET: Admins can get any record. Users can only get their own.
+      allow get: if isAdmin() || isExistingDocOwner();
+      // LIST: Admins can list all records for dashboards.
+      // Users can only list records belonging to themselves by using a 'where' clause.
+      allow list: if isAdmin() || (request.query.where.workerProfileId is string && request.query.where.workerProfileId == request.auth.uid);
+      // CREATE: A user can create their own record, or an admin can.
       allow create: if isCreatingOwnDoc() || isAdmin();
+      // UPDATE/DELETE: A user can only update/delete their own record, or an admin can.
       allow update, delete: if isExistingDocOwner() || isAdmin();
     }
 
