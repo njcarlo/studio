@@ -33,6 +33,7 @@ import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where, Timestamp, collectionGroup } from "firebase/firestore";
 import { format, isToday, startOfDay, subDays } from 'date-fns';
 import type { Booking, Worker, ApprovalRequest, AttendanceRecord, Room } from "@/lib/types";
+import { useUserRole } from "@/hooks/use-user-role";
 
 type StatsCardProps = {
   title: string;
@@ -91,6 +92,8 @@ function AttendanceChart({ data }: { data: any[] }) {
 
 export default function DashboardPage() {
     const firestore = useFirestore();
+    const { viewAsRole } = useUserRole();
+    const isAdmin = viewAsRole === 'Admin' || viewAsRole === 'Super Admin';
     
     // --- QUERIES ---
     const approvalsRef = useMemoFirebase(() => query(collection(firestore, 'approvals'), where('status', '==', 'Pending')), [firestore]);
@@ -106,13 +109,17 @@ export default function DashboardPage() {
     const { data: allBookings } = useCollection<Booking>(bookingsQuery);
 
     const attendanceQuery = useMemoFirebase(() => {
+      // Only run this broad query if the user is an admin.
+      if (!isAdmin) {
+          return null;
+      }
       const sevenDaysAgo = subDays(new Date(), 6);
       return query(
         collection(firestore, "attendance_records"),
         where('time', '>=', startOfDay(sevenDaysAgo)),
         where('type', '==', 'Clock In')
       );
-    }, [firestore]);
+    }, [firestore, isAdmin]);
     const { data: attendanceLog } = useCollection<AttendanceRecord>(attendanceQuery);
 
 
