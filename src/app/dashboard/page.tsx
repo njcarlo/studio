@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import {
   Card,
   CardContent,
@@ -30,11 +29,6 @@ import {
 } from "@/components/ui/chart";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, Timestamp, collectionGroup } from "firebase/firestore";
-import { format, isToday, startOfDay, subDays } from 'date-fns';
-import type { Booking, Worker, ApprovalRequest, AttendanceRecord, Room } from "@/lib/types";
-import { useUserRole } from "@/hooks/use-user-role";
 
 type StatsCardProps = {
   title: string;
@@ -92,86 +86,48 @@ function AttendanceChart({ data }: { data: any[] }) {
 }
 
 export default function DashboardPage() {
-    const firestore = useFirestore();
-    const { viewAsRole, isLoading: isRoleLoading } = useUserRole();
-    const isAdmin = viewAsRole === 'Admin' || viewAsRole === 'Super Admin';
+    // --- PLACEHOLDER DATA ---
+    const pendingApprovals = "3";
+    const totalWorkers = "12";
+    const upcomingBookingsCount = "5";
+    const todaysAttendance = "8";
+
+    const attendanceChartData = [
+        { date: "Mon", attendance: 5 },
+        { date: "Tue", attendance: 8 },
+        { date: "Wed", attendance: 6 },
+        { date: "Thu", attendance: 9 },
+        { date: "Fri", attendance: 7 },
+        { date: "Sat", attendance: 4 },
+        { date: "Sun", attendance: 2 },
+    ];
     
-    // --- QUERIES ---
-    const approvalsRef = useMemoFirebase(() => query(collection(firestore, 'approvals'), where('status', '==', 'Pending')), [firestore]);
-    const { data: approvalRequests } = useCollection<ApprovalRequest>(approvalsRef);
-
-    const workersRef = useMemoFirebase(() => collection(firestore, 'worker_profiles'), [firestore]);
-    const { data: workers } = useCollection<Worker>(workersRef);
-
-    const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
-    const { data: rooms } = useCollection<Room>(roomsRef);
-
-    const bookingsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
-    const { data: allBookings } = useCollection<Booking>(bookingsQuery);
-
-    const attendanceQuery = useMemoFirebase(() => {
-      // Only run this broad query if the user is an admin and role is loaded.
-      if (isRoleLoading || !isAdmin) {
-          return null;
-      }
-      const sevenDaysAgo = subDays(new Date(), 6);
-      return query(
-        collection(firestore, "attendance_records"),
-        where('time', '>=', startOfDay(sevenDaysAgo)),
-        where('type', '==', 'Clock In')
-      );
-    }, [firestore, isAdmin, isRoleLoading]);
-    const { data: attendanceLog } = useCollection<AttendanceRecord>(attendanceQuery);
-
-
-    // --- DATA PROCESSING ---
-    const upcomingBookings = useMemo(() => {
-        if (!allBookings) return [];
-        const now = new Date();
-        return allBookings.filter(b => b.start && (b.start as unknown as Timestamp).toDate() > now);
-    }, [allBookings]);
-    
-    const todaysAttendance = useMemo(() => {
-        if (!attendanceLog) return 0;
-        const todaysRecords = attendanceLog.filter(log => log.time && isToday((log.time as unknown as Timestamp).toDate()));
-        const uniqueWorkers = new Set(todaysRecords.map(log => log.workerProfileId));
-        return uniqueWorkers.size;
-    }, [attendanceLog]);
-
-    const attendanceChartData = useMemo(() => {
-        const last7Days = Array.from({ length: 7 }).map((_, i) => {
-            const d = subDays(new Date(), i);
-            return {
-                date: format(d, 'E'),
-                fullDate: format(d, 'yyyy-MM-dd'),
-                attendance: 0,
-            };
-        }).reverse();
-
-        if (attendanceLog) {
-            const dailyUniqueWorkers = new Map<string, Set<string>>();
-
-            for (const log of attendanceLog) {
-                if (log.time) {
-                    const logDateStr = format((log.time as unknown as Timestamp).toDate(), 'yyyy-MM-dd');
-                    if (!dailyUniqueWorkers.has(logDateStr)) {
-                        dailyUniqueWorkers.set(logDateStr, new Set());
-                    }
-                    dailyUniqueWorkers.get(logDateStr)!.add(log.workerProfileId);
-                }
-            }
-            
-            last7Days.forEach(day => {
-                day.attendance = dailyUniqueWorkers.get(day.fullDate)?.size || 0;
-            });
-        }
-        
-        return last7Days;
-    }, [attendanceLog]);
-
-    const upcomingBookingsForList = upcomingBookings
-        ?.sort((a,b) => (a.start as any).seconds - (b.start as any).seconds)
-        .slice(0, 3);
+    const upcomingBookingsForList = [
+        {
+            id: '1',
+            title: 'Weekly Team Sync',
+            roomName: 'Conference Room A',
+            workerName: 'Alice Johnson',
+            date: 'Aug 1, 2024',
+            status: 'Approved'
+        },
+        {
+            id: '2',
+            title: 'Design Review',
+            roomName: 'Focus Room 1',
+            workerName: 'Bob Williams',
+            date: 'Aug 1, 2024',
+            status: 'Approved'
+        },
+        {
+            id: '3',
+            title: 'Client Meeting',
+            roomName: 'Main Hall',
+            workerName: 'Charlie Brown',
+            date: 'Aug 2, 2024',
+            status: 'Pending'
+        },
+    ];
 
   return (
     <AppLayout>
@@ -182,28 +138,28 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Pending Approvals"
-            value={approvalRequests?.length.toString() ?? '0'}
+            value={pendingApprovals}
             icon={CheckSquare}
             description="Items needing review"
             link="/approvals"
           />
           <StatsCard
             title="Total Workers"
-            value={workers?.length.toString() ?? '0'}
+            value={totalWorkers}
             icon={Users}
             description="Active and pending staff"
             link="/workers"
           />
           <StatsCard
             title="Upcoming Bookings"
-            value={upcomingBookings?.length.toString() ?? '0'}
+            value={upcomingBookingsCount}
             icon={Calendar}
             description="Scheduled room reservations"
             link="/rooms"
           />
            <StatsCard
             title="Today's Attendance"
-            value={todaysAttendance.toString()}
+            value={todaysAttendance}
             icon={UserCheck}
             description="Unique workers present today"
             link="/attendance"
@@ -218,13 +174,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {upcomingBookingsForList?.map(booking => {
-                        const worker = workers?.find(w => w.id === booking.workerProfileId);
-                        const workerName = worker ? `${worker.firstName} ${worker.lastName}` : '...';
-                        const room = rooms?.find(r => r.id === booking.roomId);
-                        const roomName = room ? room.name : '...';
-                        
-                        return (
+                    {upcomingBookingsForList?.map(booking => (
                         <div key={booking.id} className="flex items-start space-x-4">
                             <div className="flex-shrink-0 bg-primary/10 text-primary rounded-lg p-3">
                                 <Calendar className="h-5 w-5"/>
@@ -232,16 +182,15 @@ export default function DashboardPage() {
                             <div>
                                 <p className="font-semibold">{booking.title}</p>
                                  <p className="text-sm text-muted-foreground">
-                                    in {roomName}
+                                    in {booking.roomName}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    by {workerName} - {(booking.start as any)?.seconds ? format(new Date((booking.start as any).seconds * 1000), 'PP') : ''}
+                                    by {booking.workerName} - {booking.date}
                                 </p>
                             </div>
-                             <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className="ml-auto bg-green-100 text-green-800">{booking.status}</Badge>
+                             <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{booking.status}</Badge>
                         </div>
-                        )
-                    })}
+                    ))}
                      {!upcomingBookingsForList || upcomingBookingsForList.length === 0 && (
                         <p className="text-sm text-center text-muted-foreground py-4">No upcoming bookings.</p>
                     )}
