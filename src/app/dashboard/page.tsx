@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo } from "react";
@@ -92,7 +93,7 @@ function AttendanceChart({ data }: { data: any[] }) {
 
 export default function DashboardPage() {
     const firestore = useFirestore();
-    const { viewAsRole } = useUserRole();
+    const { viewAsRole, isLoading: isRoleLoading } = useUserRole();
     const isAdmin = viewAsRole === 'Admin' || viewAsRole === 'Super Admin';
     
     // --- QUERIES ---
@@ -109,8 +110,8 @@ export default function DashboardPage() {
     const { data: allBookings } = useCollection<Booking>(bookingsQuery);
 
     const attendanceQuery = useMemoFirebase(() => {
-      // Only run this broad query if the user is an admin.
-      if (!isAdmin) {
+      // Only run this broad query if the user is an admin and role is loaded.
+      if (isRoleLoading || !isAdmin) {
           return null;
       }
       const sevenDaysAgo = subDays(new Date(), 6);
@@ -119,7 +120,7 @@ export default function DashboardPage() {
         where('time', '>=', startOfDay(sevenDaysAgo)),
         where('type', '==', 'Clock In')
       );
-    }, [firestore, isAdmin]);
+    }, [firestore, isAdmin, isRoleLoading]);
     const { data: attendanceLog } = useCollection<AttendanceRecord>(attendanceQuery);
 
 
