@@ -18,15 +18,20 @@ service cloud.firestore {
     match /users/{userId} {
       // Allow read if the user is the document owner OR has the 'create_user' privilege.
       allow read: if request.auth != null && (request.auth.uid == userId || hasPrivilege('create_user'));
-      // Allow write only if the user has the 'create_user' privilege.
-      allow write: if hasPrivilege('create_user');
+      
+      // Allow a user to create their own user document.
+      allow create: if request.auth.uid == userId;
+      
+      // Require 'create_user' privilege for updates and deletes.
+      allow update, delete: if hasPrivilege('create_user');
     }
 
     match /roles/{roleId} {
       // Allow any authenticated user to read roles.
       allow read: if request.auth != null;
-      // Allow write only if the user has the 'manage_roles' privilege.
-      allow write: if hasPrivilege('manage_roles');
+      
+      // Allow write if user has 'manage_roles' privilege OR if it's the initial seed.
+      allow write: if hasPrivilege('manage_roles') || !exists(/databases/$(database)/documents/roles/admin);
     }
 
     // Deny all other read/write operations to all other collections by default.
