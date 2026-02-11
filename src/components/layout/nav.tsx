@@ -1,17 +1,33 @@
+"use client";
+
 import Link from "next/link";
 import {
   LayoutDashboard,
+  Cog,
+  Users,
+  Calendar,
+  ScanLine,
+  Utensils,
+  BookOpen,
+  Vote,
 } from "lucide-react";
-
 import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { useUserRole } from "@/hooks/use-user-role";
 
-const navItems: { href: string; icon: React.ElementType; label: string; }[] = [
+const allNavItems: { href: string; icon: React.ElementType; label: string; adminOnly?: boolean }[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/workers", icon: Users, label: "Workers" },
+  { href: "/ministries", icon: BookOpen, label: "Ministries" },
+  { href: "/rooms", icon: Calendar, label: "Room Reservations" },
+  { href: "/attendance", icon: ScanLine, label: "Attendance" },
+  { href: "/meals", icon: Utensils, label: "Meal Stubs" },
+  { href: "/approvals", icon: Vote, label: "Approvals" },
+  { href: "/settings", icon: Cog, label: "Settings", adminOnly: true },
 ];
 
 export function Nav({
@@ -21,6 +37,16 @@ export function Nav({
   pathname: string;
   className?: string;
 }) {
+  const { isSuperAdmin, viewAsRole } = useUserRole();
+
+  const navItems = allNavItems.filter(item => {
+    if (item.adminOnly) return isSuperAdmin;
+    
+    // Add logic based on viewAsRole to show/hide other items if needed
+    // For now, show all non-admin items to everyone
+    return true;
+  });
+
 
   return (
     <nav className={cn("flex flex-col", className)}>

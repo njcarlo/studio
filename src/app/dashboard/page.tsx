@@ -113,19 +113,7 @@ export default function DashboardPage() {
                     Dashboard
                 </h1>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                   <Card>
-                        <CardHeader>
-                            <CardTitle>System Seed</CardTitle>
-                            <CardDescription>
-                                Initialize the system with default roles and an admin user.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button onClick={initializeSystem}>
-                                Initialize System
-                            </Button>
-                        </CardContent>
-                   </Card>
+                   {/* The System Seed card has been moved to the Settings page */}
                 </div>
             </div>
         </AppLayout>

@@ -52,27 +52,17 @@
     ]
   },
   "firestore": {
-     "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/entities/User"
-          },
-          "description": "Stores user profile information. Document ID should match the Firebase Auth UID."
-        }
+     "/users/{userId}": {
+        "schema": {
+          "$ref": "#/entities/User"
+        },
+        "description": "Stores user profile information. Document ID should match the Firebase Auth UID."
       },
-      {
-        "path": "/roles/{roleId}",
-        "definition": {
-          "entityName": "Role",
-          "schema": {
-            "$ref": "#/entities/Role"
-          },
-          "description": "Stores role definitions and associated privileges."
-        }
+      "/roles/{roleId}": {
+        "schema": {
+          "$ref": "#/entities/Role"
+        },
+        "description": "Stores role definitions and associated privileges."
       }
-    ]
   }
 }
