@@ -3,7 +3,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { doc } from 'firebase/firestore';
 import type { Worker, WorkerRole } from '@/lib/types';
-import { allRoles } from '@/components/layout/nav';
+import { allWorkerRoles } from '@/lib/types';
 import { useDoc, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 
 type UserRoleContextType = {
@@ -88,7 +88,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     isSuperAdmin,
     isLoading,
     setViewAsRole,
-    allRoles,
+    allRoles: allWorkerRoles,
     userProfile: userProfile || null,
   };
 
