@@ -12,7 +12,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useFirestore } from "@/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { writeBatch, doc, collection, serverTimestamp } from "firebase/firestore";
 
 export default function DashboardPage() {
@@ -21,11 +21,48 @@ export default function DashboardPage() {
     const firestore = useFirestore();
 
     const initializeSystem = async () => {
+        let adminUser;
         try {
             // 1. Create the admin user in Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, 'admin@system.com', 'password');
-            const adminUser = userCredential.user;
+            adminUser = userCredential.user;
+        } catch (error: any) {
+            if (error.code === 'auth/email-already-in-use') {
+                // If user already exists, try to sign in to get the user object
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, 'admin@system.com', 'password');
+                    adminUser = userCredential.user;
+                } catch (signInError: any) {
+                    console.error("Failed to sign in existing admin:", signInError);
+                    toast({
+                        variant: "destructive",
+                        title: "Initialization Failed",
+                        description: "Admin user exists but failed to sign in. Check password.",
+                    });
+                    return;
+                }
+            } else {
+                // Handle other auth errors
+                console.error("System initialization failed:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Initialization Failed",
+                    description: error.message || "An unknown error occurred during user creation.",
+                });
+                return;
+            }
+        }
+        
+        if (!adminUser) {
+            toast({
+                variant: "destructive",
+                title: "Initialization Failed",
+                description: "Could not retrieve admin user details.",
+            });
+            return;
+        }
 
+        try {
             // 2. Create a write batch for atomic Firestore operation
             const batch = writeBatch(firestore);
 
@@ -59,16 +96,12 @@ export default function DashboardPage() {
                 description: "Admin account and roles have been created successfully.",
             });
 
-        } catch (error: any) {
-            console.error("System initialization failed:", error);
-            let description = "An unknown error occurred during system initialization.";
-            if (error.code === 'auth/email-already-in-use') {
-                description = "The admin@system.com account already exists.";
-            }
+        } catch (dbError: any) {
+            console.error("Database seeding failed:", dbError);
             toast({
                 variant: "destructive",
-                title: "Initialization Failed",
-                description,
+                title: "Database Seed Failed",
+                description: "An error occurred while seeding the database.",
             });
         }
     };
