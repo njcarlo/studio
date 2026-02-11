@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,19 +12,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Link from "next/link";
-import { useAuth, useUser } from "@/firebase";
-import { getAuth, signOut, sendPasswordResetEmail } from "firebase/auth";
-import { useUserRole } from "@/hooks/use-user-role";
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { signOut, sendPasswordResetEmail } from "firebase/auth";
+import type { User as AppUser } from "@/lib/types";
+import { doc } from 'firebase/firestore';
 
-const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
 
 export function UserNav() {
   const { user } = useUser();
-  const { userProfile, isSuperAdmin } = useUserRole();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
+
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile } = useDoc<AppUser>(userProfileRef);
 
   const handleLogout = () => {
     signOut(auth);
@@ -55,17 +56,17 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-             <AvatarImage src={userProfile?.avatarUrl || userAvatar?.imageUrl} alt={userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "User"} />
-            <AvatarFallback>{userProfile?.firstName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+             <AvatarImage src={undefined} alt={userProfile?.email || "User"} />
+            <AvatarFallback>{userProfile?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'User'}</p>
+            <p className="text-sm font-medium leading-none">{userProfile?.email || 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {user?.email || 'No email'}
+              Role: {userProfile?.roleId || 'N/A'}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -74,16 +75,9 @@ export function UserNav() {
           <DropdownMenuItem>
             Profile
           </DropdownMenuItem>
-          {!isSuperAdmin && (
-             <DropdownMenuItem onSelect={handleChangePassword}>
-              Change Password
-            </DropdownMenuItem>
-          )}
-          {isSuperAdmin && (
-            <DropdownMenuItem asChild>
-              <Link href="/settings">Settings</Link>
-            </DropdownMenuItem>
-          )}
+           <DropdownMenuItem onSelect={handleChangePassword}>
+            Change Password
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>

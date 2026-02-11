@@ -1,13 +1,6 @@
 import Link from "next/link";
 import {
   LayoutDashboard,
-  Users,
-  CheckSquare,
-  Calendar,
-  UtensilsCrossed,
-  QrCode,
-  HeartHandshake,
-  ScanLine,
 } from "lucide-react";
 
 import {
@@ -16,38 +9,23 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import type { WorkerRole } from "@/lib/types";
 
-export const allRoles: WorkerRole[] = ['Volunteer', 'Admin Receptionist', 'Admin', 'Full-time', 'On-call', 'Ministry Head', 'Super Admin', 'Department Head', 'Mentee'];
-
-const navItems: { href: string; icon: React.ElementType; label: string; roles: WorkerRole[] }[] = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", roles: allRoles },
-  { href: "/workers", icon: Users, label: "Worker Profiles", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
-  { href: "/ministries", icon: HeartHandshake, label: "Ministries", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
-  { href: "/approvals", icon: CheckSquare, label: "Approvals", roles: ['Admin', 'Ministry Head', 'Super Admin'] },
-  { href: "/rooms", icon: Calendar, label: "Room Reservations", roles: allRoles },
-  { href: "/meals", icon: UtensilsCrossed, label: "Mealstubs", roles: ['Admin', 'Super Admin'] },
-  { href: "/attendance", icon: QrCode, label: "Attendance", roles: allRoles },
-  { href: "/attendance/scanner", icon: ScanLine, label: "QR Scanner", roles: allRoles },
+const navItems: { href: string; icon: React.ElementType; label: string; }[] = [
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
 ];
 
 export function Nav({
   pathname,
   className,
-  userRole,
 }: {
   pathname: string;
   className?: string;
-  userRole: WorkerRole;
 }) {
-  const accessibleNavItems = navItems.filter(item => 
-    item.roles.includes(userRole)
-  );
 
   return (
     <nav className={cn("flex flex-col", className)}>
       <SidebarMenu>
-        {accessibleNavItems.map((item) => (
+        {navItems.map((item) => (
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
               asChild

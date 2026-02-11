@@ -1,84 +1,13 @@
-export type WorkerRole = 'Volunteer' | 'Admin Receptionist' | 'Admin' | 'Full-time' | 'On-call' | 'Ministry Head' | 'Super Admin' | 'Department Head' | 'Mentee';
-
-export type Worker = {
-  id: string;
-  workerId: string;
-  firstName: string;
-  lastName: string;
-  avatarUrl: string;
-  role: WorkerRole;
-  email: string;
-  phone: string;
-  status: 'Active' | 'Inactive' | 'Pending Approval';
-  permissions: string[];
-  primaryMinistryId?: string;
-  secondaryMinistryId?: string;
-  passwordChangeRequired?: boolean;
-};
-
-export type Location = {
+export type Role = {
   id: string;
   name: string;
-};
-
-export type Room = {
-  id: string;
-  name: string;
-  locationId: string;
-  capacity: number;
-  equipment: string[];
-};
-
-export type Equipment = {
-  id: string;
-  name: string;
-  description?: string;
-  available: boolean;
+  privileges: string[];
 }
 
-export type Booking = {
-  id: string;
-  roomId: string;
-  workerProfileId: string;
-  start: Date;
-  end: Date;
-  title: string;
-  status: 'Approved' | 'Pending' | 'Rejected';
-};
-
-export type MealStub = {
-  id: string;
-  workerId: string;
-  workerName: string;
-  date: Date;
-  status: 'Issued' | 'Claimed';
-};
-
-export type ApprovalRequest = {
-  id: string;
-  type: 'New Worker' | 'Profile Update' | 'Room Booking';
-  requester: string;
-  details: string;
-  date: Date;
-  status: 'Approved' | 'Pending' | 'Rejected';
-  workerId?: string;
-  roomId?: string;
-  reservationId?: string;
-};
-
-export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
-
-export type Ministry = {
-  id: string;
-  name: string;
-  description: string;
-  leaderId: string; // Worker ID
-  department: Department;
-};
-
-export type AttendanceRecord = {
-  id: string;
-  workerProfileId: string;
-  type: 'Clock In' | 'Clock Out';
-  time: Date;
-};
+export type User = {
+    id: string;
+    email: string;
+    roleId: string;
+    status: 'active' | 'inactive';
+    createdAt: any; // Firestore Timestamp
+}

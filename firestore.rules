@@ -1,136 +1,34 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- Helper Functions ---
-    
-    // Check if the user is authenticated
-    function isSignedIn() {
-      return request.auth != null;
+    // Helper to get user's role document data
+    function getRoleDoc() {
+      // Use get() to fetch the user's document, then use its roleId to fetch the role document.
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return get(/databases/$(database)/documents/roles/$(userDoc.roleId)).data;
     }
 
-    // Safely get user's profile data
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/worker_profiles/$(userId)).data;
+    // Helper to check if the user's role has a specific privilege
+    function hasPrivilege(privilege) {
+      // Ensure the user is authenticated and check if the privilege string exists in the role's privileges array.
+      return request.auth != null && privilege in getRoleDoc().privileges;
     }
 
-    // Check if a user's profile document exists
-    function userProfileExists(userId) {
-        return exists(/databases/$(database)/documents/worker_profiles/$(userId));
-    }
-    
-    // Check if the requesting user is a Super Admin
-    function isSuperAdmin() {
-      return isSignedIn() && userProfileExists(request.auth.uid) && getUserData(request.auth.uid).role == 'Super Admin';
+    match /users/{userId} {
+      // Allow read if the user is the document owner OR has the 'create_user' privilege.
+      allow read: if request.auth != null && (request.auth.uid == userId || hasPrivilege('create_user'));
+      // Allow write only if the user has the 'create_user' privilege.
+      allow write: if hasPrivilege('create_user');
     }
 
-    // Check if the requesting user is an Admin or Super Admin
-    function isAdmin() {
-      if (!isSignedIn() || !userProfileExists(request.auth.uid)) {
-        return false;
-      }
-      let role = getUserData(request.auth.uid).role;
-      return role == 'Admin' || role == 'Super Admin';
-    }
-    
-    // Check if user has rights to approve (Ministry Head, Admin, Super Admin)
-    function canApprove() {
-        if (!isSignedIn() || !userProfileExists(request.auth.uid)) {
-            return false;
-        }
-        let role = getUserData(request.auth.uid).role;
-        return role == 'Ministry Head' || role == 'Admin' || role == 'Super Admin';
-    }
-    
-    // Check if the requesting user is the owner of a document
-    function isSelf(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    match /roles/{roleId} {
+      // Allow any authenticated user to read roles.
+      allow read: if request.auth != null;
+      // Allow write only if the user has the 'manage_roles' privilege.
+      allow write: if hasPrivilege('manage_roles');
     }
 
-    // --- Collection Rules ---
-
-    match /worker_profiles/{userId} {
-      // Admins can read any profile. Users can read their own.
-      allow read: if isAdmin() || isSelf(userId);
-      // Users can create their own profile. userId must match their auth UID.
-      allow create: if isSelf(userId);
-      // Admins can update any profile. Users can update their own.
-      allow update: if isAdmin() || isSelf(userId);
-      // Only Super Admins can delete profiles.
-      allow delete: if isSuperAdmin();
-    }
-
-    match /approvals/{approvalId} {
-      // Only users who can approve are allowed to read approvals.
-      allow read: if canApprove();
-      // Any signed-in user can create an approval request.
-      allow create: if isSignedIn();
-      // Only users who can approve are allowed to update (approve/reject).
-      allow update: if canApprove();
-      // Only Super Admins can delete approval records.
-      allow delete: if isSuperAdmin();
-    }
-
-    match /rooms/{roomId} {
-      // All signed-in users can view room details.
-      allow read: if isSignedIn();
-      // Only Super Admins can manage rooms (from settings page).
-      allow create, update, delete: if isSuperAdmin();
-      
-      match /reservations/{reservationId} {
-        // All signed-in users can view reservation details.
-        allow read: if isSignedIn();
-        // Users can only create reservations for themselves.
-        allow create: if isSelf(request.resource.data.workerProfileId);
-        // Reservation status is updated via the approval workflow.
-        allow update: if canApprove(); 
-        // Only super admins can delete reservations.
-        allow delete: if isSuperAdmin();
-      }
-    }
-    
-    match /mealstubs/{mealstubId} {
-       // Admins can read all stubs. Users can read their own.
-       // This relies on the client query being filtered with `where('workerId', '==', auth.uid)`.
-       allow read: if isAdmin() || (resource != null && request.auth.uid == resource.data.workerId);
-       // Users can only create stubs for themselves.
-       allow create: if isSelf(request.resource.data.workerId);
-       // Only Admins can update stubs (i.e., claim them via scanner).
-       allow update: if isAdmin();
-       // Only Super Admins can delete stubs.
-       allow delete: if isSuperAdmin();
-    }
-    
-    match /attendance_records/{recordId} {
-      // Admins can read all records. Users can read their own.
-      // Relies on client query filtering for non-admins.
-      allow read: if isAdmin() || (resource != null && request.auth.uid == resource.data.workerProfileId);
-      // Only Admins can create records (via the scanner page).
-      allow create: if isAdmin();
-      // Only Super Admins can delete records.
-      allow delete: if isSuperAdmin();
-    }
-    
-    match /equipment/{equipmentId} {
-       // All signed-in users can see equipment list.
-       allow read: if isSignedIn();
-       // Only Super Admins can manage equipment.
-       allow create, update, delete: if isSuperAdmin();
-    }
-    
-    match /ministries/{ministryId} {
-       // All signed-in users can see ministry list.
-       allow read: if isSignedIn();
-       // Only Super Admins can manage ministries.
-       allow create, update, delete: if isSuperAdmin();
-    }
-
-    match /locations/{locationId} {
-       // All signed-in users can see location list.
-       allow read: if isSignedIn();
-       // Only Super Admins can manage locations.
-       allow create, update, delete: if isSuperAdmin();
-    }
+    // Deny all other read/write operations to all other collections by default.
   }
 }

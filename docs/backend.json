@@ -1,315 +1,49 @@
 {
   "entities": {
-    "WorkerProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "WorkerProfile",
+    "User": {
+      "title": "User",
       "type": "object",
-      "description": "Represents a worker's profile with personal details, roles, and permissions.",
+      "description": "Represents a user account in the system.",
       "properties": {
-        "workerId": {
-          "type": "string",
-          "description": "A unique 6-digit public-facing identifier for the worker."
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The first name of the worker."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The last name of the worker."
-        },
         "email": {
           "type": "string",
-          "description": "The email address of the worker.",
-          "format": "email"
+          "format": "email",
+          "description": "The user's email address."
         },
-        "phone": {
+        "roleId": {
           "type": "string",
-          "description": "The phone number of the worker."
-        },
-        "role": {
-          "type": "string",
-          "description": "The role of the worker within the organization."
-        },
-        "permissions": {
-          "type": "array",
-          "description": "A list of permissions granted to the worker.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "status": {
-            "type": "string",
-            "description": "The current status of the worker's profile."
-        },
-        "avatarUrl": {
-            "type": "string",
-            "description": "URL for the worker's avatar image."
-        },
-        "primaryMinistryId": {
-          "type": "string",
-          "description": "The ID of the worker's primary ministry."
-        },
-        "secondaryMinistryId": {
-          "type": "string",
-          "description": "The ID of the worker's secondary ministry."
-        },
-        "passwordChangeRequired": {
-          "type": "boolean",
-          "description": "If true, the user will be prompted to change their password upon login."
-        }
-      },
-      "required": [
-        "workerId",
-        "firstName",
-        "lastName",
-        "email",
-        "role",
-        "permissions",
-        "status"
-      ]
-    },
-    "Approval": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Approval",
-      "type": "object",
-      "description": "Represents an approval record for worker registrations or profile updates.",
-      "properties": {
-        "requester": {
-            "type": "string",
-            "description": "Name of the person requesting the approval."
-        },
-        "type": {
-            "type": "string",
-            "description": "The type of approval request (e.g., 'New Worker', 'Room Booking')."
-        },
-        "details": {
-            "type": "string",
-            "description": "Details about the approval request."
-        },
-        "date": {
-          "type": "string",
-          "description": "The date and time when the approval was requested.",
-          "format": "date-time"
+          "description": "A reference to the user's role in the 'roles' collection."
         },
         "status": {
           "type": "string",
-          "description": "The current status of the approval (e.g., 'pending', 'approved', 'rejected')."
+          "description": "The status of the user account (e.g., 'active', 'inactive')."
         },
-        "workerId": {
-            "type": "string",
-            "description": "The ID of the worker profile this approval is for, if applicable."
-        },
-        "roomId": {
+        "createdAt": {
           "type": "string",
-          "description": "The ID of the room for a booking approval."
-        },
-        "reservationId": {
-            "type": "string",
-            "description": "The ID of the reservation for a booking approval."
+          "format": "date-time",
+          "description": "The timestamp when the user account was created."
         }
       },
-      "required": [
-        "requester",
-        "type",
-        "details",
-        "date",
-        "status"
-      ]
+      "required": ["email", "roleId", "status", "createdAt"]
     },
-    "Room": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Room",
+    "Role": {
+      "title": "Role",
       "type": "object",
-      "description": "Represents a room that can be reserved.",
+      "description": "Defines a role with a set of privileges.",
       "properties": {
         "name": {
           "type": "string",
-          "description": "The name of the room."
+          "description": "The name of the role (e.g., 'Admin', 'Editor')."
         },
-        "locationId": {
-          "type": "string",
-          "description": "The ID of the location (building) where the room is situated."
-        },
-        "capacity": {
-          "type": "number",
-          "description": "The maximum capacity of the room."
-        },
-        "equipment": {
+        "privileges": {
           "type": "array",
-          "description": "A list of equipment available in the room.",
+          "description": "A list of permission strings associated with the role.",
           "items": {
             "type": "string"
           }
         }
       },
-      "required": [
-        "name",
-        "locationId",
-        "capacity"
-      ]
-    },
-    "Equipment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Equipment",
-      "type": "object",
-      "description": "Represents a piece of equipment that can be borrowed.",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the equipment."
-        },
-        "description": {
-          "type": "string",
-          "description": "A description of the equipment."
-        },
-        "available": {
-          "type": "boolean",
-          "description": "Indicates whether the equipment is currently available."
-        }
-      },
-      "required": [
-        "name",
-        "available"
-      ]
-    },
-    "Reservation": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Reservation",
-      "type": "object",
-      "description": "Represents a reservation for a room.",
-      "properties": {
-        "roomId": {
-          "type": "string",
-          "description": "Reference to Room. (Relationship: Room 1:N Reservation)"
-        },
-        "workerProfileId": {
-          "type": "string",
-          "description": "Reference to WorkerProfile. (Relationship: WorkerProfile 1:N Reservation)"
-        },
-        "start": {
-          "type": "string",
-          "description": "The start date and time of the reservation.",
-          "format": "date-time"
-        },
-        "end": {
-          "type": "string",
-          "description": "The end date and time of the reservation.",
-          "format": "date-time"
-        },
-        "title": {
-            "type": "string",
-            "description": "The purpose or title of the reservation."
-        },
-        "status": {
-            "type": "string",
-            "description": "The approval status of the reservation."
-        }
-      },
-      "required": [
-        "roomId",
-        "workerProfileId",
-        "start",
-        "end",
-        "title",
-        "status"
-      ]
-    },
-    "Mealstub": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Mealstub",
-      "type": "object",
-      "description": "Represents a mealstub generated for a worker.",
-      "properties": {
-        "workerId": {
-          "type": "string",
-          "description": "Reference to WorkerProfile. (Relationship: WorkerProfile 1:N Mealstub)"
-        },
-        "workerName": {
-            "type": "string"
-        },
-        "date": {
-          "type": "string",
-          "description": "The date when the mealstub was generated.",
-          "format": "date-time"
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of the mealstub (e.g., 'Issued', 'Claimed')."
-        }
-      },
-      "required": [
-        "workerId",
-        "workerName",
-        "date",
-        "status"
-      ]
-    },
-    "AttendanceRecord": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "AttendanceRecord",
-      "type": "object",
-      "description": "Represents an attendance record for a worker.",
-      "properties": {
-        "workerProfileId": {
-          "type": "string",
-          "description": "Reference to WorkerProfile. (Relationship: WorkerProfile 1:N AttendanceRecord)"
-        },
-        "type": {
-            "type": "string"
-        },
-        "time": {
-          "type": "string",
-          "description": "The date and time when the worker clocked in or out.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "workerProfileId",
-        "type",
-        "time"
-      ]
-    },
-     "Ministry": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Ministry",
-      "type": "object",
-      "description": "Represents a ministry within the church.",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the ministry."
-        },
-        "description": {
-          "type": "string",
-          "description": "A brief description of the ministry's purpose."
-        },
-        "leaderId": {
-          "type": "string",
-          "description": "The ID of the worker who leads the ministry."
-        },
-        "department": {
-            "type": "string",
-            "description": "The department the ministry belongs to.",
-            "enum": ["Worship", "Outreach", "Relationship", "Discipleship", "Administration"]
-        }
-      },
-      "required": ["name", "leaderId", "department"]
-    },
-    "Location": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Location",
-      "type": "object",
-      "description": "Represents a physical location or building.",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the location, e.g., 'Genbless Building'."
-        }
-      },
-      "required": [
-        "name"
-      ]
+      "required": ["name", "privileges"]
     }
   },
   "auth": {
@@ -318,98 +52,27 @@
     ]
   },
   "firestore": {
-    "structure": [
+     "structure": [
       {
-        "path": "/worker_profiles/{workerProfileId}",
+        "path": "/users/{userId}",
         "definition": {
-          "entityName": "WorkerProfile",
+          "entityName": "User",
           "schema": {
-            "$ref": "#/entities/WorkerProfile"
+            "$ref": "#/entities/User"
           },
-          "description": "Stores worker profile information. Document ID should match the Firebase Auth UID."
+          "description": "Stores user profile information. Document ID should match the Firebase Auth UID."
         }
       },
       {
-        "path": "/approvals/{approvalId}",
+        "path": "/roles/{roleId}",
         "definition": {
-          "entityName": "Approval",
+          "entityName": "Role",
           "schema": {
-            "$ref": "#/entities/Approval"
+            "$ref": "#/entities/Role"
           },
-          "description": "Stores all approval requests from across the application."
-        }
-      },
-      {
-        "path": "/rooms/{roomId}",
-        "definition": {
-          "entityName": "Room",
-          "schema": {
-            "$ref": "#/entities/Room"
-          },
-          "description": "Stores room information."
-        }
-      },
-      {
-        "path": "/rooms/{roomId}/reservations/{reservationId}",
-        "definition": {
-          "entityName": "Reservation",
-          "schema": {
-            "$ref": "#/entities/Reservation"
-          },
-          "description": "Stores reservation information for rooms."
-        }
-      },
-      {
-        "path": "/mealstubs/{mealstubId}",
-        "definition": {
-          "entityName": "Mealstub",
-          "schema": {
-            "$ref": "#/entities/Mealstub"
-          },
-          "description": "Stores mealstub information."
-        }
-      },
-      {
-        "path": "/attendance_records/{attendanceRecordId}",
-        "definition": {
-          "entityName": "AttendanceRecord",
-          "schema": {
-            "$ref": "#/entities/AttendanceRecord"
-          },
-          "description": "Stores attendance records for workers."
-        }
-      },
-      {
-        "path": "/equipment/{equipmentId}",
-        "definition": {
-          "entityName": "Equipment",
-          "schema": {
-            "$ref": "#/entities/Equipment"
-          },
-          "description": "Stores general information about equipment."
-        }
-      },
-      {
-        "path": "/ministries/{ministryId}",
-        "definition": {
-          "entityName": "Ministry",
-          "schema": {
-            "$ref": "#/entities/Ministry"
-          },
-          "description": "Stores information about ministries."
-        }
-      },
-      {
-        "path": "/locations/{locationId}",
-        "definition": {
-          "entityName": "Location",
-          "schema": {
-            "$ref": "#/entities/Location"
-          },
-          "description": "Stores information about physical locations or buildings."
+          "description": "Stores role definitions and associated privileges."
         }
       }
-    ],
-    "reasoning": "The Firestore data structure has been updated to better support the COGApp's features. A top-level `/approvals` collection has been added to centralize all approval workflows, simplifying the logic for the approvals page. A new top-level `/ministries` collection has been introduced to store ministry data, now including a 'department' field. A new `/locations` collection stores building information, and the `/rooms` collection now links to a location via `locationId`. Worker profiles remain as a top-level collection where the document ID is the worker's authentication UID, which is a robust way to link authentication with user data and secure it with ownership-based rules."
+    ]
   }
 }

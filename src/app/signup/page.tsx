@@ -15,13 +15,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useFirestore, addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
+import { useAuth, useFirestore, setDocumentNonBlocking } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, collection, serverTimestamp, getDocs } from "firebase/firestore";
+import { doc, serverTimestamp } from "firebase/firestore";
 
 export default function SignUpPage() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const auth = useAuth();
@@ -30,7 +28,7 @@ export default function SignUpPage() {
   const { toast } = useToast();
 
   const handleSignUp = async () => {
-    if (!firstName || !lastName || !email || !password) {
+    if (!email || !password) {
       toast({
         variant: "destructive",
         title: "Missing fields",
@@ -40,42 +38,22 @@ export default function SignUpPage() {
     }
 
     try {
-      const workersCollectionRef = collection(firestore, "worker_profiles");
-      const workersSnapshot = await getDocs(workersCollectionRef);
-      const newWorkerId = String(20000 + workersSnapshot.size).padStart(6, '0');
-
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const newProfile = {
-        workerId: newWorkerId,
-        firstName,
-        lastName,
+      const newUser = {
         email,
-        role: 'Mentee',
-        status: 'Pending Approval',
-        permissions: [],
-        phone: '',
-        avatarUrl: `https://picsum.photos/seed/${user.uid.slice(0, 5)}/100/100`,
-        passwordChangeRequired: true,
+        roleId: 'viewer', // Default role for new sign-ups
+        status: 'active',
+        createdAt: serverTimestamp(),
       };
 
-      const workerRef = doc(firestore, 'worker_profiles', user.uid);
-      // Use await here to ensure profile is created before moving on
-      await setDocumentNonBlocking(workerRef, newProfile, {});
-
-      await addDocumentNonBlocking(collection(firestore, "approvals"), {
-        requester: `${firstName} ${lastName}`,
-        type: 'New Worker',
-        details: `New worker registration for ${firstName} ${lastName}.`,
-        date: serverTimestamp(),
-        status: 'Pending',
-        workerId: user.uid
-      });
+      const userRef = doc(firestore, 'users', user.uid);
+      await setDocumentNonBlocking(userRef, newUser, {});
       
       toast({
         title: "Account Created",
-        description: "Your account has been created and is pending approval. You will be redirected.",
+        description: "Your account has been created. You will be redirected.",
       });
       
       router.push("/dashboard");
@@ -104,21 +82,11 @@ export default function SignUpPage() {
           </div>
           <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
           <CardDescription>
-            Enter your details below to sign up for COGApp
+            Enter your details below to sign up
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="first-name">First Name</Label>
-                <Input id="first-name" placeholder="John" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="last-name">Last Name</Label>
-                <Input id="last-name" placeholder="Doe" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              </div>
-            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
