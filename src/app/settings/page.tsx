@@ -19,17 +19,7 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { LoaderCircle, Shield, AlertTriangle, PlusCircle, Trash2, Pencil } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { LoaderCircle, Shield, AlertTriangle, PlusCircle, Trash2, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, useDoc, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
@@ -37,74 +27,6 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from "@/lib/types";
 import { allPermissions, type Permission } from "@/lib/permissions";
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-// RoleForm component
-const RoleForm = ({ role, onSave, onClose }: { role?: Partial<Role> | null; onSave: (data: Partial<Role>) => void; onClose: () => void }) => {
-    const { toast } = useToast();
-    const [formData, setFormData] = useState<Partial<Role>>({ name: '', privileges: {} });
-
-    useEffect(() => {
-        setFormData(role || { name: '', privileges: {} });
-    }, [role]);
-
-    const handlePrivilegeChange = (privilege: Permission, checked: boolean) => {
-        const currentPrivileges = { ...(formData.privileges || {}) };
-        if (checked) {
-            currentPrivileges[privilege] = true;
-        } else {
-            delete currentPrivileges[privilege];
-        }
-        setFormData({ ...formData, privileges: currentPrivileges });
-    };
-
-    const handleSave = () => {
-        if (!formData.name) {
-            toast({ variant: 'destructive', title: 'Role name is required.' });
-            return;
-        }
-        onSave(formData);
-    };
-
-    return (
-        <>
-            <DialogHeader>
-                <DialogTitle className="font-headline">{role?.id ? 'Edit Role' : 'Add New Role'}</DialogTitle>
-                <DialogDescription>Define the role name and its associated privileges for each module.</DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="flex-grow -mx-6">
-                <div className="grid gap-4 py-4 px-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="role-name">Role Name</Label>
-                        <Input id="role-name" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Content Editor"/>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Privileges</Label>
-                        <div className="space-y-2 rounded-md border p-4 grid grid-cols-3 gap-4">
-                            {allPermissions.map(privilege => (
-                                <div key={privilege} className="flex items-center space-x-2">
-                                    <Checkbox 
-                                        id={`priv-${privilege}`} 
-                                        checked={!!formData.privileges?.[privilege]} 
-                                        onCheckedChange={(checked) => handlePrivilegeChange(privilege, !!checked)}
-                                    />
-                                    <label htmlFor={`priv-${privilege}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize">
-                                        {privilege.replace(/_/g, ' ')}
-                                    </label>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </ScrollArea>
-            <DialogFooter>
-                <DialogClose asChild><Button variant="secondary">Cancel</Button></DialogClose>
-                <Button onClick={handleSave}>Save Role</Button>
-            </DialogFooter>
-        </>
-    );
-};
-
 
 export default function SettingsPage() {
     const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
@@ -126,48 +48,84 @@ export default function SettingsPage() {
     }, [firestore, user]);
     const { data: roles, isLoading: rolesLoading } = useCollection<Role>(rolesRef);
 
-    // Form/Sheet State for Role Matrix
-    const [dialogContent, setDialogContent] = useState<React.ReactNode | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    
-    const closeDialog = () => setIsDialogOpen(false);
+    // State for inline editing
+    const [editableRoles, setEditableRoles] = useState<Role[]>([]);
 
-    // Role Handlers from dashboard
-    const handleSaveRole = async (roleData: Partial<Role>) => {
+    useEffect(() => {
+        if (roles) {
+            setEditableRoles(roles.sort((a, b) => a.name.localeCompare(b.name)));
+        }
+    }, [roles]);
+
+    const handleRoleChange = (roleId: string, field: 'name' | 'privilege', value: any, privilegeKey?: Permission) => {
+        setEditableRoles(currentRoles =>
+            currentRoles.map(role => {
+                if (role.id === roleId) {
+                    if (field === 'name') {
+                        return { ...role, name: value };
+                    }
+                    if (field === 'privilege' && privilegeKey) {
+                        const newPrivileges = { ...role.privileges };
+                        if (value) {
+                            newPrivileges[privilegeKey] = true;
+                        } else {
+                            delete newPrivileges[privilegeKey];
+                        }
+                        return { ...role, privileges: newPrivileges };
+                    }
+                }
+                return role;
+            })
+        );
+    };
+
+    const handleSaveRole = async (roleData: Role) => {
+        const { id, ...data } = roleData;
+        if (!data.name) {
+            toast({ variant: 'destructive', title: 'Role name is required.' });
+            return;
+        }
+
         try {
-            if (roleData.id) {
-                const { id, ...data } = roleData;
-                await updateDocumentNonBlocking(doc(firestore, "roles", id), data);
-                toast({ title: "Role Updated" });
+            if (id.startsWith('new_')) {
+                // This is a new role. Firestore will generate an ID.
+                await addDocumentNonBlocking(collection(firestore, "roles"), data);
+                toast({ title: "Role Added", description: `The "${data.name}" role has been created.` });
+                // The useCollection hook will automatically refresh the roles list.
             } else {
-                await addDocumentNonBlocking(collection(firestore, "roles"), roleData);
-                toast({ title: "Role Added" });
+                // This is an existing role.
+                await updateDocumentNonBlocking(doc(firestore, "roles", id), data);
+                toast({ title: "Role Updated", description: `The "${data.name}" role has been saved.` });
             }
-            closeDialog();
         } catch (error) {
-            toast({ variant: "destructive", title: "Save Failed", description: "Could not save role." });
+            toast({ variant: "destructive", title: "Save Failed", description: "Could not save the role." });
         }
     };
 
     const handleDeleteRole = async (id: string) => {
-        // Prevent deleting admin role
         if (id === 'admin') {
             toast({ variant: 'destructive', title: 'Cannot Delete Admin Role' });
             return;
         }
-        try {
-            await deleteDocumentNonBlocking(doc(firestore, "roles", id));
-            toast({ title: "Role Deleted" });
-        } catch (error) {
-            toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete role." });
+
+        if (id.startsWith('new_')) {
+            // It's a new, unsaved role, just remove from local state.
+            setEditableRoles(currentRoles => currentRoles.filter(r => r.id !== id));
+        } else {
+            // It's an existing role, delete from firestore.
+            try {
+                await deleteDocumentNonBlocking(doc(firestore, "roles", id));
+                toast({ title: "Role Deleted" });
+            } catch (error) {
+                toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete role." });
+            }
         }
     };
-    
-    const openRoleForm = (role?: Role) => {
-        setDialogContent(<RoleForm key={role?.id || 'new-role'} role={role} onSave={handleSaveRole} onClose={closeDialog} />);
-        setIsDialogOpen(true);
-    };
 
+    const handleAddRow = () => {
+        const newId = `new_${Date.now()}`;
+        setEditableRoles(currentRoles => [...currentRoles, { id: newId, name: '', privileges: {} }]);
+    };
 
     const initializeSystem = async () => {
         if (!user) {
@@ -276,20 +234,45 @@ export default function SettingsPage() {
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
                                     <CardTitle className="font-headline">Role & Permission Matrix</CardTitle>
-                                    <CardDescription>Add, edit, or remove user roles and their privileges.</CardDescription>
+                                    <CardDescription>Add roles and assign privileges inline.</CardDescription>
                                 </div>
-                                <Button size="sm" onClick={() => openRoleForm()}><PlusCircle className="h-4 w-4 mr-2" />Add Role</Button>
+                                <Button size="sm" onClick={handleAddRow}><PlusCircle className="h-4 w-4 mr-2" />Add Role</Button>
                             </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader><TableRow><TableHead>Role Name</TableHead><TableHead>Privileges</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                            <CardContent className="overflow-x-auto">
+                                <Table className="min-w-full">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[250px] sticky left-0 bg-card z-10">Role Name</TableHead>
+                                            {allPermissions.map(permission => (
+                                                <TableHead key={permission} className="text-center min-w-[150px]">
+                                                    <span className="capitalize">{permission.replace(/_/g, ' ')}</span>
+                                                </TableHead>
+                                            ))}
+                                            <TableHead className="text-right w-[150px] sticky right-0 bg-card z-10">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
                                     <TableBody>
-                                        {roles?.map(role => (
+                                        {editableRoles?.map(role => (
                                             <TableRow key={role.id}>
-                                                <TableCell className="font-medium capitalize">{role.name}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs">{Object.keys(role.privileges || {}).map(p => p.replace(/_/g, ' ')).join(', ')}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => openRoleForm(role)}><Pencil className="h-4 w-4" /></Button>
+                                                <TableCell className="font-medium sticky left-0 bg-card">
+                                                    <Input
+                                                        value={role.name}
+                                                        onChange={e => handleRoleChange(role.id, 'name', e.target.value)}
+                                                        disabled={role.id === 'admin'}
+                                                        placeholder="New Role Name"
+                                                        className="w-full"
+                                                    />
+                                                </TableCell>
+                                                {allPermissions.map(permission => (
+                                                    <TableCell key={`${role.id}-${permission}`} className="text-center">
+                                                        <Checkbox
+                                                            checked={!!role.privileges?.[permission]}
+                                                            onCheckedChange={(checked) => handleRoleChange(role.id, 'privilege', !!checked, permission)}
+                                                        />
+                                                    </TableCell>
+                                                ))}
+                                                <TableCell className="text-right sticky right-0 bg-card space-x-0">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleSaveRole(role)}><Save className="h-4 w-4" /></Button>
                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRole(role.id)} disabled={role.id === 'admin'}><Trash2 className="h-4 w-4" /></Button>
                                                 </TableCell>
                                             </TableRow>
@@ -316,12 +299,6 @@ export default function SettingsPage() {
                 )}
 
             </div>
-            
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="w-screen h-screen max-w-none rounded-none border-0 p-6 flex flex-col">
-                    {dialogContent}
-                </DialogContent>
-            </Dialog>
         </AppLayout>
     );
 }
