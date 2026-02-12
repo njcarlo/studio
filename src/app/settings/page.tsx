@@ -43,19 +43,20 @@ import { useToast } from "@/hooks/use-toast";
 
 const RoleForm = ({ role, onSave, onClose }: { role?: Partial<Role> | null; onSave: (data: Partial<Role>) => void; onClose: () => void }) => {
     const { toast } = useToast();
-    const [formData, setFormData] = useState<Partial<Role>>({ name: '', privileges: [] });
+    const [formData, setFormData] = useState<Partial<Role>>({ name: '', privileges: {} });
 
     useEffect(() => {
-        setFormData(role || { name: '', privileges: [] });
+        setFormData(role || { name: '', privileges: {} });
     }, [role]);
 
     const handlePrivilegeChange = (privilege: Permission, checked: boolean) => {
-        const currentPrivileges = formData.privileges || [];
+        const currentPrivileges = { ...(formData.privileges || {}) };
         if (checked) {
-            setFormData({ ...formData, privileges: [...currentPrivileges, privilege] });
+            currentPrivileges[privilege] = true;
         } else {
-            setFormData({ ...formData, privileges: currentPrivileges.filter(p => p !== privilege) });
+            delete currentPrivileges[privilege];
         }
+        setFormData({ ...formData, privileges: currentPrivileges });
     };
 
     const handleSave = () => {
@@ -84,7 +85,7 @@ const RoleForm = ({ role, onSave, onClose }: { role?: Partial<Role> | null; onSa
                             <div key={privilege} className="flex items-center space-x-2">
                                 <Checkbox 
                                     id={`priv-${privilege}`} 
-                                    checked={formData.privileges?.includes(privilege)} 
+                                    checked={!!formData.privileges?.[privilege]} 
                                     onCheckedChange={(checked) => handlePrivilegeChange(privilege, !!checked)}
                                 />
                                 <label htmlFor={`priv-${privilege}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize">
@@ -180,9 +181,9 @@ export default function SettingsPage() {
         try {
             const batch = writeBatch(firestore);
             const rolesData = {
-                admin: { name: 'Admin', privileges: allPermissions },
-                editor: { name: 'Editor', privileges: ['edit_all'] },
-                viewer: { name: 'Viewer', privileges: [] }
+                admin: { name: 'Admin', privileges: allPermissions.reduce((acc, p) => ({ ...acc, [p]: true }), {}) },
+                editor: { name: 'Editor', privileges: { 'edit_all': true } },
+                viewer: { name: 'Viewer', privileges: {} }
             };
             for (const [roleId, roleData] of Object.entries(rolesData)) {
                 batch.set(doc(firestore, 'roles', roleId), roleData);
@@ -238,7 +239,7 @@ export default function SettingsPage() {
                                     {roles?.map(role => (
                                         <TableRow key={role.id}>
                                             <TableCell className="font-medium capitalize">{role.name}</TableCell>
-                                            <TableCell className="text-muted-foreground text-xs">{role.privileges.join(', ')}</TableCell>
+                                            <TableCell className="text-muted-foreground text-xs">{Object.keys(role.privileges || {}).join(', ')}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => openRoleForm(role)}><Pencil className="h-4 w-4" /></Button>
                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRole(role.id)}><Trash2 className="h-4 w-4" /></Button>

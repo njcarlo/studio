@@ -1,7 +1,7 @@
 export type Role = {
   id: string;
   name: string;
-  privileges: string[];
+  privileges: { [key: string]: boolean };
 }
 
 export type User = {
