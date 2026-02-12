@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { collection, serverTimestamp, doc } from "firebase/firestore";
+import { collection, serverTimestamp, doc, query, where } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, QrCode, LoaderCircle, Scan } from "lucide-react";
 import type { MealStub, User } from "@/lib/types";
-import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase, useDoc } from "@/firebase";
+import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { format, isToday, subDays } from 'date-fns';
 
@@ -66,20 +66,25 @@ const MealStubDialog = ({ stub, worker, open, onOpenChange }: { stub: MealStub |
 
 export default function MealsPage() {
   const firestore = useFirestore();
-  const mealStubsRef = useMemoFirebase(() => collection(firestore, "mealstubs"), [firestore]);
-  const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsRef);
+  const { user } = useUser();
+  const { isSuperAdmin, userProfile } = useUserRole();
+
+  const mealStubsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    if (isSuperAdmin) {
+        return collection(firestore, "mealstubs");
+    }
+    return query(collection(firestore, "mealstubs"), where('workerId', '==', user.uid));
+  }, [firestore, user, isSuperAdmin]);
+
+  const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsQuery);
   
   const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
   const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
   
-  const { user } = useUser();
-  const { userProfile } = useUserRole();
-
   const [selectedStub, setSelectedStub] = useState<MealStub | null>(null);
   const [selectedWorker, setSelectedWorker] = useState<User | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const { isSuperAdmin } = useUserRole();
 
   const isLoading = mealStubsLoading || usersLoading;
 
