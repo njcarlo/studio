@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { writeBatch, doc, serverTimestamp, collection } from "firebase/firestore";
+import { writeBatch, doc, serverTimestamp, collection, query, orderBy } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,13 +20,13 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { LoaderCircle, Shield, AlertTriangle, PlusCircle, Trash2, Save } from "lucide-react";
+import { LoaderCircle, Shield, AlertTriangle, PlusCircle, Trash2, Save, GanttChartSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, useDoc, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import type { Role } from "@/lib/types";
+import type { Role, WorkflowState } from "@/lib/types";
 import { allPermissions, type Permission } from "@/lib/permissions";
 
 export default function SettingsPage() {
@@ -48,14 +49,28 @@ export default function SettingsPage() {
     }, [firestore, user]);
     const { data: roles, isLoading: rolesLoading } = useCollection<Role>(rolesRef);
 
+    // Data for Workflow States
+    const workflowStatesRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, "workflows", "default_workflow", "states"), orderBy('order'));
+    }, [firestore, user]);
+    const { data: workflowStates, isLoading: statesLoading } = useCollection<WorkflowState>(workflowStatesRef);
+
     // State for inline editing
     const [editableRoles, setEditableRoles] = useState<Role[]>([]);
+    const [editableStates, setEditableStates] = useState<WorkflowState[]>([]);
 
     useEffect(() => {
         if (roles) {
             setEditableRoles(roles.sort((a, b) => a.name.localeCompare(b.name)));
         }
     }, [roles]);
+
+    useEffect(() => {
+        if (workflowStates) {
+            setEditableStates(workflowStates);
+        }
+    }, [workflowStates]);
 
     const handleRoleChange = (roleId: string, field: 'name' | 'privilege', value: any, privilegeKey?: Permission) => {
         setEditableRoles(currentRoles =>
@@ -125,6 +140,65 @@ export default function SettingsPage() {
     const handleAddRow = () => {
         const newId = `new_${Date.now()}`;
         setEditableRoles(currentRoles => [...currentRoles, { id: newId, name: '', privileges: {} }]);
+    };
+    
+    // Handlers for workflow states
+    const handleStateChange = (stateId: string, field: 'name' | 'order', value: string | number) => {
+        setEditableStates(currentStates =>
+            currentStates.map(state => {
+                if (state.id === stateId) {
+                    if (field === 'order') {
+                        return { ...state, order: Number(value) || 0 };
+                    }
+                    return { ...state, [field]: value as string };
+                }
+                return state;
+            })
+        );
+    };
+
+    const handleSaveState = async (stateData: WorkflowState) => {
+        const { id, ...data } = stateData;
+        if (!data.name) {
+            toast({ variant: 'destructive', title: 'State name is required.' });
+            return;
+        }
+
+        try {
+            if (id.startsWith('new_')) {
+                await addDocumentNonBlocking(collection(firestore, "workflows", "default_workflow", "states"), {...data, workflowId: "default_workflow"});
+                toast({ title: "State Added", description: `The "${data.name}" state has been created.` });
+            } else {
+                await updateDocumentNonBlocking(doc(firestore, "workflows", "default_workflow", "states", id), data);
+                toast({ title: "State Updated", description: `The "${data.name}" state has been saved.` });
+            }
+        } catch (error) {
+            toast({ variant: "destructive", title: "Save Failed", description: "Could not save the state." });
+        }
+    };
+
+    const handleDeleteState = async (id: string) => {
+        if (['pending', 'approved', 'rejected'].includes(id)) {
+            toast({ variant: 'destructive', title: 'Cannot Delete Core State', description: 'The pending, approved, and rejected states are essential for system logic and cannot be deleted.' });
+            return;
+        }
+
+        if (id.startsWith('new_')) {
+            setEditableStates(currentStates => currentStates.filter(s => s.id !== id));
+        } else {
+            try {
+                await deleteDocumentNonBlocking(doc(firestore, "workflows", "default_workflow", "states", id));
+                toast({ title: "State Deleted" });
+            } catch (error) {
+                toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete state." });
+            }
+        }
+    };
+
+    const handleAddState = () => {
+        const newId = `new_${Date.now()}`;
+        const maxOrder = editableStates.reduce((max, state) => Math.max(max, state.order), 0);
+        setEditableStates(currentStates => [...currentStates, { id: newId, name: '', order: maxOrder + 1, workflowId: 'default_workflow' }]);
     };
 
     const initializeSystem = async () => {
@@ -205,7 +279,7 @@ export default function SettingsPage() {
         }
     };
 
-    const isLoading = isRoleLoading || isAdminRoleLoading || isUserLoading || rolesLoading;
+    const isLoading = isRoleLoading || isAdminRoleLoading || isUserLoading || rolesLoading || statesLoading;
 
     const needsSeeding = !adminRole && !isAdminRoleLoading;
     const canAccess = isSuperAdmin || needsSeeding;
@@ -319,10 +393,57 @@ export default function SettingsPage() {
                         </Card>
 
                         <Card>
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle className="font-headline flex items-center gap-2"><GanttChartSquare className="h-5 w-5"/>Workflow Configuration</CardTitle>
+                                    <CardDescription>Manage the states (columns) for the default approval workflow.</CardDescription>
+                                </div>
+                                <Button size="sm" onClick={handleAddState}><PlusCircle className="h-4 w-4 mr-2" />Add State</Button>
+                            </CardHeader>
+                            <CardContent>
+                                 <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[250px]">State Name</TableHead>
+                                            <TableHead className="w-[150px]">Order</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {editableStates.map(state => (
+                                            <TableRow key={state.id}>
+                                                <TableCell>
+                                                    <Input
+                                                        value={state.name}
+                                                        onChange={e => handleStateChange(state.id, 'name', e.target.value)}
+                                                        placeholder="New State Name"
+                                                        className="h-9"
+                                                     />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="number"
+                                                        value={state.order}
+                                                        onChange={e => handleStateChange(state.id, 'order', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-right space-x-0">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleSaveState(state)}><Save className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteState(state.id)} disabled={['pending', 'approved', 'rejected'].includes(state.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2"><Shield /> System Seed</CardTitle>
                                 <CardDescription>
-                                    This will create (or reset) the default user roles ('Admin', 'Editor', 'Viewer'). It will also ensure the currently logged-in user has the 'Admin' role. This can be used to recover admin access.
+                                    This will create (or reset) the default user roles and approval workflow. This can be used to recover admin access or restore the default workflow.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -338,3 +459,6 @@ export default function SettingsPage() {
         </AppLayout>
     );
 }
+
+
+    
