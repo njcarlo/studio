@@ -242,7 +242,7 @@ export default function SettingsPage() {
         }
     }, [firestore, toast]);
 
-    const handleAddState = () => {
+    const handleAddState = async () => {
         const name = prompt("Enter new state name:");
         if (!name) return;
 
@@ -251,9 +251,21 @@ export default function SettingsPage() {
         
         const newState = { name, order: newOrder, workflowId: 'default_workflow' };
 
-        addDocumentNonBlocking(collection(firestore, "workflows", "default_workflow", "states"), newState).then(docRef => {
-            if(docRef) toast({ title: "State Added", description: `Please refresh to see it in the flowchart.` });
-        });
+        try {
+            const docRef = await addDocumentNonBlocking(collection(firestore, "workflows", "default_workflow", "states"), newState);
+            if (docRef?.id) {
+                const newNode: Node = {
+                    id: docRef.id,
+                    position: { x: newOrder * 220, y: 100 },
+                    data: { label: name },
+                    type: 'default',
+                };
+                setNodes((nds) => [...nds, newNode]);
+                toast({ title: "State Added", description: `The state "${name}" has been added.` });
+            }
+        } catch (e) {
+            toast({ variant: "destructive", title: "Error", description: "Could not add state." });
+        }
     };
 
     // System Initializer
