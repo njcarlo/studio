@@ -68,7 +68,7 @@ export type ApprovalRequest = {
     type: 'New Worker' | 'Profile Update' | 'Room Booking';
     details: string;
     date: any; // Timestamp
-    status: 'Pending' | 'Approved' | 'Rejected';
+    status: 'Pending' | 'In Review' | 'Approved' | 'Rejected';
     workerId?: string;
     roomId?: string;
     reservationId?: string;

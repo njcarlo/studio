@@ -87,7 +87,7 @@
         "type": { "type": "string" },
         "details": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "status": { "type": "string", "enum": ["Pending", "In Review", "Approved", "Rejected"] },
         "workerId": { "type": "string" },
         "roomId": { "type": "string" },
         "reservationId": { "type": "string" }
