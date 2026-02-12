@@ -16,8 +16,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // Allow read if the user is the document owner OR has the 'create_user' privilege.
-      allow read: if request.auth != null && (request.auth.uid == userId || hasPrivilege('create_user'));
+      // Allow any authenticated user to read user profiles.
+      allow read: if request.auth != null;
       
       // Allow a user to create their own user document.
       allow create: if request.auth.uid == userId;
