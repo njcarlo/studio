@@ -67,7 +67,7 @@ export default function SettingsPage() {
                 roleId: 'admin',
                 status: 'Active',
                 createdAt: serverTimestamp()
-            });
+            }, { merge: true });
             await batch.commit();
             toast({ title: "System Initialized", description: "Admin account and default roles have been created." });
         } catch (dbError: any) {

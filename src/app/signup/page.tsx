@@ -15,11 +15,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useFirestore, setDocumentNonBlocking } from "@/firebase";
+import { useAuth, useFirestore, setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, serverTimestamp } from "firebase/firestore";
+import { doc, serverTimestamp, collection } from "firebase/firestore";
 
 export default function SignUpPage() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const auth = useAuth();
@@ -28,7 +30,7 @@ export default function SignUpPage() {
   const { toast } = useToast();
 
   const handleSignUp = async () => {
-    if (!email || !password) {
+    if (!firstName || !lastName || !email || !password) {
       toast({
         variant: "destructive",
         title: "Missing fields",
@@ -42,21 +44,35 @@ export default function SignUpPage() {
       const user = userCredential.user;
 
       const newUser = {
+        firstName,
+        lastName,
         email,
-        roleId: 'viewer', // Default role for new sign-ups
-        status: 'active',
+        roleId: 'viewer',
+        status: 'Pending Approval',
         createdAt: serverTimestamp(),
+        avatarUrl: `https://picsum.photos/seed/${user.uid.slice(0, 5)}/100/100`,
+        workerId: String(20000 + Math.floor(Math.random() * 1000)).padStart(6, '0'),
       };
 
       const userRef = doc(firestore, 'users', user.uid);
       await setDocumentNonBlocking(userRef, newUser, {});
-      
+
+      // Create an approval request
+      await addDocumentNonBlocking(collection(firestore, "approvals"), {
+          requester: `${newUser.firstName} ${newUser.lastName}`,
+          type: 'New Worker',
+          details: `New user self-registration: ${newUser.email}.`,
+          date: serverTimestamp(),
+          status: 'Pending',
+          workerId: user.uid
+      });
+
       toast({
-        title: "Account Created",
-        description: "Your account has been created. You will be redirected.",
+        title: "Account Registration Submitted",
+        description: "Your account is pending approval. You will be redirected to the login page.",
       });
       
-      router.push("/dashboard");
+      router.push("/login");
 
     } catch (error: any) {
       let description = "An unknown error occurred.";
@@ -87,6 +103,16 @@ export default function SignUpPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
+             <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input id="firstName" placeholder="John" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input id="lastName" placeholder="Doe" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                </div>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />

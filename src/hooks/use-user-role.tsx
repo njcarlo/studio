@@ -39,33 +39,6 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
   const { data: realUserRole, isLoading: isRoleLoading } = useDoc<Role>(roleRef);
 
-  useEffect(() => {
-    // If auth is loaded, a user is present, but their profile is not yet loading and does not exist,
-    // it means they are a new user. We'll create a default profile for them.
-    if (!isUserLoading && user && !isProfileLoading && !userProfile) {
-      const nameParts = user.displayName?.split(' ') || [];
-      const firstName = nameParts[0] || 'New';
-      const lastName = nameParts.slice(1).join(' ') || 'User';
-
-      const newProfile: Partial<User> = {
-        firstName,
-        lastName,
-        email: user.email!,
-        avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid.slice(0,5)}/100/100`,
-        roleId: 'viewer', // Default role
-        status: 'Pending Approval',
-        phone: user.phoneNumber || '',
-        primaryMinistryId: '',
-        secondaryMinistryId: '',
-        createdAt: new Date(),
-      };
-
-      const newUserRef = doc(firestore, 'users', user.uid);
-      setDocumentNonBlocking(newUserRef, newProfile, {}); // Non-blocking create
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isUserLoading, isProfileLoading, firestore]);
-
   const isSuperAdmin = realUserRole?.id === 'admin';
 
   // The role displayed in the UI. Defaults to the user's real role.
