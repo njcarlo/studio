@@ -394,9 +394,10 @@ export default function RoomsPage() {
                     details: `"${bookingData.title}" for room: ${rooms?.find(r => r.id === bookingData.roomId)?.name}`,
                     date: serverTimestamp(),
                     workflowId: 'default_workflow',
-                    currentStateId: 'pending',
+                    currentStateId: 'open',
                     roomId: bookingData.roomId,
-                    reservationId: reservationRef.id
+                    reservationId: reservationRef.id,
+                    workerId: userProfile.id
                 });
     
                 toast({

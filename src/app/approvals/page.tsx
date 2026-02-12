@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Calendar, UserCog, LoaderCircle, GanttChartSquare } from "lucide-react";
-import type { ApprovalRequest, WorkflowState, WorkflowTransition } from "@/lib/types";
+import type { ApprovalRequest, WorkflowState, WorkflowTransition, Role } from "@/lib/types";
 import { useFirestore, useCollection, updateDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { formatDistanceToNow } from "date-fns";
@@ -22,9 +22,18 @@ const getIconForType = (type: ApprovalRequest['type']) => {
     }
 }
 
-const KanbanCard = ({ request, transitions, onTransition }: { request: ApprovalRequest, transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void }) => {
+const KanbanCard = ({ request, transitions, onTransition, userRole, isSuperAdmin }: { request: ApprovalRequest, transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void, userRole: Role | null, isSuperAdmin: boolean }) => {
     
-    const possibleTransitions = transitions.filter(t => t.fromStateId === request.currentStateId);
+    const possibleTransitions = useMemo(() => transitions.filter(t => {
+        if (t.fromStateId !== request.currentStateId) return false;
+        if (isSuperAdmin) return true; // Super admin sees all possible actions
+        if (!t.allowedRoles || t.allowedRoles.length === 0) {
+            // Default to allowing if no specific roles are required (e.g., a "Submit" action by any user)
+            return true;
+        }
+        if (!userRole) return false; // If user has no role, they can't perform restricted actions
+        return t.allowedRoles.includes(userRole.id);
+    }), [transitions, request.currentStateId, userRole, isSuperAdmin]);
 
     return (
         <Card className="shadow-sm hover:shadow-lg transition-shadow bg-card">
@@ -47,7 +56,7 @@ const KanbanCard = ({ request, transitions, onTransition }: { request: ApprovalR
             {possibleTransitions.length > 0 && (
                  <CardFooter className="p-2.5 pt-0 flex justify-end gap-2">
                     {possibleTransitions.map(transition => (
-                        <Button key={transition.id} size="sm" variant={transition.name === 'Reject' ? 'outline' : 'default'} onClick={() => onTransition(request, transition)}>
+                        <Button key={transition.id} size="sm" variant={transition.name.toLowerCase().includes('reject') ? 'outline' : 'default'} onClick={() => onTransition(request, transition)}>
                             {transition.name}
                         </Button>
                     ))}
@@ -57,7 +66,7 @@ const KanbanCard = ({ request, transitions, onTransition }: { request: ApprovalR
     );
 };
 
-const KanbanColumn = ({ state, requests, transitions, onTransition }: { state: WorkflowState, requests: ApprovalRequest[], transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void }) => {
+const KanbanColumn = ({ state, requests, transitions, onTransition, userRole, isSuperAdmin }: { state: WorkflowState, requests: ApprovalRequest[], transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void, userRole: Role | null, isSuperAdmin: boolean }) => {
     return (
         <div className="w-80 shrink-0">
             <h3 className="font-semibold mb-3 px-1 flex items-center justify-between text-sm uppercase text-muted-foreground">
@@ -70,6 +79,8 @@ const KanbanColumn = ({ state, requests, transitions, onTransition }: { state: W
                         request={request} 
                         transitions={transitions}
                         onTransition={onTransition}
+                        userRole={userRole}
+                        isSuperAdmin={isSuperAdmin}
                     />
                 )) : (
                     <div className="h-20 flex items-center justify-center">
@@ -190,6 +201,8 @@ export default function ApprovalsPage() {
                                 requests={stateRequests}
                                 transitions={workflowTransitions || []}
                                 onTransition={handleTransition}
+                                userRole={realUserRole}
+                                isSuperAdmin={isSuperAdmin}
                             />
                         )
                     })}

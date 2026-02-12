@@ -107,4 +107,5 @@ export type WorkflowTransition = {
     workflowId: string;
     fromStateId: string;
     toStateId: string;
+    allowedRoles?: string[];
 }
