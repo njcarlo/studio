@@ -30,6 +30,92 @@
         }
       },
       "required": ["name", "privileges"]
+    },
+    "Ministry": {
+      "title": "Ministry",
+      "type": "object",
+      "description": "Defines a ministry within the church.",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "department": { "type": "string" },
+        "leaderId": { "type": "string" }
+      },
+      "required": ["name", "department"]
+    },
+    "Location": {
+      "title": "Location",
+      "type": "object",
+      "description": "A physical location or building.",
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Room": {
+      "title": "Room",
+      "type": "object",
+      "description": "A bookable room within a location.",
+      "properties": {
+        "name": { "type": "string" },
+        "capacity": { "type": "number" },
+        "equipment": { "type": "array", "items": { "type": "string" } },
+        "locationId": { "type": "string" }
+      },
+      "required": ["name", "capacity", "locationId"]
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "type": "object",
+      "description": "A booking for a room.",
+      "properties": {
+        "roomId": { "type": "string" },
+        "title": { "type": "string" },
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "workerProfileId": { "type": "string" }
+      },
+      "required": ["roomId", "title", "start", "end", "status", "workerProfileId"]
+    },
+    "ApprovalRequest": {
+      "title": "Approval Request",
+      "type": "object",
+      "description": "A request that requires admin approval.",
+      "properties": {
+        "requester": { "type": "string" },
+        "type": { "type": "string" },
+        "details": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "workerId": { "type": "string" },
+        "roomId": { "type": "string" },
+        "reservationId": { "type": "string" }
+      },
+      "required": ["requester", "type", "details", "date", "status"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "type": "object",
+      "description": "A record of a user clocking in or out.",
+      "properties": {
+        "workerProfileId": { "type": "string" },
+        "type": { "type": "string", "enum": ["Clock In", "Clock Out"] },
+        "time": { "type": "string", "format": "date-time" }
+      },
+      "required": ["workerProfileId", "type", "time"]
+    },
+    "MealStub": {
+      "title": "Meal Stub",
+      "type": "object",
+      "description": "A voucher for a meal.",
+      "properties": {
+        "workerId": { "type": "string" },
+        "workerName": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Issued", "Claimed"] }
+      },
+      "required": ["workerId", "date", "status"]
     }
   },
   "auth": {
@@ -43,6 +129,34 @@
     "/roles/{roleId}": {
       "schema": { "$ref": "#/entities/Role" },
       "description": "Stores role definitions and associated privileges."
+    },
+    "/ministries/{ministryId}": {
+      "schema": { "$ref": "#/entities/Ministry" },
+      "description": "Stores ministry information."
+    },
+    "/locations/{locationId}": {
+      "schema": { "$ref": "#/entities/Location" },
+      "description": "Stores location information."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/Room" },
+      "description": "Stores room information."
+    },
+    "/rooms/{roomId}/reservations/{reservationId}": {
+      "schema": { "$ref": "#/entities/Reservation" },
+      "description": "Stores room booking reservations."
+    },
+    "/approvals/{approvalId}": {
+      "schema": { "$ref": "#/entities/ApprovalRequest" },
+      "description": "Stores approval requests for various actions."
+    },
+    "/attendance_records/{recordId}": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Stores user attendance clock-in/out records."
+    },
+    "/mealstubs/{stubId}": {
+      "schema": { "$ref": "#/entities/MealStub" },
+      "description": "Stores meal stub information for users."
     }
   }
 }
