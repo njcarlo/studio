@@ -81,18 +81,19 @@
     "ApprovalRequest": {
       "title": "Approval Request",
       "type": "object",
-      "description": "A request that requires admin approval.",
+      "description": "A request that requires admin approval and follows a dynamic workflow.",
       "properties": {
         "requester": { "type": "string" },
         "type": { "type": "string" },
         "details": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Pending", "In Review", "Approved", "Rejected"] },
+        "workflowId": { "type": "string", "description": "A reference to the workflow this request follows." },
+        "currentStateId": { "type": "string", "description": "A reference to the current state of this request within its workflow." },
         "workerId": { "type": "string" },
         "roomId": { "type": "string" },
         "reservationId": { "type": "string" }
       },
-      "required": ["requester", "type", "details", "date", "status"]
+      "required": ["requester", "type", "details", "date", "workflowId", "currentStateId"]
     },
     "AttendanceRecord": {
       "title": "Attendance Record",
@@ -134,6 +135,39 @@
         "reservationId": { "type": "string" }
       },
       "required": ["scannerId", "scannerName", "timestamp", "scanType", "details"]
+    },
+    "Workflow": {
+      "title": "Workflow",
+      "type": "object",
+      "description": "Defines a custom process with states and transitions.",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the workflow, e.g., 'Approval Process'." },
+        "description": { "type": "string", "description": "A brief explanation of the workflow's purpose." }
+      },
+      "required": ["name"]
+    },
+    "WorkflowState": {
+      "title": "Workflow State",
+      "type": "object",
+      "description": "Represents a single stage or column in a workflow.",
+      "properties": {
+        "name": { "type": "string", "description": "The display name of the state, e.g., 'Pending Review'." },
+        "order": { "type": "number", "description": "The display order of the state in the workflow." },
+        "workflowId": { "type": "string", "description": "A reference to the parent workflow." }
+      },
+      "required": ["name", "order", "workflowId"]
+    },
+    "WorkflowTransition": {
+      "title": "Workflow Transition",
+      "type": "object",
+      "description": "Defines an allowed movement from one state to another.",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the action that triggers this transition, e.g., 'Approve'." },
+        "workflowId": { "type": "string", "description": "A reference to the parent workflow." },
+        "fromStateId": { "type": "string", "description": "The starting state for this transition." },
+        "toStateId": { "type": "string", "description": "The destination state for this transition." }
+      },
+      "required": ["name", "workflowId", "fromStateId", "toStateId"]
     }
   },
   "auth": {
@@ -179,6 +213,18 @@
     "/scan_logs/{logId}": {
       "schema": { "$ref": "#/entities/ScanLog" },
       "description": "Stores a log of all QR code scan events."
+    },
+    "/workflows/{workflowId}": {
+      "schema": { "$ref": "#/entities/Workflow" },
+      "description": "Stores workflow definitions."
+    },
+    "/workflows/{workflowId}/states/{stateId}": {
+      "schema": { "$ref": "#/entities/WorkflowState" },
+      "description": "Stores the states (columns) for a specific workflow."
+    },
+    "/workflows/{workflowId}/transitions/{transitionId}": {
+      "schema": { "$ref": "#/entities/WorkflowTransition" },
+      "description": "Stores the allowed transitions between states for a workflow."
     }
   }
 }
