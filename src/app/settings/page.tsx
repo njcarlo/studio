@@ -180,7 +180,7 @@ export default function SettingsPage() {
         try {
             const batch = writeBatch(firestore);
             const rolesData = {
-                admin: { name: 'Admin', privileges: ['create_user', 'delete_user', 'edit_all', 'manage_roles'] },
+                admin: { name: 'Admin', privileges: allPermissions },
                 editor: { name: 'Editor', privileges: ['edit_all'] },
                 viewer: { name: 'Viewer', privileges: [] }
             };
