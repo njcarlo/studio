@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import Link from "next/link";
 import { collection, doc, query, orderBy } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
@@ -27,7 +28,7 @@ const KanbanCard = ({ request, transitions, onTransition }: { request: ApprovalR
 
     return (
         <Card className="shadow-sm hover:shadow-lg transition-shadow bg-card">
-            <CardHeader className="p-3">
+            <CardHeader className="p-2.5">
                 <div className="flex items-start gap-3">
                     <div className="p-2 bg-primary/10 rounded-md text-primary mt-1">
                         {getIconForType(request.type)}
@@ -40,11 +41,11 @@ const KanbanCard = ({ request, transitions, onTransition }: { request: ApprovalR
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-3 pt-0">
+            <CardContent className="p-2.5 pt-0">
                 <Badge variant="outline">{request.type}</Badge>
             </CardContent>
             {possibleTransitions.length > 0 && (
-                 <CardFooter className="p-3 pt-0 flex justify-end gap-2">
+                 <CardFooter className="p-2.5 pt-0 flex justify-end gap-2">
                     {possibleTransitions.map(transition => (
                         <Button key={transition.id} size="sm" variant={transition.name === 'Reject' ? 'outline' : 'default'} onClick={() => onTransition(request, transition)}>
                             {transition.name}
@@ -58,11 +59,11 @@ const KanbanCard = ({ request, transitions, onTransition }: { request: ApprovalR
 
 const KanbanColumn = ({ state, requests, transitions, onTransition }: { state: WorkflowState, requests: ApprovalRequest[], transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void }) => {
     return (
-        <div className="w-72 shrink-0">
+        <div className="w-80 shrink-0">
             <h3 className="font-semibold mb-3 px-1 flex items-center justify-between text-sm uppercase text-muted-foreground">
                 {state.name} <Badge variant="secondary" className="rounded-md">{requests.length}</Badge>
             </h3>
-            <div className="bg-muted/40 rounded-lg p-2 space-y-2 h-full">
+            <div className="bg-muted/40 rounded-lg p-1.5 space-y-1.5 h-full">
                 {requests.length > 0 ? requests.map(request => (
                     <KanbanCard 
                         key={request.id} 
@@ -147,6 +148,26 @@ export default function ApprovalsPage() {
                 </Card>
             </AppLayout>
         );
+    }
+    
+    if (!workflowStates || workflowStates.length === 0) {
+        return (
+          <AppLayout>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Workflow Not Configured</CardTitle>
+                    <CardDescription>
+                        The approval workflow system has not been initialized. Please go to the settings page and run the system initializer to create the default workflow.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button asChild>
+                        <Link href="/settings">Go to Settings</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+          </AppLayout>
+        )
     }
 
     return (
