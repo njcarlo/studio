@@ -155,12 +155,12 @@ export default function SettingsPage() {
     const initializeSystem = async () => {
         let adminUser;
         try {
-            const userCredential = await createUserWithEmailAndPassword(auth, 'admin@system.com', 'password');
+            const userCredential = await createUserWithEmailAndPassword(auth, 'njcarlo@gmail.com', 'password');
             adminUser = userCredential.user;
         } catch (error: any) {
             if (error.code === 'auth/email-already-in-use') {
                 try {
-                    const userCredential = await signInWithEmailAndPassword(auth, 'admin@system.com', 'password');
+                    const userCredential = await signInWithEmailAndPassword(auth, 'njcarlo@gmail.com', 'password');
                     adminUser = userCredential.user;
                 } catch (signInError: any) {
                     toast({ variant: "destructive", title: "Initialization Failed", description: "Admin user exists but failed to sign in." });
@@ -188,7 +188,7 @@ export default function SettingsPage() {
                 batch.set(doc(firestore, 'roles', roleId), roleData);
             }
             batch.set(doc(firestore, 'users', adminUser.uid), {
-                email: 'admin@system.com',
+                email: 'njcarlo@gmail.com',
                 roleId: 'admin',
                 status: 'active',
                 createdAt: serverTimestamp()
