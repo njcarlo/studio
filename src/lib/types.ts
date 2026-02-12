@@ -68,7 +68,8 @@ export type ApprovalRequest = {
     type: 'New Worker' | 'Profile Update' | 'Room Booking';
     details: string;
     date: any; // Timestamp
-    status: 'Pending' | 'In Review' | 'Approved' | 'Rejected';
+    workflowId: string;
+    currentStateId: string;
     workerId?: string;
     roomId?: string;
     reservationId?: string;
@@ -86,3 +87,24 @@ export type ScanLog = {
     mealStubId?: string;
     reservationId?: string;
 };
+
+export type Workflow = {
+    id: string;
+    name: string;
+    description: string;
+}
+
+export type WorkflowState = {
+    id: string;
+    name: string;
+    order: number;
+    workflowId: string;
+}
+
+export type WorkflowTransition = {
+    id: string;
+    name: string; // The action name, e.g., "Approve"
+    workflowId: string;
+    fromStateId: string;
+    toStateId: string;
+}

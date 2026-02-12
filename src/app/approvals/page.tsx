@@ -1,18 +1,16 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, query, orderBy } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, X, UserPlus, Calendar, UserCog, LoaderCircle, GanttChartSquare } from "lucide-react";
-import type { ApprovalRequest } from "@/lib/types";
+import { UserPlus, Calendar, UserCog, LoaderCircle, GanttChartSquare } from "lucide-react";
+import type { ApprovalRequest, WorkflowState, WorkflowTransition } from "@/lib/types";
 import { useFirestore, useCollection, updateDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
-import { format, formatDistanceToNow, isAfter, subDays } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-
-type Status = 'Pending' | 'In Review' | 'Approved' | 'Rejected';
 
 const getIconForType = (type: ApprovalRequest['type']) => {
     switch (type) {
@@ -23,65 +21,58 @@ const getIconForType = (type: ApprovalRequest['type']) => {
     }
 }
 
-const KanbanCard = ({ request, onStatusChange }: { request: ApprovalRequest, onStatusChange: (request: ApprovalRequest, newStatus: Status) => void }) => {
+const KanbanCard = ({ request, transitions, onTransition }: { request: ApprovalRequest, transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void }) => {
     
-    const canMoveToReview = request.status === 'Pending';
-    const canDecide = request.status === 'In Review';
-    const isDone = request.status === 'Approved' || request.status === 'Rejected';
+    const possibleTransitions = transitions.filter(t => t.fromStateId === request.currentStateId);
 
     return (
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader>
-                <div className="flex items-start gap-4">
-                    <div className="p-3 bg-primary/10 rounded-lg text-primary mt-1">
+        <Card className="shadow-sm hover:shadow-lg transition-shadow bg-card">
+            <CardHeader className="p-3">
+                <div className="flex items-start gap-3">
+                    <div className="p-2 bg-primary/10 rounded-md text-primary mt-1">
                         {getIconForType(request.type)}
                     </div>
                     <div>
-                        <CardTitle className="text-base">{request.details}</CardTitle>
+                        <CardTitle className="text-sm leading-snug">{request.details}</CardTitle>
                         <CardDescription className="text-xs mt-1">
-                            Requested by {request.requester} &bull; {request.date ? formatDistanceToNow(new Date((request.date as any).seconds * 1000), { addSuffix: true }) : ''}
+                            {request.requester} &bull; {request.date ? formatDistanceToNow(new Date((request.date as any).seconds * 1000), { addSuffix: true }) : ''}
                         </CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent>
-                <Badge variant="secondary">{request.type}</Badge>
+            <CardContent className="p-3 pt-0">
+                <Badge variant="outline">{request.type}</Badge>
             </CardContent>
-            {!isDone && (
-                 <CardFooter className="flex justify-end gap-2">
-                    {canMoveToReview && <Button size="sm" onClick={() => onStatusChange(request, 'In Review')}>Start Review</Button>}
-                    {canDecide && (
-                        <>
-                            <Button variant="outline" size="sm" onClick={() => onStatusChange(request, 'Rejected')}>
-                                <X className="mr-2 h-4 w-4" /> Reject
-                            </Button>
-                            <Button size="sm" onClick={() => onStatusChange(request, 'Approved')}>
-                                <Check className="mr-2 h-4 w-4" /> Approve
-                            </Button>
-                        </>
-                    )}
+            {possibleTransitions.length > 0 && (
+                 <CardFooter className="p-3 pt-0 flex justify-end gap-2">
+                    {possibleTransitions.map(transition => (
+                        <Button key={transition.id} size="sm" variant={transition.name === 'Reject' ? 'outline' : 'default'} onClick={() => onTransition(request, transition)}>
+                            {transition.name}
+                        </Button>
+                    ))}
                 </CardFooter>
             )}
         </Card>
     );
 };
 
-const KanbanColumn = ({ title, requests, onStatusChange }: { title: string, requests: ApprovalRequest[], onStatusChange: (request: ApprovalRequest, newStatus: Status) => void }) => {
+const KanbanColumn = ({ state, requests, transitions, onTransition }: { state: WorkflowState, requests: ApprovalRequest[], transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void }) => {
     return (
-        <div className="w-80 shrink-0">
-            <h2 className="text-lg font-semibold mb-2 px-1 flex items-center gap-2">
-                {title} <Badge variant="secondary">{requests.length}</Badge>
-            </h2>
-            <div className="bg-muted/50 rounded-lg p-2 space-y-3 h-full">
+        <div className="w-72 shrink-0">
+            <h3 className="font-semibold mb-3 px-1 flex items-center justify-between text-sm uppercase text-muted-foreground">
+                {state.name} <Badge variant="secondary" className="rounded-md">{requests.length}</Badge>
+            </h3>
+            <div className="bg-muted/40 rounded-lg p-2 space-y-2 h-full">
                 {requests.length > 0 ? requests.map(request => (
                     <KanbanCard 
                         key={request.id} 
                         request={request} 
-                        onStatusChange={onStatusChange}
+                        transitions={transitions}
+                        onTransition={onTransition}
                     />
                 )) : (
-                    <div className="h-32 flex items-center justify-center">
-                        <p className="text-sm text-muted-foreground">No requests</p>
+                    <div className="h-20 flex items-center justify-center">
+                        <p className="text-xs text-muted-foreground">No requests</p>
                     </div>
                 )}
             </div>
@@ -103,39 +94,40 @@ export default function ApprovalsPage() {
         return collection(firestore, "approvals");
     }, [firestore, canManageApprovals]);
 
+    const workflowStatesRef = useMemoFirebase(() => {
+        if (!canManageApprovals) return null;
+        return query(collection(firestore, "workflows", "default_workflow", "states"), orderBy('order'));
+    }, [firestore, canManageApprovals]);
+
+    const workflowTransitionsRef = useMemoFirebase(() => {
+        if (!canManageApprovals) return null;
+        return collection(firestore, "workflows", "default_workflow", "transitions");
+    }, [firestore, canManageApprovals]);
+
     const { data: requests, isLoading: approvalsLoading } = useCollection<ApprovalRequest>(approvalsRef);
+    const { data: workflowStates, isLoading: statesLoading } = useCollection<WorkflowState>(workflowStatesRef);
+    const { data: workflowTransitions, isLoading: transitionsLoading } = useCollection<WorkflowTransition>(workflowTransitionsRef);
 
-    const isLoading = isRoleLoading || approvalsLoading;
+    const isLoading = isRoleLoading || approvalsLoading || statesLoading || transitionsLoading;
 
-    const handleStatusChange = (request: ApprovalRequest, newStatus: Status) => {
+    const handleTransition = (request: ApprovalRequest, transition: WorkflowTransition) => {
         if (!request.id) return;
-        updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { status: newStatus });
+        updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { currentStateId: transition.toStateId });
 
         // Handle side-effects on final approval/rejection
-        if (newStatus === 'Approved' || newStatus === 'Rejected') {
-            if (request.type === 'New Worker' && newStatus === 'Approved' && request.workerId) {
+        const finalState = workflowStates?.find(s => s.id === transition.toStateId);
+        if (finalState && (finalState.name === 'Approved' || finalState.name === 'Rejected')) {
+            if (request.type === 'New Worker' && finalState.name === 'Approved' && request.workerId) {
                 const workerDocRef = doc(firestore, "users", request.workerId);
                 updateDocumentNonBlocking(workerDocRef, { status: 'Active' });
             }
             if (request.type === 'Room Booking' && request.roomId && request.reservationId) {
               const reservationDocRef = doc(firestore, "rooms", request.roomId, "reservations", request.reservationId);
-              updateDocumentNonBlocking(reservationDocRef, { status: newStatus });
+              updateDocumentNonBlocking(reservationDocRef, { status: finalState.name as 'Approved' | 'Rejected' });
             }
         }
     };
     
-    const sortedRequests = useMemo(() => {
-        return requests?.sort((a,b) => ((b.date as any)?.seconds || 0) - ((a.date as any)?.seconds || 0))
-    }, [requests]);
-
-    const pendingRequests = sortedRequests?.filter(r => r.status === 'Pending') || [];
-    const inReviewRequests = sortedRequests?.filter(r => r.status === 'In Review') || [];
-    
-    // For done columns, only show recent items to avoid clutter
-    const sevenDaysAgo = subDays(new Date(), 7);
-    const approvedRequests = sortedRequests?.filter(r => r.status === 'Approved' && r.date && isAfter((r.date as any).toDate(), sevenDaysAgo)) || [];
-    const rejectedRequests = sortedRequests?.filter(r => r.status === 'Rejected' && r.date && isAfter((r.date as any).toDate(), sevenDaysAgo)) || [];
-
     if (isLoading) {
         return (
             <AppLayout>
@@ -168,10 +160,18 @@ export default function ApprovalsPage() {
             
              <div className="flex-grow overflow-x-auto">
                 <div className="flex gap-6 pb-4">
-                    <KanbanColumn title="Pending" requests={pendingRequests} onStatusChange={handleStatusChange} />
-                    <KanbanColumn title="In Review" requests={inReviewRequests} onStatusChange={handleStatusChange} />
-                    <KanbanColumn title="Approved (Last 7 Days)" requests={approvedRequests} onStatusChange={handleStatusChange} />
-                    <KanbanColumn title="Rejected (Last 7 Days)" requests={rejectedRequests} onStatusChange={handleStatusChange} />
+                    {workflowStates?.map(state => {
+                        const stateRequests = requests?.filter(r => r.currentStateId === state.id).sort((a,b) => ((b.date as any)?.seconds || 0) - ((a.date as any)?.seconds || 0)) || [];
+                        return (
+                            <KanbanColumn 
+                                key={state.id}
+                                state={state}
+                                requests={stateRequests}
+                                transitions={workflowTransitions || []}
+                                onTransition={handleTransition}
+                            />
+                        )
+                    })}
                 </div>
             </div>
         </AppLayout>

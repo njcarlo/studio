@@ -393,7 +393,8 @@ export default function RoomsPage() {
                     type: 'Room Booking',
                     details: `"${bookingData.title}" for room: ${rooms?.find(r => r.id === bookingData.roomId)?.name}`,
                     date: serverTimestamp(),
-                    status: 'Pending',
+                    workflowId: 'default_workflow',
+                    currentStateId: 'pending',
                     roomId: bookingData.roomId,
                     reservationId: reservationRef.id
                 });

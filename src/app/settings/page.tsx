@@ -161,6 +161,42 @@ export default function SettingsPage() {
                 status: 'Active',
             }, { merge: true });
 
+            // Seed Workflow
+            const workflowId = "default_workflow";
+            const workflowRef = doc(firestore, 'workflows', workflowId);
+            batch.set(workflowRef, {
+                name: 'Default Approval Workflow',
+                description: 'The standard workflow for all approval requests.'
+            });
+
+            const states = [
+                { id: 'pending', name: 'Pending', order: 1 },
+                { id: 'in_review', name: 'In Review', order: 2 },
+                { id: 'approved', name: 'Approved', order: 3 },
+                { id: 'rejected', name: 'Rejected', order: 4 },
+            ];
+
+            for (const state of states) {
+                const stateRef = doc(firestore, `workflows/${workflowId}/states`, state.id);
+                batch.set(stateRef, { name: state.name, order: state.order, workflowId: workflowId });
+            }
+
+            const transitions = [
+                { id: 'start_review', name: 'Start Review', from: 'pending', to: 'in_review' },
+                { id: 'approve', name: 'Approve', from: 'in_review', to: 'approved' },
+                { id: 'reject', name: 'Reject', from: 'in_review', to: 'rejected' },
+            ];
+
+            for (const transition of transitions) {
+                const transitionRef = doc(firestore, `workflows/${workflowId}/transitions`, transition.id);
+                batch.set(transitionRef, { 
+                    name: transition.name,
+                    fromStateId: transition.from,
+                    toStateId: transition.to,
+                    workflowId: workflowId
+                });
+            }
+
             await batch.commit();
             toast({ title: "System Initialized", description: "You are now an administrator. Please refresh the page for changes to take effect." });
         } catch (dbError: any) {
