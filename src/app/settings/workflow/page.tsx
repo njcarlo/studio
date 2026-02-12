@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { writeBatch, doc, collection, query, orderBy } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -183,6 +184,26 @@ export default function WorkflowSettingsPage() {
         );
     }
     
+    if (!workflowStates || workflowStates.length === 0) {
+        return (
+          <AppLayout>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Workflow Not Configured</CardTitle>
+                    <CardDescription>
+                        The approval workflow system has not been initialized. Please go to the main settings page and run the system initializer to create the default workflow. The flowchart editor will become active once the default workflow exists.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button asChild>
+                        <Link href="/settings">Go to Settings</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+          </AppLayout>
+        )
+    }
+
     return (
         <AppLayout>
             <div className="space-y-6">
