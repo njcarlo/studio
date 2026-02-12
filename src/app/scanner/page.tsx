@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -246,7 +247,7 @@ export default function QRScannerPage() {
         return () => {
             cancelAnimationFrame(animationFrameId);
         };
-    }, [hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedUser, handleScan]);
+    }, [hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedUser, handleScan, selectedDeviceId]);
 
 
     return (
@@ -350,3 +351,5 @@ export default function QRScannerPage() {
         </div>
     );
 }
+
+    
