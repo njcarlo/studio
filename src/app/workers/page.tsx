@@ -44,9 +44,9 @@ import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonB
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 
-const UserForm = ({ user, roles, ministries, onSave, onClose }: { user: Partial<User> | null; roles: Role[]; ministries: Ministry[]; onSave: (user: Partial<User>) => void; onClose: () => void; }) => {
+const UserForm = ({ user, roles, ministries, onSave, onClose, isSuperAdmin }: { user: Partial<User> | null; roles: Role[]; ministries: Ministry[]; onSave: (user: Partial<User>) => void; onClose: () => void; isSuperAdmin: boolean; }) => {
   const [formData, setFormData] = useState<Partial<User>>({
-    firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+    firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: isSuperAdmin ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
     primaryMinistryId: '', secondaryMinistryId: ''
   });
 
@@ -59,11 +59,11 @@ const UserForm = ({ user, roles, ministries, onSave, onClose }: { user: Partial<
         });
     } else {
         setFormData({
-            firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+            firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: isSuperAdmin ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
             primaryMinistryId: '', secondaryMinistryId: ''
         });
     }
-  }, [user]);
+  }, [user, isSuperAdmin]);
 
   const handleSave = () => {
     onSave(formData);
@@ -106,6 +106,19 @@ const UserForm = ({ user, roles, ministries, onSave, onClose }: { user: Partial<
           </Select>
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="status" className="text-right">Status</Label>
+          <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({...formData, status: value})} disabled={!isSuperAdmin && !user}>
+            <SelectTrigger className="col-span-3">
+              <SelectValue placeholder="Select a status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Inactive">Inactive</SelectItem>
+              <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="primaryMinistry" className="text-right">Primary Ministry</Label>
           <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value === 'none' ? '' : value})}>
             <SelectTrigger className="col-span-3">
@@ -143,7 +156,7 @@ const UserForm = ({ user, roles, ministries, onSave, onClose }: { user: Partial<
 export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { userProfile } = useUserRole();
+  const { userProfile, isSuperAdmin } = useUserRole();
   const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
   const { data: users, isLoading } = useCollection<User>(usersRef);
 
@@ -206,7 +219,8 @@ export default function WorkersPage() {
           const newWorkerId = String(20000 + (users?.length || 0)).padStart(6, '0');
           const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
           const newUserRef = await addDocumentNonBlocking(collection(firestore, "users"), dataToSaveWithId);
-          if (newUserRef && userProfile) {
+
+          if (newUserRef && userProfile && dataToSave.status === 'Pending Approval') {
             await addDocumentNonBlocking(collection(firestore, "approvals"), {
               requester: `${userProfile.firstName} ${userProfile.lastName}`,
               type: 'New Worker',
@@ -215,11 +229,16 @@ export default function WorkersPage() {
               status: 'Pending',
               workerId: newUserRef.id
             });
+            toast({
+                title: "User Added",
+                description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`
+            });
+          } else {
+            toast({
+                title: "User Added",
+                description: `${dataToSave.firstName} ${dataToSave.lastName} has been added with status: ${dataToSave.status}.`
+            });
           }
-          toast({
-              title: "User Added",
-              description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`
-          });
       }
       setIsSheetOpen(false);
     } catch (error) {
@@ -322,7 +341,9 @@ export default function WorkersPage() {
             roles={roles}
             ministries={ministries} 
             onSave={handleSaveUser} 
-            onClose={() => setIsSheetOpen(false)} />
+            onClose={() => setIsSheetOpen(false)}
+            isSuperAdmin={isSuperAdmin}
+             />
         </SheetContent>
       </Sheet>
 
