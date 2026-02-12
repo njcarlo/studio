@@ -96,16 +96,16 @@ service cloud.firestore {
       allow read: if hasPrivilege('manage_approvals');
       // Allow seeding
       allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
+    }
+    
+    match /workflows/{workflowId}/states/{stateId} {
+      allow read: if hasPrivilege('manage_approvals');
+      allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
+    }
 
-      match /states/{stateId} {
-        allow read: if hasPrivilege('manage_approvals');
-        allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
-      }
-
-      match /transitions/{transitionId} {
-        allow read: if hasPrivilege('manage_approvals');
-        allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
-      }
+    match /workflows/{workflowId}/transitions/{transitionId} {
+      allow read: if hasPrivilege('manage_approvals');
+      allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
   }
 }
