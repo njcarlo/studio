@@ -2,85 +2,66 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper to get user's role document data
-    function getRoleDoc() {
-      if (request.auth == null) { return null; }
-      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      if (!exists(userDocPath)) { return null; }
-      let userDocData = get(userDocPath).data;
-      if (!('roleId' in userDocData) || userDocData.roleId == null) { return null; }
-      let roleId = userDocData.roleId;
-      let roleDocPath = /databases/$(database)/documents/roles/$(roleId);
-      if (!exists(roleDocPath)) { return null; }
-      return get(roleDocPath).data;
-    }
-
-    // Helper to check if the user's role has a specific privilege
-    function hasPrivilege(privilege) {
-      let roleData = getRoleDoc();
-      return roleData != null && 
-             'privileges' in roleData && 
-             roleData.privileges != null &&
-             privilege in roleData.privileges &&
-             roleData.privileges[privilege] == true;
+    // Helper to check if the user is an admin
+    function isAdmin() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && userDoc.data.roleId == 'admin';
     }
 
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId || hasPrivilege('manage_users');
-      allow delete: if hasPrivilege('manage_users');
+      allow update: if request.auth.uid == userId || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /roles/{roleId} {
       allow read: if request.auth != null;
-      // Allow write if user has 'manage_roles' privilege OR if it's the initial seed.
-      allow write: if hasPrivilege('manage_roles') || !exists(/databases/$(database)/documents/roles/admin);
+      // Allow write if user is admin OR if it's the initial seed.
+      allow write: if isAdmin() || !exists(/databases/$(database)/documents/roles/admin);
     }
     
     match /ministries/{ministryId} {
         allow read: if request.auth != null;
-        allow write: if hasPrivilege('manage_content');
+        allow write: if isAdmin();
     }
     
     match /locations/{locationId} {
         allow read: if request.auth != null;
-        allow write: if hasPrivilege('manage_content');
+        allow write: if isAdmin();
     }
     
     match /approvals/{approvalId} {
-        allow read: if request.auth != null; // Relaxed for list queries
-        allow write: if hasPrivilege('manage_approvals'); // Write is still protected
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
         allow create: if request.auth != null;
     }
 
     match /rooms/{roomId} {
        allow read: if request.auth != null;
-       allow write: if hasPrivilege('manage_content');
+       allow write: if isAdmin();
        
        match /reservations/{reservationId} {
          allow create: if request.auth != null && request.resource.data.workerProfileId == request.auth.uid;
          allow read: if request.auth != null;
-         allow update, delete: if hasPrivilege('manage_approvals');
+         allow update, delete: if isAdmin();
        }
     }
     
     match /attendance_records/{recordId} {
-        // A user can query/read their own records. A user with scanner privileges can read any record.
-        allow read: if request.auth != null && (('workerProfileId' in resource.data && resource.data.workerProfileId == request.auth.uid) || hasPrivilege('operate_scanner'));
-        // Only users with scanner privileges can create, update, or delete attendance records.
-        allow create, update, delete: if hasPrivilege('operate_scanner');
+        // An owner can read their own records. An admin can read any record.
+        allow read: if request.auth != null && (resource.data.workerProfileId == request.auth.uid || isAdmin());
+        // Only admins can create, update, or delete attendance records.
+        allow create, update, delete: if isAdmin();
     }
     
     match /mealstubs/{stubId} {
-        // A user can read their own stubs. Admins/scanners can read all stubs.
-        allow read: if request.auth != null && (('workerId' in resource.data && resource.data.workerId == request.auth.uid) || hasPrivilege('operate_scanner') || hasPrivilege('manage_meal_stubs'));
-        
+        // A user can read their own stubs. Admins can read all stubs.
+        allow read: if request.auth != null && (resource.data.workerId == request.auth.uid || isAdmin());
         // A user can create a stub for themselves. Admins can create stubs.
-        allow create: if request.auth != null && (request.resource.data.workerId == request.auth.uid || hasPrivilege('manage_meal_stubs'));
-        
-        // Only users with scanner privileges or meal stub managers can claim (update) or delete stubs.
-        allow update, delete: if hasPrivilege('operate_scanner') || hasPrivilege('manage_meal_stubs');
+        allow create: if request.auth != null && (request.resource.data.workerId == request.auth.uid || isAdmin());
+        // Only admins can claim (update) or delete stubs.
+        allow update, delete: if isAdmin();
     }
 
     // This rule allows the collectionGroup query for reservations to work for all authenticated users.
@@ -89,25 +70,24 @@ service cloud.firestore {
     }
 
     match /scan_logs/{logId} {
-      // Only users with scanner privileges can create or read scan logs.
-      allow read, create: if hasPrivilege('operate_scanner');
+      // Only admins can create or read scan logs.
+      allow read, create: if isAdmin();
     }
 
     // Rules for dynamic workflows and their subcollections
     match /workflows/{workflowId} {
-      allow read: if request.auth != null; // Relaxed for list queries
-      // Allow seeding and admin edits
-      allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
     
     match /workflows/{workflowId}/states/{stateId} {
-      allow read: if request.auth != null; // Relaxed for list queries
-      allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
     
     match /workflows/{workflowId}/transitions/{transitionId} {
-      allow read: if request.auth != null; // Relaxed for list queries
-      allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
   }
 }
