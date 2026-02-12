@@ -108,6 +108,20 @@ export default function WorkflowSettingsPage() {
             toast({ title: "State Renamed" });
         }
     }, [firestore, toast]);
+    
+    const onEdgeDoubleClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+        const transition = workflowTransitions?.find(t => t.id === edge.id);
+        if (!transition) return;
+
+        const newName = prompt("Enter new transition name:", transition.name);
+        const newRolesStr = prompt("Enter allowed roles (comma-separated):", (transition.allowedRoles || []).join(','));
+        
+        if (newName) {
+            const newRoles = newRolesStr ? newRolesStr.split(',').map(r => r.trim()).filter(Boolean) : [];
+            updateDocumentNonBlocking(doc(firestore, "workflows", "default_workflow", "transitions", edge.id), { name: newName, allowedRoles: newRoles });
+            toast({ title: "Transition Updated" });
+        }
+    }, [firestore, toast, workflowTransitions]);
 
     const onNodesDelete = useCallback(async (deletedNodes: Node[]) => {
         const batch = writeBatch(firestore);
@@ -213,7 +227,7 @@ export default function WorkflowSettingsPage() {
                         <div>
                             <CardTitle className="text-blue-900">Editing Default Workflow</CardTitle>
                             <CardDescription className="text-blue-800">
-                                You are currently editing the 'Default Approval Workflow'. Changes made here will affect all modules that use it. Multi-workflow management is not yet supported.
+                                You are currently editing the 'Default Approval Workflow'. Changes made here will affect all modules that use it. All changes are saved automatically.
                             </CardDescription>
                         </div>
                     </CardHeader>
@@ -222,12 +236,20 @@ export default function WorkflowSettingsPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="font-headline flex items-center gap-2"><GitBranch className="h-5 w-5"/>Workflow Configuration</CardTitle>
-                            <CardDescription>Visually edit your approval workflow. Double-click states to rename, and drag between nodes to create transitions.</CardDescription>
+                            <CardTitle className="font-headline flex items-center gap-2"><GitBranch className="h-5 w-5"/>Workflow Editor</CardTitle>
+                            <CardDescription>A visual editor for your approval process. Your changes are saved automatically.</CardDescription>
                         </div>
                         <Button size="sm" onClick={handleAddState}><PlusCircle className="h-4 w-4 mr-2" />Add State</Button>
                     </CardHeader>
                     <CardContent>
+                        <ul className="list-disc list-inside bg-muted/50 p-4 rounded-md mb-4 text-sm space-y-1">
+                            <li><b>Add State</b>: Click the 'Add State' button.</li>
+                            <li><b>Rename State</b>: Double-click any state node. Core states (Open, Approved, Rejected) cannot be renamed.</li>
+                            <li><b>Delete State</b>: Select a state and press the 'delete' or 'backspace' key. Core states cannot be deleted.</li>
+                            <li><b>Add Transition</b>: Drag a connection from the edge of one state to another.</li>
+                            <li><b>Edit Transition</b>: Double-click an arrow/transition to edit its name or allowed roles.</li>
+                            <li><b>Delete Transition</b>: Select a transition arrow and press the 'delete' or 'backspace' key.</li>
+                        </ul>
                         <div className="w-full h-[70vh] rounded-lg border bg-background">
                             <ReactFlow
                                 nodes={nodes}
@@ -238,6 +260,7 @@ export default function WorkflowSettingsPage() {
                                 onNodesDelete={onNodesDelete}
                                 onEdgesDelete={onEdgesDelete}
                                 onNodeDoubleClick={onNodeDoubleClick}
+                                onEdgeDoubleClick={onEdgeDoubleClick}
                                 fitView
                                 proOptions={{ hideAttribution: true }}
                             >
