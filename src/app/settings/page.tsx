@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { writeBatch, doc, serverTimestamp, collection, query, orderBy } from "firebase/firestore";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,20 +27,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, useDoc, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import type { Role, WorkflowState, WorkflowTransition } from "@/lib/types";
+import type { Role } from "@/lib/types";
 import { allPermissions, type Permission } from "@/lib/permissions";
-import ReactFlow, {
-    useNodesState,
-    useEdgesState,
-    addEdge,
-    Connection,
-    Edge,
-    Node,
-    Background,
-    Controls,
-    MiniMap,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+
 
 export default function SettingsPage() {
     const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
@@ -61,23 +51,6 @@ export default function SettingsPage() {
     }, [firestore, user]);
     const { data: roles, isLoading: rolesLoading } = useCollection<Role>(rolesRef);
 
-    // Data for Workflow
-    const workflowStatesRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, "workflows", "default_workflow", "states"), orderBy('order'));
-    }, [firestore, user]);
-    const { data: workflowStates, isLoading: statesLoading } = useCollection<WorkflowState>(workflowStatesRef);
-
-    const workflowTransitionsRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, "workflows", "default_workflow", "transitions");
-    }, [firestore, user]);
-    const { data: workflowTransitions, isLoading: transitionsLoading } = useCollection<WorkflowTransition>(workflowTransitionsRef);
-
-    // React Flow State
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-
     // State for inline role editing
     const [editableRoles, setEditableRoles] = useState<Role[]>([]);
 
@@ -86,30 +59,6 @@ export default function SettingsPage() {
             setEditableRoles(roles.sort((a, b) => a.name.localeCompare(b.name)));
         }
     }, [roles]);
-    
-    // Effect to populate React Flow nodes and edges from Firestore data
-    useEffect(() => {
-        if (workflowStates && workflowTransitions) {
-            const initialNodes: Node[] = workflowStates.map(state => ({
-                id: state.id,
-                position: { x: state.order * 220, y: 100 },
-                data: { label: state.name },
-                type: ['pending', 'approved', 'rejected'].includes(state.id) ? 'input' : 'default',
-            }));
-            setNodes(initialNodes);
-
-            const initialEdges: Edge[] = workflowTransitions.map(trans => ({
-                id: trans.id,
-                source: trans.fromStateId,
-                target: trans.toStateId,
-                label: trans.name,
-                type: 'smoothstep',
-                animated: true,
-            }));
-            setEdges(initialEdges);
-        }
-    }, [workflowStates, workflowTransitions, setNodes, setEdges]);
-
 
     // Role Matrix Handlers
     const handleRoleChange = (roleId: string, field: 'name' | 'privilege', value: any, privilegeKey?: Permission) => {
@@ -175,99 +124,6 @@ export default function SettingsPage() {
         setEditableRoles(currentRoles => [...currentRoles, { id: newId, name: '', privileges: {} }]);
     };
     
-    // --- React Flow Handlers ---
-    const onConnect = useCallback(async (params: Connection | Edge) => {
-        const name = prompt("Enter transition action name (e.g., Approve):");
-        if (name && params.source && params.target) {
-            const newTransition = { name, fromStateId: params.source, toStateId: params.target, workflowId: 'default_workflow' };
-            try {
-                const docRef = await addDocumentNonBlocking(collection(firestore, "workflows", "default_workflow", "transitions"), newTransition);
-                if (docRef) {
-                    toast({ title: "Transition Added" });
-                    setEdges((eds) => addEdge({ ...params, id: docRef.id, label: name, type: 'smoothstep', animated: true }, eds));
-                }
-            } catch (e) {
-                 toast({ variant: "destructive", title: "Error", description: "Could not add transition." });
-            }
-        }
-    }, [firestore, setEdges, toast]);
-
-    const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-        if (['pending', 'approved', 'rejected'].includes(node.id)) {
-            toast({ variant: 'destructive', title: 'Core states cannot be renamed.' });
-            return;
-        }
-        const newName = prompt("Enter new state name:", node.data.label);
-        if (newName && newName !== node.data.label) {
-            setNodes((nds) => nds.map((n) => n.id === node.id ? { ...n, data: { ...n.data, label: newName } } : n));
-            updateDocumentNonBlocking(doc(firestore, "workflows", "default_workflow", "states", node.id), { name: newName });
-            toast({ title: "State Renamed" });
-        }
-    }, [setNodes, firestore, toast]);
-
-    const onNodesDelete = useCallback(async (deletedNodes: Node[]) => {
-        const batch = writeBatch(firestore);
-        for (const node of deletedNodes) {
-            if (['pending', 'approved', 'rejected'].includes(node.id)) {
-                toast({ variant: 'destructive', title: 'Cannot Delete Core State' });
-                // Re-add the node to the UI to prevent its deletion
-                setNodes((nodes) => [...nodes, node]);
-                continue;
-            }
-            batch.delete(doc(firestore, "workflows", "default_workflow", "states", node.id));
-
-            const connectedTransitions = workflowTransitions?.filter(t => t.fromStateId === node.id || t.toStateId === node.id) || [];
-            for (const trans of connectedTransitions) {
-                batch.delete(doc(firestore, "workflows", "default_workflow", "transitions", trans.id));
-            }
-        }
-        try {
-            await batch.commit();
-            toast({ title: "State(s) and connections deleted." });
-        } catch (e) {
-            toast({ variant: "destructive", title: "Error", description: "Could not delete state(s)." });
-        }
-    }, [firestore, toast, workflowTransitions, setNodes]);
-    
-    const onEdgesDelete = useCallback(async (deletedEdges: Edge[]) => {
-        const batch = writeBatch(firestore);
-        for (const edge of deletedEdges) {
-           batch.delete(doc(firestore, "workflows", "default_workflow", "transitions", edge.id));
-        }
-        try {
-            await batch.commit();
-            toast({ title: "Transition(s) deleted." });
-        } catch (e) {
-            toast({ variant: "destructive", title: "Error", description: "Could not delete transition(s)." });
-        }
-    }, [firestore, toast]);
-
-    const handleAddState = async () => {
-        const name = prompt("Enter new state name:");
-        if (!name) return;
-
-        const maxOrder = workflowStates ? workflowStates.reduce((max, state) => Math.max(max, state.order), 0) : 0;
-        const newOrder = maxOrder + 1;
-        
-        const newState = { name, order: newOrder, workflowId: 'default_workflow' };
-
-        try {
-            const docRef = await addDocumentNonBlocking(collection(firestore, "workflows", "default_workflow", "states"), newState);
-            if (docRef?.id) {
-                const newNode: Node = {
-                    id: docRef.id,
-                    position: { x: newOrder * 220, y: 100 },
-                    data: { label: name },
-                    type: 'default',
-                };
-                setNodes((nds) => [...nds, newNode]);
-                toast({ title: "State Added", description: `The state "${name}" has been added.` });
-            }
-        } catch (e) {
-            toast({ variant: "destructive", title: "Error", description: "Could not add state." });
-        }
-    };
-
     // System Initializer
     const initializeSystem = async () => {
         if (!user) {
@@ -292,7 +148,7 @@ export default function SettingsPage() {
         }
     };
 
-    const isLoading = isRoleLoading || isAdminRoleLoading || isUserLoading || rolesLoading || statesLoading || transitionsLoading;
+    const isLoading = isRoleLoading || isAdminRoleLoading || isUserLoading || rolesLoading;
 
     const needsSeeding = !adminRole && !isAdminRoleLoading;
     const canAccess = isSuperAdmin || needsSeeding;
@@ -386,32 +242,14 @@ export default function SettingsPage() {
                         </Card>
 
                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle className="font-headline flex items-center gap-2"><GanttChartSquare className="h-5 w-5"/>Workflow Configuration</CardTitle>
-                                    <CardDescription>Visually edit your approval workflow. Double-click states to rename, and drag between nodes to create transitions.</CardDescription>
-                                </div>
-                                <Button size="sm" onClick={handleAddState}><PlusCircle className="h-4 w-4 mr-2" />Add State</Button>
+                            <CardHeader>
+                                <CardTitle className="font-headline flex items-center gap-2"><GanttChartSquare className="h-5 w-5"/>Workflow Configuration</CardTitle>
+                                <CardDescription>Visually edit your approval workflow using an interactive flowchart.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                               <div className="w-full h-[600px] rounded-lg border bg-background">
-                                    <ReactFlow
-                                        nodes={nodes}
-                                        edges={edges}
-                                        onNodesChange={onNodesChange}
-                                        onEdgesChange={onEdgesChange}
-                                        onConnect={onConnect}
-                                        onNodesDelete={onNodesDelete}
-                                        onEdgesDelete={onEdgesDelete}
-                                        onNodeDoubleClick={onNodeDoubleClick}
-                                        fitView
-                                        proOptions={{ hideAttribution: true }}
-                                    >
-                                        <Background />
-                                        <Controls />
-                                        <MiniMap />
-                                    </ReactFlow>
-                               </div>
+                               <Button asChild>
+                                    <Link href="/settings/workflow">Edit Workflow</Link>
+                               </Button>
                             </CardContent>
                         </Card>
 

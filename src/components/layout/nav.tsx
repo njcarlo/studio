@@ -10,6 +10,7 @@ import {
   Utensils,
   BookOpen,
   Vote,
+  GitBranch,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -18,15 +19,17 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
+import type { Permission } from "@/lib/permissions";
 
-const allNavItems: { href: string; icon: React.ElementType; label: string; adminOnly?: boolean }[] = [
+const allNavItems: { href: string; icon: React.ElementType; label: string; adminOnly?: boolean, privilege?: Permission }[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/workers", icon: Users, label: "Users" },
   { href: "/ministries", icon: BookOpen, label: "Ministries" },
   { href: "/rooms", icon: Calendar, label: "Room Reservations" },
   { href: "/attendance", icon: ScanLine, label: "Attendance" },
   { href: "/meals", icon: Utensils, label: "Meal Stubs" },
-  { href: "/approvals", icon: Vote, label: "Approvals", adminOnly: true },
+  { href: "/approvals", icon: Vote, label: "Approvals", privilege: 'manage_approvals' },
+  { href: "/settings/workflow", icon: GitBranch, label: "Workflow", adminOnly: true },
   { href: "/settings", icon: Cog, label: "Settings", adminOnly: true },
 ];
 
@@ -41,7 +44,9 @@ export function Nav({
 
   const navItems = allNavItems.filter(item => {
     if (isLoading) return false;
-    if (item.href === '/approvals') return isSuperAdmin || realUserRole?.privileges?.['manage_approvals'];
+    if (item.privilege) {
+        return isSuperAdmin || !!realUserRole?.privileges?.[item.privilege];
+    }
     if (item.adminOnly) return isSuperAdmin;
     return true;
   });
@@ -54,7 +59,7 @@ export function Nav({
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
               asChild
-              isActive={pathname === item.href}
+              isActive={pathname.startsWith(item.href)}
               tooltip={{ children: item.label }}
             >
               <Link href={item.href}>
