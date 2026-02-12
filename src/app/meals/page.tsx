@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { collection, serverTimestamp, doc, query, where } from "firebase/firestore";
@@ -76,19 +76,24 @@ const MealStubDialog = ({ stub, worker, open, onOpenChange, onRegenerate }: { st
 export default function MealsPage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { isSuperAdmin, userProfile } = useUserRole();
+  const { isSuperAdmin, userProfile, realUserRole, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
+
+  const canManageMealStubs = useMemo(() => {
+    if (isRoleLoading || !realUserRole) return false;
+    return isSuperAdmin || !!realUserRole.privileges?.['manage_meal_stubs'];
+  }, [isRoleLoading, realUserRole, isSuperAdmin]);
 
   const mealStubsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    if (isSuperAdmin) {
+    if (canManageMealStubs) {
         // For admins, fetch all stubs from the last 30 days to keep it manageable
         const thirtyDaysAgo = subDays(new Date(), 30);
         return query(collection(firestore, "mealstubs"), where('date', '>=', thirtyDaysAgo));
     }
     // For regular users, fetch their own stubs
     return query(collection(firestore, "mealstubs"), where('workerId', '==', user.uid));
-  }, [firestore, user, isSuperAdmin]);
+  }, [firestore, user, canManageMealStubs]);
 
   const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsQuery);
   
@@ -102,7 +107,7 @@ export default function MealsPage() {
   const [selectedWorker, setSelectedWorker] = useState<User | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const isLoading = mealStubsLoading || usersLoading;
+  const isLoading = mealStubsLoading || usersLoading || isRoleLoading;
 
   const generateQrValue = () => 'MSTUB_' + Math.random().toString(36).substring(2, 12);
 
@@ -160,7 +165,7 @@ export default function MealsPage() {
         </div>
       </div>
       
-      {isSuperAdmin && (
+      {canManageMealStubs && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 my-6">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
