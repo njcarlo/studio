@@ -4,15 +4,37 @@ service cloud.firestore {
     
     // Helper to get user's role document data
     function getRoleDoc() {
-      // Use get() to fetch the user's document, then use its roleId to fetch the role document.
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      return get(/databases/$(database)/documents/roles/$(userDoc.roleId)).data;
+      // Ensure user is authenticated before proceeding
+      if (request.auth == null) {
+        return null;
+      }
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      // Check if user document exists before trying to access its data
+      if (!exists(userDocPath)) {
+        return null;
+      }
+      let userDocData = get(userDocPath).data;
+      let roleId = userDocData.get('roleId', null);
+      // Check if roleId exists on the user document
+      if (roleId == null) {
+        return null;
+      }
+      let roleDocPath = /databases/$(database)/documents/roles/$(roleId);
+      // Check if role document exists before trying to access its data
+      if (!exists(roleDocPath)) {
+        return null;
+      }
+      return get(roleDocPath).data;
     }
 
     // Helper to check if the user's role has a specific privilege
     function hasPrivilege(privilege) {
-      // Ensure the user is authenticated and check if the privilege key exists in the role's privileges map.
-      return request.auth != null && privilege in getRoleDoc().privileges;
+      let roleData = getRoleDoc();
+      // Check if role data and privileges map exist, and if the privilege is true
+      return roleData != null && 
+             'privileges' in roleData && 
+             privilege in roleData.privileges &&
+             roleData.privileges[privilege] == true;
     }
 
     match /users/{userId} {

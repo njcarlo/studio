@@ -12,7 +12,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { LoaderCircle, Shield, AlertTriangle } from "lucide-react";
-import { allPermissions } from "@/lib/permissions";
 import { useFirestore, useDoc, useMemoFirebase, useUser } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -40,9 +39,19 @@ export default function SettingsPage() {
         try {
             const batch = writeBatch(firestore);
             
-            // Define roles with the correct map structure for privileges
+            // Define roles with explicit privileges for clarity
             const rolesData = {
-                admin: { name: 'Admin', privileges: allPermissions.reduce((acc, p) => ({ ...acc, [p]: true }), {}) },
+                admin: { 
+                    name: 'Admin', 
+                    privileges: {
+                        'manage_users': true,
+                        'manage_roles': true,
+                        'manage_content': true,
+                        'manage_approvals': true,
+                        'operate_scanner': true,
+                        'manage_meal_stubs': true,
+                    } 
+                },
                 editor: { name: 'Editor', privileges: { 'manage_content': true } },
                 viewer: { name: 'Viewer', privileges: {} }
             };
