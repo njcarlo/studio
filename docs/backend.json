@@ -117,6 +117,23 @@
         "qrValue": { "type": "string", "description": "The unique, randomized value for the QR code." }
       },
       "required": ["workerId", "date", "status", "qrValue"]
+    },
+    "ScanLog": {
+      "title": "Scan Log",
+      "type": "object",
+      "description": "A record of a QR code scan event.",
+      "properties": {
+        "scannerId": { "type": "string", "description": "The UID of the user operating the scanner." },
+        "scannerName": { "type": "string", "description": "The name of the user operating the scanner." },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "scanType": { "type": "string", "enum": ["Attendance", "Meal Stub", "Room Check-in"] },
+        "details": { "type": "string", "description": "A human-readable summary of the scan event." },
+        "targetUserId": { "type": "string", "description": "The UID of the user who was the subject of the scan (e.g., for attendance)." },
+        "targetUserName": { "type": "string" },
+        "mealStubId": { "type": "string" },
+        "reservationId": { "type": "string" }
+      },
+      "required": ["scannerId", "scannerName", "timestamp", "scanType", "details"]
     }
   },
   "auth": {
@@ -158,6 +175,10 @@
     "/mealstubs/{stubId}": {
       "schema": { "$ref": "#/entities/MealStub" },
       "description": "Stores meal stub information for users."
+    },
+    "/scan_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ScanLog" },
+      "description": "Stores a log of all QR code scan events."
     }
   }
 }

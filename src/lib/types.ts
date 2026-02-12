@@ -73,3 +73,16 @@ export type ApprovalRequest = {
     roomId?: string;
     reservationId?: string;
 };
+
+export type ScanLog = {
+    id: string;
+    scannerId: string;
+    scannerName: string;
+    timestamp: any; // Timestamp
+    scanType: 'Attendance' | 'Meal Stub' | 'Room Check-in';
+    details: string;
+    targetUserId?: string;
+    targetUserName?: string;
+    mealStubId?: string;
+    reservationId?: string;
+};

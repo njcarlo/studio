@@ -86,5 +86,10 @@ service cloud.firestore {
     match /{path=**}/reservations/{reservationId} {
         allow read: if request.auth != null;
     }
+
+    match /scan_logs/{logId} {
+      // Only admins can create or read scan logs.
+      allow read, create: if hasPrivilege('create_user');
+    }
   }
 }
