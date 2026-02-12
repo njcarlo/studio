@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Check, X, UserPlus, Calendar, UserCog, LoaderCircle } from "lucide-react";
 import type { ApprovalRequest } from "@/lib/types";
 import { useFirestore, useCollection, updateDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { useUserRole } from "@/hooks/use-user-role";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -92,25 +93,52 @@ const ApprovalList = ({
 
 export default function ApprovalsPage() {
     const firestore = useFirestore();
-    const approvalsRef = useMemoFirebase(() => collection(firestore, "approvals"), [firestore]);
-    const { data: requests, isLoading } = useCollection<ApprovalRequest>(approvalsRef);
+    const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+
+    const approvalsRef = useMemoFirebase(() => {
+        if (!isSuperAdmin) return null;
+        return collection(firestore, "approvals");
+    }, [firestore, isSuperAdmin]);
+
+    const { data: requests, isLoading: approvalsLoading } = useCollection<ApprovalRequest>(approvalsRef);
+
+    const isLoading = isRoleLoading || approvalsLoading;
 
     const handleApproval = (request: ApprovalRequest, newStatus: 'Approved' | 'Rejected') => {
         if (!request.id) return;
         updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { status: newStatus });
 
-        // If approving a new worker, also update their profile status to Active
         if (request.type === 'New Worker' && newStatus === 'Approved' && request.workerId) {
             const workerDocRef = doc(firestore, "users", request.workerId);
             updateDocumentNonBlocking(workerDocRef, { status: 'Active' });
         }
         
-        // If approving/rejecting a room booking, update the reservation status
         if (request.type === 'Room Booking' && request.roomId && request.reservationId) {
           const reservationDocRef = doc(firestore, "rooms", request.roomId, "reservations", request.reservationId);
           updateDocumentNonBlocking(reservationDocRef, { status: newStatus });
         }
     };
+
+    if (isLoading) {
+        return (
+            <AppLayout>
+                <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
+            </AppLayout>
+        );
+    }
+
+    if (!isSuperAdmin) {
+        return (
+            <AppLayout>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Access Denied</CardTitle>
+                        <CardDescription>You do not have permission to view this page.</CardDescription>
+                    </CardHeader>
+                </Card>
+            </AppLayout>
+        );
+    }
 
     const onApprove = (request: ApprovalRequest) => handleApproval(request, 'Approved');
     const onDeny = (request: ApprovalRequest) => handleApproval(request, 'Rejected');

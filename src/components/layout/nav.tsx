@@ -26,7 +26,7 @@ const allNavItems: { href: string; icon: React.ElementType; label: string; admin
   { href: "/rooms", icon: Calendar, label: "Room Reservations" },
   { href: "/attendance", icon: ScanLine, label: "Attendance" },
   { href: "/meals", icon: Utensils, label: "Meal Stubs" },
-  { href: "/approvals", icon: Vote, label: "Approvals" },
+  { href: "/approvals", icon: Vote, label: "Approvals", adminOnly: true },
   { href: "/settings", icon: Cog, label: "Settings", adminOnly: true },
 ];
 
