@@ -99,9 +99,13 @@ service cloud.firestore {
       allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
     
-    match /workflows/{workflowId}/{path=**} {
+    match /workflows/{workflowId}/states/{stateId} {
       allow read: if hasPrivilege('manage_approvals');
-      // Allow seeding or admin modification
+      allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
+    }
+    
+    match /workflows/{workflowId}/transitions/{transitionId} {
+      allow read: if hasPrivilege('manage_approvals');
       allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
   }
