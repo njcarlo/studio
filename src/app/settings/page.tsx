@@ -25,7 +25,10 @@ export default function SettingsPage() {
     const { toast } = useToast();
 
     // Check if the admin role exists to determine if seeding is needed.
-    const adminRoleRef = useMemoFirebase(() => doc(firestore, 'roles', 'admin'), [firestore]);
+    const adminRoleRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'roles', 'admin');
+    }, [firestore, user]);
     const { data: adminRole, isLoading: isAdminRoleLoading } = useDoc<Role>(adminRoleRef);
 
     const initializeSystem = async () => {

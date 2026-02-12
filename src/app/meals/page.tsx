@@ -92,7 +92,10 @@ export default function MealsPage() {
 
   const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsQuery);
   
-  const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+  const usersRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, "users");
+  }, [firestore, user]);
   const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
   
   const [selectedStub, setSelectedStub] = useState<MealStub | null>(null);

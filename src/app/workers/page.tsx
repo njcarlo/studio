@@ -40,7 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { User, Role, Ministry } from "@/lib/types";
-import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 
@@ -156,17 +156,30 @@ const UserForm = ({ user, roles, ministries, onSave, onClose, isSuperAdmin }: { 
 export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { user } = useUser();
   const { userProfile, isSuperAdmin } = useUserRole();
-  const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
-  const { data: users, isLoading } = useCollection<User>(usersRef);
 
-  const rolesRef = useMemoFirebase(() => collection(firestore, "roles"), [firestore]);
-  const { data: rolesData } = useCollection<Role>(rolesRef);
+  const usersRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, "users");
+  }, [firestore, user]);
+  const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
+
+  const rolesRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, "roles");
+  }, [firestore, user]);
+  const { data: rolesData, isLoading: rolesLoading } = useCollection<Role>(rolesRef);
   const roles = rolesData || [];
 
-  const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
-  const { data: ministriesData } = useCollection<Ministry>(ministriesRef);
+  const ministriesRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, "ministries");
+  }, [firestore, user]);
+  const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
   const ministries = ministriesData || [];
+  
+  const isLoading = usersLoading || rolesLoading || ministriesLoading;
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);

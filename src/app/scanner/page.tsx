@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History, AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import type { User, ScanLog } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,6 +27,7 @@ export default function QRScannerPage() {
     const [isBarcodeDetectorSupported, setIsBarcodeDetectorSupported] = useState(true);
     
     const firestore = useFirestore();
+    const { user } = useUser();
     const { userProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
 
     const canOperateScanner = useMemo(() => {
@@ -34,7 +35,10 @@ export default function QRScannerPage() {
         return isSuperAdmin || !!realUserRole.privileges?.['operate_scanner'];
     }, [isRoleLoading, realUserRole, isSuperAdmin]);
 
-    const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+    const usersRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, "users");
+    }, [firestore, user]);
     const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
     
     const scanLogsQuery = useMemoFirebase(() => {
@@ -209,6 +213,7 @@ export default function QRScannerPage() {
         const detectQrCode = async () => {
             if (videoElement.readyState >= 2) { // HAVE_METADATA or more
                 if (isProcessing || scannedUser) {
+                    animationFrameId = requestAnimationFrame(detectQrCode);
                     return; 
                 }
                 
@@ -216,7 +221,6 @@ export default function QRScannerPage() {
                     const barcodes = await barcodeDetector.detect(videoElement);
                     if (barcodes.length > 0 && barcodes[0].rawValue) {
                         handleScan(barcodes[0].rawValue);
-                        return;
                     }
                 } catch (error) {
                     // This can happen if the stream is temporarily unavailable.
@@ -232,17 +236,26 @@ export default function QRScannerPage() {
             animationFrameId = requestAnimationFrame(detectQrCode);
         };
     
-        const constraints = { video: { deviceId: { exact: selectedDeviceId } } };
-        navigator.mediaDevices.getUserMedia(constraints)
-            .then(s => {
-                stream = s;
-                videoElement.srcObject = s;
-                videoElement.play().catch(e => console.error("Video play failed", e));
-                animationFrameId = requestAnimationFrame(detectQrCode);
-            })
-            .catch(err => {
+        const startStream = async () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints = { video: { deviceId: { exact: selectedDeviceId } } };
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                if (videoElement) {
+                    videoElement.srcObject = stream;
+                    videoElement.play().catch(e => console.error("Video play failed", e));
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = requestAnimationFrame(detectQrCode);
+                }
+            } catch (err) {
                 console.error('Error with camera stream:', err);
-            });
+            }
+        };
+
+        startStream();
     
         return () => {
             cancelAnimationFrame(animationFrameId);

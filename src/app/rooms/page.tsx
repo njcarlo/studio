@@ -346,16 +346,28 @@ export default function RoomsPage() {
     const [activeTab, setActiveTab] = useState("schedule");
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
-    const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
+    const roomsRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, "rooms");
+    }, [firestore, user]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
-    const locationsRef = useMemoFirebase(() => collection(firestore, "locations"), [firestore]);
+    const locationsRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, "locations");
+    }, [firestore, user]);
     const { data: locations, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
     
-    const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const usersRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, 'users');
+    }, [firestore, user]);
     const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
 
-    const reservationsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
+    const reservationsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collectionGroup(firestore, 'reservations');
+    }, [firestore, user]);
     const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(reservationsQuery);
 
 

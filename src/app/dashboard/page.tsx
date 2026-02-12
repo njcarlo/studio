@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Role } from "@/lib/types";
 import { allPermissions, type Permission } from "@/lib/permissions";
-import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 
@@ -107,9 +107,13 @@ export default function DashboardPage() {
     const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { user } = useUser();
 
     // Data
-    const rolesRef = useMemoFirebase(() => collection(firestore, "roles"), [firestore]);
+    const rolesRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, "roles");
+    }, [firestore, user]);
     const { data: roles, isLoading: rolesLoading } = useCollection<Role>(rolesRef);
 
     // Form/Sheet State

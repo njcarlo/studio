@@ -7,16 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HeartHandshake, User as UserIcon, Users, LoaderCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import type { Ministry, User, Department } from "@/lib/types";
 
 export default function MinistriesPage() {
   const firestore = useFirestore();
+  const { user } = useUser();
   
-  const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
+  const ministriesRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, "ministries");
+  }, [firestore, user]);
   const { data: ministries, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
 
-  const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+  const usersRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, "users");
+  }, [firestore, user]);
   const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
 
   const getUser = (userId: string) => users?.find(w => w.id === userId);
