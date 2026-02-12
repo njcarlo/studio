@@ -239,39 +239,39 @@ export default function SettingsPage() {
                                 <Button size="sm" onClick={handleAddRow}><PlusCircle className="h-4 w-4 mr-2" />Add Role</Button>
                             </CardHeader>
                             <CardContent className="overflow-x-auto">
-                                <Table className="min-w-full">
+                                <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[250px] sticky left-0 bg-card z-10">Role Name</TableHead>
+                                            <TableHead className="w-[200px] sticky left-0 bg-card z-10 p-2">Role Name</TableHead>
                                             {allPermissions.map(permission => (
-                                                <TableHead key={permission} className="text-center min-w-[150px]">
-                                                    <span className="capitalize">{permission.replace(/_/g, ' ')}</span>
+                                                <TableHead key={permission} className="p-2 text-center min-w-[110px]">
+                                                    <span className="capitalize text-xs font-medium">{permission.replace(/manage_|operate_/g, '').replace(/_/g, ' ')}</span>
                                                 </TableHead>
                                             ))}
-                                            <TableHead className="text-right w-[150px] sticky right-0 bg-card z-10">Actions</TableHead>
+                                            <TableHead className="w-[100px] sticky right-0 bg-card z-10 p-2 text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {editableRoles?.map(role => (
                                             <TableRow key={role.id}>
-                                                <TableCell className="font-medium sticky left-0 bg-card">
+                                                <TableCell className="p-2 font-medium sticky left-0 bg-card">
                                                     <Input
                                                         value={role.name}
                                                         onChange={e => handleRoleChange(role.id, 'name', e.target.value)}
                                                         disabled={role.id === 'admin'}
                                                         placeholder="New Role Name"
-                                                        className="w-full"
+                                                        className="w-full h-9"
                                                     />
                                                 </TableCell>
                                                 {allPermissions.map(permission => (
-                                                    <TableCell key={`${role.id}-${permission}`} className="text-center">
+                                                    <TableCell key={`${role.id}-${permission}`} className="p-2 text-center">
                                                         <Checkbox
                                                             checked={!!role.privileges?.[permission]}
                                                             onCheckedChange={(checked) => handleRoleChange(role.id, 'privilege', !!checked, permission)}
                                                         />
                                                     </TableCell>
                                                 ))}
-                                                <TableCell className="text-right sticky right-0 bg-card space-x-0">
+                                                <TableCell className="p-2 text-right sticky right-0 bg-card space-x-0">
                                                     <Button variant="ghost" size="icon" onClick={() => handleSaveRole(role)}><Save className="h-4 w-4" /></Button>
                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRole(role.id)} disabled={role.id === 'admin'}><Trash2 className="h-4 w-4" /></Button>
                                                 </TableCell>
