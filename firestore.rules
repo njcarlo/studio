@@ -4,35 +4,23 @@ service cloud.firestore {
     
     // Helper to get user's role document data
     function getRoleDoc() {
-      // Ensure user is authenticated before proceeding
-      if (request.auth == null) {
-        return null;
-      }
+      if (request.auth == null) { return null; }
       let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      // Check if user document exists before trying to access its data
-      if (!exists(userDocPath)) {
-        return null;
-      }
+      if (!exists(userDocPath)) { return null; }
       let userDocData = get(userDocPath).data;
-      let roleId = userDocData.get('roleId', null);
-      // Check if roleId exists on the user document
-      if (roleId == null) {
-        return null;
-      }
+      if (!('roleId' in userDocData) || userDocData.roleId == null) { return null; }
+      let roleId = userDocData.roleId;
       let roleDocPath = /databases/$(database)/documents/roles/$(roleId);
-      // Check if role document exists before trying to access its data
-      if (!exists(roleDocPath)) {
-        return null;
-      }
+      if (!exists(roleDocPath)) { return null; }
       return get(roleDocPath).data;
     }
 
     // Helper to check if the user's role has a specific privilege
     function hasPrivilege(privilege) {
       let roleData = getRoleDoc();
-      // Check if role data and privileges map exist, and if the privilege is true
       return roleData != null && 
              'privileges' in roleData && 
+             roleData.privileges != null &&
              privilege in roleData.privileges &&
              roleData.privileges[privilege] == true;
     }
@@ -85,7 +73,7 @@ service cloud.firestore {
     
     match /mealstubs/{stubId} {
         // A user can read their own stubs. Admins/scanners can read all stubs.
-        allow read: if request.auth != null && (resource.data.workerId == request.auth.uid || hasPrivilege('operate_scanner') || hasPrivilege('manage_meal_stubs'));
+        allow read: if request.auth != null && (('workerId' in resource.data && resource.data.workerId == request.auth.uid) || hasPrivilege('operate_scanner') || hasPrivilege('manage_meal_stubs'));
         
         // A user can create a stub for themselves. Admins can create stubs.
         allow create: if request.auth != null && (request.resource.data.workerId == request.auth.uid || hasPrivilege('manage_meal_stubs'));
@@ -102,6 +90,22 @@ service cloud.firestore {
     match /scan_logs/{logId} {
       // Only users with scanner privileges can create or read scan logs.
       allow read, create: if hasPrivilege('operate_scanner');
+    }
+
+    match /workflows/{workflowId} {
+      allow read: if hasPrivilege('manage_approvals');
+      // Allow seeding
+      allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
+
+      match /states/{stateId} {
+        allow read: if hasPrivilege('manage_approvals');
+        allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
+      }
+
+      match /transitions/{transitionId} {
+        allow read: if hasPrivilege('manage_approvals');
+        allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
+      }
     }
   }
 }
