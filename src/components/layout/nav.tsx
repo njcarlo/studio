@@ -37,9 +37,11 @@ export function Nav({
   pathname: string;
   className?: string;
 }) {
-  const { isSuperAdmin } = useUserRole();
+  const { isSuperAdmin, realUserRole, isLoading } = useUserRole();
 
   const navItems = allNavItems.filter(item => {
+    if (isLoading) return false;
+    if (item.href === '/approvals') return isSuperAdmin || realUserRole?.privileges?.['manage_approvals'];
     if (item.adminOnly) return isSuperAdmin;
     return true;
   });

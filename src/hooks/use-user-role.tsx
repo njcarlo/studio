@@ -1,9 +1,9 @@
 "use client";
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { doc } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 import type { User, Role } from '@/lib/types';
-import { useDoc, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 
 type UserRoleContextType = {
   realUserRole: Role | null;
@@ -11,7 +11,7 @@ type UserRoleContextType = {
   isSuperAdmin: boolean;
   isLoading: boolean;
   setViewAsRole: (role: Role) => void;
-  allRoles: Role[]; // This will need to be populated from the DB
+  allRoles: Role[];
   userProfile: User | null;
 };
 
@@ -38,6 +38,9 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   }, [firestore, userProfile]);
 
   const { data: realUserRole, isLoading: isRoleLoading } = useDoc<Role>(roleRef);
+  
+  const rolesRef = useMemoFirebase(() => collection(firestore, 'roles'), [firestore]);
+  const { data: allRoles, isLoading: areAllRolesLoading } = useCollection<Role>(rolesRef);
 
   const isSuperAdmin = realUserRole?.id === 'admin';
 
@@ -57,7 +60,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const isLoading = isUserLoading || isProfileLoading || isRoleLoading;
+  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || areAllRolesLoading;
 
   const value = {
     realUserRole: realUserRole || null,
@@ -65,7 +68,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     isSuperAdmin,
     isLoading,
     setViewAsRole,
-    allRoles: [], // This would need to be fetched if required for a dropdown
+    allRoles: allRoles || [],
     userProfile: userProfile || null,
   };
 

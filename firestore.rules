@@ -85,7 +85,7 @@ service cloud.firestore {
     
     match /mealstubs/{stubId} {
         // A user can read their own stubs. Admins/scanners can read all stubs.
-        allow read: if request.auth != null && (('workerId' in resource.data && resource.data.workerId == request.auth.uid) || hasPrivilege('operate_scanner') || hasPrivilege('manage_meal_stubs'));
+        allow read: if request.auth != null && (resource.data.workerId == request.auth.uid || hasPrivilege('operate_scanner') || hasPrivilege('manage_meal_stubs'));
         
         // A user can create a stub for themselves. Admins can create stubs.
         allow create: if request.auth != null && (request.resource.data.workerId == request.auth.uid || hasPrivilege('manage_meal_stubs'));
