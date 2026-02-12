@@ -84,34 +84,6 @@ export default function QRScannerPage() {
         getDevices();
       // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [toast]);
-    
-    useEffect(() => {
-        if (selectedDeviceId && videoRef.current) {
-            let stream: MediaStream;
-            const constraints = {
-                video: {
-                    deviceId: { exact: selectedDeviceId }
-                }
-            };
-
-            navigator.mediaDevices.getUserMedia(constraints)
-                .then(s => {
-                    stream = s;
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                })
-                .catch(err => {
-                    console.error('Error switching camera:', err);
-                });
-            
-            return () => {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-            }
-        }
-    }, [selectedDeviceId]);
 
     const handleSwitchCamera = () => {
         if (devices.length < 2) return;
@@ -219,34 +191,56 @@ export default function QRScannerPage() {
     }, [firestore, logScanEvent, resetScanner, scannedUser, toast]);
 
     useEffect(() => {
-        if (!videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || isProcessing || scannedUser) {
+        if (!videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || !selectedDeviceId) {
             return;
         }
-
+    
+        const videoElement = videoRef.current;
         const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+        let stream: MediaStream;
         let animationFrameId: number;
 
         const detectQrCode = async () => {
-            if (videoRef.current && videoRef.current.readyState === 4) {
+            if (videoElement.readyState >= 2) { // HAVE_METADATA or more
+                // Check processing state inside the loop as it can change
+                if (isProcessing || scannedUser) {
+                    return; // Stop detection if already processing or have a result
+                }
+                
                 try {
-                    const barcodes = await barcodeDetector.detect(videoRef.current);
+                    const barcodes = await barcodeDetector.detect(videoElement);
                     if (barcodes.length > 0 && barcodes[0].rawValue) {
                         handleScan(barcodes[0].rawValue);
-                        return;
+                        return; // Stop the loop once a scan is handled
                     }
                 } catch (error) {
-                    console.error("Barcode detection failed:", error);
+                    console.warn("Barcode detection failed for one frame:", error);
                 }
             }
+            // If still active, continue the loop
             animationFrameId = requestAnimationFrame(detectQrCode);
         };
-
-        animationFrameId = requestAnimationFrame(detectQrCode);
-
+    
+        const constraints = { video: { deviceId: { exact: selectedDeviceId } } };
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(s => {
+                stream = s;
+                videoElement.srcObject = s;
+                videoElement.play().catch(e => console.error("Video play failed", e));
+                animationFrameId = requestAnimationFrame(detectQrCode);
+            })
+            .catch(err => {
+                console.error('Error with camera stream:', err);
+            });
+    
+        // Cleanup function
         return () => {
             cancelAnimationFrame(animationFrameId);
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
         };
-    }, [hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedUser, handleScan, selectedDeviceId]);
+    }, [selectedDeviceId, hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedUser, handleScan]);
 
 
     return (
