@@ -5,43 +5,19 @@ export type Role = {
 }
 
 export type User = {
-    id:string;
-    email: string;
-    roleId: string;
-    status: 'active' | 'inactive';
-    createdAt: any; // Firestore Timestamp
-}
-
-export type WorkerRole = 
-  | 'Mentee' 
-  | 'Volunteer' 
-  | 'Full-time' 
-  | 'On-call' 
-  | 'Ministry Head' 
-  | 'Department Head' 
-  | 'Admin' 
-  | 'Admin Receptionist' 
-  | 'Super Admin';
-
-export const allWorkerRoles: WorkerRole[] = [
-    'Mentee', 'Volunteer', 'Full-time', 'On-call', 'Ministry Head', 
-    'Department Head', 'Admin', 'Admin Receptionist', 'Super Admin'
-];
-
-export type Worker = {
     id: string;
     workerId?: string;
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
-    role: WorkerRole;
-    permissions: string[];
+    roleId: string;
     status: 'Active' | 'Inactive' | 'Pending Approval';
     avatarUrl: string;
     primaryMinistryId: string;
     secondaryMinistryId: string;
     passwordChangeRequired?: boolean;
+    createdAt: any; // Firestore Timestamp
 };
 
 export type Ministry = {

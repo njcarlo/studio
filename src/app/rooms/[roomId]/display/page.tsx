@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { collection, doc, query, where, Timestamp } from 'firebase/firestore';
-import type { Room, Booking, Worker, Location } from '@/lib/types';
+import type { Room, Booking, User, Location } from '@/lib/types';
 import { format, isToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, DoorOpen, VideoOff, LoaderCircle } from 'lucide-react';
@@ -39,15 +39,15 @@ export default function RoomDisplayPage() {
     const bookingsRef = useMemoFirebase(() => query(collection(firestore, 'rooms', roomId, 'reservations'), where('status', '==', 'Approved')), [firestore, roomId]);
     const { data: allBookings, isLoading: bookingsLoading } = useCollection<Booking>(bookingsRef);
 
-    const workersRef = useMemoFirebase(() => collection(firestore, 'worker_profiles'), [firestore]);
-    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
+    const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
 
     const todaysBookings = allBookings
         ?.map(b => ({ ...b, start: (b.start as any).toDate(), end: (b.end as any).toDate() }))
         .filter(b => isToday(b.start))
         .sort((a, b) => a.start.getTime() - b.start.getTime()) || [];
 
-    const isLoading = roomLoading || bookingsLoading || workersLoading || locationsLoading;
+    const isLoading = roomLoading || bookingsLoading || usersLoading || locationsLoading;
     const location = locations?.find(l => l.id === room?.locationId);
 
     if (isLoading) {
@@ -74,9 +74,9 @@ export default function RoomDisplayPage() {
     
     const qrCodeUrl = currentBooking ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`ROOM_CHECKIN:${currentBooking.id}`)}&bgcolor=374151&color=ffffff&qzone=1` : '';
 
-    const getWorkerName = (workerId: string) => {
-        const worker = workers?.find(w => w.id === workerId);
-        return worker ? `${worker.firstName} ${worker.lastName}` : workerId;
+    const getUserName = (userId: string) => {
+        const user = users?.find(w => w.id === userId);
+        return user ? `${user.firstName} ${user.lastName}` : userId;
     }
 
     return (
@@ -110,7 +110,7 @@ export default function RoomDisplayPage() {
                                     <p className="text-xl lg:text-2xl text-gray-300 mt-2">
                                         {format(currentBooking.start, 'h:mm a')} - {format(currentBooking.end, 'h:mm a')}
                                     </p>
-                                    <p className="text-lg lg:text-xl text-gray-400 mt-1">Booked by {getWorkerName((currentBooking as any).workerProfileId)}</p>
+                                    <p className="text-lg lg:text-xl text-gray-400 mt-1">Booked by {getUserName((currentBooking as any).workerProfileId)}</p>
                                 </div>
                                 <div className="flex flex-col items-center gap-2 p-4 bg-gray-700 rounded-lg mt-4 lg:mt-0">
                                     <Image 
@@ -148,7 +148,7 @@ export default function RoomDisplayPage() {
                                         <div>
                                             <p className="font-semibold">{booking.title}</p>
                                             <p className="text-sm text-gray-300">{format(booking.start, 'h:mm a')} - {format(booking.end, 'h:mm a')}</p>
-                                            <p className="text-xs text-gray-400">by {getWorkerName((booking as any).workerProfileId)}</p>
+                                            <p className="text-xs text-gray-400">by {getUserName((booking as any).workerProfileId)}</p>
                                         </div>
                                     </div>
                                 ))}

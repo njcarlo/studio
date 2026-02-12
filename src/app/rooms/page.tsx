@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PlusCircle, Users, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin } from "lucide-react";
+import { PlusCircle, Users as UsersIcon, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -34,7 +34,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Booking, Room, Worker, Location } from "@/lib/types";
+import type { Booking, Room, User, Location } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "firebase/firestore";
@@ -45,10 +45,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const equipmentIcons: { [key: string]: React.ElementType } = {
   Projector: Projector,
   "Sound System": Mic,
-  Whiteboard: Users,
-  "Conference Phone": Users,
+  Whiteboard: UsersIcon,
+  "Conference Phone": UsersIcon,
   TV: Tv,
-  "Gaming Console": Users,
+  "Gaming Console": UsersIcon,
 };
 
 // --- FORMS ---
@@ -193,10 +193,10 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
   );
 };
 
-const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined }) => {
-    const getWorkerName = (workerId: string) => {
-        const worker = workers?.find(w => w.id === workerId);
-        return worker ? `${worker.firstName} ${worker.lastName}` : 'Unknown';
+const BookingsList = ({ bookings, rooms, users }: { bookings: Booking[], rooms: Room[] | undefined, users: User[] | undefined }) => {
+    const getUserName = (userId: string) => {
+        const user = users?.find(w => w.id === userId);
+        return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
     }
 
     const bookingsByRoom = useMemo(() => {
@@ -257,7 +257,7 @@ const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms
                                                 {format(bookingStart, 'p')} - {format(bookingEnd, 'p')}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                by {getWorkerName((booking as any).workerProfileId)}
+                                                by {getUserName((booking as any).workerProfileId)}
                                             </p>
                                         </div>
                                         <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{booking.status}</Badge>
@@ -272,10 +272,10 @@ const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms
     )
 };
 
-const RoomScheduleList = ({ bookings, workers }: { bookings: Booking[], workers: Worker[] | undefined }) => {
-    const getWorkerName = (workerId: string) => {
-        const worker = workers?.find(w => w.id === workerId);
-        return worker ? `${worker.firstName} ${worker.lastName}` : 'Unknown';
+const RoomScheduleList = ({ bookings, users }: { bookings: Booking[], users: User[] | undefined }) => {
+    const getUserName = (userId: string) => {
+        const user = users?.find(w => w.id === userId);
+        return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
     };
 
     const bookingsByDate = useMemo(() => {
@@ -319,7 +319,7 @@ const RoomScheduleList = ({ bookings, workers }: { bookings: Booking[], workers:
                                                 {format(bookingStart, 'p')} - {format(bookingEnd, 'p')}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                by {getWorkerName((booking as any).workerProfileId)}
+                                                by {getUserName((booking as any).workerProfileId)}
                                             </p>
                                         </div>
                                         <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{booking.status}</Badge>
@@ -336,7 +336,7 @@ const RoomScheduleList = ({ bookings, workers }: { bookings: Booking[], workers:
 
 
 export default function RoomsPage() {
-    const { isSuperAdmin } = useUserRole();
+    const { isSuperAdmin, userProfile } = useUserRole();
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -346,17 +346,14 @@ export default function RoomsPage() {
     const [activeTab, setActiveTab] = useState("schedule");
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
-    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'worker_profiles', user.uid) : null, [firestore, user]);
-    const { data: userProfile } = useDoc<Worker>(userProfileRef);
-
     const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
     const locationsRef = useMemoFirebase(() => collection(firestore, "locations"), [firestore]);
     const { data: locations, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
     
-    const workersRef = useMemoFirebase(() => collection(firestore, 'worker_profiles'), [firestore]);
-    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
+    const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
 
     const reservationsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
     const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(reservationsQuery);
@@ -417,7 +414,7 @@ export default function RoomsPage() {
         setActiveTab('room-schedule');
     };
 
-    const isLoading = roomsLoading || bookingsLoading || locationsLoading || workersLoading;
+    const isLoading = roomsLoading || bookingsLoading || locationsLoading || usersLoading;
 
     const bookingsByDate = useMemo(() => {
         if (!bookings) return new Map<string, Booking[]>();
@@ -509,7 +506,7 @@ export default function RoomsPage() {
                             <TabsContent value="schedule" className="mt-4">
                                 <Card>
                                     <CardContent className="pt-6">
-                                        <BookingsList bookings={dayBookings} rooms={rooms} workers={workers} />
+                                        <BookingsList bookings={dayBookings} rooms={rooms} users={users} />
                                     </CardContent>
                                 </Card>
                             </TabsContent>
@@ -528,7 +525,7 @@ export default function RoomsPage() {
                                                     <div>
                                                         <h3 className="font-semibold">{room.name}</h3>
                                                         {location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/>{location.name}</p>}
-                                                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Users className="h-4 w-4" /> Capacity: {room.capacity}</p>
+                                                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><UsersIcon className="h-4 w-4" /> Capacity: {room.capacity}</p>
                                                     </div>
                                                      <div className="flex items-center gap-2">
                                                         <Button variant="outline" size="sm" onClick={() => handleViewRoomSchedule(room)}><CalendarIcon className="mr-2 h-4 w-4"/>Schedule</Button>
@@ -537,7 +534,7 @@ export default function RoomsPage() {
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 mt-3">
                                                     {room.equipment.map(item => {
-                                                        const Icon = equipmentIcons[item] || Users;
+                                                        const Icon = equipmentIcons[item] || UsersIcon;
                                                         return <Badge key={item} variant="secondary" className="flex items-center gap-1"><Icon className="h-3 w-3" /> {item}</Badge>
                                                     })}
                                                 </div>
@@ -554,7 +551,7 @@ export default function RoomsPage() {
                                             <CardDescription>All future and current bookings for this room.</CardDescription>
                                         </CardHeader>
                                         <CardContent className="pt-6">
-                                            <RoomScheduleList bookings={roomBookings} workers={workers} />
+                                            <RoomScheduleList bookings={roomBookings} users={users} />
                                         </CardContent>
                                     </Card>
                                 ) : (

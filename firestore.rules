@@ -22,8 +22,11 @@ service cloud.firestore {
       // Allow a user to create their own user document.
       allow create: if request.auth.uid == userId;
       
-      // Require 'create_user' privilege for updates and deletes.
-      allow update, delete: if hasPrivilege('create_user');
+      // A user can update their own document, or an admin can.
+      allow update: if request.auth.uid == userId || hasPrivilege('create_user');
+
+      // Only admins can delete.
+      allow delete: if hasPrivilege('create_user');
     }
 
     match /roles/{roleId} {
@@ -33,7 +36,22 @@ service cloud.firestore {
       // Allow write if user has 'manage_roles' privilege OR if it's the initial seed.
       allow write: if hasPrivilege('manage_roles') || !exists(/databases/$(database)/documents/roles/admin);
     }
+    
+    match /approvals/{approvalId} {
+        allow read, write: if hasPrivilege('create_user');
+        allow create: if request.auth != null;
+    }
 
+    match /rooms/{roomId} {
+       allow read: if request.auth != null;
+       allow write: if hasPrivilege('edit_all');
+       
+       match /reservations/{reservationId} {
+         allow create: if request.auth != null && request.resource.data.workerProfileId == request.auth.uid;
+         allow read, update, delete: if hasPrivilege('create_user');
+       }
+    }
+    
     // Deny all other read/write operations to all other collections by default.
   }
 }

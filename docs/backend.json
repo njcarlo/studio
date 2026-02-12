@@ -5,64 +5,44 @@
       "type": "object",
       "description": "Represents a user account in the system.",
       "properties": {
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "The user's email address."
-        },
-        "roleId": {
-          "type": "string",
-          "description": "A reference to the user's role in the 'roles' collection."
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of the user account (e.g., 'active', 'inactive')."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The timestamp when the user account was created."
-        }
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "roleId": { "type": "string", "description": "A reference to the user's role in the 'roles' collection." },
+        "status": { "type": "string", "enum": ["Active", "Inactive", "Pending Approval"] },
+        "avatarUrl": { "type": "string", "format": "uri" },
+        "primaryMinistryId": { "type": "string" },
+        "secondaryMinistryId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["email", "roleId", "status", "createdAt"]
+      "required": ["firstName", "lastName", "email", "roleId", "status", "createdAt"]
     },
     "Role": {
       "title": "Role",
       "type": "object",
       "description": "Defines a role with a set of privileges.",
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the role (e.g., 'Admin', 'Editor')."
-        },
+        "name": { "type": "string" },
         "privileges": {
           "type": "array",
-          "description": "A list of permission strings associated with the role.",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" }
         }
       },
       "required": ["name", "privileges"]
     }
   },
   "auth": {
-    "providers": [
-      "password"
-    ]
+    "providers": ["password"]
   },
   "firestore": {
-     "/users/{userId}": {
-        "schema": {
-          "$ref": "#/entities/User"
-        },
-        "description": "Stores user profile information. Document ID should match the Firebase Auth UID."
-      },
-      "/roles/{roleId}": {
-        "schema": {
-          "$ref": "#/entities/Role"
-        },
-        "description": "Stores role definitions and associated privileges."
-      }
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profile information. Document ID should match the Firebase Auth UID."
+    },
+    "/roles/{roleId}": {
+      "schema": { "$ref": "#/entities/Role" },
+      "description": "Stores role definitions and associated privileges."
+    }
   }
 }

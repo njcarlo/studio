@@ -38,7 +38,7 @@ export function PasswordChangeDialog() {
       });
       // After sending, update the profile to not prompt again and close the dialog
       if (user) {
-        const userDocRef = doc(firestore, 'worker_profiles', user.uid);
+        const userDocRef = doc(firestore, 'users', user.uid);
         await updateDocumentNonBlocking(userDocRef, { passwordChangeRequired: false });
       }
       setIsOpen(false);

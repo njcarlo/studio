@@ -21,7 +21,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 
 const allNavItems: { href: string; icon: React.ElementType; label: string; adminOnly?: boolean }[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/workers", icon: Users, label: "Workers" },
+  { href: "/workers", icon: Users, label: "Users" },
   { href: "/ministries", icon: BookOpen, label: "Ministries" },
   { href: "/rooms", icon: Calendar, label: "Room Reservations" },
   { href: "/attendance", icon: ScanLine, label: "Attendance" },
@@ -37,13 +37,10 @@ export function Nav({
   pathname: string;
   className?: string;
 }) {
-  const { isSuperAdmin, viewAsRole } = useUserRole();
+  const { isSuperAdmin } = useUserRole();
 
   const navItems = allNavItems.filter(item => {
     if (item.adminOnly) return isSuperAdmin;
-    
-    // Add logic based on viewAsRole to show/hide other items if needed
-    // For now, show all non-admin items to everyone
     return true;
   });
 

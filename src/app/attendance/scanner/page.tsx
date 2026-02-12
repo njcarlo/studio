@@ -6,17 +6,17 @@ import { collection, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ScanLine, ArrowLeft, LoaderCircle, User, SwitchCamera } from "lucide-react";
+import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
-import type { Worker } from "@/lib/types";
+import type { User } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function QRScannerPage() {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [scannedWorker, setScannedWorker] = useState<Worker | null>(null);
+    const [scannedUser, setScannedUser] = useState<User | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     
     // New state for camera switching
@@ -26,8 +26,8 @@ export default function QRScannerPage() {
     
     const firestore = useFirestore();
 
-    const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
-    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
+    const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+    const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
 
     // Effect to get permissions and enumerate devices
     useEffect(() => {
@@ -117,7 +117,7 @@ export default function QRScannerPage() {
     };
 
     const resetScanner = useCallback(() => {
-        setScannedWorker(null);
+        setScannedUser(null);
         setIsProcessing(false);
     }, []);
 
@@ -157,24 +157,24 @@ export default function QRScannerPage() {
         }
         // Worker ID for Attendance
         else {
-            if (workersLoading) {
-                toast({ title: "Please wait", description: "Worker data is still loading." });
+            if (usersLoading) {
+                toast({ title: "Please wait", description: "User data is still loading." });
                 setIsProcessing(false); // Allow re-scanning if data is not ready
                 return;
             }
-            const worker = workers?.find(w => w.id === data || w.workerId === data);
-            if (worker) {
-                setScannedWorker(worker);
+            const user = users?.find(w => w.id === data || w.workerId === data);
+            if (user) {
+                setScannedUser(user);
             } else {
-                toast({ variant: 'destructive', title: 'Worker Not Found', description: 'The scanned ID does not correspond to any worker.' });
+                toast({ variant: 'destructive', title: 'User Not Found', description: 'The scanned ID does not correspond to any user.' });
                 setTimeout(() => resetScanner(), 2000);
             }
         }
-    }, [isProcessing, workers, firestore, toast, workersLoading, resetScanner]);
+    }, [isProcessing, users, firestore, toast, usersLoading, resetScanner]);
 
      // Effect for continuous QR code scanning
     useEffect(() => {
-        if (!videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || isProcessing || scannedWorker) {
+        if (!videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || isProcessing || scannedUser) {
             return;
         }
 
@@ -201,14 +201,14 @@ export default function QRScannerPage() {
         return () => {
             cancelAnimationFrame(animationFrameId);
         };
-    }, [hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedWorker, handleScan]);
+    }, [hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedUser, handleScan]);
 
 
     const handleRecordAttendance = (type: 'Clock In' | 'Clock Out') => {
-        if (!scannedWorker) return;
+        if (!scannedUser) return;
         
         const newRecord = {
-            workerProfileId: scannedWorker.id,
+            workerProfileId: scannedUser.id,
             type,
             time: serverTimestamp(),
         };
@@ -217,7 +217,7 @@ export default function QRScannerPage() {
         
         toast({
             title: "Success",
-            description: `Worker ${scannedWorker.firstName} has been ${type === 'Clock In' ? 'clocked in' : 'clocked out'}.`,
+            description: `User ${scannedUser.firstName} has been ${type === 'Clock In' ? 'clocked in' : 'clocked out'}.`,
         });
         resetScanner();
     };
@@ -243,15 +243,15 @@ export default function QRScannerPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {scannedWorker ? (
+                    {scannedUser ? (
                          <div className="flex flex-col items-center gap-4">
                             <Avatar className="h-24 w-24">
-                                <AvatarImage src={scannedWorker.avatarUrl} alt={`${scannedWorker.firstName} ${scannedWorker.lastName}`} />
-                                <AvatarFallback><User className="h-12 w-12" /></AvatarFallback>
+                                <AvatarImage src={scannedUser.avatarUrl} alt={`${scannedUser.firstName} ${scannedUser.lastName}`} />
+                                <AvatarFallback><UserIcon className="h-12 w-12" /></AvatarFallback>
                             </Avatar>
                             <div className="text-center">
-                                <p className="text-lg font-semibold">{`${scannedWorker.firstName} ${scannedWorker.lastName}`}</p>
-                                <p className="text-sm text-muted-foreground">{scannedWorker.role}</p>
+                                <p className="text-lg font-semibold">{`${scannedUser.firstName} ${scannedUser.lastName}`}</p>
+                                <p className="text-sm text-muted-foreground">{scannedUser.roleId}</p>
                             </div>
                             <div className="w-full border-t pt-4 mt-2">
                                 <p className="text-center text-sm font-medium mb-4">Select attendance action:</p>

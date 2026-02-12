@@ -101,7 +101,7 @@ export default function ApprovalsPage() {
 
         // If approving a new worker, also update their profile status to Active
         if (request.type === 'New Worker' && newStatus === 'Approved' && request.workerId) {
-            const workerDocRef = doc(firestore, "worker_profiles", request.workerId);
+            const workerDocRef = doc(firestore, "users", request.workerId);
             updateDocumentNonBlocking(workerDocRef, { status: 'Active' });
         }
         

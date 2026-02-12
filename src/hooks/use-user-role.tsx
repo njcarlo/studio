@@ -2,18 +2,17 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { doc } from 'firebase/firestore';
-import type { Worker, WorkerRole } from '@/lib/types';
-import { allWorkerRoles } from '@/lib/types';
+import type { User, Role } from '@/lib/types';
 import { useDoc, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 
 type UserRoleContextType = {
-  realUserRole: WorkerRole | null;
-  viewAsRole: WorkerRole;
+  realUserRole: Role | null;
+  viewAsRole: Role | null;
   isSuperAdmin: boolean;
   isLoading: boolean;
-  setViewAsRole: (role: WorkerRole) => void;
-  allRoles: WorkerRole[];
-  userProfile: Worker | null;
+  setViewAsRole: (role: Role) => void;
+  allRoles: Role[]; // This will need to be populated from the DB
+  userProfile: User | null;
 };
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
@@ -24,48 +23,53 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
   const userProfileRef = useMemoFirebase(() => {
     if (user) {
-      return doc(firestore, 'worker_profiles', user.uid);
+      return doc(firestore, 'users', user.uid);
     }
     return null;
   }, [firestore, user]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<Worker>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
+
+  const roleRef = useMemoFirebase(() => {
+    if (userProfile?.roleId) {
+      return doc(firestore, 'roles', userProfile.roleId);
+    }
+    return null;
+  }, [firestore, userProfile]);
+
+  const { data: realUserRole, isLoading: isRoleLoading } = useDoc<Role>(roleRef);
 
   useEffect(() => {
     // If auth is loaded, a user is present, but their profile is not yet loading and does not exist,
     // it means they are a new user. We'll create a default profile for them.
     if (!isUserLoading && user && !isProfileLoading && !userProfile) {
-      const isSuperAdminEmail = user.email === 'njcarlo@gmail.com';
       const nameParts = user.displayName?.split(' ') || [];
       const firstName = nameParts[0] || 'New';
-      const lastName = nameParts.slice(1).join(' ') || 'Worker';
+      const lastName = nameParts.slice(1).join(' ') || 'User';
 
-      const newProfile: Partial<Worker> = {
+      const newProfile: Partial<User> = {
         firstName,
         lastName,
         email: user.email!,
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid.slice(0,5)}/100/100`,
-        role: isSuperAdminEmail ? 'Super Admin' : 'Mentee',
-        status: isSuperAdminEmail ? 'Active' : 'Pending Approval',
-        permissions: [],
-        phone: user.phoneNumber || ''
+        roleId: 'viewer', // Default role
+        status: 'Pending Approval',
+        phone: user.phoneNumber || '',
+        primaryMinistryId: '',
+        secondaryMinistryId: '',
+        createdAt: new Date(),
       };
 
-      const workerRef = doc(firestore, 'worker_profiles', user.uid);
-      setDocumentNonBlocking(workerRef, newProfile, {}); // Non-blocking create
+      const newUserRef = doc(firestore, 'users', user.uid);
+      setDocumentNonBlocking(newUserRef, newProfile, {}); // Non-blocking create
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isUserLoading, isProfileLoading, firestore]);
 
-  // Determine the user's role, with a special override for the Super Admin email.
-  const databaseRole = userProfile?.role || null;
-  const isHardcodedSuperAdmin = user?.email === 'njcarlo@gmail.com';
-  
-  const realUserRole = isHardcodedSuperAdmin ? 'Super Admin' : databaseRole;
-  const isSuperAdmin = realUserRole === 'Super Admin';
+  const isSuperAdmin = realUserRole?.id === 'admin';
 
   // The role displayed in the UI. Defaults to the user's real role.
-  const [viewAsRole, setViewAsRoleState] = useState<WorkerRole>('Volunteer');
+  const [viewAsRole, setViewAsRoleState] = useState<Role | null>(null);
 
   useEffect(() => {
     // When the real role is loaded, set the viewAsRole to it.
@@ -74,21 +78,21 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     }
   }, [realUserRole]);
 
-  const setViewAsRole = (role: WorkerRole) => {
+  const setViewAsRole = (role: Role) => {
     if (isSuperAdmin) {
         setViewAsRoleState(role);
     }
   };
 
-  const isLoading = isUserLoading || isProfileLoading;
+  const isLoading = isUserLoading || isProfileLoading || isRoleLoading;
 
   const value = {
-    realUserRole,
-    viewAsRole,
+    realUserRole: realUserRole || null,
+    viewAsRole: viewAsRole || null,
     isSuperAdmin,
     isLoading,
     setViewAsRole,
-    allRoles: allWorkerRoles,
+    allRoles: [], // This would need to be fetched if required for a dropdown
     userProfile: userProfile || null,
   };
 

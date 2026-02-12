@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -6,10 +5,10 @@ import { collection } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { HeartHandshake, User, Users, LoaderCircle } from "lucide-react";
+import { HeartHandshake, User as UserIcon, Users, LoaderCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import type { Ministry, Worker, Department } from "@/lib/types";
+import type { Ministry, User, Department } from "@/lib/types";
 
 export default function MinistriesPage() {
   const firestore = useFirestore();
@@ -17,12 +16,12 @@ export default function MinistriesPage() {
   const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
   const { data: ministries, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
 
-  const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
-  const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
+  const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+  const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
 
-  const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
+  const getUser = (userId: string) => users?.find(w => w.id === userId);
   
-  const isLoading = ministriesLoading || workersLoading;
+  const isLoading = ministriesLoading || usersLoading;
 
   const departments: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
 
@@ -51,8 +50,8 @@ export default function MinistriesPage() {
               <h2 className="text-xl font-headline font-semibold mb-4 border-b pb-2">{department}</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {departmentMinistries.map(ministry => {
-                  const leader = getWorker(ministry.leaderId);
-                  const members = workers?.filter(w => w.primaryMinistryId === ministry.id || w.secondaryMinistryId === ministry.id) || [];
+                  const leader = getUser(ministry.leaderId);
+                  const members = users?.filter(w => w.primaryMinistryId === ministry.id || w.secondaryMinistryId === ministry.id) || [];
 
                   return (
                     <Card key={ministry.id}>
@@ -71,7 +70,7 @@ export default function MinistriesPage() {
                         
                         <div>
                           <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                            <User className="h-4 w-4" />
+                            <UserIcon className="h-4 w-4" />
                             Leader
                           </h4>
                           {leader ? (
@@ -82,7 +81,7 @@ export default function MinistriesPage() {
                                 </Avatar>
                                 <div>
                                     <p className="text-sm font-medium">{`${leader.firstName} ${leader.lastName}`}</p>
-                                    <p className="text-xs text-muted-foreground">{leader.role}</p>
+                                    <p className="text-xs text-muted-foreground">{leader.roleId}</p>
                                 </div>
                             </div>
                           ) : (

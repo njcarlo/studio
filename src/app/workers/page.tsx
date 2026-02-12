@@ -39,58 +39,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import type { Worker, WorkerRole, Ministry } from "@/lib/types";
+import type { User, Role, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 
-const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<Worker> | null; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; }) => {
-  const [formData, setFormData] = useState<Partial<Worker>>({
-    firstName: '', lastName: '', email: '', phone: '', role: 'Mentee', permissions: [], status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+const UserForm = ({ user, roles, ministries, onSave, onClose }: { user: Partial<User> | null; roles: Role[]; ministries: Ministry[]; onSave: (user: Partial<User>) => void; onClose: () => void; }) => {
+  const [formData, setFormData] = useState<Partial<User>>({
+    firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
     primaryMinistryId: '', secondaryMinistryId: ''
   });
 
   useEffect(() => {
-    if (worker) {
+    if (user) {
         setFormData({
-            ...worker,
-            primaryMinistryId: worker.primaryMinistryId || '',
-            secondaryMinistryId: worker.secondaryMinistryId || '',
+            ...user,
+            primaryMinistryId: user.primaryMinistryId || '',
+            secondaryMinistryId: user.secondaryMinistryId || '',
         });
     } else {
         setFormData({
-            firstName: '', lastName: '', email: '', phone: '', role: 'Mentee', permissions: [], status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+            firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
             primaryMinistryId: '', secondaryMinistryId: ''
         });
     }
-  }, [worker]);
+  }, [user]);
 
   const handleSave = () => {
     onSave(formData);
-  };
-  
-  const handlePermissionsChange = (permission: string, checked: boolean) => {
-    const newPermissions = formData.permissions ? [...formData.permissions] : [];
-    if (checked) {
-        if (!newPermissions.includes(permission)) {
-            newPermissions.push(permission);
-        }
-    } else {
-        const index = newPermissions.indexOf(permission);
-        if (index > -1) {
-            newPermissions.splice(index, 1);
-        }
-    }
-    setFormData(prev => ({...prev, permissions: newPermissions}));
   };
 
   return (
     <>
       <SheetHeader>
-        <SheetTitle className="font-headline">{worker ? 'Edit Worker' : 'Add New Worker'}</SheetTitle>
+        <SheetTitle className="font-headline">{user ? 'Edit User' : 'Add New User'}</SheetTitle>
         <SheetDescription>
-          {worker ? 'Update the details for this worker.' : 'Fill in the details for the new worker.'}
+          {user ? 'Update the details for this user.' : 'Fill in the details for the new user.'}
         </SheetDescription>
       </SheetHeader>
       <div className="grid gap-4 py-4">
@@ -112,20 +96,12 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="role" className="text-right">Role</Label>
-          <Select value={formData.role} onValueChange={(value: WorkerRole) => setFormData({...formData, role: value})}>
+          <Select value={formData.roleId} onValueChange={(value: string) => setFormData({...formData, roleId: value})}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a role" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Mentee">Mentee</SelectItem>
-              <SelectItem value="Volunteer">Volunteer</SelectItem>
-              <SelectItem value="Full-time">Full-time Worker</SelectItem>
-              <SelectItem value="On-call">On-call Worker</SelectItem>
-              <SelectItem value="Ministry Head">Ministry Head</SelectItem>
-              <SelectItem value="Department Head">Department Head</SelectItem>
-              <SelectItem value="Admin">Admin</SelectItem>
-              <SelectItem value="Admin Receptionist">Admin Receptionist</SelectItem>
-              <SelectItem value="Super Admin">Super Admin</SelectItem>
+              {roles.map(role => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -153,21 +129,6 @@ const WorkerForm = ({ worker, ministries, onSave, onClose }: { worker: Partial<W
             </SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-4 items-start gap-4">
-          <Label className="text-right pt-2">Permissions</Label>
-          <div className="col-span-3 space-y-2">
-              {['Room Booking', 'Manage Workers', 'Approve All'].map(p => (
-                  <div key={p} className="flex items-center space-x-2">
-                      <Checkbox 
-                          id={`perm-${p}`} 
-                          checked={formData.permissions?.includes(p)}
-                          onCheckedChange={(checked) => handlePermissionsChange(p, !!checked)}
-                      />
-                      <label htmlFor={`perm-${p}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{p}</label>
-                  </div>
-              ))}
-          </div>
-        </div>
       </div>
       <SheetFooter>
         <SheetClose asChild>
@@ -183,37 +144,41 @@ export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { userProfile } = useUserRole();
-  const workersRef = useMemoFirebase(() => collection(firestore, "worker_profiles"), [firestore]);
-  const { data: workers, isLoading } = useCollection<Worker>(workersRef);
+  const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+  const { data: users, isLoading } = useCollection<User>(usersRef);
+
+  const rolesRef = useMemoFirebase(() => collection(firestore, "roles"), [firestore]);
+  const { data: rolesData } = useCollection<Role>(rolesRef);
+  const roles = rolesData || [];
 
   const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
   const { data: ministriesData } = useCollection<Ministry>(ministriesRef);
   const ministries = ministriesData || [];
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const handleAddNew = () => {
-    setSelectedWorker(null);
+    setSelectedUser(null);
     setIsSheetOpen(true);
   };
   
-  const handleEdit = (worker: Worker) => {
-    setSelectedWorker(worker);
+  const handleEdit = (user: User) => {
+    setSelectedUser(user);
     setIsSheetOpen(true);
   };
   
-  const handleDelete = (workerId: string) => {
-    if (!workerId) return;
-    deleteDocumentNonBlocking(doc(firestore, "worker_profiles", workerId));
+  const handleDelete = (userId: string) => {
+    if (!userId) return;
+    deleteDocumentNonBlocking(doc(firestore, "users", userId));
     toast({
-        title: "Worker Deleted",
-        description: "The worker profile has been removed."
+        title: "User Deleted",
+        description: "The user profile has been removed."
     });
   };
 
-  const handleSaveWorker = async (workerData: Partial<Worker>) => {
-    if (!workerData.firstName || !workerData.lastName || !workerData.email) {
+  const handleSaveUser = async (userData: Partial<User>) => {
+    if (!userData.firstName || !userData.lastName || !userData.email) {
       toast({
         variant: "destructive",
         title: "Missing required fields",
@@ -222,7 +187,7 @@ export default function WorkersPage() {
       return;
     }
 
-    const dataToSave = { ...workerData };
+    const dataToSave = { ...userData };
     if (dataToSave.primaryMinistryId === 'none') {
       dataToSave.primaryMinistryId = '';
     }
@@ -231,48 +196,52 @@ export default function WorkersPage() {
     }
 
     try {
-      if (selectedWorker?.id) {
-          await updateDocumentNonBlocking(doc(firestore, "worker_profiles", selectedWorker.id), dataToSave);
+      if (selectedUser?.id) {
+          await updateDocumentNonBlocking(doc(firestore, "users", selectedUser.id), dataToSave);
           toast({
-              title: "Worker Updated",
+              title: "User Updated",
               description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
           });
       } else {
-          const newWorkerId = String(20000 + (workers?.length || 0)).padStart(6, '0');
-          const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId };
-          const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "worker_profiles"), dataToSaveWithId);
-          if (newWorkerRef && userProfile) {
+          const newWorkerId = String(20000 + (users?.length || 0)).padStart(6, '0');
+          const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
+          const newUserRef = await addDocumentNonBlocking(collection(firestore, "users"), dataToSaveWithId);
+          if (newUserRef && userProfile) {
             await addDocumentNonBlocking(collection(firestore, "approvals"), {
               requester: `${userProfile.firstName} ${userProfile.lastName}`,
               type: 'New Worker',
-              details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
+              details: `New user registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
               date: serverTimestamp(),
               status: 'Pending',
-              workerId: newWorkerRef.id
+              workerId: newUserRef.id
             });
           }
           toast({
-              title: "Worker Added",
+              title: "User Added",
               description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`
           });
       }
       setIsSheetOpen(false);
     } catch (error) {
-      console.error("Failed to save worker:", error);
+      console.error("Failed to save user:", error);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save worker profile. Check console for details.",
+        description: "Could not save user profile. Check console for details.",
       });
     }
   };
 
+  const getRoleName = (roleId: string) => {
+    return roles.find(r => r.id === roleId)?.name || roleId;
+  }
+
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-headline font-bold">Worker Profiles</h1>
+        <h1 className="text-2xl font-headline font-bold">User Profiles</h1>
         <Button onClick={handleAddNew}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Worker
+          <PlusCircle className="mr-2 h-4 w-4" /> Add User
         </Button>
       </div>
 
@@ -298,31 +267,31 @@ export default function WorkersPage() {
                 </TableCell>
               </TableRow>
             )}
-            {workers && workers.map((worker) => (
-              <TableRow key={worker.id}>
+            {users && users.map((user) => (
+              <TableRow key={user.id}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={worker.avatarUrl} alt={`${worker.firstName} ${worker.lastName}`} />
-                      <AvatarFallback>{worker.firstName?.charAt(0)}</AvatarFallback>
+                      <AvatarImage src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />
+                      <AvatarFallback>{user.firstName?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    {`${worker.firstName} ${worker.lastName}`}
+                    {`${user.firstName} ${user.lastName}`}
                   </div>
                 </TableCell>
-                <TableCell className="font-mono text-xs">{worker.workerId}</TableCell>
-                <TableCell>{worker.role}</TableCell>
+                <TableCell className="font-mono text-xs">{user.workerId}</TableCell>
+                <TableCell>{getRoleName(user.roleId)}</TableCell>
                 <TableCell>
-                   <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
-                       worker.status === 'Active' ? 'bg-green-100 text-green-800' : 
-                       worker.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                   <Badge variant={user.status === 'Active' ? 'default' : 'secondary'} className={
+                       user.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                       user.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                    }>
-                    {worker.status}
+                    {user.status}
                    </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span>{worker.email}</span>
-                    <span className="text-muted-foreground">{worker.phone}</span>
+                    <span>{user.email}</span>
+                    <span className="text-muted-foreground">{user.phone}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -334,8 +303,8 @@ export default function WorkersPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => handleEdit(worker)}>Edit</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleDelete(worker.id)} className="text-destructive">Delete</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleEdit(user)}>Edit</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleDelete(user.id)} className="text-destructive">Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -347,11 +316,12 @@ export default function WorkersPage() {
 
        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-lg">
-          <WorkerForm 
-            key={selectedWorker?.id || 'new-worker-form'}
-            worker={selectedWorker} 
+          <UserForm 
+            key={selectedUser?.id || 'new-user-form'}
+            user={selectedUser} 
+            roles={roles}
             ministries={ministries} 
-            onSave={handleSaveWorker} 
+            onSave={handleSaveUser} 
             onClose={() => setIsSheetOpen(false)} />
         </SheetContent>
       </Sheet>
