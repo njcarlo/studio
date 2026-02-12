@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { writeBatch, doc, collection, query, orderBy } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -177,6 +176,50 @@ export default function WorkflowSettingsPage() {
             toast({ variant: "destructive", title: "Error", description: "Could not add state." });
         }
     };
+    
+    const initializeWorkflow = async () => {
+        try {
+            const batch = writeBatch(firestore);
+            const workflowId = "default_workflow";
+            
+            batch.set(doc(firestore, 'workflows', workflowId), { name: 'Default Approval Workflow', description: 'The standard multi-step workflow for all approval requests.' });
+            
+            const states = [
+                { id: 'open', name: 'Open', order: 1 },
+                { id: 'dept_review', name: 'Department Head Review', order: 2 },
+                { id: 'fac_review', name: 'Facilities Review', order: 3 },
+                { id: 'approved', name: 'Approved', order: 4 },
+                { id: 'rejected', name: 'Rejected', order: 5 },
+            ];
+            for (const state of states) {
+                batch.set(doc(firestore, `workflows/${workflowId}/states`, state.id), { name: state.name, order: state.order, workflowId: workflowId });
+            }
+
+            const transitions = [
+                { id: 'submit_review', name: 'Submit', from: 'open', to: 'dept_review', roles: ['viewer', 'editor', 'department_head', 'facilities_manager', 'admin'] },
+                { id: 'dept_approve', name: 'Approve', from: 'dept_review', to: 'fac_review', roles: ['department_head', 'admin'] },
+                { id: 'dept_reject', name: 'Reject', from: 'dept_review', to: 'rejected', roles: ['department_head', 'admin'] },
+                { id: 'fac_approve', name: 'Approve', from: 'fac_review', to: 'approved', roles: ['facilities_manager', 'admin'] },
+                { id: 'fac_reject', name: 'Reject', from: 'fac_review', to: 'rejected', roles: ['facilities_manager', 'admin'] },
+                { id: 'admin_approve', name: 'Final Approve', from: 'fac_review', to: 'approved', roles: ['admin'] },
+            ];
+            for (const transition of transitions) {
+                batch.set(doc(firestore, `workflows/${workflowId}/transitions`, transition.id), { 
+                    name: transition.name, 
+                    fromStateId: transition.from, 
+                    toStateId: transition.to, 
+                    workflowId: workflowId,
+                    allowedRoles: transition.roles
+                });
+            }
+
+            await batch.commit();
+            toast({ title: "Workflow Initialized", description: "Default workflow has been created. The page will now show the editor." });
+        } catch (dbError: any) {
+            toast({ variant: "destructive", title: "Workflow Seed Failed", description: dbError.message || "Could not seed the workflow." });
+            console.error(dbError);
+        }
+    };
 
 
     const isLoading = isRoleLoading || isUserLoading || statesLoading || transitionsLoading;
@@ -205,13 +248,11 @@ export default function WorkflowSettingsPage() {
                 <CardHeader>
                     <CardTitle className="font-headline">Workflow Not Configured</CardTitle>
                     <CardDescription>
-                        The approval workflow system has not been initialized. Please go to the main settings page and run the system initializer to create the default workflow. The flowchart editor will become active once the default workflow exists.
+                        The approval workflow system has not been initialized. Click the button below to create the default multi-step workflow. You can customize it afterwards.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button asChild>
-                        <Link href="/settings">Go to Settings</Link>
-                    </Button>
+                    <Button onClick={initializeWorkflow}>Create Default Workflow</Button>
                 </CardContent>
             </Card>
           </AppLayout>
