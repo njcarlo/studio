@@ -182,7 +182,7 @@ export default function SettingsPage() {
             const batch = writeBatch(firestore);
             const rolesData = {
                 admin: { name: 'Admin', privileges: allPermissions.reduce((acc, p) => ({ ...acc, [p]: true }), {}) },
-                editor: { name: 'Editor', privileges: { 'edit_all': true } },
+                editor: { name: 'Editor', privileges: { 'manage_content': true } },
                 viewer: { name: 'Viewer', privileges: {} }
             };
             for (const [roleId, roleData] of Object.entries(rolesData)) {
@@ -190,8 +190,10 @@ export default function SettingsPage() {
             }
             batch.set(doc(firestore, 'users', adminUser.uid), {
                 email: 'njcarlo@gmail.com',
+                firstName: 'Admin',
+                lastName: 'User',
                 roleId: 'admin',
-                status: 'active',
+                status: 'Active',
                 createdAt: serverTimestamp()
             });
             await batch.commit();

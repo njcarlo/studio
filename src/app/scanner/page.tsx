@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { collection, serverTimestamp, doc, getDoc, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History } from "lucide-react";
+import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History, AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import type { User, ScanLog } from "@/lib/types";
@@ -27,14 +27,20 @@ export default function QRScannerPage() {
     const [isBarcodeDetectorSupported, setIsBarcodeDetectorSupported] = useState(true);
     
     const firestore = useFirestore();
-    const { userProfile } = useUserRole();
+    const { userProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
+
+    const canOperateScanner = useMemo(() => {
+        if (isRoleLoading || !realUserRole) return false;
+        return isSuperAdmin || !!realUserRole.privileges?.['operate_scanner'];
+    }, [isRoleLoading, realUserRole, isSuperAdmin]);
 
     const usersRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
     const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
     
     const scanLogsQuery = useMemoFirebase(() => {
+        if (!canOperateScanner) return null;
         return query(collection(firestore, "scan_logs"), orderBy('timestamp', 'desc'), limit(10));
-    }, [firestore]);
+    }, [firestore, canOperateScanner]);
     const { data: scanLogs, isLoading: logsLoading } = useCollection<ScanLog>(scanLogsQuery);
 
     useEffect(() => {
@@ -202,22 +208,27 @@ export default function QRScannerPage() {
 
         const detectQrCode = async () => {
             if (videoElement.readyState >= 2) { // HAVE_METADATA or more
-                // Check processing state inside the loop as it can change
                 if (isProcessing || scannedUser) {
-                    return; // Stop detection if already processing or have a result
+                    return; 
                 }
                 
                 try {
                     const barcodes = await barcodeDetector.detect(videoElement);
                     if (barcodes.length > 0 && barcodes[0].rawValue) {
                         handleScan(barcodes[0].rawValue);
-                        return; // Stop the loop once a scan is handled
+                        return;
                     }
                 } catch (error) {
-                    console.warn("Barcode detection failed for one frame:", error);
+                    // This can happen if the stream is temporarily unavailable.
+                    // The InvalidStateError is often transient. We'll just log it as a warning.
+                    if (error instanceof Error && error.name === 'InvalidStateError') {
+                        console.warn("Barcode detection failed for one frame:", error);
+                    } else {
+                        // For other errors, log them more prominently.
+                        console.error("Barcode detection failed:", error);
+                    }
                 }
             }
-            // If still active, continue the loop
             animationFrameId = requestAnimationFrame(detectQrCode);
         };
     
@@ -233,7 +244,6 @@ export default function QRScannerPage() {
                 console.error('Error with camera stream:', err);
             });
     
-        // Cleanup function
         return () => {
             cancelAnimationFrame(animationFrameId);
             if (stream) {
@@ -242,6 +252,43 @@ export default function QRScannerPage() {
         };
     }, [selectedDeviceId, hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedUser, handleScan]);
 
+
+    if (isRoleLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <LoaderCircle className="h-12 w-12 animate-spin" />
+            </div>
+        )
+    }
+
+    if (!canOperateScanner) {
+        return (
+            <div className="flex flex-col h-screen bg-background overflow-hidden">
+                 <header className="flex items-center justify-between border-b p-4 shrink-0">
+                     <div>
+                        <h1 className="text-2xl font-headline font-bold">QR Scanner</h1>
+                    </div>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Dashboard
+                        </Link>
+                    </Button>
+                </header>
+                <main className="flex-grow grid place-items-center p-4">
+                    <Card className="w-full max-w-md">
+                        <CardHeader className="text-center">
+                            <div className="flex justify-center">
+                                <AlertCircle className="w-12 h-12 text-destructive"/>
+                            </div>
+                            <CardTitle>Access Denied</CardTitle>
+                            <CardDescription>You do not have permission to operate the scanner.</CardDescription>
+                        </CardHeader>
+                    </Card>
+                </main>
+            </div>
+        )
+    }
 
     return (
         <div className="flex flex-col h-screen bg-background overflow-hidden">

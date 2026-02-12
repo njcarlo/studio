@@ -1,8 +1,9 @@
 export const allPermissions = [
-    'create_user', 
-    'delete_user', 
-    'edit_all', 
-    'manage_roles'
+    'manage_users', 
+    'manage_roles',
+    'manage_content',
+    'manage_approvals',
+    'operate_scanner',
 ] as const;
 
 export type Permission = typeof allPermissions[number];

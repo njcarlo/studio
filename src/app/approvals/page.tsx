@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
@@ -93,12 +93,17 @@ const ApprovalList = ({
 
 export default function ApprovalsPage() {
     const firestore = useFirestore();
-    const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+    const { isSuperAdmin, isLoading: isRoleLoading, realUserRole } = useUserRole();
+
+    const canManageApprovals = useMemo(() => {
+        if (isRoleLoading || !realUserRole) return false;
+        return isSuperAdmin || !!realUserRole.privileges?.['manage_approvals'];
+    }, [isRoleLoading, realUserRole, isSuperAdmin]);
 
     const approvalsRef = useMemoFirebase(() => {
-        if (!isSuperAdmin) return null;
+        if (!canManageApprovals) return null;
         return collection(firestore, "approvals");
-    }, [firestore, isSuperAdmin]);
+    }, [firestore, canManageApprovals]);
 
     const { data: requests, isLoading: approvalsLoading } = useCollection<ApprovalRequest>(approvalsRef);
 
@@ -127,7 +132,7 @@ export default function ApprovalsPage() {
         );
     }
 
-    if (!isSuperAdmin) {
+    if (!canManageApprovals) {
         return (
             <AppLayout>
                 <Card>
