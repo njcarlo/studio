@@ -21,7 +21,8 @@ service cloud.firestore {
       return roleData != null && 
              'privileges' in roleData && 
              roleData.privileges != null &&
-             roleData.privileges.get(privilege, false) == true;
+             privilege in roleData.privileges &&
+             roleData.privileges[privilege] == true;
     }
 
     match /users/{userId} {
