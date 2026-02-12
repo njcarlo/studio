@@ -92,20 +92,17 @@ service cloud.firestore {
       allow read, create: if hasPrivilege('operate_scanner');
     }
 
+    // Rules for dynamic workflows and their subcollections
     match /workflows/{workflowId} {
       allow read: if hasPrivilege('manage_approvals');
       // Allow seeding
       allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
     
-    match /workflows/{workflowId}/states/{stateId} {
+    match /workflows/{workflowId}/{path=**} {
       allow read: if hasPrivilege('manage_approvals');
-      allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
-    }
-
-    match /workflows/{workflowId}/transitions/{transitionId} {
-      allow read: if hasPrivilege('manage_approvals');
-      allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
+      // Allow seeding or admin modification
+      allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
   }
 }
