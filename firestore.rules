@@ -48,7 +48,8 @@ service cloud.firestore {
     }
     
     match /approvals/{approvalId} {
-        allow read, write: if hasPrivilege('manage_approvals');
+        allow read: if request.auth != null; // Relaxed for list queries
+        allow write: if hasPrivilege('manage_approvals'); // Write is still protected
         allow create: if request.auth != null;
     }
 
@@ -93,18 +94,18 @@ service cloud.firestore {
 
     // Rules for dynamic workflows and their subcollections
     match /workflows/{workflowId} {
-      allow read: if hasPrivilege('manage_approvals');
-      // Allow seeding
-      allow write: if !exists(/databases/$(database)/documents/workflows/default_workflow);
+      allow read: if request.auth != null; // Relaxed for list queries
+      // Allow seeding and admin edits
+      allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
     
     match /workflows/{workflowId}/states/{stateId} {
-      allow read: if hasPrivilege('manage_approvals');
+      allow read: if request.auth != null; // Relaxed for list queries
       allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
     
     match /workflows/{workflowId}/transitions/{transitionId} {
-      allow read: if hasPrivilege('manage_approvals');
+      allow read: if request.auth != null; // Relaxed for list queries
       allow write: if hasPrivilege('manage_approvals') || !exists(/databases/$(database)/documents/workflows/default_workflow);
     }
   }
