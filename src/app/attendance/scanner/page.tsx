@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { collection, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, serverTimestamp, doc, getDoc, query, where, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -127,26 +127,31 @@ export default function QRScannerPage() {
         setIsProcessing(true);
 
         // Meal Stub
-        if (data.startsWith('MEALSTUB:')) {
-            const stubId = data.split(':')[1];
-            if (!stubId) {
-                toast({ variant: 'destructive', title: 'Invalid Meal Stub QR Code' });
-                setTimeout(() => resetScanner(), 2000);
-                return;
-            }
-            const stubRef = doc(firestore, "mealstubs", stubId);
+        if (data.startsWith('MSTUB_')) {
             try {
-                const stubDoc = await getDoc(stubRef);
-                if (stubDoc.exists() && stubDoc.data().status === 'Issued') {
-                    updateDocumentNonBlocking(stubRef, { status: 'Claimed' });
-                    toast({ title: "Meal Stub Claimed!", description: "The meal stub has been successfully validated." });
+                const q = query(collection(firestore, "mealstubs"), where("qrValue", "==", data));
+                const querySnapshot = await getDocs(q);
+    
+                if (querySnapshot.empty) {
+                    toast({ variant: "destructive", title: "Invalid Meal Stub", description: "This meal stub QR code is not valid or does not exist." });
+                    setTimeout(() => resetScanner(), 3000);
+                    return;
+                }
+    
+                const stubDoc = querySnapshot.docs[0];
+                const stubData = stubDoc.data();
+    
+                if (stubData.status === 'Issued') {
+                    await updateDocumentNonBlocking(stubDoc.ref, { status: 'Claimed' });
+                    toast({ title: "Meal Stub Claimed!", description: `Stub for ${stubData.workerName} has been claimed.` });
                 } else {
-                    toast({ variant: "destructive", title: "Stub Already Claimed or Invalid", description: "This meal stub has already been used or does not exist." });
+                    toast({ variant: "destructive", title: "Stub Already Claimed", description: "This meal stub has already been used." });
                 }
             } catch (e) {
+                console.error("Error processing meal stub:", e);
                 toast({ variant: "destructive", title: "Error", description: "Could not process meal stub." });
             } finally {
-                setTimeout(() => resetScanner(), 2000);
+                setTimeout(() => resetScanner(), 3000);
             }
         }
         // Room Check-in (placeholder)
