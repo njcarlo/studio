@@ -78,7 +78,7 @@ const RoleForm = ({ role, onSave, onClose }: { role?: Partial<Role> | null; onSa
                 </div>
                 <div className="space-y-2">
                     <Label>Privileges</Label>
-                    <div className="space-y-2 rounded-md border p-4 grid grid-cols-2 gap-4">
+                    <div className="space-y-2 rounded-md border p-4 grid grid-cols-3 gap-4">
                         {allPermissions.map(privilege => (
                             <div key={privilege} className="flex items-center space-x-2">
                                 <Checkbox 
@@ -315,7 +315,7 @@ export default function SettingsPage() {
             </div>
             
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-              <SheetContent className="sm:max-w-2xl">
+              <SheetContent className="sm:max-w-3xl">
                 {sheetContent}
               </SheetContent>
             </Sheet>
