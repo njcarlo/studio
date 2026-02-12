@@ -286,18 +286,6 @@ export default function SettingsPage() {
 
                         <Card>
                             <CardHeader>
-                                <CardTitle className="font-headline flex items-center gap-2"><GanttChartSquare className="h-5 w-5"/>Workflow Configuration</CardTitle>
-                                <CardDescription>Visually edit your approval workflow using an interactive flowchart.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                               <Button asChild>
-                                    <Link href="/settings/workflow">Edit Workflow</Link>
-                               </Button>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
                                 <CardTitle className="flex items-center gap-2"><Shield /> System Seed</CardTitle>
                                 <CardDescription>
                                     This will create (or reset) the default user roles and approval workflow. This can be used to recover admin access or restore the default workflow.
