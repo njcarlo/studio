@@ -20,14 +20,14 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { LoaderCircle, Shield, AlertTriangle, PlusCircle, Trash2, Pencil } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from "@/lib/types";
 import { allPermissions, type Permission } from "@/lib/permissions";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // RoleForm component
 const RoleForm = ({ role, onSave, onClose }: { role?: Partial<Role> | null; onSave: (data: Partial<Role>) => void; onClose: () => void }) => {
@@ -67,37 +68,39 @@ const RoleForm = ({ role, onSave, onClose }: { role?: Partial<Role> | null; onSa
 
     return (
         <>
-            <SheetHeader>
-                <SheetTitle className="font-headline">{role?.id ? 'Edit Role' : 'Add New Role'}</SheetTitle>
-                <SheetDescription>Define the role name and its associated privileges for each module.</SheetDescription>
-            </SheetHeader>
-            <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                    <Label htmlFor="role-name">Role Name</Label>
-                    <Input id="role-name" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Content Editor"/>
-                </div>
-                <div className="space-y-2">
-                    <Label>Privileges</Label>
-                    <div className="space-y-2 rounded-md border p-4 grid grid-cols-3 gap-4">
-                        {allPermissions.map(privilege => (
-                            <div key={privilege} className="flex items-center space-x-2">
-                                <Checkbox 
-                                    id={`priv-${privilege}`} 
-                                    checked={!!formData.privileges?.[privilege]} 
-                                    onCheckedChange={(checked) => handlePrivilegeChange(privilege, !!checked)}
-                                />
-                                <label htmlFor={`priv-${privilege}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize">
-                                    {privilege.replace(/_/g, ' ')}
-                                </label>
-                            </div>
-                        ))}
+            <DialogHeader>
+                <DialogTitle className="font-headline">{role?.id ? 'Edit Role' : 'Add New Role'}</DialogTitle>
+                <DialogDescription>Define the role name and its associated privileges for each module.</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-grow -mx-6">
+                <div className="grid gap-4 py-4 px-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="role-name">Role Name</Label>
+                        <Input id="role-name" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Content Editor"/>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Privileges</Label>
+                        <div className="space-y-2 rounded-md border p-4 grid grid-cols-3 gap-4">
+                            {allPermissions.map(privilege => (
+                                <div key={privilege} className="flex items-center space-x-2">
+                                    <Checkbox 
+                                        id={`priv-${privilege}`} 
+                                        checked={!!formData.privileges?.[privilege]} 
+                                        onCheckedChange={(checked) => handlePrivilegeChange(privilege, !!checked)}
+                                    />
+                                    <label htmlFor={`priv-${privilege}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize">
+                                        {privilege.replace(/_/g, ' ')}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </div>
-            <SheetFooter>
-                <SheetClose asChild><Button variant="secondary">Cancel</Button></SheetClose>
+            </ScrollArea>
+            <DialogFooter>
+                <DialogClose asChild><Button variant="secondary">Cancel</Button></DialogClose>
                 <Button onClick={handleSave}>Save Role</Button>
-            </SheetFooter>
+            </DialogFooter>
         </>
     );
 };
@@ -124,10 +127,10 @@ export default function SettingsPage() {
     const { data: roles, isLoading: rolesLoading } = useCollection<Role>(rolesRef);
 
     // Form/Sheet State for Role Matrix
-    const [sheetContent, setSheetContent] = useState<React.ReactNode | null>(null);
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [dialogContent, setDialogContent] = useState<React.ReactNode | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
     
-    const closeSheet = () => setIsSheetOpen(false);
+    const closeDialog = () => setIsDialogOpen(false);
 
     // Role Handlers from dashboard
     const handleSaveRole = async (roleData: Partial<Role>) => {
@@ -140,7 +143,7 @@ export default function SettingsPage() {
                 await addDocumentNonBlocking(collection(firestore, "roles"), roleData);
                 toast({ title: "Role Added" });
             }
-            closeSheet();
+            closeDialog();
         } catch (error) {
             toast({ variant: "destructive", title: "Save Failed", description: "Could not save role." });
         }
@@ -161,8 +164,8 @@ export default function SettingsPage() {
     };
     
     const openRoleForm = (role?: Role) => {
-        setSheetContent(<RoleForm key={role?.id || 'new-role'} role={role} onSave={handleSaveRole} onClose={closeSheet} />);
-        setIsSheetOpen(true);
+        setDialogContent(<RoleForm key={role?.id || 'new-role'} role={role} onSave={handleSaveRole} onClose={closeDialog} />);
+        setIsDialogOpen(true);
     };
 
 
@@ -314,11 +317,11 @@ export default function SettingsPage() {
 
             </div>
             
-            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-              <SheetContent className="sm:max-w-3xl">
-                {sheetContent}
-              </SheetContent>
-            </Sheet>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="w-screen h-screen max-w-none rounded-none border-0 p-6 flex flex-col">
+                    {dialogContent}
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
