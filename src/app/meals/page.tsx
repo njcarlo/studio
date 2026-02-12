@@ -82,8 +82,11 @@ export default function MealsPage() {
   const mealStubsQuery = useMemoFirebase(() => {
     if (!user) return null;
     if (isSuperAdmin) {
-        return collection(firestore, "mealstubs");
+        // For admins, fetch all stubs from the last 30 days to keep it manageable
+        const thirtyDaysAgo = subDays(new Date(), 30);
+        return query(collection(firestore, "mealstubs"), where('date', '>=', thirtyDaysAgo));
     }
+    // For regular users, fetch their own stubs
     return query(collection(firestore, "mealstubs"), where('workerId', '==', user.uid));
   }, [firestore, user, isSuperAdmin]);
 
@@ -148,9 +151,6 @@ export default function MealsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Mealstub Management</h1>
         <div className="flex items-center gap-2">
-            <Button asChild variant="outline">
-                <Link href="/attendance/scanner"><QrCode className="mr-2 h-4 w-4"/> Scan Stub</Link>
-            </Button>
             <Button onClick={generateManualStub}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Generate My Meal Stub
             </Button>
