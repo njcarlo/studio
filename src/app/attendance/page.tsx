@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { LogIn, LogOut, LoaderCircle } from "lucide-react";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 
 export default function AttendancePage() {
     const firestore = useFirestore();
@@ -21,7 +21,8 @@ export default function AttendancePage() {
 
     const attendanceQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, "attendance_records"), where('workerProfileId', '==', user.uid));
+        const oneWeekAgo = subDays(new Date(), 7);
+        return query(collection(firestore, "attendance_records"), where('workerProfileId', '==', user.uid), where('time', '>=', oneWeekAgo));
     }, [firestore, user]);
 
     const { data: attendanceLog, isLoading } = useCollection<any>(attendanceQuery);
@@ -51,13 +52,13 @@ export default function AttendancePage() {
 
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline">Today's Personal Log</CardTitle>
-                <CardDescription>Your clock-in and clock-out records for today.</CardDescription>
+                <CardTitle className="font-headline">This Week's Personal Log</CardTitle>
+                <CardDescription>Your clock-in and clock-out records for this week.</CardDescription>
             </CardHeader>
             <CardContent>
                 {isLoading && <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />}
                 {!isLoading && attendanceLog && attendanceLog.length === 0 && (
-                    <p className="text-center text-muted-foreground">No records for today.</p>
+                    <p className="text-center text-muted-foreground">No records for this week.</p>
                 )}
                 <div className="space-y-4">
                     {attendanceLog && [...attendanceLog].sort((a,b) => (b.time?.seconds || 0) - (a.time?.seconds || 0)).map((log, index) => (
@@ -67,7 +68,7 @@ export default function AttendancePage() {
                             </div>
                             <div>
                                 <p className="font-semibold">{log.type}</p>
-                                <p className="text-sm text-muted-foreground">{log.time ? format(new Date(log.time.seconds * 1000), 'p') : 'Just now'}</p>
+                                <p className="text-sm text-muted-foreground">{log.time ? format(new Date(log.time.seconds * 1000), 'EEE, p') : 'Just now'}</p>
                             </div>
                         </div>
                     ))}
