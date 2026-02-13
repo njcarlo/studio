@@ -45,19 +45,14 @@ service cloud.firestore {
       // Allow any authenticated user to list all workers (for UI selectors, etc.)
       allow list: if request.auth != null;
       
-      // Allow a user to read their own document. This is critical for hasPrivilege() to work.
-      allow get: if request.auth.uid == userId;
-
-      // Allow admins to get OTHER users' documents.
-      allow get: if hasPrivilege('manage_users') && request.auth.uid != userId;
+      // Allow GET and UPDATE if the user is the owner, OR if the user is an admin acting on someone else.
+      // This combined rule structure is critical to prevent recursive errors.
+      allow get, update: if (request.auth.uid == userId) || (hasPrivilege('manage_users') && request.auth.uid != userId);
       
-      // Allow users to create their own account, and admins to create any account.
+      // Allow CREATE if the user is creating their own account (signing up), or if they are an admin.
       allow create: if request.auth.uid == userId || hasPrivilege('manage_users');
-
-      // Allow users to update their own account, or admins to update others.
-      allow update: if request.auth.uid == userId || (hasPrivilege('manage_users') && request.auth.uid != userId);
       
-      // Allow admins to delete other users.
+      // Allow DELETE only if the user is an admin acting on someone else.
       allow delete: if hasPrivilege('manage_users') && request.auth.uid != userId;
     }
 
