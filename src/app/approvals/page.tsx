@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,8 +9,17 @@ import { UserPlus, Calendar, UserCog, LoaderCircle, GanttChartSquare } from "luc
 import type { ApprovalRequest } from "@/lib/types";
 import { useFirestore, useCollection, updateDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const getIconForType = (type: ApprovalRequest['type']) => {
     switch (type) {
@@ -21,9 +30,62 @@ const getIconForType = (type: ApprovalRequest['type']) => {
     }
 }
 
-const KanbanCard = ({ request, onUpdateStatus, canManage }: { request: ApprovalRequest, onUpdateStatus: (request: ApprovalRequest, status: 'Approved' | 'Rejected') => void, canManage: boolean }) => {
+const ApprovalRequestDetailsDialog = ({ request, open, onOpenChange }: { request: ApprovalRequest | null, open: boolean, onOpenChange: (open: boolean) => void }) => {
+    if (!request) return null;
+
+    const getStatusBadge = (status: ApprovalRequest['status']) => {
+        switch (status) {
+            case 'Approved': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>;
+            case 'Rejected': return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
+            case 'Pending':
+            default:
+                return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>;
+        }
+    };
+
     return (
-        <Card className="shadow-sm hover:shadow-lg transition-shadow bg-card">
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="font-headline flex items-center gap-2">
+                        {getIconForType(request.type)}
+                        {request.type} Request
+                    </DialogTitle>
+                    <DialogDescription>
+                        Submitted by {request.requester}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-6">
+                    <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Details</Label>
+                        <p className="text-sm">{request.details}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Request Date</Label>
+                        <p className="text-sm">{request.date ? format(new Date((request.date as any).seconds * 1000), 'PPp') : 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Status</Label>
+                        <div>{getStatusBadge(request.status)}</div>
+                    </div>
+                </div>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+const KanbanCard = ({ request, onUpdateStatus, canManage, onClick }: { request: ApprovalRequest, onUpdateStatus: (request: ApprovalRequest, status: 'Approved' | 'Rejected') => void, canManage: boolean, onClick: (request: ApprovalRequest) => void }) => {
+    
+    const handleUpdateClick = (e: React.MouseEvent, status: 'Approved' | 'Rejected') => {
+        e.stopPropagation(); // Prevent card's onClick from firing
+        onUpdateStatus(request, status);
+    }
+    
+    return (
+        <Card className="shadow-sm hover:shadow-lg transition-shadow bg-card cursor-pointer" onClick={() => onClick(request)}>
             <CardHeader className="p-4">
                 <div className="flex items-start gap-3">
                     <div className="p-2 bg-primary/10 rounded-md text-primary mt-1">
@@ -42,10 +104,10 @@ const KanbanCard = ({ request, onUpdateStatus, canManage }: { request: ApprovalR
             </CardContent>
             {canManage && request.status === 'Pending' && (
                  <CardContent className="p-4 pt-0 flex justify-end gap-2">
-                    <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(request, 'Rejected')}>
+                    <Button size="sm" variant="destructive" onClick={(e) => handleUpdateClick(e, 'Rejected')}>
                         Reject
                     </Button>
-                    <Button size="sm" onClick={() => onUpdateStatus(request, 'Approved')}>
+                    <Button size="sm" onClick={(e) => handleUpdateClick(e, 'Approve')}>
                         Approve
                     </Button>
                 </CardContent>
@@ -54,7 +116,7 @@ const KanbanCard = ({ request, onUpdateStatus, canManage }: { request: ApprovalR
     );
 };
 
-const KanbanColumn = ({ title, requests, onUpdateStatus, canManage }: { title: string, requests: ApprovalRequest[], onUpdateStatus: (request: ApprovalRequest, status: 'Approved' | 'Rejected') => void, canManage: boolean }) => {
+const KanbanColumn = ({ title, requests, onUpdateStatus, canManage, onCardClick }: { title: string, requests: ApprovalRequest[], onUpdateStatus: (request: ApprovalRequest, status: 'Approved' | 'Rejected') => void, canManage: boolean, onCardClick: (request: ApprovalRequest) => void }) => {
     return (
         <div className="w-80 shrink-0">
             <h3 className="font-semibold mb-3 px-1 flex items-center justify-between text-sm uppercase text-muted-foreground">
@@ -67,6 +129,7 @@ const KanbanColumn = ({ title, requests, onUpdateStatus, canManage }: { title: s
                         request={request}
                         onUpdateStatus={onUpdateStatus}
                         canManage={canManage}
+                        onClick={onCardClick}
                     />
                 )) : (
                     <div className="h-20 flex items-center justify-center">
@@ -81,6 +144,7 @@ const KanbanColumn = ({ title, requests, onUpdateStatus, canManage }: { title: s
 export default function ApprovalsPage() {
     const firestore = useFirestore();
     const { isSuperAdmin, isLoading: isRoleLoading, realUserRole } = useUserRole();
+    const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
 
     const canManageApprovals = useMemo(() => {
         if (isRoleLoading || !realUserRole) return false;
@@ -159,21 +223,34 @@ export default function ApprovalsPage() {
                         requests={pendingRequests}
                         onUpdateStatus={handleUpdateRequestStatus}
                         canManage={canManageApprovals}
+                        onCardClick={setSelectedRequest}
                     />
                     <KanbanColumn 
                         title="Approved"
                         requests={approvedRequests}
                         onUpdateStatus={handleUpdateRequestStatus}
                         canManage={canManageApprovals}
+                        onCardClick={setSelectedRequest}
                     />
                      <KanbanColumn 
                         title="Rejected"
                         requests={rejectedRequests}
                         onUpdateStatus={handleUpdateRequestStatus}
                         canManage={canManageApprovals}
+                        onCardClick={setSelectedRequest}
                     />
                 </div>
             </div>
+
+             <ApprovalRequestDetailsDialog 
+                request={selectedRequest}
+                open={!!selectedRequest}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setSelectedRequest(null);
+                    }
+                }}
+            />
         </AppLayout>
     );
 }
