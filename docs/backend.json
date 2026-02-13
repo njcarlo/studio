@@ -1,10 +1,11 @@
 {
   "entities": {
-    "User": {
-      "title": "User",
+    "Worker": {
+      "title": "Worker",
       "type": "object",
-      "description": "Represents a user account in the system.",
+      "description": "Represents a worker account in the system.",
       "properties": {
+        "workerId": { "type": "string" },
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
         "email": { "type": "string", "format": "email" },
@@ -140,9 +141,9 @@
     "providers": ["password"]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/entities/User" },
-      "description": "Stores user profile information. Document ID should match the Firebase Auth UID."
+    "/workers/{userId}": {
+      "schema": { "$ref": "#/entities/Worker" },
+      "description": "Stores worker profile information. Document ID should match the Firebase Auth UID."
     },
     "/roles/{roleId}": {
       "schema": { "$ref": "#/entities/Role" },

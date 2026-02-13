@@ -30,13 +30,13 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw } from "lucide-react";
-import type { MealStub, User } from "@/lib/types";
+import type { MealStub, Worker } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { format, isToday, subDays } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
-const MealStubDialog = ({ stub, worker, open, onOpenChange, onRegenerate }: { stub: MealStub | null, worker: User | null, open: boolean, onOpenChange: (open: boolean) => void, onRegenerate: (stubId: string) => void }) => {
+const MealStubDialog = ({ stub, worker, open, onOpenChange, onRegenerate }: { stub: MealStub | null, worker: Worker | null, open: boolean, onOpenChange: (open: boolean) => void, onRegenerate: (stubId: string) => void }) => {
     if (!stub) return null;
 
     const qrCodeUrl = stub.qrValue ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(stub.qrValue)}` : '';
@@ -76,7 +76,7 @@ const MealStubDialog = ({ stub, worker, open, onOpenChange, onRegenerate }: { st
 export default function MealsPage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { isSuperAdmin, userProfile, realUserRole, isLoading: isRoleLoading } = useUserRole();
+  const { isSuperAdmin, workerProfile, realUserRole, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
 
   const canManageMealStubs = useMemo(() => {
@@ -97,17 +97,17 @@ export default function MealsPage() {
 
   const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsQuery);
   
-  const usersRef = useMemoFirebase(() => {
+  const workersRef = useMemoFirebase(() => {
     if (!user) return null;
-    return collection(firestore, "users");
+    return collection(firestore, "workers");
   }, [firestore, user]);
-  const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
+  const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
   
   const [selectedStub, setSelectedStub] = useState<MealStub | null>(null);
-  const [selectedWorker, setSelectedWorker] = useState<User | null>(null);
+  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const isLoading = mealStubsLoading || usersLoading || isRoleLoading;
+  const isLoading = mealStubsLoading || workersLoading || isRoleLoading;
 
   const generateQrValue = () => 'MSTUB_' + Math.random().toString(36).substring(2, 12);
 
@@ -128,17 +128,17 @@ export default function MealsPage() {
 
   const handleRowClick = (stub: MealStub) => {
     setSelectedStub(stub);
-    const worker = users?.find(w => w.id === stub.workerId) || null;
+    const worker = workers?.find(w => w.id === stub.workerId) || null;
     setSelectedWorker(worker);
     setIsDialogOpen(true);
   };
   
   const generateManualStub = () => {
-      if (!user || !userProfile) return;
+      if (!user || !workerProfile) return;
       
       const newStub = {
           workerId: user.uid,
-          workerName: `${userProfile.firstName} ${userProfile.lastName}`,
+          workerName: `${workerProfile.firstName} ${workerProfile.lastName}`,
           date: serverTimestamp(),
           status: 'Issued',
           qrValue: generateQrValue(),
@@ -212,8 +212,8 @@ export default function MealsPage() {
                 </TableCell>
               </TableRow>
             )}
-            {mealStubs && users && mealStubs.map((stub) => {
-              const worker = users.find(w => w.id === stub.workerId);
+            {mealStubs && workers && mealStubs.map((stub) => {
+              const worker = workers.find(w => w.id === stub.workerId);
               const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
               return (
               <TableRow key={stub.id} onClick={() => handleRowClick(stub)} className="cursor-pointer">

@@ -43,7 +43,7 @@ export default function SignUpPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const newUser = {
+      const newWorker = {
         firstName,
         lastName,
         email,
@@ -54,14 +54,14 @@ export default function SignUpPage() {
         workerId: String(20000 + Math.floor(Math.random() * 1000)).padStart(6, '0'),
       };
 
-      const userRef = doc(firestore, 'users', user.uid);
-      await setDocumentNonBlocking(userRef, newUser, {});
+      const workerRef = doc(firestore, 'workers', user.uid);
+      await setDocumentNonBlocking(workerRef, newWorker, {});
 
       // Create an approval request
       await addDocumentNonBlocking(collection(firestore, "approvals"), {
-          requester: `${newUser.firstName} ${newUser.lastName}`,
+          requester: `${newWorker.firstName} ${newWorker.lastName}`,
           type: 'New Worker',
-          details: `New user self-registration: ${newUser.email}.`,
+          details: `New worker self-registration: ${newWorker.email}.`,
           date: serverTimestamp(),
           status: 'Pending',
           workerId: user.uid

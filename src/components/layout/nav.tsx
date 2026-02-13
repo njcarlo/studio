@@ -22,7 +22,7 @@ import type { Permission } from "@/lib/permissions";
 
 const allNavItems: { href: string; icon: React.ElementType; label: string; adminOnly?: boolean, privilege?: Permission }[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/workers", icon: Users, label: "Users" },
+  { href: "/workers", icon: Users, label: "Workers" },
   { href: "/ministries", icon: BookOpen, label: "Ministries" },
   { href: "/rooms", icon: Calendar, label: "Room Reservations" },
   { href: "/attendance", icon: ScanLine, label: "Attendance" },

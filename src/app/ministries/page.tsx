@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HeartHandshake, User as UserIcon, Users, LoaderCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
-import type { Ministry, User, Department } from "@/lib/types";
+import type { Ministry, Worker, Department } from "@/lib/types";
 
 export default function MinistriesPage() {
   const firestore = useFirestore();
@@ -20,15 +20,15 @@ export default function MinistriesPage() {
   }, [firestore, user]);
   const { data: ministries, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
 
-  const usersRef = useMemoFirebase(() => {
+  const workersRef = useMemoFirebase(() => {
     if (!user) return null;
-    return collection(firestore, "users");
+    return collection(firestore, "workers");
   }, [firestore, user]);
-  const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
+  const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
-  const getUser = (userId: string) => users?.find(w => w.id === userId);
+  const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
   
-  const isLoading = ministriesLoading || usersLoading;
+  const isLoading = ministriesLoading || workersLoading;
 
   const departments: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
 
@@ -57,8 +57,8 @@ export default function MinistriesPage() {
               <h2 className="text-xl font-headline font-semibold mb-4 border-b pb-2">{department}</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {departmentMinistries.map(ministry => {
-                  const leader = getUser(ministry.leaderId);
-                  const members = users?.filter(w => w.primaryMinistryId === ministry.id || w.secondaryMinistryId === ministry.id) || [];
+                  const leader = getWorker(ministry.leaderId);
+                  const members = workers?.filter(w => w.primaryMinistryId === ministry.id || w.secondaryMinistryId === ministry.id) || [];
 
                   return (
                     <Card key={ministry.id}>

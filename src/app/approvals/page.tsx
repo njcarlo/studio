@@ -166,7 +166,7 @@ export default function ApprovalsPage() {
         // Handle side-effects on final approval/rejection
         if (status === 'Approved') {
             if (request.type === 'New Worker' && request.workerId) {
-                const workerDocRef = doc(firestore, "users", request.workerId);
+                const workerDocRef = doc(firestore, "workers", request.workerId);
                 updateDocumentNonBlocking(workerDocRef, { status: 'Active' });
             }
             if (request.type === 'Room Booking' && request.roomId && request.reservationId) {

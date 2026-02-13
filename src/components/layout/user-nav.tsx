@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { signOut, sendPasswordResetEmail } from "firebase/auth";
-import type { User as AppUser } from "@/lib/types";
+import type { Worker as AppWorker } from "@/lib/types";
 import { doc } from 'firebase/firestore';
 
 
@@ -25,8 +25,8 @@ export function UserNav() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile } = useDoc<AppUser>(userProfileRef);
+  const workerProfileRef = useMemoFirebase(() => user ? doc(firestore, 'workers', user.uid) : null, [firestore, user]);
+  const { data: workerProfile } = useDoc<AppWorker>(workerProfileRef);
 
   const handleLogout = () => {
     signOut(auth);
@@ -56,17 +56,17 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-             <AvatarImage src={undefined} alt={userProfile?.email || "User"} />
-            <AvatarFallback>{userProfile?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+             <AvatarImage src={workerProfile?.avatarUrl} alt={workerProfile?.email || "User"} />
+            <AvatarFallback>{workerProfile?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{userProfile?.email || 'User'}</p>
+            <p className="text-sm font-medium leading-none">{workerProfile?.email || 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              Role: {userProfile?.roleId || 'N/A'}
+              Role: {workerProfile?.roleId || 'N/A'}
             </p>
           </div>
         </DropdownMenuLabel>

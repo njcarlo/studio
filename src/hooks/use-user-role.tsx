@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { doc, collection } from 'firebase/firestore';
-import type { User, Role } from '@/lib/types';
+import type { Worker, Role } from '@/lib/types';
 import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 
 type UserRoleContextType = {
@@ -12,7 +12,7 @@ type UserRoleContextType = {
   isLoading: boolean;
   setViewAsRole: (role: Role) => void;
   allRoles: Role[];
-  userProfile: User | null;
+  workerProfile: Worker | null;
 };
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
@@ -21,21 +21,21 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const userProfileRef = useMemoFirebase(() => {
+  const workerProfileRef = useMemoFirebase(() => {
     if (user) {
-      return doc(firestore, 'users', user.uid);
+      return doc(firestore, 'workers', user.uid);
     }
     return null;
   }, [firestore, user]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
+  const { data: workerProfile, isLoading: isProfileLoading } = useDoc<Worker>(workerProfileRef);
 
   const roleRef = useMemoFirebase(() => {
-    if (userProfile?.roleId) {
-      return doc(firestore, 'roles', userProfile.roleId);
+    if (workerProfile?.roleId) {
+      return doc(firestore, 'roles', workerProfile.roleId);
     }
     return null;
-  }, [firestore, userProfile]);
+  }, [firestore, workerProfile]);
 
   const { data: realUserRole, isLoading: isRoleLoading } = useDoc<Role>(roleRef);
   
@@ -69,7 +69,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     setViewAsRole,
     allRoles: allRoles || [],
-    userProfile: userProfile || null,
+    workerProfile: workerProfile || null,
   };
 
   return (

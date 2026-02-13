@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { collection, doc, query, where, Timestamp } from 'firebase/firestore';
-import type { Room, Booking, User, Location } from '@/lib/types';
+import type { Room, Booking, Worker, Location } from '@/lib/types';
 import { format, isToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, DoorOpen, VideoOff, LoaderCircle } from 'lucide-react';
@@ -39,15 +39,15 @@ export default function RoomDisplayPage() {
     const bookingsRef = useMemoFirebase(() => query(collection(firestore, 'rooms', roomId, 'reservations'), where('status', '==', 'Approved')), [firestore, roomId]);
     const { data: allBookings, isLoading: bookingsLoading } = useCollection<Booking>(bookingsRef);
 
-    const usersRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
-    const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
+    const workersRef = useMemoFirebase(() => collection(firestore, 'workers'), [firestore]);
+    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
     const todaysBookings = allBookings
         ?.map(b => ({ ...b, start: (b.start as any).toDate(), end: (b.end as any).toDate() }))
         .filter(b => isToday(b.start))
         .sort((a, b) => a.start.getTime() - b.start.getTime()) || [];
 
-    const isLoading = roomLoading || bookingsLoading || usersLoading || locationsLoading;
+    const isLoading = roomLoading || bookingsLoading || workersLoading || locationsLoading;
     const location = locations?.find(l => l.id === room?.locationId);
 
     if (isLoading) {
@@ -75,7 +75,7 @@ export default function RoomDisplayPage() {
     const qrCodeUrl = currentBooking ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`ROOM_CHECKIN:${currentBooking.id}`)}&bgcolor=374151&color=ffffff&qzone=1` : '';
 
     const getUserName = (userId: string) => {
-        const user = users?.find(w => w.id === userId);
+        const user = workers?.find(w => w.id === userId);
         return user ? `${user.firstName} ${user.lastName}` : userId;
     }
 

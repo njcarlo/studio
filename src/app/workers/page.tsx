@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,9 +30,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, LoaderCircle } from "lucide-react";
+import { MoreHorizontal, PlusCircle, LoaderCircle, Upload } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -39,23 +41,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { User, Role, Ministry } from "@/lib/types";
+import type { Worker, Role, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 
-const UserForm = ({ user, roles, ministries, onSave, onClose, canManage }: { user: Partial<User> | null; roles: Role[]; ministries: Ministry[]; onSave: (user: Partial<User>) => void; onClose: () => void; canManage: boolean; }) => {
-  const [formData, setFormData] = useState<Partial<User>>({
+const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: { worker: Partial<Worker> | null; roles: Role[]; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; canManage: boolean; }) => {
+  const [formData, setFormData] = useState<Partial<Worker>>({
     firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: canManage ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
     primaryMinistryId: '', secondaryMinistryId: ''
   });
 
   useEffect(() => {
-    if (user) {
+    if (worker) {
         setFormData({
-            ...user,
-            primaryMinistryId: user.primaryMinistryId || '',
-            secondaryMinistryId: user.secondaryMinistryId || '',
+            ...worker,
+            primaryMinistryId: worker.primaryMinistryId || '',
+            secondaryMinistryId: worker.secondaryMinistryId || '',
         });
     } else {
         setFormData({
@@ -63,7 +65,7 @@ const UserForm = ({ user, roles, ministries, onSave, onClose, canManage }: { use
             primaryMinistryId: '', secondaryMinistryId: ''
         });
     }
-  }, [user, canManage]);
+  }, [worker, canManage]);
 
   const handleSave = () => {
     onSave(formData);
@@ -72,9 +74,9 @@ const UserForm = ({ user, roles, ministries, onSave, onClose, canManage }: { use
   return (
     <>
       <SheetHeader>
-        <SheetTitle className="font-headline">{user ? 'Edit User' : 'Add New User'}</SheetTitle>
+        <SheetTitle className="font-headline">{worker ? 'Edit Worker' : 'Add New Worker'}</SheetTitle>
         <SheetDescription>
-          {user ? 'Update the details for this user.' : 'Fill in the details for the new user.'}
+          {worker ? 'Update the details for this worker.' : 'Fill in the details for the new worker.'}
         </SheetDescription>
       </SheetHeader>
       <div className="grid gap-4 py-4">
@@ -107,7 +109,7 @@ const UserForm = ({ user, roles, ministries, onSave, onClose, canManage }: { use
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="status" className="text-right">Status</Label>
-          <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({...formData, status: value})} disabled={!canManage && !user}>
+          <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({...formData, status: value})} disabled={!canManage && !worker}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a status" />
             </SelectTrigger>
@@ -153,22 +155,60 @@ const UserForm = ({ user, roles, ministries, onSave, onClose, canManage }: { use
   );
 };
 
+const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => void; onClose: () => void; }) => {
+    const [csvData, setCsvData] = useState('');
+    const csvFormat = "firstName,lastName,email,phone,roleId,status,primaryMinistryId,secondaryMinistryId";
+
+    return (
+        <>
+            <SheetHeader>
+                <SheetTitle className="font-headline">Import Workers</SheetTitle>
+                <SheetDescription>
+                    Paste CSV data below to bulk-import workers. The first line must be a header row.
+                </SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="csv-format">Required CSV Format</Label>
+                    <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="csv-data">CSV Data</Label>
+                    <Textarea 
+                        id="csv-data"
+                        value={csvData}
+                        onChange={(e) => setCsvData(e.target.value)}
+                        placeholder="Paste your CSV content here..."
+                        className="h-64 font-mono text-xs"
+                    />
+                </div>
+            </div>
+            <SheetFooter>
+                <SheetClose asChild>
+                    <Button type="button" variant="secondary">Cancel</Button>
+                </SheetClose>
+                <Button onClick={() => onImport(csvData)}>Process Import</Button>
+            </SheetFooter>
+        </>
+    )
+}
+
 export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
-  const { userProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
+  const { workerProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
 
   const canManageUsers = useMemo(() => {
     if (isRoleLoading || !realUserRole) return false;
     return isSuperAdmin || !!realUserRole.privileges?.['manage_users'];
   }, [isRoleLoading, realUserRole, isSuperAdmin]);
 
-  const usersRef = useMemoFirebase(() => {
+  const workersRef = useMemoFirebase(() => {
     if (!user) return null;
-    return collection(firestore, "users");
+    return collection(firestore, "workers");
   }, [firestore, user]);
-  const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
+  const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
   const rolesRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -184,32 +224,37 @@ export default function WorkersPage() {
   const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
   const ministries = ministriesData || [];
   
-  const isLoading = usersLoading || rolesLoading || ministriesLoading || isRoleLoading;
+  const isLoading = workersLoading || rolesLoading || ministriesLoading || isRoleLoading;
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
 
   const handleAddNew = () => {
-    setSelectedUser(null);
+    setSelectedWorker(null);
+    setIsSheetOpen(true);
+  };
+
+  const handleOpenImport = () => {
+      setIsImportSheetOpen(true);
+  }
+  
+  const handleEdit = (worker: Worker) => {
+    setSelectedWorker(worker);
     setIsSheetOpen(true);
   };
   
-  const handleEdit = (user: User) => {
-    setSelectedUser(user);
-    setIsSheetOpen(true);
-  };
-  
-  const handleDelete = (userId: string) => {
-    if (!userId) return;
-    deleteDocumentNonBlocking(doc(firestore, "users", userId));
+  const handleDelete = (workerId: string) => {
+    if (!workerId) return;
+    deleteDocumentNonBlocking(doc(firestore, "workers", workerId));
     toast({
-        title: "User Deleted",
-        description: "The user profile has been removed."
+        title: "Worker Deleted",
+        description: "The worker profile has been removed."
     });
   };
 
-  const handleSaveUser = async (userData: Partial<User>) => {
-    if (!userData.firstName || !userData.lastName || !userData.email) {
+  const handleSaveWorker = async (workerData: Partial<Worker>) => {
+    if (!workerData.firstName || !workerData.lastName || !workerData.email) {
       toast({
         variant: "destructive",
         title: "Missing required fields",
@@ -218,7 +263,7 @@ export default function WorkersPage() {
       return;
     }
 
-    const dataToSave = { ...userData };
+    const dataToSave = { ...workerData };
     if (dataToSave.primaryMinistryId === 'none') {
       dataToSave.primaryMinistryId = '';
     }
@@ -227,47 +272,119 @@ export default function WorkersPage() {
     }
 
     try {
-      if (selectedUser?.id) {
-          await updateDocumentNonBlocking(doc(firestore, "users", selectedUser.id), dataToSave);
+      if (selectedWorker?.id) {
+          await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), dataToSave);
           toast({
-              title: "User Updated",
+              title: "Worker Updated",
               description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
           });
       } else {
-          const newWorkerId = String(20000 + (users?.length || 0)).padStart(6, '0');
+          const newWorkerId = String(20000 + (workers?.length || 0)).padStart(6, '0');
           const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
-          const newUserRef = await addDocumentNonBlocking(collection(firestore, "users"), dataToSaveWithId);
+          const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "workers"), dataToSaveWithId);
 
-          if (newUserRef && userProfile && dataToSave.status === 'Pending Approval') {
+          if (newWorkerRef && workerProfile && dataToSave.status === 'Pending Approval') {
             await addDocumentNonBlocking(collection(firestore, "approvals"), {
-              requester: `${userProfile.firstName} ${userProfile.lastName}`,
+              requester: `${workerProfile.firstName} ${workerProfile.lastName}`,
               type: 'New Worker',
-              details: `New user registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
+              details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
               date: serverTimestamp(),
               status: 'Pending',
-              workerId: newUserRef.id
+              workerId: newWorkerRef.id
             });
             toast({
-                title: "User Added",
+                title: "Worker Added",
                 description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`
             });
           } else {
             toast({
-                title: "User Added",
+                title: "Worker Added",
                 description: `${dataToSave.firstName} ${dataToSave.lastName} has been added with status: ${dataToSave.status}.`
             });
           }
       }
       setIsSheetOpen(false);
     } catch (error) {
-      console.error("Failed to save user:", error);
+      console.error("Failed to save worker:", error);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save user profile. Check console for details.",
+        description: "Could not save worker profile. Check console for details.",
       });
     }
   };
+
+  const handleImportWorkers = (csvData: string) => {
+    Papa.parse(csvData, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+            const newWorkers = results.data;
+            if (newWorkers.length === 0) {
+                toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.'});
+                return;
+            }
+
+            try {
+                const batch = writeBatch(firestore);
+                let approvalCount = 0;
+                
+                newWorkers.forEach((newWorker: any, index) => {
+                    if (!newWorker.firstName || !newWorker.lastName || !newWorker.email) {
+                        console.warn('Skipping invalid row:', newWorker);
+                        return;
+                    }
+
+                    const newDocRef = doc(collection(firestore, "workers"));
+                    const workerId = String(100000 + (workers?.length || 0) + index).slice(-6);
+
+                    batch.set(newDocRef, {
+                        firstName: newWorker.firstName || '',
+                        lastName: newWorker.lastName || '',
+                        email: newWorker.email || '',
+                        phone: newWorker.phone || '',
+                        roleId: newWorker.roleId || 'viewer',
+                        status: newWorker.status || 'Pending Approval',
+                        primaryMinistryId: newWorker.primaryMinistryId || '',
+                        secondaryMinistryId: newWorker.secondaryMinistryId || '',
+                        workerId: workerId,
+                        createdAt: serverTimestamp(),
+                        avatarUrl: `https://picsum.photos/seed/${newDocRef.id.slice(0,5)}/100/100`,
+                    });
+
+                    if ((newWorker.status || 'Pending Approval') === 'Pending Approval') {
+                        approvalCount++;
+                        const approvalRef = doc(collection(firestore, "approvals"));
+                        batch.set(approvalRef, {
+                            requester: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : 'System Import',
+                            type: 'New Worker',
+                            details: `New worker import: ${newWorker.email}`,
+                            date: serverTimestamp(),
+                            status: 'Pending',
+                            workerId: newDocRef.id
+                        });
+                    }
+                });
+
+                await batch.commit();
+
+                toast({
+                    title: "Import Successful",
+                    description: `${newWorkers.length} workers were imported. ${approvalCount} approval requests were created.`
+                });
+                setIsImportSheetOpen(false);
+
+            } catch (error) {
+                 toast({
+                    variant: "destructive",
+                    title: "Import Failed",
+                    description: "An error occurred during the import. Check console for details.",
+                });
+                console.error("Import error:", error);
+            }
+        }
+    })
+  }
 
   const getRoleName = (roleId: string) => {
     return roles.find(r => r.id === roleId)?.name || roleId;
@@ -276,11 +393,16 @@ export default function WorkersPage() {
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-headline font-bold">User Profiles</h1>
+        <h1 className="text-2xl font-headline font-bold">Worker Profiles</h1>
         {canManageUsers && (
-          <Button onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add User
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleOpenImport}>
+                <Upload className="mr-2 h-4 w-4" /> Import
+            </Button>
+            <Button onClick={handleAddNew}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Worker
+            </Button>
+          </div>
         )}
       </div>
 
@@ -308,31 +430,31 @@ export default function WorkersPage() {
                 </TableCell>
               </TableRow>
             )}
-            {users && users.map((user) => (
-              <TableRow key={user.id}>
+            {workers && workers.map((worker) => (
+              <TableRow key={worker.id}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />
-                      <AvatarFallback>{user.firstName?.charAt(0)}</AvatarFallback>
+                      <AvatarImage src={worker.avatarUrl} alt={`${worker.firstName} ${worker.lastName}`} />
+                      <AvatarFallback>{worker.firstName?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    {`${user.firstName} ${user.lastName}`}
+                    {`${worker.firstName} ${worker.lastName}`}
                   </div>
                 </TableCell>
-                <TableCell className="font-mono text-xs">{user.workerId}</TableCell>
-                <TableCell>{getRoleName(user.roleId)}</TableCell>
+                <TableCell className="font-mono text-xs">{worker.workerId}</TableCell>
+                <TableCell>{getRoleName(worker.roleId)}</TableCell>
                 <TableCell>
-                   <Badge variant={user.status === 'Active' ? 'default' : 'secondary'} className={
-                       user.status === 'Active' ? 'bg-green-100 text-green-800' : 
-                       user.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                   <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
+                       worker.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                       worker.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                    }>
-                    {user.status}
+                    {worker.status}
                    </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span>{user.email}</span>
-                    <span className="text-muted-foreground">{user.phone}</span>
+                    <span>{worker.email}</span>
+                    <span className="text-muted-foreground">{worker.phone}</span>
                   </div>
                 </TableCell>
                 {canManageUsers && (
@@ -345,8 +467,8 @@ export default function WorkersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleEdit(user)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleDelete(user.id)} className="text-destructive">Delete</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleEdit(worker)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDelete(worker.id)} className="text-destructive">Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -359,15 +481,21 @@ export default function WorkersPage() {
 
        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-lg">
-          <UserForm 
-            key={selectedUser?.id || 'new-user-form'}
-            user={selectedUser} 
+          <WorkerForm 
+            key={selectedWorker?.id || 'new-worker-form'}
+            worker={selectedWorker} 
             roles={roles}
             ministries={ministries} 
-            onSave={handleSaveUser} 
+            onSave={handleSaveWorker} 
             onClose={() => setIsSheetOpen(false)}
             canManage={canManageUsers}
              />
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={isImportSheetOpen} onOpenChange={setIsImportSheetOpen}>
+        <SheetContent className="sm:max-w-lg">
+            <ImportSheet onImport={handleImportWorkers} onClose={() => setIsImportSheetOpen(false)} />
         </SheetContent>
       </Sheet>
 

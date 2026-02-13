@@ -19,13 +19,13 @@ import { doc } from 'firebase/firestore';
 
 export function PasswordChangeDialog() {
   const { user } = useUser();
-  const { userProfile, isSuperAdmin } = useUserRole();
+  const { workerProfile, isSuperAdmin } = useUserRole();
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
   
   // We use local state to control visibility so the dialog can be dismissed for the session
-  const [isOpen, setIsOpen] = useState(userProfile?.passwordChangeRequired === true && !isSuperAdmin);
+  const [isOpen, setIsOpen] = useState(workerProfile?.passwordChangeRequired === true && !isSuperAdmin);
 
   const handleSendEmail = async () => {
     if (!user || !user.email) return;
@@ -38,7 +38,7 @@ export function PasswordChangeDialog() {
       });
       // After sending, update the profile to not prompt again and close the dialog
       if (user) {
-        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDocRef = doc(firestore, 'workers', user.uid);
         await updateDocumentNonBlocking(userDocRef, { passwordChangeRequired: false });
       }
       setIsOpen(false);

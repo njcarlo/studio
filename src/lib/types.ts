@@ -4,7 +4,7 @@ export type Role = {
   privileges: { [key: string]: boolean };
 }
 
-export type User = {
+export type Worker = {
     id: string;
     workerId?: string;
     firstName: string;

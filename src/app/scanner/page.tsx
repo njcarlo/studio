@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History, AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useCollection, useMemoFirebase, useUser } from "@/firebase";
-import type { User, ScanLog } from "@/lib/types";
+import type { Worker, ScanLog } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,7 +19,7 @@ export default function QRScannerPage() {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [scannedUser, setScannedUser] = useState<User | null>(null);
+    const [scannedWorker, setScannedWorker] = useState<Worker | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -28,18 +28,18 @@ export default function QRScannerPage() {
     
     const firestore = useFirestore();
     const { user } = useUser();
-    const { userProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
+    const { workerProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
 
     const canOperateScanner = useMemo(() => {
         if (isRoleLoading || !realUserRole) return false;
         return isSuperAdmin || !!realUserRole.privileges?.['operate_scanner'];
     }, [isRoleLoading, realUserRole, isSuperAdmin]);
 
-    const usersRef = useMemoFirebase(() => {
+    const workersRef = useMemoFirebase(() => {
         if (!user) return null;
-        return collection(firestore, "users");
+        return collection(firestore, "workers");
     }, [firestore, user]);
-    const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
+    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
     
     const scanLogsQuery = useMemoFirebase(() => {
         if (!canOperateScanner) return null;
@@ -104,24 +104,24 @@ export default function QRScannerPage() {
     };
 
     const resetScanner = useCallback(() => {
-        setScannedUser(null);
+        setScannedWorker(null);
         setIsProcessing(false);
     }, []);
 
     const logScanEvent = useCallback(async (logData: Omit<ScanLog, 'id' | 'timestamp' | 'scannerId' | 'scannerName'>) => {
-        if (!userProfile) return;
+        if (!workerProfile) return;
         try {
             await addDocumentNonBlocking(collection(firestore, "scan_logs"), {
                 ...logData,
-                scannerId: userProfile.id,
-                scannerName: `${userProfile.firstName} ${userProfile.lastName}`,
+                scannerId: workerProfile.id,
+                scannerName: `${workerProfile.firstName} ${workerProfile.lastName}`,
                 timestamp: serverTimestamp()
             });
         } catch (e) {
             console.error("Failed to write to scan log", e);
             // Do not show a toast for this, it's a background task.
         }
-    }, [firestore, userProfile]);
+    }, [firestore, workerProfile]);
 
     const handleScan = useCallback(async (data: string) => {
         if (!data || isProcessing) return;
@@ -163,42 +163,42 @@ export default function QRScannerPage() {
             setTimeout(() => resetScanner(), 2000);
         }
         else {
-            if (usersLoading) {
-                toast({ title: "Please wait", description: "User data is still loading." });
+            if (workersLoading) {
+                toast({ title: "Please wait", description: "Worker data is still loading." });
                 setIsProcessing(false);
                 return;
             }
-            const user = users?.find(w => w.id === data || w.workerId === data);
-            if (user) {
-                setScannedUser(user);
+            const worker = workers?.find(w => w.id === data || w.workerId === data);
+            if (worker) {
+                setScannedWorker(worker);
             } else {
-                toast({ variant: 'destructive', title: 'User Not Found', description: 'The scanned ID does not correspond to any user.' });
+                toast({ variant: 'destructive', title: 'Worker Not Found', description: 'The scanned ID does not correspond to any worker.' });
                 setTimeout(() => resetScanner(), 2000);
             }
         }
-    }, [isProcessing, users, firestore, toast, usersLoading, resetScanner, logScanEvent]);
+    }, [isProcessing, workers, firestore, toast, workersLoading, resetScanner, logScanEvent]);
 
     const handleRecordAttendance = useCallback((type: 'Clock In' | 'Clock Out') => {
-        if (!scannedUser) return;
+        if (!scannedWorker) return;
         
         addDocumentNonBlocking(collection(firestore, "attendance_records"), {
-            workerProfileId: scannedUser.id,
+            workerProfileId: scannedWorker.id,
             type,
             time: serverTimestamp(),
         });
         
-        const details = `${type === 'Clock In' ? 'Clocked in' : 'Clocked out'} ${scannedUser.firstName} ${scannedUser.lastName}.`;
+        const details = `${type === 'Clock In' ? 'Clocked in' : 'Clocked out'} ${scannedWorker.firstName} ${scannedWorker.lastName}.`;
         toast({ title: "Success", description: details });
         
         logScanEvent({
             scanType: 'Attendance',
             details,
-            targetUserId: scannedUser.id,
-            targetUserName: `${scannedUser.firstName} ${scannedUser.lastName}`,
+            targetUserId: scannedWorker.id,
+            targetUserName: `${scannedWorker.firstName} ${scannedWorker.lastName}`,
         });
         
         resetScanner();
-    }, [firestore, logScanEvent, resetScanner, scannedUser, toast]);
+    }, [firestore, logScanEvent, resetScanner, scannedWorker, toast]);
 
     useEffect(() => {
         if (!videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || !selectedDeviceId) {
@@ -212,7 +212,7 @@ export default function QRScannerPage() {
 
         const detectQrCode = async () => {
             if (videoElement.readyState >= 2) { // HAVE_METADATA or more
-                if (isProcessing || scannedUser) {
+                if (isProcessing || scannedWorker) {
                     animationFrameId = requestAnimationFrame(detectQrCode);
                     return; 
                 }
@@ -263,7 +263,7 @@ export default function QRScannerPage() {
                 stream.getTracks().forEach(track => track.stop());
             }
         };
-    }, [selectedDeviceId, hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedUser, handleScan]);
+    }, [selectedDeviceId, hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedWorker, handleScan]);
 
 
     if (isRoleLoading) {
@@ -330,15 +330,15 @@ export default function QRScannerPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-grow items-center justify-center">
-                        {scannedUser ? (
+                        {scannedWorker ? (
                             <div className="flex flex-col items-center gap-4">
                                 <Avatar className="h-24 w-24">
-                                    <AvatarImage src={scannedUser.avatarUrl} alt={`${scannedUser.firstName} ${scannedUser.lastName}`} />
+                                    <AvatarImage src={scannedWorker.avatarUrl} alt={`${scannedWorker.firstName} ${scannedWorker.lastName}`} />
                                     <AvatarFallback><UserIcon className="h-12 w-12" /></AvatarFallback>
                                 </Avatar>
                                 <div className="text-center">
-                                    <p className="text-lg font-semibold">{`${scannedUser.firstName} ${scannedUser.lastName}`}</p>
-                                    <p className="text-sm text-muted-foreground">{scannedUser.roleId}</p>
+                                    <p className="text-lg font-semibold">{`${scannedWorker.firstName} ${scannedWorker.lastName}`}</p>
+                                    <p className="text-sm text-muted-foreground">{scannedWorker.roleId}</p>
                                 </div>
                                 <div className="w-full border-t pt-4 mt-2">
                                     <p className="text-center text-sm font-medium mb-4">Select attendance action:</p>

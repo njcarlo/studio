@@ -8,9 +8,9 @@ service cloud.firestore {
       if (request.auth == null) {
         return null;
       }
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let userDoc = get(/databases/$(database)/documents/workers/$(request.auth.uid));
       // Make sure user exists and has a roleId
-      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) || !('roleId' in userDoc.data)) {
+      if (!exists(/databases/$(database)/documents/workers/$(request.auth.uid)) || !('roleId' in userDoc.data)) {
         return null;
       }
       let roleId = userDoc.data.roleId;
@@ -24,9 +24,9 @@ service cloud.firestore {
     }
 
     // Anyone can read their own user doc. Only users with 'manage_users' can update/delete others.
-    match /users/{userId} {
+    match /workers/{userId} {
       allow read: if request.auth != null;
-      allow create: if request.auth.uid == userId; // For signup
+      allow create: if request.auth.uid == userId || hasPrivilege('manage_users');
       allow update: if request.auth.uid == userId || hasPrivilege('manage_users');
       allow delete: if hasPrivilege('manage_users');
     }

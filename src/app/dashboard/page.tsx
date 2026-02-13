@@ -12,7 +12,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { LoaderCircle } from "lucide-react";
 
 export default function DashboardPage() {
-    const { userProfile, isLoading } = useUserRole();
+    const { workerProfile, isLoading } = useUserRole();
     
     if (isLoading) {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
@@ -26,7 +26,7 @@ export default function DashboardPage() {
                 </h1>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Welcome, {userProfile?.firstName || 'User'}!</CardTitle>
+                        <CardTitle>Welcome, {workerProfile?.firstName || 'User'}!</CardTitle>
                         <CardDescription>This is your application dashboard. More widgets and stats coming soon.</CardDescription>
                     </CardHeader>
                 </Card>

@@ -34,7 +34,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Booking, Room, User, Location } from "@/lib/types";
+import type { Booking, Room, Worker, Location } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "firebase/firestore";
@@ -193,9 +193,9 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
   );
 };
 
-const BookingsList = ({ bookings, rooms, users }: { bookings: Booking[], rooms: Room[] | undefined, users: User[] | undefined }) => {
+const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined }) => {
     const getUserName = (userId: string) => {
-        const user = users?.find(w => w.id === userId);
+        const user = workers?.find(w => w.id === userId);
         return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
     }
 
@@ -272,9 +272,9 @@ const BookingsList = ({ bookings, rooms, users }: { bookings: Booking[], rooms: 
     )
 };
 
-const RoomScheduleList = ({ bookings, users }: { bookings: Booking[], users: User[] | undefined }) => {
+const RoomScheduleList = ({ bookings, workers }: { bookings: Booking[], workers: Worker[] | undefined }) => {
     const getUserName = (userId: string) => {
-        const user = users?.find(w => w.id === userId);
+        const user = workers?.find(w => w.id === userId);
         return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
     };
 
@@ -336,7 +336,7 @@ const RoomScheduleList = ({ bookings, users }: { bookings: Booking[], users: Use
 
 
 export default function RoomsPage() {
-    const { isSuperAdmin, userProfile } = useUserRole();
+    const { isSuperAdmin, workerProfile } = useUserRole();
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -358,11 +358,11 @@ export default function RoomsPage() {
     }, [firestore, user]);
     const { data: locations, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
     
-    const usersRef = useMemoFirebase(() => {
+    const workersRef = useMemoFirebase(() => {
         if (!user) return null;
-        return collection(firestore, 'users');
+        return collection(firestore, 'workers');
     }, [firestore, user]);
-    const { data: users, isLoading: usersLoading } = useCollection<User>(usersRef);
+    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
     const reservationsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -372,11 +372,11 @@ export default function RoomsPage() {
 
 
     const handleSaveBooking = async (bookingData: any): Promise<boolean> => {
-        if (!bookingData.roomId || !userProfile) {
+        if (!bookingData.roomId || !workerProfile) {
             toast({
                 variant: "destructive",
                 title: "Cannot save booking",
-                description: "User profile not loaded or room not selected.",
+                description: "Worker profile not loaded or room not selected.",
             });
             return false;
         }
@@ -389,14 +389,14 @@ export default function RoomsPage() {
     
             if (reservationRef?.id) {
                 await addDocumentNonBlocking(collection(firestore, 'approvals'), {
-                    requester: `${userProfile.firstName} ${userProfile.lastName}` || 'Unknown User',
+                    requester: `${workerProfile.firstName} ${workerProfile.lastName}` || 'Unknown User',
                     type: 'Room Booking',
                     details: `"${bookingData.title}" for room: ${rooms?.find(r => r.id === bookingData.roomId)?.name}`,
                     date: serverTimestamp(),
                     status: 'Pending',
                     roomId: bookingData.roomId,
                     reservationId: reservationRef.id,
-                    workerId: userProfile.id
+                    workerId: workerProfile.id
                 });
     
                 toast({
@@ -427,7 +427,7 @@ export default function RoomsPage() {
         setActiveTab('room-schedule');
     };
 
-    const isLoading = roomsLoading || bookingsLoading || locationsLoading || usersLoading;
+    const isLoading = roomsLoading || bookingsLoading || locationsLoading || workersLoading;
 
     const bookingsByDate = useMemo(() => {
         if (!bookings) return new Map<string, Booking[]>();
@@ -519,7 +519,7 @@ export default function RoomsPage() {
                             <TabsContent value="schedule" className="mt-4">
                                 <Card>
                                     <CardContent className="pt-6">
-                                        <BookingsList bookings={dayBookings} rooms={rooms} users={users} />
+                                        <BookingsList bookings={dayBookings} rooms={rooms} workers={workers} />
                                     </CardContent>
                                 </Card>
                             </TabsContent>
@@ -564,7 +564,7 @@ export default function RoomsPage() {
                                             <CardDescription>All future and current bookings for this room.</CardDescription>
                                         </CardHeader>
                                         <CardContent className="pt-6">
-                                            <RoomScheduleList bookings={roomBookings} users={users} />
+                                            <RoomScheduleList bookings={roomBookings} workers={workers} />
                                         </CardContent>
                                     </Card>
                                 ) : (
