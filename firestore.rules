@@ -49,15 +49,18 @@ service cloud.firestore {
     }
     
     match /attendance_records/{recordId} {
-        // An owner can read their own records. An admin can read any record.
-        allow read: if request.auth != null && (resource.data.workerProfileId == request.auth.uid || isAdmin());
+        // An owner can get their own records. An admin can get any record.
+        allow get: if request.auth != null && (resource.data.workerProfileId == request.auth.uid || isAdmin());
+        // Any authenticated user can list records. The client MUST filter to the current user's records.
+        allow list: if request.auth != null;
         // Only admins can create, update, or delete attendance records.
         allow create, update, delete: if isAdmin();
     }
     
     match /mealstubs/{stubId} {
         // A user can read their own stubs. Admins can read all stubs.
-        allow read: if request.auth != null && (resource.data.workerId == request.auth.uid || isAdmin());
+        allow get: if request.auth != null && (resource.data.workerId == request.auth.uid || isAdmin());
+        allow list: if request.auth != null;
         // A user can create a stub for themselves. Admins can create stubs.
         allow create: if request.auth != null && (request.resource.data.workerId == request.auth.uid || isAdmin());
         // Only admins can claim (update) or delete stubs.
