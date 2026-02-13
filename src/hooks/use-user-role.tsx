@@ -39,7 +39,10 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
   const { data: realUserRole, isLoading: isRoleLoading } = useDoc<Role>(roleRef);
   
-  const rolesRef = useMemoFirebase(() => collection(firestore, 'roles'), [firestore]);
+  const rolesRef = useMemoFirebase(() => {
+    if (!user) return null; // Wait for user to be authenticated
+    return collection(firestore, 'roles');
+  }, [firestore, user]);
   const { data: allRoles, isLoading: areAllRolesLoading } = useCollection<Role>(rolesRef);
 
   const isSuperAdmin = realUserRole?.id === 'admin';
