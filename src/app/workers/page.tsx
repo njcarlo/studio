@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -44,9 +44,9 @@ import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonB
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 
-const UserForm = ({ user, roles, ministries, onSave, onClose, isSuperAdmin }: { user: Partial<User> | null; roles: Role[]; ministries: Ministry[]; onSave: (user: Partial<User>) => void; onClose: () => void; isSuperAdmin: boolean; }) => {
+const UserForm = ({ user, roles, ministries, onSave, onClose, canManage }: { user: Partial<User> | null; roles: Role[]; ministries: Ministry[]; onSave: (user: Partial<User>) => void; onClose: () => void; canManage: boolean; }) => {
   const [formData, setFormData] = useState<Partial<User>>({
-    firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: isSuperAdmin ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+    firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: canManage ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
     primaryMinistryId: '', secondaryMinistryId: ''
   });
 
@@ -59,11 +59,11 @@ const UserForm = ({ user, roles, ministries, onSave, onClose, isSuperAdmin }: { 
         });
     } else {
         setFormData({
-            firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: isSuperAdmin ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+            firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: canManage ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
             primaryMinistryId: '', secondaryMinistryId: ''
         });
     }
-  }, [user, isSuperAdmin]);
+  }, [user, canManage]);
 
   const handleSave = () => {
     onSave(formData);
@@ -96,7 +96,7 @@ const UserForm = ({ user, roles, ministries, onSave, onClose, isSuperAdmin }: { 
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="role" className="text-right">Role</Label>
-          <Select value={formData.roleId} onValueChange={(value: string) => setFormData({...formData, roleId: value})}>
+          <Select value={formData.roleId} onValueChange={(value: string) => setFormData({...formData, roleId: value})} disabled={!canManage}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a role" />
             </SelectTrigger>
@@ -107,7 +107,7 @@ const UserForm = ({ user, roles, ministries, onSave, onClose, isSuperAdmin }: { 
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="status" className="text-right">Status</Label>
-          <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({...formData, status: value})} disabled={!isSuperAdmin && !user}>
+          <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({...formData, status: value})} disabled={!canManage && !user}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a status" />
             </SelectTrigger>
@@ -157,7 +157,12 @@ export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
-  const { userProfile, isSuperAdmin } = useUserRole();
+  const { userProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
+
+  const canManageUsers = useMemo(() => {
+    if (isRoleLoading || !realUserRole) return false;
+    return isSuperAdmin || !!realUserRole.privileges?.['manage_users'];
+  }, [isRoleLoading, realUserRole, isSuperAdmin]);
 
   const usersRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -179,7 +184,7 @@ export default function WorkersPage() {
   const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
   const ministries = ministriesData || [];
   
-  const isLoading = usersLoading || rolesLoading || ministriesLoading;
+  const isLoading = usersLoading || rolesLoading || ministriesLoading || isRoleLoading;
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -272,9 +277,11 @@ export default function WorkersPage() {
     <AppLayout>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">User Profiles</h1>
-        <Button onClick={handleAddNew}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add User
-        </Button>
+        {canManageUsers && (
+          <Button onClick={handleAddNew}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add User
+          </Button>
+        )}
       </div>
 
       <div className="rounded-lg border shadow-sm">
@@ -286,9 +293,11 @@ export default function WorkersPage() {
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Contact</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
+              {canManageUsers && (
+                <TableHead>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -326,20 +335,22 @@ export default function WorkersPage() {
                     <span className="text-muted-foreground">{user.phone}</span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => handleEdit(user)}>Edit</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleDelete(user.id)} className="text-destructive">Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                {canManageUsers && (
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Toggle menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => handleEdit(user)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDelete(user.id)} className="text-destructive">Delete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -355,7 +366,7 @@ export default function WorkersPage() {
             ministries={ministries} 
             onSave={handleSaveUser} 
             onClose={() => setIsSheetOpen(false)}
-            isSuperAdmin={isSuperAdmin}
+            canManage={canManageUsers}
              />
         </SheetContent>
       </Sheet>

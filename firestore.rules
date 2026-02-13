@@ -2,79 +2,95 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper to check if the user is an admin
-    function isAdmin() {
+    // Get the user's role document data
+    function getUserRole() {
+      // The user must be authenticated to have a role.
+      if (request.auth == null) {
+        return null;
+      }
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && userDoc.data.roleId == 'admin';
+      // Make sure user exists and has a roleId
+      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) || !('roleId' in userDoc.data)) {
+        return null;
+      }
+      let roleId = userDoc.data.roleId;
+      return get(/databases/$(database)/documents/roles/$(roleId)).data;
     }
 
+    // Check if the user's role has a specific privilege
+    function hasPrivilege(privilege) {
+      let role = getUserRole();
+      return role != null && 'privileges' in role && privilege in role.privileges && role.privileges[privilege] == true;
+    }
+
+    // Anyone can read their own user doc. Only users with 'manage_users' can update/delete others.
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId || isAdmin();
-      allow delete: if isAdmin();
+      allow create: if request.auth.uid == userId; // For signup
+      allow update: if request.auth.uid == userId || hasPrivilege('manage_users');
+      allow delete: if hasPrivilege('manage_users');
     }
 
+    // Roles can be read by anyone authenticated. Can only be written by users with 'manage_roles' privilege.
     match /roles/{roleId} {
       allow read: if request.auth != null;
-      // Allow write if user is admin OR if it's the initial seed.
-      allow write: if isAdmin() || !exists(/databases/$(database)/documents/roles/admin);
+      // Allow write for role managers, or for initial seeding.
+      allow write: if hasPrivilege('manage_roles') || !exists(/databases/$(database)/documents/roles/admin);
     }
     
+    // Generic content management for ministries, locations, rooms
     match /ministries/{ministryId} {
         allow read: if request.auth != null;
-        allow write: if isAdmin();
+        allow write: if hasPrivilege('manage_content');
     }
     
     match /locations/{locationId} {
         allow read: if request.auth != null;
-        allow write: if isAdmin();
-    }
-    
-    match /approvals/{approvalId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null;
-        allow write: if isAdmin();
+        allow write: if hasPrivilege('manage_content');
     }
 
     match /rooms/{roomId} {
        allow read: if request.auth != null;
-       allow write: if isAdmin();
+       allow write: if hasPrivilege('manage_content');
        
        match /reservations/{reservationId} {
+         // A user can create a reservation for themselves
          allow create: if request.auth != null && request.resource.data.workerProfileId == request.auth.uid;
+         // Anyone can read reservations (for schedules)
          allow read: if request.auth != null;
-         allow update, delete: if isAdmin();
+         allow update, delete: if hasPrivilege('manage_approvals');
        }
     }
     
+    // Approval requests can be created by any auth'd user. Only approvers can modify them.
+    match /approvals/{approvalId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow write: if hasPrivilege('manage_approvals');
+    }
+    
     match /attendance_records/{recordId} {
-        // An owner can get their own records. An admin can get any record.
-        allow get: if request.auth != null && (resource.data.workerProfileId == request.auth.uid || isAdmin());
-        // Any authenticated user can list records. The client MUST filter to the current user's records.
+        allow get: if request.auth != null && (resource.data.workerProfileId == request.auth.uid || hasPrivilege('operate_scanner'));
         allow list: if request.auth != null;
-        // Only admins can create, update, or delete attendance records.
-        allow create, update, delete: if isAdmin();
+        allow create, update, delete: if hasPrivilege('operate_scanner');
     }
     
     match /mealstubs/{stubId} {
-        // A user can read their own stubs. Admins can read all stubs.
-        allow get: if request.auth != null && (resource.data.workerId == request.auth.uid || isAdmin());
+        allow get: if request.auth != null && (resource.data.workerId == request.auth.uid || hasPrivilege('manage_meal_stubs'));
         allow list: if request.auth != null;
-        // A user can create a stub for themselves. Admins can create stubs.
-        allow create: if request.auth != null && (request.resource.data.workerId == request.auth.uid || isAdmin());
-        // Only admins can claim (update) or delete stubs.
-        allow update, delete: if isAdmin();
+        allow create: if request.auth != null && (request.resource.data.workerId == request.auth.uid || hasPrivilege('manage_meal_stubs'));
+        allow update: if hasPrivilege('operate_scanner'); // Claiming a stub
+        allow delete: if hasPrivilege('manage_meal_stubs');
     }
 
-    // This rule allows the collectionGroup query for reservations to work for all authenticated users.
+    // Allows collectionGroup query for reservations to work for all authenticated users.
     match /{path=**}/reservations/{reservationId} {
         allow read: if request.auth != null;
     }
 
+    // Scan logs can only be created/read by scanner operators.
     match /scan_logs/{logId} {
-      // Only admins can create or read scan logs.
-      allow read, create: if isAdmin();
+      allow read, create: if hasPrivilege('operate_scanner');
     }
   }
 }
