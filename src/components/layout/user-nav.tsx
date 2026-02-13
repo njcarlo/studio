@@ -50,21 +50,29 @@ export function UserNav() {
     }
   };
 
+  const displayName = (workerProfile?.firstName && workerProfile?.lastName) 
+    ? `${workerProfile.firstName} ${workerProfile.lastName}`
+    : user?.email;
+  
+  const altText = displayName || 'User';
+  
+  const fallbackChar = (workerProfile?.firstName || user?.email || 'U').charAt(0).toUpperCase();
+
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-             <AvatarImage src={workerProfile?.avatarUrl} alt={workerProfile?.email || "User"} />
-            <AvatarFallback>{workerProfile?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+             <AvatarImage src={workerProfile?.avatarUrl} alt={altText} />
+            <AvatarFallback>{fallbackChar}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{workerProfile?.email || 'User'}</p>
+            <p className="text-sm font-medium leading-none">{displayName || 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
               Role: {workerProfile?.roleId || 'N/A'}
             </p>

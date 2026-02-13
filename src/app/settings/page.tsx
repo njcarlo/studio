@@ -145,7 +145,16 @@ export default function SettingsPage() {
             }
             
             // Set current user as admin
-            batch.set(doc(firestore, 'workers', user.uid), { roleId: 'admin', status: 'Active' }, { merge: true });
+            const adminWorkerData = {
+                roleId: 'admin',
+                status: 'Active',
+                email: user.email,
+                firstName: user.email?.split('@')[0] || 'Admin',
+                lastName: 'User',
+                avatarUrl: `https://picsum.photos/seed/${user.uid.slice(0, 5)}/100/100`,
+                createdAt: serverTimestamp(),
+            };
+            batch.set(doc(firestore, 'workers', user.uid), adminWorkerData, { merge: true });
 
             await batch.commit();
             toast({ title: "System Initialized", description: "Default roles have been created. Please refresh." });
