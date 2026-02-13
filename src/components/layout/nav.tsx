@@ -38,14 +38,17 @@ export function Nav({
   pathname: string;
   className?: string;
 }) {
-  const { isSuperAdmin, realUserRole, isLoading } = useUserRole();
+  const { isSuperAdmin, realUserRole, isLoading, needsSeeding } = useUserRole();
 
   const navItems = allNavItems.filter(item => {
     if (isLoading) return false;
     if (item.privilege) {
         return isSuperAdmin || !!realUserRole?.privileges?.[item.privilege];
     }
-    if (item.adminOnly) return isSuperAdmin;
+    if (item.adminOnly) {
+        // Show if super admin OR if the system needs initial setup
+        return isSuperAdmin || needsSeeding;
+    }
     return true;
   });
 

@@ -9,6 +9,7 @@ type UserRoleContextType = {
   realUserRole: Role | null;
   viewAsRole: Role | null;
   isSuperAdmin: boolean;
+  needsSeeding: boolean;
   isLoading: boolean;
   setViewAsRole: (role: Role) => void;
   allRoles: Role[];
@@ -20,6 +21,13 @@ const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined
 export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+
+  // Check if the admin role exists to determine if seeding is needed.
+  const adminRoleRef = useMemoFirebase(() => {
+      // We check this even if user is not loaded, to handle initial state
+      return doc(firestore, 'roles', 'admin');
+  }, [firestore]);
+  const { data: adminRole, isLoading: isAdminRoleLoading } = useDoc<Role>(adminRoleRef);
 
   const workerProfileRef = useMemoFirebase(() => {
     if (user) {
@@ -46,6 +54,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { data: allRoles, isLoading: areAllRolesLoading } = useCollection<Role>(rolesRef);
 
   const isSuperAdmin = realUserRole?.id === 'admin';
+  const needsSeeding = !adminRole && !isAdminRoleLoading;
 
   // The role displayed in the UI. Defaults to the user's real role.
   const [viewAsRole, setViewAsRoleState] = useState<Role | null>(null);
@@ -63,12 +72,13 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || areAllRolesLoading;
+  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || areAllRolesLoading || isAdminRoleLoading;
 
   const value = {
     realUserRole: realUserRole || null,
     viewAsRole: viewAsRole || null,
     isSuperAdmin,
+    needsSeeding,
     isLoading,
     setViewAsRole,
     allRoles: allRoles || [],

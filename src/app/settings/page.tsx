@@ -24,7 +24,7 @@ import {
 import { LoaderCircle, Shield, AlertTriangle, PlusCircle, Trash2, Save, GanttChartSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useFirestore, useDoc, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
+import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from "@/lib/types";
@@ -32,33 +32,19 @@ import { allPermissions, type Permission } from "@/lib/permissions";
 
 
 export default function SettingsPage() {
-    const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
-    const { user, isUserLoading } = useUser();
+    const { isSuperAdmin, isLoading, needsSeeding, allRoles } = useUserRole();
+    const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-
-    // Check if the admin role exists to determine if seeding is needed.
-    const adminRoleRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return doc(firestore, 'roles', 'admin');
-    }, [firestore, user]);
-    const { data: adminRole, isLoading: isAdminRoleLoading } = useDoc<Role>(adminRoleRef);
-    
-    // Data for Role Matrix
-    const rolesRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, "roles");
-    }, [firestore, user]);
-    const { data: roles, isLoading: rolesLoading } = useCollection<Role>(rolesRef);
 
     // State for inline role editing
     const [editableRoles, setEditableRoles] = useState<Role[]>([]);
 
     useEffect(() => {
-        if (roles) {
-            setEditableRoles(roles.sort((a, b) => a.name.localeCompare(b.name)));
+        if (allRoles) {
+            setEditableRoles(allRoles.sort((a, b) => a.name.localeCompare(b.name)));
         }
-    }, [roles]);
+    }, [allRoles]);
 
     // Role Matrix Handlers
     const handleRoleChange = (roleId: string, field: 'name' | 'privilege', value: any, privilegeKey?: Permission) => {
@@ -164,9 +150,6 @@ export default function SettingsPage() {
         }
     };
 
-    const isLoading = isRoleLoading || isAdminRoleLoading || isUserLoading || rolesLoading;
-
-    const needsSeeding = !adminRole && !isAdminRoleLoading;
     const canAccess = isSuperAdmin || needsSeeding;
 
     if (isLoading) {
