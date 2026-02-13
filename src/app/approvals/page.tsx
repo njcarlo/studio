@@ -1,13 +1,12 @@
 "use client";
 
 import React, { useMemo } from "react";
-import Link from "next/link";
-import { collection, doc, query, orderBy } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Calendar, UserCog, LoaderCircle, GanttChartSquare } from "lucide-react";
-import type { ApprovalRequest, WorkflowState, WorkflowTransition, Role } from "@/lib/types";
+import type { ApprovalRequest } from "@/lib/types";
 import { useFirestore, useCollection, updateDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { formatDistanceToNow } from "date-fns";
@@ -22,22 +21,10 @@ const getIconForType = (type: ApprovalRequest['type']) => {
     }
 }
 
-const KanbanCard = ({ request, transitions, onTransition, userRole, isSuperAdmin }: { request: ApprovalRequest, transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void, userRole: Role | null, isSuperAdmin: boolean }) => {
-    
-    const possibleTransitions = useMemo(() => transitions.filter(t => {
-        if (t.fromStateId !== request.currentStateId) return false;
-        if (isSuperAdmin) return true; // Super admin sees all possible actions
-        if (!t.allowedRoles || t.allowedRoles.length === 0) {
-            // Default to allowing if no specific roles are required (e.g., a "Submit" action by any user)
-            return true;
-        }
-        if (!userRole) return false; // If user has no role, they can't perform restricted actions
-        return t.allowedRoles.includes(userRole.id);
-    }), [transitions, request.currentStateId, userRole, isSuperAdmin]);
-
+const KanbanCard = ({ request, onUpdateStatus, canManage }: { request: ApprovalRequest, onUpdateStatus: (request: ApprovalRequest, status: 'Approved' | 'Rejected') => void, canManage: boolean }) => {
     return (
         <Card className="shadow-sm hover:shadow-lg transition-shadow bg-card">
-            <CardHeader className="p-2.5">
+            <CardHeader className="p-4">
                 <div className="flex items-start gap-3">
                     <div className="p-2 bg-primary/10 rounded-md text-primary mt-1">
                         {getIconForType(request.type)}
@@ -50,37 +37,36 @@ const KanbanCard = ({ request, transitions, onTransition, userRole, isSuperAdmin
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-2.5 pt-0">
+            <CardContent className="p-4 pt-0">
                 <Badge variant="outline">{request.type}</Badge>
             </CardContent>
-            {possibleTransitions.length > 0 && (
-                 <CardFooter className="p-2.5 pt-0 flex justify-end gap-2">
-                    {possibleTransitions.map(transition => (
-                        <Button key={transition.id} size="sm" variant={transition.name.toLowerCase().includes('reject') ? 'outline' : 'default'} onClick={() => onTransition(request, transition)}>
-                            {transition.name}
-                        </Button>
-                    ))}
-                </CardFooter>
+            {canManage && request.status === 'Pending' && (
+                 <CardContent className="p-4 pt-0 flex justify-end gap-2">
+                    <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(request, 'Rejected')}>
+                        Reject
+                    </Button>
+                    <Button size="sm" onClick={() => onUpdateStatus(request, 'Approved')}>
+                        Approve
+                    </Button>
+                </CardContent>
             )}
         </Card>
     );
 };
 
-const KanbanColumn = ({ state, requests, transitions, onTransition, userRole, isSuperAdmin }: { state: WorkflowState, requests: ApprovalRequest[], transitions: WorkflowTransition[], onTransition: (request: ApprovalRequest, transition: WorkflowTransition) => void, userRole: Role | null, isSuperAdmin: boolean }) => {
+const KanbanColumn = ({ title, requests, onUpdateStatus, canManage }: { title: string, requests: ApprovalRequest[], onUpdateStatus: (request: ApprovalRequest, status: 'Approved' | 'Rejected') => void, canManage: boolean }) => {
     return (
         <div className="w-80 shrink-0">
             <h3 className="font-semibold mb-3 px-1 flex items-center justify-between text-sm uppercase text-muted-foreground">
-                {state.name} <Badge variant="secondary" className="rounded-md">{requests.length}</Badge>
+                {title} <Badge variant="secondary" className="rounded-md">{requests.length}</Badge>
             </h3>
             <div className="bg-muted/40 rounded-lg p-1.5 space-y-1.5 h-full">
                 {requests.length > 0 ? requests.map(request => (
                     <KanbanCard 
                         key={request.id} 
-                        request={request} 
-                        transitions={transitions}
-                        onTransition={onTransition}
-                        userRole={userRole}
-                        isSuperAdmin={isSuperAdmin}
+                        request={request}
+                        onUpdateStatus={onUpdateStatus}
+                        canManage={canManage}
                     />
                 )) : (
                     <div className="h-20 flex items-center justify-center">
@@ -102,40 +88,31 @@ export default function ApprovalsPage() {
     }, [isRoleLoading, realUserRole, isSuperAdmin]);
 
     const approvalsRef = useMemoFirebase(() => {
-        if (!canManageApprovals) return null;
         return collection(firestore, "approvals");
-    }, [firestore, canManageApprovals]);
-
-    const workflowStatesRef = useMemoFirebase(() => {
-        if (!canManageApprovals) return null;
-        return query(collection(firestore, "workflows", "default_workflow", "states"), orderBy('order'));
-    }, [firestore, canManageApprovals]);
-
-    const workflowTransitionsRef = useMemoFirebase(() => {
-        if (!canManageApprovals) return null;
-        return collection(firestore, "workflows", "default_workflow", "transitions");
-    }, [firestore, canManageApprovals]);
+    }, [firestore]);
 
     const { data: requests, isLoading: approvalsLoading } = useCollection<ApprovalRequest>(approvalsRef);
-    const { data: workflowStates, isLoading: statesLoading } = useCollection<WorkflowState>(workflowStatesRef);
-    const { data: workflowTransitions, isLoading: transitionsLoading } = useCollection<WorkflowTransition>(workflowTransitionsRef);
 
-    const isLoading = isRoleLoading || approvalsLoading || statesLoading || transitionsLoading;
+    const isLoading = isRoleLoading || approvalsLoading;
 
-    const handleTransition = (request: ApprovalRequest, transition: WorkflowTransition) => {
+    const handleUpdateRequestStatus = (request: ApprovalRequest, status: 'Approved' | 'Rejected') => {
         if (!request.id) return;
-        updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { currentStateId: transition.toStateId });
+        updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { status });
 
         // Handle side-effects on final approval/rejection
-        const finalState = workflowStates?.find(s => s.id === transition.toStateId);
-        if (finalState && (finalState.name === 'Approved' || finalState.name === 'Rejected')) {
-            if (request.type === 'New Worker' && finalState.name === 'Approved' && request.workerId) {
+        if (status === 'Approved') {
+            if (request.type === 'New Worker' && request.workerId) {
                 const workerDocRef = doc(firestore, "users", request.workerId);
                 updateDocumentNonBlocking(workerDocRef, { status: 'Active' });
             }
             if (request.type === 'Room Booking' && request.roomId && request.reservationId) {
               const reservationDocRef = doc(firestore, "rooms", request.roomId, "reservations", request.reservationId);
-              updateDocumentNonBlocking(reservationDocRef, { status: finalState.name as 'Approved' | 'Rejected' });
+              updateDocumentNonBlocking(reservationDocRef, { status: 'Approved' });
+            }
+        } else if (status === 'Rejected') {
+            if (request.type === 'Room Booking' && request.roomId && request.reservationId) {
+                const reservationDocRef = doc(firestore, "rooms", request.roomId, "reservations", request.reservationId);
+                updateDocumentNonBlocking(reservationDocRef, { status: 'Rejected' });
             }
         }
     };
@@ -148,64 +125,53 @@ export default function ApprovalsPage() {
         );
     }
 
-    if (!canManageApprovals) {
+    if (!canManageApprovals && requests?.filter(r => r.status === 'Pending').length === 0) {
         return (
             <AppLayout>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Access Denied</CardTitle>
-                        <CardDescription>You do not have permission to view this page.</CardDescription>
+                        <CardTitle>No Pending Approvals</CardTitle>
+                        <CardDescription>There are currently no items that require your approval.</CardDescription>
                     </CardHeader>
                 </Card>
             </AppLayout>
         );
     }
     
-    if (!workflowStates || workflowStates.length === 0) {
-        return (
-          <AppLayout>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Workflow Not Configured</CardTitle>
-                    <CardDescription>
-                        The approval workflow system has not been initialized. Please go to the settings page and run the system initializer to create the default workflow.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild>
-                        <Link href="/settings">Go to Settings</Link>
-                    </Button>
-                </CardContent>
-            </Card>
-          </AppLayout>
-        )
-    }
+    const sortedRequests = requests?.sort((a,b) => ((b.date as any)?.seconds || 0) - ((a.date as any)?.seconds || 0)) || [];
+    const pendingRequests = sortedRequests.filter(r => r.status === 'Pending');
+    const approvedRequests = sortedRequests.filter(r => r.status === 'Approved');
+    const rejectedRequests = sortedRequests.filter(r => r.status === 'Rejected');
 
     return (
         <AppLayout>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <GanttChartSquare className="h-6 w-6" />
-                    <h1 className="text-2xl font-headline font-bold">Approval Workflow</h1>
+                    <h1 className="text-2xl font-headline font-bold">Approval Requests</h1>
                 </div>
             </div>
             
              <div className="flex-grow overflow-x-auto">
                 <div className="flex gap-6 pb-4">
-                    {workflowStates?.map(state => {
-                        const stateRequests = requests?.filter(r => r.currentStateId === state.id).sort((a,b) => ((b.date as any)?.seconds || 0) - ((a.date as any)?.seconds || 0)) || [];
-                        return (
-                            <KanbanColumn 
-                                key={state.id}
-                                state={state}
-                                requests={stateRequests}
-                                transitions={workflowTransitions || []}
-                                onTransition={handleTransition}
-                                userRole={realUserRole}
-                                isSuperAdmin={isSuperAdmin}
-                            />
-                        )
-                    })}
+                    <KanbanColumn 
+                        title="Pending"
+                        requests={pendingRequests}
+                        onUpdateStatus={handleUpdateRequestStatus}
+                        canManage={canManageApprovals}
+                    />
+                    <KanbanColumn 
+                        title="Approved"
+                        requests={approvedRequests}
+                        onUpdateStatus={handleUpdateRequestStatus}
+                        canManage={canManageApprovals}
+                    />
+                     <KanbanColumn 
+                        title="Rejected"
+                        requests={rejectedRequests}
+                        onUpdateStatus={handleUpdateRequestStatus}
+                        canManage={canManageApprovals}
+                    />
                 </div>
             </div>
         </AppLayout>

@@ -68,8 +68,7 @@ export type ApprovalRequest = {
     type: 'New Worker' | 'Profile Update' | 'Room Booking';
     details: string;
     date: any; // Timestamp
-    workflowId: string;
-    currentStateId: string;
+    status: 'Pending' | 'Approved' | 'Rejected';
     workerId?: string;
     roomId?: string;
     reservationId?: string;

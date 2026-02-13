@@ -10,7 +10,6 @@ import {
   Utensils,
   BookOpen,
   Vote,
-  GitBranch,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -29,7 +28,6 @@ const allNavItems: { href: string; icon: React.ElementType; label: string; admin
   { href: "/attendance", icon: ScanLine, label: "Attendance" },
   { href: "/meals", icon: Utensils, label: "Meal Stubs" },
   { href: "/approvals", icon: Vote, label: "Approvals", privilege: 'manage_approvals' },
-  { href: "/settings/workflow", icon: GitBranch, label: "Workflow", adminOnly: true },
   { href: "/settings", icon: Cog, label: "Settings", adminOnly: true },
 ];
 

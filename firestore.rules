@@ -73,21 +73,5 @@ service cloud.firestore {
       // Only admins can create or read scan logs.
       allow read, create: if isAdmin();
     }
-
-    // Rules for dynamic workflows and their subcollections
-    match /workflows/{workflowId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin() || !exists(/databases/$(database)/documents/workflows/default_workflow);
-    }
-    
-    match /workflows/{workflowId}/states/{stateId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin() || !exists(/databases/$(database)/documents/workflows/default_workflow);
-    }
-    
-    match /workflows/{workflowId}/transitions/{transitionId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin() || !exists(/databases/$(database)/documents/workflows/default_workflow);
-    }
   }
 }

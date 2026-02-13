@@ -63,8 +63,7 @@ export default function SignUpPage() {
           type: 'New Worker',
           details: `New user self-registration: ${newUser.email}.`,
           date: serverTimestamp(),
-          workflowId: 'default_workflow',
-          currentStateId: 'pending',
+          status: 'Pending',
           workerId: user.uid
       });
 
