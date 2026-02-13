@@ -86,25 +86,3 @@ export type ScanLog = {
     mealStubId?: string;
     reservationId?: string;
 };
-
-export type Workflow = {
-    id: string;
-    name: string;
-    description: string;
-}
-
-export type WorkflowState = {
-    id: string;
-    name: string;
-    order: number;
-    workflowId: string;
-}
-
-export type WorkflowTransition = {
-    id: string;
-    name: string; // The action name, e.g., "Approve"
-    workflowId: string;
-    fromStateId: string;
-    toStateId: string;
-    allowedRoles?: string[];
-}

@@ -92,10 +92,5 @@ service cloud.firestore {
     match /scan_logs/{logId} {
       allow read, create: if hasPrivilege('operate_scanner');
     }
-
-    // Admins with 'manage_roles' can manage workflow definitions
-    match /workflows/{workflowId}/{document=**} {
-      allow read, write: if hasPrivilege('manage_roles');
-    }
   }
 }
