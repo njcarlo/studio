@@ -135,9 +135,8 @@ export default function SettingsPage() {
             
             // 1. Roles
             const rolesData = {
-                admin: { name: 'Admin', privileges: { 'manage_users': true, 'manage_roles': true, 'manage_content': true, 'manage_approvals': true, 'operate_scanner': true, 'manage_meal_stubs': true, } },
-                department_head: { name: 'Department Head', privileges: { 'manage_approvals': true } },
-                facilities_manager: { name: 'Facilities Manager', privileges: { 'manage_approvals': true } },
+                admin: { name: 'Admin', privileges: { 'manage_users': true, 'manage_roles': true, 'manage_content': true, 'manage_approvals': true, 'operate_scanner': true, 'manage_meal_stubs': true } },
+                approver: { name: 'Approver', privileges: { 'manage_approvals': true } },
                 editor: { name: 'Editor', privileges: { 'manage_content': true } },
                 viewer: { name: 'Viewer', privileges: {} }
             };
@@ -149,7 +148,7 @@ export default function SettingsPage() {
             batch.set(doc(firestore, 'users', user.uid), { roleId: 'admin', status: 'Active' }, { merge: true });
 
             await batch.commit();
-            toast({ title: "System Initialized", description: "Default roles and multi-step workflow have been created. Please refresh." });
+            toast({ title: "System Initialized", description: "Default roles have been created. Please refresh." });
         } catch (dbError: any) {
             toast({ variant: "destructive", title: "Database Seed Failed", description: dbError.message || "Could not seed the database." });
             console.error(dbError);
