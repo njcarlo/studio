@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Church } from "lucide-react";
+import { Church, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,10 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useUser, initiateEmailSignIn } from "@/firebase";
+import { FirebaseError } from "firebase/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -44,8 +46,26 @@ export default function LoginPage() {
   }
 
   const handleSignIn = () => {
-    if (!validateFields()) return;
-    initiateEmailSignIn(auth, email, password);
+    if (!validateFields() || isSigningIn) return;
+    setIsSigningIn(true);
+
+    const onError = (error: FirebaseError) => {
+      let description = "An unknown error occurred. Please try again.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        description = "The email or password you entered is incorrect.";
+      } else {
+        description = error.message || description;
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description,
+      });
+      setIsSigningIn(false);
+    }
+
+    initiateEmailSignIn(auth, email, password, onError);
   };
   
   return (
@@ -71,6 +91,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isSigningIn}
               />
             </div>
             <div className="grid gap-2">
@@ -89,10 +110,11 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isSigningIn}
               />
             </div>
-            <Button onClick={handleSignIn} className="w-full">
-              Login
+            <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn || isUserLoading}>
+              {isSigningIn ? <LoaderCircle className="animate-spin" /> : "Login"}
             </Button>
           </div>
           <div className="mt-4 text-center text-sm">
