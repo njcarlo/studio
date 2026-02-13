@@ -8,13 +8,31 @@ service cloud.firestore {
       if (request.auth == null) {
         return null;
       }
-      let userDoc = get(/databases/$(database)/documents/workers/$(request.auth.uid));
-      // Make sure user exists and has a roleId
-      if (!exists(/databases/$(database)/documents/workers/$(request.auth.uid)) || !('roleId' in userDoc.data)) {
+      
+      // First, check if the worker document even exists.
+      let workerPath = /databases/$(database)/documents/workers/$(request.auth.uid);
+      if (!exists(workerPath)) {
         return null;
       }
-      let roleId = userDoc.data.roleId;
-      return get(/databases/$(database)/documents/roles/$(roleId)).data;
+      
+      // Now that we know it exists, get the data.
+      let userDocData = get(workerPath).data;
+      
+      // Check if roleId is present in the document.
+      if (!('roleId' in userDocData)) {
+        return null;
+      }
+
+      let roleId = userDocData.roleId;
+      let rolePath = /databases/$(database)/documents/roles/$(roleId);
+
+      // Check if the corresponding role document exists.
+      if (!exists(rolePath)) {
+        return null;
+      }
+      
+      // If it exists, return its data.
+      return get(rolePath).data;
     }
 
     // Check if the user's role has a specific privilege
@@ -26,13 +44,13 @@ service cloud.firestore {
     match /workers/{userId} {
       // Allow any authenticated user to list all workers (for UI selectors, etc.)
       allow list: if request.auth != null;
-
-      // Allow a user to read, create, and update their own document.
-      allow get, create, update: if request.auth.uid == userId;
       
-      // Allow a user with 'manage_users' privilege to manage OTHER users' documents.
-      // The `request.auth.uid != userId` condition is critical to prevent recursive evaluation.
-      allow get, create, update, delete: if hasPrivilege('manage_users') && request.auth.uid != userId;
+      // Combined rule for get/create/update to leverage short-circuiting.
+      // A user can access their own doc, OR an admin can access a different user's doc.
+      allow get, create, update: if (request.auth.uid == userId) || (hasPrivilege('manage_users') && request.auth.uid != userId);
+      
+      // Separate rule for delete, as it should only be for admins on other users.
+      allow delete: if hasPrivilege('manage_users') && request.auth.uid != userId;
     }
 
     // Roles can be read by anyone authenticated. Can only be written by users with 'manage_roles' privilege.
