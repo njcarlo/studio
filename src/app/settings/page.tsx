@@ -32,7 +32,7 @@ import { allPermissions, type Permission } from "@/lib/permissions";
 
 
 export default function SettingsPage() {
-    const { isSuperAdmin, isLoading, needsSeeding, allRoles } = useUserRole();
+    const { isSuperAdmin, isLoading, needsSeeding, allRoles, workerProfile } = useUserRole();
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -150,7 +150,7 @@ export default function SettingsPage() {
         }
     };
 
-    const canAccess = isSuperAdmin || needsSeeding;
+    const canAccess = isSuperAdmin || needsSeeding || (workerProfile && !workerProfile.roleId);
 
     if (isLoading) {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;

@@ -38,7 +38,7 @@ export function Nav({
   pathname: string;
   className?: string;
 }) {
-  const { isSuperAdmin, realUserRole, isLoading, needsSeeding } = useUserRole();
+  const { isSuperAdmin, realUserRole, isLoading, needsSeeding, workerProfile } = useUserRole();
 
   const navItems = allNavItems.filter(item => {
     if (isLoading) return false;
@@ -46,8 +46,10 @@ export function Nav({
         return isSuperAdmin || !!realUserRole?.privileges?.[item.privilege];
     }
     if (item.adminOnly) {
-        // Show if super admin OR if the system needs initial setup
-        return isSuperAdmin || needsSeeding;
+        // Show if super admin, or if the system needs initial setup, or if the current user has no role defined.
+        // This prevents a user from being locked out if seeding fails to assign them the admin role.
+        const hasNoRole = workerProfile && !workerProfile.roleId;
+        return isSuperAdmin || needsSeeding || hasNoRole;
     }
     return true;
   });
