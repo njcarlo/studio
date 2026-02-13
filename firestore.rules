@@ -23,15 +23,16 @@ service cloud.firestore {
       return role != null && 'privileges' in role && privilege in role.privileges && role.privileges[privilege] == true;
     }
 
-    // `list` is open to all auth'd users for UI selects, etc. `get` is also open.
-    // Write access is restricted.
     match /workers/{userId} {
-      // A user can always read, create, and update their OWN document.
-      allow get, create, update: if request.auth.uid == userId;
-      // An admin can perform any action on any user document. This is separate to avoid recursion errors.
-      allow get, create, update, delete: if hasPrivilege('manage_users');
-      // Any authenticated user can list all workers for UI purposes.
+      // Allow any authenticated user to list all workers (for UI selectors, etc.)
       allow list: if request.auth != null;
+
+      // Allow a user to read, create, and update their own document.
+      allow get, create, update: if request.auth.uid == userId;
+      
+      // Allow a user with 'manage_users' privilege to manage OTHER users' documents.
+      // The `request.auth.uid != userId` condition is critical to prevent recursive evaluation.
+      allow get, create, update, delete: if hasPrivilege('manage_users') && request.auth.uid != userId;
     }
 
     // Roles can be read by anyone authenticated. Can only be written by users with 'manage_roles' privilege.
