@@ -1,15 +1,15 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { collection, writeBatch, doc } from "firebase/firestore";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { HeartHandshake, User as UserIcon, Users, LoaderCircle, Upload } from "lucide-react";
+import { HeartHandshake, User as UserIcon, Users, LoaderCircle, Upload, PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import type { Ministry, Worker, Department } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -23,9 +23,27 @@ import {
   SheetFooter,
   SheetClose
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => void; onClose: () => void; }) => {
     const [csvData, setCsvData] = useState('');
@@ -50,7 +68,7 @@ const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => voi
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="csv-data">CSV Data</Label>
-                    <Textarea 
+                    <Textarea
                         id="csv-data"
                         value={csvData}
                         onChange={(e) => setCsvData(e.target.value)}
@@ -69,6 +87,65 @@ const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => voi
     )
 }
 
+const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { ministry: Partial<Ministry> | null; workers: Worker[]; departments: Department[]; onSave: (data: Partial<Ministry>) => void; onClose: () => void; }) => {
+    const [formData, setFormData] = useState<Partial<Ministry>>({ name: '', description: '', department: 'Worship', leaderId: '' });
+
+    useEffect(() => {
+        if (ministry) {
+            setFormData(ministry);
+        } else {
+            setFormData({ name: '', description: '', department: 'Worship', leaderId: '' });
+        }
+    }, [ministry]);
+    
+    const handleChange = (field: keyof Ministry, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    }
+
+    return (
+        <>
+            <SheetHeader>
+                <SheetTitle className="font-headline">{ministry ? 'Edit Ministry' : 'Add New Ministry'}</SheetTitle>
+                <SheetDescription>Fill in the details for the ministry.</SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="name">Ministry Name</Label>
+                    <Input id="name" value={formData.name} onChange={e => handleChange('name', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea id="description" value={formData.description} onChange={e => handleChange('description', e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Select value={formData.department} onValueChange={value => handleChange('department', value)}>
+                        <SelectTrigger id="department"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {departments.map(dep => <SelectItem key={dep} value={dep}>{dep}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="leader">Leader</Label>
+                    <Select value={formData.leaderId || 'none'} onValueChange={value => handleChange('leaderId', value === 'none' ? '' : value)}>
+                        <SelectTrigger id="leader"><SelectValue placeholder="Select a leader" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {workers.map(w => <SelectItem key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <SheetFooter>
+                <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
+                <Button onClick={() => onSave(formData)}>Save Changes</Button>
+            </SheetFooter>
+        </>
+    );
+};
+
+
 export default function MinistryManagementPage() {
   const firestore = useFirestore();
   const { user } = useUser();
@@ -76,7 +153,10 @@ export default function MinistryManagementPage() {
   const { toast } = useToast();
 
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
-  
+  const [isFormSheetOpen, setIsFormSheetOpen] = useState(false);
+  const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
+  const [ministryToDelete, setMinistryToDelete] = useState<Ministry | null>(null);
+
   const ministriesRef = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, "ministries");
@@ -90,14 +170,46 @@ export default function MinistryManagementPage() {
   const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
   const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
-  
+
   const isLoading = ministriesLoading || workersLoading || isRoleLoading;
 
   const departments: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
 
-  const handleOpenImport = () => {
-    setIsImportSheetOpen(true);
-  }
+  const handleOpenImport = () => setIsImportSheetOpen(true);
+  const handleAddNew = () => {
+    setSelectedMinistry(null);
+    setIsFormSheetOpen(true);
+  };
+  const handleEdit = (ministry: Ministry) => {
+    setSelectedMinistry(ministry);
+    setIsFormSheetOpen(true);
+  };
+  
+  const handleSaveMinistry = async (data: Partial<Ministry>) => {
+      try {
+        if (selectedMinistry) {
+            await updateDocumentNonBlocking(doc(firestore, 'ministries', selectedMinistry.id), data);
+            toast({ title: 'Ministry Updated' });
+        } else {
+            await addDocumentNonBlocking(collection(firestore, 'ministries'), data);
+            toast({ title: 'Ministry Added' });
+        }
+        setIsFormSheetOpen(false);
+      } catch (error) {
+          toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save ministry.' });
+      }
+  };
+  
+  const handleDeleteMinistry = async () => {
+      if (!ministryToDelete) return;
+      try {
+          await deleteDocumentNonBlocking(doc(firestore, 'ministries', ministryToDelete.id));
+          toast({ title: 'Ministry Deleted' });
+          setMinistryToDelete(null);
+      } catch (error) {
+          toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete ministry.' });
+      }
+  };
 
   const handleImportMinistries = (csvData: string) => {
     const departmentMap: { [key: string]: Department } = {
@@ -121,7 +233,7 @@ export default function MinistryManagementPage() {
             try {
                 const batch = writeBatch(firestore);
                 let invalidRowCount = 0;
-                
+
                 newMinistries.forEach((newMinistry: any) => {
                     const departmentCode = newMinistry.department;
                     const departmentName = departmentMap[departmentCode];
@@ -180,12 +292,17 @@ export default function MinistryManagementPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Ministry Management</h1>
         {isSuperAdmin && (
-            <Button variant="outline" onClick={handleOpenImport}>
-                <Upload className="mr-2 h-4 w-4" /> Import
-            </Button>
+            <div className="flex gap-2">
+                <Button variant="outline" onClick={handleOpenImport}>
+                    <Upload className="mr-2 h-4 w-4" /> Import
+                </Button>
+                <Button onClick={handleAddNew}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Ministry
+                </Button>
+            </div>
         )}
       </div>
-      
+
       {isLoading && (
         <div className="flex justify-center py-10">
           <LoaderCircle className="h-8 w-8 animate-spin" />
@@ -195,7 +312,7 @@ export default function MinistryManagementPage() {
       <div className="space-y-8 mt-4">
         {!isLoading && departments.map(department => {
           const departmentMinistries = ministries?.filter(m => m.department === department);
-          
+
           if (!departmentMinistries || departmentMinistries.length === 0) {
             return null;
           }
@@ -211,18 +328,37 @@ export default function MinistryManagementPage() {
                   return (
                     <Card key={ministry.id}>
                       <CardHeader>
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 bg-primary/10 rounded-lg text-primary">
-                            <HeartHandshake className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{ministry.name}</CardTitle>
-                          </div>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-primary/10 rounded-lg text-primary">
+                                    <HeartHandshake className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg">{ministry.name}</CardTitle>
+                                </div>
+                            </div>
+                            {isSuperAdmin && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => handleEdit(ministry)}>
+                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setMinistryToDelete(ministry)} className="text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground">{ministry.description}</p>
-                        
+                        <p className="text-sm text-muted-foreground h-10 overflow-hidden">{ministry.description || "No description."}</p>
+
                         <div>
                           <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
                             <UserIcon className="h-4 w-4" />
@@ -282,6 +418,38 @@ export default function MinistryManagementPage() {
             <ImportSheet onImport={handleImportMinistries} onClose={() => setIsImportSheetOpen(false)} />
         </SheetContent>
       </Sheet>
+      
+      <Sheet open={isFormSheetOpen} onOpenChange={setIsFormSheetOpen}>
+        <SheetContent className="sm:max-w-lg">
+           {workers && (
+                <MinistryForm 
+                    ministry={selectedMinistry}
+                    workers={workers}
+                    departments={departments}
+                    onSave={handleSaveMinistry}
+                    onClose={() => setIsFormSheetOpen(false)}
+                />
+           )}
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={!!ministryToDelete} onOpenChange={(open) => !open && setMinistryToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the ministry <span className="font-bold">{ministryToDelete?.name}</span>.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteMinistry}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </AppLayout>
   );
 }
+
+    
