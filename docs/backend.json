@@ -54,10 +54,11 @@
       "type": "object",
       "description": "A specific area or floor within a Branch.",
       "properties": {
+        "areaId": { "type": "string", "description": "A unique identifier for the area." },
         "name": { "type": "string" },
         "branchId": { "type": "string" }
       },
-      "required": ["name", "branchId"]
+      "required": ["areaId", "name", "branchId"]
     },
     "Room": {
       "title": "Room",

@@ -244,6 +244,7 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>Area ID</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Branch</TableHead>
                             <TableHead>Rooms</TableHead>
@@ -251,11 +252,12 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading && <TableRow><TableCell colSpan={4} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>}
+                        {isLoading && <TableRow><TableCell colSpan={5} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>}
                         {areas.map(area => {
                             const roomCount = getRoomCount(area.id);
                             return (
                                 <TableRow key={area.id}>
+                                    <TableCell className="font-mono text-xs">{area.areaId}</TableCell>
                                     <TableCell className="font-medium">{area.name}</TableCell>
                                     <TableCell>{getBranchName(area.branchId)}</TableCell>
                                     <TableCell>{roomCount}</TableCell>
@@ -496,7 +498,9 @@ export default function RoomManagementPage() {
                 await updateDocumentNonBlocking(doc(firestore, 'areas', data.id), data);
                 toast({ title: 'Area Updated' });
             } else {
-                await addDocumentNonBlocking(collection(firestore, 'areas'), data);
+                const newAreaId = `A-${100 + (areas?.length || 0)}`;
+                const dataToSave = { ...data, areaId: newAreaId };
+                await addDocumentNonBlocking(collection(firestore, 'areas'), dataToSave);
                 toast({ title: 'Area Added' });
             }
             setIsAreaSheetOpen(false);
@@ -527,7 +531,7 @@ export default function RoomManagementPage() {
                     const batch = writeBatch(firestore);
                     let invalidRowCount = 0;
 
-                    newAreas.forEach((newArea: any) => {
+                    newAreas.forEach((newArea: any, index: number) => {
                         if (!newArea.name || !newArea.branchId || !validBranchIds.has(newArea.branchId)) {
                             console.warn('Skipping invalid row:', newArea);
                             invalidRowCount++;
@@ -535,9 +539,11 @@ export default function RoomManagementPage() {
                         }
 
                         const newDocRef = doc(collection(firestore, "areas"));
+                        const newAreaId = `A-${100 + (areas?.length || 0) + index}`;
                         batch.set(newDocRef, {
                             name: newArea.name,
                             branchId: newArea.branchId,
+                            areaId: newAreaId,
                         });
                     });
                     
@@ -740,4 +746,5 @@ export default function RoomManagementPage() {
 }
 
     
+
 

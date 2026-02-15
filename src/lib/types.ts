@@ -51,6 +51,7 @@ export type Area = {
     id: string;
     name: string;
     branchId: string;
+    areaId?: string;
 };
 
 export type Branch = {
