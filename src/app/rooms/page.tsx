@@ -474,7 +474,7 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
 }
 
 export default function RoomsPage() {
-    const { workerProfile, canRequestRoomBooking } = useUserRole();
+    const { workerProfile, canCreateRoomReservation } = useUserRole();
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -593,7 +593,7 @@ export default function RoomsPage() {
                             <TabsTrigger value="day">Day</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                    {canRequestRoomBooking && (
+                    {canCreateRoomReservation && (
                         <Button onClick={() => setIsSheetOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Book a Room
                         </Button>

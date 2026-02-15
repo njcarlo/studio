@@ -116,22 +116,25 @@ const KanbanCard = ({ request, onUpdateStatus, canManage, onClick }: { request: 
     );
 };
 
-const KanbanColumn = ({ title, requests, onUpdateStatus, canManage, onCardClick }: { title: string, requests: ApprovalRequest[], onUpdateStatus: (request: ApprovalRequest, status: 'Approved' | 'Rejected') => void, canManage: boolean, onCardClick: (request: ApprovalRequest) => void }) => {
+const KanbanColumn = ({ title, requests, onUpdateStatus, canManageApprovals, canApproveRoomReservation, onCardClick }: { title: string, requests: ApprovalRequest[], onUpdateStatus: (request: ApprovalRequest, status: 'Approved' | 'Rejected') => void, canManageApprovals: boolean, canApproveRoomReservation: boolean, onCardClick: (request: ApprovalRequest) => void }) => {
     return (
         <div className="w-80 shrink-0">
             <h3 className="font-semibold mb-3 px-1 flex items-center justify-between text-sm uppercase text-muted-foreground">
                 {title} <Badge variant="secondary" className="rounded-md">{requests.length}</Badge>
             </h3>
             <div className="bg-muted/40 rounded-lg p-1.5 space-y-1.5 h-full">
-                {requests.length > 0 ? requests.map(request => (
-                    <KanbanCard 
-                        key={request.id} 
-                        request={request}
-                        onUpdateStatus={onUpdateStatus}
-                        canManage={canManage}
-                        onClick={onCardClick}
-                    />
-                )) : (
+                {requests.length > 0 ? requests.map(request => {
+                    const canManage = (request.type === 'Room Booking' && canApproveRoomReservation) || (request.type !== 'Room Booking' && canManageApprovals);
+                    return (
+                        <KanbanCard 
+                            key={request.id} 
+                            request={request}
+                            onUpdateStatus={onUpdateStatus}
+                            canManage={canManage}
+                            onClick={onCardClick}
+                        />
+                    )
+                }) : (
                     <div className="h-20 flex items-center justify-center">
                         <p className="text-xs text-muted-foreground">No requests</p>
                     </div>
@@ -143,7 +146,7 @@ const KanbanColumn = ({ title, requests, onUpdateStatus, canManage, onCardClick 
 
 export default function ApprovalsPage() {
     const firestore = useFirestore();
-    const { canManageApprovals, isLoading: isRoleLoading } = useUserRole();
+    const { canManageApprovals, canApproveRoomReservation, isLoading: isRoleLoading } = useUserRole();
     const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
 
     const approvalsRef = useMemoFirebase(() => {
@@ -155,7 +158,10 @@ export default function ApprovalsPage() {
     const isLoading = isRoleLoading || approvalsLoading;
 
     const handleUpdateRequestStatus = (request: ApprovalRequest, status: 'Approved' | 'Rejected') => {
-        if (!canManageApprovals || !request.id) return;
+        if (!request.id) return;
+        const hasPermission = (request.type === 'Room Booking' && canApproveRoomReservation) || (request.type !== 'Room Booking' && canManageApprovals);
+        if (!hasPermission) return;
+        
         updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { status });
 
         // Handle side-effects on final approval/rejection
@@ -184,7 +190,8 @@ export default function ApprovalsPage() {
         );
     }
 
-    if (!canManageApprovals) {
+    const canViewPage = canManageApprovals || canApproveRoomReservation;
+    if (!canViewPage) {
         return (
             <AppLayout>
                 <Card>
@@ -217,21 +224,24 @@ export default function ApprovalsPage() {
                         title="Pending"
                         requests={pendingRequests}
                         onUpdateStatus={handleUpdateRequestStatus}
-                        canManage={canManageApprovals}
+                        canManageApprovals={canManageApprovals}
+                        canApproveRoomReservation={canApproveRoomReservation}
                         onCardClick={setSelectedRequest}
                     />
                     <KanbanColumn 
                         title="Approved"
                         requests={approvedRequests}
                         onUpdateStatus={handleUpdateRequestStatus}
-                        canManage={canManageApprovals}
+                        canManageApprovals={canManageApprovals}
+                        canApproveRoomReservation={canApproveRoomReservation}
                         onCardClick={setSelectedRequest}
                     />
                      <KanbanColumn 
                         title="Rejected"
                         requests={rejectedRequests}
                         onUpdateStatus={handleUpdateRequestStatus}
-                        canManage={canManageApprovals}
+                        canManageApprovals={canManageApprovals}
+                        canApproveRoomReservation={canApproveRoomReservation}
                         onCardClick={setSelectedRequest}
                     />
                 </div>

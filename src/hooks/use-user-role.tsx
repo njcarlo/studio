@@ -16,7 +16,10 @@ export type UserRoleContextType = {
   canManageRoles: boolean;
   canManageMinistries: boolean;
   canManageFacilities: boolean;
-  canRequestRoomBooking: boolean;
+  canCreateRoomReservation: boolean;
+  canEditRoomReservation: boolean;
+  canDeleteRoomReservation: boolean;
+  canApproveRoomReservation: boolean;
   canManageApprovals: boolean;
   canOperateScanner: boolean;
   canViewAttendance: boolean;
@@ -82,7 +85,10 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       canManageRoles: isSuperAdmin || permissions.includes('manage_roles'),
       canManageMinistries: isSuperAdmin || permissions.includes('manage_ministries'),
       canManageFacilities: isSuperAdmin || permissions.includes('manage_facilities'),
-      canRequestRoomBooking: isSuperAdmin || permissions.includes('request_room_booking'),
+      canCreateRoomReservation: isSuperAdmin || permissions.includes('create_room_reservation'),
+      canEditRoomReservation: isSuperAdmin || permissions.includes('edit_room_reservation'),
+      canDeleteRoomReservation: isSuperAdmin || permissions.includes('delete_room_reservation'),
+      canApproveRoomReservation: isSuperAdmin || permissions.includes('approve_room_reservation'),
       canManageApprovals: isSuperAdmin || permissions.includes('manage_approvals'),
       canOperateScanner: isSuperAdmin || permissions.includes('operate_scanner'),
       canViewAttendance: isSuperAdmin || permissions.includes('view_attendance_log'),

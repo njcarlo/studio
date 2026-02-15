@@ -49,13 +49,21 @@ const PERMISSION_CATEGORIES = [
     category: 'Facilities',
     permissions: [
       { id: 'manage_facilities', label: 'Manage Facilities', description: 'Can manage rooms, areas, and branches.' },
-      { id: 'request_room_booking', label: 'Request Room Booking', description: 'Can submit requests to book rooms.' },
+    ]
+  },
+  {
+    category: 'Room Reservations',
+    permissions: [
+      { id: 'create_room_reservation', label: 'Create Room Reservation', description: 'Can submit requests to book rooms.' },
+      { id: 'edit_room_reservation', label: 'Edit Room Reservation', description: 'Can edit details of existing reservations.' },
+      { id: 'delete_room_reservation', label: 'Delete Room Reservation', description: 'Can cancel or remove existing reservations.' },
+      { id: 'approve_room_reservation', label: 'Approve Room Reservation', description: 'Can approve or reject pending room booking requests.' },
     ]
   },
   {
     category: 'Approvals',
     permissions: [
-      { id: 'manage_approvals', label: 'Manage Approvals', description: 'Can approve or reject all pending requests.' },
+      { id: 'manage_approvals', label: 'Manage Other Approvals', description: 'Can approve or reject other requests (new workers, etc.).' },
     ]
   },
   {
