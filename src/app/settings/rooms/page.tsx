@@ -51,7 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Room, Location } from "@/lib/types";
+import type { Room, Branch } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -64,39 +64,39 @@ const ALL_EQUIPMENT = [
     { id: 'Whiteboard', label: 'Whiteboard', icon: Edit },
 ];
 
-// --- Location Management ---
+// --- Branch Management ---
 
-const LocationForm = ({ location, onSave, onClose }: { location: Partial<Location> | null; onSave: (data: Partial<Location>) => void; onClose: () => void; }) => {
-    const [name, setName] = useState(location?.name || '');
+const BranchForm = ({ branch, onSave, onClose }: { branch: Partial<Branch> | null; onSave: (data: Partial<Branch>) => void; onClose: () => void; }) => {
+    const [name, setName] = useState(branch?.name || '');
 
     return (
         <>
             <SheetHeader>
-                <SheetTitle className="font-headline">{location ? 'Edit Location' : 'Add New Location'}</SheetTitle>
+                <SheetTitle className="font-headline">{branch ? 'Edit Branch' : 'Add New Branch'}</SheetTitle>
             </SheetHeader>
             <div className="py-4 space-y-4">
                 <div className="space-y-2">
-                    <Label htmlFor="location-name">Location Name</Label>
-                    <Input id="location-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Main Campus" />
+                    <Label htmlFor="branch-name">Branch Name</Label>
+                    <Input id="branch-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Main Campus" />
                 </div>
             </div>
             <SheetFooter>
                 <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-                <Button onClick={() => onSave({ ...location, name })}>Save</Button>
+                <Button onClick={() => onSave({ ...branch, name })}>Save</Button>
             </SheetFooter>
         </>
     );
 };
 
-const LocationsTab = ({ rooms, locations, isLoading, onAdd, onEdit, onDelete }: { rooms: Room[], locations: Location[], isLoading: boolean, onAdd: () => void, onEdit: (loc: Location) => void, onDelete: (loc: Location) => void }) => {
+const BranchesTab = ({ rooms, branches, isLoading, onAdd, onEdit, onDelete }: { rooms: Room[], branches: Branch[], isLoading: boolean, onAdd: () => void, onEdit: (loc: Branch) => void, onDelete: (loc: Branch) => void }) => {
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Locations</CardTitle>
-                    <CardDescription>Manage physical locations and buildings.</CardDescription>
+                    <CardTitle>Branches</CardTitle>
+                    <CardDescription>Manage physical branches and buildings.</CardDescription>
                 </div>
-                <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Location</Button>
+                <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Branch</Button>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -109,18 +109,18 @@ const LocationsTab = ({ rooms, locations, isLoading, onAdd, onEdit, onDelete }: 
                     </TableHeader>
                     <TableBody>
                         {isLoading && <TableRow><TableCell colSpan={3} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>}
-                        {locations.map(loc => {
-                            const roomCount = rooms.filter(r => r.locationId === loc.id).length;
+                        {branches.map(branch => {
+                            const roomCount = rooms.filter(r => r.branchId === branch.id).length;
                             return (
-                                <TableRow key={loc.id}>
-                                    <TableCell className="font-medium">{loc.name}</TableCell>
+                                <TableRow key={branch.id}>
+                                    <TableCell className="font-medium">{branch.name}</TableCell>
                                     <TableCell>{roomCount}</TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => onEdit(loc)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => onDelete(loc)} disabled={roomCount > 0} className="text-destructive">Delete</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => onEdit(branch)}>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => onDelete(branch)} disabled={roomCount > 0} className="text-destructive">Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -136,12 +136,12 @@ const LocationsTab = ({ rooms, locations, isLoading, onAdd, onEdit, onDelete }: 
 
 // --- Room Management ---
 
-const RoomForm = ({ room, locations, onSave, onClose }: { room: Partial<Room> | null; locations: Location[]; onSave: (data: Partial<Room>) => void; onClose: () => void; }) => {
+const RoomForm = ({ room, branches, onSave, onClose }: { room: Partial<Room> | null; branches: Branch[]; onSave: (data: Partial<Room>) => void; onClose: () => void; }) => {
     const [formData, setFormData] = useState<Partial<Room>>({
         name: room?.name || '',
         capacity: room?.capacity || 0,
         equipment: room?.equipment || [],
-        locationId: room?.locationId || '',
+        branchId: room?.branchId || '',
     });
 
     const handleEquipmentChange = (equipmentId: string, checked: boolean) => {
@@ -166,11 +166,11 @@ const RoomForm = ({ room, locations, onSave, onClose }: { room: Partial<Room> | 
                     <Input id="room-name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Conference Room A" />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="room-location">Location</Label>
-                    <Select value={formData.locationId} onValueChange={value => setFormData({ ...formData, locationId: value })}>
-                        <SelectTrigger id="room-location"><SelectValue placeholder="Select a location" /></SelectTrigger>
+                    <Label htmlFor="room-branch">Branch</Label>
+                    <Select value={formData.branchId} onValueChange={value => setFormData({ ...formData, branchId: value })}>
+                        <SelectTrigger id="room-branch"><SelectValue placeholder="Select a branch" /></SelectTrigger>
                         <SelectContent>
-                            {locations.map(loc => <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>)}
+                            {branches.map(branch => <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
@@ -204,8 +204,8 @@ const RoomForm = ({ room, locations, onSave, onClose }: { room: Partial<Room> | 
     );
 };
 
-const RoomsTab = ({ rooms, locations, isLoading, onAdd, onEdit, onDelete }: { rooms: Room[], locations: Location[], isLoading: boolean, onAdd: () => void, onEdit: (room: Room) => void, onDelete: (room: Room) => void }) => {
-    const getLocationName = (locationId: string) => locations.find(l => l.id === locationId)?.name || 'N/A';
+const RoomsTab = ({ rooms, branches, isLoading, onAdd, onEdit, onDelete }: { rooms: Room[], branches: Branch[], isLoading: boolean, onAdd: () => void, onEdit: (room: Room) => void, onDelete: (room: Room) => void }) => {
+    const getBranchName = (branchId: string) => branches.find(l => l.id === branchId)?.name || 'N/A';
     
     return (
          <Card>
@@ -221,7 +221,7 @@ const RoomsTab = ({ rooms, locations, isLoading, onAdd, onEdit, onDelete }: { ro
                     <TableHeader>
                         <TableRow>
                             <TableHead>Room Name</TableHead>
-                            <TableHead>Location</TableHead>
+                            <TableHead>Branch</TableHead>
                             <TableHead>Capacity</TableHead>
                             <TableHead>Equipment</TableHead>
                             <TableHead className="w-[100px] text-right">Actions</TableHead>
@@ -232,7 +232,7 @@ const RoomsTab = ({ rooms, locations, isLoading, onAdd, onEdit, onDelete }: { ro
                         {rooms.map(room => (
                             <TableRow key={room.id}>
                                 <TableCell className="font-medium">{room.name}</TableCell>
-                                <TableCell>{getLocationName(room.locationId)}</TableCell>
+                                <TableCell>{getBranchName(room.branchId)}</TableCell>
                                 <TableCell>{room.capacity}</TableCell>
                                 <TableCell>
                                     <div className="flex flex-wrap gap-1">
@@ -265,46 +265,46 @@ export default function RoomManagementPage() {
     const { toast } = useToast();
 
     // State for forms and dialogs
-    const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
-    const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-    const [locationToDelete, setLocationToDelete] = useState<Location | null>(null);
+    const [isBranchSheetOpen, setIsBranchSheetOpen] = useState(false);
+    const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+    const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
     const [isRoomSheetOpen, setIsRoomSheetOpen] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
 
     // Data fetching
-    const locationsRef = useMemoFirebase(() => collection(firestore, "locations"), [firestore]);
-    const { data: locations, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
+    const branchesRef = useMemoFirebase(() => collection(firestore, "branches"), [firestore]);
+    const { data: branches, isLoading: branchesLoading } = useCollection<Branch>(branchesRef);
 
     const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
-    const isLoading = locationsLoading || roomsLoading || isRoleLoading;
+    const isLoading = branchesLoading || roomsLoading || isRoleLoading;
 
-    // --- Location Handlers ---
-    const handleSaveLocation = async (data: Partial<Location>) => {
+    // --- Branch Handlers ---
+    const handleSaveBranch = async (data: Partial<Branch>) => {
         try {
             if (data.id) {
-                await updateDocumentNonBlocking(doc(firestore, 'locations', data.id), data);
-                toast({ title: 'Location Updated' });
+                await updateDocumentNonBlocking(doc(firestore, 'branches', data.id), data);
+                toast({ title: 'Branch Updated' });
             } else {
-                await addDocumentNonBlocking(collection(firestore, 'locations'), data);
-                toast({ title: 'Location Added' });
+                await addDocumentNonBlocking(collection(firestore, 'branches'), data);
+                toast({ title: 'Branch Added' });
             }
-            setIsLocationSheetOpen(false);
+            setIsBranchSheetOpen(false);
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save location.' });
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save branch.' });
         }
     };
 
-    const handleDeleteLocation = async () => {
-        if (!locationToDelete) return;
+    const handleDeleteBranch = async () => {
+        if (!branchToDelete) return;
         try {
-            await deleteDocumentNonBlocking(doc(firestore, 'locations', locationToDelete.id));
-            toast({ title: 'Location Deleted' });
-            setLocationToDelete(null);
+            await deleteDocumentNonBlocking(doc(firestore, 'branches', branchToDelete.id));
+            toast({ title: 'Branch Deleted' });
+            setBranchToDelete(null);
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete location.' });
+            toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete branch.' });
         }
     };
 
@@ -346,61 +346,61 @@ export default function RoomManagementPage() {
     return (
         <AppLayout>
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-headline font-bold">Locations & Rooms</h1>
+                <h1 className="text-2xl font-headline font-bold">Branches & Rooms</h1>
             </div>
-            <p className="text-muted-foreground">Manage locations and the rooms within them.</p>
+            <p className="text-muted-foreground">Manage branches and the rooms within them.</p>
 
             <Tabs defaultValue="rooms" className="mt-4">
                 <TabsList>
                     <TabsTrigger value="rooms">Rooms</TabsTrigger>
-                    <TabsTrigger value="locations">Locations</TabsTrigger>
+                    <TabsTrigger value="branches">Branches</TabsTrigger>
                 </TabsList>
                 <TabsContent value="rooms" className="mt-4">
                     <RoomsTab
                         rooms={rooms || []}
-                        locations={locations || []}
+                        branches={branches || []}
                         isLoading={isLoading}
                         onAdd={() => { setSelectedRoom(null); setIsRoomSheetOpen(true); }}
                         onEdit={(room) => { setSelectedRoom(room); setIsRoomSheetOpen(true); }}
                         onDelete={(room) => setRoomToDelete(room)}
                     />
                 </TabsContent>
-                <TabsContent value="locations" className="mt-4">
-                    <LocationsTab
+                <TabsContent value="branches" className="mt-4">
+                    <BranchesTab
                         rooms={rooms || []}
-                        locations={locations || []}
+                        branches={branches || []}
                         isLoading={isLoading}
-                        onAdd={() => { setSelectedLocation(null); setIsLocationSheetOpen(true); }}
-                        onEdit={(loc) => { setSelectedLocation(loc); setIsLocationSheetOpen(true); }}
-                        onDelete={(loc) => setLocationToDelete(loc)}
+                        onAdd={() => { setSelectedBranch(null); setIsBranchSheetOpen(true); }}
+                        onEdit={(loc) => { setSelectedBranch(loc); setIsBranchSheetOpen(true); }}
+                        onDelete={(loc) => setBranchToDelete(loc)}
                     />
                 </TabsContent>
             </Tabs>
             
             {/* Sheets */}
-            <Sheet open={isLocationSheetOpen} onOpenChange={setIsLocationSheetOpen}>
+            <Sheet open={isBranchSheetOpen} onOpenChange={setIsBranchSheetOpen}>
                 <SheetContent>
-                    <LocationForm location={selectedLocation} onSave={handleSaveLocation} onClose={() => setIsLocationSheetOpen(false)} />
+                    <BranchForm branch={selectedBranch} onSave={handleSaveBranch} onClose={() => setIsBranchSheetOpen(false)} />
                 </SheetContent>
             </Sheet>
             <Sheet open={isRoomSheetOpen} onOpenChange={setIsRoomSheetOpen}>
                 <SheetContent className="sm:max-w-lg">
-                    <RoomForm room={selectedRoom} locations={locations || []} onSave={handleSaveRoom} onClose={() => setIsRoomSheetOpen(false)} />
+                    <RoomForm room={selectedRoom} branches={branches || []} onSave={handleSaveRoom} onClose={() => setIsRoomSheetOpen(false)} />
                 </SheetContent>
             </Sheet>
 
             {/* Dialogs */}
-            <AlertDialog open={!!locationToDelete} onOpenChange={(open) => !open && setLocationToDelete(null)}>
+            <AlertDialog open={!!branchToDelete} onOpenChange={(open) => !open && setBranchToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the location <span className="font-bold">{locationToDelete?.name}</span>. This action cannot be undone.
+                            This will permanently delete the branch <span className="font-bold">{branchToDelete?.name}</span>. This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteLocation}>Delete</AlertDialogAction>
+                        <AlertDialogAction onClick={handleDeleteBranch}>Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

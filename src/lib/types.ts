@@ -44,10 +44,10 @@ export type Room = {
     name: string;
     capacity: number;
     equipment: string[];
-    locationId: string;
+    branchId: string;
 };
 
-export type Location = {
+export type Branch = {
     id: string;
     name: string;
 };

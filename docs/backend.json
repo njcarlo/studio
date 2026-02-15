@@ -40,10 +40,10 @@
       },
       "required": ["name", "department"]
     },
-    "Location": {
-      "title": "Location",
+    "Branch": {
+      "title": "Branch",
       "type": "object",
-      "description": "A physical location or building.",
+      "description": "A physical branch, location, or building.",
       "properties": {
         "name": { "type": "string" }
       },
@@ -57,9 +57,9 @@
         "name": { "type": "string" },
         "capacity": { "type": "number" },
         "equipment": { "type": "array", "items": { "type": "string" } },
-        "locationId": { "type": "string" }
+        "branchId": { "type": "string" }
       },
-      "required": ["name", "capacity", "locationId"]
+      "required": ["name", "capacity", "branchId"]
     },
     "Reservation": {
       "title": "Reservation",
@@ -148,9 +148,9 @@
       "schema": { "$ref": "#/entities/Ministry" },
       "description": "Stores ministry information."
     },
-    "/locations/{locationId}": {
-      "schema": { "$ref": "#/entities/Location" },
-      "description": "Stores location information."
+    "/branches/{branchId}": {
+      "schema": { "$ref": "#/entities/Branch" },
+      "description": "Stores branch information."
     },
     "/rooms/{roomId}": {
       "schema": { "$ref": "#/entities/Room" },
