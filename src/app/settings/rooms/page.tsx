@@ -681,7 +681,12 @@ export default function RoomManagementPage() {
             return;
         }
 
-        const validAreaIds = new Set(areas.map(a => a.areaId));
+        const areaIdToDocIdMap = new Map<string, string>();
+        areas.forEach(area => {
+            if (area.areaId) {
+                areaIdToDocIdMap.set(area.areaId, area.id);
+            }
+        });
 
         Papa.parse(csvData, {
             header: true,
@@ -699,7 +704,9 @@ export default function RoomManagementPage() {
 
                     newRooms.forEach((newRoom: any) => {
                         const capacity = parseInt(newRoom.capacity, 10);
-                        if (!newRoom.name || !newRoom.areaId || !validAreaIds.has(newRoom.areaId) || isNaN(capacity)) {
+                        const areaDocId = areaIdToDocIdMap.get(newRoom.areaId);
+
+                        if (!newRoom.name || !newRoom.areaId || !areaDocId || isNaN(capacity)) {
                             console.warn('Skipping invalid row:', newRoom);
                             invalidRowCount++;
                             return;
@@ -710,7 +717,7 @@ export default function RoomManagementPage() {
                         const newDocRef = doc(collection(firestore, "rooms"));
                         batch.set(newDocRef, {
                             name: newRoom.name,
-                            areaId: newRoom.areaId,
+                            areaId: areaDocId,
                             capacity: capacity,
                             equipment: equipment
                         });
