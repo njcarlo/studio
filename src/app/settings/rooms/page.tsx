@@ -294,6 +294,70 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
 
 
 // --- Room Management ---
+const RoomImportSheet = ({ areas, branches, onImport, onClose }: { areas: Area[]; branches: Branch[]; onImport: (csvData: string) => void; onClose: () => void; }) => {
+    const [csvData, setCsvData] = useState('');
+    const csvFormat = "name,areaId,capacity,equipment";
+
+    const groupedAreas = useMemo(() => {
+        return branches.map(branch => ({
+            branchName: branch.name,
+            areas: areas.filter(area => area.branchId === branch.id)
+        })).filter(group => group.areas.length > 0);
+    }, [areas, branches]);
+
+    return (
+        <>
+            <SheetHeader>
+                <SheetTitle className="font-headline">Import Rooms</SheetTitle>
+                <SheetDescription>
+                    Paste CSV data below to bulk-import rooms. The first line must be a header row.
+                </SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="csv-format">Required CSV Format</Label>
+                    <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        `equipment` should be a semicolon-separated list (e.g., `Projector;TV`). Leave empty for no equipment.
+                    </p>
+                     <Card className="mt-2 text-xs text-muted-foreground p-3 max-h-40 overflow-y-auto">
+                        <p className="font-bold mb-2">Available Area IDs:</p>
+                         <ul className="space-y-1 font-mono">
+                            {groupedAreas.map(group => (
+                                <li key={group.branchName}>
+                                    <p className="font-semibold">{group.branchName}</p>
+                                    <ul className="pl-4">
+                                        {group.areas.map(area => (
+                                            <li key={area.id}>
+                                                <span className="font-semibold">{area.name}:</span> {area.areaId}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </li>
+                            ))}
+                        </ul>
+                    </Card>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="csv-data">CSV Data</Label>
+                    <Textarea
+                        id="csv-data"
+                        value={csvData}
+                        onChange={(e) => setCsvData(e.target.value)}
+                        placeholder={`name,areaId,capacity,equipment\nConference Room A,L1-Floor1,12,Projector;TV`}
+                        className="h-48 font-mono text-xs"
+                    />
+                </div>
+            </div>
+            <SheetFooter>
+                <SheetClose asChild>
+                    <Button type="button" variant="secondary">Cancel</Button>
+                </SheetClose>
+                <Button onClick={() => onImport(csvData)}>Process Import</Button>
+            </SheetFooter>
+        </>
+    );
+}
 
 const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | null; areas: Area[]; branches: Branch[]; onSave: (data: Partial<Room>) => void; }) => {
     const [formData, setFormData] = useState<Partial<Room>>({
@@ -377,7 +441,7 @@ const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | nul
     );
 };
 
-const RoomsTab = ({ rooms, areas, branches, isLoading, onAdd, onEdit, onDelete }: { rooms: Room[], areas: Area[], branches: Branch[], isLoading: boolean, onAdd: () => void, onEdit: (room: Room) => void, onDelete: (room: Room) => void }) => {
+const RoomsTab = ({ rooms, areas, branches, isLoading, onAdd, onEdit, onDelete, onImport }: { rooms: Room[], areas: Area[], branches: Branch[], isLoading: boolean, onAdd: () => void, onEdit: (room: Room) => void, onDelete: (room: Room) => void, onImport: () => void }) => {
     const getAreaAndBranch = (areaId: string) => {
         const area = areas.find(a => a.id === areaId);
         if (!area) return { areaName: 'N/A', branchName: 'N/A' };
@@ -395,7 +459,10 @@ const RoomsTab = ({ rooms, areas, branches, isLoading, onAdd, onEdit, onDelete }
                     <CardTitle>Rooms</CardTitle>
                     <CardDescription>Manage bookable rooms and their equipment.</CardDescription>
                 </div>
-                <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
+                 <div className="flex gap-2">
+                    <Button variant="outline" onClick={onImport}><Upload className="mr-2 h-4 w-4" /> Import</Button>
+                    <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -463,6 +530,7 @@ export default function RoomManagementPage() {
     const [isRoomSheetOpen, setIsRoomSheetOpen] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
+    const [isRoomImportSheetOpen, setIsRoomImportSheetOpen] = useState(false);
 
     // Data fetching
     const branchesRef = useMemoFirebase(() => collection(firestore, "branches"), [firestore]);
@@ -607,6 +675,81 @@ export default function RoomManagementPage() {
 
 
     // --- Room Handlers ---
+    const handleImportRooms = (csvData: string) => {
+        if (!areas) {
+            toast({ variant: 'destructive', title: 'Areas not loaded', description: 'Please wait for areas to load before importing.' });
+            return;
+        }
+
+        const validAreaIds = new Set(areas.map(a => a.areaId));
+
+        Papa.parse(csvData, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const newRooms = results.data;
+                if (newRooms.length === 0) {
+                    toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.'});
+                    return;
+                }
+
+                try {
+                    const batch = writeBatch(firestore);
+                    let invalidRowCount = 0;
+
+                    newRooms.forEach((newRoom: any) => {
+                        const capacity = parseInt(newRoom.capacity, 10);
+                        if (!newRoom.name || !newRoom.areaId || !validAreaIds.has(newRoom.areaId) || isNaN(capacity)) {
+                            console.warn('Skipping invalid row:', newRoom);
+                            invalidRowCount++;
+                            return;
+                        }
+
+                        const equipment = newRoom.equipment ? newRoom.equipment.split(';').map((e: string) => e.trim()).filter(Boolean) : [];
+
+                        const newDocRef = doc(collection(firestore, "rooms"));
+                        batch.set(newDocRef, {
+                            name: newRoom.name,
+                            areaId: newRoom.areaId,
+                            capacity: capacity,
+                            equipment: equipment
+                        });
+                    });
+                    
+                    if (invalidRowCount === newRooms.length) {
+                         toast({
+                            variant: "destructive",
+                            title: "Import Failed",
+                            description: `All ${invalidRowCount} rows were invalid. Please check that 'name', a valid 'areaId', and a numeric 'capacity' are provided.`,
+                        });
+                        return;
+                    }
+
+                    await batch.commit();
+
+                    let description = `${newRooms.length - invalidRowCount} rooms were imported.`;
+                    if (invalidRowCount > 0) {
+                        description += ` ${invalidRowCount} rows were skipped due to invalid data.`
+                    }
+
+                    toast({
+                        title: "Import Successful",
+                        description: description
+                    });
+                    setIsRoomImportSheetOpen(false);
+
+                } catch (error) {
+                     toast({
+                        variant: "destructive",
+                        title: "Import Failed",
+                        description: "An error occurred during the import. Check console for details.",
+                    });
+                    console.error("Import error:", error);
+                }
+            }
+        });
+    };
+
     const handleSaveRoom = async (data: Partial<Room>) => {
         try {
             if (data.id) {
@@ -663,6 +806,7 @@ export default function RoomManagementPage() {
                         onAdd={() => { setSelectedRoom(null); setIsRoomSheetOpen(true); }}
                         onEdit={(room) => { setSelectedRoom(room); setIsRoomSheetOpen(true); }}
                         onDelete={(room) => setRoomToDelete(room)}
+                        onImport={() => setIsRoomImportSheetOpen(true)}
                     />
                 </TabsContent>
                 <TabsContent value="areas" className="mt-4">
@@ -703,6 +847,16 @@ export default function RoomManagementPage() {
             <Sheet open={isAreaImportSheetOpen} onOpenChange={setIsAreaImportSheetOpen}>
                 <SheetContent>
                     <AreaImportSheet branches={branches || []} onImport={handleImportAreas} onClose={() => setIsAreaImportSheetOpen(false)} />
+                </SheetContent>
+            </Sheet>
+             <Sheet open={isRoomImportSheetOpen} onOpenChange={setIsRoomImportSheetOpen}>
+                <SheetContent className="sm:max-w-lg">
+                    <RoomImportSheet 
+                        areas={areas || []} 
+                        branches={branches || []} 
+                        onImport={handleImportRooms} 
+                        onClose={() => setIsRoomImportSheetOpen(false)} 
+                    />
                 </SheetContent>
             </Sheet>
             <Sheet open={isRoomSheetOpen} onOpenChange={setIsRoomSheetOpen}>
@@ -757,10 +911,3 @@ export default function RoomManagementPage() {
         </AppLayout>
     );
 }
-
-    
-
-
-
-
-    
