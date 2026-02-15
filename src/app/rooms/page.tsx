@@ -5,7 +5,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PlusCircle, Users as UsersIcon, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +49,8 @@ import {
     isToday,
     startOfMonth,
     endOfMonth,
-    isWithinInterval
+    isWithinInterval,
+    isSameMonth
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Booking, Room, Worker, Location } from "@/lib/types";
@@ -59,7 +60,6 @@ import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "fi
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DayContentProps, DayPicker, DayProps } from "react-day-picker";
 
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
@@ -385,78 +385,68 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
 };
 
 const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking[], onDateSelect: (date: Date) => void, selectedDate: Date }) => {
-    
-    const monthBookings = useMemo(() => {
-        const start = startOfMonth(selectedDate);
-        const end = endOfMonth(selectedDate);
-        return bookings.filter(b => {
-            if (!b.start) return false;
-            const bookingDate = (b.start as any).toDate();
-            return isWithinInterval(bookingDate, { start, end });
-        });
-    }, [bookings, selectedDate]);
-    
-    function CustomDayContent(props: DayContentProps) {
-        if (props.outside) {
-            return <div className="h-full w-full"></div>;
-        }
-        const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), props.date));
-        
-        return (
-             <div className="flex flex-col h-full items-start w-full p-1">
-                <div className={cn("self-end", isToday(props.date) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center")}>
-                    {format(props.date, 'd')}
-                </div>
-                <div className="space-y-1 mt-1 overflow-hidden w-full">
-                    {dayBookings.slice(0, 3).map(booking => {
-                        const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
-                                            booking.status === 'Pending' ? 'bg-yellow-500' :
-                                            'bg-red-500';
-                        return (
-                            <div key={booking.id} className="flex items-center gap-1.5">
-                                <div className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
-                                <p className="text-xs truncate">{booking.title}</p>
-                            </div>
-                        )
-                    })}
-                    {dayBookings.length > 3 && (
-                        <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
-                    )}
-                </div>
-            </div>
-        );
-    }
+    const monthStart = startOfMonth(selectedDate);
+    const monthEnd = endOfMonth(selectedDate);
+    const gridStart = startOfWeek(monthStart);
+    const gridEnd = endOfWeek(monthEnd);
+
+    const monthDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
+    const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     
     return (
         <Card>
             <CardContent className="p-0">
-                <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(day) => day && onDateSelect(day)}
-                    className="p-0"
-                    classNames={{
-                        months: "w-full",
-                        month: "w-full",
-                        table: "w-full border-collapse",
-                        head_row: "grid grid-cols-7",
-                        head_cell: "text-muted-foreground font-normal text-[0.8rem] border p-2 text-center",
-                        row: "grid grid-cols-7",
-                        cell: "h-36 text-left text-sm p-0 relative border",
-                        day: cn(
-                            "h-full w-full p-0 font-normal flex flex-col items-start justify-start rounded-none focus:z-10"
-                        ),
-                        day_selected: "bg-primary/10 text-primary",
-                        day_today: "bg-accent/10 text-accent-foreground",
-                        day_outside: "text-muted-foreground opacity-50",
-                    }}
-                    components={{
-                        DayContent: CustomDayContent,
-                    }}
-                />
+                 <div className="grid grid-cols-7 text-center text-sm font-semibold text-muted-foreground border-b">
+                    {weekDays.map(day => (
+                        <div key={day} className="py-2 border-r last:border-r-0">{day}</div>
+                    ))}
+                </div>
+                <div className="grid grid-cols-7">
+                    {monthDays.map((day, index) => {
+                        const dayBookings = bookings
+                            .filter(b => b.start && isSameDay((b.start as any).toDate(), day))
+                            .sort((a,b) => (a.start as any).seconds - (b.start as any).seconds);
+
+                        return (
+                            <div 
+                                key={day.toString()}
+                                className={cn(
+                                    "h-36 p-1.5 flex flex-col border-t border-r",
+                                    (index) % 7 === 0 && "border-l",
+                                    !isSameMonth(day, selectedDate) && "bg-muted/50 text-muted-foreground",
+                                    "cursor-pointer hover:bg-accent/50"
+                                )}
+                                onClick={() => onDateSelect(day)}
+                            >
+                                <span className={cn(
+                                    "self-end font-medium",
+                                    isToday(day) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center"
+                                )}>
+                                    {format(day, 'd')}
+                                </span>
+                                <div className="flex-grow space-y-1 mt-1 overflow-hidden">
+                                     {dayBookings.slice(0, 3).map(booking => {
+                                        const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
+                                                            booking.status === 'Pending' ? 'bg-yellow-500' :
+                                                            'bg-red-500';
+                                        return (
+                                            <div key={booking.id} className="flex items-center gap-1.5 w-full">
+                                                <div className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", statusColor)} />
+                                                <p className="text-xs truncate">{booking.title}</p>
+                                            </div>
+                                        )
+                                    })}
+                                    {dayBookings.length > 3 && (
+                                        <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
             </CardContent>
         </Card>
-    )
+    );
 }
 
 export default function RoomsPage() {
