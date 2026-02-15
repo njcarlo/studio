@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -35,15 +36,16 @@ const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => voi
             <SheetHeader>
                 <SheetTitle className="font-headline">Import Ministries</SheetTitle>
                 <SheetDescription>
-                    Paste CSV data below to bulk-import ministries. The first line must be a header row.
+                    Paste CSV data below to bulk-import ministries. The first line must be a header row with `name` and `department`.
                 </SheetDescription>
             </SheetHeader>
             <div className="py-4 space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="csv-format">Required CSV Format</Label>
                     <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
-                    <p className="text-xs text-muted-foreground">
-                        `department` must be one of: Worship, Outreach, Relationship, Discipleship, Administration.
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        The `department` column must use a number code:<br />
+                        1 = Worship, 2 = Outreach, 3 = Relationship, 4 = Discipleship, 5 = Administration.
                     </p>
                 </div>
                 <div className="space-y-2">
@@ -52,7 +54,7 @@ const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => voi
                         id="csv-data"
                         value={csvData}
                         onChange={(e) => setCsvData(e.target.value)}
-                        placeholder="Paste your CSV content here..."
+                        placeholder={`name,department\nPrayer Ministry,1\nWelcome Team,3`}
                         className="h-64 font-mono text-xs"
                     />
                 </div>
@@ -98,6 +100,14 @@ export default function MinistriesPage() {
   }
 
   const handleImportMinistries = (csvData: string) => {
+    const departmentMap: { [key: string]: Department } = {
+        '1': 'Worship',
+        '2': 'Outreach',
+        '3': 'Relationship',
+        '4': 'Discipleship',
+        '5': 'Administration',
+    };
+
     Papa.parse(csvData, {
         header: true,
         skipEmptyLines: true,
@@ -108,14 +118,15 @@ export default function MinistriesPage() {
                 return;
             }
 
-            const validDepartments = new Set(departments);
-
             try {
                 const batch = writeBatch(firestore);
                 let invalidRowCount = 0;
                 
                 newMinistries.forEach((newMinistry: any) => {
-                    if (!newMinistry.name || !newMinistry.department || !validDepartments.has(newMinistry.department)) {
+                    const departmentCode = newMinistry.department;
+                    const departmentName = departmentMap[departmentCode];
+
+                    if (!newMinistry.name || !departmentName) {
                         console.warn('Skipping invalid row:', newMinistry);
                         invalidRowCount++;
                         return;
@@ -124,7 +135,7 @@ export default function MinistriesPage() {
                     const newDocRef = doc(collection(firestore, "ministries"));
                     batch.set(newDocRef, {
                         name: newMinistry.name,
-                        department: newMinistry.department,
+                        department: departmentName,
                         description: '',
                         leaderId: ''
                     });
@@ -134,7 +145,7 @@ export default function MinistriesPage() {
                     toast({
                         variant: "destructive",
                         title: "Import Failed",
-                        description: `All ${invalidRowCount} rows were invalid. Please check the department names and ensure all ministries have a name.`,
+                        description: `All ${invalidRowCount} rows were invalid. Please check the department codes and ensure all ministries have a name.`,
                     });
                     return;
                 }
