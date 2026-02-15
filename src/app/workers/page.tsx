@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, LoaderCircle, Upload } from "lucide-react";
+import { MoreHorizontal, PlusCircle, LoaderCircle, Upload, LogIn } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +45,7 @@ import type { Worker, Role, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useImpersonation } from "@/hooks/use-impersonation";
 
 const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: { worker: Partial<Worker> | null; roles: Role[]; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; canManage: boolean; }) => {
   const [formData, setFormData] = useState<Partial<Worker>>({
@@ -198,6 +199,7 @@ export default function WorkersPage() {
   const { toast } = useToast();
   const { user } = useUser();
   const { workerProfile, isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+  const { startImpersonation } = useImpersonation();
 
   const canManageUsers = isSuperAdmin;
 
@@ -239,6 +241,14 @@ export default function WorkersPage() {
   const handleEdit = (worker: Worker) => {
     setSelectedWorker(worker);
     setIsSheetOpen(true);
+  };
+
+  const handleImpersonate = (worker: Worker) => {
+    toast({
+        title: "Impersonation Started",
+        description: `You are now viewing the app as ${worker.firstName} ${worker.lastName}.`,
+    });
+    startImpersonation(worker.id);
   };
   
   const handleDelete = (workerId: string) => {
@@ -465,6 +475,12 @@ export default function WorkersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => handleEdit(worker)}>Edit</DropdownMenuItem>
+                        {worker.id !== user?.uid && (
+                            <DropdownMenuItem onSelect={() => handleImpersonate(worker)}>
+                                <LogIn className="mr-2 h-4 w-4" />
+                                Impersonate
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onSelect={() => handleDelete(worker.id)} className="text-destructive">Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

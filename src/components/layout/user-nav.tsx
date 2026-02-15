@@ -17,6 +17,8 @@ import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from "@/fireb
 import { signOut, sendPasswordResetEmail } from "firebase/auth";
 import type { Worker as AppWorker } from "@/lib/types";
 import { doc } from 'firebase/firestore';
+import { useImpersonation } from "@/hooks/use-impersonation";
+import { LogOut } from "lucide-react";
 
 
 export function UserNav() {
@@ -24,11 +26,15 @@ export function UserNav() {
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
 
-  const workerProfileRef = useMemoFirebase(() => user ? doc(firestore, 'workers', user.uid) : null, [firestore, user]);
+  const workerProfileRef = useMemoFirebase(() => user ? doc(firestore, 'workers', impersonatedWorkerId || user.uid) : null, [firestore, user, impersonatedWorkerId]);
   const { data: workerProfile } = useDoc<AppWorker>(workerProfileRef);
 
   const handleLogout = () => {
+    if (impersonatedWorkerId) {
+      stopImpersonation();
+    }
     signOut(auth);
   };
 
@@ -80,9 +86,16 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            Profile
-          </DropdownMenuItem>
+          {impersonatedWorkerId ? (
+            <DropdownMenuItem onSelect={stopImpersonation}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Exit Impersonation</span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem>
+              Profile
+            </DropdownMenuItem>
+          )}
            <DropdownMenuItem onSelect={handleChangePassword}>
             Change Password
           </DropdownMenuItem>

@@ -4,6 +4,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { doc, collection } from 'firebase/firestore';
 import type { Worker, Role } from '@/lib/types';
 import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { useImpersonation } from '@/hooks/use-impersonation';
 
 type UserRoleContextType = {
   realUserRole: Role | null;
@@ -19,44 +20,41 @@ const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined
 export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const { impersonatedWorkerId } = useImpersonation();
   
-  // For development, we'll temporarily define the admin by email.
-  // This avoids the need for custom claims setup for now.
-  const isSuperAdmin = user?.email === 'admin@system.com';
+  // --- Real User Data (for checking admin status) ---
+  const realWorkerProfileRef = useMemoFirebase(() => user ? doc(firestore, 'workers', user.uid) : null, [firestore, user]);
+  const { data: realWorkerProfile, isLoading: isRealProfileLoading } = useDoc<Worker>(realWorkerProfileRef);
+  
+  const realRoleRef = useMemoFirebase(() => realWorkerProfile?.roleId ? doc(firestore, 'roles', realWorkerProfile.roleId) : null, [firestore, realWorkerProfile]);
+  const { data: realUserRole, isLoading: isRealRoleLoading } = useDoc<Role>(realRoleRef);
+  
+  const isSuperAdmin = user?.email === 'admin@system.com' || realWorkerProfile?.roleId === 'admin';
+
+  // --- "View As" User Data ---
+  const viewAsWorkerId = isSuperAdmin ? impersonatedWorkerId : null; // Only allow admins to impersonate
+  const idToFetch = viewAsWorkerId || user?.uid;
+
+  const workerProfileRef = useMemoFirebase(() => {
+    return idToFetch ? doc(firestore, 'workers', idToFetch) : null;
+  }, [firestore, idToFetch]);
+  const { data: workerProfile, isLoading: isProfileLoading } = useDoc<Worker>(workerProfileRef);
 
   // Check if the admin role exists to determine if seeding is needed.
   const adminRoleRef = useMemoFirebase(() => {
       return doc(firestore, 'roles', 'admin');
   }, [firestore]);
   const { data: adminRole, isLoading: isAdminRoleLoading } = useDoc<Role>(adminRoleRef);
+  const needsSeeding = !adminRole && !isAdminRoleLoading;
 
-  const workerProfileRef = useMemoFirebase(() => {
-    if (user) {
-      return doc(firestore, 'workers', user.uid);
-    }
-    return null;
-  }, [firestore, user]);
-
-  const { data: workerProfile, isLoading: isProfileLoading } = useDoc<Worker>(workerProfileRef);
-
-  const roleRef = useMemoFirebase(() => {
-    if (workerProfile?.roleId) {
-      return doc(firestore, 'roles', workerProfile.roleId);
-    }
-    return null;
-  }, [firestore, workerProfile]);
-
-  const { data: realUserRole, isLoading: isRoleLoading } = useDoc<Role>(roleRef);
-  
+  // Fetch all roles for dropdowns etc.
   const rolesRef = useMemoFirebase(() => {
     if (!user) return null; // Wait for user to be authenticated
     return collection(firestore, 'roles');
   }, [firestore, user]);
   const { data: allRoles, isLoading: areAllRolesLoading } = useCollection<Role>(rolesRef);
 
-  const needsSeeding = !adminRole && !isAdminRoleLoading;
-
-  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || areAllRolesLoading || isAdminRoleLoading;
+  const isLoading = isUserLoading || isRealProfileLoading || isProfileLoading || areAllRolesLoading || isAdminRoleLoading;
 
   const value = {
     realUserRole: realUserRole || null,

@@ -12,8 +12,34 @@ import {
 } from "@/components/ui/sidebar";
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
-import { Church, LoaderCircle } from "lucide-react";
+import { Church, LoaderCircle, Info, X } from "lucide-react";
 import { useUser } from "@/firebase";
+import { useImpersonation } from "@/hooks/use-impersonation";
+import { useUserRole } from "@/hooks/use-user-role";
+import { Button } from "@/components/ui/button";
+
+const ImpersonationBanner = () => {
+    const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
+    const { workerProfile } = useUserRole(); // This will be the impersonated profile
+
+    if (!impersonatedWorkerId) {
+        return null;
+    }
+
+    return (
+        <div className="bg-yellow-400 text-yellow-900 p-2 text-center text-sm font-semibold flex items-center justify-center gap-4">
+            <Info className="h-5 w-5" />
+            <span>
+                You are viewing as <strong>{workerProfile?.firstName} {workerProfile?.lastName}</strong>. 
+                All actions are still performed as an administrator.
+            </span>
+            <Button variant="ghost" size="sm" onClick={stopImpersonation} className="hover:bg-yellow-500">
+                <X className="mr-2 h-4 w-4" />
+                Exit View-As Mode
+            </Button>
+        </div>
+    );
+};
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
@@ -56,6 +82,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
+        <ImpersonationBanner />
         <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="w-full flex-1" />

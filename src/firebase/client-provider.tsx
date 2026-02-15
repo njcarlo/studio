@@ -4,6 +4,7 @@ import React, { useMemo, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { UserRoleProvider } from '@/hooks/use-user-role';
+import { ImpersonationProvider } from '@/hooks/use-impersonation';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -21,9 +22,11 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       auth={firebaseServices.auth}
       firestore={firebaseServices.firestore}
     >
-      <UserRoleProvider>
-        {children}
-      </UserRoleProvider>
+      <ImpersonationProvider>
+        <UserRoleProvider>
+          {children}
+        </UserRoleProvider>
+      </ImpersonationProvider>
     </FirebaseProvider>
   );
 }
