@@ -58,7 +58,6 @@ export type MealStub = {
     workerName: string;
     date: any; // Timestamp
     status: 'Issued' | 'Claimed';
-    qrValue: string;
 };
 
 export type ApprovalRequest = {

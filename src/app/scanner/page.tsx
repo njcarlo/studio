@@ -13,7 +13,9 @@ import type { Worker, ScanLog } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, isToday } from "date-fns";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 export default function QRScannerPage() {
     const { toast } = useToast();
@@ -21,6 +23,7 @@ export default function QRScannerPage() {
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [scannedWorker, setScannedWorker] = useState<Worker | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [scanMode, setScanMode] = useState<'Attendance' | 'Meal Stub'>('Attendance');
     
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
@@ -124,56 +127,61 @@ export default function QRScannerPage() {
         if (!data || isProcessing) return;
         
         setIsProcessing(true);
-
-        if (data.startsWith('MSTUB_')) {
-            try {
-                const q = query(collection(firestore, "mealstubs"), where("qrValue", "==", data));
-                const querySnapshot = await getDocs(q);
     
-                if (querySnapshot.empty) {
-                    toast({ variant: "destructive", title: "Invalid Meal Stub", description: "This meal stub QR code is not valid or does not exist." });
-                    setTimeout(() => resetScanner(), 3000);
-                    return;
-                }
-    
-                const stubDoc = querySnapshot.docs[0];
-                const stubData = stubDoc.data();
-    
-                if (stubData.status === 'Issued') {
-                    await updateDocumentNonBlocking(stubDoc.ref, { status: 'Claimed' });
-                    const details = `Claimed meal stub for ${stubData.workerName}`;
-                    toast({ title: "Meal Stub Claimed!", description: details });
-                    logScanEvent({ scanType: 'Meal Stub', details, mealStubId: stubDoc.id, targetUserName: stubData.workerName, });
-                } else {
-                    toast({ variant: "destructive", title: "Stub Already Claimed", description: "This meal stub has already been used." });
-                }
-            } catch (e) {
-                console.error("Error processing meal stub:", e);
-                toast({ variant: "destructive", title: "Error", description: "Could not process meal stub." });
-            } finally {
-                setTimeout(() => resetScanner(), 3000);
-            }
-        }
-        else if (data.startsWith('ROOM_CHECKIN:')) {
-            const bookingId = data.split(':')[1];
-            toast({ title: 'Room Check-in Scanned', description: `Booking ID: ${bookingId}. (This feature is not yet fully implemented)` });
-            setTimeout(() => resetScanner(), 2000);
-        }
-        else {
-            if (workersLoading) {
-                toast({ title: "Please wait", description: "Worker data is still loading." });
-                setIsProcessing(false);
-                return;
-            }
+        if (scanMode === 'Attendance') {
             const worker = workers?.find(w => w.id === data || w.workerId === data);
             if (worker) {
                 setScannedWorker(worker);
             } else {
                 toast({ variant: 'destructive', title: 'Worker Not Found', description: 'The scanned ID does not correspond to any worker.' });
-                setTimeout(() => resetScanner(), 2000);
+                setTimeout(resetScanner, 2000);
             }
+            return;
         }
-    }, [isProcessing, workers, firestore, toast, workersLoading, resetScanner, logScanEvent]);
+    
+        if (scanMode === 'Meal Stub') {
+            try {
+                const q = query(collection(firestore, "mealstubs"), where("workerId", "==", data), where("status", "==", "Issued"));
+                const querySnapshot = await getDocs(q);
+    
+                const todaysStubDoc = querySnapshot.docs.find(doc => {
+                    const stub = doc.data();
+                    return stub.date && isToday(new Date(stub.date.seconds * 1000));
+                });
+    
+                if (todaysStubDoc) {
+                    const stubData = todaysStubDoc.data();
+                    await updateDocumentNonBlocking(todaysStubDoc.ref, { status: 'Claimed' });
+                    const details = `Claimed meal stub for ${stubData.workerName}.`;
+                    toast({ title: "Meal Stub Claimed!", description: details });
+                    logScanEvent({ scanType: 'Meal Stub', details, mealStubId: todaysStubDoc.id, targetUserId: stubData.workerId, targetUserName: stubData.workerName });
+                } else {
+                    const worker = workers?.find(w => w.id === data || w.workerId === data);
+                    const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
+                    toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid, issued meal stub found for ${workerName} for today.` });
+                }
+            } catch (e) {
+                console.error("Error processing meal stub:", e);
+                toast({ variant: "destructive", title: "Error", description: "Could not process meal stub scan." });
+            } finally {
+                setTimeout(resetScanner, 3000);
+            }
+            return;
+        }
+    
+        // Fallback for other QR code types that are not mode-dependent
+        if (data.startsWith('ROOM_CHECKIN:')) {
+            const bookingId = data.split(':')[1];
+            toast({ title: 'Room Check-in Scanned', description: `Booking ID: ${bookingId}. (This feature is not yet fully implemented)` });
+            setTimeout(resetScanner, 2000);
+            return;
+        }
+    
+        // If it's a raw UID but no mode is selected, or a mode is selected that doesn't handle it
+        toast({ variant: 'destructive', title: 'Unknown Scan', description: 'Please select a scan mode (Attendance or Meal Stub) for this type of QR code.' });
+        setTimeout(resetScanner, 2000);
+    
+    }, [isProcessing, scanMode, workers, firestore, toast, resetScanner, logScanEvent]);
 
     const handleRecordAttendance = useCallback((type: 'Clock In' | 'Clock Out') => {
         if (!scannedWorker) return;
@@ -323,8 +331,14 @@ export default function QRScannerPage() {
                         </div>
                         <CardTitle className="font-headline text-2xl">Live Scan</CardTitle>
                         <CardDescription>
-                            Position a QR code in the frame to scan.
+                            Select a mode and position a QR code in the frame.
                         </CardDescription>
+                        <Tabs value={scanMode} onValueChange={(value) => setScanMode(value as any)} className="w-full max-w-xs mx-auto pt-4">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="Attendance">Attendance</TabsTrigger>
+                                <TabsTrigger value="Meal Stub">Meal Stub</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
                     </CardHeader>
                     <CardContent className="flex flex-grow items-center justify-center">
                         {scannedWorker ? (

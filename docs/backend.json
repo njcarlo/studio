@@ -110,10 +110,9 @@
         "workerId": { "type": "string" },
         "workerName": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Issued", "Claimed"] },
-        "qrValue": { "type": "string", "description": "The unique, randomized value for the QR code." }
+        "status": { "type": "string", "enum": ["Issued", "Claimed"] }
       },
-      "required": ["workerId", "date", "status", "qrValue"]
+      "required": ["workerId", "date", "status"]
     },
     "ScanLog": {
       "title": "Scan Log",

@@ -15,14 +15,6 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   Card,
   CardHeader,
   CardTitle,
@@ -31,47 +23,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw } from "lucide-react";
 import type { MealStub, Worker } from "@/lib/types";
-import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { format, isToday, subDays } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
-
-const MealStubDialog = ({ stub, worker, open, onOpenChange, onRegenerate }: { stub: MealStub | null, worker: Worker | null, open: boolean, onOpenChange: (open: boolean) => void, onRegenerate: (stubId: string) => void }) => {
-    if (!stub) return null;
-
-    const qrCodeUrl = stub.qrValue ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(stub.qrValue)}` : '';
-
-    const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="font-headline">Mealstub for {workerName}</DialogTitle>
-                    <DialogDescription>
-                        Scan this QR code to claim the meal. This is a single-use code.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="flex items-center justify-center p-4">
-                    {qrCodeUrl && <Image src={qrCodeUrl} alt="Mealstub QR Code" width={250} height={250} />}
-                </div>
-                 <div className="text-center">
-                    <p className="font-semibold">Meal Stub on {stub.date ? format(new Date((stub.date as any).seconds * 1000), 'PP') : ''}</p>
-                    <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
-                        {stub.status}
-                    </Badge>
-                </div>
-                {stub.status === 'Issued' && (
-                    <DialogFooter className="mt-4">
-                        <Button variant="outline" onClick={() => onRegenerate(stub.id)}>
-                            <RefreshCw className="mr-2 h-4 w-4" /> Regenerate Code
-                        </Button>
-                    </DialogFooter>
-                )}
-            </DialogContent>
-        </Dialog>
-    )
-}
 
 export default function MealsPage() {
   const firestore = useFirestore();
@@ -99,48 +54,33 @@ export default function MealsPage() {
     return collection(firestore, "workers");
   }, [firestore, user]);
   const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
-  
-  const [selectedStub, setSelectedStub] = useState<MealStub | null>(null);
-  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const isLoading = mealStubsLoading || workersLoading || isRoleLoading;
-
-  const generateQrValue = () => 'MSTUB_' + Math.random().toString(36).substring(2, 12);
-
-  const handleRegenerateQr = async (stubId: string) => {
-    if (!stubId) return;
-    const newQrValue = generateQrValue();
-    
-    const stubRef = doc(firestore, "mealstubs", stubId);
-    await updateDocumentNonBlocking(stubRef, { qrValue: newQrValue });
-
-    setSelectedStub(prev => prev ? { ...prev, qrValue: newQrValue } : null);
-
-    toast({
-      title: "QR Code Regenerated",
-      description: "A new QR code has been generated for this stub.",
-    });
-  };
-
-  const handleRowClick = (stub: MealStub) => {
-    setSelectedStub(stub);
-    const worker = workers?.find(w => w.id === stub.workerId) || null;
-    setSelectedWorker(worker);
-    setIsDialogOpen(true);
-  };
   
   const generateManualStub = () => {
       if (!user || !workerProfile) return;
+
+      const todaysStubs = mealStubs?.filter(s => s.workerId === user.uid && s.status === 'Issued' && isToday(new Date((s.date as any).seconds * 1000)));
+      if (todaysStubs && todaysStubs.length > 0) {
+          toast({
+              variant: "default",
+              title: "Stub Already Exists",
+              description: "You already have an issued meal stub for today.",
+          });
+          return;
+      }
       
       const newStub = {
           workerId: user.uid,
           workerName: `${workerProfile.firstName} ${workerProfile.lastName}`,
           date: serverTimestamp(),
-          status: 'Issued',
-          qrValue: generateQrValue(),
+          status: 'Issued' as 'Issued',
       };
       addDocumentNonBlocking(collection(firestore, "mealstubs"), newStub);
+       toast({
+        title: "Meal Stub Issued",
+        description: "A meal stub for today has been issued to your account.",
+      });
   };
 
   const claimedStubs = mealStubs?.filter(s => s.status === 'Claimed') || [];
@@ -188,7 +128,7 @@ export default function MealsPage() {
       )}
 
       <p className="text-muted-foreground">
-        Click on a row to view the QR code for the mealstub.
+        Your personal QR code on the <Link href="/attendance" className="underline text-primary">Attendance page</Link> can be used to claim meal stubs.
       </p>
       
       <div className="rounded-lg border shadow-sm mt-2">
@@ -213,7 +153,7 @@ export default function MealsPage() {
               const worker = workers.find(w => w.id === stub.workerId);
               const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
               return (
-              <TableRow key={stub.id} onClick={() => handleRowClick(stub)} className="cursor-pointer">
+              <TableRow key={stub.id}>
                 <TableCell className="font-medium">{workerName}</TableCell>
                 <TableCell>{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'PP') : ''}</TableCell>
                 <TableCell>Meal Stub</TableCell>
@@ -227,8 +167,6 @@ export default function MealsPage() {
           </TableBody>
         </Table>
       </div>
-
-      <MealStubDialog stub={selectedStub} worker={selectedWorker} open={isDialogOpen} onOpenChange={setIsDialogOpen} onRegenerate={handleRegenerateQr} />
     </AppLayout>
   );
 }
