@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -40,6 +41,7 @@ import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFi
 import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
@@ -193,84 +195,102 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
   );
 };
 
-const BookingsList = ({ bookings, rooms, workers }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined }) => {
+const DailyScheduleView = ({ bookings, rooms, workers, date }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined, date: Date }) => {
+    if (!date) return null;
+
     const getUserName = (userId: string) => {
         const user = workers?.find(w => w.id === userId);
         return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
     }
 
-    const bookingsByRoom = useMemo(() => {
-        const grouped = new Map<string, Booking[]>();
-        if (!bookings || !rooms) return grouped;
-
-        // Initialize map with all rooms to maintain order
-        for (const room of rooms) {
-            grouped.set(room.id, []);
-        }
-        
-        for (const booking of bookings) {
-            if (grouped.has(booking.roomId)) {
-                const roomBookings = grouped.get(booking.roomId)!;
-                roomBookings.push(booking);
-            }
-        }
-
-        // Sort bookings within each room
-        grouped.forEach((roomBookings) => {
-            roomBookings.sort((a, b) => {
-                const timeA = a.start ? (a.start as any).seconds : 0;
-                const timeB = b.start ? (b.start as any).seconds : 0;
-                return timeA - timeB;
-            });
-        });
-        
-        return grouped;
-
-    }, [bookings, rooms]);
-    
-    if (!bookings || bookings.length === 0) {
+    if (!bookings || bookings.length === 0 || !rooms) {
         return <p className="text-muted-foreground text-center py-8">No bookings for this day.</p>;
     }
 
+    const dayStartHour = 6;
+    const dayEndHour = 21;
+    const totalHours = dayEndHour - dayStartHour;
+
+    const timeToPosition = (time: Date) => {
+        const hours = time.getHours() + time.getMinutes() / 60;
+        const position = ((hours - dayStartHour) / totalHours) * 100;
+        return Math.max(0, position);
+    }
+
+    const durationToWidth = (start: Date, end: Date) => {
+        const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        return (durationHours / totalHours) * 100;
+    }
+
+    const timeSlots = Array.from({ length: totalHours }, (_, i) => dayStartHour + i);
+
     return (
-        <div className="space-y-6">
-            {rooms?.map(room => {
-                const roomBookings = bookingsByRoom.get(room.id);
-                if (!roomBookings || roomBookings.length === 0) return null;
-
-                return (
-                    <div key={room.id}>
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                           <MapPin className="h-4 w-4 text-muted-foreground"/> {room.name}
-                        </h4>
-                        <div className="space-y-3 border-l-2 pl-6 ml-2">
-                            {roomBookings.map(booking => {
-                                const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
-                                const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
-
-                                return (
-                                    <div key={booking.id} className="flex items-start space-x-4 relative">
-                                        <div className="absolute -left-[2.1rem] top-2 h-4 w-4 rounded-full bg-primary border-4 border-background" />
-                                        <div className="flex-grow">
-                                            <p className="font-semibold">{booking.title}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {format(bookingStart, 'p')} - {format(bookingEnd, 'p')}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                by {getUserName((booking as any).workerProfileId)}
-                                            </p>
-                                        </div>
-                                        <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{booking.status}</Badge>
-                                    </div>
-                                )
-                            })}
-                        </div>
+        <div className="space-y-4">
+            <div className="relative border-b pb-2">
+                 <div className="grid grid-cols-[6rem_1fr] gap-2">
+                    <div /> {/* Gutter for room names */}
+                    <div className="grid text-xs text-muted-foreground text-center" style={{ gridTemplateColumns: `repeat(${totalHours}, minmax(0, 1fr))` }}>
+                        {timeSlots.map(hour => (
+                            <div key={hour}>{hour % 12 || 12}{hour < 12 ? 'am' : 'pm'}</div>
+                        ))}
                     </div>
-                )
-            })}
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                {rooms.map(room => {
+                    const roomBookings = bookings.filter(b => b.roomId === room.id);
+                    if (roomBookings.length === 0) return null;
+
+                    return (
+                        <div key={room.id} className="grid grid-cols-[6rem_1fr] items-center gap-2">
+                            <div className="font-semibold text-sm truncate pr-2 text-right">{room.name}</div>
+                            <div className="relative h-16 bg-muted/50 rounded-lg">
+                                {/* Background grid lines */}
+                                {timeSlots.slice(1).map(hour => (
+                                    <div key={`line-${hour}`} className="absolute h-full border-l" style={{ left: `${((hour - dayStartHour) / totalHours) * 100}%` }} />
+                                ))}
+                                {roomBookings.map(booking => {
+                                    const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
+                                    const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
+                                    
+                                    const left = timeToPosition(bookingStart);
+                                    const width = durationToWidth(bookingStart, bookingEnd);
+                                    
+                                    const statusClass = booking.status === 'Approved' ? 'bg-green-500/80 border-green-700 hover:bg-green-500' :
+                                                        booking.status === 'Pending' ? 'bg-yellow-500/80 border-yellow-700 hover:bg-yellow-500' :
+                                                        'bg-red-500/80 border-red-700 hover:bg-red-500';
+
+                                    return (
+                                        <TooltipProvider key={booking.id}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div
+                                                        className={`absolute top-1 bottom-1 p-2 rounded-lg text-white overflow-hidden border transition-colors ${statusClass}`}
+                                                        style={{ left: `${left}%`, width: `${width}%`, minWidth: '20px' }}
+                                                    >
+                                                        <p className="text-xs font-bold truncate">{booking.title}</p>
+                                                        <p className="text-[10px] truncate opacity-80">{getUserName((booking as any).workerProfileId)}</p>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p className="font-bold">{booking.title}</p>
+                                                    <p>{format(bookingStart, 'p')} - {format(bookingEnd, 'p')}</p>
+                                                    <p>By: {getUserName((booking as any).workerProfileId)}</p>
+                                                    <p>Status: {booking.status}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
-    )
-};
+    );
+}
 
 const RoomScheduleList = ({ bookings, workers }: { bookings: Booking[], workers: Worker[] | undefined }) => {
     const getUserName = (userId: string) => {
@@ -518,8 +538,12 @@ export default function RoomsPage() {
                             </TabsList>
                             <TabsContent value="schedule" className="mt-4">
                                 <Card>
-                                    <CardContent className="pt-6">
-                                        <BookingsList bookings={dayBookings} rooms={rooms} workers={workers} />
+                                    <CardHeader>
+                                        <CardTitle className="font-headline">Daily Schedule</CardTitle>
+                                        <CardDescription>Visual timeline of all room bookings for the selected day.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="pt-2">
+                                        <DailyScheduleView bookings={dayBookings} rooms={rooms} workers={workers} date={selectedDate!} />
                                     </CardContent>
                                 </Card>
                             </TabsContent>
@@ -594,3 +618,4 @@ export default function RoomsPage() {
         </AppLayout>
     );
 }
+
