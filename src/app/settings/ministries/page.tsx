@@ -204,7 +204,7 @@ export default function MinistryManagementPage() {
             <div key={department}>
               <h2 className="text-xl font-headline font-semibold mb-4 border-b pb-2">{department}</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {departmentMinistries.map(ministry => {
+                {departmentMinistries.sort((a, b) => a.name.localeCompare(b.name)).map(ministry => {
                   const leader = getWorker(ministry.leaderId);
                   const members = workers?.filter(w => w.primaryMinistryId === ministry.id || w.secondaryMinistryId === ministry.id) || [];
 
