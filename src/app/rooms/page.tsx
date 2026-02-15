@@ -439,9 +439,9 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                         months: "w-full",
                         month: "w-full",
                         table: "w-full border-collapse",
-                        head_row: "", // Use table-row layout
+                        head_row: "grid grid-cols-7",
                         head_cell: "text-muted-foreground font-normal text-[0.8rem] border p-2 text-center",
-                        row: "", // Use table-row layout
+                        row: "grid grid-cols-7",
                         cell: "h-36 text-left text-sm p-0 relative border",
                         day: cn(
                             "h-full w-full p-0 font-normal flex flex-col items-start justify-start rounded-none focus:z-10"
