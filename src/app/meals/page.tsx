@@ -31,10 +31,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function MealsPage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { isSuperAdmin, workerProfile, isLoading: isRoleLoading } = useUserRole();
+  const { canManageMealStubs, workerProfile, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
-
-  const canManageMealStubs = isSuperAdmin;
 
   const mealStubsQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -50,12 +48,12 @@ export default function MealsPage() {
   const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsQuery);
   
   const workersRef = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !canManageMealStubs) return null;
     return collection(firestore, "workers");
-  }, [firestore, user]);
+  }, [firestore, user, canManageMealStubs]);
   const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
-  const isLoading = mealStubsLoading || workersLoading || isRoleLoading;
+  const isLoading = mealStubsLoading || (canManageMealStubs && workersLoading) || isRoleLoading;
   
   const generateManualStub = () => {
       if (!user || !workerProfile) return;
@@ -149,8 +147,8 @@ export default function MealsPage() {
                 </TableCell>
               </TableRow>
             )}
-            {mealStubs && workers && mealStubs.map((stub) => {
-              const worker = workers.find(w => w.id === stub.workerId);
+            {mealStubs && mealStubs.map((stub) => {
+              const worker = canManageMealStubs ? workers?.find(w => w.id === stub.workerId) : null;
               const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
               return (
               <TableRow key={stub.id}>

@@ -47,6 +47,7 @@ import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonB
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useImpersonation } from "@/hooks/use-impersonation";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: { worker: Partial<Worker> | null; roles: Role[]; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; canManage: boolean; }) => {
   const [formData, setFormData] = useState<Partial<Worker>>({
@@ -199,10 +200,8 @@ export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
-  const { workerProfile, isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+  const { workerProfile, canManageWorkers, isLoading: isRoleLoading } = useUserRole();
   const { startImpersonation } = useImpersonation();
-
-  const canManageUsers = isSuperAdmin;
 
   const workersRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -397,12 +396,29 @@ export default function WorkersPage() {
   const getRoleName = (roleId: string) => {
     return roles.find(r => r.id === roleId)?.name || roleId;
   }
+  
+  if (isLoading) {
+    return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+  }
+
+  if (!canManageWorkers) {
+    return (
+        <AppLayout>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>You do not have permission to view this page.</CardDescription>
+                </CardHeader>
+            </Card>
+        </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Worker Profiles</h1>
-        {canManageUsers && (
+        {canManageWorkers && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleOpenImport}>
                 <Upload className="mr-2 h-4 w-4" /> Import
@@ -414,7 +430,7 @@ export default function WorkersPage() {
         )}
       </div>
 
-      <div className="rounded-lg border shadow-sm">
+      <div className="rounded-lg border shadow-sm mt-4">
         <Table>
           <TableHeader>
             <TableRow>
@@ -423,7 +439,7 @@ export default function WorkersPage() {
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Contact</TableHead>
-              {canManageUsers && (
+              {canManageWorkers && (
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -465,7 +481,7 @@ export default function WorkersPage() {
                     <span className="text-muted-foreground">{worker.phone}</span>
                   </div>
                 </TableCell>
-                {canManageUsers && (
+                {canManageWorkers && (
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -502,7 +518,7 @@ export default function WorkersPage() {
             ministries={ministries} 
             onSave={handleSaveWorker} 
             onClose={() => setIsSheetOpen(false)}
-            canManage={canManageUsers}
+            canManage={canManageWorkers}
              />
         </SheetContent>
       </Sheet>

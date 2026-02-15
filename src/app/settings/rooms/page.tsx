@@ -514,7 +514,7 @@ const RoomsTab = ({ rooms, areas, branches, isLoading, onAdd, onEdit, onDelete, 
 
 export default function RoomManagementPage() {
     const firestore = useFirestore();
-    const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+    const { canManageRooms, isLoading: isRoleLoading } = useUserRole();
     const { toast } = useToast();
 
     // State for forms and dialogs
@@ -782,7 +782,7 @@ export default function RoomManagementPage() {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
     }
 
-    if (!isSuperAdmin) {
+    if (!canManageRooms) {
         return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You do not have permission to view this page.</CardDescription></CardHeader></Card></AppLayout>;
     }
 

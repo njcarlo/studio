@@ -18,7 +18,14 @@ import { useToast } from "@/hooks/use-toast";
 
 
 export default function SettingsPage() {
-    const { isSuperAdmin, isLoading, needsSeeding, workerProfile } = useUserRole();
+    const { 
+        isLoading, 
+        needsSeeding, 
+        workerProfile, 
+        canManageRoles, 
+        canManageMinistries, 
+        canManageRooms 
+    } = useUserRole();
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -33,11 +40,11 @@ export default function SettingsPage() {
             const batch = writeBatch(firestore);
             
             // 1. Roles
-            const rolesData = {
-                admin: { name: 'Admin' },
-                approver: { name: 'Approver' },
-                editor: { name: 'Editor' },
-                viewer: { name: 'Viewer' }
+            const rolesData: {[key: string]: { name: string, permissions: string[] }} = {
+                admin: { name: 'Admin', permissions: [] }, // Admin has implicit all access
+                approver: { name: 'Approver', permissions: ['manage_approvals'] },
+                editor: { name: 'Editor', permissions: ['manage_ministries', 'manage_rooms'] },
+                viewer: { name: 'Viewer', permissions: [] }
             };
             for (const [roleId, roleData] of Object.entries(rolesData)) {
                 batch.set(doc(firestore, 'roles', roleId), roleData);
@@ -63,7 +70,7 @@ export default function SettingsPage() {
         }
     };
 
-    const canAccess = isSuperAdmin || needsSeeding || (workerProfile && !workerProfile.roleId);
+    const canAccess = canManageRoles || canManageMinistries || canManageRooms || needsSeeding || (workerProfile && !workerProfile.roleId);
 
     if (isLoading) {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;

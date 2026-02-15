@@ -1,18 +1,24 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
 import { doc, collection } from 'firebase/firestore';
 import type { Worker, Role } from '@/lib/types';
 import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useImpersonation } from '@/hooks/use-impersonation';
 
 type UserRoleContextType = {
-  realUserRole: Role | null;
   isSuperAdmin: boolean;
   needsSeeding: boolean;
   isLoading: boolean;
   allRoles: Role[];
   workerProfile: Worker | null;
+  canManageWorkers: boolean;
+  canManageRoles: boolean;
+  canManageMinistries: boolean;
+  canManageRooms: boolean;
+  canManageApprovals: boolean;
+  canOperateScanner: boolean;
+  canManageMealStubs: boolean;
 };
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
@@ -40,6 +46,9 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   }, [firestore, idToFetch]);
   const { data: workerProfile, isLoading: isProfileLoading } = useDoc<Worker>(workerProfileRef);
 
+  const viewAsRoleRef = useMemoFirebase(() => workerProfile?.roleId ? doc(firestore, 'roles', workerProfile.roleId) : null, [firestore, workerProfile]);
+  const { data: viewAsUserRole, isLoading: isViewAsRoleLoading } = useDoc<Role>(viewAsRoleRef);
+
   // Check if the admin role exists to determine if seeding is needed.
   const adminRoleRef = useMemoFirebase(() => {
       return doc(firestore, 'roles', 'admin');
@@ -54,16 +63,27 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   }, [firestore, user]);
   const { data: allRoles, isLoading: areAllRolesLoading } = useCollection<Role>(rolesRef);
 
-  const isLoading = isUserLoading || isRealProfileLoading || isProfileLoading || areAllRolesLoading || isAdminRoleLoading;
+  const isLoading = isUserLoading || isRealProfileLoading || isProfileLoading || areAllRolesLoading || isAdminRoleLoading || isRealRoleLoading || isViewAsRoleLoading;
 
-  const value = {
-    realUserRole: realUserRole || null,
-    isSuperAdmin,
-    needsSeeding,
-    isLoading,
-    allRoles: allRoles || [],
-    workerProfile: workerProfile || null,
-  };
+  const value = useMemo(() => {
+    // For permission checks, we always use the REAL user's role, not the impersonated one.
+    // Impersonation is for viewing content, not for performing actions.
+    const permissions = realUserRole?.permissions || [];
+    return {
+      isSuperAdmin,
+      needsSeeding,
+      isLoading,
+      allRoles: allRoles || [],
+      workerProfile: workerProfile || null,
+      canManageWorkers: isSuperAdmin || permissions.includes('manage_workers'),
+      canManageRoles: isSuperAdmin || permissions.includes('manage_roles'),
+      canManageMinistries: isSuperAdmin || permissions.includes('manage_ministries'),
+      canManageRooms: isSuperAdmin || permissions.includes('manage_rooms'),
+      canManageApprovals: isSuperAdmin || permissions.includes('manage_approvals'),
+      canOperateScanner: isSuperAdmin || permissions.includes('operate_scanner'),
+      canManageMealStubs: isSuperAdmin || permissions.includes('manage_meal_stubs'),
+    };
+  }, [isSuperAdmin, needsSeeding, isLoading, allRoles, workerProfile, realUserRole]);
 
   return (
     <UserRoleContext.Provider value={value}>

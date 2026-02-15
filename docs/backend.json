@@ -24,7 +24,12 @@
       "type": "object",
       "description": "Defines a role within the system.",
       "properties": {
-        "name": { "type": "string" }
+        "name": { "type": "string" },
+        "permissions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of permission keys granted to this role."
+        }
       },
       "required": ["name"]
     },

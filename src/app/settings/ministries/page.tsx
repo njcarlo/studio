@@ -149,7 +149,7 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
 export default function MinistryManagementPage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+  const { canManageMinistries, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
 
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
@@ -287,11 +287,19 @@ export default function MinistryManagementPage() {
     })
   }
 
+  if (isLoading) {
+    return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+  }
+
+  if (!canManageMinistries) {
+    return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You do not have permission to view this page.</CardDescription></CardHeader></Card></AppLayout>;
+  }
+
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Ministry Management</h1>
-        {isSuperAdmin && (
+        {canManageMinistries && (
             <div className="flex gap-2">
                 <Button variant="outline" onClick={handleOpenImport}>
                     <Upload className="mr-2 h-4 w-4" /> Import
@@ -302,12 +310,6 @@ export default function MinistryManagementPage() {
             </div>
         )}
       </div>
-
-      {isLoading && (
-        <div className="flex justify-center py-10">
-          <LoaderCircle className="h-8 w-8 animate-spin" />
-        </div>
-      )}
 
       <div className="space-y-8 mt-4">
         {!isLoading && departments.map(department => {
@@ -337,7 +339,7 @@ export default function MinistryManagementPage() {
                                     <CardTitle className="text-lg">{ministry.name}</CardTitle>
                                 </div>
                             </div>
-                            {isSuperAdmin && (
+                            {canManageMinistries && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-8 w-8">

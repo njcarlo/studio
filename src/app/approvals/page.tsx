@@ -143,10 +143,8 @@ const KanbanColumn = ({ title, requests, onUpdateStatus, canManage, onCardClick 
 
 export default function ApprovalsPage() {
     const firestore = useFirestore();
-    const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+    const { canManageApprovals, isLoading: isRoleLoading } = useUserRole();
     const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
-
-    const canManageApprovals = isSuperAdmin;
 
     const approvalsRef = useMemoFirebase(() => {
         return collection(firestore, "approvals");
@@ -157,7 +155,7 @@ export default function ApprovalsPage() {
     const isLoading = isRoleLoading || approvalsLoading;
 
     const handleUpdateRequestStatus = (request: ApprovalRequest, status: 'Approved' | 'Rejected') => {
-        if (!request.id) return;
+        if (!canManageApprovals || !request.id) return;
         updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { status });
 
         // Handle side-effects on final approval/rejection
@@ -186,13 +184,13 @@ export default function ApprovalsPage() {
         );
     }
 
-    if (!canManageApprovals && requests?.filter(r => r.status === 'Pending').length === 0) {
+    if (!canManageApprovals) {
         return (
             <AppLayout>
                 <Card>
                     <CardHeader>
-                        <CardTitle>No Pending Approvals</CardTitle>
-                        <CardDescription>There are currently no items that require your approval.</CardDescription>
+                        <CardTitle>Access Denied</CardTitle>
+                        <CardDescription>You do not have permission to view this page.</CardDescription>
                     </CardHeader>
                 </Card>
             </AppLayout>

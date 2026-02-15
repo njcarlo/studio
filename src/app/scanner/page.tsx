@@ -31,9 +31,7 @@ export default function QRScannerPage() {
     
     const firestore = useFirestore();
     const { user } = useUser();
-    const { workerProfile, isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
-
-    const canOperateScanner = isSuperAdmin;
+    const { workerProfile, canOperateScanner, isLoading: isRoleLoading } = useUserRole();
 
     const workersRef = useMemoFirebase(() => {
         if (!user) return null;
@@ -109,7 +107,7 @@ export default function QRScannerPage() {
     }, []);
 
     const logScanEvent = useCallback(async (logData: Omit<ScanLog, 'id' | 'timestamp' | 'scannerId' | 'scannerName'>) => {
-        if (!workerProfile) return;
+        if (!workerProfile || !workerProfile.id) return;
         try {
             await addDocumentNonBlocking(collection(firestore, "scan_logs"), {
                 ...logData,
@@ -184,7 +182,7 @@ export default function QRScannerPage() {
     }, [isProcessing, scanMode, workers, firestore, toast, resetScanner, logScanEvent]);
 
     const handleRecordAttendance = useCallback((type: 'Clock In' | 'Clock Out') => {
-        if (!scannedWorker) return;
+        if (!scannedWorker || !scannedWorker.id) return;
         
         addDocumentNonBlocking(collection(firestore, "attendance_records"), {
             workerProfileId: scannedWorker.id,
