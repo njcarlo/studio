@@ -59,7 +59,7 @@ import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "fi
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DayContentProps, DayPicker } from "react-day-picker";
+import { DayContentProps, DayPicker, DayProps } from "react-day-picker";
 
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
@@ -398,7 +398,7 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
     
     function CustomDayContent(props: DayContentProps) {
         if (props.outside) {
-            return null;
+            return <div className="h-full w-full"></div>;
         }
         const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), props.date));
         
@@ -439,13 +439,12 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                         months: "w-full",
                         month: "w-full",
                         table: "w-full border-collapse",
-                        head_row: "grid grid-cols-7",
+                        head_row: "", // Use table-row layout
                         head_cell: "text-muted-foreground font-normal text-[0.8rem] border p-2 text-center",
-                        row: "grid grid-cols-7",
+                        row: "", // Use table-row layout
                         cell: "h-36 text-left text-sm p-0 relative border",
                         day: cn(
-                            buttonVariants({ variant: "ghost" }),
-                            "h-full w-full p-0 font-normal flex flex-col items-start justify-start rounded-none"
+                            "h-full w-full p-0 font-normal flex flex-col items-start justify-start rounded-none focus:z-10"
                         ),
                         day_selected: "bg-primary/10 text-primary",
                         day_today: "bg-accent/10 text-accent-foreground",
@@ -594,4 +593,3 @@ export default function RoomsPage() {
         </AppLayout>
     );
 }
-
