@@ -4,7 +4,6 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { doc, collection } from 'firebase/firestore';
 import type { Worker, Role } from '@/lib/types';
 import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
-import { getIdTokenResult } from 'firebase/auth';
 
 type UserRoleContextType = {
   realUserRole: Role | null;
@@ -21,25 +20,9 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isClaimLoading, setIsClaimLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      setIsClaimLoading(true);
-      // Force refresh the token to get the latest custom claims.
-      getIdTokenResult(user, true)
-        .then((idTokenResult) => {
-          const isAdmin = idTokenResult.claims.admin === true;
-          setIsSuperAdmin(isAdmin);
-        })
-        .catch(() => setIsSuperAdmin(false))
-        .finally(() => setIsClaimLoading(false));
-    } else {
-      setIsSuperAdmin(false);
-      setIsClaimLoading(false);
-    }
-  }, [user]);
+  // For development, we'll temporarily define the admin by email.
+  // This avoids the need for custom claims setup for now.
+  const isSuperAdmin = user?.email === 'admin@system.com';
 
   // Check if the admin role exists to determine if seeding is needed.
   const adminRoleRef = useMemoFirebase(() => {
@@ -73,7 +56,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
 
   const needsSeeding = !adminRole && !isAdminRoleLoading;
 
-  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || areAllRolesLoading || isAdminRoleLoading || isClaimLoading;
+  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || areAllRolesLoading || isAdminRoleLoading;
 
   const value = {
     realUserRole: realUserRole || null,
