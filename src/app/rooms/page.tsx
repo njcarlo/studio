@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -58,6 +59,7 @@ import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "fi
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DayContentProps, DayPicker } from "react-day-picker";
 
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
@@ -382,8 +384,6 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
     );
 };
 
-import { DayContentProps, DayPicker } from "react-day-picker";
-
 const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking[], onDateSelect: (date: Date) => void, selectedDate: Date }) => {
     
     const monthBookings = useMemo(() => {
@@ -397,31 +397,32 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
     }, [bookings, selectedDate]);
     
     function CustomDayContent(props: DayContentProps) {
+        if (props.outside) {
+            return null;
+        }
         const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), props.date));
         
         return (
              <div className="flex flex-col h-full items-start w-full p-1">
-                <div className={cn("self-end", isToday(props.date) && !props.outside && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center")}>
+                <div className={cn("self-end", isToday(props.date) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center")}>
                     {format(props.date, 'd')}
                 </div>
-                {!props.outside && (
-                    <div className="space-y-1 mt-1 overflow-hidden w-full">
-                        {dayBookings.slice(0, 3).map(booking => {
-                            const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
-                                                booking.status === 'Pending' ? 'bg-yellow-500' :
-                                                'bg-red-500';
-                            return (
-                                <div key={booking.id} className="flex items-center gap-1.5">
-                                    <div className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
-                                    <p className="text-xs truncate">{booking.title}</p>
-                                </div>
-                            )
-                        })}
-                        {dayBookings.length > 3 && (
-                            <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
-                        )}
-                    </div>
-                )}
+                <div className="space-y-1 mt-1 overflow-hidden w-full">
+                    {dayBookings.slice(0, 3).map(booking => {
+                        const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
+                                            booking.status === 'Pending' ? 'bg-yellow-500' :
+                                            'bg-red-500';
+                        return (
+                            <div key={booking.id} className="flex items-center gap-1.5">
+                                <div className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
+                                <p className="text-xs truncate">{booking.title}</p>
+                            </div>
+                        )
+                    })}
+                    {dayBookings.length > 3 && (
+                        <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
+                    )}
+                </div>
             </div>
         );
     }
@@ -438,15 +439,15 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                         months: "w-full",
                         month: "w-full",
                         table: "w-full border-collapse",
-                        head_row: "flex",
-                        head_cell: "text-muted-foreground rounded-md w-full font-normal text-[0.8rem] border p-2",
-                        row: "flex w-full mt-0",
-                        cell: "h-36 w-full text-left text-sm p-0 relative border",
+                        head_row: "grid grid-cols-7",
+                        head_cell: "text-muted-foreground font-normal text-[0.8rem] border p-2 text-center",
+                        row: "grid grid-cols-7",
+                        cell: "h-36 text-left text-sm p-0 relative border",
                         day: cn(
                             buttonVariants({ variant: "ghost" }),
                             "h-full w-full p-0 font-normal flex flex-col items-start justify-start rounded-none"
                         ),
-                        day_selected: "bg-primary/10 text-primary-foreground",
+                        day_selected: "bg-primary/10 text-primary",
                         day_today: "bg-accent/10 text-accent-foreground",
                         day_outside: "text-muted-foreground opacity-50",
                     }}
@@ -593,3 +594,4 @@ export default function RoomsPage() {
         </AppLayout>
     );
 }
+
