@@ -382,7 +382,7 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
     );
 };
 
-import { DayProps, DayPicker } from "react-day-picker";
+import { DayContentProps, DayPicker } from "react-day-picker";
 
 const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking[], onDateSelect: (date: Date) => void, selectedDate: Date }) => {
     
@@ -396,34 +396,17 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
         });
     }, [bookings, selectedDate]);
     
-    const CustomDay = ({ date, ...props }: DayProps) => {
-        // from day picker props, need to know if it's outside.
-        const isOutside = (props as any).modifiers.outside;
-
-        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-            return <div className="h-32 border-b border-r" />;
-        }
-        
-        const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
+    function CustomDayContent(props: DayContentProps) {
+        const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), props.date));
         
         return (
-            <div 
-                className={cn("h-32 p-1 relative flex flex-col border-b border-r", 
-                isToday(date) ? "bg-accent/10" : "",
-                isSameDay(date, selectedDate) ? "bg-primary/10" : "",
-                isOutside ? "bg-muted/50 text-muted-foreground opacity-50" : ""
-                )}
-            >
-                <button 
-                    onClick={() => onDateSelect(date)}
-                    className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 p-0 font-normal self-end", isToday(date) && !isOutside ? "text-primary font-bold" : "")}
-                    disabled={isOutside}
-                >
-                    {format(date, 'd')}
-                </button>
-                {!isOutside && (
-                    <div className="space-y-1 -mt-1 overflow-hidden">
-                        {dayBookings.slice(0, 2).map(booking => {
+             <div className="flex flex-col h-full items-start w-full p-1">
+                <div className={cn("self-end", isToday(props.date) && !props.outside && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center")}>
+                    {format(props.date, 'd')}
+                </div>
+                {!props.outside && (
+                    <div className="space-y-1 mt-1 overflow-hidden w-full">
+                        {dayBookings.slice(0, 3).map(booking => {
                             const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
                                                 booking.status === 'Pending' ? 'bg-yellow-500' :
                                                 'bg-red-500';
@@ -434,8 +417,8 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                                 </div>
                             )
                         })}
-                        {dayBookings.length > 2 && (
-                            <p className="text-xs text-muted-foreground">+{dayBookings.length - 2} more</p>
+                        {dayBookings.length > 3 && (
+                            <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
                         )}
                     </div>
                 )}
@@ -445,23 +428,30 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
     
     return (
         <Card>
-            <CardContent className="p-0 sm:p-4">
+            <CardContent className="p-0">
                 <Calendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={(day) => day && onDateSelect(day)}
                     className="p-0"
                     classNames={{
+                        months: "w-full",
                         month: "w-full",
-                        table: "w-full border-t border-l", // Container for weeks
-                        head_row: "grid grid-cols-7",
-                        head_cell: "text-muted-foreground text-sm font-normal p-2 text-center border-b border-r",
-                        row: "grid grid-cols-7", // A week
-                        cell: "p-0", // Container for a day, reset padding
-                        day_outside: "", // Handled in CustomDay
+                        table: "w-full border-collapse",
+                        head_row: "flex",
+                        head_cell: "text-muted-foreground rounded-md w-full font-normal text-[0.8rem] border p-2",
+                        row: "flex w-full mt-0",
+                        cell: "h-36 w-full text-left text-sm p-0 relative border",
+                        day: cn(
+                            buttonVariants({ variant: "ghost" }),
+                            "h-full w-full p-0 font-normal flex flex-col items-start justify-start rounded-none"
+                        ),
+                        day_selected: "bg-primary/10 text-primary-foreground",
+                        day_today: "bg-accent/10 text-accent-foreground",
+                        day_outside: "text-muted-foreground opacity-50",
                     }}
                     components={{
-                        Day: CustomDay,
+                        DayContent: CustomDayContent,
                     }}
                 />
             </CardContent>
@@ -603,5 +593,3 @@ export default function RoomsPage() {
         </AppLayout>
     );
 }
-
-    
