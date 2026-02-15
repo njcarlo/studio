@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Image from "next/image";
 import { collection, query, where } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -21,11 +21,20 @@ export default function AttendancePage() {
 
     const attendanceQuery = useMemoFirebase(() => {
         if (!user) return null;
-        const oneWeekAgo = subDays(new Date(), 7);
-        return query(collection(firestore, "attendance_records"), where('workerProfileId', '==', user.uid), where('time', '>=', oneWeekAgo));
+        return query(collection(firestore, "attendance_records"), where('workerProfileId', '==', user.uid));
     }, [firestore, user]);
 
-    const { data: attendanceLog, isLoading } = useCollection<any>(attendanceQuery);
+    const { data: allAttendance, isLoading } = useCollection<any>(attendanceQuery);
+
+    const attendanceLog = useMemo(() => {
+        if (!allAttendance) return [];
+        const oneWeekAgo = subDays(new Date(), 7);
+        return allAttendance.filter(log => {
+            if (!log.time?.seconds) return false;
+            const logDate = new Date(log.time.seconds * 1000);
+            return logDate >= oneWeekAgo;
+        });
+    }, [allAttendance]);
 
     const userQrCodeUrl = user ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(user.uid)}` : '';
 
@@ -61,8 +70,8 @@ export default function AttendancePage() {
                     <p className="text-center text-muted-foreground">No records for this week.</p>
                 )}
                 <div className="space-y-4">
-                    {attendanceLog && [...attendanceLog].sort((a,b) => (b.time?.seconds || 0) - (a.time?.seconds || 0)).map((log, index) => (
-                        <div key={index} className="flex items-center space-x-4 p-3 rounded-lg bg-secondary/50">
+                    {attendanceLog && [...attendanceLog].sort((a,b) => (b.time?.seconds || 0) - (a.time?.seconds || 0)).map((log) => (
+                        <div key={log.id} className="flex items-center space-x-4 p-3 rounded-lg bg-secondary/50">
                             <div className={`p-2 rounded-full ${log.type === 'Clock In' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
                                 {log.type === 'Clock In' ? <LogIn className="h-5 w-5"/> : <LogOut className="h-5 w-5"/>}
                             </div>
