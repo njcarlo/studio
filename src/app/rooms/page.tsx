@@ -399,25 +399,27 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
     
     const CustomDay = ({ date, ...props }: DayProps) => {
         if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-            return <td className="h-32 w-full border-t border-l" />;
+            return <td className="h-32 border-t border-l" />;
         }
         
         const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
         
         return (
             <td 
-                className={cn("h-32 w-full text-left p-1 relative flex flex-col border-t border-l", 
+                className={cn("h-32 p-1 align-top border-t border-l relative", 
                 isToday(date) ? "bg-accent/10" : "",
                 isSameDay(date, selectedDate) ? "bg-primary/10" : ""
                 )}
             >
-                 <button 
-                    onClick={() => onDateSelect(date)}
-                    className={cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal self-end", isToday(date) ? "text-primary font-bold" : "")}
-                 >
-                    {format(date, 'd')}
-                </button>
-                <div className="space-y-1 mt-1 overflow-hidden">
+                 <div className="text-right">
+                    <button 
+                        onClick={() => onDateSelect(date)}
+                        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 font-normal", isToday(date) ? "text-primary font-bold" : "")}
+                    >
+                        {format(date, 'd')}
+                    </button>
+                 </div>
+                <div className="space-y-1 -mt-2 overflow-hidden">
                     {dayBookings.slice(0, 2).map(booking => {
                         const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
                                             booking.status === 'Pending' ? 'bg-yellow-500' :
@@ -447,10 +449,10 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                     className="p-0"
                     classNames={{
                         month: "w-full space-y-0",
-                        table: "w-full border-collapse border",
-                        head_row: 'flex',
-                        head_cell: "w-full text-muted-foreground text-sm font-normal py-2 border-b",
-                        row: "flex w-full",
+                        table: "w-full border-collapse border table-fixed",
+                        head_row: 'border-b',
+                        head_cell: "text-muted-foreground text-sm font-normal p-2 text-center",
+                        row: "",
                         day_outside: "text-muted-foreground opacity-50 bg-muted/50",
                     }}
                     components={{
