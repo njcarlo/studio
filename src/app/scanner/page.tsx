@@ -28,12 +28,9 @@ export default function QRScannerPage() {
     
     const firestore = useFirestore();
     const { user } = useUser();
-    const { workerProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
+    const { workerProfile, isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
 
-    const canOperateScanner = useMemo(() => {
-        if (isRoleLoading || !realUserRole) return false;
-        return isSuperAdmin || !!realUserRole.privileges?.['operate_scanner'];
-    }, [isRoleLoading, realUserRole, isSuperAdmin]);
+    const canOperateScanner = isSuperAdmin;
 
     const workersRef = useMemoFirebase(() => {
         if (!user) return null;

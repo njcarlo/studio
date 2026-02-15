@@ -197,12 +197,9 @@ export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
-  const { workerProfile, isSuperAdmin, realUserRole, isLoading: isRoleLoading } = useUserRole();
+  const { workerProfile, isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
 
-  const canManageUsers = useMemo(() => {
-    if (isRoleLoading || !realUserRole) return false;
-    return isSuperAdmin || !!realUserRole.privileges?.['manage_users'];
-  }, [isRoleLoading, realUserRole, isSuperAdmin]);
+  const canManageUsers = isSuperAdmin;
 
   const workersRef = useMemoFirebase(() => {
     if (!user) return null;

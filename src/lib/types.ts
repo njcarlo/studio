@@ -1,7 +1,6 @@
 export type Role = {
   id: string;
   name: string;
-  privileges: { [key: string]: boolean };
 }
 
 export type Worker = {

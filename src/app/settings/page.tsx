@@ -23,12 +23,10 @@ import {
 } from "@/components/ui/table";
 import { LoaderCircle, Shield, AlertTriangle, PlusCircle, Trash2, Save, GanttChartSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from "@/lib/types";
-import { allPermissions, type Permission } from "@/lib/permissions";
 
 
 export default function SettingsPage() {
@@ -46,26 +44,9 @@ export default function SettingsPage() {
         }
     }, [allRoles]);
 
-    // Role Matrix Handlers
-    const handleRoleChange = (roleId: string, field: 'name' | 'privilege', value: any, privilegeKey?: Permission) => {
+    const handleRoleChange = (roleId: string, value: string) => {
         setEditableRoles(currentRoles =>
-            currentRoles.map(role => {
-                if (role.id === roleId) {
-                    if (field === 'name') {
-                        return { ...role, name: value };
-                    }
-                    if (field === 'privilege' && privilegeKey) {
-                        const newPrivileges = { ...role.privileges };
-                        if (value) {
-                            newPrivileges[privilegeKey] = true;
-                        } else {
-                            delete newPrivileges[privilegeKey];
-                        }
-                        return { ...role, privileges: newPrivileges };
-                    }
-                }
-                return role;
-            })
+            currentRoles.map(role => (role.id === roleId ? { ...role, name: value } : role))
         );
     };
 
@@ -107,7 +88,7 @@ export default function SettingsPage() {
 
     const handleAddRoleRow = () => {
         const newId = `new_${Date.now()}`;
-        setEditableRoles(currentRoles => [...currentRoles, { id: newId, name: '', privileges: {} }]);
+        setEditableRoles(currentRoles => [...currentRoles, { id: newId, name: '' }]);
     };
     
     // System Initializer
@@ -121,10 +102,10 @@ export default function SettingsPage() {
             
             // 1. Roles
             const rolesData = {
-                admin: { name: 'Admin', privileges: { 'manage_users': true, 'manage_roles': true, 'manage_content': true, 'manage_approvals': true, 'operate_scanner': true, 'manage_meal_stubs': true } },
-                approver: { name: 'Approver', privileges: { 'manage_approvals': true } },
-                editor: { name: 'Editor', privileges: { 'manage_content': true } },
-                viewer: { name: 'Viewer', privileges: {} }
+                admin: { name: 'Admin' },
+                approver: { name: 'Approver' },
+                editor: { name: 'Editor' },
+                viewer: { name: 'Viewer' }
             };
             for (const [roleId, roleData] of Object.entries(rolesData)) {
                 batch.set(doc(firestore, 'roles', roleId), roleData);
@@ -191,8 +172,8 @@ export default function SettingsPage() {
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
-                                    <CardTitle className="font-headline">Role & Permission Matrix</CardTitle>
-                                    <CardDescription>Add roles and assign privileges inline.</CardDescription>
+                                    <CardTitle className="font-headline">Role Management</CardTitle>
+                                    <CardDescription>Add, edit, or remove roles. Admin status is now managed via Custom Claims.</CardDescription>
                                 </div>
                                 <Button size="sm" onClick={handleAddRoleRow}><PlusCircle className="h-4 w-4 mr-2" />Add Role</Button>
                             </CardHeader>
@@ -200,36 +181,23 @@ export default function SettingsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[200px] sticky left-0 bg-card z-10 p-2">Role Name</TableHead>
-                                            {allPermissions.map(permission => (
-                                                <TableHead key={permission} className="p-2 text-center min-w-[110px]">
-                                                    <span className="capitalize text-xs font-medium">{permission.replace(/manage_|operate_/g, '').replace(/_/g, ' ')}</span>
-                                                </TableHead>
-                                            ))}
-                                            <TableHead className="w-[100px] sticky right-0 bg-card z-10 p-2 text-right">Actions</TableHead>
+                                            <TableHead>Role Name</TableHead>
+                                            <TableHead className="w-[100px] text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {editableRoles?.map(role => (
                                             <TableRow key={role.id}>
-                                                <TableCell className="p-2 font-medium sticky left-0 bg-card">
+                                                <TableCell className="p-2 font-medium">
                                                     <Input
                                                         value={role.name}
-                                                        onChange={e => handleRoleChange(role.id, 'name', e.target.value)}
+                                                        onChange={e => handleRoleChange(role.id, e.target.value)}
                                                         disabled={role.id === 'admin'}
                                                         placeholder="New Role Name"
-                                                        className="w-full h-9"
+                                                        className="w-full h-9 max-w-xs"
                                                     />
                                                 </TableCell>
-                                                {allPermissions.map(permission => (
-                                                    <TableCell key={`${role.id}-${permission}`} className="p-2 text-center">
-                                                        <Checkbox
-                                                            checked={!!role.privileges?.[permission]}
-                                                            onCheckedChange={(checked) => handleRoleChange(role.id, 'privilege', !!checked, permission)}
-                                                        />
-                                                    </TableCell>
-                                                ))}
-                                                <TableCell className="p-2 text-right sticky right-0 bg-card space-x-0">
+                                                <TableCell className="p-2 text-right space-x-0">
                                                     <Button variant="ghost" size="icon" onClick={() => handleSaveRole(role)}><Save className="h-4 w-4" /></Button>
                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRole(role.id)} disabled={role.id === 'admin'}><Trash2 className="h-4 w-4" /></Button>
                                                 </TableCell>

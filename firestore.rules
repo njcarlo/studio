@@ -2,34 +2,33 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // WORKERS: Users can read/write their OWN profile.
-    // Admin access to other profiles is disabled here to prevent recursive rule evaluation.
-    // The proper long-term solution is to use Firebase Custom Claims.
+    // WORKERS: Users can read/write their OWN profile. Admins can read/write/list ANY profile.
     match /workers/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      allow list: if request.auth.token.admin == true;
+      allow read, write: if request.auth.uid == userId || request.auth.token.admin == true;
     }
 
-    // ROLES: Publicly readable. Writes require the user to have the 'admin' roleId.
+    // ROLES: Any authenticated user can read roles. Admins can write.
     match /roles/{roleId} {
-      allow get, list: if true;
-      allow write: if get(/databases/$(database)/documents/workers/$(request.auth.uid)).data.roleId == 'admin';
+      allow get, list: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
     }
 
-    // APPROVALS: Access is granted if the user's role has the 'manage_approvals' privilege.
+    // APPROVALS: Admins can read/write.
     match /approvals/{approvalId} {
-      allow read, write: if get(/databases/$(database)/documents/roles/$(get(/databases/$(database)/documents/workers/$(request.auth.uid)).data.roleId)).data.privileges.manage_approvals == true;
+      allow read, write: if request.auth.token.admin == true;
     }
 
-    // MEALSTUBS: Users can create/read their own. Admins with privileges can update any stub.
+    // MEALSTUBS: Users can create/read their own. Admins can do anything.
     match /mealstubs/{stubId} {
       allow create: if request.auth.uid == request.resource.data.workerId;
-      allow read: if request.auth.uid == get(/databases/$(database)/documents/mealstubs/$(stubId)).data.workerId;
-      allow update: if get(/databases/$(database)/documents/roles/$(get(/databases/$(database)/documents/workers/$(request.auth.uid)).data.roleId)).data.privileges.manage_meal_stubs == true || get(/databases/$(database)/documents/roles/$(get(/databases/$(database)/documents/workers/$(request.auth.uid)).data.roleId)).data.privileges.operate_scanner == true;
+      allow read: if request.auth.uid == get(/databases/$(database)/documents/mealstubs/$(stubId)).data.workerId || request.auth.token.admin == true;
+      allow list, update: if request.auth.token.admin == true;
     }
 
-    // SCAN LOGS: Creation requires 'operate_scanner' privilege.
+    // SCAN LOGS: Admins can read/create.
     match /scan_logs/{logId} {
-      allow read, create: if get(/databases/$(database)/documents/roles/$(get(/databases/$(database)/documents/workers/$(request.auth.uid)).data.roleId)).data.privileges.operate_scanner == true;
+      allow read, create, list: if request.auth.token.admin == true;
     }
 
     // All other collections are readable/writable by any authenticated user for now.

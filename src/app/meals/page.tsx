@@ -76,13 +76,10 @@ const MealStubDialog = ({ stub, worker, open, onOpenChange, onRegenerate }: { st
 export default function MealsPage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { isSuperAdmin, workerProfile, realUserRole, isLoading: isRoleLoading } = useUserRole();
+  const { isSuperAdmin, workerProfile, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
 
-  const canManageMealStubs = useMemo(() => {
-    if (isRoleLoading || !realUserRole) return false;
-    return isSuperAdmin || !!realUserRole.privileges?.['manage_meal_stubs'];
-  }, [isRoleLoading, realUserRole, isSuperAdmin]);
+  const canManageMealStubs = isSuperAdmin;
 
   const mealStubsQuery = useMemoFirebase(() => {
     if (!user) return null;

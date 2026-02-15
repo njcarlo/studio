@@ -143,13 +143,10 @@ const KanbanColumn = ({ title, requests, onUpdateStatus, canManage, onCardClick 
 
 export default function ApprovalsPage() {
     const firestore = useFirestore();
-    const { isSuperAdmin, isLoading: isRoleLoading, realUserRole } = useUserRole();
+    const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
     const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
 
-    const canManageApprovals = useMemo(() => {
-        if (isRoleLoading || !realUserRole) return false;
-        return isSuperAdmin || !!realUserRole.privileges?.['manage_approvals'];
-    }, [isRoleLoading, realUserRole, isSuperAdmin]);
+    const canManageApprovals = isSuperAdmin;
 
     const approvalsRef = useMemoFirebase(() => {
         return collection(firestore, "approvals");

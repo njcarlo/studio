@@ -4,14 +4,13 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { doc, collection } from 'firebase/firestore';
 import type { Worker, Role } from '@/lib/types';
 import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { getIdTokenResult } from 'firebase/auth';
 
 type UserRoleContextType = {
   realUserRole: Role | null;
-  viewAsRole: Role | null;
   isSuperAdmin: boolean;
   needsSeeding: boolean;
   isLoading: boolean;
-  setViewAsRole: (role: Role) => void;
   allRoles: Role[];
   workerProfile: Worker | null;
 };
@@ -21,10 +20,29 @@ const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined
 export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isClaimLoading, setIsClaimLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      setIsClaimLoading(true);
+      // Force refresh the token to get the latest custom claims.
+      getIdTokenResult(user, true)
+        .then((idTokenResult) => {
+          const isAdmin = idTokenResult.claims.admin === true;
+          setIsSuperAdmin(isAdmin);
+        })
+        .catch(() => setIsSuperAdmin(false))
+        .finally(() => setIsClaimLoading(false));
+    } else {
+      setIsSuperAdmin(false);
+      setIsClaimLoading(false);
+    }
+  }, [user]);
 
   // Check if the admin role exists to determine if seeding is needed.
   const adminRoleRef = useMemoFirebase(() => {
-      // We check this even if user is not loaded, to handle initial state
       return doc(firestore, 'roles', 'admin');
   }, [firestore]);
   const { data: adminRole, isLoading: isAdminRoleLoading } = useDoc<Role>(adminRoleRef);
@@ -53,34 +71,15 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   }, [firestore, user]);
   const { data: allRoles, isLoading: areAllRolesLoading } = useCollection<Role>(rolesRef);
 
-  const isSuperAdmin = realUserRole?.id === 'admin';
   const needsSeeding = !adminRole && !isAdminRoleLoading;
 
-  // The role displayed in the UI. Defaults to the user's real role.
-  const [viewAsRole, setViewAsRoleState] = useState<Role | null>(null);
-
-  useEffect(() => {
-    // When the real role is loaded, set the viewAsRole to it.
-    if (realUserRole) {
-      setViewAsRoleState(realUserRole);
-    }
-  }, [realUserRole]);
-
-  const setViewAsRole = (role: Role) => {
-    if (isSuperAdmin) {
-        setViewAsRoleState(role);
-    }
-  };
-
-  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || areAllRolesLoading || isAdminRoleLoading;
+  const isLoading = isUserLoading || isProfileLoading || isRoleLoading || areAllRolesLoading || isAdminRoleLoading || isClaimLoading;
 
   const value = {
     realUserRole: realUserRole || null,
-    viewAsRole: viewAsRole || null,
     isSuperAdmin,
     needsSeeding,
     isLoading,
-    setViewAsRole,
     allRoles: allRoles || [],
     workerProfile: workerProfile || null,
   };

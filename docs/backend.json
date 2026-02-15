@@ -22,15 +22,11 @@
     "Role": {
       "title": "Role",
       "type": "object",
-      "description": "Defines a role with a set of privileges.",
+      "description": "Defines a role within the system.",
       "properties": {
-        "name": { "type": "string" },
-        "privileges": {
-          "type": "object",
-          "additionalProperties": { "type": "boolean" }
-        }
+        "name": { "type": "string" }
       },
-      "required": ["name", "privileges"]
+      "required": ["name"]
     },
     "Ministry": {
       "title": "Ministry",
