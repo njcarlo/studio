@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -53,7 +54,8 @@ const allNavItems: NavItem[] = [
     adminOnly: true,
     subItems: [
         { href: "/settings/roles", label: "Role Management" },
-        { href: "/settings/ministries", label: "Ministry Management" }
+        { href: "/settings/ministries", label: "Ministry Management" },
+        { href: "/settings/rooms", label: "Room Management" }
     ]
   },
 ];
@@ -143,3 +145,5 @@ export function Nav({
     </nav>
   );
 }
+
+    
