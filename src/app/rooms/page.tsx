@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -398,13 +399,13 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
     
     const CustomDay = ({ date, ...props }: DayProps) => {
         if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-            return <div className="h-32 w-full border-t border-l" />;
+            return <td className="h-32 w-full border-t border-l" />;
         }
         
         const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
         
         return (
-            <div 
+            <td 
                 className={cn("h-32 w-full text-left p-1 relative flex flex-col border-t border-l", 
                 isToday(date) ? "bg-accent/10" : "",
                 isSameDay(date, selectedDate) ? "bg-primary/10" : ""
@@ -432,7 +433,7 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                         <p className="text-xs text-muted-foreground">+{dayBookings.length - 2} more</p>
                     )}
                 </div>
-            </div>
+            </td>
         );
     }
     
@@ -450,8 +451,6 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                         head_row: 'flex',
                         head_cell: "w-full text-muted-foreground text-sm font-normal py-2 border-b",
                         row: "flex w-full",
-                        cell: 'w-full', // The CustomDay component will handle its own styling now.
-                        day: 'h-auto w-auto p-0', // Reset day styles
                         day_outside: "text-muted-foreground opacity-50 bg-muted/50",
                     }}
                     components={{
