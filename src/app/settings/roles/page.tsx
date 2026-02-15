@@ -30,18 +30,48 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-const ALL_PERMISSIONS = [
-  { id: 'manage_workers', label: 'Manage Workers', description: 'Can add, edit, import, and delete worker profiles.' },
-  { id: 'manage_roles', label: 'Manage Roles', description: 'Can create, edit, delete roles and assign permissions.' },
-  { id: 'manage_ministries', label: 'Manage Ministries', description: 'Can create, edit, import, and delete ministries.' },
-  { id: 'manage_facilities', label: 'Manage Facilities', description: 'Can manage rooms, areas, and branches.' },
-  { id: 'request_room_booking', label: 'Request Room Booking', description: 'Can submit requests to book rooms.' },
-  { id: 'manage_approvals', label: 'Manage Approvals', description: 'Can approve or reject all pending requests.' },
-  { id: 'operate_scanner', label: 'Operate Scanner', description: 'Can use the QR code scanner for attendance and meal stubs.' },
-  { id: 'view_attendance_log', label: 'View Own Attendance', description: 'Can access their personal attendance page and QR code.' },
-  { id: 'view_meal_stubs', label: 'View Own Meal Stubs', description: 'Can access their personal meal stubs page and generate stubs.' },
-  { id: 'manage_all_mealstubs', label: 'Manage All Meal Stubs', description: 'Can view all meal stub records and reports.' },
+const PERMISSION_CATEGORIES = [
+  {
+    category: 'General',
+    permissions: [
+      { id: 'manage_roles', label: 'Manage Roles', description: 'Can create, edit, delete roles and assign permissions.' },
+    ]
+  },
+  {
+    category: 'Workers',
+    permissions: [
+      { id: 'manage_workers', label: 'Manage Workers', description: 'Can add, edit, import, and delete worker profiles.' },
+    ]
+  },
+  {
+    category: 'Facilities',
+    permissions: [
+      { id: 'manage_facilities', label: 'Manage Facilities', description: 'Can manage rooms, areas, and branches.' },
+      { id: 'request_room_booking', label: 'Request Room Booking', description: 'Can submit requests to book rooms.' },
+    ]
+  },
+  {
+    category: 'Approvals',
+    permissions: [
+      { id: 'manage_approvals', label: 'Manage Approvals', description: 'Can approve or reject all pending requests.' },
+    ]
+  },
+  {
+    category: 'Scanner & Attendance',
+    permissions: [
+      { id: 'operate_scanner', label: 'Operate Scanner', description: 'Can use the QR code scanner for attendance and meal stubs.' },
+      { id: 'view_attendance_log', label: 'View Own Attendance', description: 'Can access their personal attendance page and QR code.' },
+    ]
+  },
+  {
+    category: 'Meal Stubs',
+    permissions: [
+      { id: 'view_meal_stubs', label: 'View Own Meal Stubs', description: 'Can access their personal meal stubs page and generate stubs.' },
+      { id: 'manage_all_mealstubs', label: 'Manage All Meal Stubs', description: 'Can view all meal stub records and reports.' },
+    ]
+  },
 ];
 
 
@@ -80,24 +110,33 @@ const RoleCard = ({ role, onUpdate, onDelete }: { role: Role, onUpdate: (role: R
             </CardHeader>
             <CardContent className="space-y-4">
                 <h4 className="font-medium text-sm">Permissions</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                    {ALL_PERMISSIONS.map(permission => (
-                         <div className="flex items-start space-x-2" key={permission.id}>
-                            <Checkbox
-                                id={`${role.id}-${permission.id}`}
-                                checked={isAdminRole || permissions.includes(permission.id)}
-                                onCheckedChange={(checked) => handlePermissionChange(permission.id, !!checked)}
-                                disabled={isAdminRole}
-                            />
-                            <div className="grid gap-1.5 leading-none">
-                                <Label htmlFor={`${role.id}-${permission.id}`} className="font-medium cursor-pointer">
-                                    {permission.label}
-                                </Label>
-                                <p className="text-xs text-muted-foreground">{permission.description}</p>
-                            </div>
-                        </div>
+                <Accordion type="multiple" className="w-full" defaultValue={PERMISSION_CATEGORIES.map(c => c.category)}>
+                    {PERMISSION_CATEGORIES.map(category => (
+                        <AccordionItem value={category.category} key={category.category}>
+                            <AccordionTrigger className="text-base font-semibold">{category.category}</AccordionTrigger>
+                            <AccordionContent className="pt-2 pl-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                {category.permissions.map(permission => (
+                                    <div className="flex items-start space-x-2" key={permission.id}>
+                                        <Checkbox
+                                            id={`${role.id}-${permission.id}`}
+                                            checked={isAdminRole || permissions.includes(permission.id)}
+                                            onCheckedChange={(checked) => handlePermissionChange(permission.id, !!checked)}
+                                            disabled={isAdminRole}
+                                        />
+                                        <div className="grid gap-1.5 leading-none">
+                                            <Label htmlFor={`${role.id}-${permission.id}`} className="font-medium cursor-pointer">
+                                                {permission.label}
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">{permission.description}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
                     ))}
-                </div>
+                </Accordion>
             </CardContent>
             {!isAdminRole && (
                  <CardFooter className="flex justify-end gap-2">
