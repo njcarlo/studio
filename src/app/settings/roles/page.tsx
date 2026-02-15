@@ -32,14 +32,18 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const ALL_PERMISSIONS = [
-  { id: 'manage_workers', label: 'Manage Workers', description: 'Can add, edit, and delete worker profiles.' },
+  { id: 'manage_workers', label: 'Manage Workers', description: 'Can add, edit, import, and delete worker profiles.' },
   { id: 'manage_roles', label: 'Manage Roles', description: 'Can create, edit, delete roles and assign permissions.' },
-  { id: 'manage_ministries', label: 'Manage Ministries', description: 'Can create, edit, and delete ministries.' },
-  { id: 'manage_rooms', label: 'Manage Facilities', description: 'Can manage rooms, areas, and branches.' },
-  { id: 'manage_approvals', label: 'Manage Approvals', description: 'Can approve or reject pending requests.' },
-  { id: 'operate_scanner', label: 'Operate Scanner', description: 'Can use the QR code scanner for attendance and meals.' },
-  { id: 'manage_meal_stubs', label: 'Manage Meal Stubs', description: 'Can view all meal stub records and reports.' },
+  { id: 'manage_ministries', label: 'Manage Ministries', description: 'Can create, edit, import, and delete ministries.' },
+  { id: 'manage_facilities', label: 'Manage Facilities', description: 'Can manage rooms, areas, and branches.' },
+  { id: 'request_room_booking', label: 'Request Room Booking', description: 'Can submit requests to book rooms.' },
+  { id: 'manage_approvals', label: 'Manage Approvals', description: 'Can approve or reject all pending requests.' },
+  { id: 'operate_scanner', label: 'Operate Scanner', description: 'Can use the QR code scanner for attendance and meal stubs.' },
+  { id: 'view_attendance_log', label: 'View Own Attendance', description: 'Can access their personal attendance page and QR code.' },
+  { id: 'view_meal_stubs', label: 'View Own Meal Stubs', description: 'Can access their personal meal stubs page and generate stubs.' },
+  { id: 'manage_all_mealstubs', label: 'Manage All Meal Stubs', description: 'Can view all meal stub records and reports.' },
 ];
+
 
 const RoleCard = ({ role, onUpdate, onDelete }: { role: Role, onUpdate: (role: Role) => void, onDelete: (roleId: string) => void }) => {
     const [name, setName] = useState(role.name);

@@ -14,17 +14,21 @@ import {
 import { LogIn, LogOut, LoaderCircle } from "lucide-react";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { format, subDays } from "date-fns";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export default function AttendancePage() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const { canViewAttendance, isLoading: isRoleLoading } = useUserRole();
 
     const attendanceQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, "attendance_records"), where('workerProfileId', '==', user.uid));
     }, [firestore, user]);
 
-    const { data: allAttendance, isLoading } = useCollection<any>(attendanceQuery);
+    const { data: allAttendance, isLoading: attendanceLoading } = useCollection<any>(attendanceQuery);
+    
+    const isLoading = attendanceLoading || isRoleLoading;
 
     const attendanceLog = useMemo(() => {
         if (!allAttendance) return [];
@@ -37,6 +41,27 @@ export default function AttendancePage() {
     }, [allAttendance]);
 
     const userQrCodeUrl = user ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(user.uid)}` : '';
+
+  if (isLoading) {
+      return (
+          <AppLayout>
+              <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
+          </AppLayout>
+      );
+  }
+
+  if (!canViewAttendance) {
+      return (
+          <AppLayout>
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Access Denied</CardTitle>
+                      <CardDescription>You do not have permission to view this page.</CardDescription>
+                  </CardHeader>
+              </Card>
+          </AppLayout>
+      );
+  }
 
   return (
     <AppLayout>

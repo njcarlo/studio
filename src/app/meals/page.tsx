@@ -18,7 +18,8 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardContent
+  CardContent,
+  CardDescription
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw } from "lucide-react";
@@ -31,29 +32,29 @@ import { useToast } from "@/hooks/use-toast";
 export default function MealsPage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { canManageMealStubs, workerProfile, isLoading: isRoleLoading } = useUserRole();
+  const { canViewMealStubs, canManageAllMealStubs, workerProfile, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
 
   const mealStubsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    if (canManageMealStubs) {
+    if (canManageAllMealStubs) {
         // For admins, fetch all stubs from the last 30 days to keep it manageable
         const thirtyDaysAgo = subDays(new Date(), 30);
         return query(collection(firestore, "mealstubs"), where('date', '>=', thirtyDaysAgo));
     }
     // For regular users, fetch their own stubs
     return query(collection(firestore, "mealstubs"), where('workerId', '==', user.uid));
-  }, [firestore, user, canManageMealStubs]);
+  }, [firestore, user, canManageAllMealStubs]);
 
   const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsQuery);
   
   const workersRef = useMemoFirebase(() => {
-    if (!user || !canManageMealStubs) return null;
+    if (!user || !canManageAllMealStubs) return null;
     return collection(firestore, "workers");
-  }, [firestore, user, canManageMealStubs]);
+  }, [firestore, user, canManageAllMealStubs]);
   const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
-  const isLoading = mealStubsLoading || (canManageMealStubs && workersLoading) || isRoleLoading;
+  const isLoading = mealStubsLoading || (canManageAllMealStubs && workersLoading) || isRoleLoading;
   
   const generateManualStub = () => {
       if (!user || !workerProfile) return;
@@ -89,6 +90,28 @@ export default function MealsPage() {
       return new Date((s.date as any).seconds * 1000) > sevenDaysAgo;
   }).length;
 
+  if (isLoading) {
+    return (
+        <AppLayout>
+            <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
+        </AppLayout>
+    );
+  }
+
+  if (!canViewMealStubs) {
+      return (
+          <AppLayout>
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Access Denied</CardTitle>
+                      <CardDescription>You do not have permission to view this page.</CardDescription>
+                  </CardHeader>
+              </Card>
+          </AppLayout>
+      );
+  }
+
+
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
@@ -100,7 +123,7 @@ export default function MealsPage() {
         </div>
       </div>
       
-      {canManageMealStubs && (
+      {canManageAllMealStubs && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 my-6">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -148,7 +171,7 @@ export default function MealsPage() {
               </TableRow>
             )}
             {mealStubs && mealStubs.map((stub) => {
-              const worker = canManageMealStubs ? workers?.find(w => w.id === stub.workerId) : null;
+              const worker = canManageAllMealStubs ? workers?.find(w => w.id === stub.workerId) : null;
               const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
               return (
               <TableRow key={stub.id}>

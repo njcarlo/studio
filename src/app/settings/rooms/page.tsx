@@ -514,7 +514,7 @@ const RoomsTab = ({ rooms, areas, branches, isLoading, onAdd, onEdit, onDelete, 
 
 export default function RoomManagementPage() {
     const firestore = useFirestore();
-    const { canManageRooms, isLoading: isRoleLoading } = useUserRole();
+    const { canManageFacilities, isLoading: isRoleLoading } = useUserRole();
     const { toast } = useToast();
 
     // State for forms and dialogs
@@ -782,16 +782,16 @@ export default function RoomManagementPage() {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
     }
 
-    if (!canManageRooms) {
+    if (!canManageFacilities) {
         return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You do not have permission to view this page.</CardDescription></CardHeader></Card></AppLayout>;
     }
 
     return (
         <AppLayout>
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-headline font-bold">Branches, Areas & Rooms</h1>
+                <h1 className="text-2xl font-headline font-bold">Facilities Management</h1>
             </div>
-            <p className="text-muted-foreground">Manage your organization's physical structure.</p>
+            <p className="text-muted-foreground">Manage your organization's physical structure: branches, areas, and rooms.</p>
 
             <Tabs defaultValue="rooms" className="mt-4">
                 <TabsList>

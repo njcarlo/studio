@@ -30,14 +30,14 @@ import { useUserRole, type UserRoleContextType } from "@/hooks/use-user-role";
 type NavSubItem = {
     href: string;
     label: string;
-    permissionKey?: keyof UserRoleContextType;
+    permissionKey?: keyof Omit<UserRoleContextType, 'isSuperAdmin' | 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'>;
 }
 
 type NavItem = {
   href: string;
   icon: React.ElementType;
   label: string;
-  permissionKey?: keyof UserRoleContextType;
+  permissionKey?: keyof Omit<UserRoleContextType, 'isSuperAdmin' | 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'>;
   subItems?: NavSubItem[];
 };
 
@@ -45,18 +45,17 @@ const allNavItems: NavItem[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/workers", icon: Users, label: "Workers", permissionKey: 'canManageWorkers' },
   { href: "/rooms", icon: Calendar, label: "Room Reservations" },
-  { href: "/attendance", icon: ScanLine, label: "Attendance" },
-  { href: "/meals", icon: Utensils, label: "Meal Stubs" },
+  { href: "/attendance", icon: ScanLine, label: "Attendance", permissionKey: 'canViewAttendance' },
+  { href: "/meals", icon: Utensils, label: "Meal Stubs", permissionKey: 'canViewMealStubs' },
   { href: "/approvals", icon: Vote, label: "Approvals", permissionKey: 'canManageApprovals' },
   { 
     href: "/settings", 
     icon: Cog, 
     label: "Settings",
-    permissionKey: 'canManageRoles', // A base permission to see the settings cog
     subItems: [
         { href: "/settings/roles", label: "Role Management", permissionKey: 'canManageRoles' },
         { href: "/settings/ministries", label: "Ministry Management", permissionKey: 'canManageMinistries' },
-        { href: "/settings/rooms", label: "Room Management", permissionKey: 'canManageRooms' }
+        { href: "/settings/rooms", label: "Facilities Management", permissionKey: 'canManageFacilities' }
     ]
   },
 ];
@@ -71,7 +70,7 @@ export function Nav({
   const userRole = useUserRole();
   const { isLoading, needsSeeding, workerProfile } = userRole;
 
-  const hasAccess = (key: keyof UserRoleContextType | undefined) => {
+  const hasAccess = (key: keyof Omit<UserRoleContextType, 'isSuperAdmin' | 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'> | undefined) => {
     if (!key) return true; // No permission required
     return userRole[key] === true;
   }
@@ -126,7 +125,7 @@ export function Nav({
                         </CollapsibleTrigger>
                         <CollapsibleContent asChild>
                             <SidebarMenu className="pl-6 pt-1 w-full">
-                                 {(hasAccess('canManageRoles') || hasAccess('canManageMinistries') || hasAccess('canManageRooms')) && (
+                                 {(hasAccess('canManageRoles') || hasAccess('canManageMinistries') || hasAccess('canManageFacilities')) && (
                                      <SidebarMenuItem>
                                         <SidebarMenuButton asChild size="sm" isActive={pathname === item.href}>
                                             <Link href={item.href}>

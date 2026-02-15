@@ -6,7 +6,7 @@ import type { Worker, Role } from '@/lib/types';
 import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { useImpersonation } from '@/hooks/use-impersonation';
 
-type UserRoleContextType = {
+export type UserRoleContextType = {
   isSuperAdmin: boolean;
   needsSeeding: boolean;
   isLoading: boolean;
@@ -15,10 +15,13 @@ type UserRoleContextType = {
   canManageWorkers: boolean;
   canManageRoles: boolean;
   canManageMinistries: boolean;
-  canManageRooms: boolean;
+  canManageFacilities: boolean;
+  canRequestRoomBooking: boolean;
   canManageApprovals: boolean;
   canOperateScanner: boolean;
-  canManageMealStubs: boolean;
+  canViewAttendance: boolean;
+  canViewMealStubs: boolean;
+  canManageAllMealStubs: boolean;
 };
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
@@ -78,10 +81,13 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       canManageWorkers: isSuperAdmin || permissions.includes('manage_workers'),
       canManageRoles: isSuperAdmin || permissions.includes('manage_roles'),
       canManageMinistries: isSuperAdmin || permissions.includes('manage_ministries'),
-      canManageRooms: isSuperAdmin || permissions.includes('manage_rooms'),
+      canManageFacilities: isSuperAdmin || permissions.includes('manage_facilities'),
+      canRequestRoomBooking: isSuperAdmin || permissions.includes('request_room_booking'),
       canManageApprovals: isSuperAdmin || permissions.includes('manage_approvals'),
       canOperateScanner: isSuperAdmin || permissions.includes('operate_scanner'),
-      canManageMealStubs: isSuperAdmin || permissions.includes('manage_meal_stubs'),
+      canViewAttendance: isSuperAdmin || permissions.includes('view_attendance_log'),
+      canViewMealStubs: isSuperAdmin || permissions.includes('view_meal_stubs'),
+      canManageAllMealStubs: isSuperAdmin || permissions.includes('manage_all_mealstubs'),
     };
   }, [isSuperAdmin, needsSeeding, isLoading, allRoles, workerProfile, realUserRole]);
 
