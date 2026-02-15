@@ -11,6 +11,7 @@ import {
   BookOpen,
   Vote,
   ChevronRight,
+  HeartHandshake,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -41,7 +42,6 @@ type NavItem = {
 const allNavItems: NavItem[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/workers", icon: Users, label: "Workers" },
-  { href: "/ministries", icon: BookOpen, label: "Ministries" },
   { href: "/rooms", icon: Calendar, label: "Room Reservations" },
   { href: "/attendance", icon: ScanLine, label: "Attendance" },
   { href: "/meals", icon: Utensils, label: "Meal Stubs" },
@@ -52,7 +52,8 @@ const allNavItems: NavItem[] = [
     label: "Settings", 
     adminOnly: true,
     subItems: [
-        { href: "/settings/roles", label: "Role Management" }
+        { href: "/settings/roles", label: "Role Management" },
+        { href: "/settings/ministries", label: "Ministry Management" }
     ]
   },
 ];
