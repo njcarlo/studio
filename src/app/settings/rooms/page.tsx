@@ -144,14 +144,14 @@ const BranchesTab = ({ branches, areas, isLoading, onAdd, onEdit, onDelete }: { 
 
 const AreaImportSheet = ({ branches, onImport, onClose }: { branches: Branch[]; onImport: (csvData: string) => void; onClose: () => void; }) => {
     const [csvData, setCsvData] = useState('');
-    const csvFormat = "name,branchId";
+    const csvFormat = "areaId,name,branchId";
 
     return (
         <>
             <SheetHeader>
                 <SheetTitle className="font-headline">Import Areas</SheetTitle>
                 <SheetDescription>
-                    Paste CSV data below to bulk-import areas. The first line must be a header row with `name` and `branchId`.
+                    Paste CSV data below to bulk-import areas. The first line must be a header row with `areaId`, `name`, and `branchId`.
                 </SheetDescription>
             </SheetHeader>
             <div className="py-4 space-y-4">
@@ -175,7 +175,7 @@ const AreaImportSheet = ({ branches, onImport, onClose }: { branches: Branch[]; 
                         id="csv-data"
                         value={csvData}
                         onChange={(e) => setCsvData(e.target.value)}
-                        placeholder={`name,branchId\nFirst Floor,branch_id_123\nBasement,branch_id_456`}
+                        placeholder={`areaId,name,branchId\nL1-Floor1,First Floor,branch_id_123`}
                         className="h-48 font-mono text-xs"
                     />
                 </div>
@@ -192,6 +192,7 @@ const AreaImportSheet = ({ branches, onImport, onClose }: { branches: Branch[]; 
 
 const AreaForm = ({ area, branches, onSave }: { area: Partial<Area> | null; branches: Branch[]; onSave: (data: Partial<Area>) => void; }) => {
     const [formData, setFormData] = useState<Partial<Area>>({
+        areaId: area?.areaId || '',
         name: area?.name || '',
         branchId: area?.branchId || ''
     });
@@ -202,6 +203,17 @@ const AreaForm = ({ area, branches, onSave }: { area: Partial<Area> | null; bran
                 <SheetTitle className="font-headline">{area ? 'Edit Area' : 'Add New Area'}</SheetTitle>
             </SheetHeader>
             <div className="py-4 space-y-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="area-id">Area ID</Label>
+                    <Input
+                        id="area-id"
+                        value={formData.areaId}
+                        onChange={e => setFormData({ ...formData, areaId: e.target.value })}
+                        placeholder="e.g., L1-Floor1"
+                        disabled={!!area}
+                    />
+                     { !area && <p className="text-xs text-muted-foreground">This unique ID cannot be changed later.</p> }
+                </div>
                 <div className="space-y-2">
                     <Label htmlFor="area-name">Area Name</Label>
                     <Input id="area-name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g., Second Floor" />
@@ -498,9 +510,11 @@ export default function RoomManagementPage() {
                 await updateDocumentNonBlocking(doc(firestore, 'areas', data.id), data);
                 toast({ title: 'Area Updated' });
             } else {
-                const newAreaId = `A-${100 + (areas?.length || 0)}`;
-                const dataToSave = { ...data, areaId: newAreaId };
-                await addDocumentNonBlocking(collection(firestore, 'areas'), dataToSave);
+                 if (!data.areaId || !data.name || !data.branchId) {
+                    toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill out Area ID, Name, and Branch.' });
+                    return;
+                }
+                await addDocumentNonBlocking(collection(firestore, 'areas'), data);
                 toast({ title: 'Area Added' });
             }
             setIsAreaSheetOpen(false);
@@ -531,19 +545,18 @@ export default function RoomManagementPage() {
                     const batch = writeBatch(firestore);
                     let invalidRowCount = 0;
 
-                    newAreas.forEach((newArea: any, index: number) => {
-                        if (!newArea.name || !newArea.branchId || !validBranchIds.has(newArea.branchId)) {
+                    newAreas.forEach((newArea: any) => {
+                        if (!newArea.areaId || !newArea.name || !newArea.branchId || !validBranchIds.has(newArea.branchId)) {
                             console.warn('Skipping invalid row:', newArea);
                             invalidRowCount++;
                             return;
                         }
 
                         const newDocRef = doc(collection(firestore, "areas"));
-                        const newAreaId = `A-${100 + (areas?.length || 0) + index}`;
                         batch.set(newDocRef, {
+                            areaId: newArea.areaId,
                             name: newArea.name,
                             branchId: newArea.branchId,
-                            areaId: newAreaId,
                         });
                     });
                     
@@ -551,7 +564,7 @@ export default function RoomManagementPage() {
                          toast({
                             variant: "destructive",
                             title: "Import Failed",
-                            description: `All ${invalidRowCount} rows were invalid. Please check that 'name' is provided and 'branchId' is valid.`,
+                            description: `All ${invalidRowCount} rows were invalid. Please check that 'areaId' and 'name' are provided and 'branchId' is valid.`,
                         });
                         return;
                     }
@@ -748,3 +761,6 @@ export default function RoomManagementPage() {
     
 
 
+
+
+    
