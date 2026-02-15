@@ -397,6 +397,10 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
     }, [bookings, selectedDate]);
     
     const CustomDay = ({ date, ...props }: DayProps) => {
+        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+            return <div className="h-32 w-full border-t border-l" />;
+        }
+        
         const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
         
         return (
@@ -593,4 +597,3 @@ export default function RoomsPage() {
         </AppLayout>
     );
 }
-
