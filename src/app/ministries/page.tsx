@@ -1,18 +1,79 @@
 "use client";
 
-import React from "react";
-import { collection } from "firebase/firestore";
+import React, { useState } from "react";
+import { collection, writeBatch, doc } from "firebase/firestore";
+import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { HeartHandshake, User as UserIcon, Users, LoaderCircle } from "lucide-react";
+import { HeartHandshake, User as UserIcon, Users, LoaderCircle, Upload } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import type { Ministry, Worker, Department } from "@/lib/types";
+import { useUserRole } from "@/hooks/use-user-role";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetClose
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => void; onClose: () => void; }) => {
+    const [csvData, setCsvData] = useState('');
+    const csvFormat = "name,department";
+
+    return (
+        <>
+            <SheetHeader>
+                <SheetTitle className="font-headline">Import Ministries</SheetTitle>
+                <SheetDescription>
+                    Paste CSV data below to bulk-import ministries. The first line must be a header row.
+                </SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="csv-format">Required CSV Format</Label>
+                    <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
+                    <p className="text-xs text-muted-foreground">
+                        `department` must be one of: Worship, Outreach, Relationship, Discipleship, Administration.
+                    </p>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="csv-data">CSV Data</Label>
+                    <Textarea 
+                        id="csv-data"
+                        value={csvData}
+                        onChange={(e) => setCsvData(e.target.value)}
+                        placeholder="Paste your CSV content here..."
+                        className="h-64 font-mono text-xs"
+                    />
+                </div>
+            </div>
+            <SheetFooter>
+                <SheetClose asChild>
+                    <Button type="button" variant="secondary">Cancel</Button>
+                </SheetClose>
+                <Button onClick={() => onImport(csvData)}>Process Import</Button>
+            </SheetFooter>
+        </>
+    )
+}
 
 export default function MinistriesPage() {
   const firestore = useFirestore();
   const { user } = useUser();
+  const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+  const { toast } = useToast();
+
+  const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
   
   const ministriesRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -28,14 +89,90 @@ export default function MinistriesPage() {
 
   const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
   
-  const isLoading = ministriesLoading || workersLoading;
+  const isLoading = ministriesLoading || workersLoading || isRoleLoading;
 
   const departments: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
+
+  const handleOpenImport = () => {
+    setIsImportSheetOpen(true);
+  }
+
+  const handleImportMinistries = (csvData: string) => {
+    Papa.parse(csvData, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+            const newMinistries = results.data;
+            if (newMinistries.length === 0) {
+                toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.'});
+                return;
+            }
+
+            const validDepartments = new Set(departments);
+
+            try {
+                const batch = writeBatch(firestore);
+                let invalidRowCount = 0;
+                
+                newMinistries.forEach((newMinistry: any) => {
+                    if (!newMinistry.name || !newMinistry.department || !validDepartments.has(newMinistry.department)) {
+                        console.warn('Skipping invalid row:', newMinistry);
+                        invalidRowCount++;
+                        return;
+                    }
+
+                    const newDocRef = doc(collection(firestore, "ministries"));
+                    batch.set(newDocRef, {
+                        name: newMinistry.name,
+                        department: newMinistry.department,
+                        description: '',
+                        leaderId: ''
+                    });
+                });
+
+                if (invalidRowCount === newMinistries.length) {
+                    toast({
+                        variant: "destructive",
+                        title: "Import Failed",
+                        description: `All ${invalidRowCount} rows were invalid. Please check the department names and ensure all ministries have a name.`,
+                    });
+                    return;
+                }
+
+                await batch.commit();
+
+                let description = `${newMinistries.length - invalidRowCount} ministries were imported.`;
+                if (invalidRowCount > 0) {
+                    description += ` ${invalidRowCount} rows were skipped due to invalid data.`
+                }
+
+                toast({
+                    title: "Import Successful",
+                    description: description
+                });
+                setIsImportSheetOpen(false);
+
+            } catch (error) {
+                 toast({
+                    variant: "destructive",
+                    title: "Import Failed",
+                    description: "An error occurred during the import. Check console for details.",
+                });
+                console.error("Import error:", error);
+            }
+        }
+    })
+  }
 
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Ministries</h1>
+        {isSuperAdmin && (
+            <Button variant="outline" onClick={handleOpenImport}>
+                <Upload className="mr-2 h-4 w-4" /> Import
+            </Button>
+        )}
       </div>
       
       {isLoading && (
@@ -128,6 +265,12 @@ export default function MinistriesPage() {
           );
         })}
       </div>
+
+       <Sheet open={isImportSheetOpen} onOpenChange={setIsImportSheetOpen}>
+        <SheetContent className="sm:max-w-lg">
+            <ImportSheet onImport={handleImportMinistries} onClose={() => setIsImportSheetOpen(false)} />
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
