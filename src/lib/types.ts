@@ -44,6 +44,12 @@ export type Room = {
     name: string;
     capacity: number;
     equipment: string[];
+    areaId: string;
+};
+
+export type Area = {
+    id: string;
+    name: string;
     branchId: string;
 };
 

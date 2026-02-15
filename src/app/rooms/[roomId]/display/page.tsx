@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { collection, doc, query, where, Timestamp } from 'firebase/firestore';
-import type { Room, Booking, Worker, Branch } from '@/lib/types';
+import type { Room, Booking, Worker, Branch, Area } from '@/lib/types';
 import { format, isToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, DoorOpen, VideoOff, LoaderCircle } from 'lucide-react';
@@ -33,6 +33,9 @@ export default function RoomDisplayPage() {
     const roomRef = useMemoFirebase(() => doc(firestore, 'rooms', roomId), [firestore, roomId]);
     const { data: room, isLoading: roomLoading } = useDoc<Room>(roomRef);
     
+    const areasRef = useMemoFirebase(() => collection(firestore, 'areas'), [firestore]);
+    const { data: areas, isLoading: areasLoading } = useCollection<Area>(areasRef);
+
     const branchesRef = useMemoFirebase(() => collection(firestore, 'branches'), [firestore]);
     const { data: branches, isLoading: branchesLoading } = useCollection<Branch>(branchesRef);
 
@@ -47,8 +50,10 @@ export default function RoomDisplayPage() {
         .filter(b => isToday(b.start))
         .sort((a, b) => a.start.getTime() - b.start.getTime()) || [];
 
-    const isLoading = roomLoading || bookingsLoading || workersLoading || branchesLoading;
-    const branch = branches?.find(l => l.id === room?.branchId);
+    const isLoading = roomLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
+    
+    const area = areas?.find(a => a.id === room?.areaId);
+    const branch = branches?.find(l => l.id === area?.branchId);
 
     if (isLoading) {
         return (
@@ -84,7 +89,7 @@ export default function RoomDisplayPage() {
             <header className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
                 <div>
                     <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-headline">{room.name}</h1>
-                    {branch && <p className="text-xl sm:text-2xl text-gray-300">{branch.name}</p>}
+                    {(branch || area) && <p className="text-xl sm:text-2xl text-gray-300">{branch?.name}{branch && area && ' / '}{area?.name}</p>}
                     <p className="text-lg sm:text-xl lg:text-2xl text-gray-400 flex items-center gap-2 mt-2">
                         <Calendar className="h-6 w-6" />
                         {format(new Date(), 'EEEE, MMMM do')}

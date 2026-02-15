@@ -49,17 +49,27 @@
       },
       "required": ["name"]
     },
+    "Area": {
+      "title": "Area",
+      "type": "object",
+      "description": "A specific area or floor within a Branch.",
+      "properties": {
+        "name": { "type": "string" },
+        "branchId": { "type": "string" }
+      },
+      "required": ["name", "branchId"]
+    },
     "Room": {
       "title": "Room",
       "type": "object",
-      "description": "A bookable room within a location.",
+      "description": "A bookable room within an area.",
       "properties": {
         "name": { "type": "string" },
         "capacity": { "type": "number" },
         "equipment": { "type": "array", "items": { "type": "string" } },
-        "branchId": { "type": "string" }
+        "areaId": { "type": "string" }
       },
-      "required": ["name", "capacity", "branchId"]
+      "required": ["name", "capacity", "areaId"]
     },
     "Reservation": {
       "title": "Reservation",
@@ -151,6 +161,10 @@
     "/branches/{branchId}": {
       "schema": { "$ref": "#/entities/Branch" },
       "description": "Stores branch information."
+    },
+    "/areas/{areaId}": {
+      "schema": { "$ref": "#/entities/Area" },
+      "description": "Stores area information."
     },
     "/rooms/{roomId}": {
       "schema": { "$ref": "#/entities/Room" },
