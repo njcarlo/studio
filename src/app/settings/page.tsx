@@ -1,9 +1,7 @@
-
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { writeBatch, doc, serverTimestamp, collection, query, orderBy } from "firebase/firestore";
-import Link from "next/link";
+import React from "react";
+import { writeBatch, doc, serverTimestamp } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,83 +11,17 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
-import { LoaderCircle, Shield, AlertTriangle, PlusCircle, Trash2, Save, GanttChartSquare } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from "@/firebase";
+import { LoaderCircle, AlertTriangle } from "lucide-react";
+import { useFirestore, useUser } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import type { Role } from "@/lib/types";
 
 
 export default function SettingsPage() {
-    const { isSuperAdmin, isLoading, needsSeeding, allRoles, workerProfile } = useUserRole();
+    const { isSuperAdmin, isLoading, needsSeeding, workerProfile } = useUserRole();
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-
-    // State for inline role editing
-    const [editableRoles, setEditableRoles] = useState<Role[]>([]);
-
-    useEffect(() => {
-        if (allRoles) {
-            setEditableRoles(allRoles.sort((a, b) => a.name.localeCompare(b.name)));
-        }
-    }, [allRoles]);
-
-    const handleRoleChange = (roleId: string, value: string) => {
-        setEditableRoles(currentRoles =>
-            currentRoles.map(role => (role.id === roleId ? { ...role, name: value } : role))
-        );
-    };
-
-    const handleSaveRole = async (roleData: Role) => {
-        const { id, ...data } = roleData;
-        if (!data.name) {
-            toast({ variant: 'destructive', title: 'Role name is required.' });
-            return;
-        }
-        try {
-            if (id.startsWith('new_')) {
-                await addDocumentNonBlocking(collection(firestore, "roles"), data);
-                toast({ title: "Role Added", description: `The "${data.name}" role has been created.` });
-            } else {
-                await updateDocumentNonBlocking(doc(firestore, "roles", id), data);
-                toast({ title: "Role Updated", description: `The "${data.name}" role has been saved.` });
-            }
-        } catch (error) {
-            toast({ variant: "destructive", title: "Save Failed", description: "Could not save the role." });
-        }
-    };
-
-    const handleDeleteRole = async (id: string) => {
-        if (id === 'admin') {
-            toast({ variant: 'destructive', title: 'Cannot Delete Admin Role' });
-            return;
-        }
-        if (id.startsWith('new_')) {
-            setEditableRoles(currentRoles => currentRoles.filter(r => r.id !== id));
-        } else {
-            try {
-                await deleteDocumentNonBlocking(doc(firestore, "roles", id));
-                toast({ title: "Role Deleted" });
-            } catch (error) {
-                toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete role." });
-            }
-        }
-    };
-
-    const handleAddRoleRow = () => {
-        const newId = `new_${Date.now()}`;
-        setEditableRoles(currentRoles => [...currentRoles, { id: newId, name: '' }]);
-    };
     
     // System Initializer
     const initializeSystem = async () => {
@@ -148,9 +80,9 @@ export default function SettingsPage() {
     return (
         <AppLayout>
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-headline font-bold">System Settings</h1>
+                <h1 className="text-2xl font-headline font-bold">General Settings</h1>
             </div>
-            <p className="text-muted-foreground">Manage core application settings and user roles.</p>
+            <p className="text-muted-foreground">Manage core application settings.</p>
 
             <div className="mt-4 space-y-6">
                  {needsSeeding && (
@@ -166,50 +98,15 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
                 )}
-                
-                {isSuperAdmin && (
-                    <>
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle className="font-headline">Role Management</CardTitle>
-                                    <CardDescription>Add, edit, or remove roles. Admin status is now managed via Custom Claims.</CardDescription>
-                                </div>
-                                <Button size="sm" onClick={handleAddRoleRow}><PlusCircle className="h-4 w-4 mr-2" />Add Role</Button>
-                            </CardHeader>
-                            <CardContent className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Role Name</TableHead>
-                                            <TableHead className="w-[100px] text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {editableRoles?.map(role => (
-                                            <TableRow key={role.id}>
-                                                <TableCell className="p-2 font-medium">
-                                                    <Input
-                                                        value={role.name}
-                                                        onChange={e => handleRoleChange(role.id, e.target.value)}
-                                                        disabled={role.id === 'admin'}
-                                                        placeholder="New Role Name"
-                                                        className="w-full h-9 max-w-xs"
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="p-2 text-right space-x-0">
-                                                    <Button variant="ghost" size="icon" onClick={() => handleSaveRole(role)}><Save className="h-4 w-4" /></Button>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteRole(role.id)} disabled={role.id === 'admin'}><Trash2 className="h-4 w-4" /></Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </>
-                )}
 
+                <Card>
+                    <CardHeader>
+                        <CardTitle>More Settings</CardTitle>
+                        <CardDescription>
+                            More general settings will be available here in the future.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
             </div>
         </AppLayout>
     );
