@@ -266,7 +266,7 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
                     <TableBody>
                         {isLoading && <TableRow><TableCell colSpan={5} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>}
                         {areas.map(area => {
-                            const roomCount = getRoomCount(area.id);
+                            const roomCount = getRoomCount(area.areaId || '');
                             return (
                                 <TableRow key={area.id}>
                                     <TableCell className="font-mono text-xs">{area.areaId}</TableCell>
@@ -381,7 +381,7 @@ const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | nul
     const groupedAreas = useMemo(() => {
         return branches.map(branch => ({
             branchName: branch.name,
-            areas: areas.filter(area => area.branchId === branch.id)
+            areas: areas.filter(area => area.branchId === branch.id && area.areaId)
         })).filter(group => group.areas.length > 0);
     }, [areas, branches]);
 
@@ -404,7 +404,7 @@ const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | nul
                                 <SelectGroup key={group.branchName}>
                                     <SelectLabel>{group.branchName}</SelectLabel>
                                     {group.areas.map(area => (
-                                        <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
+                                        <SelectItem key={area.id} value={area.areaId!}>{area.name}</SelectItem>
                                     ))}
                                 </SelectGroup>
                             ))}
@@ -442,8 +442,8 @@ const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | nul
 };
 
 const RoomsTab = ({ rooms, areas, branches, isLoading, onAdd, onEdit, onDelete, onImport }: { rooms: Room[], areas: Area[], branches: Branch[], isLoading: boolean, onAdd: () => void, onEdit: (room: Room) => void, onDelete: (room: Room) => void, onImport: () => void }) => {
-    const getAreaAndBranch = (areaId: string) => {
-        const area = areas.find(a => a.id === areaId);
+    const getAreaAndBranch = (areaIdValue: string) => {
+        const area = areas.find(a => a.areaId === areaIdValue);
         if (!area) return { areaName: 'N/A', branchName: 'N/A' };
         const branch = branches.find(b => b.id === area.branchId);
         return {
@@ -681,12 +681,7 @@ export default function RoomManagementPage() {
             return;
         }
 
-        const areaIdToDocIdMap = new Map<string, string>();
-        areas.forEach(area => {
-            if (area.areaId) {
-                areaIdToDocIdMap.set(area.areaId, area.id);
-            }
-        });
+        const validAreaIds = new Set(areas.map(a => a.areaId).filter(Boolean));
 
         Papa.parse(csvData, {
             header: true,
@@ -704,9 +699,9 @@ export default function RoomManagementPage() {
 
                     newRooms.forEach((newRoom: any) => {
                         const capacity = parseInt(newRoom.capacity, 10);
-                        const areaDocId = areaIdToDocIdMap.get(newRoom.areaId);
+                        const areaIdFromCsv = newRoom.areaId;
 
-                        if (!newRoom.name || !newRoom.areaId || !areaDocId || isNaN(capacity)) {
+                        if (!newRoom.name || !areaIdFromCsv || !validAreaIds.has(areaIdFromCsv) || isNaN(capacity)) {
                             console.warn('Skipping invalid row:', newRoom);
                             invalidRowCount++;
                             return;
@@ -717,7 +712,7 @@ export default function RoomManagementPage() {
                         const newDocRef = doc(collection(firestore, "rooms"));
                         batch.set(newDocRef, {
                             name: newRoom.name,
-                            areaId: areaDocId,
+                            areaId: areaIdFromCsv,
                             capacity: capacity,
                             equipment: equipment
                         });

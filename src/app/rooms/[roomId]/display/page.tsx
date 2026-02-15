@@ -52,7 +52,7 @@ export default function RoomDisplayPage() {
 
     const isLoading = roomLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
     
-    const area = areas?.find(a => a.id === room?.areaId);
+    const area = areas?.find(a => a.areaId === room?.areaId);
     const branch = branches?.find(l => l.id === area?.branchId);
 
     if (isLoading) {
