@@ -239,16 +239,16 @@ const BookingForm = ({ rooms, branches, areas, onSave, onClose }: { rooms: Room[
 
 const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined, date: Date }) => {
     if (!date) return null;
+    
+    if (!rooms || rooms.length === 0) {
+        return <p className="text-muted-foreground text-center py-8">No rooms match the current filter.</p>;
+    }
 
     const dayBookings = bookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
 
     const getUserName = (userId: string) => {
         const user = workers?.find(w => w.id === userId);
         return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
-    }
-
-    if (dayBookings.length === 0 || !rooms) {
-        return <p className="text-muted-foreground text-center py-8">No bookings for this day.</p>;
     }
 
     const dayStartHour = 6;
@@ -481,6 +481,7 @@ export default function RoomsPage() {
     
     const [view, setView] = useState('month'); // 'month', 'week', 'day'
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [scheduleFilter, setScheduleFilter] = useState('all');
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -530,6 +531,21 @@ export default function RoomsPage() {
     };
     
     const isLoading = roomsLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
+
+    const filteredRoomsForDayView = useMemo(() => {
+        if (view !== 'day' || !rooms || !bookings) return rooms || [];
+        
+        const dayBookings = bookings.filter(b => b.start && isSameDay((b.start as any).toDate(), currentDate));
+        const scheduledRoomIds = new Set(dayBookings.map(b => b.roomId));
+
+        if (scheduleFilter === 'scheduled') {
+            return rooms.filter(r => scheduledRoomIds.has(r.id));
+        }
+        if (scheduleFilter === 'available') {
+            return rooms.filter(r => !scheduledRoomIds.has(r.id));
+        }
+        return rooms; // 'all'
+    }, [view, rooms, bookings, currentDate, scheduleFilter]);
 
     const handlePrev = () => {
         if (view === 'day') setCurrentDate(subDays(currentDate, 1));
@@ -583,6 +599,22 @@ export default function RoomsPage() {
                 </div>
             </div>
 
+             {view === 'day' && (
+                <div className="flex justify-end items-center gap-2 mt-4">
+                     <Label htmlFor="schedule-filter" className="text-sm font-medium">Show rooms:</Label>
+                     <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
+                        <SelectTrigger id="schedule-filter" className="w-[180px]">
+                            <SelectValue placeholder="Filter rooms" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Rooms</SelectItem>
+                            <SelectItem value="scheduled">With Schedule</SelectItem>
+                            <SelectItem value="available">Without Schedule</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+
             <div className="mt-4">
                 {isLoading ? (
                     <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
@@ -590,7 +622,7 @@ export default function RoomsPage() {
                     <>
                         {view === 'month' && <MonthView bookings={bookings || []} onDateSelect={handleDateSelect} selectedDate={currentDate} />}
                         {view === 'week' && <WeekView bookings={bookings || []} rooms={rooms} workers={workers} date={currentDate} onDateSelect={handleDateSelect} />}
-                        {view === 'day' && <DayView bookings={bookings || []} rooms={rooms} workers={workers} date={currentDate} />}
+                        {view === 'day' && <DayView bookings={bookings || []} rooms={filteredRoomsForDayView} workers={workers} date={currentDate} />}
                     </>
                 )}
             </div>
