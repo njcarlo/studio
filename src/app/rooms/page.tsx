@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -383,7 +382,7 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
     );
 };
 
-import { DayProps } from "react-day-picker";
+import { DayProps, DayPicker } from "react-day-picker";
 
 const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking[], onDateSelect: (date: Date) => void, selectedDate: Date }) => {
     
@@ -398,44 +397,49 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
     }, [bookings, selectedDate]);
     
     const CustomDay = ({ date, ...props }: DayProps) => {
+        // from day picker props, need to know if it's outside.
+        const isOutside = (props as any).modifiers.outside;
+
         if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-            return <td className="h-32 border-t border-l" />;
+            return <div className="h-32 border-b border-r" />;
         }
         
         const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
         
         return (
-            <td 
-                className={cn("h-32 p-1 align-top border-t border-l relative", 
+            <div 
+                className={cn("h-32 p-1 relative flex flex-col border-b border-r", 
                 isToday(date) ? "bg-accent/10" : "",
-                isSameDay(date, selectedDate) ? "bg-primary/10" : ""
+                isSameDay(date, selectedDate) ? "bg-primary/10" : "",
+                isOutside ? "bg-muted/50 text-muted-foreground opacity-50" : ""
                 )}
             >
-                 <div className="text-right">
-                    <button 
-                        onClick={() => onDateSelect(date)}
-                        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 font-normal", isToday(date) ? "text-primary font-bold" : "")}
-                    >
-                        {format(date, 'd')}
-                    </button>
-                 </div>
-                <div className="space-y-1 -mt-2 overflow-hidden">
-                    {dayBookings.slice(0, 2).map(booking => {
-                        const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
-                                            booking.status === 'Pending' ? 'bg-yellow-500' :
-                                            'bg-red-500';
-                        return (
-                            <div key={booking.id} className="flex items-center gap-1.5">
-                                <div className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
-                                <p className="text-xs truncate">{booking.title}</p>
-                            </div>
-                        )
-                    })}
-                    {dayBookings.length > 2 && (
-                        <p className="text-xs text-muted-foreground">+{dayBookings.length - 2} more</p>
-                    )}
-                </div>
-            </td>
+                <button 
+                    onClick={() => onDateSelect(date)}
+                    className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 p-0 font-normal self-end", isToday(date) && !isOutside ? "text-primary font-bold" : "")}
+                    disabled={isOutside}
+                >
+                    {format(date, 'd')}
+                </button>
+                {!isOutside && (
+                    <div className="space-y-1 -mt-1 overflow-hidden">
+                        {dayBookings.slice(0, 2).map(booking => {
+                            const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
+                                                booking.status === 'Pending' ? 'bg-yellow-500' :
+                                                'bg-red-500';
+                            return (
+                                <div key={booking.id} className="flex items-center gap-1.5">
+                                    <div className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
+                                    <p className="text-xs truncate">{booking.title}</p>
+                                </div>
+                            )
+                        })}
+                        {dayBookings.length > 2 && (
+                            <p className="text-xs text-muted-foreground">+{dayBookings.length - 2} more</p>
+                        )}
+                    </div>
+                )}
+            </div>
         );
     }
     
@@ -448,12 +452,13 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                     onSelect={(day) => day && onDateSelect(day)}
                     className="p-0"
                     classNames={{
-                        month: "w-full space-y-0",
-                        table: "w-full border-collapse border table-fixed",
-                        head_row: 'border-b',
-                        head_cell: "text-muted-foreground text-sm font-normal p-2 text-center",
-                        row: "",
-                        day_outside: "text-muted-foreground opacity-50 bg-muted/50",
+                        month: "w-full",
+                        table: "w-full border-t border-l", // Container for weeks
+                        head_row: "grid grid-cols-7",
+                        head_cell: "text-muted-foreground text-sm font-normal p-2 text-center border-b border-r",
+                        row: "grid grid-cols-7", // A week
+                        cell: "p-0", // Container for a day, reset padding
+                        day_outside: "", // Handled in CustomDay
                     }}
                     components={{
                         Day: CustomDay,
@@ -598,3 +603,5 @@ export default function RoomsPage() {
         </AppLayout>
     );
 }
+
+    
