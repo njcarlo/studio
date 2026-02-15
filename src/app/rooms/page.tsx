@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PlusCircle, Users as UsersIcon, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin } from "lucide-react";
+import { PlusCircle, Users as UsersIcon, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -33,7 +33,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { 
+    format, 
+    addMonths, 
+    subMonths, 
+    addWeeks, 
+    subWeeks, 
+    addDays, 
+    subDays, 
+    startOfWeek, 
+    endOfWeek, 
+    eachDayOfInterval,
+    isSameDay,
+    isToday,
+    startOfMonth,
+    endOfMonth,
+    isWithinInterval
+} from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Booking, Room, Worker, Location } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -195,15 +211,17 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
   );
 };
 
-const DailyScheduleView = ({ bookings, rooms, workers, date }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined, date: Date }) => {
+const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined, date: Date }) => {
     if (!date) return null;
+
+    const dayBookings = bookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
 
     const getUserName = (userId: string) => {
         const user = workers?.find(w => w.id === userId);
         return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
     }
 
-    if (!bookings || bookings.length === 0 || !rooms) {
+    if (dayBookings.length === 0 || !rooms) {
         return <p className="text-muted-foreground text-center py-8">No bookings for this day.</p>;
     }
 
@@ -225,135 +243,208 @@ const DailyScheduleView = ({ bookings, rooms, workers, date }: { bookings: Booki
     const timeSlots = Array.from({ length: totalHours }, (_, i) => dayStartHour + i);
 
     return (
-        <div className="space-y-4">
-            <div className="relative border-b pb-2">
-                 <div className="grid grid-cols-[6rem_1fr] gap-2">
-                    <div /> {/* Gutter for room names */}
-                    <div className="grid text-xs text-muted-foreground text-center" style={{ gridTemplateColumns: `repeat(${totalHours}, minmax(0, 1fr))` }}>
-                        {timeSlots.map(hour => (
-                            <div key={hour}>{hour % 12 || 12}{hour < 12 ? 'am' : 'pm'}</div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                {rooms.map(room => {
-                    const roomBookings = bookings.filter(b => b.roomId === room.id);
-                    if (roomBookings.length === 0) return null;
-
-                    return (
-                        <div key={room.id} className="grid grid-cols-[6rem_1fr] items-center gap-2">
-                            <div className="font-semibold text-sm truncate pr-2 text-right">{room.name}</div>
-                            <div className="relative h-16 bg-muted/50 rounded-lg">
-                                {/* Background grid lines */}
-                                {timeSlots.slice(1).map(hour => (
-                                    <div key={`line-${hour}`} className="absolute h-full border-l" style={{ left: `${((hour - dayStartHour) / totalHours) * 100}%` }} />
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Daily Schedule</CardTitle>
+                <CardDescription>Visual timeline of all room bookings for the selected day.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-2 overflow-x-auto">
+                <div className="space-y-4 min-w-[800px]">
+                    <div className="relative border-b pb-2">
+                         <div className="grid grid-cols-[8rem_1fr] gap-2">
+                            <div /> {/* Gutter for room names */}
+                            <div className="grid text-xs text-muted-foreground text-center" style={{ gridTemplateColumns: `repeat(${totalHours}, minmax(0, 1fr))` }}>
+                                {timeSlots.map(hour => (
+                                    <div key={hour}>{hour % 12 || 12}{hour < 12 ? 'am' : 'pm'}</div>
                                 ))}
-                                {roomBookings.map(booking => {
-                                    const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
-                                    const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
-                                    
-                                    const left = timeToPosition(bookingStart);
-                                    const width = durationToWidth(bookingStart, bookingEnd);
-                                    
-                                    const statusClass = booking.status === 'Approved' ? 'bg-green-500/80 border-green-700 hover:bg-green-500' :
-                                                        booking.status === 'Pending' ? 'bg-yellow-500/80 border-yellow-700 hover:bg-yellow-500' :
-                                                        'bg-red-500/80 border-red-700 hover:bg-red-500';
-
-                                    return (
-                                        <TooltipProvider key={booking.id}>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <div
-                                                        className={`absolute top-1 bottom-1 p-2 rounded-lg text-white overflow-hidden border transition-colors ${statusClass}`}
-                                                        style={{ left: `${left}%`, width: `${width}%`, minWidth: '20px' }}
-                                                    >
-                                                        <p className="text-xs font-bold truncate">{booking.title}</p>
-                                                        <p className="text-[10px] truncate opacity-80">{getUserName((booking as any).workerProfileId)}</p>
-                                                    </div>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p className="font-bold">{booking.title}</p>
-                                                    <p>{format(bookingStart, 'p')} - {format(bookingEnd, 'p')}</p>
-                                                    <p>By: {getUserName((booking as any).workerProfileId)}</p>
-                                                    <p>Status: {booking.status}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    );
-                                })}
                             </div>
                         </div>
-                    );
-                })}
-            </div>
-        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        {rooms.map(room => {
+                            const roomBookings = dayBookings.filter(b => b.roomId === room.id);
+                            
+                            return (
+                                <div key={room.id} className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                    <div className="font-semibold text-sm truncate pr-2 text-right">{room.name}</div>
+                                    <div className="relative h-16 bg-muted/50 rounded-lg">
+                                        {/* Background grid lines */}
+                                        {timeSlots.slice(1).map(hour => (
+                                            <div key={`line-${hour}`} className="absolute h-full border-l" style={{ left: `${((hour - dayStartHour) / totalHours) * 100}%` }} />
+                                        ))}
+                                        {roomBookings.map(booking => {
+                                            const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
+                                            const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
+                                            
+                                            const left = timeToPosition(bookingStart);
+                                            const width = durationToWidth(bookingStart, bookingEnd);
+                                            
+                                            const statusClass = booking.status === 'Approved' ? 'bg-green-500/80 border-green-700 hover:bg-green-500' :
+                                                                booking.status === 'Pending' ? 'bg-yellow-500/80 border-yellow-700 hover:bg-yellow-500' :
+                                                                'bg-red-500/80 border-red-700 hover:bg-red-500';
+
+                                            return (
+                                                <TooltipProvider key={booking.id}>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div
+                                                                className={`absolute top-1 bottom-1 p-2 rounded-lg text-white overflow-hidden border transition-colors ${statusClass}`}
+                                                                style={{ left: `${left}%`, width: `${width}%`, minWidth: '20px' }}
+                                                            >
+                                                                <p className="text-xs font-bold truncate">{booking.title}</p>
+                                                                <p className="text-[10px] truncate opacity-80">{getUserName((booking as any).workerProfileId)}</p>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p className="font-bold">{booking.title}</p>
+                                                            <p>{format(bookingStart, 'p')} - {format(bookingEnd, 'p')}</p>
+                                                            <p>By: {getUserName((booking as any).workerProfileId)}</p>
+                                                            <p>Status: {booking.status}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 
-const RoomScheduleList = ({ bookings, workers }: { bookings: Booking[], workers: Worker[] | undefined }) => {
-    const getUserName = (userId: string) => {
-        const user = workers?.find(w => w.id === userId);
-        return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
-    };
+const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: Booking[], rooms?: Room[], workers?: Worker[], date: Date, onDateSelect: (date: Date) => void }) => {
+    const start = startOfWeek(date);
+    const end = endOfWeek(date);
+    const weekDates = eachDayOfInterval({ start, end });
 
-    const bookingsByDate = useMemo(() => {
-        const grouped = new Map<string, Booking[]>();
-        bookings.forEach(booking => {
-            if (!booking.start) return;
-            const dateKey = format((booking.start as any).toDate(), 'yyyy-MM-dd');
-            const dayBookings = grouped.get(dateKey) || [];
-            dayBookings.push(booking);
-            grouped.set(dateKey, dayBookings);
-        });
-        return grouped;
-    }, [bookings]);
+    const weekBookings = useMemo(() => bookings.filter(b => {
+        if (!b.start) return false;
+        const bookingDate = (b.start as any).toDate();
+        return isWithinInterval(bookingDate, { start, end });
+    }), [bookings, start, end]);
 
-    const sortedDates = useMemo(() => Array.from(bookingsByDate.keys()).sort(), [bookingsByDate]);
-
-    if (bookings.length === 0) {
-        return <p className="text-muted-foreground text-center py-8">No upcoming bookings for this room.</p>;
-    }
+    const getRoomName = (roomId: string) => rooms?.find(r => r.id === roomId)?.name || 'Unknown Room';
 
     return (
-        <div className="space-y-6">
-            {sortedDates.map(date => {
-                const dayBookings = bookingsByDate.get(date)!;
-                return (
-                    <div key={date}>
-                        <h4 className="font-semibold mb-3 flex items-center gap-2 text-lg">
-                           {format(new Date(date + 'T00:00:00'), 'eeee, MMMM d')}
-                        </h4>
-                        <div className="space-y-3 border-l-2 pl-6 ml-2">
-                            {dayBookings.map(booking => {
-                                const bookingStart = (booking.start as any).toDate();
-                                const bookingEnd = (booking.end as any).toDate();
-
-                                return (
-                                    <div key={booking.id} className="flex items-start space-x-4 relative">
-                                        <div className="absolute -left-[2.1rem] top-2 h-4 w-4 rounded-full bg-primary border-4 border-background" />
-                                        <div className="flex-grow">
-                                            <p className="font-semibold">{booking.title}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {format(bookingStart, 'p')} - {format(bookingEnd, 'p')}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                by {getUserName((booking as any).workerProfileId)}
-                                            </p>
-                                        </div>
-                                        <Badge variant={booking.status === 'Approved' ? 'default' : 'secondary'} className={`ml-auto ${booking.status === 'Approved' ? 'bg-green-100 text-green-800' : booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{booking.status}</Badge>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </div>
-                )
-            })}
-        </div>
-    )
+        <Card>
+            <CardContent className="p-2 sm:p-4">
+                <div className="grid grid-cols-7 divide-x border rounded-lg overflow-hidden">
+                    {weekDates.map(day => {
+                        const dayBookings = weekBookings
+                            .filter(b => b.start && isSameDay((b.start as any).toDate(), day))
+                            .sort((a,b) => (a.start as any).seconds - (b.start as any).seconds);
+                        
+                        return (
+                            <div key={day.toString()} className="flex flex-col min-h-64">
+                                <div className={cn("text-center p-2 border-b font-semibold", isToday(day) && "bg-primary/10 text-primary")}>
+                                    <button onClick={() => onDateSelect(day)}>
+                                        <p className="text-sm">{format(day, 'EEE')}</p>
+                                        <p className="text-2xl">{format(day, 'd')}</p>
+                                    </button>
+                                </div>
+                                <div className="p-2 space-y-2 flex-grow">
+                                    {dayBookings.map(booking => {
+                                        const statusColor = booking.status === 'Approved' ? 'bg-green-100 border-green-300' :
+                                                            booking.status === 'Pending' ? 'bg-yellow-100 border-yellow-300' :
+                                                            'bg-red-100 border-red-300';
+                                        return (
+                                            <TooltipProvider key={booking.id}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className={cn("p-1.5 rounded-md border", statusColor)}>
+                                                            <p className="text-xs font-bold truncate">{booking.title}</p>
+                                                            <p className="text-[10px] text-muted-foreground truncate">{getRoomName(booking.roomId)}</p>
+                                                            <p className="text-[10px] text-muted-foreground truncate">{format((booking.start as any).toDate(), 'p')}</p>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p className="font-bold">{booking.title}</p>
+                                                        <p>Room: {getRoomName(booking.roomId)}</p>
+                                                        <p>{format((booking.start as any).toDate(), 'p')} - {format((booking.end as any).toDate(), 'p')}</p>
+                                                        <p>Status: {booking.status}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </CardContent>
+        </Card>
+    );
 };
 
+const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking[], onDateSelect: (date: Date) => void, selectedDate: Date }) => {
+    
+    const monthBookings = useMemo(() => {
+        const start = startOfMonth(selectedDate);
+        const end = endOfMonth(selectedDate);
+        return bookings.filter(b => {
+            if (!b.start) return false;
+            const bookingDate = (b.start as any).toDate();
+            return isWithinInterval(bookingDate, { start, end });
+        });
+    }, [bookings, selectedDate]);
+    
+    return (
+        <Card>
+            <CardContent className="p-0 sm:p-4">
+                <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(day) => day && onDateSelect(day)}
+                    className="p-0"
+                    classNames={{
+                        months: "p-0",
+                        month: "space-y-0",
+                        table: "w-full border-collapse",
+                        head_row: "flex border-b",
+                        head_cell: "w-full text-muted-foreground text-sm font-normal py-2",
+                        row: "flex w-full border-b",
+                        cell: "h-32 w-full text-left p-1 relative flex flex-col",
+                        day: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal absolute top-1 right-1"),
+                        day_today: "bg-accent text-accent-foreground",
+                        day_selected: "bg-primary text-primary-foreground",
+                    }}
+                    components={{
+                        DayContent: ({ date }) => {
+                            const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
+                            return (
+                                <div className="w-full h-full overflow-hidden">
+                                    <span className={cn("text-sm", isToday(date) && "font-bold text-primary")}>{format(date, 'd')}</span>
+                                    <div className="space-y-1 mt-1">
+                                        {dayBookings.slice(0, 3).map(booking => {
+                                            const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
+                                                                booking.status === 'Pending' ? 'bg-yellow-500' :
+                                                                'bg-red-500';
+                                            return (
+                                                <div key={booking.id} className="flex items-center gap-1.5">
+                                                    <div className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
+                                                    <p className="text-xs truncate">{booking.title}</p>
+                                                </div>
+                                            )
+                                        })}
+                                        {dayBookings.length > 3 && (
+                                            <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        }
+                    }}
+                />
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function RoomsPage() {
     const { isSuperAdmin, workerProfile } = useUserRole();
@@ -361,52 +452,28 @@ export default function RoomsPage() {
     const { user } = useUser();
     const { toast } = useToast();
     
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState("schedule");
-    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+    const [view, setView] = useState('month'); // 'month', 'week', 'day'
+    const [currentDate, setCurrentDate] = useState(new Date());
 
-    const roomsRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, "rooms");
-    }, [firestore, user]);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+    const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
-    const locationsRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, "locations");
-    }, [firestore, user]);
-    const { data: locations, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
-    
-    const workersRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, 'workers');
-    }, [firestore, user]);
+    const workersRef = useMemoFirebase(() => collection(firestore, 'workers'), [firestore]);
     const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
-    const reservationsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return collectionGroup(firestore, 'reservations');
-    }, [firestore, user]);
+    const reservationsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
     const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(reservationsQuery);
-
 
     const handleSaveBooking = async (bookingData: any): Promise<boolean> => {
         if (!bookingData.roomId || !workerProfile) {
-            toast({
-                variant: "destructive",
-                title: "Cannot save booking",
-                description: "Worker profile not loaded or room not selected.",
-            });
+            toast({ variant: "destructive", title: "Cannot save booking", description: "Worker profile not loaded or room not selected." });
             return false;
         }
     
         try {
-            const reservationRef = await addDocumentNonBlocking(
-                collection(firestore, 'rooms', bookingData.roomId, 'reservations'), 
-                bookingData
-            );
-    
+            const reservationRef = await addDocumentNonBlocking(collection(firestore, 'rooms', bookingData.roomId, 'reservations'), bookingData);
             if (reservationRef?.id) {
                 await addDocumentNonBlocking(collection(firestore, 'approvals'), {
                     requester: `${workerProfile.firstName} ${workerProfile.lastName}` || 'Unknown User',
@@ -418,185 +485,80 @@ export default function RoomsPage() {
                     reservationId: reservationRef.id,
                     workerId: workerProfile.id
                 });
-    
-                toast({
-                    title: 'Booking Request Submitted',
-                    description: 'Your request has been sent for approval.',
-                });
+                toast({ title: 'Booking Request Submitted', description: 'Your request has been sent for approval.' });
                 return true;
             }
-            toast({
-                variant: "destructive",
-                title: "Request Failed",
-                description: "Could not create reservation reference.",
-            });
+            toast({ variant: "destructive", title: "Request Failed", description: "Could not create reservation reference." });
             return false;
-
         } catch (error) {
-             toast({
-                variant: "destructive",
-                title: "Request Failed",
-                description: "Could not submit booking request. A permission error might have occurred.",
-            });
+             toast({ variant: "destructive", title: "Request Failed", description: "Could not submit booking request. A permission error might have occurred." });
             return false;
         }
     };
     
-    const handleViewRoomSchedule = (room: Room) => {
-        setSelectedRoom(room);
-        setActiveTab('room-schedule');
+    const isLoading = roomsLoading || bookingsLoading || workersLoading;
+
+    const handlePrev = () => {
+        if (view === 'day') setCurrentDate(subDays(currentDate, 1));
+        else if (view === 'week') setCurrentDate(subWeeks(currentDate, 1));
+        else setCurrentDate(subMonths(currentDate, 1));
     };
 
-    const isLoading = roomsLoading || bookingsLoading || locationsLoading || workersLoading;
+    const handleNext = () => {
+        if (view === 'day') setCurrentDate(addDays(currentDate, 1));
+        else if (view === 'week') setCurrentDate(addWeeks(currentDate, 1));
+        else setCurrentDate(addMonths(currentDate, 1));
+    };
 
-    const bookingsByDate = useMemo(() => {
-        if (!bookings) return new Map<string, Booking[]>();
+    const handleToday = () => setCurrentDate(new Date());
 
-        const newMap = new Map<string, Booking[]>();
-        for (const booking of bookings) {
-            if (!booking.start) continue;
-            const dateKey = format((booking.start as any).toDate(), 'yyyy-MM-dd');
-            
-            const existingBookings = newMap.get(dateKey) || [];
-            if (!existingBookings.find(b => b.id === booking.id)) {
-                newMap.set(dateKey, [...existingBookings, booking]);
-            }
-        }
-        return newMap;
-
-    }, [bookings]);
-
-    const dayBookings = useMemo(() => {
-        if (!selectedDate || !bookingsByDate) return [];
-        return bookingsByDate.get(format(selectedDate, 'yyyy-MM-dd')) || []
-    }, [selectedDate, bookingsByDate]);
+    const handleDateSelect = (date: Date) => {
+        setCurrentDate(date);
+        setView('day');
+    };
     
-    const roomBookings = useMemo(() => {
-        if (!selectedRoom || !bookings) return [];
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        return bookings
-            .filter(b => {
-                if (b.roomId !== selectedRoom.id) return false;
-                const bookingEndDate = (b.end as any)?.toDate();
-                if (!bookingEndDate) return false;
-                return bookingEndDate >= today;
-            })
-            .sort((a, b) => (a.start as any).seconds - (b.start as any).seconds);
-    }, [selectedRoom, bookings]);
+    const dateRangeDisplay = useMemo(() => {
+        if (view === 'day') return format(currentDate, 'MMMM d, yyyy');
+        if (view === 'week') {
+            const start = startOfWeek(currentDate);
+            const end = endOfWeek(currentDate);
+            return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+        }
+        return format(currentDate, 'MMMM yyyy');
+    }, [currentDate, view]);
     
     return (
         <AppLayout>
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-headline font-bold">Room Reservations</h1>
-                <Button onClick={() => setIsSheetOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Book a Room
-                </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" onClick={handleToday}>Today</Button>
+                    <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight className="h-4 w-4" /></Button>
+                    <h2 className="text-xl font-semibold whitespace-nowrap">{dateRangeDisplay}</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Tabs value={view} onValueChange={(v) => setView(v as 'month' | 'week' | 'day')}>
+                        <TabsList>
+                            <TabsTrigger value="month">Month</TabsTrigger>
+                            <TabsTrigger value="week">Week</TabsTrigger>
+                            <TabsTrigger value="day">Day</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <Button onClick={() => setIsSheetOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Book a Room
+                    </Button>
+                </div>
             </div>
 
-            <div className="mt-4 space-y-4">
-                {isLoading && <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>}
-                {!isLoading && rooms && (
-                    <div className="grid md:grid-cols-1 lg:grid-cols-[auto_1fr] gap-6">
-                       <Card>
-                            <CardHeader>
-                                <CardTitle className="font-headline">Calendar</CardTitle>
-                                <CardDescription>Select a date to view schedules.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex justify-center overflow-x-auto">
-                                <Calendar 
-                                    mode="single"
-                                    selected={selectedDate}
-                                    onSelect={setSelectedDate}
-                                    className="p-0"
-                                    classNames={{ day: "h-12 w-12 text-base", head_cell: "w-12 text-center" }}
-                                    components={{ DayContent: ({ date }) => {
-                                        const bookingsOnDay = bookingsByDate.get(format(date, 'yyyy-MM-dd'));
-                                        return <div className="relative h-full w-full flex items-center justify-center">
-                                            <span>{date.getDate()}</span>
-                                            {bookingsOnDay && bookingsOnDay.length > 0 && (
-                                                <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-primary" />
-                                            )}
-                                        </div>;
-                                    }}}
-                                />
-                            </CardContent>
-                        </Card>
-                        
-                        <Tabs value={activeTab} onValueChange={(tab) => {
-                                if (tab !== 'room-schedule') setSelectedRoom(null);
-                                setActiveTab(tab);
-                            }} className="w-full">
-                            <TabsList className="grid w-full grid-cols-3">
-                                <TabsTrigger value="schedule">Schedule for {selectedDate ? format(selectedDate, 'MMM d') : 'selected day'}</TabsTrigger>
-                                <TabsTrigger value="rooms">All Rooms</TabsTrigger>
-                                <TabsTrigger value="room-schedule" disabled={!selectedRoom}>
-                                    {selectedRoom ? `${selectedRoom.name}` : 'Room Schedule'}
-                                </TabsTrigger>
-                            </TabsList>
-                            <TabsContent value="schedule" className="mt-4">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="font-headline">Daily Schedule</CardTitle>
-                                        <CardDescription>Visual timeline of all room bookings for the selected day.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pt-2">
-                                        <DailyScheduleView bookings={dayBookings} rooms={rooms} workers={workers} date={selectedDate!} />
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                            <TabsContent value="rooms" className="mt-4">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="font-headline">Available Rooms</CardTitle>
-                                        <CardDescription>All bookable rooms and their equipment.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {rooms.map(room => {
-                                            const location = locations?.find(l => l.id === room.locationId);
-                                            return (
-                                            <div key={room.id} className="p-4 border rounded-lg bg-card">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h3 className="font-semibold">{room.name}</h3>
-                                                        {location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/>{location.name}</p>}
-                                                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><UsersIcon className="h-4 w-4" /> Capacity: {room.capacity}</p>
-                                                    </div>
-                                                     <div className="flex items-center gap-2">
-                                                        <Button variant="outline" size="sm" onClick={() => handleViewRoomSchedule(room)}><CalendarIcon className="mr-2 h-4 w-4"/>Schedule</Button>
-                                                        {isSuperAdmin && <Button asChild variant="outline" size="sm"><Link href={`/rooms/${room.id}/display`}><Monitor className="mr-2 h-4 w-4"/>Display</Link></Button>}
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-wrap gap-2 mt-3">
-                                                    {room.equipment.map(item => {
-                                                        const Icon = equipmentIcons[item] || UsersIcon;
-                                                        return <Badge key={item} variant="secondary" className="flex items-center gap-1"><Icon className="h-3 w-3" /> {item}</Badge>
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )})}
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                             <TabsContent value="room-schedule" className="mt-4">
-                                {selectedRoom ? (
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="font-headline">Upcoming Schedule for {selectedRoom.name}</CardTitle>
-                                            <CardDescription>All future and current bookings for this room.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="pt-6">
-                                            <RoomScheduleList bookings={roomBookings} workers={workers} />
-                                        </CardContent>
-                                    </Card>
-                                ) : (
-                                    <div className="text-center py-10 text-muted-foreground">Select a room from the 'All Rooms' tab to see its schedule.</div>
-                                )}
-                            </TabsContent>
-                        </Tabs>
-                    </div>
+            <div className="mt-4">
+                {isLoading ? (
+                    <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
+                ) : (
+                    <>
+                        {view === 'month' && <MonthView bookings={bookings || []} onDateSelect={handleDateSelect} selectedDate={currentDate} />}
+                        {view === 'week' && <WeekView bookings={bookings || []} rooms={rooms} workers={workers} date={currentDate} onDateSelect={handleDateSelect} />}
+                        {view === 'day' && <DayView bookings={bookings || []} rooms={rooms} workers={workers} date={currentDate} />}
+                    </>
                 )}
             </div>
 
@@ -618,4 +580,3 @@ export default function RoomsPage() {
         </AppLayout>
     );
 }
-
