@@ -138,7 +138,7 @@ const RolePermissionSheet = ({
 
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-xl">
+            <SheetContent className="sm:max-w-xl overflow-y-auto">
                  <SheetHeader>
                     <SheetTitle className="font-headline">{role ? 'Edit Role' : 'Add New Role'}</SheetTitle>
                     <SheetDescription>
