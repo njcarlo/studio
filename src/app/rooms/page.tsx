@@ -382,6 +382,8 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
     );
 };
 
+import { DayProps } from "react-day-picker";
+
 const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking[], onDateSelect: (date: Date) => void, selectedDate: Date }) => {
     
     const monthBookings = useMemo(() => {
@@ -394,6 +396,42 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
         });
     }, [bookings, selectedDate]);
     
+    const CustomDay = ({ date, ...props }: DayProps) => {
+        const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
+        
+        return (
+            <div 
+                className={cn("h-32 w-full text-left p-1 relative flex flex-col border-t border-l", 
+                isToday(date) ? "bg-accent/10" : "",
+                isSameDay(date, selectedDate) ? "bg-primary/10" : ""
+                )}
+            >
+                 <button 
+                    onClick={() => onDateSelect(date)}
+                    className={cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal self-end", isToday(date) ? "text-primary font-bold" : "")}
+                 >
+                    {format(date, 'd')}
+                </button>
+                <div className="space-y-1 mt-1 overflow-hidden">
+                    {dayBookings.slice(0, 2).map(booking => {
+                        const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
+                                            booking.status === 'Pending' ? 'bg-yellow-500' :
+                                            'bg-red-500';
+                        return (
+                            <div key={booking.id} className="flex items-center gap-1.5">
+                                <div className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
+                                <p className="text-xs truncate">{booking.title}</p>
+                            </div>
+                        )
+                    })}
+                    {dayBookings.length > 2 && (
+                        <p className="text-xs text-muted-foreground">+{dayBookings.length - 2} more</p>
+                    )}
+                </div>
+            </div>
+        );
+    }
+    
     return (
         <Card>
             <CardContent className="p-0 sm:p-4">
@@ -403,42 +441,17 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                     onSelect={(day) => day && onDateSelect(day)}
                     className="p-0"
                     classNames={{
-                        months: "p-0",
-                        month: "space-y-0",
-                        table: "w-full border-collapse",
-                        head_row: "flex border-b",
-                        head_cell: "w-full text-muted-foreground text-sm font-normal py-2",
-                        row: "flex w-full border-b",
-                        cell: "h-32 w-full text-left p-1 relative flex flex-col",
-                        day: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal absolute top-1 right-1"),
-                        day_today: "bg-accent text-accent-foreground",
-                        day_selected: "bg-primary text-primary-foreground",
+                        month: "w-full space-y-0",
+                        table: "w-full border-collapse border",
+                        head_row: 'flex',
+                        head_cell: "w-full text-muted-foreground text-sm font-normal py-2 border-b",
+                        row: "flex w-full",
+                        cell: 'w-full', // The CustomDay component will handle its own styling now.
+                        day: 'h-auto w-auto p-0', // Reset day styles
+                        day_outside: "text-muted-foreground opacity-50 bg-muted/50",
                     }}
                     components={{
-                        DayContent: ({ date }) => {
-                            const dayBookings = monthBookings.filter(b => b.start && isSameDay((b.start as any).toDate(), date));
-                            return (
-                                <div className="w-full h-full overflow-hidden">
-                                    <span className={cn("text-sm", isToday(date) && "font-bold text-primary")}>{format(date, 'd')}</span>
-                                    <div className="space-y-1 mt-1">
-                                        {dayBookings.slice(0, 3).map(booking => {
-                                            const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
-                                                                booking.status === 'Pending' ? 'bg-yellow-500' :
-                                                                'bg-red-500';
-                                            return (
-                                                <div key={booking.id} className="flex items-center gap-1.5">
-                                                    <div className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
-                                                    <p className="text-xs truncate">{booking.title}</p>
-                                                </div>
-                                            )
-                                        })}
-                                        {dayBookings.length > 3 && (
-                                            <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        }
+                        Day: CustomDay,
                     }}
                 />
             </CardContent>
@@ -580,3 +593,4 @@ export default function RoomsPage() {
         </AppLayout>
     );
 }
+
