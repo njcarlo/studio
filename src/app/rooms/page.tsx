@@ -32,6 +32,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { 
@@ -53,7 +55,7 @@ import {
     isSameMonth
 } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Booking, Room, Worker, Location } from "@/lib/types";
+import type { Booking, Room, Worker, Area, Branch } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp, Timestamp, collectionGroup } from "firebase/firestore";
@@ -73,10 +75,11 @@ const equipmentIcons: { [key: string]: React.ElementType } = {
 
 // --- FORMS ---
 
-const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booking: any) => Promise<boolean>, onClose: () => void }) => {
+const BookingForm = ({ rooms, branches, areas, onSave, onClose }: { rooms: Room[], branches: Branch[], areas: Area[], onSave: (booking: any) => Promise<boolean>, onClose: () => void }) => {
   const { user } = useUser();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [locationId, setLocationId] = useState('');
   const [room, setRoom] = useState<string>('');
   const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -102,6 +105,11 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
     }
     return slots;
   }, []);
+
+  const handleLocationChange = (newLocationId: string) => {
+    setLocationId(newLocationId);
+    setRoom(''); // Reset room selection on location change
+  };
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     setDate(selectedDate);
@@ -148,10 +156,26 @@ const BookingForm = ({ rooms, onSave, onClose }: { rooms: Room[], onSave: (booki
     <>
         <div className="space-y-4 py-4">
             <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Select value={locationId} onValueChange={handleLocationChange}>
+                    <SelectTrigger id="location"><SelectValue placeholder="Select a location" /></SelectTrigger>
+                    <SelectContent>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                </Select>
+            </div>
+             <div className="space-y-2">
                 <Label htmlFor="room">Room</Label>
-                <Select value={room} onValueChange={setRoom}>
+                <Select value={room} onValueChange={setRoom} disabled={!locationId}>
                     <SelectTrigger id="room"><SelectValue placeholder="Select a room" /></SelectTrigger>
-                    <SelectContent>{rooms.map(room => <SelectItem key={room.id} value={room.id}>{room.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                        {areas.filter(a => a.branchId === locationId).map(area => (
+                            <SelectGroup key={area.id}>
+                                <SelectLabel>{area.name}</SelectLabel>
+                                {rooms.filter(r => r.areaId === area.areaId).map(roomInArea => (
+                                    <SelectItem key={roomInArea.id} value={roomInArea.id}>{roomInArea.name}</SelectItem>
+                                ))}
+                            </SelectGroup>
+                        ))}
+                    </SelectContent>
                 </Select>
             </div>
             <div className="space-y-2">
@@ -463,6 +487,12 @@ export default function RoomsPage() {
     const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
+    const branchesRef = useMemoFirebase(() => collection(firestore, "branches"), [firestore]);
+    const { data: branches, isLoading: branchesLoading } = useCollection<Branch>(branchesRef);
+
+    const areasRef = useMemoFirebase(() => collection(firestore, "areas"), [firestore]);
+    const { data: areas, isLoading: areasLoading } = useCollection<Area>(areasRef);
+
     const workersRef = useMemoFirebase(() => collection(firestore, 'workers'), [firestore]);
     const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
@@ -499,7 +529,7 @@ export default function RoomsPage() {
         }
     };
     
-    const isLoading = roomsLoading || bookingsLoading || workersLoading;
+    const isLoading = roomsLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
 
     const handlePrev = () => {
         if (view === 'day') setCurrentDate(subDays(currentDate, 1));
@@ -571,8 +601,14 @@ export default function RoomsPage() {
                     <SheetTitle className="font-headline">Book a Room</SheetTitle>
                     <SheetDescription>Fill in the details to request a room booking. Requests are subject to approval.</SheetDescription>
                 </SheetHeader>
-                {rooms && !isLoading ? (
-                    <BookingForm rooms={rooms} onSave={handleSaveBooking} onClose={() => setIsSheetOpen(false)} />
+                {rooms && branches && areas && !isLoading ? (
+                    <BookingForm 
+                        rooms={rooms} 
+                        branches={branches} 
+                        areas={areas} 
+                        onSave={handleSaveBooking} 
+                        onClose={() => setIsSheetOpen(false)} 
+                    />
                 ) : (
                     <div className="flex items-center justify-center py-10">
                         <LoaderCircle className="h-8 w-8 animate-spin" />
