@@ -2,7 +2,8 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, writeBatch } from "firebase/firestore";
+import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MoreHorizontal, PlusCircle, LoaderCircle, Edit, Trash2, MapPin, Building, Users, Tv, Projector, Mic2, LandPlot } from "lucide-react";
+import { MoreHorizontal, PlusCircle, LoaderCircle, Edit, Trash2, MapPin, Building, Users, Tv, Projector, Mic2, LandPlot, Upload } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -58,6 +59,7 @@ import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonB
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 
 const ALL_EQUIPMENT = [
     { id: 'Projector', label: 'Projector', icon: Projector },
@@ -140,6 +142,54 @@ const BranchesTab = ({ branches, areas, isLoading, onAdd, onEdit, onDelete }: { 
 
 // --- Area Management ---
 
+const AreaImportSheet = ({ branches, onImport, onClose }: { branches: Branch[]; onImport: (csvData: string) => void; onClose: () => void; }) => {
+    const [csvData, setCsvData] = useState('');
+    const csvFormat = "name,branchId";
+
+    return (
+        <>
+            <SheetHeader>
+                <SheetTitle className="font-headline">Import Areas</SheetTitle>
+                <SheetDescription>
+                    Paste CSV data below to bulk-import areas. The first line must be a header row with `name` and `branchId`.
+                </SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="csv-format">Required CSV Format</Label>
+                    <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
+                     <Card className="mt-2 text-xs text-muted-foreground p-3 max-h-40 overflow-y-auto">
+                        <p className="font-bold mb-2">Available Branch IDs:</p>
+                        <ul className="space-y-1">
+                            {branches.map(branch => (
+                                <li key={branch.id} className="font-mono">
+                                    <span className="font-semibold">{branch.name}:</span> {branch.id}
+                                </li>
+                            ))}
+                        </ul>
+                    </Card>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="csv-data">CSV Data</Label>
+                    <Textarea
+                        id="csv-data"
+                        value={csvData}
+                        onChange={(e) => setCsvData(e.target.value)}
+                        placeholder={`name,branchId\nFirst Floor,branch_id_123\nBasement,branch_id_456`}
+                        className="h-48 font-mono text-xs"
+                    />
+                </div>
+            </div>
+            <SheetFooter>
+                <SheetClose asChild>
+                    <Button type="button" variant="secondary">Cancel</Button>
+                </SheetClose>
+                <Button onClick={() => onImport(csvData)}>Process Import</Button>
+            </SheetFooter>
+        </>
+    )
+}
+
 const AreaForm = ({ area, branches, onSave }: { area: Partial<Area> | null; branches: Branch[]; onSave: (data: Partial<Area>) => void; }) => {
     const [formData, setFormData] = useState<Partial<Area>>({
         name: area?.name || '',
@@ -174,7 +224,7 @@ const AreaForm = ({ area, branches, onSave }: { area: Partial<Area> | null; bran
     );
 };
 
-const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete }: { areas: Area[], branches: Branch[], rooms: Room[], isLoading: boolean, onAdd: () => void, onEdit: (area: Area) => void, onDelete: (area: Area) => void }) => {
+const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, onImport }: { areas: Area[], branches: Branch[], rooms: Room[], isLoading: boolean, onAdd: () => void, onEdit: (area: Area) => void, onDelete: (area: Area) => void, onImport: () => void }) => {
     const getBranchName = (branchId: string) => branches.find(b => b.id === branchId)?.name || 'N/A';
     const getRoomCount = (areaId: string) => rooms.filter(r => r.areaId === areaId).length;
 
@@ -185,7 +235,10 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete }
                     <CardTitle>Areas</CardTitle>
                     <CardDescription>Manage areas or floors within your branches.</CardDescription>
                 </div>
-                <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Area</Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={onImport}><Upload className="mr-2 h-4 w-4" /> Import</Button>
+                    <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Area</Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -391,6 +444,7 @@ export default function RoomManagementPage() {
     const [isAreaSheetOpen, setIsAreaSheetOpen] = useState(false);
     const [selectedArea, setSelectedArea] = useState<Area | null>(null);
     const [areaToDelete, setAreaToDelete] = useState<Area | null>(null);
+    const [isAreaImportSheetOpen, setIsAreaImportSheetOpen] = useState(false);
 
     const [isRoomSheetOpen, setIsRoomSheetOpen] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -450,6 +504,76 @@ export default function RoomManagementPage() {
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save area.' });
         }
     };
+
+    const handleImportAreas = (csvData: string) => {
+        if (!branches) {
+            toast({ variant: 'destructive', title: 'Branches not loaded', description: 'Please wait for branches to load before importing.' });
+            return;
+        }
+
+        const validBranchIds = new Set(branches.map(b => b.id));
+
+        Papa.parse(csvData, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const newAreas = results.data;
+                if (newAreas.length === 0) {
+                    toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.'});
+                    return;
+                }
+
+                try {
+                    const batch = writeBatch(firestore);
+                    let invalidRowCount = 0;
+
+                    newAreas.forEach((newArea: any) => {
+                        if (!newArea.name || !newArea.branchId || !validBranchIds.has(newArea.branchId)) {
+                            console.warn('Skipping invalid row:', newArea);
+                            invalidRowCount++;
+                            return;
+                        }
+
+                        const newDocRef = doc(collection(firestore, "areas"));
+                        batch.set(newDocRef, {
+                            name: newArea.name,
+                            branchId: newArea.branchId,
+                        });
+                    });
+                    
+                    if (invalidRowCount === newAreas.length) {
+                         toast({
+                            variant: "destructive",
+                            title: "Import Failed",
+                            description: `All ${invalidRowCount} rows were invalid. Please check that 'name' is provided and 'branchId' is valid.`,
+                        });
+                        return;
+                    }
+
+                    await batch.commit();
+
+                    let description = `${newAreas.length - invalidRowCount} areas were imported.`;
+                    if (invalidRowCount > 0) {
+                        description += ` ${invalidRowCount} rows were skipped due to invalid data.`
+                    }
+
+                    toast({
+                        title: "Import Successful",
+                        description: description
+                    });
+                    setIsAreaImportSheetOpen(false);
+
+                } catch (error) {
+                     toast({
+                        variant: "destructive",
+                        title: "Import Failed",
+                        description: "An error occurred during the import. Check console for details.",
+                    });
+                    console.error("Import error:", error);
+                }
+            }
+        })
+    }
 
     const handleDeleteArea = async () => {
         if (!areaToDelete) return;
@@ -531,6 +655,7 @@ export default function RoomManagementPage() {
                         onAdd={() => { setSelectedArea(null); setIsAreaSheetOpen(true); }}
                         onEdit={(area) => { setSelectedArea(area); setIsAreaSheetOpen(true); }}
                         onDelete={(area) => setAreaToDelete(area)}
+                        onImport={() => setIsAreaImportSheetOpen(true)}
                     />
                 </TabsContent>
                 <TabsContent value="branches" className="mt-4">
@@ -554,6 +679,11 @@ export default function RoomManagementPage() {
              <Sheet open={isAreaSheetOpen} onOpenChange={setIsAreaSheetOpen}>
                 <SheetContent>
                     <AreaForm area={selectedArea} branches={branches || []} onSave={handleSaveArea} />
+                </SheetContent>
+            </Sheet>
+            <Sheet open={isAreaImportSheetOpen} onOpenChange={setIsAreaImportSheetOpen}>
+                <SheetContent>
+                    <AreaImportSheet branches={branches || []} onImport={handleImportAreas} onClose={() => setIsAreaImportSheetOpen(false)} />
                 </SheetContent>
             </Sheet>
             <Sheet open={isRoomSheetOpen} onOpenChange={setIsRoomSheetOpen}>
@@ -610,3 +740,4 @@ export default function RoomManagementPage() {
 }
 
     
+
