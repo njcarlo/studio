@@ -169,7 +169,7 @@ const BookingForm = ({ rooms, branches, areas, onSave, onClose }: { rooms: Room[
                     <SelectContent>
                         {areas.filter(a => a.branchId === locationId).map(area => (
                             <SelectGroup key={area.id}>
-                                <SelectLabel>{area.name}</SelectLabel>
+                                <SelectLabel className="px-2 font-bold">{area.name}</SelectLabel>
                                 {rooms.filter(r => r.areaId === area.areaId).map(roomInArea => (
                                     <SelectItem key={roomInArea.id} value={roomInArea.id}>{roomInArea.name}</SelectItem>
                                 ))}
