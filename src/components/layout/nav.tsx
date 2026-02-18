@@ -13,6 +13,7 @@ import {
   Vote,
   ChevronRight,
   HeartHandshake,
+  LineChart,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -48,6 +49,7 @@ const allNavItems: NavItem[] = [
   { href: "/attendance", icon: ScanLine, label: "Attendance", permissionKey: 'canViewAttendance' },
   { href: "/meals", icon: Utensils, label: "Meal Stubs", permissionKey: 'canViewMealStubs' },
   { href: "/approvals", icon: Vote, label: "Approvals", permissionKey: 'canManageApprovals' },
+  { href: "/reports", icon: LineChart, label: "Reports", permissionKey: 'canViewReports' },
   { 
     href: "/settings", 
     icon: Cog, 

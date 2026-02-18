@@ -98,6 +98,12 @@ const PERMISSION_CATEGORIES = [
       { id: 'manage_all_mealstubs', label: 'Manage All Meal Stubs', description: 'Can view all meal stub records and reports.' },
     ]
   },
+  {
+    category: 'Reports',
+    permissions: [
+      { id: 'view_reports', label: 'View Reports', description: 'Can access the reports page for attendance, meal stubs, and room reservations.' },
+    ]
+  },
 ];
 
 
@@ -332,7 +338,10 @@ export default function RoleManagementPage() {
                 onOpenChange={setSheetOpen}
                 role={selectedRole}
                 onSave={handleSaveRole}
-                onDelete={handleDeleteClick}
+                onDelete={(roleId) => {
+                    const role = sortedRoles.find(r => r.id === roleId);
+                    if (role) handleDeleteClick(role);
+                }}
             />
 
             <AlertDialog open={!!roleToDelete} onOpenChange={(open) => !open && setRoleToDelete(null)}>

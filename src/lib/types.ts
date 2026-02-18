@@ -30,6 +30,13 @@ export type Ministry = {
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
 
+export type AttendanceRecord = {
+    id: string;
+    workerProfileId: string;
+    type: "Clock In" | "Clock Out";
+    time: any; // Timestamp
+};
+
 export type Booking = {
     id: string;
     roomId: string;

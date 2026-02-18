@@ -25,6 +25,7 @@ export type UserRoleContextType = {
   canViewAttendance: boolean;
   canViewMealStubs: boolean;
   canManageAllMealStubs: boolean;
+  canViewReports: boolean;
 };
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
@@ -94,6 +95,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       canViewAttendance: isSuperAdmin || permissions.includes('view_attendance_log'),
       canViewMealStubs: isSuperAdmin || permissions.includes('view_meal_stubs'),
       canManageAllMealStubs: isSuperAdmin || permissions.includes('manage_all_mealstubs'),
+      canViewReports: isSuperAdmin || permissions.includes('view_reports'),
     };
   }, [isSuperAdmin, needsSeeding, isLoading, allRoles, workerProfile, realUserRole]);
 
