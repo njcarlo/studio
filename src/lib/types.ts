@@ -1,7 +1,9 @@
+import type { Timestamp } from 'firebase/firestore';
+
 export type Role = {
-  id: string;
-  name: string;
-  permissions?: string[];
+    id: string;
+    name: string;
+    permissions?: string[];
 }
 
 export type Worker = {
@@ -16,8 +18,9 @@ export type Worker = {
     avatarUrl: string;
     primaryMinistryId: string;
     secondaryMinistryId: string;
+    employmentType?: 'Full-Time' | 'Part-Time' | 'On-Call' | 'Volunteer';
     passwordChangeRequired?: boolean;
-    createdAt: any; // Firestore Timestamp
+    createdAt: Timestamp;
 };
 
 export type Ministry = {
@@ -26,6 +29,7 @@ export type Ministry = {
     description: string;
     department: Department;
     leaderId: string;
+    approverId?: string;
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
@@ -34,15 +38,15 @@ export type AttendanceRecord = {
     id: string;
     workerProfileId: string;
     type: "Clock In" | "Clock Out";
-    time: any; // Timestamp
+    time: Timestamp;
 };
 
 export type Booking = {
     id: string;
     roomId: string;
     title: string;
-    start: any; // Timestamp
-    end: any; // Timestamp
+    start: Timestamp;
+    end: Timestamp;
     status: 'Pending' | 'Approved' | 'Rejected';
     workerProfileId?: string;
 };
@@ -71,7 +75,7 @@ export type MealStub = {
     id: string;
     workerId: string;
     workerName: string;
-    date: any; // Timestamp
+    date: Timestamp;
     status: 'Issued' | 'Claimed';
 };
 
@@ -80,7 +84,7 @@ export type ApprovalRequest = {
     requester: string;
     type: 'New Worker' | 'Profile Update' | 'Room Booking';
     details: string;
-    date: any; // Timestamp
+    date: Timestamp;
     status: 'Pending' | 'Approved' | 'Rejected';
     workerId?: string;
     roomId?: string;
@@ -91,7 +95,7 @@ export type ScanLog = {
     id: string;
     scannerId: string;
     scannerName: string;
-    timestamp: any; // Timestamp
+    timestamp: Timestamp;
     scanType: 'Attendance' | 'Meal Stub' | 'Room Check-in';
     details: string;
     targetUserId?: string;

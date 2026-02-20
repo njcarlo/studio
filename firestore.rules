@@ -2,14 +2,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Explicitly allow read/write access to attendance records for any authenticated user.
-    // This recursive wildcard covers both single-document gets and collection lists.
+    // Allow public scanner to read workers to verify QR payload
+    match /workers/{workerId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Allow public scanner to read/update mealstubs
+    match /mealstubs/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Allow public scanner to read rooms & reservations
+    match /rooms/{document=**} {
+      allow read: if true;
+    }
+    match /reservations/{document=**} {
+      allow read: if true;
+    }
+
+    // Allow public scanner to write attendance records
     match /attendance_records/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
     
-    // This rule allows any authenticated user to read and write to any document.
-    // This is a permissive rule for development to prevent permission errors.
+    // Allow public scanner to append to scan logs
+    match /scan_logs/{document=**} {
+      allow read, write: if true;
+    }
+
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

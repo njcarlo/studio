@@ -16,13 +16,16 @@ export function ViewerDashboard() {
     const firestore = useFirestore();
 
     const userQrCodeUrl = user ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(user.uid)}` : '';
-    
-    const roomsRef = useMemoFirebase(() => collection(firestore, 'rooms'), [firestore]);
+
+    const roomsRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, 'rooms');
+    }, [firestore, user]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
     const bookingsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        
+
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
 
@@ -44,7 +47,7 @@ export function ViewerDashboard() {
     const getRoomName = (roomId: string) => {
         return rooms?.find(r => r.id === roomId)?.name || 'Unknown Room';
     };
-    
+
     const isLoading = bookingsLoading || roomsLoading;
 
     return (
@@ -72,7 +75,7 @@ export function ViewerDashboard() {
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                         <div className="flex justify-center items-center h-24">
+                        <div className="flex justify-center items-center h-24">
                             <LoaderCircle className="h-6 w-6 animate-spin" />
                         </div>
                     ) : upcomingBookings.length > 0 ? (

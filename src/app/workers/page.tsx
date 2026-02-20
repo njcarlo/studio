@@ -57,16 +57,26 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: {
 
   useEffect(() => {
     if (worker) {
-        setFormData({
-            ...worker,
-            primaryMinistryId: worker.primaryMinistryId || '',
-            secondaryMinistryId: worker.secondaryMinistryId || '',
-        });
+      // Explicitly fall back to '' for every string field so inputs never
+      // switch from controlled → uncontrolled when a field is missing
+      // (e.g. workers created via signup don't have phone).
+      setFormData({
+        ...worker,
+        firstName: worker.firstName || '',
+        lastName: worker.lastName || '',
+        email: worker.email || '',
+        phone: worker.phone || '',
+        roleId: worker.roleId || 'viewer',
+        primaryMinistryId: worker.primaryMinistryId || '',
+        secondaryMinistryId: worker.secondaryMinistryId || '',
+      });
     } else {
-        setFormData({
-            firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: canManage ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
-            primaryMinistryId: '', secondaryMinistryId: ''
-        });
+      setFormData({
+        firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer',
+        status: canManage ? 'Active' : 'Pending Approval',
+        avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+        primaryMinistryId: '', secondaryMinistryId: ''
+      });
     }
   }, [worker, canManage]);
 
@@ -85,23 +95,23 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: {
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="firstName" className="text-right">First Name</Label>
-          <Input id="firstName" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="col-span-3" />
+          <Input id="firstName" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="lastName" className="text-right">Last Name</Label>
-          <Input id="lastName" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="col-span-3" />
+          <Input id="lastName" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="email" className="text-right">Email</Label>
-          <Input id="email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="col-span-3" />
+          <Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="phone" className="text-right">Phone</Label>
-          <Input id="phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="col-span-3" />
+          <Input id="phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="col-span-3" />
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="role" className="text-right">Role</Label>
-          <Select value={formData.roleId} onValueChange={(value: string) => setFormData({...formData, roleId: value})} disabled={!canManage}>
+          <Select value={formData.roleId} onValueChange={(value: string) => setFormData({ ...formData, roleId: value })} disabled={!canManage}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a role" />
             </SelectTrigger>
@@ -112,7 +122,7 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: {
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="status" className="text-right">Status</Label>
-          <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({...formData, status: value})} disabled={!canManage && !worker}>
+          <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({ ...formData, status: value })} disabled={!canManage && !worker}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a status" />
             </SelectTrigger>
@@ -125,7 +135,7 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: {
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="primaryMinistry" className="text-right">Primary Ministry</Label>
-          <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, primaryMinistryId: value === 'none' ? '' : value})}>
+          <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, primaryMinistryId: value === 'none' ? '' : value })}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a ministry" />
             </SelectTrigger>
@@ -137,13 +147,27 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: {
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="secondaryMinistry" className="text-right">Secondary Ministry</Label>
-          <Select value={formData.secondaryMinistryId || 'none'} onValueChange={(value) => setFormData({...formData, secondaryMinistryId: value === 'none' ? '' : value})}>
+          <Select value={formData.secondaryMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, secondaryMinistryId: value === 'none' ? '' : value })}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a ministry" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None</SelectItem>
               {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="employmentType" className="text-right">Employment</Label>
+          <Select value={formData.employmentType || 'Volunteer'} onValueChange={(value: any) => setFormData({ ...formData, employmentType: value })} disabled={!canManage}>
+            <SelectTrigger className="col-span-3">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Full-Time">Full-Time</SelectItem>
+              <SelectItem value="Part-Time">Part-Time</SelectItem>
+              <SelectItem value="On-Call">On-Call</SelectItem>
+              <SelectItem value="Volunteer">Volunteer</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -159,41 +183,41 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: {
 };
 
 const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => void; onClose: () => void; }) => {
-    const [csvData, setCsvData] = useState('');
-    const csvFormat = "firstName,lastName,email,phone,roleId,status,primaryMinistryId,secondaryMinistryId";
+  const [csvData, setCsvData] = useState('');
+  const csvFormat = "firstName,lastName,email,phone,roleId,status,primaryMinistryId,secondaryMinistryId";
 
-    return (
-        <>
-            <SheetHeader>
-                <SheetTitle className="font-headline">Import Workers</SheetTitle>
-                <SheetDescription>
-                    Paste CSV data below to bulk-import workers. The first line must be a header row.
-                </SheetDescription>
-            </SheetHeader>
-            <div className="py-4 space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="csv-format">Required CSV Format</Label>
-                    <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="csv-data">CSV Data</Label>
-                    <Textarea 
-                        id="csv-data"
-                        value={csvData}
-                        onChange={(e) => setCsvData(e.target.value)}
-                        placeholder="Paste your CSV content here..."
-                        className="h-64 font-mono text-xs"
-                    />
-                </div>
-            </div>
-            <SheetFooter>
-                <SheetClose asChild>
-                    <Button type="button" variant="secondary">Cancel</Button>
-                </SheetClose>
-                <Button onClick={() => onImport(csvData)}>Process Import</Button>
-            </SheetFooter>
-        </>
-    )
+  return (
+    <>
+      <SheetHeader>
+        <SheetTitle className="font-headline">Import Workers</SheetTitle>
+        <SheetDescription>
+          Paste CSV data below to bulk-import workers. The first line must be a header row.
+        </SheetDescription>
+      </SheetHeader>
+      <div className="py-4 space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="csv-format">Required CSV Format</Label>
+          <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="csv-data">CSV Data</Label>
+          <Textarea
+            id="csv-data"
+            value={csvData}
+            onChange={(e) => setCsvData(e.target.value)}
+            placeholder="Paste your CSV content here..."
+            className="h-64 font-mono text-xs"
+          />
+        </div>
+      </div>
+      <SheetFooter>
+        <SheetClose asChild>
+          <Button type="button" variant="secondary">Cancel</Button>
+        </SheetClose>
+        <Button onClick={() => onImport(csvData)}>Process Import</Button>
+      </SheetFooter>
+    </>
+  )
 }
 
 export default function WorkersPage() {
@@ -222,7 +246,7 @@ export default function WorkersPage() {
   }, [firestore, user]);
   const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
   const ministries = ministriesData || [];
-  
+
   const isLoading = workersLoading || rolesLoading || ministriesLoading || isRoleLoading;
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -235,9 +259,9 @@ export default function WorkersPage() {
   };
 
   const handleOpenImport = () => {
-      setIsImportSheetOpen(true);
+    setIsImportSheetOpen(true);
   }
-  
+
   const handleEdit = (worker: Worker) => {
     setSelectedWorker(worker);
     setIsSheetOpen(true);
@@ -245,18 +269,18 @@ export default function WorkersPage() {
 
   const handleImpersonate = (worker: Worker) => {
     toast({
-        title: "Impersonation Started",
-        description: `You are now viewing the app as ${worker.firstName} ${worker.lastName}.`,
+      title: "Impersonation Started",
+      description: `You are now viewing the app as ${worker.firstName} ${worker.lastName}.`,
     });
     startImpersonation(worker.id);
   };
-  
+
   const handleDelete = (workerId: string) => {
     if (!workerId) return;
     deleteDocumentNonBlocking(doc(firestore, "workers", workerId));
     toast({
-        title: "Worker Deleted",
-        description: "The worker profile has been removed."
+      title: "Worker Deleted",
+      description: "The worker profile has been removed."
     });
   };
 
@@ -280,35 +304,35 @@ export default function WorkersPage() {
 
     try {
       if (selectedWorker?.id) {
-          await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), dataToSave);
-          toast({
-              title: "Worker Updated",
-              description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
-          });
+        await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), dataToSave);
+        toast({
+          title: "Worker Updated",
+          description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
+        });
       } else {
-          const newWorkerId = String(20000 + (workers?.length || 0)).padStart(6, '0');
-          const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
-          const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "workers"), dataToSaveWithId);
+        const newWorkerId = String(20000 + (workers?.length || 0)).padStart(6, '0');
+        const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
+        const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "workers"), dataToSaveWithId);
 
-          if (newWorkerRef && workerProfile && dataToSave.status === 'Pending Approval') {
-            await addDocumentNonBlocking(collection(firestore, "approvals"), {
-              requester: `${workerProfile.firstName} ${workerProfile.lastName}`,
-              type: 'New Worker',
-              details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
-              date: serverTimestamp(),
-              status: 'Pending',
-              workerId: newWorkerRef.id
-            });
-            toast({
-                title: "Worker Added",
-                description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`
-            });
-          } else {
-            toast({
-                title: "Worker Added",
-                description: `${dataToSave.firstName} ${dataToSave.lastName} has been added with status: ${dataToSave.status}.`
-            });
-          }
+        if (newWorkerRef && workerProfile && dataToSave.status === 'Pending Approval') {
+          await addDocumentNonBlocking(collection(firestore, "approvals"), {
+            requester: `${workerProfile.firstName} ${workerProfile.lastName}`,
+            type: 'New Worker',
+            details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
+            date: serverTimestamp(),
+            status: 'Pending',
+            workerId: newWorkerRef.id
+          });
+          toast({
+            title: "Worker Added",
+            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`
+          });
+        } else {
+          toast({
+            title: "Worker Added",
+            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added with status: ${dataToSave.status}.`
+          });
+        }
       }
       setIsSheetOpen(false);
     } catch (error) {
@@ -323,94 +347,94 @@ export default function WorkersPage() {
 
   const handleImportWorkers = (csvData: string) => {
     Papa.parse(csvData, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-            const newWorkers = results.data;
-            if (newWorkers.length === 0) {
-                toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.'});
-                return;
-            }
-
-            try {
-                const batch = writeBatch(firestore);
-                let approvalCount = 0;
-                
-                newWorkers.forEach((newWorker: any, index) => {
-                    if (!newWorker.firstName || !newWorker.lastName || !newWorker.email) {
-                        console.warn('Skipping invalid row:', newWorker);
-                        return;
-                    }
-
-                    const newDocRef = doc(collection(firestore, "workers"));
-                    const workerId = String(100000 + (workers?.length || 0) + index).slice(-6);
-
-                    batch.set(newDocRef, {
-                        firstName: newWorker.firstName || '',
-                        lastName: newWorker.lastName || '',
-                        email: newWorker.email || '',
-                        phone: newWorker.phone || '',
-                        roleId: newWorker.roleId || 'viewer',
-                        status: newWorker.status || 'Pending Approval',
-                        primaryMinistryId: newWorker.primaryMinistryId || '',
-                        secondaryMinistryId: newWorker.secondaryMinistryId || '',
-                        workerId: workerId,
-                        createdAt: serverTimestamp(),
-                        avatarUrl: `https://picsum.photos/seed/${newDocRef.id.slice(0,5)}/100/100`,
-                    });
-
-                    if ((newWorker.status || 'Pending Approval') === 'Pending Approval') {
-                        approvalCount++;
-                        const approvalRef = doc(collection(firestore, "approvals"));
-                        batch.set(approvalRef, {
-                            requester: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : 'System Import',
-                            type: 'New Worker',
-                            details: `New worker import: ${newWorker.email}`,
-                            date: serverTimestamp(),
-                            status: 'Pending',
-                            workerId: newDocRef.id
-                        });
-                    }
-                });
-
-                await batch.commit();
-
-                toast({
-                    title: "Import Successful",
-                    description: `${newWorkers.length} workers were imported. ${approvalCount} approval requests were created.`
-                });
-                setIsImportSheetOpen(false);
-
-            } catch (error) {
-                 toast({
-                    variant: "destructive",
-                    title: "Import Failed",
-                    description: "An error occurred during the import. Check console for details.",
-                });
-                console.error("Import error:", error);
-            }
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const newWorkers = results.data;
+        if (newWorkers.length === 0) {
+          toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.' });
+          return;
         }
+
+        try {
+          const batch = writeBatch(firestore);
+          let approvalCount = 0;
+
+          newWorkers.forEach((newWorker: any, index) => {
+            if (!newWorker.firstName || !newWorker.lastName || !newWorker.email) {
+              console.warn('Skipping invalid row:', newWorker);
+              return;
+            }
+
+            const newDocRef = doc(collection(firestore, "workers"));
+            const workerId = String(100000 + (workers?.length || 0) + index).slice(-6);
+
+            batch.set(newDocRef, {
+              firstName: newWorker.firstName || '',
+              lastName: newWorker.lastName || '',
+              email: newWorker.email || '',
+              phone: newWorker.phone || '',
+              roleId: newWorker.roleId || 'viewer',
+              status: newWorker.status || 'Pending Approval',
+              primaryMinistryId: newWorker.primaryMinistryId || '',
+              secondaryMinistryId: newWorker.secondaryMinistryId || '',
+              workerId: workerId,
+              createdAt: serverTimestamp(),
+              avatarUrl: `https://picsum.photos/seed/${newDocRef.id.slice(0, 5)}/100/100`,
+            });
+
+            if ((newWorker.status || 'Pending Approval') === 'Pending Approval') {
+              approvalCount++;
+              const approvalRef = doc(collection(firestore, "approvals"));
+              batch.set(approvalRef, {
+                requester: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : 'System Import',
+                type: 'New Worker',
+                details: `New worker import: ${newWorker.email}`,
+                date: serverTimestamp(),
+                status: 'Pending',
+                workerId: newDocRef.id
+              });
+            }
+          });
+
+          await batch.commit();
+
+          toast({
+            title: "Import Successful",
+            description: `${newWorkers.length} workers were imported. ${approvalCount} approval requests were created.`
+          });
+          setIsImportSheetOpen(false);
+
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: "Import Failed",
+            description: "An error occurred during the import. Check console for details.",
+          });
+          console.error("Import error:", error);
+        }
+      }
     })
   }
 
   const getRoleName = (roleId: string) => {
     return roles.find(r => r.id === roleId)?.name || roleId;
   }
-  
+
   if (isLoading) {
     return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
   }
 
   if (!canManageWorkers) {
     return (
-        <AppLayout>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Access Denied</CardTitle>
-                    <CardDescription>You do not have permission to view this page.</CardDescription>
-                </CardHeader>
-            </Card>
-        </AppLayout>
+      <AppLayout>
+        <Card>
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>You do not have permission to view this page.</CardDescription>
+          </CardHeader>
+        </Card>
+      </AppLayout>
     );
   }
 
@@ -421,7 +445,7 @@ export default function WorkersPage() {
         {canManageWorkers && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleOpenImport}>
-                <Upload className="mr-2 h-4 w-4" /> Import
+              <Upload className="mr-2 h-4 w-4" /> Import
             </Button>
             <Button onClick={handleAddNew}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Worker
@@ -468,12 +492,12 @@ export default function WorkersPage() {
                 <TableCell className="font-mono text-xs">{worker.workerId}</TableCell>
                 <TableCell>{getRoleName(worker.roleId)}</TableCell>
                 <TableCell>
-                   <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
-                       worker.status === 'Active' ? 'bg-green-100 text-green-800' : 
-                       worker.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                   }>
+                  <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
+                    worker.status === 'Active' ? 'bg-green-100 text-green-800' :
+                      worker.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                  }>
                     {worker.status}
-                   </Badge>
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
@@ -493,10 +517,10 @@ export default function WorkersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => handleEdit(worker)}>Edit</DropdownMenuItem>
                         {worker.id !== user?.uid && (
-                            <DropdownMenuItem onSelect={() => handleImpersonate(worker)}>
-                                <LogIn className="mr-2 h-4 w-4" />
-                                Impersonate
-                            </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleImpersonate(worker)}>
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Impersonate
+                          </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onSelect={() => handleDelete(worker.id)} className="text-destructive">Delete</DropdownMenuItem>
                       </DropdownMenuContent>
@@ -509,23 +533,23 @@ export default function WorkersPage() {
         </Table>
       </div>
 
-       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-lg">
-          <WorkerForm 
+          <WorkerForm
             key={selectedWorker?.id || 'new-worker-form'}
-            worker={selectedWorker} 
+            worker={selectedWorker}
             roles={roles}
-            ministries={ministries} 
-            onSave={handleSaveWorker} 
+            ministries={ministries}
+            onSave={handleSaveWorker}
             onClose={() => setIsSheetOpen(false)}
             canManage={canManageWorkers}
-             />
+          />
         </SheetContent>
       </Sheet>
 
       <Sheet open={isImportSheetOpen} onOpenChange={setIsImportSheetOpen}>
         <SheetContent className="sm:max-w-lg">
-            <ImportSheet onImport={handleImportWorkers} onClose={() => setIsImportSheetOpen(false)} />
+          <ImportSheet onImport={handleImportWorkers} onClose={() => setIsImportSheetOpen(false)} />
         </SheetContent>
       </Sheet>
 

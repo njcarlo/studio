@@ -26,6 +26,7 @@ export type UserRoleContextType = {
   canViewMealStubs: boolean;
   canManageAllMealStubs: boolean;
   canViewReports: boolean;
+  canAppointApprovers: boolean;
 };
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
@@ -34,14 +35,14 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { impersonatedWorkerId } = useImpersonation();
-  
+
   // --- Real User Data (for checking admin status) ---
   const realWorkerProfileRef = useMemoFirebase(() => user ? doc(firestore, 'workers', user.uid) : null, [firestore, user]);
   const { data: realWorkerProfile, isLoading: isRealProfileLoading } = useDoc<Worker>(realWorkerProfileRef);
-  
+
   const realRoleRef = useMemoFirebase(() => realWorkerProfile?.roleId ? doc(firestore, 'roles', realWorkerProfile.roleId) : null, [firestore, realWorkerProfile]);
   const { data: realUserRole, isLoading: isRealRoleLoading } = useDoc<Role>(realRoleRef);
-  
+
   const isSuperAdmin = user?.email === 'admin@system.com' || realWorkerProfile?.roleId === 'admin';
 
   // --- "View As" User Data ---
@@ -57,11 +58,14 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { data: viewAsUserRole, isLoading: isViewAsRoleLoading } = useDoc<Role>(viewAsRoleRef);
 
   // Check if the admin role exists to determine if seeding is needed.
+  // IMPORTANT: Only fetch after user auth is resolved to avoid pre-auth permission errors.
   const adminRoleRef = useMemoFirebase(() => {
-      return doc(firestore, 'roles', 'admin');
-  }, [firestore]);
+    if (!user) return null;
+    return doc(firestore, 'roles', 'admin');
+  }, [firestore, user]);
   const { data: adminRole, isLoading: isAdminRoleLoading } = useDoc<Role>(adminRoleRef);
-  const needsSeeding = !adminRole && !isAdminRoleLoading;
+  // needsSeeding is only meaningful when the user is authenticated and the lookup is done
+  const needsSeeding = !!user && !isAdminRoleLoading && !adminRole;
 
   // Fetch all roles for dropdowns etc.
   const rolesRef = useMemoFirebase(() => {
@@ -96,6 +100,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       canViewMealStubs: isSuperAdmin || permissions.includes('view_meal_stubs'),
       canManageAllMealStubs: isSuperAdmin || permissions.includes('manage_all_mealstubs'),
       canViewReports: isSuperAdmin || permissions.includes('view_reports'),
+      canAppointApprovers: isSuperAdmin || permissions.includes('manage_ministries'),
     };
   }, [isSuperAdmin, needsSeeding, isLoading, allRoles, workerProfile, realUserRole]);
 
