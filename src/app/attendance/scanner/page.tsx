@@ -323,8 +323,8 @@ export default function QRScannerPage() {
         <div className="flex flex-col h-screen bg-background overflow-hidden">
             <header className="flex items-center justify-between border-b p-4 shrink-0">
                 <div>
-                    <h1 className="text-2xl font-headline font-bold">QR Scanner</h1>
-                    <p className="text-sm text-muted-foreground">Scan QR codes for attendance and meal stubs.</p>
+                    <h1 className="text-2xl font-headline font-bold">Attendance Scanner</h1>
+                    <p className="text-sm text-muted-foreground">Scan QR codes for attendance.</p>
                 </div>
                 <Button asChild variant="outline">
                     <Link href="/dashboard">
@@ -342,14 +342,8 @@ export default function QRScannerPage() {
                         </div>
                         <CardTitle className="font-headline text-2xl">Live Scan</CardTitle>
                         <CardDescription>
-                            Select a mode and position a QR code in the frame.
+                            Position the QR code in the frame.
                         </CardDescription>
-                        <Tabs value={scanMode} onValueChange={(value) => setScanMode(value as any)} className="w-full max-w-xs mx-auto pt-4">
-                            <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="Attendance">Attendance</TabsTrigger>
-                                <TabsTrigger value="Meal Stub">Meal Stub</TabsTrigger>
-                            </TabsList>
-                        </Tabs>
                     </CardHeader>
                     <CardContent className="flex flex-grow items-center justify-center">
                         {scannedWorker ? (

@@ -56,12 +56,12 @@ export function UserNav() {
     }
   };
 
-  const displayName = (workerProfile?.firstName && workerProfile?.lastName) 
+  const displayName = (workerProfile?.firstName && workerProfile?.lastName)
     ? `${workerProfile.firstName} ${workerProfile.lastName}`
     : user?.email;
-  
+
   const altText = displayName || 'User';
-  
+
   const fallbackChar = (workerProfile?.firstName || user?.email || 'U').charAt(0).toUpperCase();
 
 
@@ -70,7 +70,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-             <AvatarImage src={workerProfile?.avatarUrl} alt={altText} />
+            <AvatarImage src={workerProfile?.avatarUrl} alt={altText} />
             <AvatarFallback>{fallbackChar}</AvatarFallback>
           </Avatar>
         </Button>
@@ -96,12 +96,12 @@ export function UserNav() {
               Profile
             </DropdownMenuItem>
           )}
-           <DropdownMenuItem onSelect={handleChangePassword}>
+          <DropdownMenuItem onSelect={handleChangePassword}>
             Change Password
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
+        <DropdownMenuItem onSelect={handleLogout}>
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
