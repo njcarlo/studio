@@ -17,8 +17,26 @@ import {
     LoaderCircle,
     HeartHandshake,
     Search,
-    Filter
+    Filter,
+    BarChart3,
+    TrendingUp,
+    PieChart,
+    CheckCircle2,
+    XCircle,
+    UserMinus
 } from "lucide-react";
+import {
+    PieChart as RePieChart,
+    Pie,
+    Cell,
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip as ReTooltip,
+    Legend
+} from 'recharts';
 import {
     useFirestore,
     useCollection,
@@ -174,13 +192,170 @@ const MenteeForm = ({ mentee, groups, workers, onSave }: { mentee: Partial<C2SMe
     );
 };
 
+const C2SAnalytics = ({ mentees, groups, workers }: { mentees: C2SMentee[], groups: C2SGroup[], workers: Worker[] }) => {
+    const statusData = [
+        { name: 'In Progress', value: mentees.filter(m => m.status === 'In Progress').length, color: '#f59e0b' },
+        { name: 'Completed', value: mentees.filter(m => m.status === 'Completed').length, color: '#10b981' },
+        { name: 'Dropped', value: mentees.filter(m => m.status === 'Dropped').length, color: '#ef4444' },
+    ].filter(d => d.value > 0);
+
+    const mentorData = groups.map(group => {
+        const mentor = workers.find(w => w.id === group.mentorId);
+        const count = mentees.filter(m => m.groupId === group.id).length;
+        return {
+            name: mentor ? `${mentor.firstName}` : 'Unknown',
+            count: count
+        };
+    }).sort((a, b) => b.count - a.count).slice(0, 8);
+
+    const completed = mentees.filter(m => m.status === 'Completed').length;
+    const dropped = mentees.filter(m => m.status === 'Dropped').length;
+    const totalFinished = completed + dropped;
+    const retentionRate = totalFinished > 0 ? Math.round((completed / totalFinished) * 100) : 0;
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-xs uppercase font-bold tracking-wider">Total Mentees</CardDescription>
+                        <CardTitle className="text-3xl font-black text-primary">{mentees.length}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                            <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                            <span>System active</span>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-amber-500/5 to-transparent border-amber-500/20">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-xs uppercase font-bold tracking-wider">In Progress</CardDescription>
+                        <CardTitle className="text-3xl font-black text-amber-600">{mentees.filter(m => m.status === 'In Progress').length}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-xs text-muted-foreground">Active mentoring</div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-green-500/5 to-transparent border-green-500/20">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-xs uppercase font-bold tracking-wider">Retention Rate</CardDescription>
+                        <CardTitle className="text-3xl font-black text-green-600">{retentionRate}%</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="w-full bg-muted rounded-full h-1.5 mt-1">
+                            <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${retentionRate}%` }}></div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-blue-500/5 to-transparent border-blue-500/20">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-xs uppercase font-bold tracking-wider">Total Groups</CardDescription>
+                        <CardTitle className="text-3xl font-black text-blue-600">{groups.length}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-xs text-muted-foreground">{mentees.length > 0 ? Math.round(mentees.length / groups.length) : 0} avg mentees per group</div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+                <Card className="border-border/50 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Mentee Status Breakdown</CardTitle>
+                        <CardDescription>Overall distribution of mentoring progress.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <RePieChart>
+                                <Pie
+                                    data={statusData}
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {statusData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <ReTooltip
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                />
+                                <Legend verticalAlign="bottom" height={36} />
+                            </RePieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/50 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Group Distribution</CardTitle>
+                        <CardDescription>Mentee count across top 8 mentors.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={mentorData}>
+                                <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                                <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                                <ReTooltip
+                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                />
+                                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/50 shadow-sm md:col-span-2">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Recent Performance Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30">
+                                <div className="p-3 bg-green-100 text-green-700 rounded-xl">
+                                    <CheckCircle2 className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold">Total Completed</p>
+                                    <p className="text-2xl font-black">{completed}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30">
+                                <div className="p-3 bg-red-100 text-red-700 rounded-xl">
+                                    <UserMinus className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold">Total Dropped</p>
+                                    <p className="text-2xl font-black">{dropped}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border-2 border-primary/20 border-dashed">
+                                <div className="p-3 bg-primary/10 text-primary rounded-xl">
+                                    <HeartHandshake className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold">Active Mentor Pool</p>
+                                    <p className="text-2xl font-black">{new Set(groups.map(g => g.mentorId)).size}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+};
+
 export default function C2SPage() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const { canManageC2S } = useUserRole();
+    const { canManageC2S, canViewC2SAnalytics } = useUserRole();
     const { toast } = useToast();
 
-    const [activeTab, setActiveTab] = useState("groups");
+    const [activeTab, setActiveTab] = useState(canManageC2S ? "groups" : "analytics");
     const [isGroupSheetOpen, setIsGroupSheetOpen] = useState(false);
     const [isMenteeSheetOpen, setIsMenteeSheetOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<C2SGroup | null>(null);
@@ -252,7 +427,7 @@ export default function C2SPage() {
         }
     };
 
-    if (!canManageC2S) {
+    if (!canManageC2S && !canViewC2SAnalytics) {
         return (
             <AppLayout>
                 <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
@@ -280,22 +455,31 @@ export default function C2SPage() {
                             <Button onClick={() => { setSelectedGroup(null); setIsGroupSheetOpen(true); }} className="shadow-lg shadow-primary/20">
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Group
                             </Button>
-                        ) : (
+                        ) : activeTab === "mentees" ? (
                             <Button onClick={() => { setSelectedMentee(null); setIsMenteeSheetOpen(true); }} className="shadow-lg shadow-primary/20">
                                 <UserPlus className="mr-2 h-4 w-4" /> Add Mentee
                             </Button>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 
-                <Tabs defaultValue="groups" onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
-                        <TabsTrigger value="groups" className="text-sm font-medium">
-                            <Users className="mr-2 h-4 w-4" /> Groups
-                        </TabsTrigger>
-                        <TabsTrigger value="mentees" className="text-sm font-medium">
-                            <UserPlus className="mr-2 h-4 w-4" /> Mentees
-                        </TabsTrigger>
+                <Tabs defaultValue={canManageC2S ? "groups" : "analytics"} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full max-w-md mb-8" style={{ gridTemplateColumns: canViewC2SAnalytics && canManageC2S ? 'repeat(3, 1fr)' : (canViewC2SAnalytics || canManageC2S ? 'repeat(2, 1fr)' : '1fr') }}>
+                        {canManageC2S && (
+                            <>
+                                <TabsTrigger value="groups" className="text-sm font-medium">
+                                    <Users className="mr-2 h-4 w-4" /> Groups
+                                </TabsTrigger>
+                                <TabsTrigger value="mentees" className="text-sm font-medium">
+                                    <UserPlus className="mr-2 h-4 w-4" /> Mentees
+                                </TabsTrigger>
+                            </>
+                        )}
+                        {canViewC2SAnalytics && (
+                            <TabsTrigger value="analytics" className="text-sm font-medium">
+                                <BarChart3 className="mr-2 h-4 w-4" /> Analytics
+                            </TabsTrigger>
+                        )}
                     </TabsList>
 
                     <TabsContent value="groups" className="mt-0">
@@ -499,6 +683,12 @@ export default function C2SPage() {
                             </CardContent>
                         </Card>
                     </TabsContent>
+
+                    {canViewC2SAnalytics && (
+                        <TabsContent value="analytics" className="mt-0">
+                            <C2SAnalytics mentees={mentees || []} groups={groups || []} workers={workers || []} />
+                        </TabsContent>
+                    )}
                 </Tabs>
             </div>
 

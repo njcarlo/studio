@@ -33,6 +33,8 @@ export type Ministry = {
     headId?: string;
     approverId?: string;
     mealStubAssignerId?: string;
+    mealStubWeekdayLimit?: number;
+    mealStubSundayLimit?: number;
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
@@ -98,19 +100,26 @@ export type MealStub = {
     stubType?: 'weekday' | 'sunday';
     assignedBy?: string;
     assignedByName?: string;
+    claimedAt?: Timestamp;
 };
 
 export type ApprovalRequest = {
     id?: string;
     requester: string;
-    type: 'New Worker' | 'Profile Update' | 'Room Booking';
+    type: 'New Worker' | 'Profile Update' | 'Room Booking' | 'Ministry Change';
     details: string;
     date: Timestamp;
-    status: 'Pending' | 'Pending Ministry Approval' | 'Pending Admin Approval' | 'Approved' | 'Rejected';
+    status: 'Pending' | 'Pending Ministry Approval' | 'Pending Admin Approval' | 'Approved' | 'Rejected' | 'Pending Outgoing Approval' | 'Pending Incoming Approval';
     workerId?: string;
     roomId?: string;
     reservationId?: string;
     requestId?: string;
+    oldPrimaryId?: string;
+    newPrimaryId?: string;
+    oldSecondaryId?: string;
+    newSecondaryId?: string;
+    outgoingApproved?: boolean;
+    incomingApproved?: boolean;
 };
 
 export type ScanLog = {

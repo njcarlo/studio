@@ -103,6 +103,7 @@ const PERMISSION_CATEGORIES = [
         category: 'Connect 2 Souls',
         permissions: [
             { id: 'manage_c2s', label: 'Manage Connect 2 Souls', description: 'Can create, edit, and delete Connect 2 Souls groups and mentees.' },
+            { id: 'view_c2s_analytics', label: 'View C2S Analytics', description: 'Can view the growth and performance analytics for Connect 2 Souls.' },
         ]
     },
     {

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, doc, serverTimestamp, writeBatch, addDoc, query, where } from "firebase/firestore";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, LoaderCircle, Upload, LogIn, Users, UserCheck, UserX, Users2, Building2, Key, Mail } from "lucide-react";
+import { MoreHorizontal, PlusCircle, LoaderCircle, Upload, LogIn, Users, UserCheck, UserX, Users2, Building2, Key, Mail, Trash2, ArrowRightLeft, X, ClipboardList, Ticket } from "lucide-react";
+import { startOfWeek, endOfWeek, isSunday, isWithinInterval } from 'date-fns';
+import { getWeeklyWeekdayCount, getSundayCount } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -262,6 +275,116 @@ const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => voi
   )
 }
 
+const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { selectedCount: number; ministries: Ministry[]; onSave: (primary: string, secondary: string) => void; onClose: () => void; }) => {
+  const [primary, setPrimary] = useState('unchanged');
+  const [secondary, setSecondary] = useState('unchanged');
+
+  const groupedMinistries = useMemo(() => {
+    const groups: Record<string, Ministry[]> = {};
+    ministries.forEach(m => {
+      const dept = m.department || 'Other';
+      if (!groups[dept]) groups[dept] = [];
+      groups[dept].push(m);
+    });
+    return groups;
+  }, [ministries]);
+
+  return (
+    <>
+      <SheetHeader>
+        <SheetTitle className="font-headline">Update Ministries</SheetTitle>
+        <SheetDescription>
+          Select new ministries for {selectedCount} worker(s). Leave blank to keep current assignments, or select "None" to remove them.
+        </SheetDescription>
+      </SheetHeader>
+      <div className="py-4 space-y-4">
+        <div className="space-y-2">
+          <Label>Primary Ministry</Label>
+          <Select value={primary} onValueChange={setPrimary}>
+            <SelectTrigger><SelectValue placeholder="Keep current" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unchanged">Keep current primary ministry</SelectItem>
+              <SelectItem value="none">Set to None</SelectItem>
+              {Object.entries(groupedMinistries).map(([dept, mins]) => (
+                <SelectGroup key={dept}>
+                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
+                  {mins.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Secondary Ministry</Label>
+          <Select value={secondary} onValueChange={setSecondary}>
+            <SelectTrigger><SelectValue placeholder="Keep current" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unchanged">Keep current secondary ministry</SelectItem>
+              <SelectItem value="none">Set to None</SelectItem>
+              {Object.entries(groupedMinistries).map(([dept, mins]) => (
+                <SelectGroup key={dept}>
+                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
+                  {mins.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <SheetFooter>
+        <SheetClose asChild><Button variant="secondary" onClick={onClose}>Cancel</Button></SheetClose>
+        <Button onClick={() => onSave(primary, secondary)}>Apply Changes</Button>
+      </SheetFooter>
+    </>
+  );
+};
+
+const BatchMealStubSheet = ({ selectedCount, onSave, onClose }: { selectedCount: number; onSave: (type: 'weekday' | 'sunday', count: number) => void; onClose: () => void; }) => {
+  const [type, setType] = useState<'weekday' | 'sunday'>('weekday');
+  const [count, setCount] = useState(1);
+
+  return (
+    <>
+      <SheetHeader>
+        <SheetTitle className="font-headline">Batch Issue Meal Stubs</SheetTitle>
+        <SheetDescription>
+          Issue meal stubs to {selectedCount} selected worker(s).
+        </SheetDescription>
+      </SheetHeader>
+      <div className="py-4 space-y-4">
+        <div className="space-y-2">
+          <Label>Stub Type</Label>
+          <Select value={type} onValueChange={(val: any) => setType(val)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekday">Weekday Stub</SelectItem>
+              <SelectItem value="sunday">Sunday Stub</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Count per Worker</Label>
+          <Select value={count.toString()} onValueChange={(val) => setCount(parseInt(val))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {[1, 2, 3, 4, 5].map(n => (
+                <SelectItem key={n} value={n.toString()}>{n} stub(s)</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1 text-amber-600">
+            ⚠️ This will respect weekly limits (5 weekdays, 2 Sunday). Workers already at limit will be skipped for that assignment.
+          </p>
+        </div>
+      </div>
+      <SheetFooter>
+        <SheetClose asChild><Button variant="secondary" onClick={onClose}>Cancel</Button></SheetClose>
+        <Button onClick={() => onSave(type, count)}>Issue Stubs</Button>
+      </SheetFooter>
+    </>
+  );
+};
+
 export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -270,6 +393,15 @@ export default function WorkersPage() {
   const { startImpersonation } = useImpersonation();
   const { logAction } = useAuditLog();
   const { auth } = useFirebase();
+  const { isMealStubAssigner, canManageAllMealStubs } = useUserRole();
+
+  const mealStubsRef = useMemoFirebase(() => {
+    if (!user || (!isMealStubAssigner && !canManageAllMealStubs)) return null;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return query(collection(firestore, "mealstubs"), where('date', '>=', thirtyDaysAgo));
+  }, [firestore, user, isMealStubAssigner, canManageAllMealStubs]);
+  const { data: allMealStubs } = useCollection<any>(mealStubsRef);
 
   const workersRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -356,6 +488,11 @@ export default function WorkersPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>([]);
+  const [isBatchMoveSheetOpen, setIsBatchMoveSheetOpen] = useState(false);
+  const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
+  const [isBatchMealStubSheetOpen, setIsBatchMealStubSheetOpen] = useState(false);
+  const [isAssigningStubs, setIsAssigningStubs] = useState(false);
 
   const handleAddNew = () => {
     setSelectedWorker(null);
@@ -418,6 +555,151 @@ export default function WorkersPage() {
     });
   };
 
+  const handleBatchDelete = async () => {
+    try {
+      const batch = writeBatch(firestore);
+      selectedWorkerIds.forEach(id => {
+        batch.delete(doc(firestore, "workers", id));
+      });
+      await batch.commit();
+      await logAction('Batch Deleted Workers', 'Workers', `Deleted ${selectedWorkerIds.length} workers.`);
+      toast({ title: "Batch Delete Successful", description: `${selectedWorkerIds.length} workers have been removed.` });
+      setSelectedWorkerIds([]);
+      setIsBatchDeleteDialogOpen(false);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Batch Delete Failed", description: "Could not delete workers." });
+    }
+  };
+
+  const handleBatchMove = async (primary: string, secondary: string) => {
+    try {
+      if (!isSuperAdmin) {
+        const promises = selectedWorkerIds.map(async (id) => {
+          const w = allWorkers?.find(worker => worker.id === id);
+          if (!w) return;
+
+          const newPrimaryId = primary === 'unchanged' ? (w.primaryMinistryId || '') : (primary === 'none' ? '' : primary);
+          const newSecondaryId = secondary === 'unchanged' ? (w.secondaryMinistryId || '') : (secondary === 'none' ? '' : secondary);
+
+          if (newPrimaryId === (w.primaryMinistryId || '') && newSecondaryId === (w.secondaryMinistryId || '')) return;
+
+          const details = `Batch ministry change request for ${w.firstName} ${w.lastName}.\n` +
+            (primary !== 'unchanged' ? `Primary: ${ministries.find(m => m.id === w.primaryMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === newPrimaryId)?.name || 'None'}\n` : '') +
+            (secondary !== 'unchanged' ? `Secondary: ${ministries.find(m => m.id === w.secondaryMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === newSecondaryId)?.name || 'None'}` : '');
+
+          return addDoc(collection(firestore, "approvals"), {
+            requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
+            type: 'Ministry Change',
+            details,
+            date: serverTimestamp(),
+            status: 'Pending Outgoing Approval',
+            workerId: w.id,
+            oldPrimaryId: w.primaryMinistryId || '',
+            newPrimaryId,
+            oldSecondaryId: w.secondaryMinistryId || '',
+            newSecondaryId,
+            outgoingApproved: false,
+            incomingApproved: false
+          });
+        });
+
+        await Promise.all(promises);
+        await logAction('Requested Batch Ministry Change', 'Workers', `Requested ministry change for ${selectedWorkerIds.length} workers.`);
+        toast({
+          title: "Changes Pending Approval",
+          description: "Batch ministry changes have been submitted for approval by the respective ministry heads."
+        });
+      } else {
+        const batch = writeBatch(firestore);
+        const updates: any = {};
+        if (primary !== 'unchanged') updates.primaryMinistryId = primary === 'none' ? '' : primary;
+        if (secondary !== 'unchanged') updates.secondaryMinistryId = secondary === 'none' ? '' : secondary;
+
+        selectedWorkerIds.forEach(id => {
+          batch.update(doc(firestore, "workers", id), updates);
+        });
+        await batch.commit();
+        await logAction('Batch Moved Workers', 'Workers', `Updated ministries for ${selectedWorkerIds.length} workers.`);
+        toast({ title: "Batch Update Successful", description: `Updated ${selectedWorkerIds.length} workers.` });
+      }
+      setSelectedWorkerIds([]);
+      setIsBatchMoveSheetOpen(false);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Batch Update Failed", description: "Could not update workers." });
+    }
+  };
+
+  const handleBatchMealStub = async (type: 'weekday' | 'sunday', count: number) => {
+    if (isAssigningStubs) return;
+    setIsAssigningStubs(true);
+    let totalIssued = 0;
+    let skipped = 0;
+
+    try {
+      const promises = selectedWorkerIds.map(async (id) => {
+        const w = allWorkers?.find(worker => worker.id === id);
+        if (!w) return;
+
+        const allStubs = allMealStubs || [];
+        const current = type === 'weekday' ? getWeeklyWeekdayCount(allStubs, id) : getSundayCount(allStubs, id);
+
+        const ministry = ministries.find(m => m.id === w.primaryMinistryId || m.id === w.secondaryMinistryId);
+        const limit = type === 'weekday' ? (ministry?.mealStubWeekdayLimit || 5) : (ministry?.mealStubSundayLimit || 2);
+
+        const remaining = limit - current;
+        if (remaining <= 0) {
+          skipped++;
+          return;
+        }
+
+        const toIssue = Math.min(count, remaining);
+
+        for (let i = 0; i < toIssue; i++) {
+          await addDoc(collection(firestore, "mealstubs"), {
+            workerId: id,
+            workerName: `${w.firstName} ${w.lastName}`,
+            date: serverTimestamp(),
+            status: 'Issued',
+            assignedBy: workerProfile?.id,
+            assignedByName: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
+            stubType: type,
+          });
+          totalIssued++;
+        }
+      });
+
+      await Promise.all(promises);
+
+      toast({
+        title: "Batch Stubs Issued",
+        description: `Successfully issued ${totalIssued} total stubs. ${skipped > 0 ? `${skipped} workers were skipped (limit reached).` : ''}`
+      });
+
+      await logAction('Batch Issued Meal Stubs', 'MealStubs', `Issued ${totalIssued} ${type} stubs to ${selectedWorkerIds.length} workers.`);
+      setIsBatchMealStubSheetOpen(false);
+      setSelectedWorkerIds([]);
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Batch Assignment Failed", description: "Could not issue stubs." });
+    } finally {
+      setIsAssigningStubs(false);
+    }
+  };
+
+  const toggleSelectAll = (currentWorkers: Worker[]) => {
+    if (selectedWorkerIds.length === currentWorkers.length && currentWorkers.length > 0) {
+      setSelectedWorkerIds([]);
+    } else {
+      setSelectedWorkerIds(currentWorkers.map(w => w.id));
+    }
+  }
+
+  const toggleSelectWorker = (id: string) => {
+    setSelectedWorkerIds(prev =>
+      prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id]
+    );
+  }
+
   const handleSaveWorker = async (workerData: Partial<Worker>) => {
     if (!workerData.firstName || !workerData.lastName || !workerData.email) {
       toast({
@@ -438,12 +720,54 @@ export default function WorkersPage() {
 
     try {
       if (selectedWorker?.id) {
-        await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), dataToSave);
-        await logAction('Updated Worker', 'Workers', `Updated details for ${dataToSave.firstName} ${dataToSave.lastName}`);
-        toast({
-          title: "Worker Updated",
-          description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
-        });
+        const isMinistryChanging =
+          (dataToSave.primaryMinistryId !== undefined && dataToSave.primaryMinistryId !== (selectedWorker.primaryMinistryId || '')) ||
+          (dataToSave.secondaryMinistryId !== undefined && dataToSave.secondaryMinistryId !== (selectedWorker.secondaryMinistryId || ''));
+
+        if (isMinistryChanging && !isSuperAdmin) {
+          // Prepare ministry change data
+          const ministryUpdate: any = {};
+          if (dataToSave.primaryMinistryId !== undefined) ministryUpdate.newPrimaryId = dataToSave.primaryMinistryId;
+          if (dataToSave.secondaryMinistryId !== undefined) ministryUpdate.newSecondaryId = dataToSave.secondaryMinistryId;
+
+          const details = `Ministry change request for ${selectedWorker.firstName} ${selectedWorker.lastName}.\n` +
+            (ministryUpdate.newPrimaryId !== undefined ? `Primary: ${ministries.find(m => m.id === selectedWorker.primaryMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === ministryUpdate.newPrimaryId)?.name || 'None'}\n` : '') +
+            (ministryUpdate.newSecondaryId !== undefined ? `Secondary: ${ministries.find(m => m.id === selectedWorker.secondaryMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === ministryUpdate.newSecondaryId)?.name || 'None'}` : '');
+
+          await addDoc(collection(firestore, "approvals"), {
+            requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
+            type: 'Ministry Change',
+            details,
+            date: serverTimestamp(),
+            status: 'Pending Outgoing Approval',
+            workerId: selectedWorker.id,
+            oldPrimaryId: selectedWorker.primaryMinistryId || '',
+            newPrimaryId: dataToSave.primaryMinistryId ?? selectedWorker.primaryMinistryId,
+            oldSecondaryId: selectedWorker.secondaryMinistryId || '',
+            newSecondaryId: dataToSave.secondaryMinistryId ?? selectedWorker.secondaryMinistryId,
+            outgoingApproved: false,
+            incomingApproved: false
+          });
+
+          // Update other fields but NOT ministries
+          const { primaryMinistryId, secondaryMinistryId, ...otherFields } = dataToSave;
+          if (Object.keys(otherFields).length > 0) {
+            await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), otherFields);
+          }
+
+          await logAction('Requested Ministry Change', 'Workers', `Requested ministry change for ${selectedWorker.firstName} ${selectedWorker.lastName}`);
+          toast({
+            title: "Change Pending Approval",
+            description: "The ministry change has been submitted for approval by both outgoing and incoming ministry heads."
+          });
+        } else {
+          await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), dataToSave);
+          await logAction('Updated Worker', 'Workers', `Updated details for ${dataToSave.firstName} ${dataToSave.lastName}`);
+          toast({
+            title: "Worker Updated",
+            description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
+          });
+        }
       } else {
         const newWorkerId = String(20000 + (allWorkers?.length || 0)).padStart(6, '0');
         const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
@@ -747,6 +1071,14 @@ export default function WorkersPage() {
                   <Table className="min-w-[700px]">
                     <TableHeader>
                       <TableRow>
+                        {canManageWorkers && (
+                          <TableHead className="w-[40px]">
+                            <Checkbox
+                              checked={mWorkers.length > 0 && mWorkers.every(w => selectedWorkerIds.includes(w.id))}
+                              onCheckedChange={() => toggleSelectAll(mWorkers)}
+                            />
+                          </TableHead>
+                        )}
                         <TableHead>Name</TableHead>
                         <TableHead>Worker ID</TableHead>
                         <TableHead>Role</TableHead>
@@ -764,7 +1096,15 @@ export default function WorkersPage() {
                         </TableRow>
                       )}
                       {mWorkers.map(worker => (
-                        <TableRow key={worker.id}>
+                        <TableRow key={worker.id} className={selectedWorkerIds.includes(worker.id) ? "bg-muted/50 transition-colors" : "transition-colors"}>
+                          {canManageWorkers && (
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedWorkerIds.includes(worker.id)}
+                                onCheckedChange={() => toggleSelectWorker(worker.id)}
+                              />
+                            </TableCell>
+                          )}
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-3">
                               <Avatar>
@@ -829,6 +1169,14 @@ export default function WorkersPage() {
         <Table className="min-w-[1000px]">
           <TableHeader>
             <TableRow>
+              {canManageWorkers && (
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={workers.length > 0 && workers.every(w => selectedWorkerIds.includes(w.id))}
+                    onCheckedChange={() => toggleSelectAll(workers)}
+                  />
+                </TableHead>
+              )}
               <TableHead>Name</TableHead>
               <TableHead>Worker ID</TableHead>
               <TableHead>Role</TableHead>
@@ -851,7 +1199,15 @@ export default function WorkersPage() {
               </TableRow>
             )}
             {workers && workers.map((worker) => (
-              <TableRow key={worker.id}>
+              <TableRow key={worker.id} className={selectedWorkerIds.includes(worker.id) ? "bg-muted/50 transition-colors" : "transition-colors"}>
+                {canManageWorkers && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedWorkerIds.includes(worker.id)}
+                      onCheckedChange={() => toggleSelectWorker(worker.id)}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
                     <Avatar>
@@ -935,6 +1291,84 @@ export default function WorkersPage() {
       <Sheet open={isImportSheetOpen} onOpenChange={setIsImportSheetOpen}>
         <SheetContent className="sm:max-w-lg">
           <ImportSheet onImport={handleImportWorkers} onClose={() => setIsImportSheetOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      {/* Batch Actions Bar */}
+      {selectedWorkerIds.length > 0 && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <Card className="shadow-2xl border-primary/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <CardContent className="p-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+                  {selectedWorkerIds.length}
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-sm font-medium">Workers Selected</p>
+                  <p className="text-xs text-muted-foreground">Perform batch actions</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {(isMealStubAssigner || canManageAllMealStubs) && (
+                  <Button size="sm" variant="outline" className="border-primary/50 text-primary hover:bg-primary/5" onClick={() => setIsBatchMealStubSheetOpen(true)}>
+                    <Ticket className="h-4 w-4 mr-2" /> Meal Stubs
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => setIsBatchMoveSheetOpen(true)}>
+                  <ArrowRightLeft className="h-4 w-4 mr-2" /> Move
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => setIsBatchDeleteDialogOpen(true)}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete
+                </Button>
+                <div className="w-px h-8 bg-border mx-1 hidden sm:block" />
+                <Button size="icon" variant="ghost" onClick={() => setSelectedWorkerIds([])}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation */}
+      <AlertDialog open={isBatchDeleteDialogOpen} onOpenChange={setIsBatchDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedWorkerIds.length} worker profile(s).
+              This action cannot be undone and will remove all associated records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Workers
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Batch Move Sheet */}
+      <Sheet open={isBatchMoveSheetOpen} onOpenChange={setIsBatchMoveSheetOpen}>
+        <SheetContent className="sm:max-w-lg">
+          <BatchMinistrySheet
+            selectedCount={selectedWorkerIds.length}
+            ministries={ministries}
+            onSave={handleBatchMove}
+            onClose={() => setIsBatchMoveSheetOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Batch Meal Stub Sheet */}
+      <Sheet open={isBatchMealStubSheetOpen} onOpenChange={setIsBatchMealStubSheetOpen}>
+        <SheetContent className="sm:max-w-md">
+          <BatchMealStubSheet
+            selectedCount={selectedWorkerIds.length}
+            onSave={handleBatchMealStub}
+            onClose={() => setIsBatchMealStubSheetOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 

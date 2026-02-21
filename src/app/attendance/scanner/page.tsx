@@ -122,34 +122,44 @@ export default function QRScannerPage() {
 
         // EXPECT DATA FORMAT: TYPE:ID[:TOKEN_OR_TIMESTAMP]
         const [type, payload, tokenOrTs] = data.split(':');
+        const worker = workers?.find(w => w.id === payload || w.workerId === payload);
 
         if (scanMode === 'Attendance') {
-            // Updated to accept ALL primary worker QR types for attendance
             if (type !== 'ATTENDANCE' && type !== 'STATIC' && type !== 'COG_USER' && type !== 'MEAL_STUB') {
                 toast({ variant: 'destructive', title: 'Invalid QR Type', description: 'This QR code cannot be used for attendance.' });
                 setTimeout(resetScanner, 2000);
                 return;
             }
 
-            const worker = workers?.find(w => w.id === payload || w.workerId === payload);
-            if (worker) {
-                // SECURITY CHECK: Verify if the token in the QR matches the one in DB
-                // If the worker has a qrToken set, the scanned code MUST match it.
-                if (worker.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Invalid or Expired QR',
-                        description: 'This QR code has been regenerated. Please use your latest QR code.',
-                    });
-                    setTimeout(resetScanner, 3000);
-                    return;
-                }
-
-                setScannedWorker(worker);
-            } else {
+            if (!worker) {
                 toast({ variant: 'destructive', title: 'Worker Not Found', description: 'The scanned ID does not correspond to any worker.' });
                 setTimeout(resetScanner, 2000);
+                return;
             }
+
+            // RESTRICTION: Only FT and On-Call for attendance
+            if (worker.employmentType !== 'Full-Time' && worker.employmentType !== 'On-Call') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Attendance Restricted',
+                    description: 'Attendance clock-in is only available for Full-Time and On-Call personnel.',
+                });
+                setTimeout(resetScanner, 3000);
+                return;
+            }
+
+            // SECURITY CHECK: Verify if the token in the QR matches the one in DB
+            if (worker.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Invalid or Expired QR',
+                    description: 'This QR code has been regenerated. Please use your latest QR code.',
+                });
+                setTimeout(resetScanner, 3000);
+                return;
+            }
+
+            setScannedWorker(worker);
             return;
         }
 
@@ -161,8 +171,6 @@ export default function QRScannerPage() {
             }
 
             try {
-                const worker = workers?.find(w => w.id === payload || w.workerId === payload);
-
                 // SECURITY CHECK: Verify if the token in the QR matches the one in DB
                 if (worker?.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
                     toast({
@@ -174,9 +182,6 @@ export default function QRScannerPage() {
                     return;
                 }
 
-                // If it's a dynamic meal stub from a direct generation (which used timestamps previously)
-                // we check if it's numeric to maintain backward compatibility for a transition period if needed,
-                // but primarily we are moving to qrTokens.
                 if (tokenOrTs && !isNaN(parseInt(tokenOrTs)) && tokenOrTs.length > 10) {
                     const diffMins = (Date.now() - parseInt(tokenOrTs)) / 1000 / 60;
                     if (diffMins > 5) {
@@ -186,7 +191,15 @@ export default function QRScannerPage() {
                     }
                 }
 
-                const q = query(collection(firestore, "mealstubs"), where("workerId", "==", payload), where("status", "==", "Issued"));
+                const isSundayToday = new Date().getDay() === 0;
+                const currentType = isSundayToday ? 'sunday' : 'weekday';
+
+                const q = query(
+                    collection(firestore, "mealstubs"),
+                    where("workerId", "==", payload),
+                    where("status", "==", "Issued"),
+                    where("stubType", "==", currentType)
+                );
                 const querySnapshot = await getDocs(q);
 
                 const todaysStubDoc = querySnapshot.docs.find(doc => {
@@ -196,14 +209,16 @@ export default function QRScannerPage() {
 
                 if (todaysStubDoc) {
                     const stubData = todaysStubDoc.data();
-                    await updateDocumentNonBlocking(todaysStubDoc.ref, { status: 'Claimed' });
-                    const details = `Claimed meal stub for ${stubData.workerName}.`;
+                    await updateDocumentNonBlocking(todaysStubDoc.ref, {
+                        status: 'Claimed',
+                        claimedAt: serverTimestamp()
+                    });
+                    const details = `Claimed ${currentType} meal stub for ${stubData.workerName}.`;
                     toast({ title: "Meal Stub Claimed!", description: details });
                     logScanEvent({ scanType: 'Meal Stub', details, mealStubId: todaysStubDoc.id, targetUserId: stubData.workerId, targetUserName: stubData.workerName });
                 } else {
-                    const worker = workers?.find(w => w.id === payload || w.workerId === payload);
                     const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
-                    toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid, issued meal stub found for ${workerName} for today.` });
+                    toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid ${currentType} meal stub found for ${workerName} for today.` });
                 }
             } catch (e) {
                 console.error("Error processing meal stub:", e);
@@ -214,17 +229,15 @@ export default function QRScannerPage() {
             return;
         }
 
-        // Fallback for other QR code types that are not mode-dependent
+        // Fallback for other QR code types
         if (type === 'ROOM_CHECKIN') {
             toast({ title: 'Room Check-in Scanned', description: `Booking ID: ${payload}. (This feature is not yet fully implemented)` });
             setTimeout(resetScanner, 2000);
             return;
         }
 
-        // If it's a raw UID but no mode is selected, or a mode is selected that doesn't handle it
         toast({ variant: 'destructive', title: 'Unknown Scan', description: 'Invalid QR code format.' });
         setTimeout(resetScanner, 2000);
-
     }, [isProcessing, scanMode, workers, firestore, toast, resetScanner, logScanEvent]);
 
     const handleRecordAttendance = useCallback((type: 'Clock In' | 'Clock Out') => {

@@ -5,11 +5,11 @@ import { writeBatch, doc, serverTimestamp } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
+    Card,
+    CardHeader,
+    CardTitle,
+    CardContent,
+    CardDescription,
 } from "@/components/ui/card";
 import { LoaderCircle, AlertTriangle } from "lucide-react";
 import { useFirestore, useUser } from "@/firebase";
@@ -18,18 +18,18 @@ import { useToast } from "@/hooks/use-toast";
 
 
 export default function SettingsPage() {
-    const { 
-        isLoading, 
-        needsSeeding, 
-        workerProfile, 
-        canManageRoles, 
-        canManageMinistries, 
-        canManageRooms 
+    const {
+        isLoading,
+        needsSeeding,
+        workerProfile,
+        canManageRoles,
+        canManageMinistries,
+        canManageFacilities
     } = useUserRole();
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-    
+
     // System Initializer
     const initializeSystem = async () => {
         if (!user) {
@@ -38,9 +38,9 @@ export default function SettingsPage() {
         }
         try {
             const batch = writeBatch(firestore);
-            
+
             // 1. Roles
-            const rolesData: {[key: string]: { name: string, permissions: string[] }} = {
+            const rolesData: { [key: string]: { name: string, permissions: string[] } } = {
                 admin: { name: 'Admin', permissions: [] }, // Admin has implicit all access
                 approver: { name: 'Approver', permissions: ['manage_approvals'] },
                 editor: { name: 'Editor', permissions: ['manage_ministries', 'manage_rooms'] },
@@ -49,7 +49,7 @@ export default function SettingsPage() {
             for (const [roleId, roleData] of Object.entries(rolesData)) {
                 batch.set(doc(firestore, 'roles', roleId), roleData);
             }
-            
+
             // Set current user as admin
             const adminWorkerData = {
                 roleId: 'admin',
@@ -70,16 +70,16 @@ export default function SettingsPage() {
         }
     };
 
-    const canAccess = canManageRoles || canManageMinistries || canManageRooms || needsSeeding || (workerProfile && !workerProfile.roleId);
+    const canAccess = canManageRoles || canManageMinistries || canManageFacilities || needsSeeding || (workerProfile && !workerProfile.roleId);
 
     if (isLoading) {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
     }
 
     if (!user) {
-         return <AppLayout><Card><CardHeader><CardTitle>Not Logged In</CardTitle><CardDescription>You must be logged in to access this page.</CardDescription></CardHeader></Card></AppLayout>;
+        return <AppLayout><Card><CardHeader><CardTitle>Not Logged In</CardTitle><CardDescription>You must be logged in to access this page.</CardDescription></CardHeader></Card></AppLayout>;
     }
-    
+
     if (!canAccess) {
         return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You do not have permission to view this page.</CardDescription></CardHeader></Card></AppLayout>;
     }
@@ -92,7 +92,7 @@ export default function SettingsPage() {
             <p className="text-muted-foreground">Manage core application settings.</p>
 
             <div className="mt-4 space-y-6">
-                 {needsSeeding && (
+                {needsSeeding && (
                     <Card className="border-amber-500 bg-amber-50/50">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-amber-700"><AlertTriangle /> Initial Setup Required</CardTitle>
@@ -105,6 +105,20 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
                 )}
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Meal Stub Allocation</CardTitle>
+                        <CardDescription>
+                            Configure weekly meal stub limits for each ministry.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button variant="outline" asChild>
+                            <a href="/settings/meal-stubs">Manage Allocation</a>
+                        </Button>
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader>

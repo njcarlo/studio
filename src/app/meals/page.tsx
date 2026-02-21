@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import Image from "next/image";
-import { collection, serverTimestamp, doc, query, where, updateDoc } from "firebase/firestore";
+import { collection, serverTimestamp, doc, query, where, updateDoc, addDoc, writeBatch, deleteDoc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,14 +39,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw, ShieldAlert, ClipboardList, ShieldCheck, Search, CheckCircle2 } from "lucide-react";
+import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw, ShieldAlert, ClipboardList, ShieldCheck, Search, CheckCircle2, Trash2 } from "lucide-react";
 import type { MealStub, Worker, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase, useDoc } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { format, isToday, subDays, startOfWeek, endOfWeek, isSunday, isWithinInterval, addDays } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
+import { getWeeklyWeekdayCount, getSundayCount } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Ticket } from "lucide-react";
 
 // ------------------------------------------------------------
 // helpers
@@ -55,26 +58,7 @@ function generateToken() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-// ---- per-worker stub counts for the current week ----
-function getWeeklyWeekdayCount(stubs: MealStub[], workerId: string) {
-  const start = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const end = endOfWeek(new Date());
-  return stubs.filter(s => {
-    if (s.workerId !== workerId) return false;
-    const d = new Date((s.date as any).seconds * 1000);
-    return !isSunday(d) && isWithinInterval(d, { start, end });
-  }).length;
-}
-
-function getSundayCount(stubs: MealStub[], workerId: string) {
-  const start = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const end = endOfWeek(new Date());
-  return stubs.filter(s => {
-    if (s.workerId !== workerId) return false;
-    const d = new Date((s.date as any).seconds * 1000);
-    return isSunday(d) && isWithinInterval(d, { start, end });
-  }).length;
-}
+// Helpers are now imported from @/lib/utils
 
 // ------------------------------------------------------------
 function MealsPageContent() {
@@ -202,40 +186,53 @@ function MealsPageContent() {
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>('');
   const [stubType, setStubType] = useState<'weekday' | 'sunday'>('weekday');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>([]);
+  const [isBatchOpen, setIsBatchOpen] = useState(false);
+  const [batchType, setBatchType] = useState<'weekday' | 'sunday'>('weekday');
+  const [batchCount, setBatchCount] = useState(1);
 
   const issueMultipleStubs = useCallback(async (targetId: string, type: 'weekday' | 'sunday', count: number) => {
-    if (!workerProfile) return;
+    // Robustness: if workerProfile is missing (e.g. system admin), use fallback info
+    const assignerId = workerProfile?.id || user?.uid || 'system';
+    const assignerName = workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.displayName || user?.email || 'System Admin');
+
     const targetWorker = ministryWorkers.find(w => w.id === targetId);
-    if (!targetWorker) return;
+    if (!targetWorker) {
+      toast({ variant: "destructive", title: "Worker not found", description: "Target worker could not be found in active lists." });
+      return;
+    }
 
     setIsAssigning(true);
     try {
       const promises = [];
       for (let i = 0; i < count; i++) {
-        promises.push(addDocumentNonBlocking(collection(firestore, "mealstubs"), {
+        promises.push(addDoc(collection(firestore, "mealstubs"), {
           workerId: targetId,
           workerName: `${targetWorker.firstName} ${targetWorker.lastName}`,
           date: serverTimestamp(),
-          status: 'Issued' as 'Issued',
-          assignedBy: workerProfile.id,
-          assignedByName: `${workerProfile.firstName} ${workerProfile.lastName}`,
+          status: 'Issued',
+          assignedBy: assignerId,
+          assignedByName: assignerName,
           stubType: type,
         }));
       }
       await Promise.all(promises);
       toast({ title: "Stubs Issued", description: `Successfully issued ${count} ${type} stub(s) to ${targetWorker.firstName}.` });
     } catch (e) {
-      console.error(e);
-      toast({ variant: "destructive", title: "Failed to assign stub(s)" });
+      console.error("Assignment Error:", e);
+      toast({ variant: "destructive", title: "Failed to assign stub(s)", description: "check console for details" });
     } finally {
       setIsAssigning(false);
     }
-  }, [workerProfile, ministryWorkers, firestore, toast]);
+  }, [workerProfile, user, ministryWorkers, firestore, toast]);
 
   const handleQuickAssign = (w: Worker, type: 'weekday' | 'sunday', count: number) => {
     const allStubs = allMealStubs || [];
     const current = type === 'weekday' ? getWeeklyWeekdayCount(allStubs, w.id) : getSundayCount(allStubs, w.id);
-    const limit = type === 'weekday' ? 5 : 2;
+
+    const isAutomated = w.employmentType === 'Full-Time' || w.employmentType === 'On-Call';
+    const ministry = ministries?.find(m => m.id === w.primaryMinistryId || m.id === w.secondaryMinistryId);
+    const limit = type === 'weekday' ? (isAutomated ? 5 : (ministry?.mealStubWeekdayLimit || 5)) : (ministry?.mealStubSundayLimit || 2);
 
     const remaining = limit - current;
     if (remaining <= 0) {
@@ -244,54 +241,207 @@ function MealsPageContent() {
     }
 
     const toIssue = Math.min(count, remaining);
+    if (toIssue <= 0) return; // Should not happen due to previous check but good to have
     issueMultipleStubs(w.id, type, toIssue);
+  };
+
+  const handleBatchAssign = async () => {
+    if (!workerProfile || selectedWorkerIds.length === 0) return;
+    setIsAssigning(true);
+    let totalIssued = 0;
+    let skipped = 0;
+
+    try {
+      const promises = selectedWorkerIds.map(async (id) => {
+        const w = ministryWorkers.find(worker => worker.id === id);
+        if (!w) return;
+
+        const allStubs = allMealStubs || [];
+        const current = batchType === 'weekday' ? getWeeklyWeekdayCount(allStubs, id) : getSundayCount(allStubs, id);
+
+        const ministry = ministries?.find(m => m.id === w.primaryMinistryId || m.id === w.secondaryMinistryId);
+        const limit = batchType === 'weekday' ? (ministry?.mealStubWeekdayLimit || 5) : (ministry?.mealStubSundayLimit || 2);
+
+        const remaining = limit - current;
+        if (remaining <= 0) {
+          skipped++;
+          return;
+        }
+
+        const toIssue = Math.min(batchCount, remaining);
+
+        for (let i = 0; i < toIssue; i++) {
+          await addDocumentNonBlocking(collection(firestore, "mealstubs"), {
+            workerId: id,
+            workerName: `${w.firstName} ${w.lastName}`,
+            date: serverTimestamp(),
+            status: 'Issued',
+            assignedBy: workerProfile.id,
+            assignedByName: `${workerProfile.firstName} ${workerProfile.lastName}`,
+            stubType: batchType,
+          });
+          totalIssued++;
+        }
+      });
+
+      await Promise.all(promises);
+      toast({
+        title: "Batch Stubs Issued",
+        description: `Successfully issued ${totalIssued} total stubs. ${skipped > 0 ? `${skipped} workers were skipped (limit reached).` : ''}`
+      });
+      setSelectedWorkerIds([]);
+      setIsBatchOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Batch Assignment Failed", description: "Could not issue stubs." });
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleCleanupExcess = useCallback(async () => {
+    if (!allMealStubs || !allWorkers) return;
+
+    setIsAssigning(true);
+    let deletedCount = 0;
+    const batch = writeBatch(firestore);
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const end = endOfWeek(new Date());
+
+    try {
+      allWorkers.forEach(w => {
+        const isAutomated = w.employmentType === 'Full-Time' || w.employmentType === 'On-Call';
+        const ministry = ministries?.find(m => m.id === w.primaryMinistryId || m.id === w.secondaryMinistryId);
+        const wLimit = isAutomated ? 5 : (ministry?.mealStubWeekdayLimit || 5);
+        const sLimit = ministry?.mealStubSundayLimit || 2;
+
+        const workerStubs = allMealStubs.filter(s => s.workerId === w.id && s.date);
+        const weeklyStubs = workerStubs.filter(s => {
+          const d = (s.date as any).seconds ? new Date((s.date as any).seconds * 1000) : new Date(s.date as any);
+          return isWithinInterval(d, { start, end });
+        });
+
+        // Split and sort by date (newest first)
+        const weekdays = weeklyStubs.filter(s => {
+          const d = (s.date as any).seconds ? new Date((s.date as any).seconds * 1000) : new Date(s.date as any);
+          return !isSunday(d);
+        }).sort((a, b) => (b.date as any).seconds - (a.date as any).seconds);
+
+        const sundays = weeklyStubs.filter(s => {
+          const d = (s.date as any).seconds ? new Date((s.date as any).seconds * 1000) : new Date(s.date as any);
+          return isSunday(d);
+        }).sort((a, b) => (b.date as any).seconds - (a.date as any).seconds);
+
+        // Mark newest "Issued" stubs for deletion if over limit
+        if (weekdays.length > wLimit) {
+          let over = weekdays.length - wLimit;
+          weekdays.forEach(s => {
+            if (over > 0 && s.status === 'Issued') {
+              batch.delete(doc(firestore, 'mealstubs', s.id));
+              over--;
+              deletedCount++;
+            }
+          });
+        }
+
+        if (sundays.length > sLimit) {
+          let over = sundays.length - sLimit;
+          sundays.forEach(s => {
+            if (over > 0 && s.status === 'Issued') {
+              batch.delete(doc(firestore, 'mealstubs', s.id));
+              over--;
+              deletedCount++;
+            }
+          });
+        }
+      });
+
+      if (deletedCount > 0) {
+        await batch.commit();
+        toast({ title: "Cleanup Success", description: `Deleted ${deletedCount} excess unused meal stubs.` });
+      } else {
+        toast({ title: "No Excess Found", description: "No unused stubs exceed current limits." });
+      }
+    } catch (e) {
+      console.error("Cleanup Error:", e);
+      toast({ variant: "destructive", title: "Cleanup Failed", description: "Check console for details." });
+    } finally {
+      setIsAssigning(false);
+    }
+  }, [allMealStubs, allWorkers, ministries, firestore, toast]);
+
+  const toggleSelectAll = (currentWorkers: Worker[]) => {
+    if (selectedWorkerIds.length === currentWorkers.length && currentWorkers.length > 0) {
+      setSelectedWorkerIds([]);
+    } else {
+      setSelectedWorkerIds(currentWorkers.map(w => w.id));
+    }
+  };
+
+  const toggleSelectWorker = (id: string) => {
+    setSelectedWorkerIds(prev =>
+      prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id]
+    );
   };
 
   const today = new Date();
   const todayIsSunday = isSunday(today);
 
   const handleAssignStub = useCallback(async () => {
-    if (!selectedWorkerId || !workerProfile) return;
+    if (!selectedWorkerId) return;
+
+    // Robustness fallback
+    const assignerId = workerProfile?.id || user?.uid || 'system';
+    const assignerName = workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.displayName || user?.email || 'System Admin');
+
     const targetWorker = ministryWorkers.find(w => w.id === selectedWorkerId);
-    if (!targetWorker) return;
+    if (!targetWorker) {
+      toast({ variant: "destructive", title: "Target Error", description: "Selected worker is no longer in the list." });
+      return;
+    }
 
     const allStubs = allMealStubs || [];
 
     if (stubType === 'weekday') {
       const count = getWeeklyWeekdayCount(allStubs, selectedWorkerId);
-      if (count >= 5) {
-        toast({ variant: "destructive", title: "Limit Reached", description: `${targetWorker.firstName} has already used all 5 weekday meal stubs this week.` });
+      const isAutomated = targetWorker.employmentType === 'Full-Time' || targetWorker.employmentType === 'On-Call';
+      const ministry = ministries?.find(m => m.id === targetWorker.primaryMinistryId || m.id === targetWorker.secondaryMinistryId);
+      const limit = isAutomated ? 5 : (ministry?.mealStubWeekdayLimit || 5);
+      if (count >= limit) {
+        toast({ variant: "destructive", title: "Limit Reached", description: `${targetWorker.firstName} has already used all ${limit} weekday meal stubs this week.` });
         return;
       }
     } else {
       const count = getSundayCount(allStubs, selectedWorkerId);
-      if (count >= 2) {
-        toast({ variant: "destructive", title: "Limit Reached", description: `${targetWorker.firstName} has already used both Sunday meal stubs this week.` });
+      const ministry = ministries?.find(m => m.id === targetWorker.primaryMinistryId || m.id === targetWorker.secondaryMinistryId);
+      const limit = ministry?.mealStubSundayLimit || 2;
+      if (count >= limit) {
+        toast({ variant: "destructive", title: "Limit Reached", description: `${targetWorker.firstName} has already used all ${limit} Sunday meal stubs this week.` });
         return;
       }
     }
 
     setIsAssigning(true);
     try {
-      await addDocumentNonBlocking(collection(firestore, "mealstubs"), {
+      await addDoc(collection(firestore, "mealstubs"), {
         workerId: selectedWorkerId,
         workerName: `${targetWorker.firstName} ${targetWorker.lastName}`,
         date: serverTimestamp(),
-        status: 'Issued' as 'Issued',
-        assignedBy: workerProfile.id,
-        assignedByName: `${workerProfile.firstName} ${workerProfile.lastName}`,
+        status: 'Issued',
+        assignedBy: assignerId,
+        assignedByName: assignerName,
         stubType,
       });
       toast({ title: "Meal Stub Assigned", description: `Stub issued to ${targetWorker.firstName} ${targetWorker.lastName}.` });
       setIsAssignOpen(false);
       setSelectedWorkerId('');
     } catch (e) {
-      console.error(e);
+      console.error("Single Assignment Error:", e);
       toast({ variant: "destructive", title: "Failed to assign stub" });
     } finally {
       setIsAssigning(false);
     }
-  }, [selectedWorkerId, stubType, ministryWorkers, allMealStubs, workerProfile, firestore, toast]);
+  }, [selectedWorkerId, stubType, ministryWorkers, allMealStubs, workerProfile, user, ministries, firestore, toast]);
 
 
 
@@ -302,8 +452,29 @@ function MealsPageContent() {
     return new Date((s.date as any).seconds * 1000) > subDays(new Date(), 7);
   }).length;
 
+  // selected worker weekly stubs for display in dialog
+  const selectedWorkerWeekdayCount = selectedWorkerId ? getWeeklyWeekdayCount(allMealStubs || [], selectedWorkerId) : 0;
+  const selectedWorkerSundayCount = selectedWorkerId ? getSundayCount(allMealStubs || [], selectedWorkerId) : 0;
+
+  const selectedWorkerWeekdayLimit = useMemo(() => {
+    if (!selectedWorkerId || !ministryWorkers || !ministries) return 5;
+    const w = ministryWorkers.find(worker => worker.id === selectedWorkerId);
+    if (!w) return 5;
+    if (w.employmentType === 'Full-Time' || w.employmentType === 'On-Call') return 5;
+    const ministry = ministries.find(m => m.id === w.primaryMinistryId || m.id === w.secondaryMinistryId);
+    return ministry?.mealStubWeekdayLimit || 5;
+  }, [selectedWorkerId, ministryWorkers, ministries]);
+
+  const selectedWorkerSundayLimit = useMemo(() => {
+    if (!selectedWorkerId || !ministryWorkers || !ministries) return 2;
+    const w = ministryWorkers.find(worker => worker.id === selectedWorkerId);
+    if (!w) return 2;
+    const ministry = ministries.find(m => m.id === w.primaryMinistryId || m.id === w.secondaryMinistryId);
+    return ministry?.mealStubSundayLimit || 2;
+  }, [selectedWorkerId, ministryWorkers, ministries]);
+
   if (isLoading) {
-    return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+    return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="mx-auto h-8 w-8 animate-spin" /></div></AppLayout>;
   }
   if (!canViewMealStubs) {
     return (
@@ -312,10 +483,6 @@ function MealsPageContent() {
       </AppLayout>
     );
   }
-
-  // selected worker weekly stubs for display in dialog
-  const selectedWorkerWeekdayCount = selectedWorkerId ? getWeeklyWeekdayCount(allMealStubs || [], selectedWorkerId) : 0;
-  const selectedWorkerSundayCount = selectedWorkerId ? getSundayCount(allMealStubs || [], selectedWorkerId) : 0;
 
   return (
     <AppLayout>
@@ -401,36 +568,82 @@ function MealsPageContent() {
                 </CardContent>
               </Card>
 
-              <div className="rounded-lg border shadow-sm overflow-x-auto w-full">
-                <Table className="min-w-[400px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mealStubsLoading && (
-                      <TableRow><TableCell colSpan={3} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                    )}
-                    {mealStubs?.length === 0 && (
-                      <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-10">No meal stubs found.</TableCell></TableRow>
-                    )}
-                    {mealStubs?.map((stub) => (
-                      <TableRow key={stub.id}>
-                        <TableCell>{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'PP') : ''}</TableCell>
-                        <TableCell className="capitalize">{stub.stubType || 'Meal Stub'}</TableCell>
-                        <TableCell>
-                          <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
-                            {stub.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <Card>
+                <CardHeader className="pb-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <Ticket className="h-4 w-4" /> Today's Stubs
+                  </h3>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Weekday Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase text-blue-600">Weekday (Mon-Sat)</h4>
+                      <Badge variant="outline" className="text-[9px] h-4">Pool: 5/week</Badge>
+                    </div>
+                    <div className="rounded-lg border overflow-hidden">
+                      <Table>
+                        <TableHeader className="bg-muted/50">
+                          <TableRow className="h-8">
+                            <TableHead className="text-[10px] h-8">Time</TableHead>
+                            <TableHead className="text-[10px] h-8 text-right">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {mealStubs?.filter(s => s.stubType === 'weekday' && s.date && isToday(new Date((s.date as any).seconds * 1000))).length === 0 ? (
+                            <TableRow><TableCell colSpan={2} className="text-center text-[10px] text-muted-foreground py-4 italic">No weekday stubs today.</TableCell></TableRow>
+                          ) : (
+                            mealStubs?.filter(s => s.stubType === 'weekday' && s.date && isToday(new Date((s.date as any).seconds * 1000))).map((stub) => (
+                              <TableRow key={stub.id} className="h-9">
+                                <TableCell className="text-[11px] font-medium">{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'p') : ''}</TableCell>
+                                <TableCell className="text-right">
+                                  <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-100 text-blue-800 text-[9px] h-4 px-1.5' : 'bg-green-100 text-green-800 text-[9px] h-4 px-1.5'}>
+                                    {stub.status === 'Issued' ? 'Not Used' : 'Claimed'}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+
+                  {/* Sunday Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase text-green-600">Sunday</h4>
+                      <Badge variant="outline" className="text-[9px] h-4">Pool: 2/week</Badge>
+                    </div>
+                    <div className="rounded-lg border overflow-hidden">
+                      <Table>
+                        <TableHeader className="bg-muted/50">
+                          <TableRow className="h-8">
+                            <TableHead className="text-[10px] h-8">Time</TableHead>
+                            <TableHead className="text-[10px] h-8 text-right">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {mealStubs?.filter(s => s.stubType === 'sunday' && s.date && isToday(new Date((s.date as any).seconds * 1000))).length === 0 ? (
+                            <TableRow><TableCell colSpan={2} className="text-center text-[10px] text-muted-foreground py-4 italic">No Sunday stubs today.</TableCell></TableRow>
+                          ) : (
+                            mealStubs?.filter(s => s.stubType === 'sunday' && s.date && isToday(new Date((s.date as any).seconds * 1000))).map((stub) => (
+                              <TableRow key={stub.id} className="h-9">
+                                <TableCell className="text-[11px] font-medium">{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'p') : ''}</TableCell>
+                                <TableCell className="text-right">
+                                  <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-200 text-blue-900 text-[9px] h-4 px-1.5' : 'bg-green-100 text-green-800 text-[9px] h-4 px-1.5'}>
+                                    {stub.status === 'Issued' ? 'Not Used' : 'Claimed'}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </TabsContent>
@@ -477,88 +690,182 @@ function MealsPageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mb-6 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Search workers by name or type..."
-                  value={assignSearch}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAssignSearch(e.target.value)}
-                />
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Search workers by name or type..."
+                    value={assignSearch}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAssignSearch(e.target.value)}
+                  />
+                </div>
+                {(isAssigner || canManageAllMealStubs) && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={async () => {
+                      const autoWorkers = ministryWorkers.filter(w => w.employmentType === 'Full-Time' || w.employmentType === 'On-Call');
+                      if (autoWorkers.length === 0) {
+                        toast({ title: "No Eligibility", description: "No active Full-Time or On-Call workers found." });
+                        return;
+                      }
+
+                      const selectedIds = autoWorkers.map(w => w.id);
+                      setSelectedWorkerIds(selectedIds);
+                      setBatchType('weekday');
+                      setBatchCount(5);
+                      setIsBatchOpen(true);
+                      toast({ title: "Eligibility Selected", description: `Selected ${autoWorkers.length} FT/On-Call workers for weekday allocation.` });
+                    }}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" /> Auto-fill FT & On-Call
+                  </Button>
+                )}
+                {(canManageAllMealStubs) && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleCleanupExcess}
+                    disabled={isAssigning}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Cleanup Excess
+                  </Button>
+                )}
               </div>
 
-              {isAssigner ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredAssignerWorkers.map(w => {
-                    const weekdayCount = getWeeklyWeekdayCount(allMealStubs || [], w.id);
-                    const sundayCount = getSundayCount(allMealStubs || [], w.id);
-                    const isFullTime = w.employmentType === 'Full-Time';
-
-                    return (
-                      <Card key={w.id} className="overflow-hidden bg-muted/30 border-muted-foreground/10">
-                        <CardHeader className="p-4 pb-2">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="text-sm font-bold">{w.firstName} {w.lastName}</CardTitle>
-                              <CardDescription className="text-[10px]">{w.employmentType || 'Worker'}</CardDescription>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className={`text-[10px] font-medium ${weekdayCount >= 5 ? 'text-red-500' : 'text-blue-600'}`}>
-                                Weekday: {weekdayCount}/5
-                              </span>
-                              <span className={`text-[10px] font-medium ${sundayCount >= 2 ? 'text-red-500' : 'text-green-600'}`}>
-                                Sunday: {sundayCount}/2
-                              </span>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-2">
-                          <div className="flex flex-col gap-2">
-                            {/* Weekday Action for Full-Time */}
-                            {isFullTime && (
-                              <Button
-                                size="sm"
-                                variant={weekdayCount >= 5 ? "ghost" : "outline"}
-                                className="w-full text-[10px] h-8 justify-between"
-                                disabled={weekdayCount >= 5 || isAssigning}
-                                onClick={() => handleQuickAssign(w, 'weekday', 5 - weekdayCount)}
-                              >
-                                <span className="flex items-center">
-                                  {weekdayCount >= 5 ? <CheckCircle2 className="mr-1 h-3 w-3 text-green-500" /> : <ClipboardList className="mr-1 h-3 w-3" />}
-                                  {weekdayCount >= 5 ? 'Weekdays Assigned' : `Assign Weekdays (${5 - weekdayCount})`}
-                                </span>
-                              </Button>
-                            )}
-
-                            {/* Sunday Actions */}
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="text-[10px] h-8"
-                                disabled={sundayCount >= 2 || isAssigning}
-                                onClick={() => handleQuickAssign(w, 'sunday', 1)}
-                              >
-                                +1 Sunday
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="text-[10px] h-8"
-                                disabled={sundayCount >= 2 || isAssigning}
-                                onClick={() => handleQuickAssign(w, 'sunday', 2)}
-                              >
-                                +2 Sunday
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  {filteredAssignerWorkers.length === 0 && (
-                    <p className="text-sm text-muted-foreground col-span-full py-10 text-center">No matching workers found.</p>
+              {isAssigner || canManageAllMealStubs ? (
+                <div className="space-y-4">
+                  {selectedWorkerIds.length > 0 && (
+                    <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-lg animate-in fade-in slide-in-from-top-2">
+                      <p className="text-sm font-medium">Selected {selectedWorkerIds.length} worker(s)</p>
+                      <Button size="sm" onClick={() => setIsBatchOpen(true)}>
+                        <Ticket className="mr-2 h-4 w-4" /> Batch Issue
+                      </Button>
+                    </div>
                   )}
+
+                  <div className="rounded-lg border shadow-sm overflow-x-auto w-full bg-background">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[40px]">
+                            <Checkbox
+                              checked={filteredAssignerWorkers.length > 0 && selectedWorkerIds.length === filteredAssignerWorkers.length}
+                              onCheckedChange={() => toggleSelectAll(filteredAssignerWorkers)}
+                            />
+                          </TableHead>
+                          <TableHead>Worker</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Weekly Usage</TableHead>
+                          <TableHead className="text-right">Quick Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAssignerWorkers.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                              No matching workers found.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {filteredAssignerWorkers.map(w => {
+                          const weekdayCount = getWeeklyWeekdayCount(allMealStubs || [], w.id);
+                          const weekdayNotUsed = getWeeklyWeekdayCount(allMealStubs || [], w.id, 'Issued');
+                          const sundayCount = getSundayCount(allMealStubs || [], w.id);
+                          const sundayNotUsed = getSundayCount(allMealStubs || [], w.id, 'Issued');
+
+                          const ministry = ministries?.find(m => m.id === w.primaryMinistryId || m.id === w.secondaryMinistryId);
+                          const isAutomated = w.employmentType === 'Full-Time' || w.employmentType === 'On-Call';
+                          const wLimit = isAutomated ? 5 : (ministry?.mealStubWeekdayLimit || 5);
+                          const sLimit = ministry?.mealStubSundayLimit || 2;
+
+                          return (
+                            <TableRow key={w.id} className={selectedWorkerIds.includes(w.id) ? "bg-muted/50" : ""}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedWorkerIds.includes(w.id)}
+                                  onCheckedChange={() => toggleSelectWorker(w.id)}
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {w.firstName} {w.lastName}
+                              </TableCell>
+                              <TableCell className="text-xs">{w.employmentType || 'Worker'}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1 min-w-[140px]">
+                                  {todayIsSunday ? (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground whitespace-nowrap">Today (Sun):</span>
+                                        {sundayNotUsed > 0
+                                          ? <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 py-0 h-4 text-[9px] px-1 font-bold italic">Assigned</Badge>
+                                          : <span className="text-[9px] text-muted-foreground">-</span>
+                                        }
+                                      </div>
+                                      <div className="flex flex-col text-[9px]">
+                                        <span className="text-muted-foreground font-medium">Meal stub assigned: {sundayCount}/{sLimit}</span>
+                                        <span className="text-blue-600 font-bold">Meal stub not used: {sundayNotUsed}</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground whitespace-nowrap">Today:</span>
+                                        {weekdayNotUsed > 0
+                                          ? <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 py-0 h-4 text-[9px] px-1 font-bold italic">Assigned</Badge>
+                                          : <span className="text-[9px] text-muted-foreground">-</span>
+                                        }
+                                      </div>
+                                      <div className="flex flex-col text-[9px]">
+                                        <span className="text-muted-foreground font-medium">Meal stub assigned: {weekdayCount}/{wLimit}</span>
+                                        <span className="text-blue-600 font-bold">Meal stub not used: {weekdayNotUsed}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  {isAutomated && (
+                                    <Button
+                                      size="sm"
+                                      variant={weekdayCount >= wLimit ? "ghost" : "outline"}
+                                      className="h-8 py-0 px-2 text-[10px]"
+                                      disabled={weekdayCount >= wLimit || isAssigning}
+                                      onClick={() => handleQuickAssign(w, 'weekday', wLimit - weekdayCount)}
+                                    >
+                                      {weekdayCount >= wLimit ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : `Assign Full Week`}
+                                    </Button>
+                                  )}
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-8 w-8 p-0 text-[10px]"
+                                      disabled={sundayCount >= sLimit || isAssigning}
+                                      onClick={() => handleQuickAssign(w, 'sunday', 1)}
+                                    >
+                                      S1
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-8 w-8 p-0 text-[10px]"
+                                      disabled={sundayCount >= sLimit || isAssigning}
+                                      onClick={() => handleQuickAssign(w, 'sunday', 2)}
+                                    >
+                                      S2
+                                    </Button>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               ) : (
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/10 flex items-center gap-3">
@@ -577,42 +884,87 @@ function MealsPageContent() {
               <CardTitle className="text-base">Recently Issued Stubs</CardTitle>
               <CardDescription>Meal stubs recently assigned by ministries.</CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="rounded-lg overflow-x-auto w-full">
-                <Table className="min-w-[600px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Worker</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading && (
-                      <TableRow><TableCell colSpan={4} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                    )}
-                    {allMealStubs?.length === 0 && (
-                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-10">No issued stubs found.</TableCell></TableRow>
-                    )}
-                    {allMealStubs?.slice(0, 20).map((stub) => {
-                      const worker = allWorkers?.find(w => w.id === stub.workerId);
-                      const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
-                      return (
-                        <TableRow key={stub.id}>
-                          <TableCell className="font-medium">{workerName}</TableCell>
-                          <TableCell>{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'PPp') : ''}</TableCell>
-                          <TableCell className="capitalize">{stub.stubType || 'Meal Stub'}</TableCell>
-                          <TableCell>
-                            <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
-                              {stub.status}
-                            </Badge>
-                          </TableCell>
+            <CardContent className="p-6">
+              <div className="space-y-8">
+                {/* Recently Issued Weekday Section */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase text-blue-600 flex items-center justify-between">
+                    Weekday (Mon-Sat)
+                    <span className="text-[10px] font-normal text-muted-foreground lowercase">Last 20 today</span>
+                  </h4>
+                  <div className="rounded-md border overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow className="h-8">
+                          <TableHead className="text-[10px] h-8">Worker</TableHead>
+                          <TableHead className="text-[10px] h-8">Time</TableHead>
+                          <TableHead className="text-[10px] h-8 text-right">Status</TableHead>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {allMealStubs?.filter(s => s.stubType === 'weekday' && s.date && isToday(new Date((s.date as any).seconds * 1000))).length === 0 ? (
+                          <TableRow><TableCell colSpan={3} className="text-center py-6 text-[10px] text-muted-foreground italic">No weekday stubs issued today.</TableCell></TableRow>
+                        ) : (
+                          allMealStubs?.filter(s => s.stubType === 'weekday' && s.date && isToday(new Date((s.date as any).seconds * 1000))).slice(0, 20).map((stub) => {
+                            const worker = allWorkers?.find(w => w.id === stub.workerId);
+                            const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
+                            return (
+                              <TableRow key={stub.id} className="h-9">
+                                <TableCell className="text-[11px] font-medium truncate max-w-[120px]">{workerName}</TableCell>
+                                <TableCell className="text-[11px] font-mono">{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'p') : ''}</TableCell>
+                                <TableCell className="text-right">
+                                  <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-100 text-blue-800 text-[9px] h-4 px-1' : 'bg-green-100 text-green-800 text-[9px] h-4 px-1'}>
+                                    {stub.status === 'Issued' ? 'Not Used' : 'Claimed'}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                {/* Recently Issued Sunday Section */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase text-green-600 flex items-center justify-between">
+                    Sunday
+                    <span className="text-[10px] font-normal text-muted-foreground lowercase">Last 20 today</span>
+                  </h4>
+                  <div className="rounded-md border overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow className="h-8">
+                          <TableHead className="text-[10px] h-8">Worker</TableHead>
+                          <TableHead className="text-[10px] h-8">Time</TableHead>
+                          <TableHead className="text-[10px] h-8 text-right">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allMealStubs?.filter(s => s.stubType === 'sunday' && s.date && isToday(new Date((s.date as any).seconds * 1000))).length === 0 ? (
+                          <TableRow><TableCell colSpan={3} className="text-center py-6 text-[10px] text-muted-foreground italic">No Sunday stubs issued today.</TableCell></TableRow>
+                        ) : (
+                          allMealStubs?.filter(s => s.stubType === 'sunday' && s.date && isToday(new Date((s.date as any).seconds * 1000))).slice(0, 20).map((stub) => {
+                            const worker = allWorkers?.find(w => w.id === stub.workerId);
+                            const workerName = worker ? `${worker.firstName} ${worker.lastName}` : stub.workerName;
+                            return (
+                              <TableRow key={stub.id} className="h-9">
+                                <TableCell className="text-[11px] font-medium truncate max-w-[120px]">{workerName}</TableCell>
+                                <TableCell className="text-[11px] font-mono">{stub.date ? format(new Date((stub.date as any).seconds * 1000), 'p') : ''}</TableCell>
+                                <TableCell className="text-right">
+                                  <Badge variant={stub.status === 'Issued' ? 'default' : 'secondary'} className={stub.status === 'Issued' ? 'bg-blue-200 text-blue-900 text-[9px] h-4 px-1' : 'bg-green-100 text-green-800 text-[9px] h-4 px-1'}>
+                                    {stub.status === 'Issued' ? 'Not Used' : 'Claimed'}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -661,27 +1013,37 @@ function MealsPageContent() {
             {selectedWorkerId && (
               <>
                 <Separator />
-                <div className="rounded-lg bg-muted/50 p-3 space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground">This Worker's Allocation — Current Week</p>
-                  <div className="flex gap-4 text-sm">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-muted-foreground">Weekday</span>
-                      <span className={`font-bold ${selectedWorkerWeekdayCount >= 5 ? 'text-red-600' : 'text-green-600'}`}>
-                        {selectedWorkerWeekdayCount} / 5
-                      </span>
+                <div className="rounded-lg bg-muted/50 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground border-b pb-1">This Worker's Allocation — Current Week</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Meal stub assigned</p>
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`text-xs font-bold ${selectedWorkerWeekdayCount >= selectedWorkerWeekdayLimit ? 'text-red-600' : 'text-blue-600'}`}>
+                          W: {selectedWorkerWeekdayCount} / {selectedWorkerWeekdayLimit}
+                        </span>
+                        <span className={`text-xs font-bold ${selectedWorkerSundayCount >= selectedWorkerSundayLimit ? 'text-red-600' : 'text-green-600'}`}>
+                          S: {selectedWorkerSundayCount} / {selectedWorkerSundayLimit}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-muted-foreground">Sunday</span>
-                      <span className={`font-bold ${selectedWorkerSundayCount >= 2 ? 'text-red-600' : 'text-green-600'}`}>
-                        {selectedWorkerSundayCount} / 2
-                      </span>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Meal stub not used</p>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-bold text-blue-600">
+                          W: {getWeeklyWeekdayCount(allMealStubs || [], selectedWorkerId, 'Issued')} stub(s)
+                        </span>
+                        <span className="text-xs font-bold text-blue-600">
+                          S: {getSundayCount(allMealStubs || [], selectedWorkerId, 'Issued')} stub(s)
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  {stubType === 'weekday' && selectedWorkerWeekdayCount >= 5 && (
-                    <p className="text-xs text-red-600 mt-1">⚠️ Weekly weekday limit reached.</p>
+                  {stubType === 'weekday' && selectedWorkerWeekdayCount >= selectedWorkerWeekdayLimit && (
+                    <p className="text-xs text-red-600 mt-1 font-medium">⚠️ Weekly weekday limit reached.</p>
                   )}
-                  {stubType === 'sunday' && selectedWorkerSundayCount >= 2 && (
-                    <p className="text-xs text-red-600 mt-1">⚠️ Weekly Sunday limit reached.</p>
+                  {stubType === 'sunday' && selectedWorkerSundayCount >= selectedWorkerSundayLimit && (
+                    <p className="text-xs text-red-600 mt-1 font-medium">⚠️ Weekly Sunday limit reached.</p>
                   )}
                 </div>
               </>
@@ -692,12 +1054,57 @@ function MealsPageContent() {
             <Button
               onClick={handleAssignStub}
               disabled={!selectedWorkerId || isAssigning ||
-                (stubType === 'weekday' && selectedWorkerWeekdayCount >= 5) ||
-                (stubType === 'sunday' && selectedWorkerSundayCount >= 2)
+                (stubType === 'weekday' && selectedWorkerWeekdayCount >= selectedWorkerWeekdayLimit) ||
+                (stubType === 'sunday' && selectedWorkerSundayCount >= selectedWorkerSundayLimit)
               }
             >
               {isAssigning ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
               Issue Stub
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Assign Dialog */}
+      <Dialog open={isBatchOpen} onOpenChange={setIsBatchOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Batch Issue Meal Stubs</DialogTitle>
+            <DialogDescription>
+              Assign meal stubs to {selectedWorkerIds.length} selected worker(s).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Stub Type</Label>
+              <Select value={batchType} onValueChange={(v: any) => setBatchType(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekday">Weekday Stub</SelectItem>
+                  <SelectItem value="sunday">Sunday Stub</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Count per Worker</Label>
+              <Select value={batchCount.toString()} onValueChange={(v: string) => setBatchCount(parseInt(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <SelectItem key={n} value={n.toString()}>{n} stub(s)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground italic">
+                Note: This will respect individual weekly limits. Workers already at their limit will be skipped.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBatchOpen(false)}>Cancel</Button>
+            <Button onClick={handleBatchAssign} disabled={isAssigning}>
+              {isAssigning ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardList className="mr-2 h-4 w-4" />}
+              Issue Stubs
             </Button>
           </DialogFooter>
         </DialogContent>
