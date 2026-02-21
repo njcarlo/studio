@@ -20,7 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useFirestore, useCollection } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import { format } from "date-fns";
 import { LoaderCircle, Search, ShieldAlert } from "lucide-react";
@@ -31,7 +31,7 @@ export default function TransactionLogsPage() {
 
     const [searchTerm, setSearchTerm] = useState("");
 
-    const logsQuery = React.useMemo(() => {
+    const logsQuery = useMemoFirebase(() => {
         if (!firestore || !isSuperAdmin) return null;
         return query(collection(firestore, "transaction_logs"), orderBy("timestamp", "desc"), limit(200));
     }, [firestore, isSuperAdmin]);
