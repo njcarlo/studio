@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+import { useAuditLog } from "@/hooks/use-audit-log";
 import type { Role } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -224,6 +225,7 @@ export default function RoleManagementPage() {
     const { canManageRoles, isLoading, allRoles } = useUserRole();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { logAction } = useAuditLog();
 
     const [sheetOpen, setSheetOpen] = useState(false);
     const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -248,9 +250,11 @@ export default function RoleManagementPage() {
         try {
             if (id) {
                 await updateDocumentNonBlocking(doc(firestore, "roles", id), data);
+                await logAction('Updated Role', 'Roles', `Updated permissions for role "${data.name}"`);
                 toast({ title: "Role Updated", description: `The "${data.name}" role has been saved.` });
             } else {
                 await addDocumentNonBlocking(collection(firestore, "roles"), data);
+                await logAction('Created Role', 'Roles', `Created new role "${data.name}"`);
                 toast({ title: "Role Added", description: `The "${data.name}" role has been created.` });
             }
             setSheetOpen(false);
@@ -269,6 +273,7 @@ export default function RoleManagementPage() {
 
         try {
             await deleteDocumentNonBlocking(doc(firestore, "roles", roleToDelete.id));
+            await logAction('Deleted Role', 'Roles', `Deleted role "${roleToDelete.name}"`);
             toast({ title: "Role Deleted" });
             setRoleToDelete(null);
         } catch (error) {

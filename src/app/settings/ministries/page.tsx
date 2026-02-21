@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useFirestore, useCollection, useMemoFirebase, useUser, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
 import type { Ministry, Worker, Department } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useAuditLog } from "@/hooks/use-audit-log";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -352,6 +353,7 @@ export default function MinistryManagementPage() {
   const { user } = useUser();
   const { canManageMinistries, canAppointApprovers, workerProfile, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
   const [isFormSheetOpen, setIsFormSheetOpen] = useState(false);
@@ -399,6 +401,7 @@ export default function MinistryManagementPage() {
     try {
       if (selectedMinistry) {
         await updateDocumentNonBlocking(doc(firestore, 'ministries', selectedMinistry.id), data);
+        await logAction('Updated Ministry', 'Ministries', `Updated configuration for "${data.name || selectedMinistry.name}"`);
         toast({ title: 'Ministry Updated' });
       } else {
         const customId = generateMinistryId(data.name || 'New', data.department || 'Worship');
@@ -409,6 +412,7 @@ export default function MinistryManagementPage() {
           leaderId: data.leaderId || '',
           headId: data.headId || ''
         }, { merge: true });
+        await logAction('Created Ministry', 'Ministries', `Created new ministry "${data.name}" in ${data.department}`);
         toast({ title: 'Ministry Added', description: `Assigned ID: ${customId}` });
       }
       setIsFormSheetOpen(false);
@@ -421,6 +425,9 @@ export default function MinistryManagementPage() {
     try {
       const field = type === 'approver' ? 'approverId' : type === 'assigner' ? 'mealStubAssignerId' : 'headId';
       await updateDocumentNonBlocking(doc(firestore, 'ministries', ministryId), { [field]: userId === null ? '' : userId });
+      const minInfo = ministries?.find((m: Ministry) => m.id === ministryId);
+      const wInfo = userId ? getWorker(userId) : null;
+      await logAction('Updated Ministry Assignment', 'Ministries', `Assigned ${wInfo ? `${wInfo.firstName} ${wInfo.lastName}` : 'None'} as ${type} for "${minInfo?.name}"`);
       toast({ title: `${type === 'approver' ? 'Approver' : type === 'assigner' ? 'Meal Stub Assigner' : 'Ministry Head'} Updated` });
       setIsAppointApproverSheetOpen(false);
     } catch (error) {
@@ -432,6 +439,7 @@ export default function MinistryManagementPage() {
     if (!ministryToDelete) return;
     try {
       await deleteDocumentNonBlocking(doc(firestore, 'ministries', ministryToDelete.id));
+      await logAction('Deleted Ministry', 'Ministries', `Deleted ministry "${ministryToDelete.name}"`);
       toast({ title: 'Ministry Deleted' });
       setMinistryToDelete(null);
     } catch (error) {

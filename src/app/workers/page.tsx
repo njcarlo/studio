@@ -48,6 +48,7 @@ import type { Worker, Role, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser, initiatePasswordReset, useFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useAuditLog } from "@/hooks/use-audit-log";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -267,6 +268,7 @@ export default function WorkersPage() {
   const { user } = useUser();
   const { workerProfile, canManageWorkers, isSuperAdmin, allRoles, isLoading: isRoleLoading } = useUserRole();
   const { startImpersonation } = useImpersonation();
+  const { logAction } = useAuditLog();
   const { auth } = useFirebase();
 
   const workersRef = useMemoFirebase(() => {
@@ -385,7 +387,8 @@ export default function WorkersPage() {
     initiatePasswordReset(
       auth,
       worker.email,
-      () => {
+      async () => {
+        await logAction('Password Reset requested', 'Workers', `Requested password reset link for ${worker.firstName} ${worker.lastName}`);
         toast({ title: "Email Sent", description: `A password reset link has been sent to ${worker.email}.` });
       },
       (error) => {
@@ -402,9 +405,13 @@ export default function WorkersPage() {
     startImpersonation(worker.id);
   };
 
-  const handleDelete = (workerId: string) => {
+  const handleDelete = async (workerId: string) => {
     if (!workerId) return;
+    const w = allWorkers?.find(w => w.id === workerId);
     deleteDocumentNonBlocking(doc(firestore, "workers", workerId));
+    if (w) {
+      await logAction('Deleted Worker', 'Workers', `Removed worker profile for ${w.firstName} ${w.lastName} (ID: ${w.workerId})`);
+    }
     toast({
       title: "Worker Deleted",
       description: "The worker profile has been removed."
@@ -432,6 +439,7 @@ export default function WorkersPage() {
     try {
       if (selectedWorker?.id) {
         await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), dataToSave);
+        await logAction('Updated Worker', 'Workers', `Updated details for ${dataToSave.firstName} ${dataToSave.lastName}`);
         toast({
           title: "Worker Updated",
           description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
@@ -440,6 +448,7 @@ export default function WorkersPage() {
         const newWorkerId = String(20000 + (allWorkers?.length || 0)).padStart(6, '0');
         const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
         const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "workers"), dataToSaveWithId);
+        await logAction('Added Worker', 'Workers', `Created profile for ${dataToSave.firstName} ${dataToSave.lastName} (ID: ${newWorkerId})`);
 
         if (newWorkerRef && workerProfile && dataToSave.status === 'Pending Approval') {
           await addDocumentNonBlocking(collection(firestore, "approvals"), {

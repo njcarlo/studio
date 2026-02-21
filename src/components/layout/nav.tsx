@@ -29,7 +29,7 @@ import { useUserRole, type UserRoleContextType } from "@/hooks/use-user-role";
 type NavSubItem = {
   href: string;
   label: string;
-  permissionKey?: keyof Omit<UserRoleContextType, 'isSuperAdmin' | 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'>;
+  permissionKey?: keyof Omit<UserRoleContextType, 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'>;
   subItems?: NavSubItem[];
 }
 
@@ -37,7 +37,7 @@ type NavItem = {
   href: string;
   icon: React.ElementType;
   label: string;
-  permissionKey?: keyof Omit<UserRoleContextType, 'isSuperAdmin' | 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'>;
+  permissionKey?: keyof Omit<UserRoleContextType, 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'>;
   subItems?: NavSubItem[];
 };
 
@@ -93,7 +93,8 @@ const allNavItems: NavItem[] = [
       { href: "/settings/roles", label: "Role Management", permissionKey: 'canManageRoles' },
       { href: "/settings/departments", label: "Department Management", permissionKey: 'canManageMinistries' },
       { href: "/settings/ministries", label: "Ministry Management", permissionKey: 'canManageMinistries' },
-      { href: "/settings/rooms", label: "Facilities Management", permissionKey: 'canManageFacilities' }
+      { href: "/settings/rooms", label: "Facilities Management", permissionKey: 'canManageFacilities' },
+      { href: "/settings/transaction-logs", label: "Transaction Logs", permissionKey: 'isSuperAdmin' }
     ]
   },
 ];
@@ -108,7 +109,7 @@ export function Nav({
   const userRole = useUserRole();
   const { isLoading, needsSeeding, workerProfile } = userRole;
 
-  const hasAccess = (key: keyof Omit<UserRoleContextType, 'isSuperAdmin' | 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'> | undefined) => {
+  const hasAccess = (key: keyof Omit<UserRoleContextType, 'needsSeeding' | 'isLoading' | 'allRoles' | 'workerProfile'> | undefined) => {
     if (!key) return true; // No permission required
     return userRole[key] === true;
   }
