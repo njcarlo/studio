@@ -12,33 +12,49 @@ import {
 } from "@/components/ui/sidebar";
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
-import { Church, LoaderCircle, Info, X } from "lucide-react";
+import { Church, LoaderCircle, Info, X, LayoutDashboard, Users, Calendar as CalendarIcon, Menu } from "lucide-react";
 import { useUser } from "@/firebase";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/ui/sidebar";
+
+const MobileSidebarTrigger = () => {
+  const { setOpenMobile } = useSidebar();
+
+  return (
+    <Button
+      variant="ghost"
+      className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground"
+      onClick={() => setOpenMobile(true)}
+    >
+      <Menu className="h-5 w-5" />
+      <span className="text-[10px] font-medium leading-none">More</span>
+    </Button>
+  );
+};
 
 const ImpersonationBanner = () => {
-    const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
-    const { workerProfile } = useUserRole(); // This will be the impersonated profile
+  const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
+  const { workerProfile } = useUserRole(); // This will be the impersonated profile
 
-    if (!impersonatedWorkerId) {
-        return null;
-    }
+  if (!impersonatedWorkerId) {
+    return null;
+  }
 
-    return (
-        <div className="bg-yellow-400 text-yellow-900 p-2 text-center text-sm font-semibold flex items-center justify-center gap-4">
-            <Info className="h-5 w-5" />
-            <span>
-                You are viewing as <strong>{workerProfile?.firstName} {workerProfile?.lastName}</strong>. 
-                All actions are still performed as an administrator.
-            </span>
-            <Button variant="ghost" size="sm" onClick={stopImpersonation} className="hover:bg-yellow-500">
-                <X className="mr-2 h-4 w-4" />
-                Exit View-As Mode
-            </Button>
-        </div>
-    );
+  return (
+    <div className="bg-yellow-400 text-yellow-900 p-2 text-center text-sm font-semibold flex items-center justify-center gap-4">
+      <Info className="h-5 w-5" />
+      <span>
+        You are viewing as <strong>{workerProfile?.firstName} {workerProfile?.lastName}</strong>.
+        All actions are still performed as an administrator.
+      </span>
+      <Button variant="ghost" size="sm" onClick={stopImpersonation} className="hover:bg-yellow-500">
+        <X className="mr-2 h-4 w-4" />
+        Exit View-As Mode
+      </Button>
+    </div>
+  );
 };
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -57,15 +73,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // While auth is loading, show a full-screen loader
   if (isUserLoading) {
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-        </div>
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
-  
+
   // If there's no user, we are in the process of redirecting, so don't render the layout
   if (!user) {
-      return null;
+    return null;
   }
 
   return (
@@ -81,10 +97,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Nav pathname={currentPathname} />
         </SidebarContent>
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <ImpersonationBanner />
-        <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-          <SidebarTrigger className="md:hidden" />
+        <header className="flex h-14 md:h-[60px] items-center gap-4 border-b bg-card px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content">
+          <SidebarTrigger className="hidden md:flex" />
+          <div className="md:hidden flex items-center gap-2">
+            <Church className="w-6 h-6 text-primary" />
+            <span className="text-sm font-semibold font-headline">COGApp</span>
+          </div>
           <div className="w-full flex-1" />
           <UserNav />
         </header>
@@ -92,6 +112,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </SidebarInset>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t flex justify-around items-center z-50 pb-[env(safe-area-inset-bottom)] box-content">
+        <Button variant="ghost" className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary" data-active={currentPathname === '/dashboard'} onClick={() => router.push('/dashboard')}>
+          <LayoutDashboard className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">Home</span>
+        </Button>
+        <Button variant="ghost" className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary" data-active={currentPathname.startsWith('/workers')} onClick={() => router.push('/workers')}>
+          <Users className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">Workers</span>
+        </Button>
+        <Button variant="ghost" className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary" data-active={currentPathname.startsWith('/reservations')} onClick={() => router.push('/reservations/calendar')}>
+          <CalendarIcon className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">Rooms</span>
+        </Button>
+
+        {/* Connects with Sidebar to open the side menu */}
+        <MobileSidebarTrigger />
+      </div>
+
     </SidebarProvider>
   );
 }
