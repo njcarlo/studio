@@ -41,6 +41,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import type { Worker, Role, Ministry } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser, initiatePasswordReset, useFirebase } from "@/firebase";
@@ -88,6 +90,16 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
       });
     }
   }, [worker, canManage]);
+
+  const groupedMinistries = useMemo(() => {
+    const groups: Record<string, Ministry[]> = {};
+    ministries.forEach(m => {
+      const dept = m.department || 'Other';
+      if (!groups[dept]) groups[dept] = [];
+      groups[dept].push(m);
+    });
+    return groups;
+  }, [ministries]);
 
   const handleSave = () => {
     onSave(formData);
@@ -150,7 +162,14 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None</SelectItem>
-              {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+              {Object.entries(groupedMinistries).map(([dept, mins]) => (
+                <SelectGroup key={dept}>
+                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
+                  {mins.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -162,7 +181,14 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None</SelectItem>
-              {ministries.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+              {Object.entries(groupedMinistries).map(([dept, mins]) => (
+                <SelectGroup key={dept}>
+                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
+                  {mins.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
             </SelectContent>
           </Select>
         </div>
