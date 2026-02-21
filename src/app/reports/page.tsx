@@ -12,19 +12,22 @@ import {
     Download,
     Users,
     UtensilsCrossed,
+    Utensils,
     CalendarCheck,
     CheckCircle2,
     Clock,
     XCircle,
     TrendingUp,
+    PlusCircle,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useUser } from "@/firebase";
 import { collection, query, where, orderBy, collectionGroup, Timestamp } from "firebase/firestore";
 import {
     format,
@@ -41,8 +44,11 @@ import {
     subMonths,
     addMonths,
     eachDayOfInterval,
+    isSunday,
+    isWithinInterval,
+    getDay,
 } from "date-fns";
-import type { AttendanceRecord, MealStub, Booking, Worker, Room } from "@/lib/types";
+import type { AttendanceRecord, MealStub, Booking, Worker, Room, Ministry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -407,8 +413,8 @@ function AttendanceReport({ dateRange }: { dateRange: DateRange }) {
                         <Download className="mr-2 h-4 w-4" />Export CSV
                     </Button>
                 </CardHeader>
-                <CardContent>
-                    <Table>
+                <CardContent className="w-full overflow-x-auto">
+                    <Table className="min-w-[600px]">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Worker</TableHead>
@@ -502,8 +508,8 @@ function MealStubsReport({ dateRange }: { dateRange: DateRange }) {
                         <Download className="mr-2 h-4 w-4" />Export CSV
                     </Button>
                 </CardHeader>
-                <CardContent>
-                    <Table>
+                <CardContent className="w-full overflow-x-auto">
+                    <Table className="min-w-[600px]">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Worker</TableHead>
@@ -537,6 +543,203 @@ function MealStubsReport({ dateRange }: { dateRange: DateRange }) {
                                 <TableRow>
                                     <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                                         No meal stub records found for this period.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+// ─── Meal Allocations Report ────────────────────────────────────────────────
+function MealAllocationsReport({ dateRange }: { dateRange: DateRange }) {
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const { workerProfile, isSuperAdmin } = useUserRole();
+    const { toast } = useToast();
+
+    const { data: workers, isLoading: wLoading } = useCollection<Worker>(
+        useMemoFirebase(() => collection(firestore, "workers"), [firestore])
+    );
+    const { data: ministries, isLoading: mLoading } = useCollection<Ministry>(
+        useMemoFirebase(() => collection(firestore, "ministries"), [firestore])
+    );
+
+    const mealstubsQuery = useMemoFirebase(() =>
+        query(
+            collection(firestore, "mealstubs"),
+            where("date", ">=", Timestamp.fromDate(dateRange.start)),
+            where("date", "<=", Timestamp.fromDate(dateRange.end)),
+            orderBy("date", "desc")
+        ), [firestore, dateRange]);
+
+    const { data: mealstubs, isLoading: msLoading } = useCollection<MealStub>(mealstubsQuery);
+
+    const isLoading = wLoading || msLoading || mLoading;
+
+    const filteredWorkers = useMemo(() => {
+        return workers?.filter(w => w.employmentType === 'Full-Time' || w.employmentType === 'On-Call')
+            .sort((a, b) => a.firstName.localeCompare(b.firstName)) || [];
+    }, [workers]);
+
+    const getMinistry = useCallback((id: string) => ministries?.find(m => m.id === id), [ministries]);
+
+    const isAssignerFor = useCallback((worker: Worker) => {
+        if (isSuperAdmin) return true;
+        if (!workerProfile) return false;
+        const primaryMinistry = getMinistry(worker.primaryMinistryId);
+        const secondaryMinistry = getMinistry(worker.secondaryMinistryId);
+        return (primaryMinistry?.mealStubAssignerId === workerProfile.id) ||
+            (secondaryMinistry?.mealStubAssignerId === workerProfile.id);
+    }, [isSuperAdmin, workerProfile, getMinistry]);
+
+    const handleAssignSunday = async (worker: Worker) => {
+        if (!isAssignerFor(worker)) {
+            toast({ variant: "destructive", title: "Access Denied", description: "You are not the meal stub assigner for this ministry." });
+            return;
+        }
+
+        const today = new Date();
+        if (!isSunday(today)) {
+            toast({ variant: "destructive", title: "Not Allowed", description: "Sunday meal stubs can only be assigned on Sundays." });
+            return;
+        }
+
+        const newStub = {
+            workerId: worker.id,
+            workerName: `${worker.firstName} ${worker.lastName}`,
+            date: Timestamp.fromDate(today),
+            status: 'Issued' as const,
+        };
+
+        try {
+            await addDocumentNonBlocking(collection(firestore, "mealstubs"), newStub);
+            toast({ title: "Meal Stub Assigned", description: `Assigned a Sunday meal stub to ${worker.firstName}.` });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Error", description: "Failed to assign meal stub." });
+        }
+    };
+
+    const getWorkerStats = (workerId: string) => {
+        const workerStubs = mealstubs?.filter(s => s.workerId === workerId) || [];
+        const weekdayStubs = workerStubs.filter(s => {
+            const d = s.date.toDate();
+            return !isSunday(d) && isWithinInterval(d, dateRange);
+        });
+        const sundayStubs = workerStubs.filter(s => {
+            const d = s.date.toDate();
+            return isSunday(d) && isWithinInterval(d, dateRange);
+        });
+
+        return {
+            weekdayCount: weekdayStubs.length,
+            sundayCount: sundayStubs.length,
+        };
+    };
+
+    const isCurrentlySunday = isSunday(new Date());
+
+    return (
+        <div className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Utensils className="h-4 w-4" /> Weekly Meal Allocations
+                    </CardTitle>
+                    <CardDescription>
+                        Tracking for Full-Time and On-Call workers. Weekdays: 5 limit, Sunday: 2 limit.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="w-full overflow-x-auto">
+                    <Table className="min-w-[800px]">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Worker</TableHead>
+                                <TableHead>Ministry</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead className="text-center">Mon-Sat (Used/5)</TableHead>
+                                <TableHead className="text-center">Sunday (Used/2)</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-8">
+                                        <LoaderCircle className="h-6 w-6 animate-spin mx-auto" />
+                                    </TableCell>
+                                </TableRow>
+                            ) : filteredWorkers.map((worker) => {
+                                const stats = getWorkerStats(worker.id);
+                                const primaryMinistry = getMinistry(worker.primaryMinistryId);
+                                const secondaryMinistry = getMinistry(worker.secondaryMinistryId);
+                                const canAssign = isAssignerFor(worker) && isCurrentlySunday;
+
+                                return (
+                                    <TableRow key={worker.id}>
+                                        <TableCell className="font-medium">{worker.firstName} {worker.lastName}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-sm">{primaryMinistry?.name || '---'}</span>
+                                                {secondaryMinistry && (
+                                                    <span className="text-[10px] text-muted-foreground italic">({secondaryMinistry.name})</span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="text-[10px] uppercase">
+                                                {worker.employmentType}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className={cn(
+                                                    "font-bold",
+                                                    stats.weekdayCount > 5 ? "text-red-500" : "text-green-600"
+                                                )}>
+                                                    {stats.weekdayCount} / 5
+                                                </span>
+                                                <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                                                    <div
+                                                        className={cn("h-full", stats.weekdayCount > 5 ? "bg-red-500" : "bg-green-500")}
+                                                        style={{ width: `${Math.min((stats.weekdayCount / 5) * 100, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className={cn(
+                                                    "font-bold",
+                                                    stats.sundayCount > 2 ? "text-red-500" : "text-blue-600"
+                                                )}>
+                                                    {stats.sundayCount} / 2
+                                                </span>
+                                                <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                                                    <div
+                                                        className={cn("h-full", stats.sundayCount > 2 ? "bg-red-500" : "bg-blue-500")}
+                                                        style={{ width: `${Math.min((stats.sundayCount / 2) * 100, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {canAssign && (
+                                                <Button size="sm" variant="outline" onClick={() => handleAssignSunday(worker)}>
+                                                    <PlusCircle className="mr-1 h-3 w-3" /> Assign Sunday
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                            {!isLoading && filteredWorkers.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                        No Full-Time or On-Call workers found.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -624,8 +827,8 @@ function ReservationsReport({ dateRange }: { dateRange: DateRange }) {
                         <Download className="mr-2 h-4 w-4" />Export CSV
                     </Button>
                 </CardHeader>
-                <CardContent>
-                    <Table>
+                <CardContent className="w-full overflow-x-auto">
+                    <Table className="min-w-[700px]">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Room</TableHead>
@@ -733,12 +936,15 @@ export default function ReportsPage() {
             </div>
 
             <Tabs defaultValue="summary">
-                <TabsList className="mb-4">
-                    <TabsTrigger value="summary">Summary</TabsTrigger>
-                    <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                    <TabsTrigger value="mealstubs">Meal Stubs</TabsTrigger>
-                    <TabsTrigger value="reservations">Room Reservations</TabsTrigger>
-                </TabsList>
+                <div className="w-full overflow-x-auto pb-2">
+                    <TabsList className="mb-0 flex w-max">
+                        <TabsTrigger value="summary">Summary</TabsTrigger>
+                        <TabsTrigger value="attendance">Attendance</TabsTrigger>
+                        <TabsTrigger value="mealstubs">Meal Stubs</TabsTrigger>
+                        <TabsTrigger value="mealallocations">Meal Allocations</TabsTrigger>
+                        <TabsTrigger value="reservations">Room Reservations</TabsTrigger>
+                    </TabsList>
+                </div>
 
                 <TabsContent value="summary">
                     <SummaryDashboard />
@@ -756,12 +962,18 @@ export default function ReportsPage() {
                     </TabbedReport>
                 </TabsContent>
 
+                <TabsContent value="mealallocations">
+                    <TabbedReport>
+                        <MealAllocationsReport dateRange={{ start: new Date(), end: new Date() }} />
+                    </TabbedReport>
+                </TabsContent>
+
                 <TabsContent value="reservations">
                     <TabbedReport>
                         <ReservationsReport dateRange={{ start: new Date(), end: new Date() }} />
                     </TabbedReport>
                 </TabsContent>
             </Tabs>
-        </AppLayout>
+        </AppLayout >
     );
 }

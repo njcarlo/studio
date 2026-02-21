@@ -124,7 +124,7 @@ export default function QRScannerPage() {
         const [type, payload, timestamp] = data.split(':');
 
         if (scanMode === 'Attendance') {
-            if (type !== 'ATTENDANCE' && type !== 'STATIC') {
+            if (type !== 'ATTENDANCE' && type !== 'STATIC' && type !== 'COG_USER') {
                 toast({ variant: 'destructive', title: 'Invalid QR Type', description: 'This QR code cannot be used for attendance.' });
                 setTimeout(resetScanner, 2000);
                 return;

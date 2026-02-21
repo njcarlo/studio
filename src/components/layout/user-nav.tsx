@@ -58,9 +58,9 @@ export function UserNav() {
 
   const displayName = (workerProfile?.firstName && workerProfile?.lastName)
     ? `${workerProfile.firstName} ${workerProfile.lastName}`
-    : user?.email;
+    : user?.displayName || user?.email?.split('@')[0] || 'User';
 
-  const altText = displayName || 'User';
+  const altText = displayName;
 
   const fallbackChar = (workerProfile?.firstName || user?.email || 'U').charAt(0).toUpperCase();
 

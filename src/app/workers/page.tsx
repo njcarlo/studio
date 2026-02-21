@@ -224,14 +224,14 @@ export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
-  const { workerProfile, canManageWorkers, isLoading: isRoleLoading } = useUserRole();
+  const { workerProfile, canManageWorkers, isSuperAdmin, allRoles, isLoading: isRoleLoading } = useUserRole();
   const { startImpersonation } = useImpersonation();
 
   const workersRef = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, "workers");
   }, [firestore, user]);
-  const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
+  const { data: allWorkers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
   const rolesRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -248,6 +248,24 @@ export default function WorkersPage() {
   const ministries = ministriesData || [];
 
   const isLoading = workersLoading || rolesLoading || ministriesLoading || isRoleLoading;
+
+  const workers = useMemo(() => {
+    if (!allWorkers) return [];
+
+    // Global managers (Super Admin or those with manage_workers but no specific ministry assigned)
+    const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.primaryMinistryId);
+
+    if (isGlobalManager) return allWorkers;
+
+    // Filter by ministry: show workers in same ministries as current user
+    const userMinistryIds = [workerProfile?.primaryMinistryId, workerProfile?.secondaryMinistryId].filter(Boolean);
+    if (userMinistryIds.length === 0) return [];
+
+    return allWorkers.filter(w =>
+      userMinistryIds.includes(w.primaryMinistryId) ||
+      userMinistryIds.includes(w.secondaryMinistryId)
+    );
+  }, [allWorkers, isSuperAdmin, canManageWorkers, workerProfile]);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
@@ -310,7 +328,7 @@ export default function WorkersPage() {
           description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
         });
       } else {
-        const newWorkerId = String(20000 + (workers?.length || 0)).padStart(6, '0');
+        const newWorkerId = String(20000 + (allWorkers?.length || 0)).padStart(6, '0');
         const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
         const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "workers"), dataToSaveWithId);
 
@@ -367,7 +385,7 @@ export default function WorkersPage() {
             }
 
             const newDocRef = doc(collection(firestore, "workers"));
-            const workerId = String(100000 + (workers?.length || 0) + index).slice(-6);
+            const workerId = String(100000 + (allWorkers?.length || 0) + index).slice(-6);
 
             batch.set(newDocRef, {
               firstName: newWorker.firstName || '',
@@ -421,6 +439,12 @@ export default function WorkersPage() {
     return roles.find(r => r.id === roleId)?.name || roleId;
   }
 
+  const getPermissions = (roleId: string) => {
+    const role = roles.find(r => r.id === roleId);
+    if (roleId === 'admin') return ['all_access'];
+    return role?.permissions || [];
+  }
+
   if (isLoading) {
     return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
   }
@@ -441,7 +465,7 @@ export default function WorkersPage() {
   return (
     <AppLayout>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-headline font-bold">Worker Profiles</h1>
+        <h1 className="text-2xl font-headline font-bold">Worker Management</h1>
         {canManageWorkers && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleOpenImport}>
@@ -454,13 +478,14 @@ export default function WorkersPage() {
         )}
       </div>
 
-      <div className="rounded-lg border shadow-sm mt-4">
-        <Table>
+      <div className="rounded-lg border shadow-sm mt-4 overflow-x-auto w-full">
+        <Table className="min-w-[1000px]">
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Worker ID</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Permissions</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Contact</TableHead>
               {canManageWorkers && (
@@ -473,7 +498,7 @@ export default function WorkersPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={7} className="text-center">
                   <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
                 </TableCell>
               </TableRow>
@@ -492,6 +517,15 @@ export default function WorkersPage() {
                 <TableCell className="font-mono text-xs">{worker.workerId}</TableCell>
                 <TableCell>{getRoleName(worker.roleId)}</TableCell>
                 <TableCell>
+                  <div className="flex flex-wrap gap-1 max-w-[200px]">
+                    {getPermissions(worker.roleId).map(p => (
+                      <Badge key={p} variant="outline" className="text-[10px] px-1 py-0 h-4 normal-case font-normal border-primary/20 bg-primary/5">
+                        {p.replace(/_/g, ' ')}
+                      </Badge>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell>
                   <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
                     worker.status === 'Active' ? 'bg-green-100 text-green-800' :
                       worker.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
@@ -501,8 +535,8 @@ export default function WorkersPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span>{worker.email}</span>
-                    <span className="text-muted-foreground">{worker.phone}</span>
+                    <span className="text-xs">{worker.email}</span>
+                    <span className="text-[10px] text-muted-foreground">{worker.phone}</span>
                   </div>
                 </TableCell>
                 {canManageWorkers && (

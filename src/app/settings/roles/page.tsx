@@ -6,28 +6,28 @@ import { doc, collection } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
+    Card,
+    CardHeader,
+    CardTitle,
+    CardContent,
+    CardDescription,
 } from "@/components/ui/card";
 import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
+    Table,
+    TableHeader,
+    TableRow,
+    TableHead,
+    TableBody,
+    TableCell,
 } from "@/components/ui/table";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose,
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+    SheetFooter,
+    SheetClose,
 } from "@/components/ui/sheet";
 import { LoaderCircle, PlusCircle, Trash2, Save, ShieldCheck, Edit } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -38,87 +38,93 @@ import type { Role } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 
 const PERMISSION_CATEGORIES = [
-  {
-    category: 'General',
-    permissions: [
-      { id: 'manage_roles', label: 'Manage Roles', description: 'Can create, edit, delete roles and assign permissions.' },
-    ]
-  },
-  {
-    category: 'Workers',
-    permissions: [
-      { id: 'manage_workers', label: 'Manage Workers', description: 'Can add, edit, import, and delete worker profiles.' },
-    ]
-  },
-  {
-    category: 'Facilities',
-    permissions: [
-      { id: 'manage_facilities', label: 'Manage Facilities', description: 'Can manage rooms, areas, and branches.' },
-    ]
-  },
-  {
-    category: 'Room Reservations',
-    permissions: [
-      { id: 'create_room_reservation', label: 'Create Room Reservation', description: 'Can submit requests to book rooms.' },
-      { id: 'edit_room_reservation', label: 'Edit Room Reservation', description: 'Can edit details of existing reservations.' },
-      { id: 'delete_room_reservation', label: 'Delete Room Reservation', description: 'Can cancel or remove existing reservations.' },
-      { id: 'approve_room_reservation', label: 'Approve Room Reservation', description: 'Can approve or reject pending room booking requests.' },
-    ]
-  },
-  {
-    category: 'Approvals',
-    permissions: [
-      { id: 'manage_approvals', label: 'Manage Other Approvals', description: 'Can approve or reject other requests (new workers, etc.).' },
-    ]
-  },
-  {
-    category: 'Scanner & Attendance',
-    permissions: [
-      { id: 'operate_scanner', label: 'Operate Scanner', description: 'Can use the QR code scanner for attendance and meal stubs.' },
-      { id: 'view_attendance_log', label: 'View Own Attendance', description: 'Can access their personal attendance page and QR code.' },
-    ]
-  },
-  {
-    category: 'Meal Stubs',
-    permissions: [
-      { id: 'view_meal_stubs', label: 'View Own Meal Stubs', description: 'Can access their personal meal stubs page and generate stubs.' },
-      { id: 'manage_all_mealstubs', label: 'Manage All Meal Stubs', description: 'Can view all meal stub records and reports.' },
-    ]
-  },
-  {
-    category: 'Reports',
-    permissions: [
-      { id: 'view_reports', label: 'View Reports', description: 'Can access the reports page for attendance, meal stubs, and room reservations.' },
-    ]
-  },
+    {
+        category: 'General',
+        permissions: [
+            { id: 'manage_roles', label: 'Manage Roles', description: 'Can create, edit, delete roles and assign permissions.' },
+        ]
+    },
+    {
+        category: 'Workers',
+        permissions: [
+            { id: 'manage_workers', label: 'Manage Workers', description: 'Can add, edit, import, and delete worker profiles.' },
+        ]
+    },
+    {
+        category: 'Facilities',
+        permissions: [
+            { id: 'manage_facilities', label: 'Manage Facilities', description: 'Can manage rooms, areas, and branches.' },
+        ]
+    },
+    {
+        category: 'Room Reservations',
+        permissions: [
+            { id: 'create_room_reservation', label: 'Create Room Reservation', description: 'Can submit requests to book rooms.' },
+            { id: 'edit_room_reservation', label: 'Edit Room Reservation', description: 'Can edit details of existing reservations.' },
+            { id: 'delete_room_reservation', label: 'Delete Room Reservation', description: 'Can cancel or remove existing reservations.' },
+            { id: 'approve_room_reservation', label: 'Approve Room Reservation', description: 'Can approve or reject pending room booking requests.' },
+        ]
+    },
+    {
+        category: 'Approvals',
+        permissions: [
+            { id: 'manage_approvals', label: 'Manage Other Approvals', description: 'Can approve or reject other requests (new workers, etc.).' },
+        ]
+    },
+    {
+        category: 'Scanner & Attendance',
+        permissions: [
+            { id: 'operate_scanner', label: 'Operate Scanner', description: 'Can use the QR code scanner for attendance and meal stubs.' },
+            { id: 'view_attendance_log', label: 'View Own Attendance', description: 'Can access their personal attendance page and QR code.' },
+        ]
+    },
+    {
+        category: 'Meal Stubs',
+        permissions: [
+            { id: 'view_meal_stubs', label: 'View Own Meal Stubs', description: 'Can access their personal meal stubs page and generate stubs.' },
+            { id: 'manage_all_mealstubs', label: 'Manage All Meal Stubs', description: 'Can view all meal stub records and reports.' },
+        ]
+    },
+    {
+        category: 'Connect to Serve (C2S)',
+        permissions: [
+            { id: 'manage_c2s', label: 'Manage C2S', description: 'Can create, edit, and delete C2S groups and mentees.' },
+        ]
+    },
+    {
+        category: 'Reports',
+        permissions: [
+            { id: 'view_reports', label: 'View Reports', description: 'Can access the reports page for attendance, meal stubs, and room reservations.' },
+        ]
+    },
 ];
 
 
 const RolePermissionSheet = ({
-  role,
-  isOpen,
-  onOpenChange,
-  onSave,
-  onDelete
+    role,
+    isOpen,
+    onOpenChange,
+    onSave,
+    onDelete
 }: {
-  role: Partial<Role> | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (role: Partial<Role>) => void;
-  onDelete: (roleId: string) => void;
+    role: Partial<Role> | null;
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSave: (role: Partial<Role>) => void;
+    onDelete: (roleId: string) => void;
 }) => {
     const [name, setName] = useState(role?.name || "New Role");
     const [permissions, setPermissions] = useState(role?.permissions || []);
@@ -133,7 +139,7 @@ const RolePermissionSheet = ({
     const isAdminRole = role?.id === 'admin';
 
     const handlePermissionChange = (permissionId: string, checked: boolean) => {
-        setPermissions(current => 
+        setPermissions(current =>
             checked ? [...current, permissionId] : current.filter(p => p !== permissionId)
         );
     };
@@ -145,7 +151,7 @@ const RolePermissionSheet = ({
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
             <SheetContent className="sm:max-w-xl overflow-y-auto">
-                 <SheetHeader>
+                <SheetHeader>
                     <SheetTitle className="font-headline">{role ? 'Edit Role' : 'Add New Role'}</SheetTitle>
                     <SheetDescription>
                         {isAdminRole ? "The Admin role has all permissions by default and cannot be changed." : "Assign permissions for this role."}
@@ -162,7 +168,7 @@ const RolePermissionSheet = ({
                             placeholder="New Role Name"
                         />
                     </div>
-                     <div className="space-y-2">
+                    <div className="space-y-2">
                         <Label>Permissions</Label>
                         <Accordion type="multiple" className="w-full border rounded-lg" defaultValue={PERMISSION_CATEGORIES.map(c => c.category)}>
                             {PERMISSION_CATEGORIES.map(category => (
@@ -170,34 +176,34 @@ const RolePermissionSheet = ({
                                     <AccordionTrigger className="text-base font-semibold py-3">{category.category}</AccordionTrigger>
                                     <AccordionContent className="pt-2 pl-2">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        {category.permissions.map(permission => (
-                                            <div className="flex items-start space-x-2" key={permission.id}>
-                                                <Checkbox
-                                                    id={`${role?.id || 'new'}-${permission.id}`}
-                                                    checked={isAdminRole || permissions.includes(permission.id)}
-                                                    onCheckedChange={(checked) => handlePermissionChange(permission.id, !!checked)}
-                                                    disabled={isAdminRole}
-                                                />
-                                                <div className="grid gap-1.5 leading-none">
-                                                    <Label htmlFor={`${role?.id || 'new'}-${permission.id}`} className="font-medium cursor-pointer">
-                                                        {permission.label}
-                                                    </Label>
-                                                    <p className="text-xs text-muted-foreground">{permission.description}</p>
+                                            {category.permissions.map(permission => (
+                                                <div className="flex items-start space-x-2" key={permission.id}>
+                                                    <Checkbox
+                                                        id={`${role?.id || 'new'}-${permission.id}`}
+                                                        checked={isAdminRole || permissions.includes(permission.id)}
+                                                        onCheckedChange={(checked) => handlePermissionChange(permission.id, !!checked)}
+                                                        disabled={isAdminRole}
+                                                    />
+                                                    <div className="grid gap-1.5 leading-none">
+                                                        <Label htmlFor={`${role?.id || 'new'}-${permission.id}`} className="font-medium cursor-pointer">
+                                                            {permission.label}
+                                                        </Label>
+                                                        <p className="text-xs text-muted-foreground">{permission.description}</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>
                             ))}
                         </Accordion>
-                     </div>
+                    </div>
                 </div>
 
                 {!isAdminRole && (
                     <SheetFooter className="pt-4">
                         {role?.id && (
-                             <Button variant="ghost" className="text-destructive hover:text-destructive mr-auto" onClick={() => onDelete(role.id!)}>
+                            <Button variant="ghost" className="text-destructive hover:text-destructive mr-auto" onClick={() => onDelete(role.id!)}>
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete Role
                             </Button>
                         )}
@@ -218,7 +224,7 @@ export default function RoleManagementPage() {
     const { canManageRoles, isLoading, allRoles } = useUserRole();
     const firestore = useFirestore();
     const { toast } = useToast();
-    
+
     const [sheetOpen, setSheetOpen] = useState(false);
     const [selectedRole, setSelectedRole] = useState<Role | null>(null);
     const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
@@ -260,7 +266,7 @@ export default function RoleManagementPage() {
 
     const handleDeleteRoleConfirm = async () => {
         if (!roleToDelete) return;
-        
+
         try {
             await deleteDocumentNonBlocking(doc(firestore, "roles", roleToDelete.id));
             toast({ title: "Role Deleted" });
@@ -269,7 +275,7 @@ export default function RoleManagementPage() {
             toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete role." });
         }
     };
-    
+
     if (isLoading) {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
     }
@@ -277,8 +283,8 @@ export default function RoleManagementPage() {
     if (!canManageRoles) {
         return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You do not have permission to view this page.</CardDescription></CardHeader></Card></AppLayout>;
     }
-    
-    const sortedRoles = allRoles?.sort((a,b) => (a.id === 'admin' ? -1 : b.id === 'admin' ? 1 : a.name.localeCompare(b.name))) || [];
+
+    const sortedRoles = allRoles?.sort((a, b) => (a.id === 'admin' ? -1 : b.id === 'admin' ? 1 : a.name.localeCompare(b.name))) || [];
 
     return (
         <AppLayout>
@@ -287,7 +293,7 @@ export default function RoleManagementPage() {
                     <h1 className="text-2xl font-headline font-bold">Role Management</h1>
                     <p className="text-muted-foreground">Define roles and their access permissions across the application.</p>
                 </div>
-                 <Button onClick={handleAddNew}><PlusCircle className="h-4 w-4 mr-2" />Add New Role</Button>
+                <Button onClick={handleAddNew}><PlusCircle className="h-4 w-4 mr-2" />Add New Role</Button>
             </div>
 
             <Card className="mt-6">
@@ -314,8 +320,8 @@ export default function RoleManagementPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            {isAdminRole 
-                                                ? <Badge variant="secondary">All Permissions</Badge> 
+                                            {isAdminRole
+                                                ? <Badge variant="secondary">All Permissions</Badge>
                                                 : <Badge variant="outline">{permissionsCount} permission{permissionsCount !== 1 && 's'}</Badge>
                                             }
                                         </TableCell>
@@ -332,7 +338,7 @@ export default function RoleManagementPage() {
                     </Table>
                 </CardContent>
             </Card>
-            
+
             <RolePermissionSheet
                 isOpen={sheetOpen}
                 onOpenChange={setSheetOpen}

@@ -10,42 +10,42 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { PlusCircle, Users as UsersIcon, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose,
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+    SheetFooter,
+    SheetClose,
 } from "@/components/ui/sheet";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    SelectGroup,
+    SelectLabel
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { 
-    format, 
-    addMonths, 
-    subMonths, 
-    addWeeks, 
-    subWeeks, 
-    addDays, 
-    subDays, 
-    startOfWeek, 
-    endOfWeek, 
+import {
+    format,
+    addMonths,
+    subMonths,
+    addWeeks,
+    subWeeks,
+    addDays,
+    subDays,
+    startOfWeek,
+    endOfWeek,
     eachDayOfInterval,
     isSameDay,
     isToday,
@@ -65,181 +65,181 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 
 const equipmentIcons: { [key: string]: React.ElementType } = {
-  Projector: Projector,
-  "Sound System": Mic,
-  Whiteboard: UsersIcon,
-  "Conference Phone": UsersIcon,
-  TV: Tv,
-  "Gaming Console": UsersIcon,
+    Projector: Projector,
+    "Sound System": Mic,
+    Whiteboard: UsersIcon,
+    "Conference Phone": UsersIcon,
+    TV: Tv,
+    "Gaming Console": UsersIcon,
 };
 
 // --- FORMS ---
 
 const BookingForm = ({ rooms, branches, areas, onSave, onClose }: { rooms: Room[], branches: Branch[], areas: Area[], onSave: (booking: any) => Promise<boolean>, onClose: () => void }) => {
-  const { user } = useUser();
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [locationId, setLocationId] = useState('');
-  const [room, setRoom] = useState<string>('');
-  const [title, setTitle] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [isWholeDay, setIsWholeDay] = useState(false);
+    const { user } = useUser();
+    const [date, setDate] = useState<Date | undefined>(new Date());
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const [locationId, setLocationId] = useState('');
+    const [room, setRoom] = useState<string>('');
+    const [title, setTitle] = useState('');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
+    const [isWholeDay, setIsWholeDay] = useState(false);
 
-  // Generate time slots
-  const timeSlots = React.useMemo(() => {
-    const slots = [];
-    for (let h = 6; h <= 21; h++) {
-      for (let m = 0; m < 60; m += 30) {
-        if (h === 21 && m > 0) continue;
-        const hour = h.toString().padStart(2, '0');
-        const minute = m.toString().padStart(2, '0');
-        const value = `${hour}:${minute}`;
-        
-        const displayHour = h % 12 || 12;
-        const ampm = h < 12 ? 'AM' : 'PM';
-        const display = `${displayHour}:${minute.padStart(2, '0')} ${ampm}`;
+    // Generate time slots
+    const timeSlots = React.useMemo(() => {
+        const slots = [];
+        for (let h = 6; h <= 21; h++) {
+            for (let m = 0; m < 60; m += 30) {
+                if (h === 21 && m > 0) continue;
+                const hour = h.toString().padStart(2, '0');
+                const minute = m.toString().padStart(2, '0');
+                const value = `${hour}:${minute}`;
 
-        slots.push({ value, display });
-      }
-    }
-    return slots;
-  }, []);
+                const displayHour = h % 12 || 12;
+                const ampm = h < 12 ? 'AM' : 'PM';
+                const display = `${displayHour}:${minute.padStart(2, '0')} ${ampm}`;
 
-  const handleLocationChange = (newLocationId: string) => {
-    setLocationId(newLocationId);
-    setRoom(''); // Reset room selection on location change
-  };
+                slots.push({ value, display });
+            }
+        }
+        return slots;
+    }, []);
 
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    setDate(selectedDate);
-    setIsDatePickerOpen(false);
-  }
+    const handleLocationChange = (newLocationId: string) => {
+        setLocationId(newLocationId);
+        setRoom(''); // Reset room selection on location change
+    };
 
-  const handleSave = async () => {
-    if (!date || !room || !title || !user) return;
-    
-    let finalStartTime = startTime;
-    let finalEndTime = endTime;
-
-    if (isWholeDay) {
-        finalStartTime = '06:00';
-        finalEndTime = '21:00';
+    const handleDateSelect = (selectedDate: Date | undefined) => {
+        setDate(selectedDate);
+        setIsDatePickerOpen(false);
     }
 
-    if (!finalStartTime || !finalEndTime) return;
+    const handleSave = async () => {
+        if (!date || !room || !title || !user) return;
 
-    const [startH, startM] = finalStartTime.split(':').map(Number);
-    const [endH, endM] = finalEndTime.split(':').map(Number);
+        let finalStartTime = startTime;
+        let finalEndTime = endTime;
 
-    const start = new Date(date);
-    start.setHours(startH, startM, 0, 0);
+        if (isWholeDay) {
+            finalStartTime = '06:00';
+            finalEndTime = '21:00';
+        }
 
-    const end = new Date(date);
-    end.setHours(endH, endM, 0, 0);
-    
-    const success = await onSave({
-        roomId: room,
-        workerProfileId: user.uid,
-        title,
-        start: Timestamp.fromDate(start),
-        end: Timestamp.fromDate(end),
-        status: 'Pending',
-    });
+        if (!finalStartTime || !finalEndTime) return;
 
-    if (success) {
-        onClose();
-    }
-  };
-  
-  return (
-    <>
-        <div className="space-y-4 py-4">
-            <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Select value={locationId} onValueChange={handleLocationChange}>
-                    <SelectTrigger id="location"><SelectValue placeholder="Select a location" /></SelectTrigger>
-                    <SelectContent>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
-                </Select>
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="room">Room</Label>
-                <Select value={room} onValueChange={setRoom} disabled={!locationId}>
-                    <SelectTrigger id="room"><SelectValue placeholder="Select a room" /></SelectTrigger>
-                    <SelectContent>
-                        {areas.filter(a => a.branchId === locationId).map(area => (
-                            <SelectGroup key={area.id}>
-                                <SelectLabel className="px-2 font-bold">{area.name}</SelectLabel>
-                                {rooms.filter(r => r.areaId === area.areaId).map(roomInArea => (
-                                    <SelectItem key={roomInArea.id} value={roomInArea.id}>{roomInArea.name}</SelectItem>
-                                ))}
-                            </SelectGroup>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="title">Purpose</Label>
-                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Weekly Meeting" />
-            </div>
-            <div className="space-y-2">
-                <Label>Date</Label>
-                 <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !date && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={handleDateSelect}
-                            initialFocus
-                        />
-                    </PopoverContent>
-                </Popover>
-            </div>
-             <div className="flex items-center space-x-2">
-                <Checkbox id="whole-day" checked={isWholeDay} onCheckedChange={(checked) => setIsWholeDay(!!checked)} />
-                <Label htmlFor="whole-day" className="font-normal">Book for whole day (6:00 AM - 9:00 PM)</Label>
-            </div>
-            <div className="space-y-2">
-                <Label>Time</Label>
-                <div className="grid grid-cols-2 gap-2">
-                    <Select value={startTime} onValueChange={setStartTime} disabled={isWholeDay}>
-                        <SelectTrigger><SelectValue placeholder="Start Time" /></SelectTrigger>
-                        <SelectContent>
-                            {timeSlots.map(slot => <SelectItem key={`start-${slot.value}`} value={slot.value}>{slot.display}</SelectItem>)}
-                        </SelectContent>
+        const [startH, startM] = finalStartTime.split(':').map(Number);
+        const [endH, endM] = finalEndTime.split(':').map(Number);
+
+        const start = new Date(date);
+        start.setHours(startH, startM, 0, 0);
+
+        const end = new Date(date);
+        end.setHours(endH, endM, 0, 0);
+
+        const success = await onSave({
+            roomId: room,
+            workerProfileId: user.uid,
+            title,
+            start: Timestamp.fromDate(start),
+            end: Timestamp.fromDate(end),
+            status: 'Pending',
+        });
+
+        if (success) {
+            onClose();
+        }
+    };
+
+    return (
+        <>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
+                    <Select value={locationId} onValueChange={handleLocationChange}>
+                        <SelectTrigger id="location"><SelectValue placeholder="Select a location" /></SelectTrigger>
+                        <SelectContent>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                     </Select>
-                    <Select value={endTime} onValueChange={setEndTime} disabled={isWholeDay}>
-                        <SelectTrigger><SelectValue placeholder="End Time" /></SelectTrigger>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="room">Room</Label>
+                    <Select value={room} onValueChange={setRoom} disabled={!locationId}>
+                        <SelectTrigger id="room"><SelectValue placeholder="Select a room" /></SelectTrigger>
                         <SelectContent>
-                            {timeSlots.slice(1).map(slot => <SelectItem key={`end-${slot.value}`} value={slot.value}>{slot.display}</SelectItem>)}
+                            {areas.filter(a => a.branchId === locationId).map(area => (
+                                <SelectGroup key={area.id}>
+                                    <SelectLabel className="px-2 font-bold">{area.name}</SelectLabel>
+                                    {rooms.filter(r => r.areaId === area.areaId).map(roomInArea => (
+                                        <SelectItem key={roomInArea.id} value={roomInArea.id}>{roomInArea.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
+                <div className="space-y-2">
+                    <Label htmlFor="title">Purpose</Label>
+                    <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Weekly Meeting" />
+                </div>
+                <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !date && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date ? format(date, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={handleDateSelect}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="whole-day" checked={isWholeDay} onCheckedChange={(checked) => setIsWholeDay(!!checked)} />
+                    <Label htmlFor="whole-day" className="font-normal">Book for whole day (6:00 AM - 9:00 PM)</Label>
+                </div>
+                <div className="space-y-2">
+                    <Label>Time</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Select value={startTime} onValueChange={setStartTime} disabled={isWholeDay}>
+                            <SelectTrigger><SelectValue placeholder="Start Time" /></SelectTrigger>
+                            <SelectContent>
+                                {timeSlots.map(slot => <SelectItem key={`start-${slot.value}`} value={slot.value}>{slot.display}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={endTime} onValueChange={setEndTime} disabled={isWholeDay}>
+                            <SelectTrigger><SelectValue placeholder="End Time" /></SelectTrigger>
+                            <SelectContent>
+                                {timeSlots.slice(1).map(slot => <SelectItem key={`end-${slot.value}`} value={slot.value}>{slot.display}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
             </div>
-        </div>
-        <SheetFooter>
-            <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-            <Button onClick={handleSave}>Request Booking</Button>
-      </SheetFooter>
-    </>
-  );
+            <SheetFooter>
+                <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
+                <Button onClick={handleSave}>Request Booking</Button>
+            </SheetFooter>
+        </>
+    );
 };
 
 const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined, date: Date }) => {
     if (!date) return null;
-    
+
     if (!rooms || rooms.length === 0) {
         return <p className="text-muted-foreground text-center py-8">No rooms match the current filter.</p>;
     }
@@ -277,7 +277,7 @@ const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], room
             <CardContent className="pt-2 overflow-x-auto">
                 <div className="space-y-4 min-w-[800px]">
                     <div className="relative border-b pb-2">
-                         <div className="grid grid-cols-[8rem_1fr] gap-2">
+                        <div className="grid grid-cols-[8rem_1fr] gap-2">
                             <div /> {/* Gutter for room names */}
                             <div className="grid text-xs text-muted-foreground text-center" style={{ gridTemplateColumns: `repeat(${totalHours}, minmax(0, 1fr))` }}>
                                 {timeSlots.map(hour => (
@@ -290,7 +290,7 @@ const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], room
                     <div className="space-y-2">
                         {rooms.map(room => {
                             const roomBookings = dayBookings.filter(b => b.roomId === room.id);
-                            
+
                             return (
                                 <div key={room.id} className="grid grid-cols-[8rem_1fr] items-center gap-2">
                                     <div className="font-semibold text-sm truncate pr-2 text-right">{room.name}</div>
@@ -300,15 +300,15 @@ const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], room
                                             <div key={`line-${hour}`} className="absolute h-full border-l" style={{ left: `${((hour - dayStartHour) / totalHours) * 100}%` }} />
                                         ))}
                                         {roomBookings.map(booking => {
-                                            const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start);
-                                            const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end);
-                                            
+                                            const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start as any);
+                                            const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end as any);
+
                                             const left = timeToPosition(bookingStart);
                                             const width = durationToWidth(bookingStart, bookingEnd);
-                                            
+
                                             const statusClass = booking.status === 'Approved' ? 'bg-green-500/80 border-green-700 hover:bg-green-500' :
-                                                                booking.status === 'Pending' ? 'bg-yellow-500/80 border-yellow-700 hover:bg-yellow-500' :
-                                                                'bg-red-500/80 border-red-700 hover:bg-red-500';
+                                                booking.status === 'Pending' ? 'bg-yellow-500/80 border-yellow-700 hover:bg-yellow-500' :
+                                                    'bg-red-500/80 border-red-700 hover:bg-red-500';
 
                                             return (
                                                 <TooltipProvider key={booking.id}>
@@ -358,13 +358,13 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
 
     return (
         <Card>
-            <CardContent className="p-2 sm:p-4">
-                <div className="grid grid-cols-7 divide-x border rounded-lg overflow-hidden">
+            <CardContent className="p-0 overflow-x-auto">
+                <div className="grid grid-cols-7 divide-x border rounded-lg overflow-hidden min-w-[700px]">
                     {weekDates.map(day => {
                         const dayBookings = weekBookings
                             .filter(b => b.start && isSameDay((b.start as any).toDate(), day))
-                            .sort((a,b) => (a.start as any).seconds - (b.start as any).seconds);
-                        
+                            .sort((a, b) => (a.start as any).seconds - (b.start as any).seconds);
+
                         return (
                             <div key={day.toString()} className="flex flex-col min-h-64">
                                 <div className={cn("text-center p-2 border-b font-semibold", isToday(day) && "bg-primary/10 text-primary")}>
@@ -376,8 +376,8 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
                                 <div className="p-2 space-y-2 flex-grow">
                                     {dayBookings.map(booking => {
                                         const statusColor = booking.status === 'Approved' ? 'bg-green-100 border-green-300' :
-                                                            booking.status === 'Pending' ? 'bg-yellow-100 border-yellow-300' :
-                                                            'bg-red-100 border-red-300';
+                                            booking.status === 'Pending' ? 'bg-yellow-100 border-yellow-300' :
+                                                'bg-red-100 border-red-300';
                                         return (
                                             <TooltipProvider key={booking.id}>
                                                 <Tooltip>
@@ -416,57 +416,59 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
 
     const monthDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
     const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    
+
     return (
         <Card>
-            <CardContent className="p-0">
-                 <div className="grid grid-cols-7 text-center text-sm font-semibold text-muted-foreground border-b">
-                    {weekDays.map(day => (
-                        <div key={day} className="py-2 border-r last:border-r-0">{day}</div>
-                    ))}
-                </div>
-                <div className="grid grid-cols-7">
-                    {monthDays.map((day, index) => {
-                        const dayBookings = bookings
-                            .filter(b => b.start && isSameDay((b.start as any).toDate(), day))
-                            .sort((a,b) => (a.start as any).seconds - (b.start as any).seconds);
+            <CardContent className="p-0 overflow-x-auto">
+                <div className="min-w-[700px]">
+                    <div className="grid grid-cols-7 text-center text-sm font-semibold text-muted-foreground border-b">
+                        {weekDays.map(day => (
+                            <div key={day} className="py-2 border-r last:border-r-0">{day}</div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-7">
+                        {monthDays.map((day, index) => {
+                            const dayBookings = bookings
+                                .filter(b => b.start && isSameDay((b.start as any).toDate(), day))
+                                .sort((a, b) => (a.start as any).seconds - (b.start as any).seconds);
 
-                        return (
-                            <div 
-                                key={day.toString()}
-                                className={cn(
-                                    "h-36 p-1.5 flex flex-col border-t border-r",
-                                    (index) % 7 === 0 && "border-l",
-                                    !isSameMonth(day, selectedDate) && "bg-muted/50 text-muted-foreground",
-                                    "cursor-pointer hover:bg-accent/50"
-                                )}
-                                onClick={() => onDateSelect(day)}
-                            >
-                                <span className={cn(
-                                    "self-end font-medium",
-                                    isToday(day) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center"
-                                )}>
-                                    {format(day, 'd')}
-                                </span>
-                                <div className="flex-grow space-y-1 mt-1 overflow-hidden">
-                                     {dayBookings.slice(0, 3).map(booking => {
-                                        const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
-                                                            booking.status === 'Pending' ? 'bg-yellow-500' :
-                                                            'bg-red-500';
-                                        return (
-                                            <div key={booking.id} className="flex items-center gap-1.5 w-full">
-                                                <div className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", statusColor)} />
-                                                <p className="text-xs truncate">{booking.title}</p>
-                                            </div>
-                                        )
-                                    })}
-                                    {dayBookings.length > 3 && (
-                                        <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
+                            return (
+                                <div
+                                    key={day.toString()}
+                                    className={cn(
+                                        "h-36 p-1.5 flex flex-col border-t border-r",
+                                        (index) % 7 === 0 && "border-l",
+                                        !isSameMonth(day, selectedDate) && "bg-muted/50 text-muted-foreground",
+                                        "cursor-pointer hover:bg-accent/50"
                                     )}
+                                    onClick={() => onDateSelect(day)}
+                                >
+                                    <span className={cn(
+                                        "self-end font-medium",
+                                        isToday(day) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center"
+                                    )}>
+                                        {format(day, 'd')}
+                                    </span>
+                                    <div className="flex-grow space-y-1 mt-1 overflow-hidden">
+                                        {dayBookings.slice(0, 3).map(booking => {
+                                            const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
+                                                booking.status === 'Pending' ? 'bg-yellow-500' :
+                                                    'bg-red-500';
+                                            return (
+                                                <div key={booking.id} className="flex items-center gap-1.5 w-full">
+                                                    <div className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", statusColor)} />
+                                                    <p className="text-xs truncate">{booking.title}</p>
+                                                </div>
+                                            )
+                                        })}
+                                        {dayBookings.length > 3 && (
+                                            <p className="text-xs text-muted-foreground">+{dayBookings.length - 3} more</p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )
-                    })}
+                            )
+                        })}
+                    </div>
                 </div>
             </CardContent>
         </Card>
@@ -478,7 +480,7 @@ export default function RoomsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
-    
+
     const [view, setView] = useState('month'); // 'month', 'week', 'day'
     const [currentDate, setCurrentDate] = useState(new Date());
     const [scheduleFilter, setScheduleFilter] = useState('all');
@@ -505,7 +507,7 @@ export default function RoomsPage() {
             toast({ variant: "destructive", title: "Cannot save booking", description: "Worker profile not loaded or room not selected." });
             return false;
         }
-    
+
         try {
             const reservationRef = await addDocumentNonBlocking(collection(firestore, 'rooms', bookingData.roomId, 'reservations'), bookingData);
             if (reservationRef?.id) {
@@ -525,16 +527,16 @@ export default function RoomsPage() {
             toast({ variant: "destructive", title: "Request Failed", description: "Could not create reservation reference." });
             return false;
         } catch (error) {
-             toast({ variant: "destructive", title: "Request Failed", description: "Could not submit booking request. A permission error might have occurred." });
+            toast({ variant: "destructive", title: "Request Failed", description: "Could not submit booking request. A permission error might have occurred." });
             return false;
         }
     };
-    
+
     const isLoading = roomsLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
 
     const filteredRoomsForDayView = useMemo(() => {
         if (view !== 'day' || !rooms || !bookings) return rooms || [];
-        
+
         const dayBookings = bookings.filter(b => b.start && isSameDay((b.start as any).toDate(), currentDate));
         const scheduledRoomIds = new Set(dayBookings.map(b => b.roomId));
 
@@ -565,7 +567,7 @@ export default function RoomsPage() {
         setCurrentDate(date);
         setView('day');
     };
-    
+
     const dateRangeDisplay = useMemo(() => {
         if (view === 'day') return format(currentDate, 'MMMM d, yyyy');
         if (view === 'week') {
@@ -575,7 +577,7 @@ export default function RoomsPage() {
         }
         return format(currentDate, 'MMMM yyyy');
     }, [currentDate, view]);
-    
+
     return (
         <AppLayout>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -601,10 +603,10 @@ export default function RoomsPage() {
                 </div>
             </div>
 
-             {view === 'day' && (
+            {view === 'day' && (
                 <div className="flex justify-end items-center gap-2 mt-4">
-                     <Label htmlFor="schedule-filter" className="text-sm font-medium">Show rooms:</Label>
-                     <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
+                    <Label htmlFor="schedule-filter" className="text-sm font-medium">Show rooms:</Label>
+                    <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
                         <SelectTrigger id="schedule-filter" className="w-[180px]">
                             <SelectValue placeholder="Filter rooms" />
                         </SelectTrigger>
@@ -623,32 +625,32 @@ export default function RoomsPage() {
                 ) : (
                     <>
                         {view === 'month' && <MonthView bookings={bookings || []} onDateSelect={handleDateSelect} selectedDate={currentDate} />}
-                        {view === 'week' && <WeekView bookings={bookings || []} rooms={rooms} workers={workers} date={currentDate} onDateSelect={handleDateSelect} />}
-                        {view === 'day' && <DayView bookings={bookings || []} rooms={filteredRoomsForDayView} workers={workers} date={currentDate} />}
+                        {view === 'week' && <WeekView bookings={bookings || []} rooms={rooms || []} workers={workers || []} date={currentDate} onDateSelect={handleDateSelect} />}
+                        {view === 'day' && <DayView bookings={bookings || []} rooms={filteredRoomsForDayView || []} workers={workers || []} date={currentDate} />}
                     </>
                 )}
             </div>
 
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-              <SheetContent className="sm:max-w-lg overflow-y-auto">
-                <SheetHeader>
-                    <SheetTitle className="font-headline">Book a Room</SheetTitle>
-                    <SheetDescription>Fill in the details to request a room booking. Requests are subject to approval.</SheetDescription>
-                </SheetHeader>
-                {rooms && branches && areas && !isLoading ? (
-                    <BookingForm 
-                        rooms={rooms} 
-                        branches={branches} 
-                        areas={areas} 
-                        onSave={handleSaveBooking} 
-                        onClose={() => setIsSheetOpen(false)} 
-                    />
-                ) : (
-                    <div className="flex items-center justify-center py-10">
-                        <LoaderCircle className="h-8 w-8 animate-spin" />
-                    </div>
-                )}
-              </SheetContent>
+                <SheetContent className="sm:max-w-lg overflow-y-auto">
+                    <SheetHeader>
+                        <SheetTitle className="font-headline">Book a Room</SheetTitle>
+                        <SheetDescription>Fill in the details to request a room booking. Requests are subject to approval.</SheetDescription>
+                    </SheetHeader>
+                    {rooms && branches && areas && !isLoading ? (
+                        <BookingForm
+                            rooms={rooms}
+                            branches={branches}
+                            areas={areas}
+                            onSave={handleSaveBooking}
+                            onClose={() => setIsSheetOpen(false)}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center py-10">
+                            <LoaderCircle className="h-8 w-8 animate-spin" />
+                        </div>
+                    )}
+                </SheetContent>
             </Sheet>
         </AppLayout>
     );

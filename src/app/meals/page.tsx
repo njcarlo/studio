@@ -26,7 +26,7 @@ import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw } from "lucide-react"
 import type { MealStub, Worker } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
-import { format, isToday, subDays } from 'date-fns';
+import { format, isToday, subDays, startOfWeek, endOfWeek, isSunday, isWithinInterval, addDays } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
 export default function MealsPage() {
@@ -64,8 +64,38 @@ export default function MealsPage() {
   const generateManualStub = () => {
     if (!user || !workerProfile) return;
 
-    const todaysStubs = mealStubs?.filter(s => s.workerId === user.uid && s.status === 'Issued' && isToday(new Date((s.date as any).seconds * 1000)));
-    if (todaysStubs && todaysStubs.length > 0) {
+    const now = new Date();
+    if (isSunday(now)) {
+      toast({
+        variant: "destructive",
+        title: "Manual Generation Disabled",
+        description: "On Sundays, meal stubs must be assigned by your ministry's Meal Stub Assigner.",
+      });
+      return;
+    }
+
+    const startOfCurrentWeek = startOfWeek(now, { weekStartsOn: 1 }); // Monday
+    const endOfWeekdayPeriod = subDays(startOfWeek(addDays(startOfCurrentWeek, 7), { weekStartsOn: 0 }), 1); // Saturday? 
+    // Simplified: Mon-Sat is easy to check with !isSunday
+    const currentWeekRange = { start: startOfCurrentWeek, end: endOfWeek(now) };
+
+    const weekdayStubs = mealStubs?.filter(s => {
+      if (s.workerId !== user.uid) return false;
+      const d = new Date((s.date as any).seconds * 1000);
+      return !isSunday(d) && isWithinInterval(d, currentWeekRange);
+    }) || [];
+
+    if (weekdayStubs.length >= 5) {
+      toast({
+        variant: "destructive",
+        title: "Allocation Reached",
+        description: "You have already reached your allocation of 5 meal stubs for this week (Monday to Saturday).",
+      });
+      return;
+    }
+
+    const todaysStubs = weekdayStubs.filter(s => isToday(new Date((s.date as any).seconds * 1000)));
+    if (todaysStubs.length > 0) {
       toast({
         variant: "default",
         title: "Stub Already Exists",
@@ -83,7 +113,7 @@ export default function MealsPage() {
     addDocumentNonBlocking(collection(firestore, "mealstubs"), newStub);
     toast({
       title: "Meal Stub Issued",
-      description: "A meal stub for today has been issued to your account.",
+      description: `Meal stub issued. You have used ${weekdayStubs.length + 1} of your 5 weekly weekday allocations.`,
     });
   };
 
@@ -176,8 +206,8 @@ export default function MealsPage() {
         </Card>
       </div>
 
-      <div className="rounded-lg border shadow-sm mt-2">
-        <Table>
+      <div className="rounded-lg border shadow-sm mt-2 overflow-x-auto w-full">
+        <Table className="min-w-[600px]">
           <TableHeader>
             <TableRow>
               <TableHead>Worker</TableHead>

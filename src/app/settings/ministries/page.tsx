@@ -7,7 +7,7 @@ import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { HeartHandshake, User as UserIcon, Users, LoaderCircle, Upload, PlusCircle, MoreHorizontal, Edit, Trash2, UserCog } from "lucide-react";
+import { HeartHandshake, User as UserIcon, Users, LoaderCircle, Upload, PlusCircle, MoreHorizontal, Edit, Trash2, UserCog, Utensils } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirestore, useCollection, useMemoFirebase, useUser, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import type { Ministry, Worker, Department } from "@/lib/types";
@@ -145,26 +145,30 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
   );
 };
 
-const AppointApproverForm = ({ ministry, workers, onSave, onClose }: { ministry: Ministry; workers: Worker[]; onSave: (ministryId: string, approverId: string | null) => void; onClose: () => void; }) => {
-  const [selectedApproverId, setSelectedApproverId] = useState<string>(ministry.approverId || 'none');
+const AppointApproverForm = ({ ministry, workers, onSave, onClose, type = 'approver' }: { ministry: Ministry; workers: Worker[]; onSave: (ministryId: string, userId: string | null, type: 'approver' | 'assigner') => void; onClose: () => void; type?: 'approver' | 'assigner' }) => {
+  const initialValue = type === 'approver' ? (ministry.approverId || 'none') : (ministry.mealStubAssignerId || 'none');
+  const [selectedUserId, setSelectedUserId] = useState<string>(initialValue);
 
   const sortedWorkers = [...workers].sort((a, b) => a.firstName.localeCompare(b.firstName));
 
   return (
     <>
       <SheetHeader>
-        <SheetTitle className="font-headline">Appoint Approver</SheetTitle>
+        <SheetTitle className="font-headline">{type === 'approver' ? 'Appoint Approver' : 'Appoint Meal Stub Assigner'}</SheetTitle>
         <SheetDescription>
-          Select a worker to be the approver for {ministry.name}. The approver can approve and reject requests related to this ministry.
+          {type === 'approver'
+            ? `Select a worker to be the approver for ${ministry.name}. The approver can approve and reject requests related to this ministry.`
+            : `Select a worker to be the Meal Stub Assigner for ${ministry.name}. This person can assign meal stubs for Sundays.`
+          }
         </SheetDescription>
       </SheetHeader>
       <div className="grid gap-4 py-4">
         <div className="space-y-2">
-          <Label htmlFor="approver">Approver</Label>
-          <Select value={selectedApproverId} onValueChange={setSelectedApproverId}>
-            <SelectTrigger id="approver"><SelectValue placeholder="Select an approver" /></SelectTrigger>
+          <Label htmlFor="worker-select">{type === 'approver' ? 'Approver' : 'Meal Stub Assigner'}</Label>
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger id="worker-select"><SelectValue placeholder={`Select a ${type}`} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">None (Remove Approver)</SelectItem>
+              <SelectItem value="none">None (Remove {type === 'approver' ? 'Approver' : 'Assigner'})</SelectItem>
               {sortedWorkers.map(w => <SelectItem key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -172,7 +176,7 @@ const AppointApproverForm = ({ ministry, workers, onSave, onClose }: { ministry:
       </div>
       <SheetFooter>
         <SheetClose asChild><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button></SheetClose>
-        <Button onClick={() => onSave(ministry.id, selectedApproverId === 'none' ? null : selectedApproverId)}>Save Changes</Button>
+        <Button onClick={() => onSave(ministry.id, selectedUserId === 'none' ? null : selectedUserId, type)}>Save Changes</Button>
       </SheetFooter>
     </>
   );
@@ -190,6 +194,7 @@ export default function MinistryManagementPage() {
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
   const [ministryToDelete, setMinistryToDelete] = useState<Ministry | null>(null);
   const [isAppointApproverSheetOpen, setIsAppointApproverSheetOpen] = useState(false);
+  const [appointType, setAppointType] = useState<'approver' | 'assigner'>('approver');
   const [ministryToAppoint, setMinistryToAppoint] = useState<Ministry | null>(null);
 
   const ministriesRef = useMemoFirebase(() => {
@@ -239,13 +244,14 @@ export default function MinistryManagementPage() {
     }
   };
 
-  const handleSaveApprover = async (ministryId: string, approverId: string | null) => {
+  const handleSaveAppointedUser = async (ministryId: string, userId: string | null, type: 'approver' | 'assigner') => {
     try {
-      await updateDocumentNonBlocking(doc(firestore, 'ministries', ministryId), { approverId: approverId === null ? '' : approverId });
-      toast({ title: 'Approver Updated' });
+      const field = type === 'approver' ? 'approverId' : 'mealStubAssignerId';
+      await updateDocumentNonBlocking(doc(firestore, 'ministries', ministryId), { [field]: userId === null ? '' : userId });
+      toast({ title: `${type === 'approver' ? 'Approver' : 'Meal Stub Assigner'} Updated` });
       setIsAppointApproverSheetOpen(false);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update approver.' });
+      toast({ variant: 'destructive', title: 'Update Failed', description: `Could not update ${type}.` });
     }
   };
 
@@ -397,12 +403,22 @@ export default function MinistryManagementPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {canAppointForMinistry(ministry) && (
-                                  <DropdownMenuItem onSelect={() => {
-                                    setMinistryToAppoint(ministry);
-                                    setIsAppointApproverSheetOpen(true);
-                                  }}>
-                                    <UserCog className="mr-2 h-4 w-4" /> Appoint Approver
-                                  </DropdownMenuItem>
+                                  <>
+                                    <DropdownMenuItem onSelect={() => {
+                                      setMinistryToAppoint(ministry);
+                                      setAppointType('approver');
+                                      setIsAppointApproverSheetOpen(true);
+                                    }}>
+                                      <UserCog className="mr-2 h-4 w-4" /> Appoint Approver
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => {
+                                      setMinistryToAppoint(ministry);
+                                      setAppointType('assigner');
+                                      setIsAppointApproverSheetOpen(true);
+                                    }}>
+                                      <Utensils className="mr-2 h-4 w-4" /> Appoint Meal Assigner
+                                    </DropdownMenuItem>
+                                  </>
                                 )}
                                 {canManageMinistries && (
                                   <>
@@ -443,6 +459,30 @@ export default function MinistryManagementPage() {
                             );
                           })() : (
                             <p className="text-sm text-muted-foreground">No approver assigned.</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                            <Utensils className="h-4 w-4" />
+                            Meal Stub Assigner
+                          </h4>
+                          {ministry.mealStubAssignerId && getWorker(ministry.mealStubAssignerId) ? (() => {
+                            const assigner = getWorker(ministry.mealStubAssignerId)!;
+                            return (
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={assigner.avatarUrl} alt={`${assigner.firstName} ${assigner.lastName}`} />
+                                  <AvatarFallback>{assigner.firstName?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-sm font-medium">{`${assigner.firstName} ${assigner.lastName}`}</p>
+                                  <p className="text-xs text-muted-foreground">{assigner.roleId}</p>
+                                </div>
+                              </div>
+                            );
+                          })() : (
+                            <p className="text-sm text-muted-foreground">No assigner assigned.</p>
                           )}
                         </div>
 
@@ -526,7 +566,8 @@ export default function MinistryManagementPage() {
             <AppointApproverForm
               ministry={ministryToAppoint}
               workers={workers}
-              onSave={handleSaveApprover}
+              type={appointType}
+              onSave={handleSaveAppointedUser}
               onClose={() => setIsAppointApproverSheetOpen(false)}
             />
           )}

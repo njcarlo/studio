@@ -141,7 +141,7 @@ export default function QRScannerPage() {
         }
 
         if (scanMode === 'Meal Stub') {
-            if (type !== 'MEAL_STUB') {
+            if (type !== 'MEAL_STUB' && type !== 'COG_USER') {
                 toast({ variant: 'destructive', title: 'Invalid QR Type', description: 'This QR code is not a Meal Stub.' });
                 setTimeout(resetScanner, 2000);
                 return;

@@ -30,6 +30,7 @@ export type Ministry = {
     department: Department;
     leaderId: string;
     approverId?: string;
+    mealStubAssignerId?: string;
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
@@ -102,4 +103,24 @@ export type ScanLog = {
     targetUserName?: string;
     mealStubId?: string;
     reservationId?: string;
+};
+
+export type C2SMentee = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    status: 'In Progress' | 'Completed' | 'Dropped';
+    groupId: string;
+    mentorId: string;
+    createdAt: Timestamp;
+};
+
+export type C2SGroup = {
+    id: string;
+    name: string;
+    mentorId: string;
+    menteeIds: string[];
+    createdAt: Timestamp;
 };

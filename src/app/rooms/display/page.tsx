@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Image from 'next/image';
-import { useParams } from 'next/navigation';
-import { collection, doc, query, where, Timestamp } from 'firebase/firestore';
+import { useSearchParams } from 'next/navigation';
+import { collection, doc, query, where } from 'firebase/firestore';
 import type { Room, Booking, Worker, Branch, Area } from '@/lib/types';
 import { format, isToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,21 +25,21 @@ const ClockComponent = () => {
     );
 };
 
-export default function RoomDisplayPage() {
-    const params = useParams();
-    const roomId = params.roomId as string;
+function RoomDisplayContent() {
+    const searchParams = useSearchParams();
+    const roomId = searchParams.get('roomId');
     const firestore = useFirestore();
 
-    const roomRef = useMemoFirebase(() => doc(firestore, 'rooms', roomId), [firestore, roomId]);
+    const roomRef = useMemoFirebase(() => roomId ? doc(firestore, 'rooms', roomId) : null, [firestore, roomId]);
     const { data: room, isLoading: roomLoading } = useDoc<Room>(roomRef);
-    
+
     const areasRef = useMemoFirebase(() => collection(firestore, 'areas'), [firestore]);
     const { data: areas, isLoading: areasLoading } = useCollection<Area>(areasRef);
 
     const branchesRef = useMemoFirebase(() => collection(firestore, 'branches'), [firestore]);
     const { data: branches, isLoading: branchesLoading } = useCollection<Branch>(branchesRef);
 
-    const bookingsRef = useMemoFirebase(() => query(collection(firestore, 'rooms', roomId, 'reservations'), where('status', '==', 'Approved')), [firestore, roomId]);
+    const bookingsRef = useMemoFirebase(() => roomId ? query(collection(firestore, 'rooms', roomId, 'reservations'), where('status', '==', 'Approved')) : null, [firestore, roomId]);
     const { data: allBookings, isLoading: bookingsLoading } = useCollection<Booking>(bookingsRef);
 
     const workersRef = useMemoFirebase(() => collection(firestore, 'workers'), [firestore]);
@@ -51,7 +51,7 @@ export default function RoomDisplayPage() {
         .sort((a, b) => a.start.getTime() - b.start.getTime()) || [];
 
     const isLoading = roomLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
-    
+
     const area = areas?.find(a => a.areaId === room?.areaId);
     const branch = branches?.find(l => l.id === area?.branchId);
 
@@ -62,12 +62,13 @@ export default function RoomDisplayPage() {
             </div>
         );
     }
-    
-    if (!room) {
+
+    if (!roomId || !room) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
                 <div className="text-center">
-                    <h1 className="text-4xl font-bold">Room Not Found</h1>
+                    <h1 className="text-4xl font-bold">{!roomId ? 'No Room ID Provided' : 'Room Not Found'}</h1>
+                    {!roomId && <p className="text-gray-400 mt-2">Please provide a roomId in the URL parameters.</p>}
                 </div>
             </div>
         )
@@ -76,7 +77,7 @@ export default function RoomDisplayPage() {
     const now = new Date();
     const currentBooking = todaysBookings.find(b => now >= b.start && now <= b.end);
     const nextBooking = todaysBookings.find(b => now < b.start);
-    
+
     const qrCodeUrl = currentBooking ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`ROOM_CHECKIN:${currentBooking.id}`)}&bgcolor=374151&color=ffffff&qzone=1` : '';
 
     const getUserName = (userId: string) => {
@@ -118,10 +119,10 @@ export default function RoomDisplayPage() {
                                     <p className="text-lg lg:text-xl text-gray-400 mt-1">Booked by {getUserName((currentBooking as any).workerProfileId)}</p>
                                 </div>
                                 <div className="flex flex-col items-center gap-2 p-4 bg-gray-700 rounded-lg mt-4 lg:mt-0">
-                                    <Image 
+                                    <Image
                                         src={qrCodeUrl}
-                                        alt="Check-in QR Code" 
-                                        width={200} 
+                                        alt="Check-in QR Code"
+                                        width={200}
                                         height={200}
                                         className="rounded-md"
                                     />
@@ -129,14 +130,14 @@ export default function RoomDisplayPage() {
                                 </div>
                             </div>
                         ) : (
-                           <div className="flex flex-col items-center gap-4 py-8">
-                             <DoorOpen className="h-16 w-16 md:h-24 md:w-24 text-green-400" />
-                             {nextBooking ? (
-                                 <p className="text-lg md:text-xl text-gray-300 mt-4">Next booking at {format(nextBooking.start, 'h:mm a')}</p>
-                             ) : (
-                                <p className="text-lg md:text-xl text-gray-300 mt-4">No more bookings for today</p>
-                             )}
-                           </div>
+                            <div className="flex flex-col items-center gap-4 py-8">
+                                <DoorOpen className="h-16 w-16 md:h-24 md:w-24 text-green-400" />
+                                {nextBooking ? (
+                                    <p className="text-lg md:text-xl text-gray-300 mt-4">Next booking at {format(nextBooking.start, 'h:mm a')}</p>
+                                ) : (
+                                    <p className="text-lg md:text-xl text-gray-300 mt-4">No more bookings for today</p>
+                                )}
+                            </div>
                         )}
                     </CardContent>
                 </Card>
@@ -146,7 +147,7 @@ export default function RoomDisplayPage() {
                     </CardHeader>
                     <CardContent>
                         {todaysBookings.length > 0 ? (
-                             <div className="space-y-4">
+                            <div className="space-y-4">
                                 {todaysBookings.map(booking => (
                                     <div key={booking.id} className={`p-4 rounded-lg flex items-start gap-4 ${now >= booking.start && now <= booking.end ? 'bg-red-900/50' : now > booking.end ? 'bg-gray-700 opacity-60' : 'bg-gray-700/50'}`}>
                                         <Clock className="h-5 w-5 mt-1 text-gray-400 flex-shrink-0" />
@@ -168,5 +169,17 @@ export default function RoomDisplayPage() {
                 </Card>
             </main>
         </div>
+    );
+}
+
+export default function RoomDisplayPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+                <LoaderCircle className="h-12 w-12 animate-spin" />
+            </div>
+        }>
+            <RoomDisplayContent />
+        </Suspense>
     );
 }

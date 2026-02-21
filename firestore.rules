@@ -17,8 +17,11 @@ service cloud.firestore {
     match /rooms/{document=**} {
       allow read: if true;
     }
-    match /reservations/{document=**} {
+
+    // Allow collection group queries for reservations
+    match /{path=**}/reservations/{reservationId} {
       allow read: if true;
+      allow write: if request.auth != null;
     }
 
     // Allow public scanner to write attendance records
