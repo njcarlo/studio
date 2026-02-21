@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: process.env.BUILD_MOBILE === 'true' ? 'export' : 'standalone',
   typescript: {
     ignoreBuildErrors: true,
   },
