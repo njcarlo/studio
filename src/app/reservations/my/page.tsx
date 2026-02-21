@@ -15,8 +15,18 @@ import {
     XCircle,
     LoaderCircle,
     ScanLine,
-    Info
+    Info,
+    Users,
+    Building2
 } from "lucide-react";
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, updateDocumentNonBlocking, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
@@ -26,9 +36,13 @@ import { useToast } from "@/hooks/use-toast";
 import type { Booking, Room } from "@/lib/types";
 
 export default function MyReservationsPage() {
+    const { user } = useUser();
     const { workerProfile, isLoading: roleLoading } = useUserRole();
     const firestore = useFirestore();
     const { toast } = useToast();
+
+    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
     // Data fetching
     const reservationsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
@@ -38,11 +52,23 @@ export default function MyReservationsPage() {
     const { data: rooms } = useCollection<Room>(roomsRef);
 
     const myBookings = useMemo(() => {
-        if (!allBookings || !workerProfile) return [];
+        if (!allBookings) return [];
+
         return allBookings
-            .filter(b => b.workerProfileId === workerProfile.id)
-            .sort((a, b) => (b.start as any).seconds - (a.start as any).seconds);
-    }, [allBookings, workerProfile]);
+            .filter(b => {
+                // Filter by Profile ID if profile exists
+                const matchesProfile = workerProfile && b.workerProfileId === workerProfile.id;
+                // Fallback: Filter by Email (important for admins or unlinked profiles)
+                const matchesEmail = user?.email && (b.email === user.email || b.requesterEmail === user.email);
+
+                return matchesProfile || matchesEmail;
+            })
+            .sort((a, b) => {
+                const aTime = (a.start as any)?.seconds || 0;
+                const bTime = (b.start as any)?.seconds || 0;
+                return bTime - aTime;
+            });
+    }, [allBookings, workerProfile, user]);
 
     const getRoomName = (roomId: string) => {
         return rooms?.find(r => r.id === roomId)?.name || "Unknown Room";
@@ -59,8 +85,10 @@ export default function MyReservationsPage() {
 
             // Create a scan log
             await addDocumentNonBlocking(collection(firestore, "scan_logs"), {
-                scannerId: workerProfile?.id,
-                scannerName: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
+                workerProfileId: workerProfile?.id || "system-admin",
+                name: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.displayName || "System Admin"),
+                ministryId: workerProfile?.primaryMinistryId || "",
+                email: workerProfile?.email || user?.email || "",
                 timestamp: serverTimestamp(),
                 scanType: 'Room Check-in',
                 details: `Self check-in for: ${booking.title}`,
@@ -200,7 +228,10 @@ export default function MyReservationsPage() {
                                                     </div>
                                                 ) : null}
 
-                                                <Button variant="outline" className="w-full" onClick={() => {/* TODO: View Details */ }}>
+                                                <Button variant="outline" className="w-full" onClick={() => {
+                                                    setSelectedBooking(booking);
+                                                    setIsDetailsOpen(true);
+                                                }}>
                                                     View Details
                                                 </Button>
                                             </div>
@@ -211,7 +242,140 @@ export default function MyReservationsPage() {
                         })}
                     </div>
                 )}
+
+                <BookingDetailsSheet
+                    isOpen={isDetailsOpen}
+                    onClose={() => setIsDetailsOpen(false)}
+                    booking={selectedBooking}
+                    roomName={selectedBooking ? getRoomName(selectedBooking.roomId) : ""}
+                />
             </div>
         </AppLayout>
     );
 }
+
+const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string }) => {
+    if (!booking) return null;
+
+    const startTime = (booking.start as any).toDate();
+    const endTime = (booking.end as any).toDate();
+
+    return (
+        <Sheet open={isOpen} onOpenChange={onClose}>
+            <SheetContent className="sm:max-w-md overflow-y-auto">
+                <SheetHeader>
+                    <div className="flex items-center gap-2 mb-2">
+                        <Badge className={cn(
+                            "px-2 py-0.5",
+                            booking.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        )}>
+                            {booking.status}
+                        </Badge>
+                        {booking.requestId && (
+                            <span className="text-xs font-mono text-muted-foreground">ID: {booking.requestId}</span>
+                        )}
+                    </div>
+                    <SheetTitle className="text-2xl font-headline font-bold">{booking.title}</SheetTitle>
+                    <SheetDescription>Reservation Details & Requirements</SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-8 space-y-6">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 text-sm">
+                            <MapPin className="h-4 w-4 text-primary" />
+                            <div>
+                                <p className="font-semibold">{roomName}</p>
+                                <p className="text-muted-foreground text-xs">Venue Location</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            <div>
+                                <p className="font-semibold">{format(startTime, "PPPP")}</p>
+                                <p className="text-muted-foreground text-xs">Event Date</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm">
+                            <Clock className="h-4 w-4 text-primary" />
+                            <div>
+                                <p className="font-semibold">{format(startTime, "p")} - {format(endTime, "p")}</p>
+                                <p className="text-muted-foreground text-xs">Reserved Time</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Purpose</h4>
+                        <p className="text-sm leading-relaxed">{booking.purpose || "No description provided."}</p>
+                    </div>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <Users className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-lg font-bold">{booking.pax}</p>
+                            <p className="text-[10px] uppercase text-muted-foreground font-semibold">Pax</p>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <Building2 className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-lg font-bold">{booking.numTables || 0}</p>
+                            <p className="text-[10px] uppercase text-muted-foreground font-semibold">Tables</p>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <Info className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-lg font-bold">{booking.numChairs || 0}</p>
+                            <p className="text-[10px] uppercase text-muted-foreground font-semibold">Chairs</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Requested Equipment</h4>
+                        <div className="grid grid-cols-1 gap-2">
+                            {booking.equipment_TV && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    <span>Television / Display</span>
+                                </div>
+                            )}
+                            {booking.equipment_Mic && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    <span>Microphone System</span>
+                                </div>
+                            )}
+                            {booking.equipment_Speakers && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    <span>Sound System / Speakers</span>
+                                </div>
+                            )}
+                            {!booking.equipment_TV && !booking.equipment_Mic && !booking.equipment_Speakers && (
+                                <p className="text-sm text-muted-foreground italic">No specialized equipment requested.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Timer className="h-3 w-3" />
+                            <span>Requested on: {booking.dateRequested ? format((booking.dateRequested as any).toDate(), "PPP p") : "N/A"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            <span>Requested by: {booking.name}</span>
+                        </div>
+                    </div>
+
+                    <Button variant="outline" className="w-full mt-4" onClick={onClose}>Close Details</Button>
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+};

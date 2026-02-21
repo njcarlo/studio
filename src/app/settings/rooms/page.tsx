@@ -192,6 +192,7 @@ const AreaImportSheet = ({ branches, onImport, onClose }: { branches: Branch[]; 
 
 const AreaForm = ({ area, branches, onSave }: { area: Partial<Area> | null; branches: Branch[]; onSave: (data: Partial<Area>) => void; }) => {
     const [formData, setFormData] = useState<Partial<Area>>({
+        id: area?.id,
         areaId: area?.areaId || '',
         name: area?.name || '',
         branchId: area?.branchId || ''
@@ -361,6 +362,7 @@ const RoomImportSheet = ({ areas, branches, onImport, onClose }: { areas: Area[]
 
 const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | null; areas: Area[]; branches: Branch[]; onSave: (data: Partial<Room>) => void; }) => {
     const [formData, setFormData] = useState<Partial<Room>>({
+        id: room?.id,
         name: room?.name || '',
         capacity: room?.capacity || 0,
         equipment: room?.equipment || [],

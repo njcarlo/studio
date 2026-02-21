@@ -26,7 +26,17 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { CalendarIcon, LoaderCircle, CheckCircle2, ChevronRight } from "lucide-react";
+import {
+    PlusCircle,
+    Building2,
+    Calendar as CalendarIcon, // Renamed to avoid conflict with Calendar component
+    Clock,
+    Users,
+    Info,
+    CheckCircle2,
+    LoaderCircle,
+    XCircle
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase } from "@/firebase";
@@ -35,15 +45,21 @@ import { useToast } from "@/hooks/use-toast";
 import type { Room, Branch, Area, Ministry } from "@/lib/types";
 
 export default function NewReservationPage() {
-    const { workerProfile, isLoading: roleLoading } = useUserRole();
     const { user } = useUser();
+    const { workerProfile, isSuperAdmin, isLoading: roleLoading } = useUserRole();
     const firestore = useFirestore();
     const { toast } = useToast();
     const router = useRouter();
 
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [newRequestId, setNewRequestId] = useState("");
+    const [generatedRequestId, setGeneratedRequestId] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Initializations
+    useEffect(() => {
+        setGeneratedRequestId(`REQ-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
+    }, []);
 
     // Form states
     const [date, setDate] = useState<Date | undefined>(new Date());
@@ -102,12 +118,10 @@ export default function NewReservationPage() {
         return slots;
     }, []);
 
-    const generateRequestId = () => {
-        return `REQ-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    };
+
 
     const handleSave = async () => {
-        if (!workerProfile || !roomId || !date || !startTime || !endTime || !purpose || !guidelinesAccepted) {
+        if ((!workerProfile && !isSuperAdmin) || !roomId || !date || !startTime || !endTime || !purpose || !guidelinesAccepted) {
             toast({
                 variant: "destructive",
                 title: "Missing Information",
@@ -128,7 +142,7 @@ export default function NewReservationPage() {
 
         setIsSubmitting(true);
         try {
-            const requestId = generateRequestId();
+            const requestId = generatedRequestId;
 
             const [startH, startM] = startTime.split(':').map(Number);
             const [endH, endM] = endTime.split(':').map(Number);
@@ -139,6 +153,12 @@ export default function NewReservationPage() {
             const end = new Date(date);
             end.setHours(endH, endM, 0, 0);
 
+            const requesterName = workerProfile
+                ? `${workerProfile.firstName} ${workerProfile.lastName}`
+                : (user?.displayName || user?.email?.split('@')[0] || "System Admin");
+            const requesterEmail = workerProfile?.email || user?.email || "admin@system.com";
+            const requesterMinistryId = workerProfile?.primaryMinistryId || "";
+
             const bookingData = {
                 requestId,
                 roomId,
@@ -147,10 +167,10 @@ export default function NewReservationPage() {
                 start: FirebaseTimestamp.fromDate(start),
                 end: FirebaseTimestamp.fromDate(end),
                 status: 'Pending',
-                workerProfileId: workerProfile.id,
-                name: `${workerProfile.firstName} ${workerProfile.lastName}`,
-                ministryId: workerProfile.primaryMinistryId,
-                email: workerProfile.email,
+                workerProfileId: workerProfile?.id || "system-admin",
+                name: requesterName,
+                ministryId: requesterMinistryId,
+                email: requesterEmail,
                 dateRequested: serverTimestamp(),
                 pax: paxNum || 0,
                 numTables: parseInt(numTables) || 0,
@@ -165,14 +185,14 @@ export default function NewReservationPage() {
 
             if (reservationRef?.id) {
                 await addDocumentNonBlocking(collection(firestore, 'approvals'), {
-                    requester: `${workerProfile.firstName} ${workerProfile.lastName}`,
+                    requester: requesterName,
                     type: 'Room Booking',
                     details: `"${purpose}" for room: ${selectedRoom?.name}`,
                     date: serverTimestamp(),
                     status: 'Pending',
                     roomId,
                     reservationId: reservationRef.id,
-                    workerId: workerProfile.id,
+                    workerId: workerProfile?.id || "system-admin",
                     requestId
                 });
 
@@ -224,11 +244,31 @@ export default function NewReservationPage() {
         );
     }
 
-    if (roleLoading || !workerProfile) {
+    if (roleLoading) {
         return (
             <AppLayout>
                 <div className="flex items-center justify-center min-h-[400px]">
                     <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </AppLayout>
+        );
+    }
+
+    if (!workerProfile && !isSuperAdmin) {
+        return (
+            <AppLayout>
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center space-y-4 max-w-md mx-auto p-6 bg-card rounded-xl border shadow-sm">
+                        <XCircle className="h-12 w-12 text-destructive mx-auto" />
+                        <h2 className="text-xl font-bold font-headline">Worker Profile Not Found</h2>
+                        <p className="text-muted-foreground">
+                            We couldn't find your worker record (email: <span className="font-semibold">{user?.email}</span>) in the system.
+                            Please contact an administrator to ensure you are registered as a worker.
+                        </p>
+                        <Button onClick={() => window.location.href = '/dashboard'}>
+                            Return to Dashboard
+                        </Button>
+                    </div>
                 </div>
             </AppLayout>
         );
@@ -250,7 +290,7 @@ export default function NewReservationPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">Request ID</Label>
-                                <Input value="System Generated" disabled className="bg-muted" />
+                                <Input value={generatedRequestId || "Generating..."} disabled className="bg-muted font-mono" />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">Date Requested</Label>
@@ -258,15 +298,22 @@ export default function NewReservationPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">Requester Name</Label>
-                                <Input value={`${workerProfile.firstName} ${workerProfile.lastName}`} disabled className="bg-muted" />
+                                <Input
+                                    value={workerProfile
+                                        ? `${workerProfile.firstName} ${workerProfile.lastName}`
+                                        : (user?.displayName || user?.email?.split('@')[0] || "System Admin")
+                                    }
+                                    disabled
+                                    className="bg-muted"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">Ministry</Label>
-                                <Input value={workerMinistry?.name || "Loading..."} disabled className="bg-muted" />
+                                <Input value={workerMinistry?.name || (isSuperAdmin ? "Administration" : "Loading...")} disabled className="bg-muted" />
                             </div>
                             <div className="space-y-2 md:col-span-2">
                                 <Label className="text-muted-foreground">Email</Label>
-                                <Input value={workerProfile.email} disabled className="bg-muted" />
+                                <Input value={workerProfile?.email || user?.email || ""} disabled className="bg-muted" />
                             </div>
                         </div>
 
@@ -373,9 +420,22 @@ export default function NewReservationPage() {
                                     value={pax}
                                     onChange={(e) => setPax(e.target.value)}
                                     placeholder="Number of people"
+                                    className={cn(selectedRoom && parseInt(pax) > selectedRoom.capacity && "border-destructive focus-visible:ring-destructive")}
                                 />
                                 {selectedRoom && (
-                                    <p className="text-[11px] text-muted-foreground">Max capacity: {selectedRoom.capacity}</p>
+                                    <p className={cn(
+                                        "text-[11px] font-medium mt-1 transition-colors",
+                                        parseInt(pax) > selectedRoom.capacity ? "text-destructive flex items-center gap-1" : "text-muted-foreground"
+                                    )}>
+                                        {parseInt(pax) > selectedRoom.capacity ? (
+                                            <>
+                                                <Info className="h-3 w-3" />
+                                                <span>Capacity Exceeded! Max: {selectedRoom.capacity}. Please pick a larger room.</span>
+                                            </>
+                                        ) : (
+                                            <span>Max capacity of this room: {selectedRoom.capacity}</span>
+                                        )}
+                                    </p>
                                 )}
                             </div>
                             <div className="space-y-2">

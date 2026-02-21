@@ -162,7 +162,19 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
   );
 };
 
-const AppointApproverForm = ({ ministry, workers, onSave, onClose, type = 'approver' }: { ministry: Ministry; workers: Worker[]; onSave: (ministryId: string, userId: string | null, type: 'approver' | 'assigner' | 'head') => void; onClose: () => void; type?: 'approver' | 'assigner' | 'head' }) => {
+const AppointApproverForm = ({
+  ministry,
+  workers,
+  onSave,
+  onClose,
+  type = 'approver'
+}: {
+  ministry: Ministry;
+  workers: Worker[];
+  onSave: (ministryId: string, userId: string | null, type: 'approver' | 'assigner' | 'head') => void;
+  onClose: () => void;
+  type?: 'approver' | 'assigner' | 'head'
+}) => {
   const initialValue = type === 'approver'
     ? (ministry.approverId || 'none')
     : type === 'assigner'

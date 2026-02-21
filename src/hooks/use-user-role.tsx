@@ -39,121 +39,101 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const { impersonatedWorkerId } = useImpersonation();
 
-  // --- Real User Data (for checking admin status) ---
+  // 1. Fetch real worker profile (by UID)
   const realWorkerProfileRef = useMemoFirebase(() => user ? doc(firestore, 'workers', user.uid) : null, [firestore, user]);
-  const { data: realWorkerProfile, isLoading: isRealProfileLoading } = useDoc<Worker>(realWorkerProfileRef);
+  const { data: rawRealWorkerProfile, isLoading: isRealProfileByIdLoading } = useDoc<Worker>(realWorkerProfileRef);
 
-  const realRoleRef = useMemoFirebase(() => realWorkerProfile?.roleId ? doc(firestore, 'roles', realWorkerProfile.roleId) : null, [firestore, realWorkerProfile]);
-  const { data: realUserRole, isLoading: isRealRoleLoading } = useDoc<Role>(realRoleRef);
-
-  const isSuperAdmin = user?.email === 'admin@system.com' || realWorkerProfile?.roleId === 'admin';
-
-  // --- "View As" User Data ---
-  const viewAsWorkerId = isSuperAdmin ? impersonatedWorkerId : null; // Only allow admins to impersonate
-  const idToFetch = viewAsWorkerId || user?.uid;
-
-  const workerProfileRef = useMemoFirebase(() => {
-    return idToFetch ? doc(firestore, 'workers', idToFetch) : null;
-  }, [firestore, idToFetch]);
-  const { data: workerProfile, isLoading: isProfileLoading } = useDoc<Worker>(workerProfileRef);
-
-  const viewAsRoleRef = useMemoFirebase(() => workerProfile?.roleId ? doc(firestore, 'roles', workerProfile.roleId) : null, [firestore, workerProfile]);
-  const { data: viewAsUserRole, isLoading: isViewAsRoleLoading } = useDoc<Role>(viewAsRoleRef);
-
-  // Fallback: If profile by ID failed, try email
-  const profileByEmailQuery = useMemoFirebase(() => {
-    if (viewAsWorkerId || !user?.email || workerProfile || isProfileLoading) return null;
-    return query(collection(firestore, 'workers'), where('email', '==', user.email), limit(1));
-  }, [firestore, user, workerProfile, isProfileLoading, viewAsWorkerId]);
-  const { data: profileByEmailData, isLoading: isProfileByEmailLoading } = useCollection<Worker>(profileByEmailQuery);
-  const profileByEmail = profileByEmailData?.[0] || null;
-
-  // Real Profile Fallback
+  // 2. Fallback for real worker profile (by email)
   const realProfileByEmailQuery = useMemoFirebase(() => {
-    if (!user?.email || realWorkerProfile || isRealProfileLoading) return null;
+    if (!user?.email || rawRealWorkerProfile || isRealProfileByIdLoading) return null;
     return query(collection(firestore, 'workers'), where('email', '==', user.email), limit(1));
-  }, [firestore, user, realWorkerProfile, isRealProfileLoading]);
+  }, [firestore, user?.email, rawRealWorkerProfile, isRealProfileByIdLoading]);
   const { data: realProfileByEmailData, isLoading: isRealProfileByEmailLoading } = useCollection<Worker>(realProfileByEmailQuery);
   const realProfileByEmail = realProfileByEmailData?.[0] || null;
 
-  const effectiveWorkerProfile = workerProfile || profileByEmail;
-  const effectiveRealWorkerProfile = realWorkerProfile || realProfileByEmail;
+  const realWorkerProfile = rawRealWorkerProfile || realProfileByEmail;
+  const isRealProfileLoading = isRealProfileByIdLoading || (!!user?.email && !rawRealWorkerProfile && isRealProfileByEmailLoading);
 
-  // Re-fetch role if profile was found by email
-  const effectiveRoleRef = useMemoFirebase(() => effectiveWorkerProfile?.roleId ? doc(firestore, 'roles', effectiveWorkerProfile.roleId) : null, [firestore, effectiveWorkerProfile]);
-  const { data: effectiveUserRole, isLoading: isEffectiveRoleLoading } = useDoc<Role>(effectiveRoleRef);
+  // 3. Admin status and View As logic
+  const isSuperAdmin = user?.email === 'admin@system.com' || realWorkerProfile?.roleId === 'admin';
+  const viewAsWorkerId = isSuperAdmin ? impersonatedWorkerId : null;
+  const idToFetch = viewAsWorkerId || user?.uid;
 
-  const effectiveRealRoleRef = useMemoFirebase(() => effectiveRealWorkerProfile?.roleId ? doc(firestore, 'roles', effectiveRealWorkerProfile.roleId) : null, [firestore, effectiveRealWorkerProfile]);
-  const { data: effectiveRealUserRole, isLoading: isEffectiveRealRoleLoading } = useDoc<Role>(effectiveRealRoleRef);
+  // 4. Fetch the "View As" profile (by ID)
+  const workerProfileRef = useMemoFirebase(() => {
+    return idToFetch ? doc(firestore, 'workers', idToFetch) : null;
+  }, [firestore, idToFetch]);
+  const { data: rawWorkerProfile, isLoading: isProfileByIdLoading } = useDoc<Worker>(workerProfileRef);
 
-  // Check if the admin role exists to determine if seeding is needed.
-  // IMPORTANT: Only fetch after user auth is resolved to avoid pre-auth permission errors.
-  const adminRoleRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'roles', 'admin');
-  }, [firestore, user]);
+  // 5. Fallback for the "View As" profile (by email) - only if NOT impersonating by ID
+  const profileByEmailQuery = useMemoFirebase(() => {
+    if (viewAsWorkerId || !user?.email || rawWorkerProfile || isProfileByIdLoading) return null;
+    return query(collection(firestore, 'workers'), where('email', '==', user.email), limit(1));
+  }, [firestore, user?.email, rawWorkerProfile, isProfileByIdLoading, viewAsWorkerId]);
+  const { data: profileByEmailData, isLoading: isProfileByEmailLoading } = useCollection<Worker>(profileByEmailQuery);
+  const profileByEmail = profileByEmailData?.[0] || null;
+
+  const workerProfile = rawWorkerProfile || profileByEmail;
+  const isProfileLoading = isProfileByIdLoading || (!viewAsWorkerId && !!user?.email && !rawWorkerProfile && isProfileByEmailLoading);
+
+  // 6. Fetch Roles
+  const realRoleRef = useMemoFirebase(() => realWorkerProfile?.roleId ? doc(firestore, 'roles', realWorkerProfile.roleId) : null, [firestore, realWorkerProfile?.roleId]);
+  const { data: realUserRole, isLoading: isRealRoleLoading } = useDoc<Role>(realRoleRef);
+
+  const viewAsRoleRef = useMemoFirebase(() => workerProfile?.roleId ? doc(firestore, 'roles', workerProfile.roleId) : null, [firestore, workerProfile?.roleId]);
+  const { data: viewAsUserRole, isLoading: isViewAsRoleLoading } = useDoc<Role>(viewAsRoleRef);
+
+  const adminRoleRef = useMemoFirebase(() => user ? doc(firestore, 'roles', 'admin') : null, [firestore, user]);
   const { data: adminRole, isLoading: isAdminRoleLoading } = useDoc<Role>(adminRoleRef);
-  // needsSeeding is only meaningful when the user is authenticated and the lookup is done
   const needsSeeding = !!user && !isAdminRoleLoading && !adminRole;
 
-  // Fetch all roles for dropdowns etc.
-  const rolesRef = useMemoFirebase(() => {
-    if (!user) return null; // Wait for user to be authenticated
-    return collection(firestore, 'roles');
-  }, [firestore, user]);
-  const { data: allRoles, isLoading: areAllRolesLoading } = useCollection<Role>(rolesRef);
+  const rolesRef = useMemoFirebase(() => user ? collection(firestore, 'roles') : null, [firestore, user]);
+  const { data: allRoles, isLoading: areRolesLoading } = useCollection<Role>(rolesRef);
 
-  // Fetch ministries to check for assigner status
-  const ministriesRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, 'ministries');
-  }, [firestore, user]);
+  // 7. Fetch Ministries
+  const ministriesRef = useMemoFirebase(() => user ? collection(firestore, 'ministries') : null, [firestore, user]);
   const { data: allMinistries, isLoading: areMinistriesLoading } = useCollection<any>(ministriesRef);
 
-  const isLoading = isUserLoading || isRealProfileLoading || isProfileLoading || areAllRolesLoading || isAdminRoleLoading || isRealRoleLoading || isViewAsRoleLoading || areMinistriesLoading || isProfileByEmailLoading || isRealProfileByEmailLoading || isEffectiveRoleLoading || isEffectiveRealRoleLoading;
-
   const isMealStubAssigner = useMemo(() => {
-    if (!user || !allMinistries || !effectiveRealWorkerProfile) return false;
-    return allMinistries.some((m: any) => m.mealStubAssignerId === effectiveRealWorkerProfile.id);
-  }, [user, allMinistries, effectiveRealWorkerProfile]);
+    if (!user || !allMinistries || !realWorkerProfile) return false;
+    return allMinistries.some((m: any) => m.mealStubAssignerId === realWorkerProfile.id);
+  }, [user, allMinistries, realWorkerProfile]);
 
   const isMinistryHead = useMemo(() => {
-    if (!user || !allMinistries || !effectiveRealWorkerProfile) return false;
-    return allMinistries.some((m: any) => m.headId === effectiveRealWorkerProfile.id);
-  }, [user, allMinistries, effectiveRealWorkerProfile]);
+    if (!user || !allMinistries || !realWorkerProfile) return false;
+    return allMinistries.some((m: any) => m.headId === realWorkerProfile.id);
+  }, [user, allMinistries, realWorkerProfile]);
+
+  const isLoading = isUserLoading || isRealProfileLoading || isProfileLoading || areRolesLoading || isAdminRoleLoading || isRealRoleLoading || isViewAsRoleLoading || areMinistriesLoading;
 
   const value = useMemo(() => {
-    // For permission checks, we always use the REAL user's role, not the impersonated one.
-    // Impersonation is for viewing content, not for performing actions.
-    const permissions = effectiveRealUserRole?.permissions || [];
-    const isActuallySuperAdmin = user?.email === 'admin@system.com' || effectiveRealWorkerProfile?.roleId === 'admin';
-
+    const permissions = realUserRole?.permissions || [];
     return {
-      isSuperAdmin: isActuallySuperAdmin,
+      isSuperAdmin,
       needsSeeding,
       isLoading,
       allRoles: allRoles || [],
-      workerProfile: effectiveWorkerProfile || null,
-      canManageWorkers: isActuallySuperAdmin || permissions.includes('manage_workers'),
-      canManageRoles: isActuallySuperAdmin || permissions.includes('manage_roles'),
-      canManageMinistries: isActuallySuperAdmin || permissions.includes('manage_ministries'),
-      canManageFacilities: isActuallySuperAdmin || permissions.includes('manage_facilities'),
-      canCreateRoomReservation: isActuallySuperAdmin || permissions.includes('create_room_reservation'),
-      canEditRoomReservation: isActuallySuperAdmin || permissions.includes('edit_room_reservation'),
-      canDeleteRoomReservation: isActuallySuperAdmin || permissions.includes('delete_room_reservation'),
-      canApproveRoomReservation: isActuallySuperAdmin || permissions.includes('approve_room_reservation'),
-      canManageApprovals: isActuallySuperAdmin || permissions.includes('manage_approvals'),
-      canOperateScanner: isActuallySuperAdmin || permissions.includes('operate_scanner'),
-      canViewAttendance: isActuallySuperAdmin || permissions.includes('view_attendance_log'),
-      canViewMealStubs: isActuallySuperAdmin || permissions.includes('view_meal_stubs'),
-      canManageAllMealStubs: isActuallySuperAdmin || permissions.includes('manage_all_mealstubs'),
-      canViewReports: isActuallySuperAdmin || permissions.includes('view_reports'),
-      canAppointApprovers: isActuallySuperAdmin || permissions.includes('manage_ministries'),
-      canManageC2S: isActuallySuperAdmin || permissions.includes('manage_c2s'),
-      isMealStubAssigner: isActuallySuperAdmin || isMealStubAssigner,
-      isMinistryHead: isActuallySuperAdmin || isMinistryHead,
+      workerProfile: workerProfile || null,
+      canManageWorkers: isSuperAdmin || permissions.includes('manage_workers'),
+      canManageRoles: isSuperAdmin || permissions.includes('manage_roles'),
+      canManageMinistries: isSuperAdmin || permissions.includes('manage_ministries'),
+      canManageFacilities: isSuperAdmin || permissions.includes('manage_facilities'),
+      canCreateRoomReservation: isSuperAdmin || permissions.includes('create_room_reservation'),
+      canEditRoomReservation: isSuperAdmin || permissions.includes('edit_room_reservation'),
+      canDeleteRoomReservation: isSuperAdmin || permissions.includes('delete_room_reservation'),
+      canApproveRoomReservation: isSuperAdmin || permissions.includes('approve_room_reservation'),
+      canManageApprovals: isSuperAdmin || permissions.includes('manage_approvals'),
+      canOperateScanner: isSuperAdmin || permissions.includes('operate_scanner'),
+      canViewAttendance: isSuperAdmin || permissions.includes('view_attendance_log'),
+      canViewMealStubs: isSuperAdmin || permissions.includes('view_meal_stubs'),
+      canManageAllMealStubs: isSuperAdmin || permissions.includes('manage_all_mealstubs'),
+      canViewReports: isSuperAdmin || permissions.includes('view_reports'),
+      canAppointApprovers: isSuperAdmin || permissions.includes('manage_ministries'),
+      canManageC2S: isSuperAdmin || permissions.includes('manage_c2s'),
+      isMealStubAssigner: isSuperAdmin || isMealStubAssigner,
+      isMinistryHead: isSuperAdmin || isMinistryHead,
     };
-  }, [needsSeeding, isLoading, allRoles, effectiveWorkerProfile, effectiveRealUserRole, isMealStubAssigner, isMinistryHead, user, effectiveRealWorkerProfile]);
+  }, [isSuperAdmin, needsSeeding, isLoading, allRoles, workerProfile, realUserRole, isMealStubAssigner, isMinistryHead]);
 
   return (
     <UserRoleContext.Provider value={value}>

@@ -57,6 +57,7 @@ export type Booking = {
     name: string;
     ministryId: string;
     email: string;
+    requesterEmail?: string;
     dateRequested: Timestamp;
     pax: number;
     numTables?: number;
