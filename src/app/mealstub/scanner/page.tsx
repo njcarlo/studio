@@ -86,7 +86,6 @@ export default function QRScannerPage() {
         if (isAuthenticated) {
             getDevices();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toast, isAuthenticated]);
 
     const handleSwitchCamera = () => {
@@ -120,17 +119,29 @@ export default function QRScannerPage() {
 
         setIsProcessing(true);
 
-        // EXPECT DATA FORMAT: TYPE:ID[:TIMESTAMP]
-        const [type, payload, timestamp] = data.split(':');
+        // EXPECT DATA FORMAT: TYPE:ID[:TOKEN_OR_TIMESTAMP]
+        const [type, payload, tokenOrTs] = data.split(':');
+
+        const worker = workers?.find(w => w.id === payload || w.workerId === payload);
+
+        // Common Security Check for both modes
+        if (worker?.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid or Expired QR',
+                description: 'This QR code has been regenerated. Please use your latest QR code.',
+            });
+            setTimeout(resetScanner, 3000);
+            return;
+        }
 
         if (scanMode === 'Attendance') {
-            if (type !== 'ATTENDANCE' && type !== 'STATIC') {
+            if (type !== 'ATTENDANCE' && type !== 'STATIC' && type !== 'COG_USER' && type !== 'MEAL_STUB') {
                 toast({ variant: 'destructive', title: 'Invalid QR Type', description: 'This QR code cannot be used for attendance.' });
                 setTimeout(resetScanner, 2000);
                 return;
             }
 
-            const worker = workers?.find(w => w.id === payload || w.workerId === payload);
             if (worker) {
                 setScannedWorker(worker);
             } else {
@@ -141,16 +152,17 @@ export default function QRScannerPage() {
         }
 
         if (scanMode === 'Meal Stub') {
-            if (type !== 'MEAL_STUB' && type !== 'COG_USER') {
-                toast({ variant: 'destructive', title: 'Invalid QR Type', description: 'This QR code is not a Meal Stub.' });
+            // Updated to accept ALL primary worker QR types for meal stubs
+            if (type !== 'MEAL_STUB' && type !== 'COG_USER' && type !== 'ATTENDANCE') {
+                toast({ variant: 'destructive', title: 'Invalid QR Type', description: 'This QR code is not valid for meal stubs.' });
                 setTimeout(resetScanner, 2000);
                 return;
             }
 
             try {
-                // If it's a dynamic meal stub, verify it's not expired
-                if (timestamp) {
-                    const diffMins = (Date.now() - parseInt(timestamp)) / 1000 / 60;
+                // Backward compatibility for timestamp-based QR codes
+                if (tokenOrTs && !isNaN(parseInt(tokenOrTs)) && tokenOrTs.length > 10) {
+                    const diffMins = (Date.now() - parseInt(tokenOrTs)) / 1000 / 60;
                     if (diffMins > 5) {
                         toast({ variant: 'destructive', title: 'QR Code Expired', description: 'Please refresh your meal stub QR code and try again.' });
                         setTimeout(resetScanner, 2000);
@@ -173,7 +185,6 @@ export default function QRScannerPage() {
                     toast({ title: "Meal Stub Claimed!", description: details });
                     logScanEvent({ scanType: 'Meal Stub', details, mealStubId: todaysStubDoc.id, targetUserId: stubData.workerId, targetUserName: stubData.workerName });
                 } else {
-                    const worker = workers?.find(w => w.id === payload || w.workerId === payload);
                     const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
                     toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid, issued meal stub found for ${workerName} for today.` });
                 }
@@ -186,14 +197,6 @@ export default function QRScannerPage() {
             return;
         }
 
-        // Fallback for other QR code types that are not mode-dependent
-        if (type === 'ROOM_CHECKIN') {
-            toast({ title: 'Room Check-in Scanned', description: `Booking ID: ${payload}. (This feature is not yet fully implemented)` });
-            setTimeout(resetScanner, 2000);
-            return;
-        }
-
-        // If it's a raw UID but no mode is selected, or a mode is selected that doesn't handle it
         toast({ variant: 'destructive', title: 'Unknown Scan', description: 'Invalid QR code format.' });
         setTimeout(resetScanner, 2000);
 
@@ -232,7 +235,7 @@ export default function QRScannerPage() {
         let animationFrameId: number;
 
         const detectQrCode = async () => {
-            if (videoElement.readyState >= 2) { // HAVE_METADATA or more
+            if (videoElement.readyState >= 2) {
                 if (isProcessing || scannedWorker) {
                     animationFrameId = requestAnimationFrame(detectQrCode);
                     return;
@@ -244,12 +247,9 @@ export default function QRScannerPage() {
                         handleScan(barcodes[0].rawValue);
                     }
                 } catch (error) {
-                    // This can happen if the stream is temporarily unavailable.
-                    // The InvalidStateError is often transient. We'll just log it as a warning.
                     if (error instanceof Error && error.name === 'InvalidStateError') {
                         console.warn("Barcode detection failed for one frame:", error);
                     } else {
-                        // For other errors, log them more prominently.
                         console.error("Barcode detection failed:", error);
                     }
                 }

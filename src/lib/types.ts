@@ -18,8 +18,9 @@ export type Worker = {
     avatarUrl: string;
     primaryMinistryId: string;
     secondaryMinistryId: string;
-    employmentType?: 'Full-Time' | 'Part-Time' | 'On-Call' | 'Volunteer';
+    employmentType?: 'Full-Time' | 'On-Call' | 'Volunteer';
     passwordChangeRequired?: boolean;
+    qrToken?: string;
     createdAt: Timestamp;
 };
 
@@ -29,6 +30,7 @@ export type Ministry = {
     description: string;
     department: Department;
     leaderId: string;
+    headId?: string;
     approverId?: string;
     mealStubAssignerId?: string;
 };
@@ -44,12 +46,26 @@ export type AttendanceRecord = {
 
 export type Booking = {
     id: string;
+    requestId?: string;
     roomId: string;
     title: string;
+    purpose?: string;
     start: Timestamp;
     end: Timestamp;
     status: 'Pending' | 'Approved' | 'Rejected';
-    workerProfileId?: string;
+    workerProfileId: string;
+    name: string;
+    ministryId: string;
+    email: string;
+    dateRequested: Timestamp;
+    pax: number;
+    numTables?: number;
+    numChairs?: number;
+    equipment_TV?: boolean;
+    equipment_Mic?: boolean;
+    equipment_Speakers?: boolean;
+    guidelinesAccepted: boolean;
+    checkedInAt?: Timestamp;
 };
 
 export type Room = {
@@ -78,6 +94,9 @@ export type MealStub = {
     workerName: string;
     date: Timestamp;
     status: 'Issued' | 'Claimed';
+    stubType?: 'weekday' | 'sunday';
+    assignedBy?: string;
+    assignedByName?: string;
 };
 
 export type ApprovalRequest = {
@@ -90,6 +109,7 @@ export type ApprovalRequest = {
     workerId?: string;
     roomId?: string;
     reservationId?: string;
+    requestId?: string;
 };
 
 export type ScanLog = {

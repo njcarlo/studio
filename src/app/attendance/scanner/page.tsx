@@ -120,11 +120,12 @@ export default function QRScannerPage() {
 
         setIsProcessing(true);
 
-        // EXPECT DATA FORMAT: TYPE:ID[:TIMESTAMP]
-        const [type, payload, timestamp] = data.split(':');
+        // EXPECT DATA FORMAT: TYPE:ID[:TOKEN_OR_TIMESTAMP]
+        const [type, payload, tokenOrTs] = data.split(':');
 
         if (scanMode === 'Attendance') {
-            if (type !== 'ATTENDANCE' && type !== 'STATIC' && type !== 'COG_USER') {
+            // Updated to accept ALL primary worker QR types for attendance
+            if (type !== 'ATTENDANCE' && type !== 'STATIC' && type !== 'COG_USER' && type !== 'MEAL_STUB') {
                 toast({ variant: 'destructive', title: 'Invalid QR Type', description: 'This QR code cannot be used for attendance.' });
                 setTimeout(resetScanner, 2000);
                 return;
@@ -132,6 +133,18 @@ export default function QRScannerPage() {
 
             const worker = workers?.find(w => w.id === payload || w.workerId === payload);
             if (worker) {
+                // SECURITY CHECK: Verify if the token in the QR matches the one in DB
+                // If the worker has a qrToken set, the scanned code MUST match it.
+                if (worker.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Invalid or Expired QR',
+                        description: 'This QR code has been regenerated. Please use your latest QR code.',
+                    });
+                    setTimeout(resetScanner, 3000);
+                    return;
+                }
+
                 setScannedWorker(worker);
             } else {
                 toast({ variant: 'destructive', title: 'Worker Not Found', description: 'The scanned ID does not correspond to any worker.' });
@@ -141,16 +154,31 @@ export default function QRScannerPage() {
         }
 
         if (scanMode === 'Meal Stub') {
-            if (type !== 'MEAL_STUB') {
+            if (type !== 'MEAL_STUB' && type !== 'COG_USER') {
                 toast({ variant: 'destructive', title: 'Invalid QR Type', description: 'This QR code is not a Meal Stub.' });
                 setTimeout(resetScanner, 2000);
                 return;
             }
 
             try {
-                // If it's a dynamic meal stub, verify it's not expired
-                if (timestamp) {
-                    const diffMins = (Date.now() - parseInt(timestamp)) / 1000 / 60;
+                const worker = workers?.find(w => w.id === payload || w.workerId === payload);
+
+                // SECURITY CHECK: Verify if the token in the QR matches the one in DB
+                if (worker?.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Invalid or Expired QR',
+                        description: 'This QR code has been regenerated. Please use your latest QR code.',
+                    });
+                    setTimeout(resetScanner, 3000);
+                    return;
+                }
+
+                // If it's a dynamic meal stub from a direct generation (which used timestamps previously)
+                // we check if it's numeric to maintain backward compatibility for a transition period if needed,
+                // but primarily we are moving to qrTokens.
+                if (tokenOrTs && !isNaN(parseInt(tokenOrTs)) && tokenOrTs.length > 10) {
+                    const diffMins = (Date.now() - parseInt(tokenOrTs)) / 1000 / 60;
                     if (diffMins > 5) {
                         toast({ variant: 'destructive', title: 'QR Code Expired', description: 'Please refresh your meal stub QR code and try again.' });
                         setTimeout(resetScanner, 2000);

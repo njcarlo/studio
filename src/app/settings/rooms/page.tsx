@@ -7,37 +7,37 @@ import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
+    Table,
+    TableHeader,
+    TableRow,
+    TableHead,
+    TableBody,
+    TableCell,
 } from "@/components/ui/table";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+    SheetFooter,
+    SheetClose
 } from "@/components/ui/sheet";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,13 +46,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    SelectGroup,
+    SelectLabel,
 } from "@/components/ui/select";
 import type { Room, Branch, Area } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from "@/firebase";
@@ -94,7 +94,7 @@ const BranchForm = ({ branch, onSave }: { branch: Partial<Branch> | null; onSave
 
 const BranchesTab = ({ branches, areas, isLoading, onAdd, onEdit, onDelete }: { branches: Branch[], areas: Area[], isLoading: boolean, onAdd: () => void, onEdit: (loc: Branch) => void, onDelete: (loc: Branch) => void }) => {
     const getAreaCount = (branchId: string) => areas.filter(a => a.branchId === branchId).length;
-    
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -125,8 +125,8 @@ const BranchesTab = ({ branches, areas, isLoading, onAdd, onEdit, onDelete }: { 
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => onEdit(branch)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => onDelete(branch)} disabled={areaCount > 0} className="text-destructive">Delete</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onEdit(branch), 100)}>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onDelete(branch), 100)} disabled={areaCount > 0} className="text-destructive">Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -158,7 +158,7 @@ const AreaImportSheet = ({ branches, onImport, onClose }: { branches: Branch[]; 
                 <div className="space-y-2">
                     <Label htmlFor="csv-format">Required CSV Format</Label>
                     <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
-                     <Card className="mt-2 text-xs text-muted-foreground p-3 max-h-40 overflow-y-auto">
+                    <Card className="mt-2 text-xs text-muted-foreground p-3 max-h-40 overflow-y-auto">
                         <p className="font-bold mb-2">Available Branch IDs:</p>
                         <ul className="space-y-1">
                             {branches.map(branch => (
@@ -203,7 +203,7 @@ const AreaForm = ({ area, branches, onSave }: { area: Partial<Area> | null; bran
                 <SheetTitle className="font-headline">{area ? 'Edit Area' : 'Add New Area'}</SheetTitle>
             </SheetHeader>
             <div className="py-4 space-y-4">
-                 <div className="space-y-2">
+                <div className="space-y-2">
                     <Label htmlFor="area-id">Area ID</Label>
                     <Input
                         id="area-id"
@@ -212,11 +212,11 @@ const AreaForm = ({ area, branches, onSave }: { area: Partial<Area> | null; bran
                         placeholder="e.g., L1-Floor1"
                         disabled={!!area}
                     />
-                     { !area && <p className="text-xs text-muted-foreground">This unique ID cannot be changed later.</p> }
+                    {!area && <p className="text-xs text-muted-foreground">This unique ID cannot be changed later.</p>}
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="area-name">Area Name</Label>
-                    <Input id="area-name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g., Second Floor" />
+                    <Input id="area-name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Second Floor" />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="area-branch">Branch</Label>
@@ -277,8 +277,8 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => onEdit(area)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => onDelete(area)} disabled={roomCount > 0} className="text-destructive">Delete</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onEdit(area), 100)}>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onDelete(area), 100)} disabled={roomCount > 0} className="text-destructive">Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -320,9 +320,9 @@ const RoomImportSheet = ({ areas, branches, onImport, onClose }: { areas: Area[]
                     <p className="text-xs text-muted-foreground leading-relaxed">
                         `equipment` should be a semicolon-separated list (e.g., `Projector;TV`). Leave empty for no equipment.
                     </p>
-                     <Card className="mt-2 text-xs text-muted-foreground p-3 max-h-40 overflow-y-auto">
+                    <Card className="mt-2 text-xs text-muted-foreground p-3 max-h-40 overflow-y-auto">
                         <p className="font-bold mb-2">Available Area IDs:</p>
-                         <ul className="space-y-1 font-mono">
+                        <ul className="space-y-1 font-mono">
                             {groupedAreas.map(group => (
                                 <li key={group.branchName}>
                                     <p className="font-semibold">{group.branchName}</p>
@@ -377,7 +377,7 @@ const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | nul
             }
         });
     };
-    
+
     const groupedAreas = useMemo(() => {
         return branches.map(branch => ({
             branchName: branch.name,
@@ -395,12 +395,12 @@ const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | nul
                     <Label htmlFor="room-name">Room Name</Label>
                     <Input id="room-name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Conference Room A" />
                 </div>
-                 <div className="space-y-2">
+                <div className="space-y-2">
                     <Label htmlFor="room-area">Area</Label>
                     <Select value={formData.areaId} onValueChange={value => setFormData({ ...formData, areaId: value })}>
                         <SelectTrigger id="room-area"><SelectValue placeholder="Select an area" /></SelectTrigger>
                         <SelectContent>
-                             {groupedAreas.map(group => (
+                            {groupedAreas.map(group => (
                                 <SelectGroup key={group.branchName}>
                                     <SelectLabel>{group.branchName}</SelectLabel>
                                     {group.areas.map(area => (
@@ -415,7 +415,7 @@ const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | nul
                     <Label htmlFor="room-capacity">Capacity</Label>
                     <Input id="room-capacity" type="number" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value, 10) || 0 })} />
                 </div>
-                 <div className="space-y-2">
+                <div className="space-y-2">
                     <Label>Equipment</Label>
                     <div className="grid grid-cols-2 gap-2 rounded-lg border p-4">
                         {ALL_EQUIPMENT.map(item => (
@@ -426,7 +426,7 @@ const RoomForm = ({ room, areas, branches, onSave }: { room: Partial<Room> | nul
                                     onCheckedChange={(checked) => handleEquipmentChange(item.id, !!checked)}
                                 />
                                 <Label htmlFor={`equip-${item.id}`} className="font-normal flex items-center gap-2">
-                                   <item.icon className="h-4 w-4" /> {item.label}
+                                    <item.icon className="h-4 w-4" /> {item.label}
                                 </Label>
                             </div>
                         ))}
@@ -451,15 +451,15 @@ const RoomsTab = ({ rooms, areas, branches, isLoading, onAdd, onEdit, onDelete, 
             branchName: branch ? branch.name : 'N/A'
         };
     };
-    
+
     return (
-         <Card>
+        <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Rooms</CardTitle>
                     <CardDescription>Manage bookable rooms and their equipment.</CardDescription>
                 </div>
-                 <div className="flex gap-2">
+                <div className="flex gap-2">
                     <Button variant="outline" onClick={onImport}><Upload className="mr-2 h-4 w-4" /> Import</Button>
                     <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
                 </div>
@@ -495,8 +495,8 @@ const RoomsTab = ({ rooms, areas, branches, isLoading, onAdd, onEdit, onDelete, 
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => onEdit(room)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => onDelete(room)} className="text-destructive">Delete</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onEdit(room), 100)}>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onDelete(room), 100)} className="text-destructive">Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -578,7 +578,7 @@ export default function RoomManagementPage() {
                 await updateDocumentNonBlocking(doc(firestore, 'areas', data.id), data);
                 toast({ title: 'Area Updated' });
             } else {
-                 if (!data.areaId || !data.name || !data.branchId) {
+                if (!data.areaId || !data.name || !data.branchId) {
                     toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill out Area ID, Name, and Branch.' });
                     return;
                 }
@@ -605,7 +605,7 @@ export default function RoomManagementPage() {
             complete: async (results) => {
                 const newAreas = results.data;
                 if (newAreas.length === 0) {
-                    toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.'});
+                    toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.' });
                     return;
                 }
 
@@ -627,9 +627,9 @@ export default function RoomManagementPage() {
                             branchId: newArea.branchId,
                         });
                     });
-                    
+
                     if (invalidRowCount === newAreas.length) {
-                         toast({
+                        toast({
                             variant: "destructive",
                             title: "Import Failed",
                             description: `All ${invalidRowCount} rows were invalid. Please check that 'areaId' and 'name' are provided and 'branchId' is valid.`,
@@ -651,7 +651,7 @@ export default function RoomManagementPage() {
                     setIsAreaImportSheetOpen(false);
 
                 } catch (error) {
-                     toast({
+                    toast({
                         variant: "destructive",
                         title: "Import Failed",
                         description: "An error occurred during the import. Check console for details.",
@@ -689,7 +689,7 @@ export default function RoomManagementPage() {
             complete: async (results) => {
                 const newRooms = results.data;
                 if (newRooms.length === 0) {
-                    toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.'});
+                    toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.' });
                     return;
                 }
 
@@ -717,9 +717,9 @@ export default function RoomManagementPage() {
                             equipment: equipment
                         });
                     });
-                    
+
                     if (invalidRowCount === newRooms.length) {
-                         toast({
+                        toast({
                             variant: "destructive",
                             title: "Import Failed",
                             description: `All ${invalidRowCount} rows were invalid. Please check that 'name', a valid 'areaId', and a numeric 'capacity' are provided.`,
@@ -741,7 +741,7 @@ export default function RoomManagementPage() {
                     setIsRoomImportSheetOpen(false);
 
                 } catch (error) {
-                     toast({
+                    toast({
                         variant: "destructive",
                         title: "Import Failed",
                         description: "An error occurred during the import. Check console for details.",
@@ -812,7 +812,7 @@ export default function RoomManagementPage() {
                     />
                 </TabsContent>
                 <TabsContent value="areas" className="mt-4">
-                     <AreasTab
+                    <AreasTab
                         areas={areas || []}
                         branches={branches || []}
                         rooms={rooms || []}
@@ -834,14 +834,14 @@ export default function RoomManagementPage() {
                     />
                 </TabsContent>
             </Tabs>
-            
+
             {/* Sheets */}
             <Sheet open={isBranchSheetOpen} onOpenChange={setIsBranchSheetOpen}>
                 <SheetContent>
                     <BranchForm branch={selectedBranch} onSave={handleSaveBranch} />
                 </SheetContent>
             </Sheet>
-             <Sheet open={isAreaSheetOpen} onOpenChange={setIsAreaSheetOpen}>
+            <Sheet open={isAreaSheetOpen} onOpenChange={setIsAreaSheetOpen}>
                 <SheetContent>
                     <AreaForm area={selectedArea} branches={branches || []} onSave={handleSaveArea} />
                 </SheetContent>
@@ -851,13 +851,13 @@ export default function RoomManagementPage() {
                     <AreaImportSheet branches={branches || []} onImport={handleImportAreas} onClose={() => setIsAreaImportSheetOpen(false)} />
                 </SheetContent>
             </Sheet>
-             <Sheet open={isRoomImportSheetOpen} onOpenChange={setIsRoomImportSheetOpen}>
+            <Sheet open={isRoomImportSheetOpen} onOpenChange={setIsRoomImportSheetOpen}>
                 <SheetContent className="sm:max-w-lg">
-                    <RoomImportSheet 
-                        areas={areas || []} 
-                        branches={branches || []} 
-                        onImport={handleImportRooms} 
-                        onClose={() => setIsRoomImportSheetOpen(false)} 
+                    <RoomImportSheet
+                        areas={areas || []}
+                        branches={branches || []}
+                        onImport={handleImportRooms}
+                        onClose={() => setIsRoomImportSheetOpen(false)}
                     />
                 </SheetContent>
             </Sheet>
@@ -882,7 +882,7 @@ export default function RoomManagementPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-             <AlertDialog open={!!areaToDelete} onOpenChange={(open) => !open && setAreaToDelete(null)}>
+            <AlertDialog open={!!areaToDelete} onOpenChange={(open) => !open && setAreaToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>

@@ -53,7 +53,7 @@ export interface InternalQuery extends Query<DocumentData> {
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+  memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & { __memo?: boolean }) | null | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -91,13 +91,23 @@ export function useCollection<T = any>(
         const internalQuery = (memoizedTargetRefOrQuery as unknown as InternalQuery)._query;
 
         if (memoizedTargetRefOrQuery.type === 'collection') {
-            path = (memoizedTargetRefOrQuery as CollectionReference).path;
+          path = (memoizedTargetRefOrQuery as CollectionReference).path;
         } else if (internalQuery.collectionGroup) {
-            // This is a collection group query. The path is the group ID.
-            path = internalQuery.collectionGroup;
+          // This is a collection group query. The path is the group ID.
+          path = internalQuery.collectionGroup;
         } else {
-            // This is a regular query on a collection.
-            path = internalQuery.path.canonicalString();
+          // This is a regular query on a collection.
+          path = internalQuery.path.canonicalString();
+        }
+
+        // Distinguish between missing index errors vs real permission errors.
+        // FAILED_PRECONDITION means the query requires a composite index that hasn't been created yet.
+        if (error.code === 'failed-precondition') {
+          console.error(`Firestore missing index on "${path}": ${error.message}`);
+          setError(error);
+          setData(null);
+          setIsLoading(false);
+          return;
         }
 
         const contextualError = new FirestorePermissionError({
@@ -116,7 +126,7 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
+  if (memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
   return { data, isLoading, error };

@@ -174,7 +174,10 @@ export default function ApprovalsPage() {
         const primaryMinistry = ministries?.find(m => m.id === targetWorker.primaryMinistryId);
         const secondaryMinistry = ministries?.find(m => m.id === targetWorker.secondaryMinistryId);
 
-        return (primaryMinistry?.approverId === workerProfile.id) || (secondaryMinistry?.approverId === workerProfile.id);
+        return (primaryMinistry?.approverId === workerProfile.id) ||
+            (primaryMinistry?.headId === workerProfile.id) ||
+            (secondaryMinistry?.approverId === workerProfile.id) ||
+            (secondaryMinistry?.headId === workerProfile.id);
     };
 
     const checkCanManage = (request: ApprovalRequest) => {
@@ -215,7 +218,7 @@ export default function ApprovalsPage() {
         );
     }
 
-    const hasAnyApproverRole = ministries?.some(m => m.approverId === workerProfile?.id);
+    const hasAnyApproverRole = ministries?.some(m => m.approverId === workerProfile?.id || m.headId === workerProfile?.id);
     const canViewPage = canManageApprovals || canApproveRoomReservation || hasAnyApproverRole;
     if (!canViewPage) {
         return (

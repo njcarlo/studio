@@ -8,8 +8,6 @@ import {
   Users,
   Calendar,
   ScanLine,
-  Utensils,
-  BookOpen,
   Vote,
   ChevronRight,
   HeartHandshake,
@@ -52,20 +50,40 @@ const allNavItems: NavItem[] = [
     subItems: [
       { href: "/workers/my-qr", label: "My QR Code" },
       {
-        href: "/workers/management",
-        label: "Worker Management",
+        href: "/workers",
+        label: "View and Update Workers",
         permissionKey: 'canManageWorkers',
+      },
+      {
+        href: "/meals",
+        label: "Meal Stub",
+        permissionKey: 'canViewMealStubs',
         subItems: [
-          { href: "/workers", label: "View & Update" }
+          { href: "/meals?tab=view", label: "View Meal Stub" },
+          { href: "/meals?tab=assign", label: "Assign Meal Stub", permissionKey: 'isMealStubAssigner' }
         ]
       }
     ]
   },
-  { href: "/rooms", icon: Calendar, label: "Room Reservations" },
+  {
+    href: "/reservations",
+    icon: Calendar,
+    label: "Room Reservations",
+    subItems: [
+      { href: "/reservations/calendar", label: "View Schedules" },
+      { href: "/reservations/my", label: "My reservations" },
+      { href: "/reservations/new", label: "Reserve a room" },
+      {
+        href: "/reservations/all",
+        label: "All Reservations",
+        permissionKey: 'canApproveRoomReservation',
+      }
+    ]
+  },
   { href: "/attendance", icon: ScanLine, label: "Attendance", permissionKey: 'canViewAttendance' },
-  { href: "/meals", icon: Utensils, label: "Meal Stubs", permissionKey: 'canViewMealStubs' },
+
   { href: "/approvals", icon: Vote, label: "Approvals", permissionKey: 'canManageApprovals' },
-  { href: "/c2s", icon: HeartHandshake, label: "C2S", permissionKey: 'canManageC2S' },
+  { href: "/c2s", icon: HeartHandshake, label: "Connect 2 Souls", permissionKey: 'canManageC2S' },
   { href: "/reports", icon: LineChart, label: "Reports", permissionKey: 'canViewReports' },
   {
     href: "/settings",

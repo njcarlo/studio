@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, LoaderCircle, Upload, LogIn } from "lucide-react";
+import { MoreHorizontal, PlusCircle, LoaderCircle, Upload, LogIn, Users, UserCheck, UserX, Users2, Building2, Key, Mail } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,13 +43,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Worker, Role, Ministry } from "@/lib/types";
-import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser } from "@/firebase";
+import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser, initiatePasswordReset, useFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useImpersonation } from "@/hooks/use-impersonation";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: { worker: Partial<Worker> | null; roles: Role[]; ministries: Ministry[]; onSave: (worker: Partial<Worker>) => void; onClose: () => void; canManage: boolean; }) => {
+const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPassword, canManage }: {
+  worker: Partial<Worker> | null;
+  roles: Role[];
+  ministries: Ministry[];
+  onSave: (worker: Partial<Worker>) => void;
+  onClose: () => void;
+  onResetPassword?: (worker: Worker) => void;
+  canManage: boolean;
+}) => {
   const [formData, setFormData] = useState<Partial<Worker>>({
     firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: canManage ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
     primaryMinistryId: '', secondaryMinistryId: ''
@@ -158,25 +167,31 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: {
           </Select>
         </div>
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="employmentType" className="text-right">Employment</Label>
+          <Label htmlFor="employmentType" className="text-right">Worker Type</Label>
           <Select value={formData.employmentType || 'Volunteer'} onValueChange={(value: any) => setFormData({ ...formData, employmentType: value })} disabled={!canManage}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Full-Time">Full-Time</SelectItem>
-              <SelectItem value="Part-Time">Part-Time</SelectItem>
               <SelectItem value="On-Call">On-Call</SelectItem>
               <SelectItem value="Volunteer">Volunteer</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
-      <SheetFooter>
-        <SheetClose asChild>
-          <Button type="button" variant="secondary">Cancel</Button>
-        </SheetClose>
-        <Button onClick={handleSave}>Save changes</Button>
+      <SheetFooter className="flex-col sm:flex-row gap-2">
+        {worker && onResetPassword && (
+          <Button type="button" variant="outline" onClick={() => onResetPassword(worker as Worker)} className="mr-auto">
+            <Mail className="mr-2 h-4 w-4" /> Send Reset Link
+          </Button>
+        )}
+        <div className="flex gap-2">
+          <SheetClose asChild>
+            <Button type="button" variant="secondary">Cancel</Button>
+          </SheetClose>
+          <Button onClick={handleSave}>Save changes</Button>
+        </div>
       </SheetFooter>
     </>
   );
@@ -184,7 +199,7 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, canManage }: {
 
 const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => void; onClose: () => void; }) => {
   const [csvData, setCsvData] = useState('');
-  const csvFormat = "firstName,lastName,email,phone,roleId,status,primaryMinistryId,secondaryMinistryId";
+  const csvFormat = "firstName,lastName,email,phone,roleId,status,primaryMinistryId,secondaryMinistryId,employmentType";
 
   return (
     <>
@@ -226,6 +241,7 @@ export default function WorkersPage() {
   const { user } = useUser();
   const { workerProfile, canManageWorkers, isSuperAdmin, allRoles, isLoading: isRoleLoading } = useUserRole();
   const { startImpersonation } = useImpersonation();
+  const { auth } = useFirebase();
 
   const workersRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -249,6 +265,25 @@ export default function WorkersPage() {
 
   const isLoading = workersLoading || rolesLoading || ministriesLoading || isRoleLoading;
 
+  // Detect Department Head by role name
+  const isDepartmentHead = useMemo(() => {
+    if (!workerProfile?.roleId || !roles.length) return false;
+    const roleName = roles.find(r => r.id === workerProfile.roleId)?.name || '';
+    return roleName.toLowerCase().includes('department head');
+  }, [workerProfile, roles]);
+
+  // Find the department of this user's primary ministry
+  const userDepartment = useMemo(() => {
+    if (!workerProfile?.primaryMinistryId || !ministries.length) return null;
+    return ministries.find(m => m.id === workerProfile.primaryMinistryId)?.department || null;
+  }, [workerProfile, ministries]);
+
+  // All ministries in the department head's department
+  const departmentMinistries = useMemo(() => {
+    if (!isDepartmentHead || !userDepartment) return [];
+    return ministries.filter(m => m.department === userDepartment);
+  }, [isDepartmentHead, userDepartment, ministries]);
+
   const workers = useMemo(() => {
     if (!allWorkers) return [];
 
@@ -256,6 +291,15 @@ export default function WorkersPage() {
     const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.primaryMinistryId);
 
     if (isGlobalManager) return allWorkers;
+
+    // Department Heads see all workers across their whole department
+    if (isDepartmentHead && departmentMinistries.length > 0) {
+      const deptMinistryIds = departmentMinistries.map(m => m.id);
+      return allWorkers.filter(w =>
+        deptMinistryIds.includes(w.primaryMinistryId) ||
+        deptMinistryIds.includes(w.secondaryMinistryId)
+      );
+    }
 
     // Filter by ministry: show workers in same ministries as current user
     const userMinistryIds = [workerProfile?.primaryMinistryId, workerProfile?.secondaryMinistryId].filter(Boolean);
@@ -265,7 +309,7 @@ export default function WorkersPage() {
       userMinistryIds.includes(w.primaryMinistryId) ||
       userMinistryIds.includes(w.secondaryMinistryId)
     );
-  }, [allWorkers, isSuperAdmin, canManageWorkers, workerProfile]);
+  }, [allWorkers, isSuperAdmin, canManageWorkers, workerProfile, isDepartmentHead, departmentMinistries]);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
@@ -282,9 +326,34 @@ export default function WorkersPage() {
 
   const handleEdit = (worker: Worker) => {
     setSelectedWorker(worker);
-    setIsSheetOpen(true);
+    // Add a tiny delay to allow the dropdown menu to close fully before opening the sheet.
+    // This prevents focus-trap and scroll-lock conflicts.
+    setTimeout(() => setIsSheetOpen(true), 10);
   };
 
+  const handlePasswordReset = (worker: Worker) => {
+    if (!worker.email) {
+      toast({ variant: 'destructive', title: 'No email found', description: 'This worker does not have an email address set.' });
+      return;
+    }
+
+    if (!auth) {
+      toast({ variant: 'destructive', title: 'Auth Error', description: 'Firebase Auth is not initialized.' });
+      return;
+    }
+
+    initiatePasswordReset(
+      auth,
+      worker.email,
+      () => {
+        toast({ title: "Email Sent", description: `A password reset link has been sent to ${worker.email}.` });
+      },
+      (error) => {
+        console.error("Password reset error:", error);
+        toast({ variant: "destructive", title: "Error", description: error.message });
+      }
+    );
+  };
   const handleImpersonate = (worker: Worker) => {
     toast({
       title: "Impersonation Started",
@@ -352,7 +421,9 @@ export default function WorkersPage() {
           });
         }
       }
-      setIsSheetOpen(false);
+      // Close the sheet after a tiny delay to ensure Firestore operations 
+      // and state transitions don't conflict with Radix UI animations.
+      setTimeout(() => setIsSheetOpen(false), 50);
     } catch (error) {
       console.error("Failed to save worker:", error);
       toast({
@@ -396,6 +467,7 @@ export default function WorkersPage() {
               status: newWorker.status || 'Pending Approval',
               primaryMinistryId: newWorker.primaryMinistryId || '',
               secondaryMinistryId: newWorker.secondaryMinistryId || '',
+              employmentType: newWorker.employmentType || 'Volunteer',
               workerId: workerId,
               createdAt: serverTimestamp(),
               avatarUrl: `https://picsum.photos/seed/${newDocRef.id.slice(0, 5)}/100/100`,
@@ -445,6 +517,46 @@ export default function WorkersPage() {
     return role?.permissions || [];
   }
 
+  // --- Ministry / Department Worker Summary Stats ---
+  const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.primaryMinistryId);
+  const userMinistryIds = [workerProfile?.primaryMinistryId, workerProfile?.secondaryMinistryId].filter(Boolean) as string[];
+
+  // For Department Head: use the full set of department ministry IDs
+  const statsMinistryIds = isDepartmentHead
+    ? departmentMinistries.map(m => m.id)
+    : userMinistryIds;
+
+  // Primary workers: those whose PRIMARY ministry is in the stats scope
+  const primaryWorkers = isGlobalManager
+    ? (workers || [])
+    : (workers || []).filter(w => w.primaryMinistryId && statsMinistryIds.includes(w.primaryMinistryId));
+
+  // Secondary workers: those whose SECONDARY ministry is in the stats scope — NOT counted in total
+  const totalSecondary = isGlobalManager
+    ? (workers || []).filter(w => !!w.secondaryMinistryId).length
+    : (workers || []).filter(w => w.secondaryMinistryId && statsMinistryIds.includes(w.secondaryMinistryId)).length;
+
+  const totalWorkers = primaryWorkers.length;
+  const totalActive = primaryWorkers.filter(w => w.status === 'Active').length;
+  const totalInactive = primaryWorkers.filter(w => w.status === 'Inactive').length;
+
+  // --- Per-ministry breakdown for Department Head ---
+  const ministryBreakdown = useMemo(() => {
+    if (!isDepartmentHead || departmentMinistries.length === 0) return [];
+    return departmentMinistries.map(ministry => {
+      const mPrimary = (allWorkers || []).filter(w => w.primaryMinistryId === ministry.id);
+      const mSecondary = (allWorkers || []).filter(w => w.secondaryMinistryId === ministry.id);
+      return {
+        ministry,
+        total: mPrimary.length,
+        active: mPrimary.filter(w => w.status === 'Active').length,
+        inactive: mPrimary.filter(w => w.status === 'Inactive').length,
+        secondary: mSecondary.length,
+        primaryWorkers: mPrimary,
+      };
+    });
+  }, [isDepartmentHead, departmentMinistries, allWorkers]);
+
   if (isLoading) {
     return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
   }
@@ -477,6 +589,192 @@ export default function WorkersPage() {
           </div>
         )}
       </div>
+
+      {/* Summary Stats (dept-wide for Dept Head, ministry-scoped for others) */}
+      <div className="mt-4 space-y-1">
+        {isDepartmentHead && (
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm font-medium text-muted-foreground">
+              {userDepartment} Department Overview
+            </p>
+          </div>
+        )}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Total Workers</CardTitle>
+              <Users className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <p className="text-2xl font-bold">{totalWorkers}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Active</CardTitle>
+              <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <p className="text-2xl font-bold text-green-700 dark:text-green-400">{totalActive}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Inactive</CardTitle>
+              <UserX className="h-4 w-4 text-red-600 dark:text-red-400" />
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <p className="text-2xl font-bold text-red-700 dark:text-red-400">{totalInactive}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Secondary Workers</CardTitle>
+              <Users2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{totalSecondary}</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Department Head: per-ministry breakdown */}
+      {isDepartmentHead && ministryBreakdown.length > 0 && (
+        <div className="mt-5">
+          <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Ministry Breakdown</h2>
+          <Tabs defaultValue={ministryBreakdown[0]?.ministry.id}>
+            <TabsList className="flex flex-wrap h-auto gap-1 mb-4">
+              {ministryBreakdown.map(({ ministry }) => (
+                <TabsTrigger key={ministry.id} value={ministry.id} className="text-xs">
+                  {ministry.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {ministryBreakdown.map(({ ministry, total, active, inactive, secondary, primaryWorkers: mWorkers }) => (
+              <TabsContent key={ministry.id} value={ministry.id} className="space-y-3">
+                {/* Per-ministry stat row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+                      <CardTitle className="text-xs font-medium text-muted-foreground">Total</CardTitle>
+                      <Users className="h-3.5 w-3.5 text-primary" />
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <p className="text-xl font-bold">{total}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                    <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+                      <CardTitle className="text-xs font-medium text-muted-foreground">Active</CardTitle>
+                      <UserCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <p className="text-xl font-bold text-green-700 dark:text-green-400">{active}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
+                    <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+                      <CardTitle className="text-xs font-medium text-muted-foreground">Inactive</CardTitle>
+                      <UserX className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <p className="text-xl font-bold text-red-700 dark:text-red-400">{inactive}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+                    <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+                      <CardTitle className="text-xs font-medium text-muted-foreground">Secondary</CardTitle>
+                      <Users2 className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{secondary}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+                {/* Per-ministry worker table */}
+                <div className="rounded-lg border shadow-sm overflow-x-auto w-full">
+                  <Table className="min-w-[700px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Worker ID</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Contact</TableHead>
+                        {canManageWorkers && <TableHead><span className="sr-only">Actions</span></TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mWorkers.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">
+                            No workers in this ministry.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {mWorkers.map(worker => (
+                        <TableRow key={worker.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarImage src={worker.avatarUrl} alt={`${worker.firstName} ${worker.lastName}`} />
+                                <AvatarFallback>{worker.firstName?.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              {`${worker.firstName} ${worker.lastName}`}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{worker.workerId}</TableCell>
+                          <TableCell>{getRoleName(worker.roleId)}</TableCell>
+                          <TableCell>
+                            <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
+                              worker.status === 'Active' ? 'bg-green-100 text-green-800' :
+                                worker.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                            }>
+                              {worker.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="text-xs">{worker.email}</span>
+                              <span className="text-[10px] text-muted-foreground">{worker.phone}</span>
+                            </div>
+                          </TableCell>
+                          {canManageWorkers && (
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button aria-haspopup="true" size="icon" variant="ghost">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Toggle menu</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onSelect={() => setTimeout(() => handleEdit(worker), 100)}>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => setTimeout(() => handlePasswordReset(worker), 100)}>
+                                    <Mail className="mr-2 h-4 w-4" /> Send Reset Link
+                                  </DropdownMenuItem>
+                                  {worker.id !== user?.uid && (
+                                    <DropdownMenuItem onSelect={() => setTimeout(() => handleImpersonate(worker), 100)}>
+                                      <LogIn className="mr-2 h-4 w-4" /> Impersonate
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onSelect={() => setTimeout(() => handleDelete(worker.id), 100)} className="text-destructive">Delete</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </div>
+      )}
 
       <div className="rounded-lg border shadow-sm mt-4 overflow-x-auto w-full">
         <Table className="min-w-[1000px]">
@@ -549,14 +847,17 @@ export default function WorkersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleEdit(worker)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setTimeout(() => handleEdit(worker), 100)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setTimeout(() => handlePasswordReset(worker), 100)}>
+                          <Mail className="mr-2 h-4 w-4" /> Send Reset Link
+                        </DropdownMenuItem>
                         {worker.id !== user?.uid && (
-                          <DropdownMenuItem onSelect={() => handleImpersonate(worker)}>
+                          <DropdownMenuItem onSelect={() => setTimeout(() => handleImpersonate(worker), 100)}>
                             <LogIn className="mr-2 h-4 w-4" />
                             Impersonate
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onSelect={() => handleDelete(worker.id)} className="text-destructive">Delete</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setTimeout(() => handleDelete(worker.id), 100)} className="text-destructive">Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -576,6 +877,7 @@ export default function WorkersPage() {
             ministries={ministries}
             onSave={handleSaveWorker}
             onClose={() => setIsSheetOpen(false)}
+            onResetPassword={handlePasswordReset}
             canManage={canManageWorkers}
           />
         </SheetContent>

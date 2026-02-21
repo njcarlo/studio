@@ -112,20 +112,22 @@ function DateRangeToolbar({
     handlePrev, handleNext, handleToday, dateRangeDisplay, onExport,
 }: ReturnType<typeof useDateRange> & { onExport?: () => void }) {
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-2">
-            <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="outline" size="icon" onClick={handlePrev}>
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleToday}>Today</Button>
-                <Button variant="outline" size="icon" onClick={handleNext}>
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 pb-4">
+            <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
+                <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="outline" size="icon" onClick={handlePrev} className="h-9 w-9">
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleToday} className="h-9">Today</Button>
+                    <Button variant="outline" size="icon" onClick={handleNext} className="h-9 w-9">
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="outline" className="min-w-[200px] justify-start text-left font-normal text-sm">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRangeDisplay}
+                        <Button variant="outline" className="flex-grow lg:flex-none lg:min-w-[200px] justify-start text-left font-normal text-sm h-9">
+                            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                            <span className="truncate">{dateRangeDisplay}</span>
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -138,16 +140,16 @@ function DateRangeToolbar({
                     </PopoverContent>
                 </Popover>
             </div>
-            <div className="flex items-center gap-2">
-                <div className="flex rounded-md border overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="flex rounded-md border p-1 bg-muted/50 w-full sm:w-auto">
                     {(["day", "week", "month"] as ViewMode[]).map((v) => (
                         <button
                             key={v}
                             onClick={() => setViewMode(v)}
                             className={cn(
-                                "px-3 py-1.5 text-sm font-medium transition-colors",
+                                "flex-1 sm:px-4 py-1.5 text-xs sm:text-sm font-medium transition-all rounded-sm",
                                 viewMode === v
-                                    ? "bg-primary text-primary-foreground"
+                                    ? "bg-background text-foreground shadow-sm"
                                     : "hover:bg-muted text-muted-foreground"
                             )}
                         >
@@ -156,7 +158,7 @@ function DateRangeToolbar({
                     ))}
                 </div>
                 {onExport && (
-                    <Button variant="outline" size="sm" onClick={onExport}>
+                    <Button variant="outline" size="sm" onClick={onExport} className="h-9 w-full sm:w-auto">
                         <Download className="mr-2 h-4 w-4" />
                         Export CSV
                     </Button>
@@ -276,73 +278,79 @@ function SummaryDashboard() {
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Last 30 Days</h2>
-                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-                    <KpiCard title="Active Workers" value={activeWorkers} icon={Users} color="bg-blue-100 text-blue-700" sub={`of ${workers?.length ?? 0} total`} />
-                    <KpiCard title="Clock Ins" value={totalClockIns} icon={TrendingUp} color="bg-green-100 text-green-700" sub="attendance records" />
-                    <KpiCard title="Meals Claimed" value={claimedMeals} icon={UtensilsCrossed} color="bg-orange-100 text-orange-700" sub={`of ${mealstubData?.length ?? 0} issued`} />
-                    <KpiCard title="Pending Approvals" value={pendingApprovals} icon={Clock} color="bg-yellow-100 text-yellow-700" sub="awaiting action" />
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Last 30 Days Summary</h2>
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                    <KpiCard title="Active Workers" value={activeWorkers} icon={Users} color="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" sub={`of ${workers?.length ?? 0} total`} />
+                    <KpiCard title="Clock Ins" value={totalClockIns} icon={TrendingUp} color="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" sub="attendance records" />
+                    <KpiCard title="Meals Claimed" value={claimedMeals} icon={UtensilsCrossed} color="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" sub={`of ${mealstubData?.length ?? 0} issued`} />
+                    <KpiCard title="Pending Approvals" value={pendingApprovals} icon={Clock} color="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" sub="awaiting action" />
                 </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
                 <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="text-base">Daily Clock-Ins (Last 30 Days)</CardTitle>
-                        <CardDescription>Number of attendance clock-ins per day</CardDescription>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-headline">Daily Clock-Ins</CardTitle>
+                        <CardDescription>Activity trends over the last 30 days</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={240}>
-                            <BarChart data={dailyAttendanceChart} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
-                                <XAxis
-                                    dataKey="date"
-                                    tick={{ fontSize: 11 }}
-                                    tickLine={false}
-                                    interval={Math.floor(dailyAttendanceChart.length / 6)}
-                                />
-                                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: 12 }}
-                                />
-                                <Bar dataKey="Clock Ins" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <CardContent className="pt-4 pl-0">
+                        <div className="h-[280px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={dailyAttendanceChart} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
+                                    <XAxis
+                                        dataKey="date"
+                                        tick={{ fontSize: 10 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        interval={Math.floor(dailyAttendanceChart.length / 5)}
+                                    />
+                                    <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                                    <Tooltip
+                                        cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+                                        contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: 12, backgroundColor: 'hsl(var(--background))' }}
+                                    />
+                                    <Bar dataKey="Clock Ins" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={20} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">Worker Status</CardTitle>
-                        <CardDescription>Breakdown by employment status</CardDescription>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-headline">Worker Demographics</CardTitle>
+                        <CardDescription>Worker type distribution</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-col items-center gap-4">
-                        <ResponsiveContainer width="100%" height={180}>
-                            <PieChart>
-                                <Pie
-                                    data={workerStatusData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={55}
-                                    outerRadius={80}
-                                    paddingAngle={3}
-                                    dataKey="value"
-                                >
-                                    {workerStatusData.map((entry, i) => (
-                                        <Cell key={i} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip contentStyle={{ borderRadius: "8px", fontSize: 12 }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="flex flex-col gap-1 w-full text-sm">
+                    <CardContent className="flex flex-col items-center pt-4">
+                        <div className="h-[200px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={workerStatusData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={85}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {workerStatusData.map((entry, i) => (
+                                            <Cell key={i} fill={entry.color} stroke="none" />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: 12, backgroundColor: 'hsl(var(--background))' }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 w-full mt-4">
                             {workerStatusData.map((item) => (
-                                <div key={item.name} className="flex items-center justify-between">
+                                <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
                                     <div className="flex items-center gap-2">
-                                        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
-                                        <span className="text-muted-foreground">{item.name}</span>
+                                        <span className="inline-block h-3 w-3 rounded-full" style={{ background: item.color }} />
+                                        <span className="text-xs font-medium">{item.name}</span>
                                     </div>
-                                    <span className="font-semibold">{item.value}</span>
+                                    <span className="text-xs font-bold">{item.value}</span>
                                 </div>
                             ))}
                         </div>
@@ -406,53 +414,58 @@ function AttendanceReport({ dateRange }: { dateRange: DateRange }) {
                 <KpiCard title="Unique Workers" value={stats.uniqueWorkers} icon={Users} color="bg-purple-100 text-purple-700" />
             </div>
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Attendance Log</CardTitle>
-                    <Button size="sm" variant="outline" onClick={handleExport} disabled={!attendance?.length}>
+            <Card className="border-none sm:border shadow-none sm:shadow-sm">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <CardTitle className="text-base font-headline">Attendance Log</CardTitle>
+                        <CardDescription className="text-xs">Detailed records for the selected period</CardDescription>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={handleExport} disabled={!attendance?.length} className="w-full sm:w-auto">
                         <Download className="mr-2 h-4 w-4" />Export CSV
                     </Button>
                 </CardHeader>
-                <CardContent className="w-full overflow-x-auto">
-                    <Table className="min-w-[600px]">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Worker</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Time</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading && (
+                <CardContent className="p-0 sm:p-6">
+                    <div className="w-full overflow-x-auto border-t sm:border-none">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={3} className="text-center py-8">
-                                        <LoaderCircle className="h-6 w-6 animate-spin mx-auto" />
-                                    </TableCell>
+                                    <TableHead>Worker</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Time</TableHead>
                                 </TableRow>
-                            )}
-                            {!isLoading && attendance?.map((log) => (
-                                <TableRow key={log.id}>
-                                    <TableCell className="font-medium">{getWorkerName(log.workerProfileId)}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className={cn(
-                                            "text-xs",
-                                            log.type === "Clock In" ? "border-green-500 text-green-700 bg-green-50" : "border-blue-500 text-blue-700 bg-blue-50"
-                                        )}>
-                                            {log.type}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">{format(log.time.toDate(), "PPp")}</TableCell>
-                                </TableRow>
-                            ))}
-                            {!isLoading && attendance?.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                                        No attendance records found for this period.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center py-8">
+                                            <LoaderCircle className="h-6 w-6 animate-spin mx-auto" />
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                                {!isLoading && attendance?.map((log) => (
+                                    <TableRow key={log.id}>
+                                        <TableCell className="font-medium">{getWorkerName(log.workerProfileId)}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className={cn(
+                                                "text-xs",
+                                                log.type === "Clock In" ? "border-green-500 text-green-700 bg-green-50" : "border-blue-500 text-blue-700 bg-blue-50"
+                                            )}>
+                                                {log.type}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">{format(log.time.toDate(), "PPp")}</TableCell>
+                                    </TableRow>
+                                ))}
+                                {!isLoading && attendance?.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                            No attendance records found for this period.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -501,53 +514,58 @@ function MealStubsReport({ dateRange }: { dateRange: DateRange }) {
                 <KpiCard title="Claim Rate" value={`${stats.claimRate}%`} icon={TrendingUp} color="bg-blue-100 text-blue-700" />
             </div>
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Meal Stub Log</CardTitle>
-                    <Button size="sm" variant="outline" onClick={handleExport} disabled={!mealstubs?.length}>
+            <Card className="border-none sm:border shadow-none sm:shadow-sm">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <CardTitle className="text-base font-headline">Meal Stub Log</CardTitle>
+                        <CardDescription className="text-xs">History of issued and claimed stubs</CardDescription>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={handleExport} disabled={!mealstubs?.length} className="w-full sm:w-auto">
                         <Download className="mr-2 h-4 w-4" />Export CSV
                     </Button>
                 </CardHeader>
-                <CardContent className="w-full overflow-x-auto">
-                    <Table className="min-w-[600px]">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Worker</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading && (
+                <CardContent className="p-0 sm:p-6">
+                    <div className="w-full overflow-x-auto border-t sm:border-none">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={3} className="text-center py-8">
-                                        <LoaderCircle className="h-6 w-6 animate-spin mx-auto" />
-                                    </TableCell>
+                                    <TableHead>Worker</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Status</TableHead>
                                 </TableRow>
-                            )}
-                            {!isLoading && mealstubs?.map((stub) => (
-                                <TableRow key={stub.id}>
-                                    <TableCell className="font-medium">{stub.workerName}</TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">{format(stub.date.toDate(), "PPP")}</TableCell>
-                                    <TableCell>
-                                        <Badge className={cn(
-                                            "text-xs",
-                                            stub.status === "Issued" ? "bg-blue-100 text-blue-800 hover:bg-blue-100" : "bg-green-100 text-green-800 hover:bg-green-100"
-                                        )}>
-                                            {stub.status}
-                                        </Badge>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {!isLoading && mealstubs?.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                                        No meal stub records found for this period.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center py-8">
+                                            <LoaderCircle className="h-6 w-6 animate-spin mx-auto" />
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                                {!isLoading && mealstubs?.map((stub) => (
+                                    <TableRow key={stub.id}>
+                                        <TableCell className="font-medium">{stub.workerName}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">{format(stub.date.toDate(), "PPP")}</TableCell>
+                                        <TableCell>
+                                            <Badge className={cn(
+                                                "text-xs",
+                                                stub.status === "Issued" ? "bg-blue-100 text-blue-800 hover:bg-blue-100" : "bg-green-100 text-green-800 hover:bg-green-100"
+                                            )}>
+                                                {stub.status}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {!isLoading && mealstubs?.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                            No meal stub records found for this period.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -902,6 +920,8 @@ function TabbedReport({ children }: { children: React.ReactNode }) {
 export default function ReportsPage() {
     const { canViewReports, isLoading } = useUserRole();
 
+    const dr = useDateRange();
+
     if (isLoading) {
         return (
             <AppLayout>
@@ -927,53 +947,48 @@ export default function ReportsPage() {
 
     return (
         <AppLayout>
-            <div className="flex items-center gap-2 mb-6">
-                <BarChart3 className="h-6 w-6 text-primary" />
-                <div>
-                    <h1 className="text-2xl font-headline font-bold leading-none">Reports</h1>
-                    <p className="text-sm text-muted-foreground mt-1">Analytics and operational data for administrators</p>
+            <div className="max-w-7xl mx-auto w-full">
+                <div className="flex flex-col gap-1 mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight">Financial & Activity Reports</h1>
+                    <p className="text-sm text-muted-foreground">Monitor attendance, meal allocations, and room usage.</p>
                 </div>
+
+                <Tabs defaultValue="summary" className="space-y-6">
+                    <div className="w-full overflow-x-auto pb-1 scrollbar-hide">
+                        <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 justify-start h-11 bg-muted/50 p-1">
+                            <TabsTrigger value="summary" className="px-4 py-2 text-xs sm:text-sm">Summary</TabsTrigger>
+                            <TabsTrigger value="attendance" className="px-4 py-2 text-xs sm:text-sm">Attendance</TabsTrigger>
+                            <TabsTrigger value="stubs" className="px-4 py-2 text-xs sm:text-sm">Meal Stubs</TabsTrigger>
+                            <TabsTrigger value="allocations" className="px-4 py-2 text-xs sm:text-sm">Allocations</TabsTrigger>
+                            <TabsTrigger value="reservations" className="px-4 py-2 text-xs sm:text-sm">Reservations</TabsTrigger>
+                        </TabsList>
+                    </div>
+
+                    <TabsContent value="summary">
+                        <SummaryDashboard />
+                    </TabsContent>
+
+                    <TabsContent value="attendance" className="space-y-6">
+                        <DateRangeToolbar {...dr} onExport={() => { }} />
+                        <AttendanceReport dateRange={dr.dateRange} />
+                    </TabsContent>
+
+                    <TabsContent value="stubs" className="space-y-6">
+                        <DateRangeToolbar {...dr} onExport={() => { }} />
+                        <MealStubsReport dateRange={dr.dateRange} />
+                    </TabsContent>
+
+                    <TabsContent value="allocations" className="space-y-6">
+                        <DateRangeToolbar {...dr} onExport={() => { }} />
+                        <MealAllocationsReport dateRange={dr.dateRange} />
+                    </TabsContent>
+
+                    <TabsContent value="reservations" className="space-y-6">
+                        <DateRangeToolbar {...dr} onExport={() => { }} />
+                        <ReservationsReport dateRange={dr.dateRange} />
+                    </TabsContent>
+                </Tabs>
             </div>
-
-            <Tabs defaultValue="summary">
-                <div className="w-full overflow-x-auto pb-2">
-                    <TabsList className="mb-0 flex w-max">
-                        <TabsTrigger value="summary">Summary</TabsTrigger>
-                        <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                        <TabsTrigger value="mealstubs">Meal Stubs</TabsTrigger>
-                        <TabsTrigger value="mealallocations">Meal Allocations</TabsTrigger>
-                        <TabsTrigger value="reservations">Room Reservations</TabsTrigger>
-                    </TabsList>
-                </div>
-
-                <TabsContent value="summary">
-                    <SummaryDashboard />
-                </TabsContent>
-
-                <TabsContent value="attendance">
-                    <TabbedReport>
-                        <AttendanceReport dateRange={{ start: new Date(), end: new Date() }} />
-                    </TabbedReport>
-                </TabsContent>
-
-                <TabsContent value="mealstubs">
-                    <TabbedReport>
-                        <MealStubsReport dateRange={{ start: new Date(), end: new Date() }} />
-                    </TabbedReport>
-                </TabsContent>
-
-                <TabsContent value="mealallocations">
-                    <TabbedReport>
-                        <MealAllocationsReport dateRange={{ start: new Date(), end: new Date() }} />
-                    </TabbedReport>
-                </TabsContent>
-
-                <TabsContent value="reservations">
-                    <TabbedReport>
-                        <ReservationsReport dateRange={{ start: new Date(), end: new Date() }} />
-                    </TabbedReport>
-                </TabsContent>
-            </Tabs>
-        </AppLayout >
+        </AppLayout>
     );
 }

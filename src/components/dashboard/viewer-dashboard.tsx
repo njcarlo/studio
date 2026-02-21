@@ -91,19 +91,19 @@ export function ViewerDashboard() {
                 <TabsTrigger value="room">Room Reservation</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="id">
-                <div className="flex justify-center">
-                    <Card className="flex flex-col items-center justify-between text-center p-8 w-full max-w-md">
+            <TabsContent value="id" className="space-y-6">
+                <div className="flex flex-col lg:flex-row gap-6 items-start justify-center">
+                    <Card className="flex flex-col items-center justify-between text-center p-6 sm:p-8 w-full lg:max-w-md shrink-0">
                         <CardHeader className="p-2">
-                            <CardTitle className="font-headline text-2xl flex items-center gap-2 mx-auto"><QrCode className="h-6 w-6" /> Your QR Code</CardTitle>
+                            <CardTitle className="font-headline text-2xl flex items-center justify-center gap-2"><QrCode className="h-6 w-6" /> Your QR Code</CardTitle>
                             <CardDescription className="text-base text-balance mt-2">
                                 Scan this at any COGApp station for attendance or to claim your meal stub.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="py-6">
+                        <CardContent className="py-6 flex justify-center w-full">
                             {combinedQrUrl ? (
                                 <div className="bg-white p-4 rounded-xl shadow-inner border inline-block">
-                                    <Image src={combinedQrUrl} alt="Your QR Code" width={256} height={256} className="rounded-lg" />
+                                    <Image src={combinedQrUrl} alt="Your QR Code" width={256} height={256} className="rounded-lg w-full max-w-[200px] h-auto sm:max-w-none" />
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-center p-12">
@@ -112,79 +112,77 @@ export function ViewerDashboard() {
                             )}
                         </CardContent>
                         <div className="pb-2">
-                            <Button variant="outline" size="sm" onClick={refreshCodes} className="mt-4">
+                            <Button variant="outline" size="sm" onClick={refreshCodes} className="mt-2">
                                 <RefreshCw className="h-3 w-3 mr-2" /> Refresh QR Code
                             </Button>
                         </div>
                     </Card>
 
-                    <div className="mt-8 w-full max-w-2xl mx-auto space-y-6">
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-lg font-headline flex items-center gap-2">
-                                    <History className="h-5 w-5 text-primary" /> Recent Activity
-                                </CardTitle>
-                                <CardDescription>Your latest meal stubs and attendance records.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="px-0">
-                                <div className="space-y-0">
-                                    {/* Combined logs in chronological order */}
-                                    {(() => {
-                                        const logs = [
-                                            ...(attendanceHistory || []).map(a => ({
-                                                id: a.id,
-                                                type: 'attendance',
-                                                title: a.type,
-                                                time: a.time.toDate(),
-                                                status: 'Logged'
-                                            })),
-                                            ...(mealStubsHistory || []).map(m => ({
-                                                id: m.id,
-                                                type: 'mealstub',
-                                                title: 'Meal Stub',
-                                                time: m.date.toDate(),
-                                                status: m.status
-                                            }))
-                                        ].sort((a, b) => b.time.getTime() - a.time.getTime());
+                    <Card className="w-full max-w-2xl mx-auto flex-grow h-fit">
+                        <CardHeader className="pb-3 px-4 sm:px-6">
+                            <CardTitle className="text-lg font-headline flex items-center gap-2">
+                                <History className="h-5 w-5 text-primary" /> Recent Activity
+                            </CardTitle>
+                            <CardDescription>Your latest meal stubs and attendance records.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="px-0 sm:px-0">
+                            <div className="space-y-0">
+                                {/* Combined logs in chronological order */}
+                                {(() => {
+                                    const logs = [
+                                        ...(attendanceHistory || []).map(a => ({
+                                            id: a.id,
+                                            type: 'attendance',
+                                            title: a.type,
+                                            time: a.time.toDate(),
+                                            status: 'Logged'
+                                        })),
+                                        ...(mealStubsHistory || []).map(m => ({
+                                            id: m.id,
+                                            type: 'mealstub',
+                                            title: 'Meal Stub',
+                                            time: m.date.toDate(),
+                                            status: m.status
+                                        }))
+                                    ].sort((a, b) => b.time.getTime() - a.time.getTime());
 
-                                        if (logs.length === 0 && !isLoading) {
-                                            return <p className="px-6 py-4 text-sm text-muted-foreground text-center">No recent activity found.</p>;
-                                        }
+                                    if (logs.length === 0 && !isLoading) {
+                                        return <p className="px-6 py-8 text-sm text-muted-foreground text-center">No recent activity found.</p>;
+                                    }
 
-                                        return logs.map((log, i) => (
-                                            <div key={log.id} className={cn(
-                                                "flex items-center justify-between px-6 py-4 transition-colors hover:bg-muted/50",
-                                                i !== logs.length - 1 && "border-bottom border-b"
-                                            )}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={cn(
-                                                        "p-2 rounded-full",
-                                                        log.type === 'attendance' ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600"
-                                                    )}>
-                                                        {log.type === 'attendance' ? <Clock className="h-4 w-4" /> : <Utensils className="h-4 w-4" />}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-sm">{log.title}</p>
-                                                        <p className="text-xs text-muted-foreground">{format(log.time, 'MMM d, yyyy • h:mm a')}</p>
-                                                    </div>
+                                    return logs.map((log, i) => (
+                                        <div key={log.id} className={cn(
+                                            "flex items-center justify-between px-4 sm:px-6 py-4 transition-colors hover:bg-muted/50",
+                                            i !== logs.length - 1 && "border-bottom border-b"
+                                        )}>
+                                            <div className="flex items-center gap-3 sm:gap-4">
+                                                <div className={cn(
+                                                    "p-2 rounded-full shrink-0",
+                                                    log.type === 'attendance' ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                                                )}>
+                                                    {log.type === 'attendance' ? <Clock className="h-4 w-4" /> : <Utensils className="h-4 w-4" />}
                                                 </div>
-                                                <Badge
-                                                    variant={log.status === 'Claimed' || log.status === 'Logged' ? 'secondary' : 'default'}
-                                                    className={cn(
-                                                        "text-[10px] px-2 py-0 h-5",
-                                                        log.status === 'Claimed' && "bg-green-100 text-green-700 hover:bg-green-100",
-                                                        log.status === 'Issued' && "bg-blue-100 text-blue-700 hover:bg-blue-100"
-                                                    )}
-                                                >
-                                                    {log.status}
-                                                </Badge>
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-sm truncate">{log.title}</p>
+                                                    <p className="text-[10px] sm:text-xs text-muted-foreground">{format(log.time, 'MMM d, yyyy • h:mm a')}</p>
+                                                </div>
                                             </div>
-                                        ));
-                                    })()}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                                            <Badge
+                                                variant={log.status === 'Claimed' || log.status === 'Logged' ? 'secondary' : 'default'}
+                                                className={cn(
+                                                    "text-[9px] sm:text-[10px] px-2 py-0 h-5 shrink-0",
+                                                    log.status === 'Claimed' && "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400",
+                                                    log.status === 'Issued' && "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
+                                                )}
+                                            >
+                                                {log.status}
+                                            </Badge>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </TabsContent>
 

@@ -81,7 +81,7 @@ const GroupForm = ({ group, workers, onSave }: { group: Partial<C2SGroup> | null
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="mentor">C2S Mentor</Label>
+                <Label htmlFor="mentor">Connect 2 Souls Mentor</Label>
                 <Select value={formData.mentorId} onValueChange={val => setFormData({ ...formData, mentorId: val })}>
                     <SelectTrigger id="mentor">
                         <SelectValue placeholder="Select a mentor" />
@@ -259,7 +259,7 @@ export default function C2SPage() {
                     <HeartHandshake className="h-12 w-12 text-muted-foreground/50" />
                     <h2 className="text-xl font-semibold">Access Denied</h2>
                     <p className="text-muted-foreground text-center max-w-md">
-                        You don't have permission to access the C2S Member Monitoring System.
+                        You don't have permission to access the Connect 2 Souls Member Monitoring System.
                         Contact an administrator to request access.
                     </p>
                 </div>
@@ -272,8 +272,8 @@ export default function C2SPage() {
             <div className="flex flex-col space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-headline font-bold text-foreground tracking-tight">C2S Monitoring</h1>
-                        <p className="text-muted-foreground mt-1">Manage Connect-to-Serve groups and mentees.</p>
+                        <h1 className="text-3xl font-headline font-bold text-foreground tracking-tight">Connect 2 Souls</h1>
+                        <p className="text-muted-foreground mt-1">Manage Connect 2 Souls groups and mentees.</p>
                     </div>
                     <div className="flex items-center gap-2">
                         {activeTab === "groups" ? (
@@ -327,11 +327,11 @@ export default function C2SPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => { setSelectedGroup(group); setIsGroupSheetOpen(true); }}>
+                                                            <DropdownMenuItem onSelect={() => setTimeout(() => { setSelectedGroup(group); setIsGroupSheetOpen(true); }, 100)}>
                                                                 <Edit className="mr-2 h-4 w-4" /> Edit Group
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
-                                                                onSelect={() => setItemToDelete({ id: group.id, type: 'group', name: group.name })}
+                                                                onSelect={() => setTimeout(() => setItemToDelete({ id: group.id, type: 'group', name: group.name }), 100)}
                                                                 className="text-destructive focus:text-destructive"
                                                             >
                                                                 <Trash2 className="mr-2 h-4 w-4" /> Delete Group
@@ -389,7 +389,7 @@ export default function C2SPage() {
                             <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-2xl bg-muted/5">
                                 <Users className="h-12 w-12 text-muted-foreground/30 mb-4" />
                                 <h3 className="text-lg font-medium">No groups found</h3>
-                                <p className="text-muted-foreground mb-6">Start by creating your first C2S group.</p>
+                                <p className="text-muted-foreground mb-6">Start by creating your first Connect 2 Souls group.</p>
                                 <Button onClick={() => { setSelectedGroup(null); setIsGroupSheetOpen(true); }}>
                                     <PlusCircle className="mr-2 h-4 w-4" /> Create Group
                                 </Button>
@@ -471,11 +471,11 @@ export default function C2SPage() {
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
-                                                                        <DropdownMenuItem onSelect={() => { setSelectedMentee(mentee); setIsMenteeSheetOpen(true); }}>
+                                                                        <DropdownMenuItem onSelect={() => setTimeout(() => { setSelectedMentee(mentee); setIsMenteeSheetOpen(true); }, 100)}>
                                                                             <Edit className="mr-2 h-4 w-4" /> Edit
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem
-                                                                            onSelect={() => setItemToDelete({ id: mentee.id, type: 'mentee', name: `${mentee.firstName} ${mentee.lastName}` })}
+                                                                            onSelect={() => setTimeout(() => setItemToDelete({ id: mentee.id, type: 'mentee', name: `${mentee.firstName} ${mentee.lastName}` }), 100)}
                                                                             className="text-destructive"
                                                                         >
                                                                             <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -507,7 +507,7 @@ export default function C2SPage() {
                 <SheetContent className="sm:max-w-md">
                     <SheetHeader>
                         <SheetTitle className="font-headline text-2xl">{selectedGroup ? 'Edit Group' : 'Create New Group'}</SheetTitle>
-                        <SheetDescription>Configure C2S group details and assign a mentor.</SheetDescription>
+                        <SheetDescription>Configure Connect 2 Souls group details and assign a mentor.</SheetDescription>
                     </SheetHeader>
                     <GroupForm
                         group={selectedGroup}

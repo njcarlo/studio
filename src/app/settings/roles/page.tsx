@@ -99,9 +99,9 @@ const PERMISSION_CATEGORIES = [
         ]
     },
     {
-        category: 'Connect to Serve (C2S)',
+        category: 'Connect 2 Souls',
         permissions: [
-            { id: 'manage_c2s', label: 'Manage C2S', description: 'Can create, edit, and delete C2S groups and mentees.' },
+            { id: 'manage_c2s', label: 'Manage Connect 2 Souls', description: 'Can create, edit, and delete Connect 2 Souls groups and mentees.' },
         ]
     },
     {

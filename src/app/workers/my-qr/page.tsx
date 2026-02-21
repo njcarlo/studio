@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QrCode, RefreshCw, Download, Printer } from 'lucide-react';
@@ -13,16 +13,28 @@ import type { Worker } from '@/lib/types';
 export default function MyQRCodePage() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const [qrSeed, setQrSeed] = useState(Date.now());
+    const [isRegenerating, setIsRegenerating] = useState(false);
+    const [localToken, setLocalToken] = useState<string | null>(null);
 
     const workerProfileRef = useMemoFirebase(() => user ? doc(firestore, 'workers', user.uid) : null, [firestore, user]);
     const { data: workerProfile } = useDoc<Worker>(workerProfileRef);
 
     const activeUserId = workerProfile?.id || user?.uid;
-    const combinedData = activeUserId ? `COG_USER:${activeUserId}:${qrSeed}` : '';
+    const activeToken = localToken ?? workerProfile?.qrToken ?? activeUserId ?? '';
+    const combinedData = activeToken ? `COG_USER:${activeUserId}:${activeToken}` : '';
     const combinedQrUrl = combinedData ? `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(combinedData)}` : '';
 
-    const refreshCodes = () => setQrSeed(Date.now());
+    const refreshCodes = async () => {
+        if (!user) return;
+        setIsRegenerating(true);
+        try {
+            const newToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
+            await updateDoc(doc(firestore, 'workers', user.uid), { qrToken: newToken });
+            setLocalToken(newToken);
+        } finally {
+            setIsRegenerating(false);
+        }
+    };
 
     const handlePrint = () => {
         window.print();
@@ -37,8 +49,12 @@ export default function MyQRCodePage() {
                         <Button variant="outline" size="sm" onClick={handlePrint}>
                             <Printer className="h-4 w-4 mr-2" /> Print
                         </Button>
-                        <Button variant="outline" size="sm" onClick={refreshCodes}>
-                            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                        <Button variant="destructive" size="sm" onClick={refreshCodes} disabled={isRegenerating}>
+                            {isRegenerating
+                                ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                : <RefreshCw className="h-4 w-4 mr-2" />
+                            }
+                            Regenerate
                         </Button>
                     </div>
                 </div>

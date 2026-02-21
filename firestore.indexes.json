@@ -1,0 +1,70 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "attendance_records",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "workerProfileId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "time",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "mealstubs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "workerId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "date",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "reservations",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                {
+                    "fieldPath": "workerProfileId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "start",
+                    "order": "ASCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": [
+        {
+            "collectionGroup": "reservations",
+            "fieldPath": "start",
+            "indexes": [
+                {
+                    "queryScope": "COLLECTION",
+                    "order": "ASCENDING"
+                },
+                {
+                    "queryScope": "COLLECTION",
+                    "order": "DESCENDING"
+                },
+                {
+                    "queryScope": "COLLECTION_GROUP",
+                    "order": "ASCENDING"
+                },
+                {
+                    "queryScope": "COLLECTION_GROUP",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ]
+}
