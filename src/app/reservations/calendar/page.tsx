@@ -6,8 +6,17 @@ import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PlusCircle, Users as UsersIcon, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { PlusCircle, Users, Tv, Projector, Mic, Monitor, LoaderCircle, Calendar as CalendarIcon, MapPin, ChevronLeft, ChevronRight, Clock, CheckCircle2, Timer, Info, Building2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import {
     Select,
     SelectContent,
@@ -34,14 +43,14 @@ import {
     isSameMonth
 } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Booking, Room, Worker } from "@/lib/types";
+import type { Booking, Room, Worker, Area, Branch } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup } from "firebase/firestore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined, date: Date }) => {
+const DayView = ({ bookings, rooms, workers, date, areas, onBookingClick }: { bookings: Booking[], rooms: Room[] | undefined, workers: Worker[] | undefined, date: Date, areas: Area[] | undefined, onBookingClick: (b: Booking) => void }) => {
     if (!date) return null;
 
     if (!rooms || rooms.length === 0) {
@@ -91,54 +100,73 @@ const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], room
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        {rooms.map(room => {
-                            const roomBookings = dayBookings.filter(b => b.roomId === room.id);
+                    <div className="space-y-6">
+                        {(() => {
+                            const groupedRooms: Record<string, Room[]> = {};
+                            rooms.forEach(room => {
+                                const areaId = room.areaId || 'unassigned';
+                                if (!groupedRooms[areaId]) groupedRooms[areaId] = [];
+                                groupedRooms[areaId].push(room);
+                            });
 
-                            return (
-                                <div key={room.id} className="grid grid-cols-[8rem_1fr] items-center gap-2">
-                                    <div className="font-semibold text-sm truncate pr-2 text-right">{room.name}</div>
-                                    <div className="relative h-16 bg-muted/50 rounded-lg">
-                                        {timeSlots.slice(1).map(hour => (
-                                            <div key={`line-${hour}`} className="absolute h-full border-l" style={{ left: `${((hour - dayStartHour) / totalHours) * 100}%` }} />
-                                        ))}
-                                        {roomBookings.map(booking => {
-                                            const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start as any);
-                                            const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end as any);
+                            return Object.entries(groupedRooms).map(([areaId, areaRooms]) => {
+                                const areaName = areaId === 'unassigned' ? 'Unassigned Area' : (areas?.find(a => a.areaId === areaId)?.name || 'Unknown Area');
 
-                                            const left = timeToPosition(bookingStart);
-                                            const width = durationToWidth(bookingStart, bookingEnd);
-
-                                            const statusClass = booking.status === 'Approved' ? 'bg-green-500/80 border-green-700 hover:bg-green-500' :
-                                                booking.status === 'Pending' ? 'bg-yellow-500/80 border-yellow-700 hover:bg-yellow-500' :
-                                                    'bg-red-500/80 border-red-700 hover:bg-red-500';
+                                return (
+                                    <div key={areaId} className="space-y-2">
+                                        <div className="font-bold text-sm text-primary/80 mb-2 pl-2 border-l-2 border-primary/50 tracking-wider uppercase">{areaName}</div>
+                                        {areaRooms.map(room => {
+                                            const roomBookings = dayBookings.filter(b => b.roomId === room.id);
 
                                             return (
-                                                <TooltipProvider key={booking.id}>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <div
-                                                                className={`absolute top-1 bottom-1 p-2 rounded-lg text-white overflow-hidden border transition-colors ${statusClass}`}
-                                                                style={{ left: `${left}%`, width: `${width}%`, minWidth: '20px' }}
-                                                            >
-                                                                <p className="text-xs font-bold truncate">{booking.title}</p>
-                                                                <p className="text-[10px] truncate opacity-80">{getUserName((booking as any).workerProfileId)}</p>
-                                                            </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p className="font-bold">{booking.title}</p>
-                                                            <p>{format(bookingStart, 'p')} - {format(bookingEnd, 'p')}</p>
-                                                            <p>By: {getUserName((booking as any).workerProfileId)}</p>
-                                                            <p>Status: {booking.status}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                                <div key={room.id} className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                                    <div className="font-semibold text-sm text-muted-foreground truncate pr-2 text-right">{room.name}</div>
+                                                    <div className="relative h-16 bg-muted/50 rounded-lg">
+                                                        {timeSlots.slice(1).map(hour => (
+                                                            <div key={`line-${hour}`} className="absolute h-full border-l" style={{ left: `${((hour - dayStartHour) / totalHours) * 100}%` }} />
+                                                        ))}
+                                                        {roomBookings.map(booking => {
+                                                            const bookingStart = (booking.start as any)?.toDate ? (booking.start as any).toDate() : new Date(booking.start as any);
+                                                            const bookingEnd = (booking.end as any)?.toDate ? (booking.end as any).toDate() : new Date(booking.end as any);
+
+                                                            const left = timeToPosition(bookingStart);
+                                                            const width = durationToWidth(bookingStart, bookingEnd);
+
+                                                            const statusClass = booking.status === 'Approved' ? 'bg-green-500/80 border-green-700 hover:bg-green-500' :
+                                                                booking.status.startsWith('Pending') ? 'bg-yellow-500/80 border-yellow-700 hover:bg-yellow-500' :
+                                                                    'bg-red-500/80 border-red-700 hover:bg-red-500';
+
+                                                            return (
+                                                                <TooltipProvider key={booking.id}>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <div
+                                                                                onClick={() => onBookingClick(booking)}
+                                                                                className={`absolute top-1 bottom-1 p-2 rounded-lg text-white overflow-hidden border transition-colors cursor-pointer ${statusClass}`}
+                                                                                style={{ left: `${left}%`, width: `${width}%`, minWidth: '20px' }}
+                                                                            >
+                                                                                <p className="text-xs font-bold truncate">{booking.title}</p>
+                                                                                <p className="text-[10px] truncate opacity-80">{getUserName((booking as any).workerProfileId)}</p>
+                                                                            </div>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p className="font-bold">{booking.title}</p>
+                                                                            <p>{format(bookingStart, 'p')} - {format(bookingEnd, 'p')}</p>
+                                                                            <p>By: {getUserName((booking as any).workerProfileId)}</p>
+                                                                            <p>Status: {booking.status}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
                                             );
                                         })}
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            });
+                        })()}
                     </div>
                 </div>
             </CardContent>
@@ -146,7 +174,7 @@ const DayView = ({ bookings, rooms, workers, date }: { bookings: Booking[], room
     );
 }
 
-const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: Booking[], rooms?: Room[], workers?: Worker[], date: Date, onDateSelect: (date: Date) => void }) => {
+const WeekView = ({ bookings, rooms, workers, date, onDateSelect, onBookingClick }: { bookings: Booking[], rooms?: Room[], workers?: Worker[], date: Date, onDateSelect: (date: Date) => void, onBookingClick: (b: Booking) => void }) => {
     const start = startOfWeek(date);
     const end = endOfWeek(date);
     const weekDates = eachDayOfInterval({ start, end });
@@ -179,13 +207,16 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
                                 <div className="p-2 space-y-2 flex-grow">
                                     {dayBookings.map(booking => {
                                         const statusColor = booking.status === 'Approved' ? 'bg-green-100 border-green-300' :
-                                            booking.status === 'Pending' ? 'bg-yellow-100 border-yellow-300' :
+                                            booking.status.startsWith('Pending') ? 'bg-yellow-100 border-yellow-300' :
                                                 'bg-red-100 border-red-300';
                                         return (
                                             <TooltipProvider key={booking.id}>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <div className={cn("p-1.5 rounded-md border", statusColor)}>
+                                                        <div
+                                                            onClick={() => onBookingClick(booking)}
+                                                            className={cn("p-1.5 rounded-md border cursor-pointer hover:opacity-80 transition-opacity", statusColor)}
+                                                        >
                                                             <p className="text-xs font-bold truncate">{booking.title}</p>
                                                             <p className="text-[10px] text-muted-foreground truncate">{getRoomName(booking.roomId)}</p>
                                                             <p className="text-[10px] text-muted-foreground truncate">{format((booking.start as any).toDate(), 'p')}</p>
@@ -211,7 +242,7 @@ const WeekView = ({ bookings, rooms, workers, date, onDateSelect }: { bookings: 
     );
 };
 
-const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking[], onDateSelect: (date: Date) => void, selectedDate: Date }) => {
+const MonthView = ({ bookings, onDateSelect, selectedDate, onBookingClick }: { bookings: Booking[], onDateSelect: (date: Date) => void, selectedDate: Date, onBookingClick: (b: Booking) => void }) => {
     const monthStart = startOfMonth(selectedDate);
     const monthEnd = endOfMonth(selectedDate);
     const gridStart = startOfWeek(monthStart);
@@ -255,10 +286,14 @@ const MonthView = ({ bookings, onDateSelect, selectedDate }: { bookings: Booking
                                     <div className="flex-grow space-y-1 mt-1 overflow-hidden">
                                         {dayBookings.slice(0, 3).map(booking => {
                                             const statusColor = booking.status === 'Approved' ? 'bg-green-500' :
-                                                booking.status === 'Pending' ? 'bg-yellow-500' :
+                                                booking.status.startsWith('Pending') ? 'bg-yellow-500' :
                                                     'bg-red-500';
                                             return (
-                                                <div key={booking.id} className="flex items-center gap-1.5 w-full">
+                                                <div
+                                                    key={booking.id}
+                                                    className="flex items-center gap-1.5 w-full hover:bg-black/5 cursor-pointer rounded px-1"
+                                                    onClick={(e) => { e.stopPropagation(); onBookingClick(booking); }}
+                                                >
                                                     <div className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", statusColor)} />
                                                     <p className="text-xs truncate">{booking.title}</p>
                                                 </div>
@@ -287,6 +322,14 @@ export default function ReservationCalendarPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [scheduleFilter, setScheduleFilter] = useState('all');
 
+    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+    const handleBookingClick = (booking: Booking) => {
+        setSelectedBooking(booking);
+        setIsDetailsOpen(true);
+    };
+
     const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
 
@@ -296,22 +339,50 @@ export default function ReservationCalendarPage() {
     const reservationsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
     const { data: bookings, isLoading: bookingsLoading } = useCollection<Booking>(reservationsQuery);
 
-    const isLoading = roomsLoading || bookingsLoading || workersLoading;
+    const branchesRef = useMemoFirebase(() => collection(firestore, 'branches'), [firestore]);
+    const { data: branches, isLoading: branchesLoading } = useCollection<Branch>(branchesRef);
+
+    const areasRef = useMemoFirebase(() => collection(firestore, 'areas'), [firestore]);
+    const { data: areas, isLoading: areasLoading } = useCollection<Area>(areasRef);
+
+    const [branchFilter, setBranchFilter] = useState<string>('');
+
+    // Default to Dasmarinas once branches load
+    React.useEffect(() => {
+        if (branches && branches.length > 0 && !branchFilter) {
+            const dasma = branches.find(b => b.name.toLowerCase().includes('dasma'));
+            if (dasma) {
+                setBranchFilter(dasma.id);
+            } else {
+                setBranchFilter('all');
+            }
+        }
+    }, [branches, branchFilter]);
+
+    const isLoading = roomsLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
 
     const filteredRoomsForDayView = useMemo(() => {
         if (view !== 'day' || !rooms || !bookings) return rooms || [];
+
+        let result = rooms;
+
+        // Apply Location / Branch Filter
+        if (branchFilter && branchFilter !== 'all' && areas) {
+            const branchAreaIds = new Set(areas.filter(a => a.branchId === branchFilter).map(a => a.areaId));
+            result = result.filter(r => branchAreaIds.has(r.areaId));
+        }
 
         const dayBookings = bookings.filter(b => b.start && isSameDay((b.start as any).toDate(), currentDate));
         const scheduledRoomIds = new Set(dayBookings.map(b => b.roomId));
 
         if (scheduleFilter === 'scheduled') {
-            return rooms.filter(r => scheduledRoomIds.has(r.id));
+            result = result.filter(r => scheduledRoomIds.has(r.id));
         }
-        if (scheduleFilter === 'available') {
-            return rooms.filter(r => !scheduledRoomIds.has(r.id));
+        else if (scheduleFilter === 'available') {
+            result = result.filter(r => !scheduledRoomIds.has(r.id));
         }
-        return rooms;
-    }, [view, rooms, bookings, currentDate, scheduleFilter]);
+        return result;
+    }, [view, rooms, bookings, currentDate, scheduleFilter, branchFilter, areas]);
 
     const handlePrev = () => {
         if (view === 'day') setCurrentDate(subDays(currentDate, 1));
@@ -368,18 +439,34 @@ export default function ReservationCalendarPage() {
             </div>
 
             {view === 'day' && (
-                <div className="flex justify-end items-center gap-2 mt-4">
-                    <Label htmlFor="schedule-filter" className="text-sm font-medium">Show rooms:</Label>
-                    <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
-                        <SelectTrigger id="schedule-filter" className="w-[180px]">
-                            <SelectValue placeholder="Filter rooms" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Rooms</SelectItem>
-                            <SelectItem value="scheduled">With Schedule</SelectItem>
-                            <SelectItem value="available">Without Schedule</SelectItem>
-                        </SelectContent>
-                    </Select>
+                <div className="flex flex-col sm:flex-row justify-end items-center gap-4 mt-4">
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="branch-filter" className="text-sm font-medium">Location:</Label>
+                        <Select value={branchFilter || 'all'} onValueChange={setBranchFilter}>
+                            <SelectTrigger id="branch-filter" className="w-[180px]">
+                                <SelectValue placeholder="All Locations" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Locations</SelectItem>
+                                {branches?.map(branch => (
+                                    <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="schedule-filter" className="text-sm font-medium">Show rooms:</Label>
+                        <Select value={scheduleFilter} onValueChange={setScheduleFilter}>
+                            <SelectTrigger id="schedule-filter" className="w-[180px]">
+                                <SelectValue placeholder="Filter rooms" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Rooms</SelectItem>
+                                <SelectItem value="scheduled">With Schedule</SelectItem>
+                                <SelectItem value="available">Without Schedule</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             )}
 
@@ -388,12 +475,151 @@ export default function ReservationCalendarPage() {
                     <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
                 ) : (
                     <>
-                        {view === 'month' && <MonthView bookings={bookings || []} onDateSelect={handleDateSelect} selectedDate={currentDate} />}
-                        {view === 'week' && <WeekView bookings={bookings || []} rooms={rooms || []} workers={workers || []} date={currentDate} onDateSelect={handleDateSelect} />}
-                        {view === 'day' && <DayView bookings={bookings || []} rooms={filteredRoomsForDayView || []} workers={workers || []} date={currentDate} />}
+                        {view === 'month' && <MonthView bookings={bookings || []} onDateSelect={handleDateSelect} selectedDate={currentDate} onBookingClick={handleBookingClick} />}
+                        {view === 'week' && <WeekView bookings={bookings || []} rooms={rooms || []} workers={workers || []} date={currentDate} onDateSelect={handleDateSelect} onBookingClick={handleBookingClick} />}
+                        {view === 'day' && <DayView bookings={bookings || []} rooms={filteredRoomsForDayView || []} workers={workers || []} date={currentDate} areas={areas || []} onBookingClick={handleBookingClick} />}
                     </>
                 )}
             </div>
+
+            <BookingDetailsSheet
+                isOpen={isDetailsOpen}
+                onClose={() => setIsDetailsOpen(false)}
+                booking={selectedBooking}
+                roomName={selectedBooking ? (rooms?.find(r => r.id === selectedBooking.roomId)?.name || "Unknown Room") : ""}
+                workers={workers || []}
+            />
         </AppLayout>
     );
 }
+
+const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, workers }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string; workers: Worker[] }) => {
+    if (!booking) return null;
+
+    const startTime = (booking.start as any).toDate();
+    const endTime = (booking.end as any).toDate();
+
+    const getUserName = (userId: string) => {
+        const user = workers?.find(w => w.id === userId);
+        return user ? `${user.firstName} ${user.lastName}` : 'Unknown';
+    };
+
+    return (
+        <Sheet open={isOpen} onOpenChange={onClose}>
+            <SheetContent className="sm:max-w-md overflow-y-auto">
+                <SheetHeader>
+                    <div className="flex items-center gap-2 mb-2">
+                        <Badge className={cn(
+                            "px-2 py-0.5",
+                            booking.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                booking.status.startsWith('Pending') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        )}>
+                            {booking.status}
+                        </Badge>
+                        {booking.requestId && (
+                            <span className="text-xs font-mono text-muted-foreground">ID: {booking.requestId}</span>
+                        )}
+                    </div>
+                    <SheetTitle className="text-2xl font-headline font-bold">{booking.title}</SheetTitle>
+                    <SheetDescription>Reservation Details & Requirements</SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-8 space-y-6">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 text-sm">
+                            <MapPin className="h-4 w-4 text-primary" />
+                            <div>
+                                <p className="font-semibold">{roomName}</p>
+                                <p className="text-muted-foreground text-xs">Venue Location</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm">
+                            <CalendarIcon className="h-4 w-4 text-primary" />
+                            <div>
+                                <p className="font-semibold">{format(startTime, "PPPP")}</p>
+                                <p className="text-muted-foreground text-xs">Event Date</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm">
+                            <Clock className="h-4 w-4 text-primary" />
+                            <div>
+                                <p className="font-semibold">{format(startTime, "p")} - {format(endTime, "p")}</p>
+                                <p className="text-muted-foreground text-xs">Reserved Time</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Purpose</h4>
+                        <p className="text-sm leading-relaxed">{booking.purpose || "No description provided."}</p>
+                    </div>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <Users className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-lg font-bold">{booking.pax}</p>
+                            <p className="text-[10px] uppercase text-muted-foreground font-semibold">Pax</p>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <Building2 className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-lg font-bold">{booking.numTables || 0}</p>
+                            <p className="text-[10px] uppercase text-muted-foreground font-semibold">Tables</p>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                            <Info className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                            <p className="text-lg font-bold">{booking.numChairs || 0}</p>
+                            <p className="text-[10px] uppercase text-muted-foreground font-semibold">Chairs</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Requested Equipment</h4>
+                        <div className="grid grid-cols-1 gap-2">
+                            {booking.equipment_TV && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    <span>Television / Display</span>
+                                </div>
+                            )}
+                            {booking.equipment_Mic && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    <span>Microphone System</span>
+                                </div>
+                            )}
+                            {booking.equipment_Speakers && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    <span>Sound System / Speakers</span>
+                                </div>
+                            )}
+                            {!booking.equipment_TV && !booking.equipment_Mic && !booking.equipment_Speakers && (
+                                <p className="text-sm text-muted-foreground italic">No specialized equipment requested.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Timer className="h-3 w-3" />
+                            <span>Requested on: {booking.dateRequested ? format((booking.dateRequested as any).toDate(), "PPP p") : "N/A"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            <span>Requested by: {getUserName((booking as any).workerProfileId)}</span>
+                        </div>
+                    </div>
+
+                    <Button variant="outline" className="w-full mt-4" onClick={onClose}>Close Details</Button>
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+};

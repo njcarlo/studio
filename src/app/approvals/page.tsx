@@ -37,6 +37,8 @@ const ApprovalRequestDetailsDialog = ({ request, open, onOpenChange }: { request
         switch (status) {
             case 'Approved': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>;
             case 'Rejected': return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
+            case 'Pending Ministry Approval': return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending Ministry</Badge>;
+            case 'Pending Admin Approval': return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Pending Admin</Badge>;
             case 'Pending':
             default:
                 return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>;
@@ -58,7 +60,7 @@ const ApprovalRequestDetailsDialog = ({ request, open, onOpenChange }: { request
                 <div className="py-4 space-y-6">
                     <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Details</Label>
-                        <p className="text-sm">{request.details}</p>
+                        <p className="text-sm whitespace-pre-wrap">{request.details}</p>
                     </div>
                     <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Request Date</Label>
@@ -92,7 +94,7 @@ const KanbanCard = ({ request, onUpdateStatus, canManage, onClick }: { request: 
                         {getIconForType(request.type)}
                     </div>
                     <div>
-                        <CardTitle className="text-sm leading-snug">{request.details}</CardTitle>
+                        <CardTitle className="text-sm leading-snug whitespace-pre-wrap">{request.details}</CardTitle>
                         <CardDescription className="text-xs mt-1">
                             {request.requester} &bull; {request.date ? formatDistanceToNow(new Date((request.date as any).seconds * 1000), { addSuffix: true }) : ''}
                         </CardDescription>
@@ -102,7 +104,7 @@ const KanbanCard = ({ request, onUpdateStatus, canManage, onClick }: { request: 
             <CardContent className="p-4 pt-0">
                 <Badge variant="outline">{request.type}</Badge>
             </CardContent>
-            {canManage && request.status === 'Pending' && (
+            {canManage && request.status.startsWith('Pending') && (
                 <CardContent className="p-4 pt-0 flex justify-end gap-2">
                     <Button size="sm" variant="destructive" onClick={(e) => handleUpdateClick(e, 'Rejected')}>
                         Reject
@@ -181,14 +183,35 @@ export default function ApprovalsPage() {
     };
 
     const checkCanManage = (request: ApprovalRequest) => {
-        if (request.type === 'Room Booking') return canApproveRoomReservation;
         if (canManageApprovals) return true;
+        if (request.type === 'Room Booking') {
+            if (request.status === 'Pending Ministry Approval' || request.status === 'Pending') {
+                return checkIsApprover(request);
+            }
+            if (request.status === 'Pending Admin Approval') {
+                return canApproveRoomReservation;
+            }
+        }
         return checkIsApprover(request);
     };
 
     const handleUpdateRequestStatus = (request: ApprovalRequest, status: 'Approved' | 'Rejected') => {
         if (!request.id) return;
         if (!checkCanManage(request)) return;
+
+        // Multi-stage Room Booking approval handling
+        if (request.type === 'Room Booking' && status === 'Approved') {
+            if (request.status === 'Pending Ministry Approval' || request.status === 'Pending') {
+                // Intercept and update to 'Pending Admin Approval'
+                updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { status: 'Pending Admin Approval' });
+                if (request.roomId && request.reservationId) {
+                    const reservationDocRef = doc(firestore, "rooms", request.roomId, "reservations", request.reservationId);
+                    updateDocumentNonBlocking(reservationDocRef, { status: 'Pending Admin Approval' });
+                }
+                return;
+            }
+            // If it's already Pending Admin Approval, it proceeds to final Approved status below.
+        }
 
         updateDocumentNonBlocking(doc(firestore, "approvals", request.id), { status });
 
@@ -234,7 +257,7 @@ export default function ApprovalsPage() {
     }
 
     const sortedRequests = [...(requests || [])].sort((a, b) => ((b.date as any)?.seconds || 0) - ((a.date as any)?.seconds || 0));
-    const pendingRequests = sortedRequests.filter(r => r.status === 'Pending');
+    const pendingRequests = sortedRequests.filter(r => r.status.startsWith('Pending'));
     const approvedRequests = sortedRequests.filter(r => r.status === 'Approved');
     const rejectedRequests = sortedRequests.filter(r => r.status === 'Rejected');
 

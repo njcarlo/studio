@@ -165,14 +165,14 @@ export default function MyReservationsPage() {
 
                             const statusColor =
                                 booking.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                    booking.status.startsWith('Pending') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                         'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
 
                             return (
                                 <Card key={booking.id} className={cn(
                                     "transition-all border-l-4",
                                     booking.status === 'Approved' ? "border-l-green-500" :
-                                        booking.status === 'Pending' ? "border-l-yellow-500" : "border-l-red-500"
+                                        booking.status.startsWith('Pending') ? "border-l-yellow-500" : "border-l-red-500"
                                 )}>
                                     <CardContent className="p-6">
                                         <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -268,7 +268,7 @@ const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName }: { isOpen: b
                         <Badge className={cn(
                             "px-2 py-0.5",
                             booking.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                booking.status.startsWith('Pending') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                     'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                         )}>
                             {booking.status}

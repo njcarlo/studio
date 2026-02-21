@@ -59,7 +59,8 @@ export default function AllReservationsPage() {
                     b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (b.requestId && b.requestId.toLowerCase().includes(searchTerm.toLowerCase()));
 
-                const matchesStatus = statusFilter === "all" || b.status.toLowerCase() === statusFilter.toLowerCase();
+                const matchesStatus = statusFilter === "all" ||
+                    (statusFilter === 'pending' ? b.status.toLowerCase().startsWith('pending') : b.status.toLowerCase() === statusFilter.toLowerCase());
 
                 return matchesSearch && matchesStatus;
             })
@@ -207,7 +208,7 @@ export default function AllReservationsPage() {
 
                                     const statusClass =
                                         booking.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                                            booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                            booking.status.startsWith('Pending') ? 'bg-yellow-100 text-yellow-700' :
                                                 'bg-red-100 text-red-700';
 
                                     return (
@@ -271,7 +272,7 @@ export default function AllReservationsPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {booking.status === 'Pending' ? (
+                                                {booking.status.startsWith('Pending') ? (
                                                     <div className="flex justify-end gap-2">
                                                         <Button
                                                             size="sm"

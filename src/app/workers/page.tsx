@@ -263,20 +263,34 @@ export default function WorkersPage() {
   const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
   const ministries = ministriesData || [];
 
-  const isLoading = workersLoading || rolesLoading || ministriesLoading || isRoleLoading;
+  const departmentsRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, "departments");
+  }, [firestore, user]);
+  const { data: departmentDataList, isLoading: departmentsLoading } = useCollection<any>(departmentsRef);
 
-  // Detect Department Head by role name
+  const isLoading = workersLoading || rolesLoading || ministriesLoading || isRoleLoading || departmentsLoading;
+
+  // Detect Department Head by role name OR explicit assignment
+  const explicitlyAssignedDepartment = useMemo(() => {
+    if (!workerProfile?.id || !departmentDataList) return null;
+    return departmentDataList.find(d => d.headId === workerProfile.id) || null;
+  }, [workerProfile, departmentDataList]);
+
   const isDepartmentHead = useMemo(() => {
+    if (explicitlyAssignedDepartment) return true;
     if (!workerProfile?.roleId || !roles.length) return false;
     const roleName = roles.find(r => r.id === workerProfile.roleId)?.name || '';
     return roleName.toLowerCase().includes('department head');
-  }, [workerProfile, roles]);
+  }, [workerProfile, roles, explicitlyAssignedDepartment]);
 
-  // Find the department of this user's primary ministry
+  // Find the department of this user
   const userDepartment = useMemo(() => {
+    if (explicitlyAssignedDepartment) return explicitlyAssignedDepartment.id;
+
     if (!workerProfile?.primaryMinistryId || !ministries.length) return null;
     return ministries.find(m => m.id === workerProfile.primaryMinistryId)?.department || null;
-  }, [workerProfile, ministries]);
+  }, [workerProfile, ministries, explicitlyAssignedDepartment]);
 
   // All ministries in the department head's department
   const departmentMinistries = useMemo(() => {

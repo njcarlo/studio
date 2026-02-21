@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { collection, serverTimestamp, doc, query, where, updateDoc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -77,7 +77,7 @@ function getSundayCount(stubs: MealStub[], workerId: string) {
 }
 
 // ------------------------------------------------------------
-export default function MealsPage() {
+function MealsPageContent() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { canViewMealStubs, canManageAllMealStubs, isMealStubAssigner, workerProfile, isLoading: isRoleLoading } = useUserRole();
@@ -703,5 +703,19 @@ export default function MealsPage() {
         </DialogContent>
       </Dialog>
     </AppLayout>
+  );
+}
+
+export default function MealsPage() {
+  return (
+    <Suspense fallback={
+      <AppLayout>
+        <div className="flex justify-center py-10">
+          <LoaderCircle className="h-8 w-8 animate-spin" />
+        </div>
+      </AppLayout>
+    }>
+      <MealsPageContent />
+    </Suspense>
   );
 }

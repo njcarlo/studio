@@ -91,6 +91,7 @@ const allNavItems: NavItem[] = [
     label: "Settings",
     subItems: [
       { href: "/settings/roles", label: "Role Management", permissionKey: 'canManageRoles' },
+      { href: "/settings/departments", label: "Department Management", permissionKey: 'canManageMinistries' },
       { href: "/settings/ministries", label: "Ministry Management", permissionKey: 'canManageMinistries' },
       { href: "/settings/rooms", label: "Facilities Management", permissionKey: 'canManageFacilities' }
     ]

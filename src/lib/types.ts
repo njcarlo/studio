@@ -52,7 +52,7 @@ export type Booking = {
     purpose?: string;
     start: Timestamp;
     end: Timestamp;
-    status: 'Pending' | 'Approved' | 'Rejected';
+    status: 'Pending' | 'Pending Ministry Approval' | 'Pending Admin Approval' | 'Approved' | 'Rejected';
     workerProfileId: string;
     name: string;
     ministryId: string;
@@ -106,7 +106,7 @@ export type ApprovalRequest = {
     type: 'New Worker' | 'Profile Update' | 'Room Booking';
     details: string;
     date: Timestamp;
-    status: 'Pending' | 'Approved' | 'Rejected';
+    status: 'Pending' | 'Pending Ministry Approval' | 'Pending Admin Approval' | 'Approved' | 'Rejected';
     workerId?: string;
     roomId?: string;
     reservationId?: string;

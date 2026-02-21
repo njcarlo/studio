@@ -40,7 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase } from "@/firebase";
-import { collection, serverTimestamp, Timestamp as FirebaseTimestamp } from "firebase/firestore";
+import { collection, serverTimestamp, Timestamp as FirebaseTimestamp, query, where, getDocs } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Room, Branch, Area, Ministry } from "@/lib/types";
 
@@ -63,6 +63,7 @@ export default function NewReservationPage() {
 
     // Form states
     const [date, setDate] = useState<Date | undefined>(new Date());
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
     const [locationId, setLocationId] = useState("");
@@ -153,6 +154,71 @@ export default function NewReservationPage() {
             const end = new Date(date);
             end.setHours(endH, endM, 0, 0);
 
+            if (start >= end) {
+                toast({
+                    variant: "destructive",
+                    title: "Invalid Time",
+                    description: "End time must be after start time."
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const q = query(
+                collection(firestore, 'rooms', roomId, 'reservations'),
+                where('start', '>=', FirebaseTimestamp.fromDate(startOfDay)),
+                where('start', '<=', FirebaseTimestamp.fromDate(endOfDay))
+            );
+
+            const querySnapshot = await getDocs(q);
+            const existingReservations = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+            let hasConflict = false;
+            let conflictingStatus = '';
+            let conflictingRequester = '';
+
+            for (const res of existingReservations) {
+                if (res.status === 'Rejected') continue;
+
+                const resStart = res.start?.toDate();
+                const resEnd = res.end?.toDate();
+
+                if (resStart && resEnd && start < resEnd && end > resStart) {
+                    hasConflict = true;
+                    if (res.status === 'Approved') {
+                        conflictingStatus = 'Approved';
+                        conflictingRequester = res.name;
+                        break;
+                    } else if (res.status.startsWith('Pending')) {
+                        conflictingStatus = 'Pending';
+                        conflictingRequester = res.name;
+                    }
+                }
+            }
+
+            if (hasConflict) {
+                if (conflictingStatus === 'Approved') {
+                    toast({
+                        variant: "destructive",
+                        title: "Slot Unavailable",
+                        description: `This time slot is already approved for ${conflictingRequester}.`
+                    });
+                    setIsSubmitting(false);
+                    return;
+                } else if (conflictingStatus === 'Pending') {
+                    toast({
+                        title: "Pending Conflict",
+                        description: `There is already a pending request for this time slot by ${conflictingRequester}. Your request is submitted but subject to approval.`,
+                    });
+                }
+            }
+
             const requesterName = workerProfile
                 ? `${workerProfile.firstName} ${workerProfile.lastName}`
                 : (user?.displayName || user?.email?.split('@')[0] || "System Admin");
@@ -166,7 +232,7 @@ export default function NewReservationPage() {
                 purpose,
                 start: FirebaseTimestamp.fromDate(start),
                 end: FirebaseTimestamp.fromDate(end),
-                status: 'Pending',
+                status: 'Pending Ministry Approval',
                 workerProfileId: workerProfile?.id || "system-admin",
                 name: requesterName,
                 ministryId: requesterMinistryId,
@@ -187,9 +253,9 @@ export default function NewReservationPage() {
                 await addDocumentNonBlocking(collection(firestore, 'approvals'), {
                     requester: requesterName,
                     type: 'Room Booking',
-                    details: `"${purpose}" for room: ${selectedRoom?.name}`,
+                    details: `"${purpose}" for room: ${selectedRoom?.name}` + (hasConflict && conflictingStatus === 'Pending' ? `\n(⚠️ Conflicts with pending request by ${conflictingRequester})` : ""),
                     date: serverTimestamp(),
-                    status: 'Pending',
+                    status: 'Pending Ministry Approval',
                     roomId,
                     reservationId: reservationRef.id,
                     workerId: workerProfile?.id || "system-admin",
@@ -331,7 +397,7 @@ export default function NewReservationPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                             <div className="space-y-2">
                                 <Label>Select Date</Label>
-                                <Popover>
+                                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant={"outline"}
@@ -348,7 +414,12 @@ export default function NewReservationPage() {
                                         <Calendar
                                             mode="single"
                                             selected={date}
-                                            onSelect={setDate}
+                                            onSelect={(d) => {
+                                                if (d) {
+                                                    setDate(d);
+                                                    setIsCalendarOpen(false);
+                                                }
+                                            }}
                                             initialFocus
                                         />
                                     </PopoverContent>
