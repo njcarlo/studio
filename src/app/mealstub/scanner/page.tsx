@@ -179,8 +179,25 @@ export default function QRScannerPage() {
                     }
                 }
 
-                const isSundayToday = new Date().getDay() === 0;
-                const currentType = isSundayToday ? 'sunday' : 'weekday';
+                const now = new Date();
+                const dayOfWeek = now.getDay(); // 0 is Sunday, 1-5 is Mon-Fri, 6 is Saturday
+
+                let currentType: 'weekday' | 'sunday' | null = null;
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                    currentType = 'weekday';
+                } else if (dayOfWeek === 0) {
+                    currentType = 'sunday';
+                }
+
+                if (!currentType) {
+                    toast({
+                        variant: "destructive",
+                        title: "No Service Today",
+                        description: "Meal stubs are not valid on Saturdays."
+                    });
+                    setTimeout(resetScanner, 3000);
+                    return;
+                }
 
                 const q = query(
                     collection(firestore, "mealstubs"),
@@ -190,24 +207,43 @@ export default function QRScannerPage() {
                 );
                 const querySnapshot = await getDocs(q);
 
-                const todaysStubDoc = querySnapshot.docs.find(doc => {
+                // Find ANY issued stub of this type for this week
+                // We use startOfWeek (Monday) to ensure it's for the current week
+                const startOfCurrentWeek = new Date();
+                startOfCurrentWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+                startOfCurrentWeek.setHours(0, 0, 0, 0);
+
+                const validStubDoc = querySnapshot.docs.find(doc => {
                     const stub = doc.data();
-                    return stub.date && isToday(new Date(stub.date.seconds * 1000));
+                    if (!stub.date) return false;
+                    const stubDate = new Date(stub.date.seconds * 1000);
+                    return stubDate >= startOfCurrentWeek;
                 });
 
-                if (todaysStubDoc) {
-                    const stubData = todaysStubDoc.data();
-                    await updateDocumentNonBlocking(todaysStubDoc.ref, {
+                if (validStubDoc) {
+                    const stubData = validStubDoc.data();
+                    await updateDocumentNonBlocking(validStubDoc.ref, {
                         status: 'Claimed',
                         claimedAt: serverTimestamp()
                     });
                     const details = `Claimed ${currentType} meal stub for ${stubData.workerName}.`;
                     toast({ title: "Meal Stub Claimed!", description: details });
-                    logScanEvent({ scanType: 'Meal Stub', details, mealStubId: todaysStubDoc.id, targetUserId: stubData.workerId, targetUserName: stubData.workerName });
+                    logScanEvent({
+                        scanType: 'Meal Stub',
+                        details,
+                        mealStubId: validStubDoc.id,
+                        targetUserId: stubData.workerId,
+                        targetUserName: stubData.workerName
+                    });
                 } else {
                     const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
-                    toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid ${currentType} meal stub found for ${workerName} today.` });
+                    toast({
+                        variant: "destructive",
+                        title: "No Meal Stub Found",
+                        description: `No valid ${currentType} meal stub found for ${workerName} this week.`
+                    });
                 }
+
             } catch (e) {
                 console.error("Error processing meal stub:", e);
                 toast({ variant: "destructive", title: "Error", description: "Could not process meal stub scan." });

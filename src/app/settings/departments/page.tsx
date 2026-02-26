@@ -5,12 +5,13 @@ import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, UserCog, LoaderCircle, Users } from "lucide-react";
+import { Building2, UserCog, LoaderCircle, Users, Utensils } from "lucide-react";
 import { useFirestore, useCollection, useMemoFirebase, useUser, setDocumentNonBlocking } from "@/firebase";
 import type { Department, Worker } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
     Sheet,
     SheetContent,
@@ -28,6 +29,8 @@ type DepartmentData = {
     id: string; // The literal department name like "Worship"
     headId?: string;
     description?: string;
+    mealStubWeekdayAllocation?: number;
+    mealStubSundayAllocation?: number;
 }
 
 const AppointHeadForm = ({
@@ -40,11 +43,13 @@ const AppointHeadForm = ({
     departmentName: Department;
     departmentData: DepartmentData | null;
     workers: Worker[];
-    onSave: (departmentId: string, headId: string | null, description: string) => void;
+    onSave: (departmentId: string, headId: string | null, description: string, weekdayAlloc: number, sundayAlloc: number) => void;
     onClose: () => void;
 }) => {
     const [selectedUserId, setSelectedUserId] = useState<string>(departmentData?.headId || 'none');
     const [description, setDescription] = useState(departmentData?.description || '');
+    const [weekdayAllocation, setWeekdayAllocation] = useState(departmentData?.mealStubWeekdayAllocation || 0);
+    const [sundayAllocation, setSundayAllocation] = useState(departmentData?.mealStubSundayAllocation || 0);
 
     const sortedWorkers = [...workers].sort((a, b) => a.firstName.localeCompare(b.firstName));
 
@@ -66,7 +71,32 @@ const AppointHeadForm = ({
                         placeholder="Describe the department's purpose..."
                     />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-4 pt-4 border-t">
+                    <Label className="text-xs font-bold uppercase text-primary">Meal Stub Allocation</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="weekday">Weekday Pool</Label>
+                            <Input
+                                id="weekday"
+                                type="number"
+                                min="0"
+                                value={weekdayAllocation}
+                                onChange={(e) => setWeekdayAllocation(parseInt(e.target.value) || 0)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="sunday">Sunday Pool</Label>
+                            <Input
+                                id="sunday"
+                                type="number"
+                                min="0"
+                                value={sundayAllocation}
+                                onChange={(e) => setSundayAllocation(parseInt(e.target.value) || 0)}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className="space-y-2 pt-4 border-t">
                     <Label htmlFor="worker-select">Department Head</Label>
                     <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                         <SelectTrigger id="worker-select"><SelectValue placeholder="Select a department head" /></SelectTrigger>
@@ -79,7 +109,7 @@ const AppointHeadForm = ({
             </div>
             <SheetFooter>
                 <SheetClose asChild><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button></SheetClose>
-                <Button onClick={() => onSave(departmentName, selectedUserId === 'none' ? null : selectedUserId, description)}>Save Changes</Button>
+                <Button onClick={() => onSave(departmentName, selectedUserId === 'none' ? null : selectedUserId, description, weekdayAllocation, sundayAllocation)}>Save Changes</Button>
             </SheetFooter>
         </>
     );
@@ -113,12 +143,14 @@ export default function DepartmentManagementPage() {
 
     const departments: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
 
-    const handleSaveDepartment = async (departmentId: string, headId: string | null, description: string) => {
+    const handleSaveDepartment = async (departmentId: string, headId: string | null, description: string, weekdayAlloc: number, sundayAlloc: number) => {
         try {
             await setDocumentNonBlocking(doc(firestore, 'departments', departmentId), {
                 id: departmentId,
                 headId: headId || '',
-                description: description
+                description: description,
+                mealStubWeekdayAllocation: weekdayAlloc,
+                mealStubSundayAllocation: sundayAlloc
             }, { merge: true });
 
             toast({ title: 'Department Updated', description: `${departmentId} department has been successfully updated.` });
@@ -172,8 +204,25 @@ export default function DepartmentManagementPage() {
                                     <div className="space-y-4">
                                         <p className="text-sm text-muted-foreground min-h-[40px]">{data?.description || "No description provided."}</p>
 
-                                        <div>
-                                            <h4 className="text-sm font-semibold flex items-center gap-2 mb-2 pt-2 border-t">
+                                        <div className="pt-2 border-t">
+                                            <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                                                <Utensils className="h-4 w-4 text-muted-foreground" />
+                                                Meal Stub Pool
+                                            </h4>
+                                            <div className="flex gap-4 text-xs bg-muted/50 p-2 rounded-lg">
+                                                <div>
+                                                    <span className="text-muted-foreground">Weekday:</span>
+                                                    <span className="ml-1 font-bold">{data?.mealStubWeekdayAllocation || 0}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Sunday:</span>
+                                                    <span className="ml-1 font-bold">{data?.mealStubSundayAllocation || 0}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-2 border-t">
+                                            <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
                                                 <UserCog className="h-4 w-4 text-muted-foreground" />
                                                 Department Head
                                             </h4>
@@ -231,6 +280,6 @@ export default function DepartmentManagementPage() {
                     )}
                 </SheetContent>
             </Sheet>
-        </AppLayout>
+        </AppLayout >
     );
 }

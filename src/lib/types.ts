@@ -33,11 +33,21 @@ export type Ministry = {
     headId?: string;
     approverId?: string;
     mealStubAssignerId?: string;
-    mealStubWeekdayLimit?: number;
-    mealStubSundayLimit?: number;
+    mealStubTotalLimit?: number;
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
+
+export type DepartmentData = {
+    id: Department;
+    description?: string;
+    headId?: string;
+    mealStubTotalAllocation?: number;
+};
+
+export type MealStubSettings = {
+    disabledVolunteerDays: number[]; // days of week 1-6
+};
 
 export type AttendanceRecord = {
     id: string;

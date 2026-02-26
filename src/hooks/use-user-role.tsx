@@ -29,6 +29,7 @@ export type UserRoleContextType = {
   canAppointApprovers: boolean;
   canManageC2S: boolean;
   canViewC2SAnalytics: boolean;
+  canViewScheduleMasterview: boolean;
   isMealStubAssigner: boolean;
   isMinistryHead: boolean;
 };
@@ -132,6 +133,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       canAppointApprovers: isSuperAdmin || permissions.includes('manage_ministries'),
       canManageC2S: isSuperAdmin || permissions.includes('manage_c2s'),
       canViewC2SAnalytics: isSuperAdmin || permissions.includes('view_c2s_analytics'),
+      canViewScheduleMasterview: isSuperAdmin || permissions.includes('view_schedule_masterview'),
       isMealStubAssigner: isSuperAdmin || isMealStubAssigner,
       isMinistryHead: isSuperAdmin || isMinistryHead,
     };

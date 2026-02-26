@@ -70,6 +70,8 @@ const allNavItems: NavItem[] = [
     icon: Calendar,
     label: "Room Reservations",
     subItems: [
+      { href: "/reservations/masterview", label: "Schedule Masterview", permissionKey: 'canViewScheduleMasterview' },
+      { href: "/reservations/masterview/daily", label: "Daily View", permissionKey: 'canViewScheduleMasterview' },
       { href: "/reservations/calendar", label: "View Schedules" },
       { href: "/reservations/my", label: "My reservations" },
       { href: "/reservations/new", label: "Reserve a room" },
@@ -93,6 +95,7 @@ const allNavItems: NavItem[] = [
       { href: "/settings/roles", label: "Role Management", permissionKey: 'canManageRoles' },
       { href: "/settings/departments", label: "Department Management", permissionKey: 'canManageMinistries' },
       { href: "/settings/ministries", label: "Ministry Management", permissionKey: 'canManageMinistries' },
+      { href: "/settings/meal-stubs", label: "Meal Stub Allocation", permissionKey: 'canManageMinistries' },
       { href: "/settings/rooms", label: "Facilities Management", permissionKey: 'canManageFacilities' },
       { href: "/settings/transaction-logs", label: "Transaction Logs", permissionKey: 'isSuperAdmin' }
     ]
