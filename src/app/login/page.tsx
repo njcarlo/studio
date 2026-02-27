@@ -75,7 +75,7 @@ export default function LoginPage() {
           <div className="flex justify-center items-center">
             <Church className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="font-headline text-2xl">COGApp Login</CardTitle>
+          <CardTitle className="font-headline text-2xl">COG App Login</CardTitle>
           <CardDescription>
             Enter your email below to login to your account
           </CardDescription>

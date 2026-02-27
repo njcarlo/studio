@@ -64,7 +64,7 @@ export default function MyQRCodePage() {
                         <div className="bg-primary/5 p-4 rounded-full mb-4 mx-auto w-fit">
                             <QrCode className="h-12 w-12 text-primary" />
                         </div>
-                        <CardTitle className="text-3xl font-bold font-headline">COGApp Identification</CardTitle>
+                        <CardTitle className="text-3xl font-bold font-headline">COG App Identification</CardTitle>
                         <CardDescription className="text-lg mt-2 font-medium">
                             {workerProfile?.firstName} {workerProfile?.lastName}
                         </CardDescription>
@@ -93,7 +93,7 @@ export default function MyQRCodePage() {
 
                     <div className="mt-12 space-y-4 max-w-sm mx-auto">
                         <p className="text-base text-muted-foreground leading-relaxed">
-                            Use this QR code for all identification purposes within the COGApp ecosystem:
+                            Use this QR code for all identification purposes within the COG App ecosystem:
                         </p>
                         <div className="grid grid-cols-2 gap-3 text-sm font-semibold">
                             <div className="p-3 bg-secondary/50 rounded-lg flex items-center justify-center gap-2">

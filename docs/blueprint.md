@@ -1,4 +1,4 @@
-# **App Name**: COGApp
+# **App Name**: COG App
 
 ## Core Features:
 

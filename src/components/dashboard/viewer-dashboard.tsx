@@ -97,7 +97,7 @@ export function ViewerDashboard() {
                         <CardHeader className="p-2">
                             <CardTitle className="font-headline text-2xl flex items-center justify-center gap-2"><QrCode className="h-6 w-6" /> Your QR Code</CardTitle>
                             <CardDescription className="text-base text-balance mt-2">
-                                Scan this at any COGApp station for attendance or to claim your meal stub.
+                                Scan this at any COG App station for attendance or to claim your meal stub.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="py-6 flex justify-center w-full">

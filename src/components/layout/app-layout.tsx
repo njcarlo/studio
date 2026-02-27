@@ -8,11 +8,13 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarTrigger,
+  SidebarRail,
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
-import { Church, LoaderCircle, Info, X, LayoutDashboard, Users, Calendar as CalendarIcon, Menu } from "lucide-react";
+import { LoaderCircle, Info, X, LayoutDashboard, Users, Calendar as CalendarIcon, Menu } from "lucide-react";
+import Image from "next/image";
 import { useUser } from "@/firebase";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -88,22 +90,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center gap-2">
-            <Church className="w-8 h-8 text-primary" />
-            <span className="text-lg font-semibold font-headline">COGApp</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Image src="/cog-logo.png" alt="COG Logo" width={32} height={32} className="w-8 h-8" />
+              <span className="text-lg font-semibold font-headline">COG App</span>
+            </div>
+            <SidebarTrigger className="hidden md:flex" />
           </div>
         </SidebarHeader>
         <SidebarContent>
           <Nav pathname={currentPathname} />
         </SidebarContent>
+        <SidebarRail />
       </Sidebar>
       <SidebarInset className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <ImpersonationBanner />
         <header className="flex h-14 md:h-[60px] items-center gap-4 border-b bg-card px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content">
-          <SidebarTrigger className="hidden md:flex" />
           <div className="md:hidden flex items-center gap-2">
-            <Church className="w-6 h-6 text-primary" />
-            <span className="text-sm font-semibold font-headline">COGApp</span>
+            <Image src="/cog-logo.png" alt="COG Logo" width={24} height={24} className="w-6 h-6" />
+            <span className="text-sm font-semibold font-headline">COG App</span>
           </div>
           <div className="w-full flex-1" />
           <UserNav />

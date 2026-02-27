@@ -8,7 +8,7 @@ const DEV_SERVER_PORT = 9002;
 
 const config: CapacitorConfig = {
   appId: 'com.cogapp.app',
-  appName: 'COGApp',
+  appName: 'COG App',
   webDir: 'out',
   ...(isLiveReload && {
     server: {

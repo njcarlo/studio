@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'COGApp',
+  title: 'COG App',
   description: 'Church Operations and Governance App',
 };
 
