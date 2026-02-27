@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from "next/navigation";
 import {
   SidebarProvider,
   Sidebar,
@@ -13,7 +13,15 @@ import {
 } from "@/components/ui/sidebar";
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
-import { LoaderCircle, Info, X, LayoutDashboard, Users, Calendar as CalendarIcon, Menu } from "lucide-react";
+import {
+  LoaderCircle,
+  Info,
+  X,
+  LayoutDashboard,
+  Users,
+  Calendar as CalendarIcon,
+  Menu,
+} from "lucide-react";
 import Image from "next/image";
 import { useUser } from "@/firebase";
 import { useImpersonation } from "@/hooks/use-impersonation";
@@ -48,10 +56,18 @@ const ImpersonationBanner = () => {
     <div className="bg-yellow-400 text-yellow-900 p-2 text-center text-sm font-semibold flex items-center justify-center gap-4">
       <Info className="h-5 w-5" />
       <span>
-        You are viewing as <strong>{workerProfile?.firstName} {workerProfile?.lastName}</strong>.
-        All actions are still performed as an administrator.
+        You are viewing as{" "}
+        <strong>
+          {workerProfile?.firstName} {workerProfile?.lastName}
+        </strong>
+        . All actions are still performed as an administrator.
       </span>
-      <Button variant="ghost" size="sm" onClick={stopImpersonation} className="hover:bg-yellow-500">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={stopImpersonation}
+        className="hover:bg-yellow-500"
+      >
         <X className="mr-2 h-4 w-4" />
         Exit View-As Mode
       </Button>
@@ -64,11 +80,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
 
-
   useEffect(() => {
     // If auth is done loading and there's no user, redirect to login
     if (!isUserLoading && !user) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [user, isUserLoading, router]);
 
@@ -92,8 +107,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Image src="/cog-logo.png" alt="COG Logo" width={32} height={32} className="w-8 h-8" />
-              <span className="text-lg font-semibold font-headline">COG App</span>
+              <Image
+                src="/cog-logo.png"
+                alt="COG Logo"
+                width={32}
+                height={32}
+                className="w-8 h-8"
+              />
+              <span className="text-lg font-semibold font-headline">
+                COG App
+              </span>
             </div>
             <SidebarTrigger className="hidden md:flex" />
           </div>
@@ -107,7 +130,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <ImpersonationBanner />
         <header className="flex h-14 md:h-[60px] items-center gap-4 border-b bg-card px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content">
           <div className="md:hidden flex items-center gap-2">
-            <Image src="/cog-logo.png" alt="COG Logo" width={24} height={24} className="w-6 h-6" />
+            <Image
+              src="/cog-logo.png"
+              alt="COG Logo"
+              width={24}
+              height={24}
+              className="w-6 h-6"
+            />
             <span className="text-sm font-semibold font-headline">COG App</span>
           </div>
           <div className="w-full flex-1" />
@@ -120,15 +149,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t flex justify-around items-center z-50 pb-[env(safe-area-inset-bottom)] box-content">
-        <Button variant="ghost" className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary" data-active={currentPathname === '/dashboard'} onClick={() => router.push('/dashboard')}>
+        <Button
+          variant="ghost"
+          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary"
+          data-active={currentPathname === "/dashboard"}
+          onClick={() => router.push("/dashboard")}
+        >
           <LayoutDashboard className="h-5 w-5" />
           <span className="text-[10px] font-medium leading-none">Home</span>
         </Button>
-        <Button variant="ghost" className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary" data-active={currentPathname.startsWith('/workers')} onClick={() => router.push('/workers')}>
+        <Button
+          variant="ghost"
+          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary"
+          data-active={currentPathname.startsWith("/workers")}
+          onClick={() => router.push("/workers")}
+        >
           <Users className="h-5 w-5" />
           <span className="text-[10px] font-medium leading-none">Workers</span>
         </Button>
-        <Button variant="ghost" className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary" data-active={currentPathname.startsWith('/reservations')} onClick={() => router.push('/reservations/calendar')}>
+        <Button
+          variant="ghost"
+          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary"
+          data-active={currentPathname.startsWith("/reservations")}
+          onClick={() => router.push("/reservations/calendar")}
+        >
           <CalendarIcon className="h-5 w-5" />
           <span className="text-[10px] font-medium leading-none">Rooms</span>
         </Button>
@@ -136,7 +180,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Connects with Sidebar to open the side menu */}
         <MobileSidebarTrigger />
       </div>
-
     </SidebarProvider>
   );
 }

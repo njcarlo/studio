@@ -32,7 +32,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     }
   }, [user, isUserLoading, router]);
-  
+
   const validateFields = () => {
     if (!email || !password) {
       toast({
@@ -43,7 +43,7 @@ export default function LoginPage() {
       return false;
     }
     return true;
-  }
+  };
 
   const handleSignIn = () => {
     if (!validateFields() || isSigningIn) return;
@@ -51,23 +51,27 @@ export default function LoginPage() {
 
     const onError = (error: FirebaseError) => {
       let description = "An unknown error occurred. Please try again.";
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (
+        error.code === "auth/invalid-credential" ||
+        error.code === "auth/user-not-found" ||
+        error.code === "auth/wrong-password"
+      ) {
         description = "The email or password you entered is incorrect.";
       } else {
         description = error.message || description;
       }
-      
+
       toast({
         variant: "destructive",
         title: "Login Failed",
         description,
       });
       setIsSigningIn(false);
-    }
+    };
 
     initiateEmailSignIn(auth, email, password, onError);
   };
-  
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto max-w-sm w-full">
@@ -75,7 +79,9 @@ export default function LoginPage() {
           <div className="flex justify-center items-center">
             <Church className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="font-headline text-2xl">COG App Login</CardTitle>
+          <CardTitle className="font-headline text-2xl">
+            COG App Login
+          </CardTitle>
           <CardDescription>
             Enter your email below to login to your account
           </CardDescription>
@@ -113,8 +119,16 @@ export default function LoginPage() {
                 disabled={isSigningIn}
               />
             </div>
-            <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn || isUserLoading}>
-              {isSigningIn ? <LoaderCircle className="animate-spin" /> : "Login"}
+            <Button
+              onClick={handleSignIn}
+              className="w-full"
+              disabled={isSigningIn || isUserLoading}
+            >
+              {isSigningIn ? (
+                <LoaderCircle className="animate-spin" />
+              ) : (
+                "Login"
+              )}
             </Button>
           </div>
           <div className="mt-4 text-center text-sm">
