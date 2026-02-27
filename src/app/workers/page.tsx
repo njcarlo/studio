@@ -1,8 +1,15 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { collection, doc, serverTimestamp, writeBatch, addDoc, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  serverTimestamp,
+  writeBatch,
+  addDoc,
+  query,
+  where,
+} from "firebase/firestore";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -21,7 +28,7 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
-  SheetClose
+  SheetClose,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -31,8 +38,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, LoaderCircle, Upload, LogIn, Users, UserCheck, UserX, Users2, Building2, Key, Mail, Trash2, ArrowRightLeft, X, ClipboardList, Ticket, History } from "lucide-react";
-import { startOfWeek, endOfWeek, isSunday, isWithinInterval } from 'date-fns';
+import {
+  MoreHorizontal,
+  PlusCircle,
+  LoaderCircle,
+  Upload,
+  LogIn,
+  Users,
+  UserCheck,
+  UserX,
+  Users2,
+  Building2,
+  Key,
+  Mail,
+  Trash2,
+  ArrowRightLeft,
+  X,
+  ClipboardList,
+  Ticket,
+  History,
+} from "lucide-react";
+import { startOfWeek, endOfWeek, isSunday, isWithinInterval } from "date-fns";
 import { getWeeklyWeekdayCount, getSundayCount } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -58,15 +84,31 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import type { Worker, Role, Ministry } from "@/lib/types";
-import { useFirestore, useCollection, useMemoFirebase, useUser, useFirebase } from "@/firebase";
+import {
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+  useUser,
+  useFirebase,
+} from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { useImpersonation } from "@/hooks/use-impersonation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { initiatePasswordReset } from "@/firebase/auth";
-import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/firestore-utils";
+import { initiatePasswordReset } from "@/firebase/non-blocking-login";
+import {
+  deleteDocumentNonBlocking,
+  updateDocumentNonBlocking,
+  addDocumentNonBlocking,
+} from "@/firebase/firestore-utils";
 import { orderBy, limit } from "firebase/firestore";
 import { format } from "date-fns";
 
@@ -78,21 +120,27 @@ const WorkerActivityLog = ({ workerId }: { workerId: string }) => {
       collection(firestore, "transaction_logs"),
       where("targetId", "==", workerId),
       orderBy("timestamp", "desc"),
-      limit(50)
+      limit(50),
     );
   }, [firestore, workerId]);
 
   const { data: logs, isLoading } = useCollection<any>(logsQuery);
 
   if (isLoading) {
-    return <div className="flex justify-center py-8"><LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex justify-center py-8">
+        <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   if (!logs || logs.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">
         <History className="h-8 w-8 mx-auto mb-2 opacity-20" />
-        <p className="text-sm border-0">No activity logs found for this worker.</p>
+        <p className="text-sm border-0">
+          No activity logs found for this worker.
+        </p>
       </div>
     );
   }
@@ -100,16 +148,23 @@ const WorkerActivityLog = ({ workerId }: { workerId: string }) => {
   return (
     <div className="space-y-4 py-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
       {logs.map((log: any) => (
-        <div key={log.id} className="relative pl-6 pb-4 border-l border-border last:border-0 last:pb-0">
+        <div
+          key={log.id}
+          className="relative pl-6 pb-4 border-l border-border last:border-0 last:pb-0"
+        >
           <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm font-semibold">{log.action}</span>
               <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                {log.timestamp ? format(log.timestamp.toDate(), "MMM d, h:mm a") : "Unknown"}
+                {log.timestamp
+                  ? format(log.timestamp.toDate(), "MMM d, h:mm a")
+                  : "Unknown"}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground line-clamp-2">{log.details}</p>
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {log.details}
+            </p>
             <div className="text-[10px] font-medium text-primary/70 mt-1">
               By: {log.userName}
             </div>
@@ -120,7 +175,15 @@ const WorkerActivityLog = ({ workerId }: { workerId: string }) => {
   );
 };
 
-const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPassword, canManage }: {
+const WorkerForm = ({
+  worker,
+  roles,
+  ministries,
+  onSave,
+  onClose,
+  onResetPassword,
+  canManage,
+}: {
   worker: Partial<Worker> | null;
   roles: Role[];
   ministries: Ministry[];
@@ -130,8 +193,16 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
   canManage: boolean;
 }) => {
   const [formData, setFormData] = useState<Partial<Worker>>({
-    firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: canManage ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
-    majorMinistryId: '', minorMinistryId: '', birthDate: ''
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    roleId: "viewer",
+    status: canManage ? "Active" : "Pending Approval",
+    avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+    majorMinistryId: "",
+    minorMinistryId: "",
+    birthDate: "",
   });
 
   useEffect(() => {
@@ -141,29 +212,35 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
       // (e.g. workers created via signup don't have phone).
       setFormData({
         ...worker,
-        firstName: worker.firstName || '',
-        lastName: worker.lastName || '',
-        email: worker.email || '',
-        phone: worker.phone || '',
-        roleId: worker.roleId || 'viewer',
-        majorMinistryId: worker.majorMinistryId || '',
-        minorMinistryId: worker.minorMinistryId || '',
-        birthDate: worker.birthDate || '',
+        firstName: worker.firstName || "",
+        lastName: worker.lastName || "",
+        email: worker.email || "",
+        phone: worker.phone || "",
+        roleId: worker.roleId || "viewer",
+        majorMinistryId: worker.majorMinistryId || "",
+        minorMinistryId: worker.minorMinistryId || "",
+        birthDate: worker.birthDate || "",
       });
     } else {
       setFormData({
-        firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer',
-        status: canManage ? 'Active' : 'Pending Approval',
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        roleId: "viewer",
+        status: canManage ? "Active" : "Pending Approval",
         avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
-        majorMinistryId: '', minorMinistryId: '', birthDate: ''
+        majorMinistryId: "",
+        minorMinistryId: "",
+        birthDate: "",
       });
     }
   }, [worker, canManage]);
 
   const groupedMinistries = useMemo(() => {
     const groups: Record<string, Ministry[]> = {};
-    ministries.forEach(m => {
-      const dept = m.department || 'Other';
+    ministries.forEach((m) => {
+      const dept = m.department || "Other";
       if (!groups[dept]) groups[dept] = [];
       groups[dept].push(m);
     });
@@ -177,9 +254,13 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
   return (
     <>
       <SheetHeader className="pb-2">
-        <SheetTitle className="font-headline">{worker ? 'Edit Worker' : 'Add New Worker'}</SheetTitle>
+        <SheetTitle className="font-headline">
+          {worker ? "Edit Worker" : "Add New Worker"}
+        </SheetTitle>
         <SheetDescription>
-          {worker ? 'Update the details for this worker.' : 'Fill in the details for the new worker.'}
+          {worker
+            ? "Update the details for this worker."
+            : "Fill in the details for the new worker."}
         </SheetDescription>
       </SheetHeader>
 
@@ -192,52 +273,131 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
           <TabsContent value="details" className="mt-0 space-y-4">
             <div className="grid gap-4 py-1">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="firstName" className="text-right">First Name</Label>
-                <Input id="firstName" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="col-span-3" />
+                <Label htmlFor="firstName" className="text-right">
+                  First Name
+                </Label>
+                <Input
+                  id="firstName"
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, firstName: e.target.value })
+                  }
+                  className="col-span-3"
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="lastName" className="text-right">Last Name</Label>
-                <Input id="lastName" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="col-span-3" />
+                <Label htmlFor="lastName" className="text-right">
+                  Last Name
+                </Label>
+                <Input
+                  id="lastName"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                  className="col-span-3"
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="email" className="text-right">Email</Label>
-                <Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="col-span-3" />
+                <Label htmlFor="email" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  className="col-span-3"
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="phone" className="text-right">Phone</Label>
-                <Input id="phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="col-span-3" />
+                <Label htmlFor="phone" className="text-right">
+                  Phone
+                </Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  className="col-span-3"
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="birthDate" className="text-right">Date of Birth</Label>
-                <Input id="birthDate" type="date" value={formData.birthDate || ''} onChange={e => setFormData({ ...formData, birthDate: e.target.value })} className="col-span-3" />
+                <Label htmlFor="birthDate" className="text-right">
+                  Date of Birth
+                </Label>
+                <Input
+                  id="birthDate"
+                  type="date"
+                  value={formData.birthDate || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, birthDate: e.target.value })
+                  }
+                  className="col-span-3"
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="role" className="text-right">Role</Label>
-                <Select value={formData.roleId} onValueChange={(value: string) => setFormData({ ...formData, roleId: value })} disabled={!canManage}>
+                <Label htmlFor="role" className="text-right">
+                  Role
+                </Label>
+                <Select
+                  value={formData.roleId}
+                  onValueChange={(value: string) =>
+                    setFormData({ ...formData, roleId: value })
+                  }
+                  disabled={!canManage}
+                >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.map(role => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="status" className="text-right">Status</Label>
-                <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({ ...formData, status: value })} disabled={!canManage && !worker}>
+                <Label htmlFor="status" className="text-right">
+                  Status
+                </Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(
+                    value: "Active" | "Inactive" | "Pending Approval",
+                  ) => setFormData({ ...formData, status: value })}
+                  disabled={!canManage && !worker}
+                >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select a status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Active">Active</SelectItem>
                     <SelectItem value="Inactive">Inactive</SelectItem>
-                    <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+                    <SelectItem value="Pending Approval">
+                      Pending Approval
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="majorMinistry" className="text-right">Major Ministry</Label>
-                <Select value={formData.majorMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, majorMinistryId: value === 'none' ? '' : value })}>
+                <Label htmlFor="majorMinistry" className="text-right">
+                  Major Ministry
+                </Label>
+                <Select
+                  value={formData.majorMinistryId || "none"}
+                  onValueChange={(value: string) =>
+                    setFormData({
+                      ...formData,
+                      majorMinistryId: value === "none" ? "" : value,
+                    })
+                  }
+                >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select a ministry" />
                   </SelectTrigger>
@@ -245,9 +405,13 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
                     <SelectItem value="none">None</SelectItem>
                     {Object.entries(groupedMinistries).map(([dept, mins]) => (
                       <SelectGroup key={dept}>
-                        <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
-                        {mins.map(m => (
-                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">
+                          {dept}
+                        </SelectLabel>
+                        {mins.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name}
+                          </SelectItem>
                         ))}
                       </SelectGroup>
                     ))}
@@ -255,8 +419,18 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="minorMinistry" className="text-right">Minor Ministry</Label>
-                <Select value={formData.minorMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, minorMinistryId: value === 'none' ? '' : value })}>
+                <Label htmlFor="minorMinistry" className="text-right">
+                  Minor Ministry
+                </Label>
+                <Select
+                  value={formData.minorMinistryId || "none"}
+                  onValueChange={(value: string) =>
+                    setFormData({
+                      ...formData,
+                      minorMinistryId: value === "none" ? "" : value,
+                    })
+                  }
+                >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select a ministry" />
                   </SelectTrigger>
@@ -264,9 +438,13 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
                     <SelectItem value="none">None</SelectItem>
                     {Object.entries(groupedMinistries).map(([dept, mins]) => (
                       <SelectGroup key={dept}>
-                        <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
-                        {mins.map(m => (
-                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">
+                          {dept}
+                        </SelectLabel>
+                        {mins.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name}
+                          </SelectItem>
                         ))}
                       </SelectGroup>
                     ))}
@@ -274,8 +452,16 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="employmentType" className="text-right">Worker Type</Label>
-                <Select value={formData.employmentType || 'Volunteer'} onValueChange={(value: any) => setFormData({ ...formData, employmentType: value })} disabled={!canManage}>
+                <Label htmlFor="employmentType" className="text-right">
+                  Worker Type
+                </Label>
+                <Select
+                  value={formData.employmentType || "Volunteer"}
+                  onValueChange={(value: any) =>
+                    setFormData({ ...formData, employmentType: value })
+                  }
+                  disabled={!canManage}
+                >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -289,13 +475,20 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
             </div>
             <SheetFooter className="flex-col sm:flex-row gap-2 pt-4">
               {worker && onResetPassword && (
-                <Button type="button" variant="outline" onClick={() => onResetPassword(worker as Worker)} className="mr-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onResetPassword(worker as Worker)}
+                  className="mr-auto"
+                >
                   <Mail className="mr-2 h-4 w-4" /> Send Reset Link
                 </Button>
               )}
               <div className="flex gap-2">
                 <SheetClose asChild>
-                  <Button type="button" variant="secondary">Cancel</Button>
+                  <Button type="button" variant="secondary">
+                    Cancel
+                  </Button>
                 </SheetClose>
                 <Button onClick={handleSave}>Save changes</Button>
               </div>
@@ -305,7 +498,9 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
             <WorkerActivityLog workerId={worker.id!} />
             <div className="mt-6 pt-4 border-t text-center">
               <SheetClose asChild>
-                <Button variant="secondary" className="w-full">Close</Button>
+                <Button variant="secondary" className="w-full">
+                  Close
+                </Button>
               </SheetClose>
             </div>
           </TabsContent>
@@ -314,52 +509,131 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
         <>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="firstName" className="text-right">First Name</Label>
-              <Input id="firstName" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="col-span-3" />
+              <Label htmlFor="firstName" className="text-right">
+                First Name
+              </Label>
+              <Input
+                id="firstName"
+                value={formData.firstName}
+                onChange={(e) =>
+                  setFormData({ ...formData, firstName: e.target.value })
+                }
+                className="col-span-3"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="lastName" className="text-right">Last Name</Label>
-              <Input id="lastName" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="col-span-3" />
+              <Label htmlFor="lastName" className="text-right">
+                Last Name
+              </Label>
+              <Input
+                id="lastName"
+                value={formData.lastName}
+                onChange={(e) =>
+                  setFormData({ ...formData, lastName: e.target.value })
+                }
+                className="col-span-3"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">Email</Label>
-              <Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="col-span-3" />
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="col-span-3"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">Phone</Label>
-              <Input id="phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="col-span-3" />
+              <Label htmlFor="phone" className="text-right">
+                Phone
+              </Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                className="col-span-3"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="birthDate" className="text-right">Date of Birth</Label>
-              <Input id="birthDate" type="date" value={formData.birthDate || ''} onChange={e => setFormData({ ...formData, birthDate: e.target.value })} className="col-span-3" />
+              <Label htmlFor="birthDate" className="text-right">
+                Date of Birth
+              </Label>
+              <Input
+                id="birthDate"
+                type="date"
+                value={formData.birthDate || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, birthDate: e.target.value })
+                }
+                className="col-span-3"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">Role</Label>
-              <Select value={formData.roleId} onValueChange={(value: string) => setFormData({ ...formData, roleId: value })} disabled={!canManage}>
+              <Label htmlFor="role" className="text-right">
+                Role
+              </Label>
+              <Select
+                value={formData.roleId}
+                onValueChange={(value: string) =>
+                  setFormData({ ...formData, roleId: value })
+                }
+                disabled={!canManage}
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map(role => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">Status</Label>
-              <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({ ...formData, status: value })} disabled={!canManage && !worker}>
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select
+                value={formData.status}
+                onValueChange={(
+                  value: "Active" | "Inactive" | "Pending Approval",
+                ) => setFormData({ ...formData, status: value })}
+                disabled={!canManage && !worker}
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Active">Active</SelectItem>
                   <SelectItem value="Inactive">Inactive</SelectItem>
-                  <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+                  <SelectItem value="Pending Approval">
+                    Pending Approval
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="majorMinistry" className="text-right">Major Ministry</Label>
-              <Select value={formData.majorMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, majorMinistryId: value === 'none' ? '' : value })}>
+              <Label htmlFor="majorMinistry" className="text-right">
+                Major Ministry
+              </Label>
+              <Select
+                value={formData.majorMinistryId || "none"}
+                onValueChange={(value: string) =>
+                  setFormData({
+                    ...formData,
+                    majorMinistryId: value === "none" ? "" : value,
+                  })
+                }
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a ministry" />
                 </SelectTrigger>
@@ -367,9 +641,13 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
                   <SelectItem value="none">None</SelectItem>
                   {Object.entries(groupedMinistries).map(([dept, mins]) => (
                     <SelectGroup key={dept}>
-                      <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
-                      {mins.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">
+                        {dept}
+                      </SelectLabel>
+                      {mins.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.name}
+                        </SelectItem>
                       ))}
                     </SelectGroup>
                   ))}
@@ -377,8 +655,18 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="minorMinistry" className="text-right">Minor Ministry</Label>
-              <Select value={formData.minorMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, minorMinistryId: value === 'none' ? '' : value })}>
+              <Label htmlFor="minorMinistry" className="text-right">
+                Minor Ministry
+              </Label>
+              <Select
+                value={formData.minorMinistryId || "none"}
+                onValueChange={(value: string) =>
+                  setFormData({
+                    ...formData,
+                    minorMinistryId: value === "none" ? "" : value,
+                  })
+                }
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a ministry" />
                 </SelectTrigger>
@@ -386,9 +674,13 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
                   <SelectItem value="none">None</SelectItem>
                   {Object.entries(groupedMinistries).map(([dept, mins]) => (
                     <SelectGroup key={dept}>
-                      <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
-                      {mins.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">
+                        {dept}
+                      </SelectLabel>
+                      {mins.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.name}
+                        </SelectItem>
                       ))}
                     </SelectGroup>
                   ))}
@@ -396,8 +688,16 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="employmentType" className="text-right">Worker Type</Label>
-              <Select value={formData.employmentType || 'Volunteer'} onValueChange={(value: any) => setFormData({ ...formData, employmentType: value })} disabled={!canManage}>
+              <Label htmlFor="employmentType" className="text-right">
+                Worker Type
+              </Label>
+              <Select
+                value={formData.employmentType || "Volunteer"}
+                onValueChange={(value: any) =>
+                  setFormData({ ...formData, employmentType: value })
+                }
+                disabled={!canManage}
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -412,7 +712,9 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
           <SheetFooter className="flex-col sm:flex-row gap-2">
             <div className="flex gap-2 ml-auto">
               <SheetClose asChild>
-                <Button type="button" variant="secondary">Cancel</Button>
+                <Button type="button" variant="secondary">
+                  Cancel
+                </Button>
               </SheetClose>
               <Button onClick={handleSave}>Save changes</Button>
             </div>
@@ -423,22 +725,35 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
   );
 };
 
-const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => void; onClose: () => void; }) => {
-  const [csvData, setCsvData] = useState('');
-  const csvFormat = "firstName,lastName,email,phone,roleId,status,primaryMinistryId,secondaryMinistryId,employmentType";
+const ImportSheet = ({
+  onImport,
+  onClose,
+}: {
+  onImport: (csvData: string) => void;
+  onClose: () => void;
+}) => {
+  const [csvData, setCsvData] = useState("");
+  const csvFormat =
+    "firstName,lastName,email,phone,roleId,status,primaryMinistryId,secondaryMinistryId,employmentType";
 
   return (
     <>
       <SheetHeader>
         <SheetTitle className="font-headline">Import Workers</SheetTitle>
         <SheetDescription>
-          Paste CSV data below to bulk-import workers. The first line must be a header row.
+          Paste CSV data below to bulk-import workers. The first line must be a
+          header row.
         </SheetDescription>
       </SheetHeader>
       <div className="py-4 space-y-4">
         <div className="space-y-2">
           <Label htmlFor="csv-format">Required CSV Format</Label>
-          <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
+          <Input
+            id="csv-format"
+            readOnly
+            defaultValue={csvFormat}
+            className="font-mono text-xs"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="csv-data">CSV Data</Label>
@@ -453,22 +768,34 @@ const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => voi
       </div>
       <SheetFooter>
         <SheetClose asChild>
-          <Button type="button" variant="secondary">Cancel</Button>
+          <Button type="button" variant="secondary">
+            Cancel
+          </Button>
         </SheetClose>
         <Button onClick={() => onImport(csvData)}>Process Import</Button>
       </SheetFooter>
     </>
-  )
-}
+  );
+};
 
-const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { selectedCount: number; ministries: Ministry[]; onSave: (major: string, minor: string) => void; onClose: () => void; }) => {
-  const [major, setMajor] = useState('unchanged');
-  const [minor, setMinor] = useState('unchanged');
+const BatchMinistrySheet = ({
+  selectedCount,
+  ministries,
+  onSave,
+  onClose,
+}: {
+  selectedCount: number;
+  ministries: Ministry[];
+  onSave: (major: string, minor: string) => void;
+  onClose: () => void;
+}) => {
+  const [major, setMajor] = useState("unchanged");
+  const [minor, setMinor] = useState("unchanged");
 
   const groupedMinistries = useMemo(() => {
     const groups: Record<string, Ministry[]> = {};
-    ministries.forEach(m => {
-      const dept = m.department || 'Other';
+    ministries.forEach((m) => {
+      const dept = m.department || "Other";
       if (!groups[dept]) groups[dept] = [];
       groups[dept].push(m);
     });
@@ -480,21 +807,32 @@ const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { se
       <SheetHeader>
         <SheetTitle className="font-headline">Update Ministries</SheetTitle>
         <SheetDescription>
-          Select new ministries for {selectedCount} worker(s). Leave blank to keep current assignments, or select "None" to remove them.
+          Select new ministries for {selectedCount} worker(s). Leave blank to
+          keep current assignments, or select "None" to remove them.
         </SheetDescription>
       </SheetHeader>
       <div className="py-4 space-y-4">
         <div className="space-y-2">
           <Label>Major Ministry</Label>
           <Select value={major} onValueChange={setMajor}>
-            <SelectTrigger><SelectValue placeholder="Keep current" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Keep current" />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="unchanged">Keep current major ministry</SelectItem>
+              <SelectItem value="unchanged">
+                Keep current major ministry
+              </SelectItem>
               <SelectItem value="none">Set to None</SelectItem>
               {Object.entries(groupedMinistries).map(([dept, mins]) => (
                 <SelectGroup key={dept}>
-                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
-                  {mins.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">
+                    {dept}
+                  </SelectLabel>
+                  {mins.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               ))}
             </SelectContent>
@@ -503,14 +841,24 @@ const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { se
         <div className="space-y-2">
           <Label>Minor Ministry</Label>
           <Select value={minor} onValueChange={setMinor}>
-            <SelectTrigger><SelectValue placeholder="Keep current" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Keep current" />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="unchanged">Keep current minor ministry</SelectItem>
+              <SelectItem value="unchanged">
+                Keep current minor ministry
+              </SelectItem>
               <SelectItem value="none">Set to None</SelectItem>
               {Object.entries(groupedMinistries).map(([dept, mins]) => (
                 <SelectGroup key={dept}>
-                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
-                  {mins.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">
+                    {dept}
+                  </SelectLabel>
+                  {mins.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               ))}
             </SelectContent>
@@ -518,21 +866,35 @@ const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { se
         </div>
       </div>
       <SheetFooter>
-        <SheetClose asChild><Button variant="secondary" onClick={onClose}>Cancel</Button></SheetClose>
+        <SheetClose asChild>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+        </SheetClose>
         <Button onClick={() => onSave(major, minor)}>Apply Changes</Button>
       </SheetFooter>
     </>
   );
 };
 
-const BatchMealStubSheet = ({ selectedCount, onSave, onClose }: { selectedCount: number; onSave: (type: 'weekday' | 'sunday', count: number) => void; onClose: () => void; }) => {
-  const [type, setType] = useState<'weekday' | 'sunday'>('weekday');
+const BatchMealStubSheet = ({
+  selectedCount,
+  onSave,
+  onClose,
+}: {
+  selectedCount: number;
+  onSave: (type: "weekday" | "sunday", count: number) => void;
+  onClose: () => void;
+}) => {
+  const [type, setType] = useState<"weekday" | "sunday">("weekday");
   const [count, setCount] = useState(1);
 
   return (
     <>
       <SheetHeader>
-        <SheetTitle className="font-headline">Batch Issue Meal Stubs</SheetTitle>
+        <SheetTitle className="font-headline">
+          Batch Issue Meal Stubs
+        </SheetTitle>
         <SheetDescription>
           Issue meal stubs to {selectedCount} selected worker(s).
         </SheetDescription>
@@ -541,7 +903,9 @@ const BatchMealStubSheet = ({ selectedCount, onSave, onClose }: { selectedCount:
         <div className="space-y-2">
           <Label>Stub Type</Label>
           <Select value={type} onValueChange={(val: any) => setType(val)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="weekday">Weekday Stub</SelectItem>
               <SelectItem value="sunday">Sunday Stub</SelectItem>
@@ -550,21 +914,33 @@ const BatchMealStubSheet = ({ selectedCount, onSave, onClose }: { selectedCount:
         </div>
         <div className="space-y-2">
           <Label>Count per Worker</Label>
-          <Select value={count.toString()} onValueChange={(val) => setCount(parseInt(val))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Select
+            value={count.toString()}
+            onValueChange={(val) => setCount(parseInt(val))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {[1, 2, 3, 4, 5].map(n => (
-                <SelectItem key={n} value={n.toString()}>{n} stub(s)</SelectItem>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <SelectItem key={n} value={n.toString()}>
+                  {n} stub(s)
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-1 text-amber-600">
-            ⚠️ This will respect weekly limits (5 weekdays, 2 Sunday). Workers already at limit will be skipped for that assignment.
+            ⚠️ This will respect weekly limits (5 weekdays, 2 Sunday). Workers
+            already at limit will be skipped for that assignment.
           </p>
         </div>
       </div>
       <SheetFooter>
-        <SheetClose asChild><Button variant="secondary" onClick={onClose}>Cancel</Button></SheetClose>
+        <SheetClose asChild>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+        </SheetClose>
         <Button onClick={() => onSave(type, count)}>Issue Stubs</Button>
       </SheetFooter>
     </>
@@ -575,7 +951,13 @@ export default function WorkersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
-  const { workerProfile, canManageWorkers, isSuperAdmin, allRoles, isLoading: isRoleLoading } = useUserRole();
+  const {
+    workerProfile,
+    canManageWorkers,
+    isSuperAdmin,
+    allRoles,
+    isLoading: isRoleLoading,
+  } = useUserRole();
   const { startImpersonation } = useImpersonation();
   const { logAction } = useAuditLog();
   const { auth } = useFirebase();
@@ -585,7 +967,10 @@ export default function WorkersPage() {
     if (!user || (!isMealStubAssigner && !canManageAllMealStubs)) return null;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return query(collection(firestore, "mealstubs"), where('date', '>=', thirtyDaysAgo));
+    return query(
+      collection(firestore, "mealstubs"),
+      where("date", ">=", thirtyDaysAgo),
+    );
   }, [firestore, user, isMealStubAssigner, canManageAllMealStubs]);
   const { data: allMealStubs } = useCollection<any>(mealStubsRef);
 
@@ -593,41 +978,53 @@ export default function WorkersPage() {
     if (!user) return null;
     return collection(firestore, "workers");
   }, [firestore, user]);
-  const { data: allWorkers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
+  const { data: allWorkers, isLoading: workersLoading } =
+    useCollection<Worker>(workersRef);
 
   const rolesRef = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, "roles");
   }, [firestore, user]);
-  const { data: rolesData, isLoading: rolesLoading } = useCollection<Role>(rolesRef);
+  const { data: rolesData, isLoading: rolesLoading } =
+    useCollection<Role>(rolesRef);
   const roles = rolesData || [];
 
   const ministriesRef = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, "ministries");
   }, [firestore, user]);
-  const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
+  const { data: ministriesData, isLoading: ministriesLoading } =
+    useCollection<Ministry>(ministriesRef);
   const ministries = ministriesData || [];
 
   const departmentsRef = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, "departments");
   }, [firestore, user]);
-  const { data: departmentDataList, isLoading: departmentsLoading } = useCollection<any>(departmentsRef);
+  const { data: departmentDataList, isLoading: departmentsLoading } =
+    useCollection<any>(departmentsRef);
 
-  const isLoading = workersLoading || rolesLoading || ministriesLoading || isRoleLoading || departmentsLoading;
+  const isLoading =
+    workersLoading ||
+    rolesLoading ||
+    ministriesLoading ||
+    isRoleLoading ||
+    departmentsLoading;
 
   // Detect Department Head by role name OR explicit assignment
   const explicitlyAssignedDepartment = useMemo(() => {
     if (!workerProfile?.id || !departmentDataList) return null;
-    return departmentDataList.find(d => d.headId === workerProfile.id) || null;
+    return (
+      departmentDataList.find((d) => d.headId === workerProfile.id) || null
+    );
   }, [workerProfile, departmentDataList]);
 
   const isDepartmentHead = useMemo(() => {
     if (explicitlyAssignedDepartment) return true;
     if (!workerProfile?.roleId || !roles.length) return false;
-    const roleName = roles.find(r => r.id === workerProfile.roleId)?.name || '';
-    return roleName.toLowerCase().includes('department head');
+    const roleName =
+      roles.find((r) => r.id === workerProfile.roleId)?.name || "";
+    return roleName.toLowerCase().includes("department head");
   }, [workerProfile, roles, explicitlyAssignedDepartment]);
 
   // Find the department of this user
@@ -635,41 +1032,57 @@ export default function WorkersPage() {
     if (explicitlyAssignedDepartment) return explicitlyAssignedDepartment.id;
 
     if (!workerProfile?.majorMinistryId || !ministries.length) return null;
-    return ministries.find(m => m.id === workerProfile.majorMinistryId)?.department || null;
+    return (
+      ministries.find((m) => m.id === workerProfile.majorMinistryId)
+        ?.department || null
+    );
   }, [workerProfile, ministries, explicitlyAssignedDepartment]);
 
   // All ministries in the department head's department
   const departmentMinistries = useMemo(() => {
     if (!isDepartmentHead || !userDepartment) return [];
-    return ministries.filter(m => m.department === userDepartment);
+    return ministries.filter((m) => m.department === userDepartment);
   }, [isDepartmentHead, userDepartment, ministries]);
 
   const workers = useMemo(() => {
     if (!allWorkers) return [];
 
     // Global managers (Super Admin or those with manage_workers but no specific ministry assigned)
-    const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId);
+    const isGlobalManager =
+      isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId);
 
     if (isGlobalManager) return allWorkers;
 
     // Department Heads see all workers across their whole department
     if (isDepartmentHead && departmentMinistries.length > 0) {
-      const deptMinistryIds = departmentMinistries.map(m => m.id);
-      return allWorkers.filter(w =>
-        deptMinistryIds.includes(w.majorMinistryId) ||
-        deptMinistryIds.includes(w.minorMinistryId)
+      const deptMinistryIds = departmentMinistries.map((m) => m.id);
+      return allWorkers.filter(
+        (w) =>
+          deptMinistryIds.includes(w.majorMinistryId) ||
+          deptMinistryIds.includes(w.minorMinistryId),
       );
     }
 
     // Filter by ministry: show workers in same ministries as current user
-    const userMinistryIds = [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(Boolean);
+    const userMinistryIds = [
+      workerProfile?.majorMinistryId,
+      workerProfile?.minorMinistryId,
+    ].filter(Boolean);
     if (userMinistryIds.length === 0) return [];
 
-    return allWorkers.filter(w =>
-      userMinistryIds.includes(w.majorMinistryId) ||
-      userMinistryIds.includes(w.minorMinistryId)
+    return allWorkers.filter(
+      (w) =>
+        userMinistryIds.includes(w.majorMinistryId) ||
+        userMinistryIds.includes(w.minorMinistryId),
     );
-  }, [allWorkers, isSuperAdmin, canManageWorkers, workerProfile, isDepartmentHead, departmentMinistries]);
+  }, [
+    allWorkers,
+    isSuperAdmin,
+    canManageWorkers,
+    workerProfile,
+    isDepartmentHead,
+    departmentMinistries,
+  ]);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
@@ -677,7 +1090,8 @@ export default function WorkersPage() {
   const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>([]);
   const [isBatchMoveSheetOpen, setIsBatchMoveSheetOpen] = useState(false);
   const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
-  const [isBatchMealStubSheetOpen, setIsBatchMealStubSheetOpen] = useState(false);
+  const [isBatchMealStubSheetOpen, setIsBatchMealStubSheetOpen] =
+    useState(false);
   const [isAssigningStubs, setIsAssigningStubs] = useState(false);
 
   const handleAddNew = () => {
@@ -687,7 +1101,7 @@ export default function WorkersPage() {
 
   const handleOpenImport = () => {
     setIsImportSheetOpen(true);
-  }
+  };
 
   const handleEdit = (worker: Worker) => {
     setSelectedWorker(worker);
@@ -698,12 +1112,20 @@ export default function WorkersPage() {
 
   const handlePasswordReset = (worker: Worker) => {
     if (!worker.email) {
-      toast({ variant: 'destructive', title: 'No email found', description: 'This worker does not have an email address set.' });
+      toast({
+        variant: "destructive",
+        title: "No email found",
+        description: "This worker does not have an email address set.",
+      });
       return;
     }
 
     if (!auth) {
-      toast({ variant: 'destructive', title: 'Auth Error', description: 'Firebase Auth is not initialized.' });
+      toast({
+        variant: "destructive",
+        title: "Auth Error",
+        description: "Firebase Auth is not initialized.",
+      });
       return;
     }
 
@@ -711,13 +1133,26 @@ export default function WorkersPage() {
       auth,
       worker.email,
       async () => {
-        await logAction('Password Reset requested', 'Workers', `Requested password reset link for ${worker.firstName} ${worker.lastName}`, worker.id, `${worker.firstName} ${worker.lastName}`);
-        toast({ title: "Email Sent", description: `A password reset link has been sent to ${worker.email}.` });
+        await logAction(
+          "Password Reset requested",
+          "Workers",
+          `Requested password reset link for ${worker.firstName} ${worker.lastName}`,
+          worker.id,
+          `${worker.firstName} ${worker.lastName}`,
+        );
+        toast({
+          title: "Email Sent",
+          description: `A password reset link has been sent to ${worker.email}.`,
+        });
       },
       (error) => {
         console.error("Password reset error:", error);
-        toast({ variant: "destructive", title: "Error", description: error.message });
-      }
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message,
+        });
+      },
     );
   };
   const handleImpersonate = (worker: Worker) => {
@@ -730,30 +1165,47 @@ export default function WorkersPage() {
 
   const handleDelete = async (workerId: string) => {
     if (!workerId) return;
-    const w = allWorkers?.find(w => w.id === workerId);
+    const w = allWorkers?.find((w) => w.id === workerId);
     deleteDocumentNonBlocking(doc(firestore, "workers", workerId));
     if (w) {
-      await logAction('Deleted Worker', 'Workers', `Removed worker profile for ${w.firstName} ${w.lastName} (ID: ${w.workerId})`, workerId, `${w.firstName} ${w.lastName}`);
+      await logAction(
+        "Deleted Worker",
+        "Workers",
+        `Removed worker profile for ${w.firstName} ${w.lastName} (ID: ${w.workerId})`,
+        workerId,
+        `${w.firstName} ${w.lastName}`,
+      );
     }
     toast({
       title: "Worker Deleted",
-      description: "The worker profile has been removed."
+      description: "The worker profile has been removed.",
     });
   };
 
   const handleBatchDelete = async () => {
     try {
       const batch = writeBatch(firestore);
-      selectedWorkerIds.forEach(id => {
+      selectedWorkerIds.forEach((id) => {
         batch.delete(doc(firestore, "workers", id));
       });
       await batch.commit();
-      await logAction('Batch Deleted Workers', 'Workers', `Deleted ${selectedWorkerIds.length} workers.`);
-      toast({ title: "Batch Delete Successful", description: `${selectedWorkerIds.length} workers have been removed.` });
+      await logAction(
+        "Batch Deleted Workers",
+        "Workers",
+        `Deleted ${selectedWorkerIds.length} workers.`,
+      );
+      toast({
+        title: "Batch Delete Successful",
+        description: `${selectedWorkerIds.length} workers have been removed.`,
+      });
       setSelectedWorkerIds([]);
       setIsBatchDeleteDialogOpen(false);
     } catch (error) {
-      toast({ variant: "destructive", title: "Batch Delete Failed", description: "Could not delete workers." });
+      toast({
+        variant: "destructive",
+        title: "Batch Delete Failed",
+        description: "Could not delete workers.",
+      });
     }
   };
 
@@ -761,61 +1213,101 @@ export default function WorkersPage() {
     try {
       if (!isSuperAdmin) {
         const promises = selectedWorkerIds.map(async (id) => {
-          const w = allWorkers?.find(worker => worker.id === id);
+          const w = allWorkers?.find((worker) => worker.id === id);
           if (!w) return;
 
-          const newMajorId = major === 'unchanged' ? (w.majorMinistryId || '') : (major === 'none' ? '' : major);
-          const newMinorId = minor === 'unchanged' ? (w.minorMinistryId || '') : (minor === 'none' ? '' : minor);
+          const newMajorId =
+            major === "unchanged"
+              ? w.majorMinistryId || ""
+              : major === "none"
+                ? ""
+                : major;
+          const newMinorId =
+            minor === "unchanged"
+              ? w.minorMinistryId || ""
+              : minor === "none"
+                ? ""
+                : minor;
 
-          if (newMajorId === (w.majorMinistryId || '') && newMinorId === (w.minorMinistryId || '')) return;
+          if (
+            newMajorId === (w.majorMinistryId || "") &&
+            newMinorId === (w.minorMinistryId || "")
+          )
+            return;
 
-          const details = `Batch ministry change request for ${w.firstName} ${w.lastName}.\n` +
-            (major !== 'unchanged' ? `Major: ${ministries.find(m => m.id === w.majorMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === newMajorId)?.name || 'None'}\n` : '') +
-            (minor !== 'unchanged' ? `Minor: ${ministries.find(m => m.id === w.minorMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === newMinorId)?.name || 'None'}` : '');
+          const details =
+            `Batch ministry change request for ${w.firstName} ${w.lastName}.\n` +
+            (major !== "unchanged"
+              ? `Major: ${ministries.find((m) => m.id === w.majorMinistryId)?.name || "None"} -> ${ministries.find((m) => m.id === newMajorId)?.name || "None"}\n`
+              : "") +
+            (minor !== "unchanged"
+              ? `Minor: ${ministries.find((m) => m.id === w.minorMinistryId)?.name || "None"} -> ${ministries.find((m) => m.id === newMinorId)?.name || "None"}`
+              : "");
 
           return addDoc(collection(firestore, "approvals"), {
             requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
-            type: 'Ministry Change',
+            type: "Ministry Change",
             details,
             date: serverTimestamp(),
-            status: 'Pending Outgoing Approval',
+            status: "Pending Outgoing Approval",
             workerId: w.id,
-            oldMajorId: w.majorMinistryId || '',
+            oldMajorId: w.majorMinistryId || "",
             newMajorId,
-            oldMinorId: w.minorMinistryId || '',
+            oldMinorId: w.minorMinistryId || "",
             newMinorId,
             outgoingApproved: false,
-            incomingApproved: false
+            incomingApproved: false,
           });
         });
 
         await Promise.all(promises);
-        await logAction('Requested Batch Ministry Change', 'Workers', `Requested ministry change for ${selectedWorkerIds.length} workers.`);
+        await logAction(
+          "Requested Batch Ministry Change",
+          "Workers",
+          `Requested ministry change for ${selectedWorkerIds.length} workers.`,
+        );
         toast({
           title: "Changes Pending Approval",
-          description: "Batch ministry changes have been submitted for approval by the respective ministry heads."
+          description:
+            "Batch ministry changes have been submitted for approval by the respective ministry heads.",
         });
       } else {
         const batch = writeBatch(firestore);
         const updates: any = {};
-        if (major !== 'unchanged') updates.majorMinistryId = major === 'none' ? '' : major;
-        if (minor !== 'unchanged') updates.minorMinistryId = minor === 'none' ? '' : minor;
+        if (major !== "unchanged")
+          updates.majorMinistryId = major === "none" ? "" : major;
+        if (minor !== "unchanged")
+          updates.minorMinistryId = minor === "none" ? "" : minor;
 
-        selectedWorkerIds.forEach(id => {
+        selectedWorkerIds.forEach((id) => {
           batch.update(doc(firestore, "workers", id), updates);
         });
         await batch.commit();
-        await logAction('Batch Moved Workers', 'Workers', `Updated ministries for ${selectedWorkerIds.length} workers.`);
-        toast({ title: "Batch Update Successful", description: `Updated ${selectedWorkerIds.length} workers.` });
+        await logAction(
+          "Batch Moved Workers",
+          "Workers",
+          `Updated ministries for ${selectedWorkerIds.length} workers.`,
+        );
+        toast({
+          title: "Batch Update Successful",
+          description: `Updated ${selectedWorkerIds.length} workers.`,
+        });
       }
       setSelectedWorkerIds([]);
       setIsBatchMoveSheetOpen(false);
     } catch (error) {
-      toast({ variant: "destructive", title: "Batch Update Failed", description: "Could not update workers." });
+      toast({
+        variant: "destructive",
+        title: "Batch Update Failed",
+        description: "Could not update workers.",
+      });
     }
   };
 
-  const handleBatchMealStub = async (type: 'weekday' | 'sunday', count: number) => {
+  const handleBatchMealStub = async (
+    type: "weekday" | "sunday",
+    count: number,
+  ) => {
     if (isAssigningStubs) return;
     setIsAssigningStubs(true);
     let totalIssued = 0;
@@ -823,14 +1315,22 @@ export default function WorkersPage() {
 
     try {
       const promises = selectedWorkerIds.map(async (id) => {
-        const w = allWorkers?.find(worker => worker.id === id);
+        const w = allWorkers?.find((worker) => worker.id === id);
         if (!w) return;
 
         const allStubs = allMealStubs || [];
-        const current = type === 'weekday' ? getWeeklyWeekdayCount(allStubs, id) : getSundayCount(allStubs, id);
+        const current =
+          type === "weekday"
+            ? getWeeklyWeekdayCount(allStubs, id)
+            : getSundayCount(allStubs, id);
 
-        const ministry = ministries.find(m => m.id === w.majorMinistryId || m.id === w.minorMinistryId);
-        const limit = type === 'weekday' ? (ministry?.mealStubWeekdayLimit || 5) : (ministry?.mealStubSundayLimit || 2);
+        const ministry = ministries.find(
+          (m) => m.id === w.majorMinistryId || m.id === w.minorMinistryId,
+        );
+        const limit =
+          type === "weekday"
+            ? ministry?.mealStubWeekdayLimit || 5
+            : ministry?.mealStubSundayLimit || 2;
 
         const remaining = limit - current;
         if (remaining <= 0) {
@@ -845,7 +1345,7 @@ export default function WorkersPage() {
             workerId: id,
             workerName: `${w.firstName} ${w.lastName}`,
             date: serverTimestamp(),
-            status: 'Issued',
+            status: "Issued",
             assignedBy: workerProfile?.id,
             assignedByName: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
             stubType: type,
@@ -858,33 +1358,44 @@ export default function WorkersPage() {
 
       toast({
         title: "Batch Stubs Issued",
-        description: `Successfully issued ${totalIssued} total stubs. ${skipped > 0 ? `${skipped} workers were skipped (limit reached).` : ''}`
+        description: `Successfully issued ${totalIssued} total stubs. ${skipped > 0 ? `${skipped} workers were skipped (limit reached).` : ""}`,
       });
 
-      await logAction('Batch Issued Meal Stubs', 'MealStubs', `Issued ${totalIssued} ${type} stubs to ${selectedWorkerIds.length} workers.`);
+      await logAction(
+        "Batch Issued Meal Stubs",
+        "MealStubs",
+        `Issued ${totalIssued} ${type} stubs to ${selectedWorkerIds.length} workers.`,
+      );
       setIsBatchMealStubSheetOpen(false);
       setSelectedWorkerIds([]);
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Batch Assignment Failed", description: "Could not issue stubs." });
+      toast({
+        variant: "destructive",
+        title: "Batch Assignment Failed",
+        description: "Could not issue stubs.",
+      });
     } finally {
       setIsAssigningStubs(false);
     }
   };
 
   const toggleSelectAll = (currentWorkers: Worker[]) => {
-    if (selectedWorkerIds.length === currentWorkers.length && currentWorkers.length > 0) {
+    if (
+      selectedWorkerIds.length === currentWorkers.length &&
+      currentWorkers.length > 0
+    ) {
       setSelectedWorkerIds([]);
     } else {
-      setSelectedWorkerIds(currentWorkers.map(w => w.id));
+      setSelectedWorkerIds(currentWorkers.map((w) => w.id));
     }
-  }
+  };
 
   const toggleSelectWorker = (id: string) => {
-    setSelectedWorkerIds(prev =>
-      prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id]
+    setSelectedWorkerIds((prev) =>
+      prev.includes(id) ? prev.filter((wId) => wId !== id) : [...prev, id],
     );
-  }
+  };
 
   const handleSaveWorker = async (workerData: Partial<Worker>) => {
     if (!workerData.firstName || !workerData.lastName || !workerData.email) {
@@ -897,90 +1408,143 @@ export default function WorkersPage() {
     }
 
     const dataToSave = { ...workerData };
-    if (dataToSave.majorMinistryId === 'none') {
-      dataToSave.majorMinistryId = '';
+    if (dataToSave.majorMinistryId === "none") {
+      dataToSave.majorMinistryId = "";
     }
-    if (dataToSave.minorMinistryId === 'none') {
-      dataToSave.minorMinistryId = '';
+    if (dataToSave.minorMinistryId === "none") {
+      dataToSave.minorMinistryId = "";
     }
 
     try {
       if (selectedWorker?.id) {
         const isMinistryChanging =
-          (dataToSave.majorMinistryId !== undefined && dataToSave.majorMinistryId !== (selectedWorker.majorMinistryId || '')) ||
-          (dataToSave.minorMinistryId !== undefined && dataToSave.minorMinistryId !== (selectedWorker.minorMinistryId || ''));
+          (dataToSave.majorMinistryId !== undefined &&
+            dataToSave.majorMinistryId !==
+              (selectedWorker.majorMinistryId || "")) ||
+          (dataToSave.minorMinistryId !== undefined &&
+            dataToSave.minorMinistryId !==
+              (selectedWorker.minorMinistryId || ""));
 
         if (isMinistryChanging && !isSuperAdmin) {
           // Prepare ministry change data
           const ministryUpdate: any = {};
-          if (dataToSave.majorMinistryId !== undefined) ministryUpdate.newMajorId = dataToSave.majorMinistryId;
-          if (dataToSave.minorMinistryId !== undefined) ministryUpdate.newMinorId = dataToSave.minorMinistryId;
+          if (dataToSave.majorMinistryId !== undefined)
+            ministryUpdate.newMajorId = dataToSave.majorMinistryId;
+          if (dataToSave.minorMinistryId !== undefined)
+            ministryUpdate.newMinorId = dataToSave.minorMinistryId;
 
-          const details = `Ministry change request for ${selectedWorker.firstName} ${selectedWorker.lastName}.\n` +
-            (ministryUpdate.newMajorId !== undefined ? `Major: ${ministries.find(m => m.id === selectedWorker.majorMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === ministryUpdate.newMajorId)?.name || 'None'}\n` : '') +
-            (ministryUpdate.newMinorId !== undefined ? `Minor: ${ministries.find(m => m.id === selectedWorker.minorMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === ministryUpdate.newMinorId)?.name || 'None'}` : '');
+          const details =
+            `Ministry change request for ${selectedWorker.firstName} ${selectedWorker.lastName}.\n` +
+            (ministryUpdate.newMajorId !== undefined
+              ? `Major: ${ministries.find((m) => m.id === selectedWorker.majorMinistryId)?.name || "None"} -> ${ministries.find((m) => m.id === ministryUpdate.newMajorId)?.name || "None"}\n`
+              : "") +
+            (ministryUpdate.newMinorId !== undefined
+              ? `Minor: ${ministries.find((m) => m.id === selectedWorker.minorMinistryId)?.name || "None"} -> ${ministries.find((m) => m.id === ministryUpdate.newMinorId)?.name || "None"}`
+              : "");
 
           await addDoc(collection(firestore, "approvals"), {
             requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
-            type: 'Ministry Change',
+            type: "Ministry Change",
             details,
             date: serverTimestamp(),
-            status: 'Pending Outgoing Approval',
+            status: "Pending Outgoing Approval",
             workerId: selectedWorker.id,
-            oldMajorId: selectedWorker.majorMinistryId || '',
-            newMajorId: dataToSave.majorMinistryId ?? selectedWorker.majorMinistryId,
-            oldMinorId: selectedWorker.minorMinistryId || '',
-            newMinorId: dataToSave.minorMinistryId ?? selectedWorker.minorMinistryId,
+            oldMajorId: selectedWorker.majorMinistryId || "",
+            newMajorId:
+              dataToSave.majorMinistryId ?? selectedWorker.majorMinistryId,
+            oldMinorId: selectedWorker.minorMinistryId || "",
+            newMinorId:
+              dataToSave.minorMinistryId ?? selectedWorker.minorMinistryId,
             outgoingApproved: false,
-            incomingApproved: false
+            incomingApproved: false,
           });
 
           // Update other fields but NOT ministries
-          const { majorMinistryId, minorMinistryId, ...otherFields } = dataToSave;
+          const { majorMinistryId, minorMinistryId, ...otherFields } =
+            dataToSave;
           if (Object.keys(otherFields).length > 0) {
-            await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), otherFields);
+            await updateDocumentNonBlocking(
+              doc(firestore, "workers", selectedWorker.id),
+              otherFields,
+            );
           }
 
-          await logAction('Requested Ministry Change', 'Workers', `Requested ministry change for ${selectedWorker.firstName} ${selectedWorker.lastName}`, selectedWorker.id, `${selectedWorker.firstName} ${selectedWorker.lastName}`);
+          await logAction(
+            "Requested Ministry Change",
+            "Workers",
+            `Requested ministry change for ${selectedWorker.firstName} ${selectedWorker.lastName}`,
+            selectedWorker.id,
+            `${selectedWorker.firstName} ${selectedWorker.lastName}`,
+          );
           toast({
             title: "Change Pending Approval",
-            description: "The ministry change has been submitted for approval by both outgoing and incoming ministry heads."
+            description:
+              "The ministry change has been submitted for approval by both outgoing and incoming ministry heads.",
           });
         } else {
-          await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), dataToSave);
-          await logAction('Updated Worker', 'Workers', `Updated details for ${dataToSave.firstName} ${dataToSave.lastName}`, selectedWorker.id, `${dataToSave.firstName} ${dataToSave.lastName}`);
+          await updateDocumentNonBlocking(
+            doc(firestore, "workers", selectedWorker.id),
+            dataToSave,
+          );
+          await logAction(
+            "Updated Worker",
+            "Workers",
+            `Updated details for ${dataToSave.firstName} ${dataToSave.lastName}`,
+            selectedWorker.id,
+            `${dataToSave.firstName} ${dataToSave.lastName}`,
+          );
           toast({
             title: "Worker Updated",
-            description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
+            description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`,
           });
         }
       } else {
-        const newWorkerId = String(20000 + (allWorkers?.length || 0)).padStart(6, '0');
-        const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
-        const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "workers"), dataToSaveWithId);
-        await logAction('Added Worker', 'Workers', `Created profile for ${dataToSave.firstName} ${dataToSave.lastName} (ID: ${newWorkerId})`, newWorkerRef.id, `${dataToSave.firstName} ${dataToSave.lastName}`);
+        const newWorkerId = String(20000 + (allWorkers?.length || 0)).padStart(
+          6,
+          "0",
+        );
+        const dataToSaveWithId = {
+          ...dataToSave,
+          workerId: newWorkerId,
+          createdAt: serverTimestamp(),
+        };
+        const newWorkerRef = await addDocumentNonBlocking(
+          collection(firestore, "workers"),
+          dataToSaveWithId,
+        );
+        await logAction(
+          "Added Worker",
+          "Workers",
+          `Created profile for ${dataToSave.firstName} ${dataToSave.lastName} (ID: ${newWorkerId})`,
+          newWorkerRef.id,
+          `${dataToSave.firstName} ${dataToSave.lastName}`,
+        );
 
-        if (newWorkerRef && workerProfile && dataToSave.status === 'Pending Approval') {
+        if (
+          newWorkerRef &&
+          workerProfile &&
+          dataToSave.status === "Pending Approval"
+        ) {
           await addDocumentNonBlocking(collection(firestore, "approvals"), {
             requester: `${workerProfile.firstName} ${workerProfile.lastName}`,
-            type: 'New Worker',
+            type: "New Worker",
             details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
             date: serverTimestamp(),
-            status: 'Pending',
-            workerId: newWorkerRef.id
+            status: "Pending",
+            workerId: newWorkerRef.id,
           });
           toast({
             title: "Worker Added",
-            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`
+            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`,
           });
         } else {
           toast({
             title: "Worker Added",
-            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added with status: ${dataToSave.status}.`
+            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added with status: ${dataToSave.status}.`,
           });
         }
       }
-      // Close the sheet after a tiny delay to ensure Firestore operations 
+      // Close the sheet after a tiny delay to ensure Firestore operations
       // and state transitions don't conflict with Radix UI animations.
       setTimeout(() => setIsSheetOpen(false), 50);
     } catch (error) {
@@ -988,7 +1552,8 @@ export default function WorkersPage() {
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save worker profile. Check console for details.",
+        description:
+          "Could not save worker profile. Check console for details.",
       });
     }
   };
@@ -1000,7 +1565,11 @@ export default function WorkersPage() {
       complete: async (results) => {
         const newWorkers = results.data;
         if (newWorkers.length === 0) {
-          toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.' });
+          toast({
+            variant: "destructive",
+            title: "No Data Found",
+            description: "The CSV data was empty or invalid.",
+          });
           return;
         }
 
@@ -1009,39 +1578,49 @@ export default function WorkersPage() {
           let approvalCount = 0;
 
           newWorkers.forEach((newWorker: any, index) => {
-            if (!newWorker.firstName || !newWorker.lastName || !newWorker.email) {
-              console.warn('Skipping invalid row:', newWorker);
+            if (
+              !newWorker.firstName ||
+              !newWorker.lastName ||
+              !newWorker.email
+            ) {
+              console.warn("Skipping invalid row:", newWorker);
               return;
             }
 
             const newDocRef = doc(collection(firestore, "workers"));
-            const workerId = String(100000 + (allWorkers?.length || 0) + index).slice(-6);
+            const workerId = String(
+              100000 + (allWorkers?.length || 0) + index,
+            ).slice(-6);
 
             batch.set(newDocRef, {
-              firstName: newWorker.firstName || '',
-              lastName: newWorker.lastName || '',
-              email: newWorker.email || '',
-              phone: newWorker.phone || '',
-              roleId: newWorker.roleId || 'viewer',
-              status: newWorker.status || 'Pending Approval',
-              majorMinistryId: newWorker.majorMinistryId || '',
-              minorMinistryId: newWorker.minorMinistryId || '',
-              employmentType: newWorker.employmentType || 'Volunteer',
+              firstName: newWorker.firstName || "",
+              lastName: newWorker.lastName || "",
+              email: newWorker.email || "",
+              phone: newWorker.phone || "",
+              roleId: newWorker.roleId || "viewer",
+              status: newWorker.status || "Pending Approval",
+              majorMinistryId: newWorker.majorMinistryId || "",
+              minorMinistryId: newWorker.minorMinistryId || "",
+              employmentType: newWorker.employmentType || "Volunteer",
               workerId: workerId,
               createdAt: serverTimestamp(),
               avatarUrl: `https://picsum.photos/seed/${newDocRef.id.slice(0, 5)}/100/100`,
             });
 
-            if ((newWorker.status || 'Pending Approval') === 'Pending Approval') {
+            if (
+              (newWorker.status || "Pending Approval") === "Pending Approval"
+            ) {
               approvalCount++;
               const approvalRef = doc(collection(firestore, "approvals"));
               batch.set(approvalRef, {
-                requester: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : 'System Import',
-                type: 'New Worker',
+                requester: workerProfile
+                  ? `${workerProfile.firstName} ${workerProfile.lastName}`
+                  : "System Import",
+                type: "New Worker",
                 details: `New worker import: ${newWorker.email}`,
                 date: serverTimestamp(),
-                status: 'Pending',
-                workerId: newDocRef.id
+                status: "Pending",
+                workerId: newDocRef.id,
               });
             }
           });
@@ -1050,66 +1629,84 @@ export default function WorkersPage() {
 
           toast({
             title: "Import Successful",
-            description: `${newWorkers.length} workers were imported. ${approvalCount} approval requests were created.`
+            description: `${newWorkers.length} workers were imported. ${approvalCount} approval requests were created.`,
           });
           setIsImportSheetOpen(false);
-
         } catch (error) {
           toast({
             variant: "destructive",
             title: "Import Failed",
-            description: "An error occurred during the import. Check console for details.",
+            description:
+              "An error occurred during the import. Check console for details.",
           });
           console.error("Import error:", error);
         }
-      }
-    })
-  }
+      },
+    });
+  };
 
   const getRoleName = (roleId: string) => {
-    return roles.find(r => r.id === roleId)?.name || roleId;
-  }
+    return roles.find((r) => r.id === roleId)?.name || roleId;
+  };
 
   const getPermissions = (roleId: string) => {
-    const role = roles.find(r => r.id === roleId);
-    if (roleId === 'admin') return ['all_access'];
+    const role = roles.find((r) => r.id === roleId);
+    if (roleId === "admin") return ["all_access"];
     return role?.permissions || [];
-  }
+  };
 
   // --- Ministry / Department Worker Summary Stats ---
-  const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId);
-  const userMinistryIds = [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(Boolean) as string[];
+  const isGlobalManager =
+    isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId);
+  const userMinistryIds = [
+    workerProfile?.majorMinistryId,
+    workerProfile?.minorMinistryId,
+  ].filter(Boolean) as string[];
 
   // For Department Head: use the full set of department ministry IDs
   const statsMinistryIds = isDepartmentHead
-    ? departmentMinistries.map(m => m.id)
+    ? departmentMinistries.map((m) => m.id)
     : userMinistryIds;
 
   // Primary workers: those whose PRIMARY ministry is in the stats scope
   const primaryWorkers = isGlobalManager
-    ? (workers || [])
-    : (workers || []).filter(w => w.majorMinistryId && statsMinistryIds.includes(w.majorMinistryId));
+    ? workers || []
+    : (workers || []).filter(
+        (w) =>
+          w.majorMinistryId && statsMinistryIds.includes(w.majorMinistryId),
+      );
 
   // Secondary workers: those whose SECONDARY ministry is in the stats scope — NOT counted in total
   const totalSecondary = isGlobalManager
-    ? (workers || []).filter(w => !!w.minorMinistryId).length
-    : (workers || []).filter(w => w.minorMinistryId && statsMinistryIds.includes(w.minorMinistryId)).length;
+    ? (workers || []).filter((w) => !!w.minorMinistryId).length
+    : (workers || []).filter(
+        (w) =>
+          w.minorMinistryId && statsMinistryIds.includes(w.minorMinistryId),
+      ).length;
 
   const totalWorkers = primaryWorkers.length;
-  const totalActive = primaryWorkers.filter(w => w.status === 'Active').length;
-  const totalInactive = primaryWorkers.filter(w => w.status === 'Inactive').length;
+  const totalActive = primaryWorkers.filter(
+    (w) => w.status === "Active",
+  ).length;
+  const totalInactive = primaryWorkers.filter(
+    (w) => w.status === "Inactive",
+  ).length;
 
   // --- Per-ministry breakdown for Department Head ---
   const ministryBreakdown = useMemo(() => {
     if (!isDepartmentHead || departmentMinistries.length === 0) return [];
-    return departmentMinistries.map(ministry => {
-      const mPrimary = (allWorkers || []).filter(w => w.majorMinistryId === ministry.id);
-      const mSecondary = (allWorkers || []).filter(w => w.minorMinistryId === ministry.id);
+    return departmentMinistries.map((ministry) => {
+      const mPrimary = (allWorkers || []).filter(
+        (w) => w.majorMinistryId === ministry.id,
+      );
+      const mSecondary = (allWorkers || []).filter(
+        (w) => w.minorMinistryId === ministry.id,
+      );
       return {
         ministry,
         total: mPrimary.length,
-        active: mPrimary.filter(w => w.status === 'Active').length,
-        inactive: mPrimary.filter(w => w.status === 'Inactive').length,
+        active: mPrimary.filter((w) => w.status === "Active").length,
+        inactive: mPrimary.filter((w) => w.status === "Inactive").length,
         secondary: mSecondary.length,
         primaryWorkers: mPrimary,
       };
@@ -1117,7 +1714,13 @@ export default function WorkersPage() {
   }, [isDepartmentHead, departmentMinistries, allWorkers]);
 
   if (isLoading) {
-    return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+    return (
+      <AppLayout>
+        <div className="flex justify-center py-10">
+          <LoaderCircle className="h-8 w-8 animate-spin" />
+        </div>
+      </AppLayout>
+    );
   }
 
   if (!canManageWorkers) {
@@ -1126,7 +1729,9 @@ export default function WorkersPage() {
         <Card>
           <CardHeader>
             <CardTitle>Access Denied</CardTitle>
-            <CardDescription>You do not have permission to view this page.</CardDescription>
+            <CardDescription>
+              You do not have permission to view this page.
+            </CardDescription>
           </CardHeader>
         </Card>
       </AppLayout>
@@ -1162,7 +1767,9 @@ export default function WorkersPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Workers</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Total Workers
+              </CardTitle>
               <Users className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent className="px-4 pb-3">
@@ -1171,29 +1778,41 @@ export default function WorkersPage() {
           </Card>
           <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
             <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Active</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Active
+              </CardTitle>
               <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
             </CardHeader>
             <CardContent className="px-4 pb-3">
-              <p className="text-2xl font-bold text-green-700 dark:text-green-400">{totalActive}</p>
+              <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                {totalActive}
+              </p>
             </CardContent>
           </Card>
           <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
             <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Inactive</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Inactive
+              </CardTitle>
               <UserX className="h-4 w-4 text-red-600 dark:text-red-400" />
             </CardHeader>
             <CardContent className="px-4 pb-3">
-              <p className="text-2xl font-bold text-red-700 dark:text-red-400">{totalInactive}</p>
+              <p className="text-2xl font-bold text-red-700 dark:text-red-400">
+                {totalInactive}
+              </p>
             </CardContent>
           </Card>
           <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
             <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Secondary Workers</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Secondary Workers
+              </CardTitle>
               <Users2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             </CardHeader>
             <CardContent className="px-4 pb-3">
-              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{totalSecondary}</p>
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                {totalSecondary}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -1202,151 +1821,269 @@ export default function WorkersPage() {
       {/* Department Head: per-ministry breakdown */}
       {isDepartmentHead && ministryBreakdown.length > 0 && (
         <div className="mt-5">
-          <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Ministry Breakdown</h2>
+          <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
+            Ministry Breakdown
+          </h2>
           <Tabs defaultValue={ministryBreakdown[0]?.ministry.id}>
             <TabsList className="flex flex-wrap h-auto gap-1 mb-4">
               {ministryBreakdown.map(({ ministry }) => (
-                <TabsTrigger key={ministry.id} value={ministry.id} className="text-xs">
+                <TabsTrigger
+                  key={ministry.id}
+                  value={ministry.id}
+                  className="text-xs"
+                >
                   {ministry.name}
                 </TabsTrigger>
               ))}
             </TabsList>
-            {ministryBreakdown.map(({ ministry, total, active, inactive, secondary, primaryWorkers: mWorkers }) => (
-              <TabsContent key={ministry.id} value={ministry.id} className="space-y-3">
-                {/* Per-ministry stat row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <Card className="border-primary/20 bg-primary/5">
-                    <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Total</CardTitle>
-                      <Users className="h-3.5 w-3.5 text-primary" />
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <p className="text-xl font-bold">{total}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
-                    <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Active</CardTitle>
-                      <UserCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <p className="text-xl font-bold text-green-700 dark:text-green-400">{active}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
-                    <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Inactive</CardTitle>
-                      <UserX className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <p className="text-xl font-bold text-red-700 dark:text-red-400">{inactive}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
-                    <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
-                      <CardTitle className="text-xs font-medium text-muted-foreground">Secondary</CardTitle>
-                      <Users2 className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{secondary}</p>
-                    </CardContent>
-                  </Card>
-                </div>
-                {/* Per-ministry worker table */}
-                <div className="rounded-lg border shadow-sm overflow-x-auto w-full">
-                  <Table className="min-w-[700px]">
-                    <TableHeader>
-                      <TableRow>
-                        {canManageWorkers && (
-                          <TableHead className="w-[40px]">
-                            <Checkbox
-                              checked={mWorkers.length > 0 && mWorkers.every(w => selectedWorkerIds.includes(w.id))}
-                              onCheckedChange={() => toggleSelectAll(mWorkers)}
-                            />
-                          </TableHead>
-                        )}
-                        <TableHead>Name</TableHead>
-                        <TableHead>Worker ID</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Contact</TableHead>
-                        {canManageWorkers && <TableHead><span className="sr-only">Actions</span></TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mWorkers.length === 0 && (
+            {ministryBreakdown.map(
+              ({
+                ministry,
+                total,
+                active,
+                inactive,
+                secondary,
+                primaryWorkers: mWorkers,
+              }) => (
+                <TabsContent
+                  key={ministry.id}
+                  value={ministry.id}
+                  className="space-y-3"
+                >
+                  {/* Per-ministry stat row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+                        <CardTitle className="text-xs font-medium text-muted-foreground">
+                          Total
+                        </CardTitle>
+                        <Users className="h-3.5 w-3.5 text-primary" />
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3">
+                        <p className="text-xl font-bold">{total}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                      <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+                        <CardTitle className="text-xs font-medium text-muted-foreground">
+                          Active
+                        </CardTitle>
+                        <UserCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3">
+                        <p className="text-xl font-bold text-green-700 dark:text-green-400">
+                          {active}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
+                      <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+                        <CardTitle className="text-xs font-medium text-muted-foreground">
+                          Inactive
+                        </CardTitle>
+                        <UserX className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3">
+                        <p className="text-xl font-bold text-red-700 dark:text-red-400">
+                          {inactive}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+                      <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-4">
+                        <CardTitle className="text-xs font-medium text-muted-foreground">
+                          Secondary
+                        </CardTitle>
+                        <Users2 className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3">
+                        <p className="text-xl font-bold text-amber-700 dark:text-amber-400">
+                          {secondary}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  {/* Per-ministry worker table */}
+                  <div className="rounded-lg border shadow-sm overflow-x-auto w-full">
+                    <Table className="min-w-[700px]">
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">
-                            No workers in this ministry.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {mWorkers.map(worker => (
-                        <TableRow key={worker.id} className={selectedWorkerIds.includes(worker.id) ? "bg-muted/50 transition-colors" : "transition-colors"}>
                           {canManageWorkers && (
-                            <TableCell>
+                            <TableHead className="w-[40px]">
                               <Checkbox
-                                checked={selectedWorkerIds.includes(worker.id)}
-                                onCheckedChange={() => toggleSelectWorker(worker.id)}
+                                checked={
+                                  mWorkers.length > 0 &&
+                                  mWorkers.every((w) =>
+                                    selectedWorkerIds.includes(w.id),
+                                  )
+                                }
+                                onCheckedChange={() =>
+                                  toggleSelectAll(mWorkers)
+                                }
                               />
-                            </TableCell>
+                            </TableHead>
                           )}
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src={worker.avatarUrl} alt={`${worker.firstName} ${worker.lastName}`} />
-                                <AvatarFallback>{worker.firstName?.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              {`${worker.firstName} ${worker.lastName}`}
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">{worker.workerId}</TableCell>
-                          <TableCell>{getRoleName(worker.roleId)}</TableCell>
-                          <TableCell>
-                            <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
-                              worker.status === 'Active' ? 'bg-green-100 text-green-800' :
-                                worker.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                            }>
-                              {worker.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="text-xs">{worker.email}</span>
-                              <span className="text-[10px] text-muted-foreground">{worker.phone}</span>
-                            </div>
-                          </TableCell>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Worker ID</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Contact</TableHead>
                           {canManageWorkers && (
-                            <TableCell>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button aria-haspopup="true" size="icon" variant="ghost">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Toggle menu</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onSelect={() => setTimeout(() => handleEdit(worker), 100)}>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => setTimeout(() => handlePasswordReset(worker), 100)}>
-                                    <Mail className="mr-2 h-4 w-4" /> Send Reset Link
-                                  </DropdownMenuItem>
-                                  {worker.id !== user?.uid && (
-                                    <DropdownMenuItem onSelect={() => setTimeout(() => handleImpersonate(worker), 100)}>
-                                      <LogIn className="mr-2 h-4 w-4" /> Impersonate
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem onSelect={() => setTimeout(() => handleDelete(worker.id), 100)} className="text-destructive">Delete</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
+                            <TableHead>
+                              <span className="sr-only">Actions</span>
+                            </TableHead>
                           )}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </TabsContent>
-            ))}
+                      </TableHeader>
+                      <TableBody>
+                        {mWorkers.length === 0 && (
+                          <TableRow>
+                            <TableCell
+                              colSpan={6}
+                              className="text-center text-muted-foreground py-6 text-sm"
+                            >
+                              No workers in this ministry.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {mWorkers.map((worker) => (
+                          <TableRow
+                            key={worker.id}
+                            className={
+                              selectedWorkerIds.includes(worker.id)
+                                ? "bg-muted/50 transition-colors"
+                                : "transition-colors"
+                            }
+                          >
+                            {canManageWorkers && (
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedWorkerIds.includes(
+                                    worker.id,
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleSelectWorker(worker.id)
+                                  }
+                                />
+                              </TableCell>
+                            )}
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-3">
+                                <Avatar>
+                                  <AvatarImage
+                                    src={worker.avatarUrl}
+                                    alt={`${worker.firstName} ${worker.lastName}`}
+                                  />
+                                  <AvatarFallback>
+                                    {worker.firstName?.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {`${worker.firstName} ${worker.lastName}`}
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                              {worker.workerId}
+                            </TableCell>
+                            <TableCell>{getRoleName(worker.roleId)}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  worker.status === "Active"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                                className={
+                                  worker.status === "Active"
+                                    ? "bg-green-100 text-green-800"
+                                    : worker.status === "Pending Approval"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                }
+                              >
+                                {worker.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-xs">{worker.email}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {worker.phone}
+                                </span>
+                              </div>
+                            </TableCell>
+                            {canManageWorkers && (
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      aria-haspopup="true"
+                                      size="icon"
+                                      variant="ghost"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                      <span className="sr-only">
+                                        Toggle menu
+                                      </span>
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onSelect={() =>
+                                        setTimeout(
+                                          () => handleEdit(worker),
+                                          100,
+                                        )
+                                      }
+                                    >
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onSelect={() =>
+                                        setTimeout(
+                                          () => handlePasswordReset(worker),
+                                          100,
+                                        )
+                                      }
+                                    >
+                                      <Mail className="mr-2 h-4 w-4" /> Send
+                                      Reset Link
+                                    </DropdownMenuItem>
+                                    {worker.id !== user?.uid && (
+                                      <DropdownMenuItem
+                                        onSelect={() =>
+                                          setTimeout(
+                                            () => handleImpersonate(worker),
+                                            100,
+                                          )
+                                        }
+                                      >
+                                        <LogIn className="mr-2 h-4 w-4" />{" "}
+                                        Impersonate
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                      onSelect={() =>
+                                        setTimeout(
+                                          () => handleDelete(worker.id),
+                                          100,
+                                        )
+                                      }
+                                      className="text-destructive"
+                                    >
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+              ),
+            )}
           </Tabs>
         </div>
       )}
@@ -1358,7 +2095,10 @@ export default function WorkersPage() {
               {canManageWorkers && (
                 <TableHead className="w-[40px]">
                   <Checkbox
-                    checked={workers.length > 0 && workers.every(w => selectedWorkerIds.includes(w.id))}
+                    checked={
+                      workers.length > 0 &&
+                      workers.every((w) => selectedWorkerIds.includes(w.id))
+                    }
                     onCheckedChange={() => toggleSelectAll(workers)}
                   />
                 </TableHead>
@@ -1384,77 +2124,131 @@ export default function WorkersPage() {
                 </TableCell>
               </TableRow>
             )}
-            {workers && workers.map((worker) => (
-              <TableRow key={worker.id} className={selectedWorkerIds.includes(worker.id) ? "bg-muted/50 transition-colors" : "transition-colors"}>
-                {canManageWorkers && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedWorkerIds.includes(worker.id)}
-                      onCheckedChange={() => toggleSelectWorker(worker.id)}
-                    />
+            {workers &&
+              workers.map((worker) => (
+                <TableRow
+                  key={worker.id}
+                  className={
+                    selectedWorkerIds.includes(worker.id)
+                      ? "bg-muted/50 transition-colors"
+                      : "transition-colors"
+                  }
+                >
+                  {canManageWorkers && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedWorkerIds.includes(worker.id)}
+                        onCheckedChange={() => toggleSelectWorker(worker.id)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage
+                          src={worker.avatarUrl}
+                          alt={`${worker.firstName} ${worker.lastName}`}
+                        />
+                        <AvatarFallback>
+                          {worker.firstName?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {`${worker.firstName} ${worker.lastName}`}
+                    </div>
                   </TableCell>
-                )}
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={worker.avatarUrl} alt={`${worker.firstName} ${worker.lastName}`} />
-                      <AvatarFallback>{worker.firstName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    {`${worker.firstName} ${worker.lastName}`}
-                  </div>
-                </TableCell>
-                <TableCell className="font-mono text-xs">{worker.workerId}</TableCell>
-                <TableCell>{getRoleName(worker.roleId)}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1 max-w-[200px]">
-                    {getPermissions(worker.roleId).map(p => (
-                      <Badge key={p} variant="outline" className="text-[10px] px-1 py-0 h-4 normal-case font-normal border-primary/20 bg-primary/5">
-                        {p.replace(/_/g, ' ')}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={worker.status === 'Active' ? 'default' : 'secondary'} className={
-                    worker.status === 'Active' ? 'bg-green-100 text-green-800' :
-                      worker.status === 'Pending Approval' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                  }>
-                    {worker.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="text-xs">{worker.email}</span>
-                    <span className="text-[10px] text-muted-foreground">{worker.phone}</span>
-                  </div>
-                </TableCell>
-                {canManageWorkers && (
+                  <TableCell className="font-mono text-xs">
+                    {worker.workerId}
+                  </TableCell>
+                  <TableCell>{getRoleName(worker.roleId)}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setTimeout(() => handleEdit(worker), 100)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setTimeout(() => handlePasswordReset(worker), 100)}>
-                          <Mail className="mr-2 h-4 w-4" /> Send Reset Link
-                        </DropdownMenuItem>
-                        {worker.id !== user?.uid && (
-                          <DropdownMenuItem onSelect={() => setTimeout(() => handleImpersonate(worker), 100)}>
-                            <LogIn className="mr-2 h-4 w-4" />
-                            Impersonate
+                    <div className="flex flex-wrap gap-1 max-w-[200px]">
+                      {getPermissions(worker.roleId).map((p) => (
+                        <Badge
+                          key={p}
+                          variant="outline"
+                          className="text-[10px] px-1 py-0 h-4 normal-case font-normal border-primary/20 bg-primary/5"
+                        >
+                          {p.replace(/_/g, " ")}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        worker.status === "Active" ? "default" : "secondary"
+                      }
+                      className={
+                        worker.status === "Active"
+                          ? "bg-green-100 text-green-800"
+                          : worker.status === "Pending Approval"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                      }
+                    >
+                      {worker.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-xs">{worker.email}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {worker.phone}
+                      </span>
+                    </div>
+                  </TableCell>
+                  {canManageWorkers && (
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setTimeout(() => handleEdit(worker), 100)
+                            }
+                          >
+                            Edit
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onSelect={() => setTimeout(() => handleDelete(worker.id), 100)} className="text-destructive">Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setTimeout(() => handlePasswordReset(worker), 100)
+                            }
+                          >
+                            <Mail className="mr-2 h-4 w-4" /> Send Reset Link
+                          </DropdownMenuItem>
+                          {worker.id !== user?.uid && (
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setTimeout(() => handleImpersonate(worker), 100)
+                              }
+                            >
+                              <LogIn className="mr-2 h-4 w-4" />
+                              Impersonate
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setTimeout(() => handleDelete(worker.id), 100)
+                            }
+                            className="text-destructive"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </div>
@@ -1462,7 +2256,7 @@ export default function WorkersPage() {
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-lg">
           <WorkerForm
-            key={selectedWorker?.id || 'new-worker-form'}
+            key={selectedWorker?.id || "new-worker-form"}
             worker={selectedWorker}
             roles={roles}
             ministries={ministries}
@@ -1476,7 +2270,10 @@ export default function WorkersPage() {
 
       <Sheet open={isImportSheetOpen} onOpenChange={setIsImportSheetOpen}>
         <SheetContent className="sm:max-w-lg">
-          <ImportSheet onImport={handleImportWorkers} onClose={() => setIsImportSheetOpen(false)} />
+          <ImportSheet
+            onImport={handleImportWorkers}
+            onClose={() => setIsImportSheetOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 
@@ -1491,23 +2288,42 @@ export default function WorkersPage() {
                 </div>
                 <div className="hidden sm:block">
                   <p className="text-sm font-medium">Workers Selected</p>
-                  <p className="text-xs text-muted-foreground">Perform batch actions</p>
+                  <p className="text-xs text-muted-foreground">
+                    Perform batch actions
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {(isMealStubAssigner || canManageAllMealStubs) && (
-                  <Button size="sm" variant="outline" className="border-primary/50 text-primary hover:bg-primary/5" onClick={() => setIsBatchMealStubSheetOpen(true)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-primary/50 text-primary hover:bg-primary/5"
+                    onClick={() => setIsBatchMealStubSheetOpen(true)}
+                  >
                     <Ticket className="h-4 w-4 mr-2" /> Meal Stubs
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => setIsBatchMoveSheetOpen(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsBatchMoveSheetOpen(true)}
+                >
                   <ArrowRightLeft className="h-4 w-4 mr-2" /> Move
                 </Button>
-                <Button size="sm" variant="destructive" onClick={() => setIsBatchDeleteDialogOpen(true)}>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setIsBatchDeleteDialogOpen(true)}
+                >
                   <Trash2 className="h-4 w-4 mr-2" /> Delete
                 </Button>
                 <div className="w-px h-8 bg-border mx-1 hidden sm:block" />
-                <Button size="icon" variant="ghost" onClick={() => setSelectedWorkerIds([])}>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setSelectedWorkerIds([])}
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -1517,18 +2333,25 @@ export default function WorkersPage() {
       )}
 
       {/* Batch Delete Confirmation */}
-      <AlertDialog open={isBatchDeleteDialogOpen} onOpenChange={setIsBatchDeleteDialogOpen}>
+      <AlertDialog
+        open={isBatchDeleteDialogOpen}
+        onOpenChange={setIsBatchDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete {selectedWorkerIds.length} worker profile(s).
-              This action cannot be undone and will remove all associated records.
+              This will permanently delete {selectedWorkerIds.length} worker
+              profile(s). This action cannot be undone and will remove all
+              associated records.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleBatchDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete Workers
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1548,7 +2371,10 @@ export default function WorkersPage() {
       </Sheet>
 
       {/* Batch Meal Stub Sheet */}
-      <Sheet open={isBatchMealStubSheetOpen} onOpenChange={setIsBatchMealStubSheetOpen}>
+      <Sheet
+        open={isBatchMealStubSheetOpen}
+        onOpenChange={setIsBatchMealStubSheetOpen}
+      >
         <SheetContent className="sm:max-w-md">
           <BatchMealStubSheet
             selectedCount={selectedWorkerIds.length}
@@ -1557,7 +2383,6 @@ export default function WorkersPage() {
           />
         </SheetContent>
       </Sheet>
-
     </AppLayout>
   );
 }
