@@ -108,7 +108,7 @@ import {
   deleteDocumentNonBlocking,
   updateDocumentNonBlocking,
   addDocumentNonBlocking,
-} from "@/firebase/firestore-utils";
+} from "@/firebase/non-blocking-updates";
 import { orderBy, limit } from "firebase/firestore";
 import { format } from "date-fns";
 
