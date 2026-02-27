@@ -16,7 +16,21 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+} from "@/components/ui/dropdown-menu";
 import {
   Collapsible,
   CollapsibleContent,
@@ -204,6 +218,9 @@ export function Nav({
     return hasAccess(item.permissionKey);
   });
 
+  const { state: sidebarState } = useSidebar();
+  const isCollapsed = sidebarState === "collapsed";
+
   return (
     <nav className={cn("flex flex-col", className)}>
       <SidebarMenu>
@@ -211,20 +228,96 @@ export function Nav({
           const visibleSubItems =
             item.subItems?.filter((sub) => hasAccess(sub.permissionKey)) || [];
 
-          return !item.subItems || visibleSubItems.length === 0 ? (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === item.href}
-                tooltip={{ children: item.label }}
-              >
-                <Link href={item.href}>
-                  <item.icon className="size-4" />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ) : (
+          // No sub-items: simple link
+          if (!item.subItems || visibleSubItems.length === 0) {
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href}
+                  tooltip={{ children: item.label }}
+                >
+                  <Link href={item.href}>
+                    <item.icon className="size-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          }
+
+          // Has sub-items and sidebar is collapsed: use DropdownMenu
+          if (isCollapsed) {
+            return (
+              <SidebarMenuItem key={item.href}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                      isActive={pathname.startsWith(item.href)}
+                    >
+                      <item.icon className="size-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    side="right"
+                    align="start"
+                    className="min-w-[200px]"
+                  >
+                    {/* Special case for Settings */}
+                    {item.href === "/settings" &&
+                      (hasAccess("canManageRoles") ||
+                        hasAccess("canManageMinistries") ||
+                        hasAccess("canManageFacilities")) && (
+                        <DropdownMenuItem asChild>
+                          <Link href={item.href}>General</Link>
+                        </DropdownMenuItem>
+                      )}
+
+                    {visibleSubItems.map((subItem) => {
+                      const visibleNestedItems =
+                        subItem.subItems?.filter((nested) =>
+                          hasAccess(nested.permissionKey),
+                        ) || [];
+
+                      if (visibleNestedItems.length > 0) {
+                        return (
+                          <DropdownMenuSub key={subItem.label}>
+                            <DropdownMenuSubTrigger>
+                              {subItem.label}
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                {visibleNestedItems.map((nested) => (
+                                  <DropdownMenuItem key={nested.href} asChild>
+                                    <Link href={nested.href}>
+                                      {nested.label}
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                        );
+                      }
+
+                      return (
+                        <DropdownMenuItem
+                          key={subItem.href + subItem.label}
+                          asChild
+                        >
+                          <Link href={subItem.href}>{subItem.label}</Link>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
+            );
+          }
+
+          // Has sub-items and sidebar is expanded: use Collapsible
+          return (
             <Collapsible
               key={item.href}
               asChild
@@ -243,23 +336,23 @@ export function Nav({
                     <ChevronRight className="size-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-90" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
-                <CollapsibleContent asChild>
-                  <SidebarMenu className="pl-6 pt-1 w-full">
+                <CollapsibleContent>
+                  <SidebarMenuSub>
                     {/* Special case for Settings: show 'General' link if top-level is clicked */}
                     {item.href === "/settings" &&
                       (hasAccess("canManageRoles") ||
                         hasAccess("canManageMinistries") ||
                         hasAccess("canManageFacilities")) && (
-                        <SidebarMenuItem>
-                          <SidebarMenuButton
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton
                             asChild
                             isActive={pathname === item.href}
                           >
                             <Link href={item.href}>
                               <span>General</span>
                             </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
                       )}
 
                     {visibleSubItems.map((subItem) => {
@@ -280,48 +373,48 @@ export function Nav({
                               )
                             }
                           >
-                            <SidebarMenuItem className="flex flex-col">
+                            <SidebarMenuSubItem className="flex flex-col">
                               <CollapsibleTrigger asChild>
-                                <SidebarMenuButton className="justify-between w-full">
+                                <SidebarMenuSubButton className="justify-between w-full">
                                   <span>{subItem.label}</span>
-                                  <ChevronRight className="size-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-90" />
-                                </SidebarMenuButton>
+                                  <ChevronRight className="size-3 shrink-0 transition-transform duration-200 data-[state=open]:rotate-90" />
+                                </SidebarMenuSubButton>
                               </CollapsibleTrigger>
-                              <CollapsibleContent asChild>
-                                <SidebarMenu className="pl-4 pt-1 w-full border-l border-primary/10 ml-1">
+                              <CollapsibleContent>
+                                <SidebarMenuSub>
                                   {visibleNestedItems.map((nested) => (
-                                    <SidebarMenuItem key={nested.href}>
-                                      <SidebarMenuButton
+                                    <SidebarMenuSubItem key={nested.href}>
+                                      <SidebarMenuSubButton
                                         asChild
                                         isActive={pathname === nested.href}
                                       >
                                         <Link href={nested.href}>
                                           <span>{nested.label}</span>
                                         </Link>
-                                      </SidebarMenuButton>
-                                    </SidebarMenuItem>
+                                      </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
                                   ))}
-                                </SidebarMenu>
+                                </SidebarMenuSub>
                               </CollapsibleContent>
-                            </SidebarMenuItem>
+                            </SidebarMenuSubItem>
                           </Collapsible>
                         );
                       }
 
                       return (
-                        <SidebarMenuItem key={subItem.href + subItem.label}>
-                          <SidebarMenuButton
+                        <SidebarMenuSubItem key={subItem.href + subItem.label}>
+                          <SidebarMenuSubButton
                             asChild
                             isActive={pathname === subItem.href}
                           >
                             <Link href={subItem.href}>
                               <span>{subItem.label}</span>
                             </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
                       );
                     })}
-                  </SidebarMenu>
+                  </SidebarMenuSub>
                 </CollapsibleContent>
               </SidebarMenuItem>
             </Collapsible>

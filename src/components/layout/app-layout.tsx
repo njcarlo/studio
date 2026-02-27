@@ -8,7 +8,6 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarTrigger,
-  SidebarRail,
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { Nav } from "@/components/layout/nav";
@@ -103,10 +102,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
         <SidebarHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
+            <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
               <Image
                 src="/cog-logo.png"
                 alt="COG Logo"
@@ -124,7 +123,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarContent>
           <Nav pathname={currentPathname} />
         </SidebarContent>
-        <SidebarRail />
       </Sidebar>
       <SidebarInset className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <ImpersonationBanner />
