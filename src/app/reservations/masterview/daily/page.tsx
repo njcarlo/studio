@@ -13,7 +13,6 @@ import {
     Mic,
     Tv,
     Speaker,
-    LayoutGrid,
 } from "lucide-react";
 import {
     format,
@@ -141,51 +140,45 @@ export default function DailyViewPage() {
 
     return (
         <AppLayout>
-            <div className="max-w-[1400px] mx-auto pb-24 space-y-10">
+            <div className="max-w-[1400px] mx-auto pb-20 space-y-6">
 
                 {/* Page Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-slate-200">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center shadow-md">
-                                <LayoutGrid className="h-4 w-4 text-white" />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Room Reservations</span>
-                        </div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">Daily View</h1>
-                        <p className="text-slate-500 font-medium">Approved reservations grouped by area and room.</p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b">
+                    <div>
+                        <h1 className="text-3xl font-headline font-bold">Daily View</h1>
+                        <p className="text-muted-foreground">Approved reservations grouped by area and room.</p>
                     </div>
 
                     {/* Date Navigator */}
                     <div className="flex flex-col items-end gap-3">
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1.5 shadow-sm">
+                        <div className="flex items-center gap-1 bg-card border rounded-lg p-1">
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={handlePrev}
-                                className="h-9 w-9 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                className="h-8 w-8 rounded-md"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <button
                                 onClick={handleToday}
-                                className="px-5 py-2 rounded-lg transition-colors hover:bg-slate-50 text-center"
+                                className="px-4 py-1.5 rounded-md transition-colors hover:bg-muted text-center"
                             >
                                 <p className={cn(
-                                    "text-lg font-black tracking-tight leading-none",
-                                    isToday(currentDate) ? "text-primary" : "text-slate-900"
+                                    "text-base font-semibold leading-none",
+                                    isToday(currentDate) ? "text-primary" : "text-foreground"
                                 )}>
                                     {format(currentDate, "MMMM d, yyyy")}
                                 </p>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mt-0.5">
-                                    {format(currentDate, "EEEE")} {isToday(currentDate) && <span className="text-primary">· Today</span>}
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    {format(currentDate, "EEEE")}{isToday(currentDate) && <span className="text-primary"> · Today</span>}
                                 </p>
                             </button>
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={handleNext}
-                                className="h-9 w-9 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                className="h-8 w-8 rounded-md"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
@@ -195,18 +188,18 @@ export default function DailyViewPage() {
                         {!isLoading && (
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bookings</span>
-                                    <p className="text-lg font-black text-slate-900 leading-none">{totalBookings}</p>
+                                    <span className="text-xs text-muted-foreground">Bookings</span>
+                                    <p className="text-base font-semibold leading-none">{totalBookings}</p>
                                 </div>
-                                <div className="w-px h-8 bg-slate-200" />
+                                <div className="w-px h-6 bg-border" />
                                 <div className="text-right">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rooms In Use</span>
-                                    <p className="text-lg font-black text-slate-900 leading-none">{totalRooms}</p>
+                                    <span className="text-xs text-muted-foreground">Rooms In Use</span>
+                                    <p className="text-base font-semibold leading-none">{totalRooms}</p>
                                 </div>
-                                <div className="w-px h-8 bg-slate-200" />
+                                <div className="w-px h-6 bg-border" />
                                 <div className="text-right">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Areas</span>
-                                    <p className="text-lg font-black text-slate-900 leading-none">{groupedData.length}</p>
+                                    <span className="text-xs text-muted-foreground">Areas</span>
+                                    <p className="text-base font-semibold leading-none">{groupedData.length}</p>
                                 </div>
                             </div>
                         )}
@@ -215,56 +208,54 @@ export default function DailyViewPage() {
 
                 {/* Main Content */}
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-48 gap-5">
-                        <LoaderCircle className="h-12 w-12 animate-spin text-slate-300" strokeWidth={3} />
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">Loading schedule</p>
+                    <div className="flex flex-col items-center justify-center py-24 gap-3">
+                        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Loading schedule...</p>
                     </div>
                 ) : groupedData.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-48 text-center bg-gradient-to-b from-slate-50 to-white rounded-3xl border-2 border-dashed border-slate-200">
-                        <div className="h-24 w-24 rounded-3xl bg-white border border-slate-100 flex items-center justify-center mb-8 shadow-xl ring-1 ring-black/5">
-                            <CalendarIcon className="h-12 w-12 text-slate-200" strokeWidth={1.5} />
+                    <div className="flex flex-col items-center justify-center py-24 text-center">
+                        <div className="mb-4">
+                            <CalendarIcon className="h-10 w-10 text-muted-foreground/30" strokeWidth={1.5} />
                         </div>
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">All Clear</h3>
-                        <p className="text-slate-500 max-w-xs mt-3 text-sm font-medium leading-loose">
-                            No approved reservations on <span className="font-black text-slate-900">{format(currentDate, "MMMM d, yyyy")}</span>.
+                        <h3 className="text-xl font-semibold">All Clear</h3>
+                        <p className="text-sm text-muted-foreground max-w-xs mt-2">
+                            No approved reservations on <span className="font-semibold text-foreground">{format(currentDate, "MMMM d, yyyy")}</span>.
                         </p>
-                        <div className="flex gap-3 mt-8">
-                            <Button variant="outline" onClick={handlePrev} className="gap-2 rounded-xl border-slate-200 font-bold text-slate-600">
+                        <div className="flex gap-3 mt-6">
+                            <Button variant="outline" onClick={handlePrev} className="gap-2">
                                 <ChevronLeft className="h-4 w-4" /> Previous Day
                             </Button>
-                            <Button variant="outline" onClick={handleNext} className="gap-2 rounded-xl border-slate-200 font-bold text-slate-600">
+                            <Button variant="outline" onClick={handleNext} className="gap-2">
                                 Next Day <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-14">
+                    <div className="space-y-8">
                         {groupedData.map(([areaId, group]) => (
-                            <section key={areaId} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <section key={areaId}>
                                 {/* Area label */}
-                                <div className="flex items-center gap-4 mb-5">
+                                <div className="flex items-center gap-3 mb-3">
                                     <div>
-                                        <h2 className="text-[11px] font-black uppercase tracking-[0.35em] text-slate-900">
-                                            {group.areaName}
-                                        </h2>
-                                        <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">
+                                        <h2 className="text-sm font-semibold">{group.areaName}</h2>
+                                        <p className="text-xs text-muted-foreground">
                                             {group.items.length} {group.items.length === 1 ? "room" : "rooms"} · {group.items.reduce((s, i) => s + i.bookings.length, 0)} bookings
                                         </p>
                                     </div>
-                                    <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
+                                    <div className="flex-1 h-px bg-border" />
                                 </div>
 
                                 {/* Rooms table */}
-                                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                                <div className="rounded-lg border overflow-hidden bg-card">
                                     <Table>
                                         <TableHeader>
-                                            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b border-slate-200">
-                                                <TableHead className="w-[200px] h-12 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Room</TableHead>
-                                                <TableHead className="w-[230px] h-12 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Time Slot</TableHead>
-                                                <TableHead className="h-12 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Event</TableHead>
-                                                <TableHead className="w-[90px] h-12 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">AV</TableHead>
-                                                <TableHead className="w-[110px] h-12 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Visuals</TableHead>
-                                                <TableHead className="w-[56px] h-12" />
+                                            <TableRow className="hover:bg-transparent">
+                                                <TableHead className="w-[180px] h-9 px-3 text-xs">Room</TableHead>
+                                                <TableHead className="w-[200px] h-9 px-3 text-xs">Time Slot</TableHead>
+                                                <TableHead className="h-9 px-3 text-xs">Event</TableHead>
+                                                <TableHead className="w-[80px] h-9 px-3 text-xs text-center">AV</TableHead>
+                                                <TableHead className="w-[90px] h-9 px-3 text-xs text-center">Visuals</TableHead>
+                                                <TableHead className="w-[50px] h-9" />
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -276,27 +267,24 @@ export default function DailyViewPage() {
                                                         <TableRow
                                                             key={booking.id}
                                                             className={cn(
-                                                                "group transition-colors hover:bg-primary/5",
-                                                                !isLastBookingInRoom && "border-b border-dashed border-slate-100",
-                                                                isLastBookingInRoom && "border-b border-slate-200"
+                                                                "group",
+                                                                !isLastBookingInRoom && "border-b border-dashed border-muted",
+                                                                isLastBookingInRoom && "border-b border-border"
                                                             )}
                                                         >
                                                             {/* Room name — only show on first booking */}
-                                                            <TableCell className={cn(
-                                                                "px-6 align-middle",
-                                                                isFirstBookingInRoom ? "py-5" : "py-3"
-                                                            )}>
+                                                            <TableCell className="py-2 px-3 align-middle">
                                                                 {isFirstBookingInRoom && (
-                                                                    <div className="space-y-0.5">
-                                                                        <p className="text-sm font-black text-slate-900 leading-tight group-hover:text-primary transition-colors">
+                                                                    <div>
+                                                                        <p className="text-sm font-medium group-hover:text-primary transition-colors">
                                                                             {item.room.name}
                                                                         </p>
-                                                                        <div className="flex items-center gap-1.5">
+                                                                        <div className="flex items-center gap-1">
                                                                             <span className={cn(
                                                                                 "inline-block h-1.5 w-1.5 rounded-full",
-                                                                                item.bookings.length > 0 ? "bg-emerald-500" : "bg-slate-300"
+                                                                                item.bookings.length > 0 ? "bg-emerald-500" : "bg-muted-foreground/30"
                                                                             )} />
-                                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                            <span className="text-xs text-muted-foreground">
                                                                                 {item.bookings.length} {item.bookings.length === 1 ? "booking" : "bookings"}
                                                                             </span>
                                                                         </div>
@@ -305,68 +293,50 @@ export default function DailyViewPage() {
                                                             </TableCell>
 
                                                             {/* Time */}
-                                                            <TableCell className="px-6 py-4 align-middle">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="text-right">
-                                                                        <p className="text-[11px] font-black text-slate-800 font-mono tracking-tight">
-                                                                            {format((booking.start as any).toDate(), "hh:mm")}
-                                                                        </p>
-                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase">
-                                                                            {format((booking.start as any).toDate(), "a")}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="flex flex-col items-center gap-0.5 w-5">
-                                                                        <div className="h-px w-full bg-slate-300" />
-                                                                    </div>
-                                                                    <div className="text-left">
-                                                                        <p className="text-[11px] font-black text-slate-800 font-mono tracking-tight">
-                                                                            {format((booking.end as any).toDate(), "hh:mm")}
-                                                                        </p>
-                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase">
-                                                                            {format((booking.end as any).toDate(), "a")}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
+                                                            <TableCell className="px-3 py-2 align-middle">
+                                                                <p className="text-sm">
+                                                                    {format((booking.start as any).toDate(), "h:mm a")} – {format((booking.end as any).toDate(), "h:mm a")}
+                                                                </p>
                                                             </TableCell>
 
                                                             {/* Event details */}
-                                                            <TableCell className="px-6 py-4 align-middle max-w-xs">
-                                                                <p className="text-[13px] font-black text-slate-900 leading-snug truncate">{booking.title}</p>
-                                                                <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-1 italic mt-0.5">
+                                                            <TableCell className="px-3 py-2 align-middle max-w-xs">
+                                                                <p className="text-sm font-medium">{booking.title}</p>
+                                                                <p className="text-xs text-muted-foreground line-clamp-1">
                                                                     {booking.purpose || "Regular meeting"}
                                                                 </p>
                                                             </TableCell>
 
                                                             {/* AV Equipment */}
-                                                            <TableCell className="text-center px-6 py-4 align-middle">
+                                                            <TableCell className="text-center px-3 py-2 align-middle">
                                                                 {(booking.equipment_Mic || booking.equipment_Speakers) ? (
                                                                     <div className="flex flex-col items-center gap-0.5">
                                                                         <Mic className="h-4 w-4 text-emerald-500" />
-                                                                        <span className="text-[8px] font-black text-emerald-600 uppercase tracking-tighter">Yes</span>
+                                                                        <span className="text-[10px] text-emerald-600">Yes</span>
                                                                     </div>
                                                                 ) : (
-                                                                    <span className="text-[10px] text-slate-300 font-mono">—</span>
+                                                                    <span className="text-xs text-muted-foreground/40">—</span>
                                                                 )}
                                                             </TableCell>
 
                                                             {/* Visuals */}
-                                                            <TableCell className="text-center px-6 py-4 align-middle">
+                                                            <TableCell className="text-center px-3 py-2 align-middle">
                                                                 {booking.equipment_TV ? (
                                                                     <div className="flex flex-col items-center gap-0.5">
                                                                         <Tv className="h-4 w-4 text-blue-500" />
-                                                                        <span className="text-[8px] font-black text-blue-600 uppercase tracking-tighter">Yes</span>
+                                                                        <span className="text-[10px] text-blue-600">Yes</span>
                                                                     </div>
                                                                 ) : (
-                                                                    <span className="text-[10px] text-slate-300 font-mono">—</span>
+                                                                    <span className="text-xs text-muted-foreground/40">—</span>
                                                                 )}
                                                             </TableCell>
 
                                                             {/* Info button */}
-                                                            <TableCell className="px-3 py-4 align-middle text-right">
+                                                            <TableCell className="px-3 py-2 align-middle text-right">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    className="h-9 w-9 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-700 transition-all shadow-sm hover:shadow-md opacity-0 group-hover:opacity-100"
+                                                                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100"
                                                                     onClick={() => handleBookingClick(booking)}
                                                                 >
                                                                     <Info className="h-4 w-4" />
@@ -427,28 +397,28 @@ function BookingDetailsSheet({
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent className="sm:max-w-md overflow-y-auto border-l-0 shadow-2xl">
-                <SheetHeader className="pb-6 border-b border-slate-100">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none px-3 py-1 text-[10px] font-black tracking-widest uppercase">
+            <SheetContent className="sm:max-w-md overflow-y-auto">
+                <SheetHeader className="pb-6 border-b">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 text-xs">
                             {booking.status}
                         </Badge>
                     </div>
-                    <SheetTitle className="text-2xl font-black text-slate-900 leading-tight tracking-tight uppercase">
+                    <SheetTitle className="text-2xl font-headline font-bold">
                         {booking.title}
                     </SheetTitle>
-                    <SheetDescription className="text-slate-500 font-medium">
+                    <SheetDescription>
                         Reservation detail summary and equipment requirements
                     </SheetDescription>
                 </SheetHeader>
 
-                <div className="mt-8 space-y-8">
-                    <div className="space-y-5">
+                <div className="mt-6 space-y-6">
+                    <div className="space-y-4">
                         <DetailRow label="Location" value={roomName} />
                         <DetailRow label="Date" value={format(startTime, "PPPP")} />
                         <DetailRow
                             label="Schedule"
-                            value={`${format(startTime, "hh:mm a")} — ${format(endTime, "hh:mm a")}`}
+                            value={`${format(startTime, "h:mm a")} – ${format(endTime, "h:mm a")}`}
                         />
                         <DetailRow
                             label="Requested By"
@@ -456,35 +426,29 @@ function BookingDetailsSheet({
                         />
                     </div>
 
-                    <Separator className="bg-slate-100" />
+                    <Separator />
 
-                    <div className="space-y-3">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Purpose</h4>
-                        <p className="text-sm leading-relaxed text-slate-700 font-medium bg-slate-50 p-4 rounded-xl border border-slate-100 italic">
-                            &ldquo;{booking.purpose || "No specific purpose provided for this reservation."}&rdquo;
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-medium text-muted-foreground">Purpose</h4>
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                            {booking.purpose || "No specific purpose provided for this reservation."}
                         </p>
                     </div>
 
-                    <Separator className="bg-slate-100" />
+                    <Separator />
 
-                    <div className="space-y-4">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Technical Requirements</h4>
-                        <div className="grid grid-cols-1 gap-3">
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground">Technical Requirements</h4>
+                        <div className="grid grid-cols-1 gap-2">
                             <EquipmentStatus label="Television / Multimedia" active={!!booking.equipment_TV} icon={Tv} />
                             <EquipmentStatus label="Microphone / Audio" active={!!booking.equipment_Mic} icon={Mic} />
                             <EquipmentStatus label="Sound System / Speakers" active={!!booking.equipment_Speakers} icon={Speaker} />
                         </div>
                     </div>
 
-                    <div className="pt-8 pb-4">
-                        <Button
-                            variant="outline"
-                            className="w-full h-12 rounded-xl border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
-                            onClick={onClose}
-                        >
-                            Close Information
-                        </Button>
-                    </div>
+                    <Button variant="outline" className="w-full mt-4" onClick={onClose}>
+                        Close Details
+                    </Button>
                 </div>
             </SheetContent>
         </Sheet>
@@ -496,8 +460,8 @@ function BookingDetailsSheet({
 function DetailRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-            <span className="text-sm font-bold text-slate-900">{value}</span>
+            <span className="text-xs text-muted-foreground">{label}</span>
+            <span className="text-sm font-medium">{value}</span>
         </div>
     );
 }
@@ -505,19 +469,15 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function EquipmentStatus({ label, active, icon: Icon }: { label: string; active: boolean; icon: any }) {
     return (
         <div className={cn(
-            "flex items-center justify-between p-3 rounded-xl border transition-all duration-300",
-            active
-                ? "bg-emerald-50/50 border-emerald-100 text-emerald-900"
-                : "bg-slate-50/50 border-slate-100 text-slate-400 opacity-60"
+            "flex items-center justify-between p-2.5 rounded-lg border transition-colors",
+            active ? "bg-green-50 border-green-100 dark:bg-green-900/10 dark:border-green-900/20" : "opacity-50"
         )}>
-            <div className="flex items-center gap-3">
-                <div className={cn("p-2 rounded-lg", active ? "bg-white shadow-sm" : "")}>
-                    <Icon className="h-4 w-4" />
-                </div>
-                <span className="text-xs font-bold">{label}</span>
+            <div className="flex items-center gap-2.5">
+                <Icon className={cn("h-4 w-4", active ? "text-green-600" : "text-muted-foreground")} />
+                <span className="text-xs font-medium">{label}</span>
             </div>
-            <span className={cn("text-[9px] font-black uppercase tracking-widest", active ? "text-emerald-600" : "text-slate-300")}>
-                {active ? "Equipped" : "N / A"}
+            <span className={cn("text-xs", active ? "text-green-600" : "text-muted-foreground/40")}>
+                {active ? "Yes" : "No"}
             </span>
         </div>
     );

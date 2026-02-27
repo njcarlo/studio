@@ -22,7 +22,6 @@ import {
     CheckCircle2,
     XCircle,
     Clock,
-    User,
     Building2,
     Info
 } from "lucide-react";
@@ -83,7 +82,7 @@ export default function AllReservationsPage() {
             // Update the corresponding approval request if it exists
             const approvalsRef = collection(firestore, 'approvals');
             const q = query(approvalsRef, where("reservationId", "==", booking.id));
-            // This is a bit complex in a non-blocking way without a full query, 
+            // This is a bit complex in a non-blocking way without a full query,
             // but the approvals page already handles this if updated via approvals.
             // For simplicity and consistency, let's just update the reservation.
 
@@ -144,37 +143,37 @@ export default function AllReservationsPage() {
                     </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-lg border">
-                    <div className="relative flex-grow">
+                <div className="flex flex-col md:flex-row gap-3 items-center bg-card p-3 rounded-lg border">
+                    <div className="relative flex-grow w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder="Search by purpose, requester, or ID..."
-                            className="pl-10"
+                            className="pl-10 text-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <Badge
-                            className={cn("cursor-pointer px-4 py-1.5", statusFilter === 'all' ? "" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                            className={cn("cursor-pointer px-3 py-1 text-xs", statusFilter === 'all' ? "" : "bg-muted text-muted-foreground hover:bg-muted/80")}
                             onClick={() => setStatusFilter('all')}
                         >
                             All
                         </Badge>
                         <Badge
-                            className={cn("cursor-pointer px-4 py-1.5", statusFilter === 'pending' ? "bg-yellow-500" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                            className={cn("cursor-pointer px-3 py-1 text-xs", statusFilter === 'pending' ? "bg-yellow-500" : "bg-muted text-muted-foreground hover:bg-muted/80")}
                             onClick={() => setStatusFilter('pending')}
                         >
                             Pending
                         </Badge>
                         <Badge
-                            className={cn("cursor-pointer px-4 py-1.5", statusFilter === 'approved' ? "bg-green-500" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                            className={cn("cursor-pointer px-3 py-1 text-xs", statusFilter === 'approved' ? "bg-green-500" : "bg-muted text-muted-foreground hover:bg-muted/80")}
                             onClick={() => setStatusFilter('approved')}
                         >
                             Approved
                         </Badge>
                         <Badge
-                            className={cn("cursor-pointer px-4 py-1.5", statusFilter === 'rejected' ? "bg-red-500" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                            className={cn("cursor-pointer px-3 py-1 text-xs", statusFilter === 'rejected' ? "bg-red-500" : "bg-muted text-muted-foreground hover:bg-muted/80")}
                             onClick={() => setStatusFilter('rejected')}
                         >
                             Rejected
@@ -182,22 +181,22 @@ export default function AllReservationsPage() {
                     </div>
                 </div>
 
-                <Card>
+                <div className="rounded-lg border overflow-hidden bg-card">
                     <Table>
                         <TableHeader>
-                            <TableRow>
-                                <TableHead>Request</TableHead>
-                                <TableHead>Requester</TableHead>
-                                <TableHead>Venue & Schedule</TableHead>
-                                <TableHead>Pax / Items</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead className="h-9 px-3 text-xs">Request</TableHead>
+                                <TableHead className="h-9 px-3 text-xs">Requester</TableHead>
+                                <TableHead className="h-9 px-3 text-xs">Venue & Schedule</TableHead>
+                                <TableHead className="h-9 px-3 text-xs">Pax / Items</TableHead>
+                                <TableHead className="h-9 px-3 text-xs">Status</TableHead>
+                                <TableHead className="h-9 px-3 text-xs text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredBookings.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground text-sm">
                                         No reservations found matching your filters.
                                     </TableCell>
                                 </TableRow>
@@ -207,33 +206,26 @@ export default function AllReservationsPage() {
                                     const endTime = (booking.end as any).toDate();
 
                                     const statusClass =
-                                        booking.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                                            booking.status.startsWith('Pending') ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-red-100 text-red-700';
+                                        booking.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                            booking.status.startsWith('Pending') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
 
                                     return (
                                         <TableRow key={booking.id}>
-                                            <TableCell className="max-w-[200px]">
-                                                <div className="font-semibold truncate">{booking.title}</div>
+                                            <TableCell className="py-2 px-3 max-w-[200px]">
+                                                <div className="font-medium text-sm truncate">{booking.title}</div>
                                                 {booking.requestId && (
-                                                    <div className="text-[10px] font-mono text-muted-foreground uppercase">{booking.requestId}</div>
+                                                    <div className="text-[10px] font-mono text-muted-foreground">{booking.requestId}</div>
                                                 )}
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                        <User className="h-4 w-4" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-medium">{booking.name}</div>
-                                                        <div className="text-xs text-muted-foreground">{booking.email}</div>
-                                                    </div>
-                                                </div>
+                                            <TableCell className="py-2 px-3">
+                                                <div className="text-sm font-medium">{booking.name}</div>
+                                                <div className="text-xs text-muted-foreground">{booking.email}</div>
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-1.5 text-xs font-medium">
-                                                        <Building2 className="h-3 w-3" />
+                                            <TableCell className="py-2 px-3">
+                                                <div className="space-y-0.5">
+                                                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                                                        <Building2 className="h-3 w-3 text-muted-foreground" />
                                                         {getRoomName(booking.roomId)}
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -242,27 +234,27 @@ export default function AllReservationsPage() {
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                                         <Clock className="h-3 w-3" />
-                                                        {format(startTime, "p")} - {format(endTime, "p")}
+                                                        {format(startTime, "p")} – {format(endTime, "p")}
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="text-xs space-y-1">
+                                            <TableCell className="py-2 px-3">
+                                                <div className="text-xs space-y-0.5">
                                                     <div>Pax: <span className="font-medium">{booking.pax || 0}</span></div>
                                                     {(booking.numTables || booking.numChairs) ? (
-                                                        <div className="text-muted-foreground text-[10px]">
+                                                        <div className="text-muted-foreground">
                                                             T: {booking.numTables || 0} / C: {booking.numChairs || 0}
                                                         </div>
                                                     ) : null}
                                                     <div className="flex gap-1 flex-wrap">
-                                                        {booking.equipment_TV && <Badge variant="outline" className="text-[9px] h-4">TV</Badge>}
-                                                        {booking.equipment_Mic && <Badge variant="outline" className="text-[9px] h-4">Mic</Badge>}
-                                                        {booking.equipment_Speakers && <Badge variant="outline" className="text-[9px] h-4">Spkr</Badge>}
+                                                        {booking.equipment_TV && <Badge variant="outline" className="text-[9px] h-4 px-1">TV</Badge>}
+                                                        {booking.equipment_Mic && <Badge variant="outline" className="text-[9px] h-4 px-1">Mic</Badge>}
+                                                        {booking.equipment_Speakers && <Badge variant="outline" className="text-[9px] h-4 px-1">Spkr</Badge>}
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
-                                                <Badge className={cn("rounded-md", statusClass)}>
+                                            <TableCell className="py-2 px-3">
+                                                <Badge className={cn("rounded-md text-xs", statusClass)}>
                                                     {booking.status}
                                                 </Badge>
                                                 {booking.checkedInAt && (
@@ -271,28 +263,28 @@ export default function AllReservationsPage() {
                                                     </div>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="py-2 px-3 text-right">
                                                 {booking.status.startsWith('Pending') ? (
-                                                    <div className="flex justify-end gap-2">
+                                                    <div className="flex justify-end gap-1.5">
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
-                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
                                                             onClick={() => handleUpdateStatus(booking, 'Rejected')}
                                                         >
-                                                            <XCircle className="h-5 w-5" />
+                                                            <XCircle className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
-                                                            className="h-8 w-8 p-0 text-green-500 hover:text-green-600 hover:bg-green-50"
+                                                            className="h-7 w-7 p-0 text-green-500 hover:text-green-600 hover:bg-green-50"
                                                             onClick={() => handleUpdateStatus(booking, 'Approved')}
                                                         >
-                                                            <CheckCircle2 className="h-5 w-5" />
+                                                            <CheckCircle2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 ) : (
-                                                    <Button variant="ghost" size="sm" onClick={() => {/* Detail view? */ }}>
+                                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => {/* Detail view? */ }}>
                                                         View
                                                     </Button>
                                                 )}
@@ -303,7 +295,7 @@ export default function AllReservationsPage() {
                             )}
                         </TableBody>
                     </Table>
-                </Card>
+                </div>
             </div>
         </AppLayout>
     );

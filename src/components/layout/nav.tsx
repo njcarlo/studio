@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Settings,
@@ -11,6 +12,7 @@ import {
   ChevronRight,
   HeartHandshake,
   BarChart3,
+  UtensilsCrossed,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -63,32 +65,6 @@ type NavItem = {
 const allNavItems: NavItem[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   {
-    href: "/workers",
-    icon: Users,
-    label: "Workers",
-    subItems: [
-      { href: "/workers/my-qr", label: "My QR Code" },
-      {
-        href: "/workers",
-        label: "View and Update Workers",
-        permissionKey: "canManageWorkers",
-      },
-      {
-        href: "/meals",
-        label: "Meal Stub",
-        permissionKey: "canViewMealStubs",
-        subItems: [
-          { href: "/meals?tab=view", label: "View Meal Stub" },
-          {
-            href: "/meals?tab=assign",
-            label: "Assign Meal Stub",
-            permissionKey: "isMealStubAssigner",
-          },
-        ],
-      },
-    ],
-  },
-  {
     href: "/reservations",
     icon: CalendarDays,
     label: "Room Reservations",
@@ -104,8 +80,8 @@ const allNavItems: NavItem[] = [
         permissionKey: "canViewScheduleMasterview",
       },
       { href: "/reservations/calendar", label: "View Schedules" },
-      { href: "/reservations/my", label: "My reservations" },
-      { href: "/reservations/new", label: "Reserve a room" },
+      { href: "/reservations/my", label: "My Reservations" },
+      { href: "/reservations/new", label: "Reserve a Room" },
       {
         href: "/reservations/all",
         label: "All Reservations",
@@ -114,12 +90,25 @@ const allNavItems: NavItem[] = [
     ],
   },
   {
-    href: "/attendance",
-    icon: UserCheck,
-    label: "Attendance",
-    permissionKey: "canViewAttendance",
+    href: "/meals",
+    icon: UtensilsCrossed,
+    label: "Meal Stubs",
+    permissionKey: "canViewMealStubs",
+    subItems: [
+      { href: "/meals?tab=view", label: "View Meal Stub" },
+      {
+        href: "/meals?tab=assign",
+        label: "Assign Meal Stub",
+        permissionKey: "isMealStubAssigner",
+      },
+    ],
   },
-
+  {
+    href: "/c2s",
+    icon: HeartHandshake,
+    label: "Connect 2 Souls",
+    permissionKey: "canManageC2S",
+  },
   {
     href: "/approvals",
     icon: ClipboardCheck,
@@ -127,10 +116,23 @@ const allNavItems: NavItem[] = [
     permissionKey: "canManageApprovals",
   },
   {
-    href: "/c2s",
-    icon: HeartHandshake,
-    label: "Connect 2 Souls",
-    permissionKey: "canManageC2S",
+    href: "/workers",
+    icon: Users,
+    label: "Workers",
+    subItems: [
+      { href: "/workers/my-qr", label: "My QR Code" },
+      {
+        href: "/workers",
+        label: "View and Update Workers",
+        permissionKey: "canManageWorkers",
+      },
+    ],
+  },
+  {
+    href: "/attendance",
+    icon: UserCheck,
+    label: "Attendance",
+    permissionKey: "canViewAttendance",
   },
   {
     href: "/reports",
@@ -186,6 +188,22 @@ export function Nav({
 }) {
   const userRole = useUserRole();
   const { isLoading, needsSeeding, workerProfile } = userRole;
+  const searchParams = useSearchParams();
+
+  // Build the full current URL (path + query) for accurate active matching
+  const currentUrl = searchParams.toString()
+    ? `${pathname}?${searchParams.toString()}`
+    : pathname;
+
+  /** Check if a given href is the active route */
+  const isActiveHref = (href: string) => {
+    if (href.includes("?")) {
+      // For hrefs with query params, compare the full URL
+      return currentUrl === href;
+    }
+    // For plain paths, compare pathname only
+    return pathname === href;
+  };
 
   const hasAccess = (
     key:
@@ -234,7 +252,7 @@ export function Nav({
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.href}
+                  isActive={isActiveHref(item.href)}
                   tooltip={{ children: item.label }}
                 >
                   <Link href={item.href}>
@@ -346,7 +364,7 @@ export function Nav({
                         <SidebarMenuSubItem>
                           <SidebarMenuSubButton
                             asChild
-                            isActive={pathname === item.href}
+                            isActive={isActiveHref(item.href)}
                           >
                             <Link href={item.href}>
                               <span>General</span>
@@ -367,9 +385,9 @@ export function Nav({
                             key={subItem.label}
                             asChild
                             defaultOpen={
-                              pathname.startsWith(subItem.href) ||
+                              pathname.startsWith(subItem.href.split("?")[0]) ||
                               visibleNestedItems.some(
-                                (n) => pathname === n.href,
+                                (n) => isActiveHref(n.href),
                               )
                             }
                           >
@@ -386,7 +404,7 @@ export function Nav({
                                     <SidebarMenuSubItem key={nested.href}>
                                       <SidebarMenuSubButton
                                         asChild
-                                        isActive={pathname === nested.href}
+                                        isActive={isActiveHref(nested.href)}
                                       >
                                         <Link href={nested.href}>
                                           <span>{nested.label}</span>
@@ -405,7 +423,7 @@ export function Nav({
                         <SidebarMenuSubItem key={subItem.href + subItem.label}>
                           <SidebarMenuSubButton
                             asChild
-                            isActive={pathname === subItem.href}
+                            isActive={isActiveHref(subItem.href)}
                           >
                             <Link href={subItem.href}>
                               <span>{subItem.label}</span>
