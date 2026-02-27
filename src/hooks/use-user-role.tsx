@@ -116,7 +116,7 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       allRoles: allRoles || [],
       workerProfile: workerProfile || null,
-      canManageWorkers: isSuperAdmin || permissions.includes('manage_workers'),
+      canManageWorkers: isSuperAdmin || permissions.includes('manage_workers') || isMinistryHead,
       canManageRoles: isSuperAdmin || permissions.includes('manage_roles'),
       canManageMinistries: isSuperAdmin || permissions.includes('manage_ministries'),
       canManageFacilities: isSuperAdmin || permissions.includes('manage_facilities'),

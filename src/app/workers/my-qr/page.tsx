@@ -75,10 +75,12 @@ export default function MyQRCodePage() {
                         {combinedQrUrl ? (
                             <div className="bg-white p-6 rounded-2xl shadow-inner border-4 border-primary/10 inline-block overflow-hidden">
                                 <Image
+                                    key={activeToken}
                                     src={combinedQrUrl}
                                     alt="My Unified QR Code"
                                     width={400}
                                     height={400}
+                                    unoptimized
                                     className="rounded-lg scale-110"
                                 />
                             </div>
