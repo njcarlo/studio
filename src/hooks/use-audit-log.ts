@@ -8,7 +8,13 @@ export function useAuditLog() {
     const { user } = useUser();
     const { workerProfile } = useUserRole();
 
-    const logAction = useCallback(async (action: string, module: string, details?: string) => {
+    const logAction = useCallback(async (
+        action: string,
+        module: string,
+        details?: string,
+        targetId?: string,
+        targetName?: string
+    ) => {
         if (!user) return;
         const userName = workerProfile
             ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
@@ -22,6 +28,8 @@ export function useAuditLog() {
                 action,
                 module,
                 details: details || '',
+                targetId: targetId || null,
+                targetName: targetName || null,
                 timestamp: serverTimestamp(),
             });
         } catch (e) {

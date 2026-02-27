@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, LoaderCircle, Upload, LogIn, Users, UserCheck, UserX, Users2, Building2, Key, Mail, Trash2, ArrowRightLeft, X, ClipboardList, Ticket } from "lucide-react";
+import { MoreHorizontal, PlusCircle, LoaderCircle, Upload, LogIn, Users, UserCheck, UserX, Users2, Building2, Key, Mail, Trash2, ArrowRightLeft, X, ClipboardList, Ticket, History } from "lucide-react";
 import { startOfWeek, endOfWeek, isSunday, isWithinInterval } from 'date-fns';
 import { getWeeklyWeekdayCount, getSundayCount } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -58,13 +58,67 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import type { Worker, Role, Ministry } from "@/lib/types";
-import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useUser, initiatePasswordReset, useFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser, useFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { initiatePasswordReset } from "@/firebase/auth";
+import { deleteDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/firestore-utils";
+import { orderBy, limit } from "firebase/firestore";
+import { format } from "date-fns";
+
+const WorkerActivityLog = ({ workerId }: { workerId: string }) => {
+  const firestore = useFirestore();
+  const logsQuery = useMemoFirebase(() => {
+    if (!firestore || !workerId) return null;
+    return query(
+      collection(firestore, "transaction_logs"),
+      where("targetId", "==", workerId),
+      orderBy("timestamp", "desc"),
+      limit(50)
+    );
+  }, [firestore, workerId]);
+
+  const { data: logs, isLoading } = useCollection<any>(logsQuery);
+
+  if (isLoading) {
+    return <div className="flex justify-center py-8"><LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (!logs || logs.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">
+        <History className="h-8 w-8 mx-auto mb-2 opacity-20" />
+        <p className="text-sm border-0">No activity logs found for this worker.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 py-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+      {logs.map((log: any) => (
+        <div key={log.id} className="relative pl-6 pb-4 border-l border-border last:border-0 last:pb-0">
+          <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm font-semibold">{log.action}</span>
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                {log.timestamp ? format(log.timestamp.toDate(), "MMM d, h:mm a") : "Unknown"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground line-clamp-2">{log.details}</p>
+            <div className="text-[10px] font-medium text-primary/70 mt-1">
+              By: {log.userName}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPassword, canManage }: {
   worker: Partial<Worker> | null;
@@ -77,7 +131,7 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
 }) => {
   const [formData, setFormData] = useState<Partial<Worker>>({
     firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer', status: canManage ? 'Active' : 'Pending Approval', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
-    primaryMinistryId: '', secondaryMinistryId: ''
+    majorMinistryId: '', minorMinistryId: '', birthDate: ''
   });
 
   useEffect(() => {
@@ -92,15 +146,16 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
         email: worker.email || '',
         phone: worker.phone || '',
         roleId: worker.roleId || 'viewer',
-        primaryMinistryId: worker.primaryMinistryId || '',
-        secondaryMinistryId: worker.secondaryMinistryId || '',
+        majorMinistryId: worker.majorMinistryId || '',
+        minorMinistryId: worker.minorMinistryId || '',
+        birthDate: worker.birthDate || '',
       });
     } else {
       setFormData({
         firstName: '', lastName: '', email: '', phone: '', roleId: 'viewer',
         status: canManage ? 'Active' : 'Pending Approval',
         avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
-        primaryMinistryId: '', secondaryMinistryId: ''
+        majorMinistryId: '', minorMinistryId: '', birthDate: ''
       });
     }
   }, [worker, canManage]);
@@ -121,118 +176,249 @@ const WorkerForm = ({ worker, roles, ministries, onSave, onClose, onResetPasswor
 
   return (
     <>
-      <SheetHeader>
+      <SheetHeader className="pb-2">
         <SheetTitle className="font-headline">{worker ? 'Edit Worker' : 'Add New Worker'}</SheetTitle>
         <SheetDescription>
           {worker ? 'Update the details for this worker.' : 'Fill in the details for the new worker.'}
         </SheetDescription>
       </SheetHeader>
-      <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="firstName" className="text-right">First Name</Label>
-          <Input id="firstName" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="col-span-3" />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="lastName" className="text-right">Last Name</Label>
-          <Input id="lastName" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="col-span-3" />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="email" className="text-right">Email</Label>
-          <Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="col-span-3" />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="phone" className="text-right">Phone</Label>
-          <Input id="phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="col-span-3" />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="role" className="text-right">Role</Label>
-          <Select value={formData.roleId} onValueChange={(value: string) => setFormData({ ...formData, roleId: value })} disabled={!canManage}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Select a role" />
-            </SelectTrigger>
-            <SelectContent>
-              {roles.map(role => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="status" className="text-right">Status</Label>
-          <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({ ...formData, status: value })} disabled={!canManage && !worker}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Select a status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
-              <SelectItem value="Pending Approval">Pending Approval</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="primaryMinistry" className="text-right">Primary Ministry</Label>
-          <Select value={formData.primaryMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, primaryMinistryId: value === 'none' ? '' : value })}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Select a ministry" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {Object.entries(groupedMinistries).map(([dept, mins]) => (
-                <SelectGroup key={dept}>
-                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
-                  {mins.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+
+      {worker ? (
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="activity">Activity Log</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details" className="mt-0 space-y-4">
+            <div className="grid gap-4 py-1">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="firstName" className="text-right">First Name</Label>
+                <Input id="firstName" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="lastName" className="text-right">Last Name</Label>
+                <Input id="lastName" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">Email</Label>
+                <Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="phone" className="text-right">Phone</Label>
+                <Input id="phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="birthDate" className="text-right">Date of Birth</Label>
+                <Input id="birthDate" type="date" value={formData.birthDate || ''} onChange={e => setFormData({ ...formData, birthDate: e.target.value })} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="role" className="text-right">Role</Label>
+                <Select value={formData.roleId} onValueChange={(value: string) => setFormData({ ...formData, roleId: value })} disabled={!canManage}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map(role => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="status" className="text-right">Status</Label>
+                <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({ ...formData, status: value })} disabled={!canManage && !worker}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="majorMinistry" className="text-right">Major Ministry</Label>
+                <Select value={formData.majorMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, majorMinistryId: value === 'none' ? '' : value })}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a ministry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {Object.entries(groupedMinistries).map(([dept, mins]) => (
+                      <SelectGroup key={dept}>
+                        <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
+                        {mins.map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="minorMinistry" className="text-right">Minor Ministry</Label>
+                <Select value={formData.minorMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, minorMinistryId: value === 'none' ? '' : value })}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a ministry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {Object.entries(groupedMinistries).map(([dept, mins]) => (
+                      <SelectGroup key={dept}>
+                        <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
+                        {mins.map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="employmentType" className="text-right">Worker Type</Label>
+                <Select value={formData.employmentType || 'Volunteer'} onValueChange={(value: any) => setFormData({ ...formData, employmentType: value })} disabled={!canManage}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Full-Time">Full-Time</SelectItem>
+                    <SelectItem value="On-Call">On-Call</SelectItem>
+                    <SelectItem value="Volunteer">Volunteer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <SheetFooter className="flex-col sm:flex-row gap-2 pt-4">
+              {worker && onResetPassword && (
+                <Button type="button" variant="outline" onClick={() => onResetPassword(worker as Worker)} className="mr-auto">
+                  <Mail className="mr-2 h-4 w-4" /> Send Reset Link
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <SheetClose asChild>
+                  <Button type="button" variant="secondary">Cancel</Button>
+                </SheetClose>
+                <Button onClick={handleSave}>Save changes</Button>
+              </div>
+            </SheetFooter>
+          </TabsContent>
+          <TabsContent value="activity">
+            <WorkerActivityLog workerId={worker.id!} />
+            <div className="mt-6 pt-4 border-t text-center">
+              <SheetClose asChild>
+                <Button variant="secondary" className="w-full">Close</Button>
+              </SheetClose>
+            </div>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="firstName" className="text-right">First Name</Label>
+              <Input id="firstName" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="lastName" className="text-right">Last Name</Label>
+              <Input id="lastName" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">Email</Label>
+              <Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">Phone</Label>
+              <Input id="phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="birthDate" className="text-right">Date of Birth</Label>
+              <Input id="birthDate" type="date" value={formData.birthDate || ''} onChange={e => setFormData({ ...formData, birthDate: e.target.value })} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="role" className="text-right">Role</Label>
+              <Select value={formData.roleId} onValueChange={(value: string) => setFormData({ ...formData, roleId: value })} disabled={!canManage}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map(role => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">Status</Label>
+              <Select value={formData.status} onValueChange={(value: 'Active' | 'Inactive' | 'Pending Approval') => setFormData({ ...formData, status: value })} disabled={!canManage && !worker}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="majorMinistry" className="text-right">Major Ministry</Label>
+              <Select value={formData.majorMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, majorMinistryId: value === 'none' ? '' : value })}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a ministry" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {Object.entries(groupedMinistries).map(([dept, mins]) => (
+                    <SelectGroup key={dept}>
+                      <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
+                      {mins.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="secondaryMinistry" className="text-right">Secondary Ministry</Label>
-          <Select value={formData.secondaryMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, secondaryMinistryId: value === 'none' ? '' : value })}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Select a ministry" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {Object.entries(groupedMinistries).map(([dept, mins]) => (
-                <SelectGroup key={dept}>
-                  <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
-                  {mins.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="minorMinistry" className="text-right">Minor Ministry</Label>
+              <Select value={formData.minorMinistryId || 'none'} onValueChange={(value: string) => setFormData({ ...formData, minorMinistryId: value === 'none' ? '' : value })}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a ministry" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {Object.entries(groupedMinistries).map(([dept, mins]) => (
+                    <SelectGroup key={dept}>
+                      <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">{dept}</SelectLabel>
+                      {mins.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="employmentType" className="text-right">Worker Type</Label>
-          <Select value={formData.employmentType || 'Volunteer'} onValueChange={(value: any) => setFormData({ ...formData, employmentType: value })} disabled={!canManage}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Full-Time">Full-Time</SelectItem>
-              <SelectItem value="On-Call">On-Call</SelectItem>
-              <SelectItem value="Volunteer">Volunteer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <SheetFooter className="flex-col sm:flex-row gap-2">
-        {worker && onResetPassword && (
-          <Button type="button" variant="outline" onClick={() => onResetPassword(worker as Worker)} className="mr-auto">
-            <Mail className="mr-2 h-4 w-4" /> Send Reset Link
-          </Button>
-        )}
-        <div className="flex gap-2">
-          <SheetClose asChild>
-            <Button type="button" variant="secondary">Cancel</Button>
-          </SheetClose>
-          <Button onClick={handleSave}>Save changes</Button>
-        </div>
-      </SheetFooter>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="employmentType" className="text-right">Worker Type</Label>
+              <Select value={formData.employmentType || 'Volunteer'} onValueChange={(value: any) => setFormData({ ...formData, employmentType: value })} disabled={!canManage}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Full-Time">Full-Time</SelectItem>
+                  <SelectItem value="On-Call">On-Call</SelectItem>
+                  <SelectItem value="Volunteer">Volunteer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <SheetFooter className="flex-col sm:flex-row gap-2">
+            <div className="flex gap-2 ml-auto">
+              <SheetClose asChild>
+                <Button type="button" variant="secondary">Cancel</Button>
+              </SheetClose>
+              <Button onClick={handleSave}>Save changes</Button>
+            </div>
+          </SheetFooter>
+        </>
+      )}
     </>
   );
 };
@@ -275,9 +461,9 @@ const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => voi
   )
 }
 
-const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { selectedCount: number; ministries: Ministry[]; onSave: (primary: string, secondary: string) => void; onClose: () => void; }) => {
-  const [primary, setPrimary] = useState('unchanged');
-  const [secondary, setSecondary] = useState('unchanged');
+const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { selectedCount: number; ministries: Ministry[]; onSave: (major: string, minor: string) => void; onClose: () => void; }) => {
+  const [major, setMajor] = useState('unchanged');
+  const [minor, setMinor] = useState('unchanged');
 
   const groupedMinistries = useMemo(() => {
     const groups: Record<string, Ministry[]> = {};
@@ -299,11 +485,11 @@ const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { se
       </SheetHeader>
       <div className="py-4 space-y-4">
         <div className="space-y-2">
-          <Label>Primary Ministry</Label>
-          <Select value={primary} onValueChange={setPrimary}>
+          <Label>Major Ministry</Label>
+          <Select value={major} onValueChange={setMajor}>
             <SelectTrigger><SelectValue placeholder="Keep current" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="unchanged">Keep current primary ministry</SelectItem>
+              <SelectItem value="unchanged">Keep current major ministry</SelectItem>
               <SelectItem value="none">Set to None</SelectItem>
               {Object.entries(groupedMinistries).map(([dept, mins]) => (
                 <SelectGroup key={dept}>
@@ -315,11 +501,11 @@ const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { se
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Secondary Ministry</Label>
-          <Select value={secondary} onValueChange={setSecondary}>
+          <Label>Minor Ministry</Label>
+          <Select value={minor} onValueChange={setMinor}>
             <SelectTrigger><SelectValue placeholder="Keep current" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="unchanged">Keep current secondary ministry</SelectItem>
+              <SelectItem value="unchanged">Keep current minor ministry</SelectItem>
               <SelectItem value="none">Set to None</SelectItem>
               {Object.entries(groupedMinistries).map(([dept, mins]) => (
                 <SelectGroup key={dept}>
@@ -333,7 +519,7 @@ const BatchMinistrySheet = ({ selectedCount, ministries, onSave, onClose }: { se
       </div>
       <SheetFooter>
         <SheetClose asChild><Button variant="secondary" onClick={onClose}>Cancel</Button></SheetClose>
-        <Button onClick={() => onSave(primary, secondary)}>Apply Changes</Button>
+        <Button onClick={() => onSave(major, minor)}>Apply Changes</Button>
       </SheetFooter>
     </>
   );
@@ -448,8 +634,8 @@ export default function WorkersPage() {
   const userDepartment = useMemo(() => {
     if (explicitlyAssignedDepartment) return explicitlyAssignedDepartment.id;
 
-    if (!workerProfile?.primaryMinistryId || !ministries.length) return null;
-    return ministries.find(m => m.id === workerProfile.primaryMinistryId)?.department || null;
+    if (!workerProfile?.majorMinistryId || !ministries.length) return null;
+    return ministries.find(m => m.id === workerProfile.majorMinistryId)?.department || null;
   }, [workerProfile, ministries, explicitlyAssignedDepartment]);
 
   // All ministries in the department head's department
@@ -462,7 +648,7 @@ export default function WorkersPage() {
     if (!allWorkers) return [];
 
     // Global managers (Super Admin or those with manage_workers but no specific ministry assigned)
-    const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.primaryMinistryId);
+    const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId);
 
     if (isGlobalManager) return allWorkers;
 
@@ -470,18 +656,18 @@ export default function WorkersPage() {
     if (isDepartmentHead && departmentMinistries.length > 0) {
       const deptMinistryIds = departmentMinistries.map(m => m.id);
       return allWorkers.filter(w =>
-        deptMinistryIds.includes(w.primaryMinistryId) ||
-        deptMinistryIds.includes(w.secondaryMinistryId)
+        deptMinistryIds.includes(w.majorMinistryId) ||
+        deptMinistryIds.includes(w.minorMinistryId)
       );
     }
 
     // Filter by ministry: show workers in same ministries as current user
-    const userMinistryIds = [workerProfile?.primaryMinistryId, workerProfile?.secondaryMinistryId].filter(Boolean);
+    const userMinistryIds = [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(Boolean);
     if (userMinistryIds.length === 0) return [];
 
     return allWorkers.filter(w =>
-      userMinistryIds.includes(w.primaryMinistryId) ||
-      userMinistryIds.includes(w.secondaryMinistryId)
+      userMinistryIds.includes(w.majorMinistryId) ||
+      userMinistryIds.includes(w.minorMinistryId)
     );
   }, [allWorkers, isSuperAdmin, canManageWorkers, workerProfile, isDepartmentHead, departmentMinistries]);
 
@@ -525,7 +711,7 @@ export default function WorkersPage() {
       auth,
       worker.email,
       async () => {
-        await logAction('Password Reset requested', 'Workers', `Requested password reset link for ${worker.firstName} ${worker.lastName}`);
+        await logAction('Password Reset requested', 'Workers', `Requested password reset link for ${worker.firstName} ${worker.lastName}`, worker.id, `${worker.firstName} ${worker.lastName}`);
         toast({ title: "Email Sent", description: `A password reset link has been sent to ${worker.email}.` });
       },
       (error) => {
@@ -547,7 +733,7 @@ export default function WorkersPage() {
     const w = allWorkers?.find(w => w.id === workerId);
     deleteDocumentNonBlocking(doc(firestore, "workers", workerId));
     if (w) {
-      await logAction('Deleted Worker', 'Workers', `Removed worker profile for ${w.firstName} ${w.lastName} (ID: ${w.workerId})`);
+      await logAction('Deleted Worker', 'Workers', `Removed worker profile for ${w.firstName} ${w.lastName} (ID: ${w.workerId})`, workerId, `${w.firstName} ${w.lastName}`);
     }
     toast({
       title: "Worker Deleted",
@@ -571,21 +757,21 @@ export default function WorkersPage() {
     }
   };
 
-  const handleBatchMove = async (primary: string, secondary: string) => {
+  const handleBatchMove = async (major: string, minor: string) => {
     try {
       if (!isSuperAdmin) {
         const promises = selectedWorkerIds.map(async (id) => {
           const w = allWorkers?.find(worker => worker.id === id);
           if (!w) return;
 
-          const newPrimaryId = primary === 'unchanged' ? (w.primaryMinistryId || '') : (primary === 'none' ? '' : primary);
-          const newSecondaryId = secondary === 'unchanged' ? (w.secondaryMinistryId || '') : (secondary === 'none' ? '' : secondary);
+          const newMajorId = major === 'unchanged' ? (w.majorMinistryId || '') : (major === 'none' ? '' : major);
+          const newMinorId = minor === 'unchanged' ? (w.minorMinistryId || '') : (minor === 'none' ? '' : minor);
 
-          if (newPrimaryId === (w.primaryMinistryId || '') && newSecondaryId === (w.secondaryMinistryId || '')) return;
+          if (newMajorId === (w.majorMinistryId || '') && newMinorId === (w.minorMinistryId || '')) return;
 
           const details = `Batch ministry change request for ${w.firstName} ${w.lastName}.\n` +
-            (primary !== 'unchanged' ? `Primary: ${ministries.find(m => m.id === w.primaryMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === newPrimaryId)?.name || 'None'}\n` : '') +
-            (secondary !== 'unchanged' ? `Secondary: ${ministries.find(m => m.id === w.secondaryMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === newSecondaryId)?.name || 'None'}` : '');
+            (major !== 'unchanged' ? `Major: ${ministries.find(m => m.id === w.majorMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === newMajorId)?.name || 'None'}\n` : '') +
+            (minor !== 'unchanged' ? `Minor: ${ministries.find(m => m.id === w.minorMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === newMinorId)?.name || 'None'}` : '');
 
           return addDoc(collection(firestore, "approvals"), {
             requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
@@ -594,10 +780,10 @@ export default function WorkersPage() {
             date: serverTimestamp(),
             status: 'Pending Outgoing Approval',
             workerId: w.id,
-            oldPrimaryId: w.primaryMinistryId || '',
-            newPrimaryId,
-            oldSecondaryId: w.secondaryMinistryId || '',
-            newSecondaryId,
+            oldMajorId: w.majorMinistryId || '',
+            newMajorId,
+            oldMinorId: w.minorMinistryId || '',
+            newMinorId,
             outgoingApproved: false,
             incomingApproved: false
           });
@@ -612,8 +798,8 @@ export default function WorkersPage() {
       } else {
         const batch = writeBatch(firestore);
         const updates: any = {};
-        if (primary !== 'unchanged') updates.primaryMinistryId = primary === 'none' ? '' : primary;
-        if (secondary !== 'unchanged') updates.secondaryMinistryId = secondary === 'none' ? '' : secondary;
+        if (major !== 'unchanged') updates.majorMinistryId = major === 'none' ? '' : major;
+        if (minor !== 'unchanged') updates.minorMinistryId = minor === 'none' ? '' : minor;
 
         selectedWorkerIds.forEach(id => {
           batch.update(doc(firestore, "workers", id), updates);
@@ -643,7 +829,7 @@ export default function WorkersPage() {
         const allStubs = allMealStubs || [];
         const current = type === 'weekday' ? getWeeklyWeekdayCount(allStubs, id) : getSundayCount(allStubs, id);
 
-        const ministry = ministries.find(m => m.id === w.primaryMinistryId || m.id === w.secondaryMinistryId);
+        const ministry = ministries.find(m => m.id === w.majorMinistryId || m.id === w.minorMinistryId);
         const limit = type === 'weekday' ? (ministry?.mealStubWeekdayLimit || 5) : (ministry?.mealStubSundayLimit || 2);
 
         const remaining = limit - current;
@@ -711,28 +897,28 @@ export default function WorkersPage() {
     }
 
     const dataToSave = { ...workerData };
-    if (dataToSave.primaryMinistryId === 'none') {
-      dataToSave.primaryMinistryId = '';
+    if (dataToSave.majorMinistryId === 'none') {
+      dataToSave.majorMinistryId = '';
     }
-    if (dataToSave.secondaryMinistryId === 'none') {
-      dataToSave.secondaryMinistryId = '';
+    if (dataToSave.minorMinistryId === 'none') {
+      dataToSave.minorMinistryId = '';
     }
 
     try {
       if (selectedWorker?.id) {
         const isMinistryChanging =
-          (dataToSave.primaryMinistryId !== undefined && dataToSave.primaryMinistryId !== (selectedWorker.primaryMinistryId || '')) ||
-          (dataToSave.secondaryMinistryId !== undefined && dataToSave.secondaryMinistryId !== (selectedWorker.secondaryMinistryId || ''));
+          (dataToSave.majorMinistryId !== undefined && dataToSave.majorMinistryId !== (selectedWorker.majorMinistryId || '')) ||
+          (dataToSave.minorMinistryId !== undefined && dataToSave.minorMinistryId !== (selectedWorker.minorMinistryId || ''));
 
         if (isMinistryChanging && !isSuperAdmin) {
           // Prepare ministry change data
           const ministryUpdate: any = {};
-          if (dataToSave.primaryMinistryId !== undefined) ministryUpdate.newPrimaryId = dataToSave.primaryMinistryId;
-          if (dataToSave.secondaryMinistryId !== undefined) ministryUpdate.newSecondaryId = dataToSave.secondaryMinistryId;
+          if (dataToSave.majorMinistryId !== undefined) ministryUpdate.newMajorId = dataToSave.majorMinistryId;
+          if (dataToSave.minorMinistryId !== undefined) ministryUpdate.newMinorId = dataToSave.minorMinistryId;
 
           const details = `Ministry change request for ${selectedWorker.firstName} ${selectedWorker.lastName}.\n` +
-            (ministryUpdate.newPrimaryId !== undefined ? `Primary: ${ministries.find(m => m.id === selectedWorker.primaryMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === ministryUpdate.newPrimaryId)?.name || 'None'}\n` : '') +
-            (ministryUpdate.newSecondaryId !== undefined ? `Secondary: ${ministries.find(m => m.id === selectedWorker.secondaryMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === ministryUpdate.newSecondaryId)?.name || 'None'}` : '');
+            (ministryUpdate.newMajorId !== undefined ? `Major: ${ministries.find(m => m.id === selectedWorker.majorMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === ministryUpdate.newMajorId)?.name || 'None'}\n` : '') +
+            (ministryUpdate.newMinorId !== undefined ? `Minor: ${ministries.find(m => m.id === selectedWorker.minorMinistryId)?.name || 'None'} -> ${ministries.find(m => m.id === ministryUpdate.newMinorId)?.name || 'None'}` : '');
 
           await addDoc(collection(firestore, "approvals"), {
             requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
@@ -741,28 +927,28 @@ export default function WorkersPage() {
             date: serverTimestamp(),
             status: 'Pending Outgoing Approval',
             workerId: selectedWorker.id,
-            oldPrimaryId: selectedWorker.primaryMinistryId || '',
-            newPrimaryId: dataToSave.primaryMinistryId ?? selectedWorker.primaryMinistryId,
-            oldSecondaryId: selectedWorker.secondaryMinistryId || '',
-            newSecondaryId: dataToSave.secondaryMinistryId ?? selectedWorker.secondaryMinistryId,
+            oldMajorId: selectedWorker.majorMinistryId || '',
+            newMajorId: dataToSave.majorMinistryId ?? selectedWorker.majorMinistryId,
+            oldMinorId: selectedWorker.minorMinistryId || '',
+            newMinorId: dataToSave.minorMinistryId ?? selectedWorker.minorMinistryId,
             outgoingApproved: false,
             incomingApproved: false
           });
 
           // Update other fields but NOT ministries
-          const { primaryMinistryId, secondaryMinistryId, ...otherFields } = dataToSave;
+          const { majorMinistryId, minorMinistryId, ...otherFields } = dataToSave;
           if (Object.keys(otherFields).length > 0) {
             await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), otherFields);
           }
 
-          await logAction('Requested Ministry Change', 'Workers', `Requested ministry change for ${selectedWorker.firstName} ${selectedWorker.lastName}`);
+          await logAction('Requested Ministry Change', 'Workers', `Requested ministry change for ${selectedWorker.firstName} ${selectedWorker.lastName}`, selectedWorker.id, `${selectedWorker.firstName} ${selectedWorker.lastName}`);
           toast({
             title: "Change Pending Approval",
             description: "The ministry change has been submitted for approval by both outgoing and incoming ministry heads."
           });
         } else {
           await updateDocumentNonBlocking(doc(firestore, "workers", selectedWorker.id), dataToSave);
-          await logAction('Updated Worker', 'Workers', `Updated details for ${dataToSave.firstName} ${dataToSave.lastName}`);
+          await logAction('Updated Worker', 'Workers', `Updated details for ${dataToSave.firstName} ${dataToSave.lastName}`, selectedWorker.id, `${dataToSave.firstName} ${dataToSave.lastName}`);
           toast({
             title: "Worker Updated",
             description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`
@@ -772,7 +958,7 @@ export default function WorkersPage() {
         const newWorkerId = String(20000 + (allWorkers?.length || 0)).padStart(6, '0');
         const dataToSaveWithId = { ...dataToSave, workerId: newWorkerId, createdAt: serverTimestamp() };
         const newWorkerRef = await addDocumentNonBlocking(collection(firestore, "workers"), dataToSaveWithId);
-        await logAction('Added Worker', 'Workers', `Created profile for ${dataToSave.firstName} ${dataToSave.lastName} (ID: ${newWorkerId})`);
+        await logAction('Added Worker', 'Workers', `Created profile for ${dataToSave.firstName} ${dataToSave.lastName} (ID: ${newWorkerId})`, newWorkerRef.id, `${dataToSave.firstName} ${dataToSave.lastName}`);
 
         if (newWorkerRef && workerProfile && dataToSave.status === 'Pending Approval') {
           await addDocumentNonBlocking(collection(firestore, "approvals"), {
@@ -838,8 +1024,8 @@ export default function WorkersPage() {
               phone: newWorker.phone || '',
               roleId: newWorker.roleId || 'viewer',
               status: newWorker.status || 'Pending Approval',
-              primaryMinistryId: newWorker.primaryMinistryId || '',
-              secondaryMinistryId: newWorker.secondaryMinistryId || '',
+              majorMinistryId: newWorker.majorMinistryId || '',
+              minorMinistryId: newWorker.minorMinistryId || '',
               employmentType: newWorker.employmentType || 'Volunteer',
               workerId: workerId,
               createdAt: serverTimestamp(),
@@ -891,8 +1077,8 @@ export default function WorkersPage() {
   }
 
   // --- Ministry / Department Worker Summary Stats ---
-  const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.primaryMinistryId);
-  const userMinistryIds = [workerProfile?.primaryMinistryId, workerProfile?.secondaryMinistryId].filter(Boolean) as string[];
+  const isGlobalManager = isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId);
+  const userMinistryIds = [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(Boolean) as string[];
 
   // For Department Head: use the full set of department ministry IDs
   const statsMinistryIds = isDepartmentHead
@@ -902,12 +1088,12 @@ export default function WorkersPage() {
   // Primary workers: those whose PRIMARY ministry is in the stats scope
   const primaryWorkers = isGlobalManager
     ? (workers || [])
-    : (workers || []).filter(w => w.primaryMinistryId && statsMinistryIds.includes(w.primaryMinistryId));
+    : (workers || []).filter(w => w.majorMinistryId && statsMinistryIds.includes(w.majorMinistryId));
 
   // Secondary workers: those whose SECONDARY ministry is in the stats scope — NOT counted in total
   const totalSecondary = isGlobalManager
-    ? (workers || []).filter(w => !!w.secondaryMinistryId).length
-    : (workers || []).filter(w => w.secondaryMinistryId && statsMinistryIds.includes(w.secondaryMinistryId)).length;
+    ? (workers || []).filter(w => !!w.minorMinistryId).length
+    : (workers || []).filter(w => w.minorMinistryId && statsMinistryIds.includes(w.minorMinistryId)).length;
 
   const totalWorkers = primaryWorkers.length;
   const totalActive = primaryWorkers.filter(w => w.status === 'Active').length;
@@ -917,8 +1103,8 @@ export default function WorkersPage() {
   const ministryBreakdown = useMemo(() => {
     if (!isDepartmentHead || departmentMinistries.length === 0) return [];
     return departmentMinistries.map(ministry => {
-      const mPrimary = (allWorkers || []).filter(w => w.primaryMinistryId === ministry.id);
-      const mSecondary = (allWorkers || []).filter(w => w.secondaryMinistryId === ministry.id);
+      const mPrimary = (allWorkers || []).filter(w => w.majorMinistryId === ministry.id);
+      const mSecondary = (allWorkers || []).filter(w => w.minorMinistryId === ministry.id);
       return {
         ministry,
         total: mPrimary.length,

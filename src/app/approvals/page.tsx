@@ -281,13 +281,13 @@ export default function ApprovalsPage() {
         const targetWorker = workers?.find(w => w.id === request.workerId);
         if (!targetWorker) return false;
 
-        const primaryMinistry = ministries?.find(m => m.id === targetWorker.primaryMinistryId);
-        const secondaryMinistry = ministries?.find(m => m.id === targetWorker.secondaryMinistryId);
+        const majorMinistry = ministries?.find(m => m.id === targetWorker.majorMinistryId);
+        const minorMinistry = ministries?.find(m => m.id === targetWorker.minorMinistryId);
 
-        return (primaryMinistry?.approverId === workerProfile.id) ||
-            (primaryMinistry?.headId === workerProfile.id) ||
-            (secondaryMinistry?.approverId === workerProfile.id) ||
-            (secondaryMinistry?.headId === workerProfile.id);
+        return (majorMinistry?.approverId === workerProfile.id) ||
+            (majorMinistry?.headId === workerProfile.id) ||
+            (minorMinistry?.approverId === workerProfile.id) ||
+            (minorMinistry?.headId === workerProfile.id);
     };
 
     const checkCanManage = (request: ApprovalRequest) => {
@@ -297,16 +297,16 @@ export default function ApprovalsPage() {
             if (!workerProfile) return false;
 
             if (request.status === 'Pending Outgoing Approval') {
-                const oldPrimary = ministries.find(m => m.id === request.oldPrimaryId);
-                const oldSecondary = ministries.find(m => m.id === request.oldSecondaryId);
-                return (oldPrimary?.headId === workerProfile.id || oldPrimary?.approverId === workerProfile.id) ||
-                    (oldSecondary?.headId === workerProfile.id || oldSecondary?.approverId === workerProfile.id);
+                const oldMajor = ministries.find(m => m.id === request.oldMajorId);
+                const oldMinor = ministries.find(m => m.id === request.oldMinorId);
+                return (oldMajor?.headId === workerProfile.id || oldMajor?.approverId === workerProfile.id) ||
+                    (oldMinor?.headId === workerProfile.id || oldMinor?.approverId === workerProfile.id);
             }
             if (request.status === 'Pending Incoming Approval') {
-                const newPrimary = ministries.find(m => m.id === request.newPrimaryId);
-                const newSecondary = ministries.find(m => m.id === request.newSecondaryId);
-                return (newPrimary?.headId === workerProfile.id || newPrimary?.approverId === workerProfile.id) ||
-                    (newSecondary?.headId === workerProfile.id || newSecondary?.approverId === workerProfile.id);
+                const newMajor = ministries.find(m => m.id === request.newMajorId);
+                const newMinor = ministries.find(m => m.id === request.newMinorId);
+                return (newMajor?.headId === workerProfile.id || newMajor?.approverId === workerProfile.id) ||
+                    (newMinor?.headId === workerProfile.id || newMinor?.approverId === workerProfile.id);
             }
         }
 
@@ -366,8 +366,8 @@ export default function ApprovalsPage() {
             if (request.type === 'Ministry Change' && request.workerId) {
                 const workerDocRef = doc(firestore, "workers", request.workerId);
                 updateDocumentNonBlocking(workerDocRef, {
-                    primaryMinistryId: request.newPrimaryId || '',
-                    secondaryMinistryId: request.newSecondaryId || ''
+                    majorMinistryId: request.newMajorId || '',
+                    minorMinistryId: request.newMinorId || ''
                 });
             }
         } else if (status === 'Rejected') {

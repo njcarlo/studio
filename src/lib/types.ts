@@ -16,9 +16,10 @@ export type Worker = {
     roleId: string;
     status: 'Active' | 'Inactive' | 'Pending Approval';
     avatarUrl: string;
-    primaryMinistryId: string;
-    secondaryMinistryId: string;
+    majorMinistryId: string;
+    minorMinistryId: string;
     employmentType?: 'Full-Time' | 'On-Call' | 'Volunteer';
+    birthDate?: string;
     passwordChangeRequired?: boolean;
     qrToken?: string;
     createdAt: Timestamp;
@@ -34,6 +35,8 @@ export type Ministry = {
     approverId?: string;
     mealStubAssignerId?: string;
     mealStubTotalLimit?: number;
+    mealStubWeekdayLimit?: number;
+    mealStubSundayLimit?: number;
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
@@ -124,10 +127,10 @@ export type ApprovalRequest = {
     roomId?: string;
     reservationId?: string;
     requestId?: string;
-    oldPrimaryId?: string;
-    newPrimaryId?: string;
-    oldSecondaryId?: string;
-    newSecondaryId?: string;
+    oldMajorId?: string;
+    newMajorId?: string;
+    oldMinorId?: string;
+    newMinorId?: string;
     outgoingApproved?: boolean;
     incomingApproved?: boolean;
 };

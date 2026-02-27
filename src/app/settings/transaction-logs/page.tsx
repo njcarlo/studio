@@ -44,6 +44,7 @@ export default function TransactionLogsPage() {
         const lower = searchTerm.toLowerCase();
         return logs.filter((log: any) =>
             (log.userName || '').toLowerCase().includes(lower) ||
+            (log.targetName || '').toLowerCase().includes(lower) ||
             (log.action || '').toLowerCase().includes(lower) ||
             (log.module || '').toLowerCase().includes(lower) ||
             (log.details || '').toLowerCase().includes(lower)
@@ -103,11 +104,12 @@ export default function TransactionLogsPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto w-full">
-                        <Table className="min-w-[800px]">
+                        <Table className="min-w-[900px]">
                             <TableHeader className="bg-muted/50">
                                 <TableRow>
                                     <TableHead className="w-[180px]">Timestamp</TableHead>
                                     <TableHead className="w-[180px]">User</TableHead>
+                                    <TableHead className="w-[150px]">Target</TableHead>
                                     <TableHead className="w-[120px]">Module</TableHead>
                                     <TableHead className="w-[150px]">Action</TableHead>
                                     <TableHead>Details</TableHead>
@@ -116,13 +118,13 @@ export default function TransactionLogsPage() {
                             <TableBody>
                                 {isLogsLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">
+                                        <TableCell colSpan={6} className="h-24 text-center">
                                             <LoaderCircle className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                                         </TableCell>
                                     </TableRow>
                                 ) : filteredLogs.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                             No logs found matching your criteria.
                                         </TableCell>
                                     </TableRow>
@@ -135,6 +137,10 @@ export default function TransactionLogsPage() {
                                             <TableCell>
                                                 <div className="font-medium text-sm">{log.userName}</div>
                                                 <div className="text-xs text-muted-foreground truncate max-w-[150px]">{log.userEmail}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="font-medium text-sm">{log.targetName || "-"}</div>
+                                                {log.targetId && <div className="text-[10px] text-muted-foreground font-mono truncate max-w-[120px]">ID: {log.targetId}</div>}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline" className="text-xs font-normal">
