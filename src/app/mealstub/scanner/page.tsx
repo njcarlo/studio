@@ -179,45 +179,24 @@ export default function QRScannerPage() {
                     }
                 }
 
-                const now = new Date();
-                const dayOfWeek = now.getDay(); // 0 is Sunday, 1-5 is Mon-Fri, 6 is Saturday
-
-                let currentType: 'weekday' | 'sunday' | null = null;
-                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-                    currentType = 'weekday';
-                } else if (dayOfWeek === 0) {
-                    currentType = 'sunday';
-                }
-
-                if (!currentType) {
-                    toast({
-                        variant: "destructive",
-                        title: "No Service Today",
-                        description: "Meal stubs are not valid on Saturdays."
-                    });
-                    setTimeout(resetScanner, 3000);
-                    return;
-                }
-
                 const q = query(
                     collection(firestore, "mealstubs"),
                     where("workerId", "==", payload),
-                    where("status", "==", "Issued"),
-                    where("stubType", "==", currentType)
+                    where("status", "==", "Issued")
                 );
                 const querySnapshot = await getDocs(q);
 
-                // Find ANY issued stub of this type for this week
-                // We use startOfWeek (Monday) to ensure it's for the current week
-                const startOfCurrentWeek = new Date();
-                startOfCurrentWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-                startOfCurrentWeek.setHours(0, 0, 0, 0);
+                // Find any issued stub for TODAY
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+                const todayEnd = new Date();
+                todayEnd.setHours(23, 59, 59, 999);
 
                 const validStubDoc = querySnapshot.docs.find(doc => {
                     const stub = doc.data();
                     if (!stub.date) return false;
                     const stubDate = new Date(stub.date.seconds * 1000);
-                    return stubDate >= startOfCurrentWeek;
+                    return stubDate >= todayStart && stubDate <= todayEnd;
                 });
 
                 if (validStubDoc) {
@@ -226,7 +205,7 @@ export default function QRScannerPage() {
                         status: 'Claimed',
                         claimedAt: serverTimestamp()
                     });
-                    const details = `Claimed ${currentType} meal stub for ${stubData.workerName}.`;
+                    const details = `Claimed meal stub for ${stubData.workerName}.`;
                     toast({ title: "Meal Stub Claimed!", description: details });
                     logScanEvent({
                         scanType: 'Meal Stub',
@@ -240,7 +219,7 @@ export default function QRScannerPage() {
                     toast({
                         variant: "destructive",
                         title: "No Meal Stub Found",
-                        description: `No valid ${currentType} meal stub found for ${workerName} this week.`
+                        description: `No valid meal stub found for ${workerName} today.`
                     });
                 }
 

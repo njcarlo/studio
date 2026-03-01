@@ -33,7 +33,7 @@ import { useFirestore, useUser, useCollection, updateDocumentNonBlocking, useMem
 import { collection, collectionGroup, query, where, serverTimestamp, Timestamp as FirebaseTimestamp, doc } from "firebase/firestore";
 import { format, isAfter, isBefore, addMinutes, subMinutes } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import type { Booking, Room } from "@/lib/types";
+import type { Booking, Room, VenueElement } from "@/lib/types";
 
 export default function MyReservationsPage() {
     const { user } = useUser();
@@ -50,6 +50,9 @@ export default function MyReservationsPage() {
 
     const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms } = useCollection<Room>(roomsRef);
+
+    const venueElementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
+    const { data: venueElements } = useCollection<VenueElement>(venueElementsRef);
 
     const myBookings = useMemo(() => {
         if (!allBookings) return [];
@@ -87,7 +90,7 @@ export default function MyReservationsPage() {
             await addDocumentNonBlocking(collection(firestore, "scan_logs"), {
                 workerProfileId: workerProfile?.id || "system-admin",
                 name: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.displayName || "System Admin"),
-                ministryId: workerProfile?.primaryMinistryId || "",
+                ministryId: workerProfile?.majorMinistryId || "",
                 email: workerProfile?.email || user?.email || "",
                 timestamp: serverTimestamp(),
                 scanType: 'Room Check-in',
@@ -248,13 +251,14 @@ export default function MyReservationsPage() {
                     onClose={() => setIsDetailsOpen(false)}
                     booking={selectedBooking}
                     roomName={selectedBooking ? getRoomName(selectedBooking.roomId) : ""}
+                    venueElements={venueElements || []}
                 />
             </div>
         </AppLayout>
     );
 }
 
-const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string }) => {
+const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, venueElements }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string; venueElements: VenueElement[]; }) => {
     if (!booking) return null;
 
     const startTime = (booking.start as any).toDate();
@@ -334,28 +338,45 @@ const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName }: { isOpen: b
                     </div>
 
                     <div className="space-y-4">
-                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Requested Equipment</h4>
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Requested Elements</h4>
                         <div className="grid grid-cols-1 gap-2">
-                            {booking.equipment_TV && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span>Television / Display</span>
-                                </div>
-                            )}
-                            {booking.equipment_Mic && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span>Microphone System</span>
-                                </div>
-                            )}
-                            {booking.equipment_Speakers && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span>Sound System / Speakers</span>
-                                </div>
-                            )}
-                            {!booking.equipment_TV && !booking.equipment_Mic && !booking.equipment_Speakers && (
-                                <p className="text-sm text-muted-foreground italic">No specialized equipment requested.</p>
+                            {booking.requestedElements && booking.requestedElements.length > 0 ? (
+                                booking.requestedElements.map(elId => {
+                                    const el = venueElements.find(v => v.id === elId);
+                                    return (
+                                        <div key={elId} className="flex items-center gap-2 text-sm">
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span>{el ? el.name : elId} <span className="text-xs text-muted-foreground ml-1">({el?.category || "Unknown"})</span></span>
+                                        </div>
+                                    );
+                                })
+                            ) : null}
+
+                            {/* Legacy fallback */}
+                            {(!booking.requestedElements || booking.requestedElements.length === 0) && (
+                                <>
+                                    {booking.equipment_TV && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span>Television / Display (Legacy)</span>
+                                        </div>
+                                    )}
+                                    {booking.equipment_Mic && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span>Microphone System (Legacy)</span>
+                                        </div>
+                                    )}
+                                    {booking.equipment_Speakers && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span>Sound System / Speakers (Legacy)</span>
+                                        </div>
+                                    )}
+                                    {!booking.equipment_TV && !booking.equipment_Mic && !booking.equipment_Speakers && (
+                                        <p className="text-sm text-muted-foreground italic">No elements requested.</p>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

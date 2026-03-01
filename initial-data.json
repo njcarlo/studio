@@ -1,0 +1,101 @@
+{
+    "roles/admin": {
+        "name": "Admin",
+        "description": "Full system access",
+        "permissions": [
+            "manage_all",
+            "approve_requests",
+            "view_reports"
+        ]
+    },
+    "roles/approver": {
+        "name": "Approver",
+        "description": "Can approve requests",
+        "permissions": [
+            "approve_requests",
+            "view_reports"
+        ]
+    },
+    "roles/editor": {
+        "name": "Editor",
+        "description": "Can edit data",
+        "permissions": [
+            "edit_data",
+            "view_reports"
+        ]
+    },
+    "roles/viewer": {
+        "name": "Viewer",
+        "description": "Read-only access",
+        "permissions": [
+            "view_reports"
+        ]
+    },
+    "departments/Worship": {
+        "id": "Worship",
+        "name": "Worship",
+        "mealStubTotalAllocation": 100
+    },
+    "departments/Outreach": {
+        "id": "Outreach",
+        "name": "Outreach",
+        "mealStubTotalAllocation": 100
+    },
+    "departments/Relationship": {
+        "id": "Relationship",
+        "name": "Relationship",
+        "mealStubTotalAllocation": 100
+    },
+    "departments/Discipleship": {
+        "id": "Discipleship",
+        "name": "Discipleship",
+        "mealStubTotalAllocation": 100
+    },
+    "departments/Administration": {
+        "id": "Administration",
+        "name": "Administration",
+        "mealStubTotalAllocation": 100
+    },
+    "ministries/W-Music Ministry": {
+        "id": "W-Music Ministry",
+        "name": "Music Ministry",
+        "department": "Worship",
+        "mealStubTotalLimit": 20
+    },
+    "ministries/W-Tech Team": {
+        "id": "W-Tech Team",
+        "name": "Tech Team",
+        "department": "Worship",
+        "mealStubTotalLimit": 20
+    },
+    "ministries/W-Ushering": {
+        "id": "W-Ushering",
+        "name": "Ushering",
+        "department": "Worship",
+        "mealStubTotalLimit": 20
+    },
+    "ministries/O-Missions": {
+        "id": "O-Missions",
+        "name": "Missions",
+        "department": "Outreach",
+        "mealStubTotalLimit": 20
+    },
+    "ministries/R-Hospitality": {
+        "id": "R-Hospitality",
+        "name": "Hospitality",
+        "department": "Relationship",
+        "mealStubTotalLimit": 20
+    },
+    "ministries/D-Youth Ministry": {
+        "id": "D-Youth Ministry",
+        "name": "Youth Ministry",
+        "department": "Discipleship",
+        "mealStubTotalLimit": 20
+    },
+    "ministries/A-Finance": {
+        "id": "A-Finance",
+        "name": "Finance",
+        "department": "Administration",
+        "mealStubTotalLimit": 20
+    }
+}

@@ -34,9 +34,8 @@ export type Ministry = {
     headId?: string;
     approverId?: string;
     mealStubAssignerId?: string;
-    mealStubTotalLimit?: number;
-    mealStubWeekdayLimit?: number;
-    mealStubSundayLimit?: number;
+    mealStubWeeklyLimit?: number; // Total stubs allowed per week for this ministry
+    weight?: number;
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
@@ -80,6 +79,7 @@ export type Booking = {
     equipment_TV?: boolean;
     equipment_Mic?: boolean;
     equipment_Speakers?: boolean;
+    requestedElements?: string[]; // IDs of VenueElements requested
     guidelinesAccepted: boolean;
     checkedInAt?: Timestamp;
 };
@@ -88,8 +88,9 @@ export type Room = {
     id: string;
     name: string;
     capacity: number;
-    equipment: string[];
+    elements?: string[]; // Array of VenueElement IDs available in this room
     areaId: string;
+    weight?: number;
 };
 
 export type Area = {
@@ -110,10 +111,17 @@ export type MealStub = {
     workerName: string;
     date: Timestamp;
     status: 'Issued' | 'Claimed';
-    stubType?: 'weekday' | 'sunday';
+    stubType?: string; // e.g., 'daily'
     assignedBy?: string;
     assignedByName?: string;
     claimedAt?: Timestamp;
+};
+
+export type VenueElement = {
+    id: string;
+    name: string;
+    category: 'Equipment' | 'Manpower' | 'Other';
+    providerMinistryId: string;
 };
 
 export type ApprovalRequest = {

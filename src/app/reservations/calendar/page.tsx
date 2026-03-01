@@ -43,7 +43,7 @@ import {
     isSameMonth
 } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Booking, Room, Worker, Area, Branch } from "@/lib/types";
+import type { Booking, Room, Worker, Area, Branch, VenueElement } from "@/lib/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup } from "firebase/firestore";
@@ -345,6 +345,9 @@ export default function ReservationCalendarPage() {
     const areasRef = useMemoFirebase(() => collection(firestore, 'areas'), [firestore]);
     const { data: areas, isLoading: areasLoading } = useCollection<Area>(areasRef);
 
+    const venueElementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
+    const { data: venueElements, isLoading: venueElementsLoading } = useCollection<VenueElement>(venueElementsRef);
+
     const [branchFilter, setBranchFilter] = useState<string>('');
 
     // Default to Dasmarinas once branches load
@@ -359,7 +362,7 @@ export default function ReservationCalendarPage() {
         }
     }, [branches, branchFilter]);
 
-    const isLoading = roomsLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
+    const isLoading = roomsLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading || venueElementsLoading;
 
     const filteredRoomsForDayView = useMemo(() => {
         if (view !== 'day' || !rooms || !bookings) return rooms || [];
@@ -488,12 +491,13 @@ export default function ReservationCalendarPage() {
                 booking={selectedBooking}
                 roomName={selectedBooking ? (rooms?.find(r => r.id === selectedBooking.roomId)?.name || "Unknown Room") : ""}
                 workers={workers || []}
+                venueElements={venueElements || []}
             />
         </AppLayout>
     );
 }
 
-const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, workers }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string; workers: Worker[] }) => {
+const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, workers, venueElements }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string; workers: Worker[]; venueElements: VenueElement[]; }) => {
     if (!booking) return null;
 
     const startTime = (booking.start as any).toDate();
@@ -578,28 +582,45 @@ const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, workers }: { 
                     </div>
 
                     <div className="space-y-4">
-                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Requested Equipment</h4>
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Requested Elements</h4>
                         <div className="grid grid-cols-1 gap-2">
-                            {booking.equipment_TV && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span>Television / Display</span>
-                                </div>
-                            )}
-                            {booking.equipment_Mic && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span>Microphone System</span>
-                                </div>
-                            )}
-                            {booking.equipment_Speakers && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span>Sound System / Speakers</span>
-                                </div>
-                            )}
-                            {!booking.equipment_TV && !booking.equipment_Mic && !booking.equipment_Speakers && (
-                                <p className="text-sm text-muted-foreground italic">No specialized equipment requested.</p>
+                            {booking.requestedElements && booking.requestedElements.length > 0 ? (
+                                booking.requestedElements.map(elId => {
+                                    const el = venueElements.find(v => v.id === elId);
+                                    return (
+                                        <div key={elId} className="flex items-center gap-2 text-sm">
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span>{el ? el.name : elId} <span className="text-xs text-muted-foreground ml-1">({el?.category || "Unknown"})</span></span>
+                                        </div>
+                                    );
+                                })
+                            ) : null}
+
+                            {/* Legacy fallback */}
+                            {(!booking.requestedElements || booking.requestedElements.length === 0) && (
+                                <>
+                                    {booking.equipment_TV && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span>Television / Display (Legacy)</span>
+                                        </div>
+                                    )}
+                                    {booking.equipment_Mic && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span>Microphone System (Legacy)</span>
+                                        </div>
+                                    )}
+                                    {booking.equipment_Speakers && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <span>Sound System / Speakers (Legacy)</span>
+                                        </div>
+                                    )}
+                                    {!booking.equipment_TV && !booking.equipment_Mic && !booking.equipment_Speakers && (
+                                        <p className="text-sm text-muted-foreground italic">No elements requested.</p>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

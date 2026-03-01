@@ -32,7 +32,7 @@ import { useFirestore, useCollection, updateDocumentNonBlocking, useMemoFirebase
 import { collection, collectionGroup, query, where, doc, getDoc, updateDoc } from "firebase/firestore";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import type { Booking, Room } from "@/lib/types";
+import type { Booking, Room, VenueElement } from "@/lib/types";
 
 export default function AllReservationsPage() {
     const { canApproveRoomReservation, isLoading: roleLoading } = useUserRole();
@@ -48,6 +48,9 @@ export default function AllReservationsPage() {
 
     const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
     const { data: rooms } = useCollection<Room>(roomsRef);
+
+    const venueElementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
+    const { data: venueElements } = useCollection<VenueElement>(venueElementsRef);
 
     const filteredBookings = useMemo(() => {
         if (!allBookings) return [];
@@ -247,6 +250,12 @@ export default function AllReservationsPage() {
                                                         </div>
                                                     ) : null}
                                                     <div className="flex gap-1 flex-wrap">
+                                                        {booking.requestedElements?.map(elId => {
+                                                            const el = venueElements?.find(v => v.id === elId);
+                                                            let shortName = el?.name || elId;
+                                                            if (shortName.length > 8) shortName = shortName.substring(0, 6) + '..';
+                                                            return <Badge key={elId} variant="outline" className="text-[9px] h-4 px-1">{shortName}</Badge>;
+                                                        })}
                                                         {booking.equipment_TV && <Badge variant="outline" className="text-[9px] h-4 px-1">TV</Badge>}
                                                         {booking.equipment_Mic && <Badge variant="outline" className="text-[9px] h-4 px-1">Mic</Badge>}
                                                         {booking.equipment_Speakers && <Badge variant="outline" className="text-[9px] h-4 px-1">Spkr</Badge>}

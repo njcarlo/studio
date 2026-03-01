@@ -42,7 +42,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { collection, serverTimestamp, Timestamp as FirebaseTimestamp, query, where, getDocs } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import type { Room, Branch, Area, Ministry } from "@/lib/types";
+import type { Room, Branch, Area, Ministry, VenueElement } from "@/lib/types";
 
 export default function NewReservationPage() {
     const { user } = useUser();
@@ -72,9 +72,7 @@ export default function NewReservationPage() {
     const [pax, setPax] = useState("");
     const [numTables, setNumTables] = useState("");
     const [numChairs, setNumChairs] = useState("");
-    const [tv, setTv] = useState(false);
-    const [mic, setMic] = useState(false);
-    const [speakers, setSpeakers] = useState(false);
+    const [requestedElements, setRequestedElements] = useState<string[]>([]);
     const [guidelinesAccepted, setGuidelinesAccepted] = useState(false);
 
     // Data fetching
@@ -90,9 +88,12 @@ export default function NewReservationPage() {
     const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
     const { data: ministries } = useCollection<Ministry>(ministriesRef);
 
+    const venueElementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
+    const { data: venueElements } = useCollection<VenueElement>(venueElementsRef);
+
     const workerMinistry = useMemo(() => {
         if (!workerProfile || !ministries) return null;
-        return ministries.find(m => m.id === workerProfile.primaryMinistryId);
+        return ministries.find(m => m.id === workerProfile.majorMinistryId);
     }, [workerProfile, ministries]);
 
     const selectedRoom = useMemo(() => {
@@ -223,7 +224,7 @@ export default function NewReservationPage() {
                 ? `${workerProfile.firstName} ${workerProfile.lastName}`
                 : (user?.displayName || user?.email?.split('@')[0] || "System Admin");
             const requesterEmail = workerProfile?.email || user?.email || "admin@system.com";
-            const requesterMinistryId = workerProfile?.primaryMinistryId || "";
+            const requesterMinistryId = workerProfile?.majorMinistryId || "";
 
             const bookingData = {
                 requestId,
@@ -241,9 +242,11 @@ export default function NewReservationPage() {
                 pax: paxNum || 0,
                 numTables: parseInt(numTables) || 0,
                 numChairs: parseInt(numChairs) || 0,
-                equipment_TV: tv,
-                equipment_Mic: mic,
-                equipment_Speakers: speakers,
+                requestedElements,
+                // Kept for legacy typing compatibility if needed
+                equipment_TV: false,
+                equipment_Mic: false,
+                equipment_Speakers: false,
                 guidelinesAccepted: true,
             };
 
@@ -470,11 +473,19 @@ export default function NewReservationPage() {
                                         {areas?.filter(a => a.branchId === locationId).map(area => (
                                             <SelectGroup key={area.id}>
                                                 <SelectLabel className="px-2 font-bold">{area.name}</SelectLabel>
-                                                {rooms?.filter(r => r.areaId === (area.areaId || area.id)).map(room => (
-                                                    <SelectItem key={room.id} value={room.id}>
-                                                        {room.name} (Cap: {room.capacity})
-                                                    </SelectItem>
-                                                ))}
+                                                {(rooms || [])
+                                                    .filter(r => r.areaId === (area.areaId || area.id))
+                                                    .sort((a, b) => {
+                                                        const weightA = a.weight ?? 0;
+                                                        const weightB = b.weight ?? 0;
+                                                        if (weightA !== weightB) return weightA - weightB;
+                                                        return a.name.localeCompare(b.name);
+                                                    })
+                                                    .map(room => (
+                                                        <SelectItem key={room.id} value={room.id}>
+                                                            {room.name} (Cap: {room.capacity})
+                                                        </SelectItem>
+                                                    ))}
                                             </SelectGroup>
                                         ))}
                                     </SelectContent>
@@ -531,23 +542,37 @@ export default function NewReservationPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-3 border-t pt-4">
-                            <Label>Audio & Visuals</Label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id="tv" checked={tv} onCheckedChange={(c) => setTv(!!c)} />
-                                    <Label htmlFor="tv" className="cursor-pointer">TV?</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id="mic" checked={mic} onCheckedChange={(c) => setMic(!!c)} />
-                                    <Label htmlFor="mic" className="cursor-pointer">Microphone?</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id="speakers" checked={speakers} onCheckedChange={(c) => setSpeakers(!!c)} />
-                                    <Label htmlFor="speakers" className="cursor-pointer">Speakers?</Label>
+                        {selectedRoom && selectedRoom.elements && selectedRoom.elements.length > 0 && (
+                            <div className="space-y-3 border-t pt-4">
+                                <Label>Facility Elements</Label>
+                                <p className="text-sm text-muted-foreground mb-3">Select the items you need for your reservation.</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    {selectedRoom.elements.map(elementId => {
+                                        const element = venueElements?.find(e => e.id === elementId);
+                                        if (!element) return null;
+                                        return (
+                                            <div key={element.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`element-${element.id}`}
+                                                    checked={requestedElements.includes(element.id)}
+                                                    onCheckedChange={(c) => {
+                                                        if (c) {
+                                                            setRequestedElements(prev => [...prev, element.id]);
+                                                        } else {
+                                                            setRequestedElements(prev => prev.filter(id => id !== element.id));
+                                                        }
+                                                    }}
+                                                />
+                                                <Label htmlFor={`element-${element.id}`} className="cursor-pointer flex flex-col items-start gap-1">
+                                                    <span>{element.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground border px-1.5 py-0.5 rounded-full">{element.category.toUpperCase()}</span>
+                                                </Label>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="bg-orange-50 dark:bg-orange-950/20 p-4 rounded-lg border border-orange-200 dark:border-orange-900/30 space-y-3">
                             <div className="font-bold flex items-center gap-2 text-orange-700 dark:text-orange-400">

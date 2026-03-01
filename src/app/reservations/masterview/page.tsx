@@ -11,6 +11,7 @@ import {
     Calendar as CalendarIcon,
     Info,
     LoaderCircle,
+    CheckCircle2,
     Mic,
     Tv,
     Speaker,
@@ -29,7 +30,7 @@ import {
     collectionGroup
 } from "firebase/firestore";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import type { Booking, Room, Area, Worker } from "@/lib/types";
+import type { Booking, Room, Area, Worker, VenueElement } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -77,7 +78,10 @@ export default function MasterviewPage() {
     const workersRef = useMemoFirebase(() => collection(firestore, 'workers'), [firestore]);
     const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
-    const isLoading = roomsLoading || areasLoading || bookingsLoading || workersLoading || roleLoading;
+    const venueElementsRef = useMemoFirebase(() => collection(firestore, 'venueElements'), [firestore]);
+    const { data: venueElements, isLoading: venueElementsLoading } = useCollection<VenueElement>(venueElementsRef);
+
+    const isLoading = roomsLoading || areasLoading || bookingsLoading || workersLoading || roleLoading || venueElementsLoading;
 
     // Protection
     React.useEffect(() => {
@@ -199,12 +203,11 @@ export default function MasterviewPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="w-[160px] h-9 px-3 text-xs">Venue</TableHead>
-                                        <TableHead className="w-[180px] h-9 px-3 text-xs">Date & Time</TableHead>
-                                        <TableHead className="h-9 px-3 text-xs">Event Details</TableHead>
-                                        <TableHead className="w-[80px] h-9 px-3 text-xs text-center">AV</TableHead>
-                                        <TableHead className="w-[90px] h-9 px-3 text-xs text-center">Visuals</TableHead>
-                                        <TableHead className="w-[50px] h-9 px-2" />
+                                        <TableHead className="w-[180px] font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] h-14 px-6">Venue</TableHead>
+                                        <TableHead className="w-[200px] font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] h-14 px-6">Date & Time</TableHead>
+                                        <TableHead className="font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] h-14 px-6">Event Details</TableHead>
+                                        <TableHead className="w-[220px] font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] text-center h-14 px-6">Requirements</TableHead>
+                                        <TableHead className="w-[60px] h-14 px-6"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -233,24 +236,28 @@ export default function MasterviewPage() {
                                                         <p className="text-xs text-muted-foreground line-clamp-1">{booking.purpose || "Regular meeting"}</p>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-center py-2 px-3 align-middle">
-                                                    {(booking.equipment_Mic || booking.equipment_Speakers) ? (
-                                                        <div className="flex flex-col items-center gap-0.5">
-                                                            <Mic className="h-4 w-4 text-emerald-500" />
-                                                            <span className="text-[10px] text-emerald-600">Yes</span>
+                                                <TableCell className="text-center py-6 px-6 align-top">
+                                                    {(booking.requestedElements && booking.requestedElements.length > 0) ? (
+                                                        <div className="flex flex-wrap gap-1 justify-center max-w-[150px]">
+                                                            {booking.requestedElements.map(elId => {
+                                                                const el = venueElements?.find(v => v.id === elId);
+                                                                return (
+                                                                    <Badge key={elId} variant="outline" className="text-[9px] h-4">
+                                                                        {el ? el.name : elId}
+                                                                    </Badge>
+                                                                );
+                                                            })}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-xs text-muted-foreground/40">—</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-center py-2 px-3 align-middle">
-                                                    {booking.equipment_TV ? (
-                                                        <div className="flex flex-col items-center gap-0.5">
-                                                            <Tv className="h-4 w-4 text-blue-500" />
-                                                            <span className="text-[10px] text-blue-600">Yes</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground/40">—</span>
+                                                        (booking.equipment_Mic || booking.equipment_Speakers || booking.equipment_TV) ? (
+                                                            <div className="flex flex-wrap gap-1 justify-center max-w-[150px]">
+                                                                {booking.equipment_TV && <Badge variant="outline" className="text-[9px] h-4 text-blue-600">TV</Badge>}
+                                                                {booking.equipment_Mic && <Badge variant="outline" className="text-[9px] h-4 text-emerald-600">Mic</Badge>}
+                                                                {booking.equipment_Speakers && <Badge variant="outline" className="text-[9px] h-4 text-emerald-600">Audio</Badge>}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-[10px] text-slate-300 font-mono italic">None</span>
+                                                        )
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right py-2 px-3 align-middle">
@@ -331,12 +338,13 @@ export default function MasterviewPage() {
                 booking={selectedBooking}
                 roomName={selectedBooking ? (rooms?.find(r => r.id === selectedBooking.roomId)?.name || "Unknown Room") : ""}
                 workers={workers || []}
+                venueElements={venueElements || []}
             />
         </AppLayout>
     );
 }
 
-const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, workers }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string; workers: Worker[] }) => {
+const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, workers, venueElements }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string; workers: Worker[]; venueElements: VenueElement[] }) => {
     if (!booking) return null;
 
     const startTime = (booking.start as any).toDate();
@@ -379,12 +387,36 @@ const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, workers }: { 
 
                     <Separator />
 
-                    <div className="space-y-3">
-                        <h4 className="text-xs font-medium text-muted-foreground">Technical Requirements</h4>
-                        <div className="grid grid-cols-1 gap-2">
-                            <EquipmentStatus label="Television / Multimedia" active={!!booking.equipment_TV} icon={Tv} />
-                            <EquipmentStatus label="Microphone / Audio" active={!!booking.equipment_Mic} icon={Mic} />
-                            <EquipmentStatus label="Sound System / Speakers" active={!!booking.equipment_Speakers} icon={Speaker} />
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Requested Elements</h4>
+                        <div className="grid grid-cols-1 gap-3">
+                            {booking.requestedElements && booking.requestedElements.length > 0 ? (
+                                booking.requestedElements.map(elId => {
+                                    const el = venueElements.find(v => v.id === elId);
+                                    return (
+                                        <div key={elId} className="flex items-center justify-between p-3 rounded-xl border bg-emerald-50/50 border-emerald-100 text-emerald-900">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded-lg bg-white shadow-sm">
+                                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                                </div>
+                                                <div>
+                                                    <span className="text-xs font-bold block">{el?.name || elId}</span>
+                                                    <span className="text-[9px] text-emerald-600/70 font-semibold uppercase tracking-wider">{el?.category || ""}</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Requested</span>
+                                        </div>
+                                    );
+                                })
+                            ) : (booking.equipment_TV || booking.equipment_Mic || booking.equipment_Speakers) ? (
+                                <>
+                                    {booking.equipment_TV && <LegacyRow label="Television / Multimedia" />}
+                                    {booking.equipment_Mic && <LegacyRow label="Microphone / Audio" />}
+                                    {booking.equipment_Speakers && <LegacyRow label="Sound System / Speakers" />}
+                                </>
+                            ) : (
+                                <p className="text-sm text-slate-400 italic">No elements were requested.</p>
+                            )}
                         </div>
                     </div>
 
@@ -402,17 +434,14 @@ const DetailRow = ({ label, value }: { label: string, value: string }) => (
     </div>
 );
 
-const EquipmentStatus = ({ label, active, icon: Icon }: { label: string, active: boolean, icon: any }) => (
-    <div className={cn(
-        "flex items-center justify-between p-2.5 rounded-lg border transition-colors",
-        active ? "bg-green-50 border-green-100 dark:bg-green-900/10 dark:border-green-900/20" : "opacity-50"
-    )}>
-        <div className="flex items-center gap-2.5">
-            <Icon className={cn("h-4 w-4", active ? "text-green-600" : "text-muted-foreground")} />
-            <span className="text-xs font-medium">{label}</span>
+const LegacyRow = ({ label }: { label: string }) => (
+    <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50/50 border-slate-100 text-slate-600">
+        <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg">
+                <CheckCircle2 className="h-4 w-4 text-slate-400" />
+            </div>
+            <span className="text-xs font-bold">{label}</span>
         </div>
-        <span className={cn("text-xs", active ? "text-green-600" : "text-muted-foreground/40")}>
-            {active ? "Yes" : "No"}
-        </span>
+        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Legacy</span>
     </div>
 );

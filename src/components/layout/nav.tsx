@@ -171,6 +171,11 @@ const allNavItems: NavItem[] = [
         permissionKey: "canManageFacilities",
       },
       {
+        href: "/settings/venue-elements",
+        label: "Venue Elements",
+        permissionKey: "canManageFacilities",
+      },
+      {
         href: "/settings/transaction-logs",
         label: "Transaction Logs",
         permissionKey: "isSuperAdmin",
@@ -208,9 +213,9 @@ export function Nav({
   const hasAccess = (
     key:
       | keyof Omit<
-          UserRoleContextType,
-          "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
-        >
+        UserRoleContextType,
+        "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
+      >
       | undefined,
   ) => {
     if (!key) return true; // No permission required

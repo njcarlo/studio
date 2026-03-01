@@ -192,13 +192,11 @@ export default function QRScannerPage() {
                 }
 
                 const isSundayToday = new Date().getDay() === 0;
-                const currentType = isSundayToday ? 'sunday' : 'weekday';
 
                 const q = query(
                     collection(firestore, "mealstubs"),
                     where("workerId", "==", payload),
-                    where("status", "==", "Issued"),
-                    where("stubType", "==", currentType)
+                    where("status", "==", "Issued")
                 );
                 const querySnapshot = await getDocs(q);
 
@@ -213,12 +211,12 @@ export default function QRScannerPage() {
                         status: 'Claimed',
                         claimedAt: serverTimestamp()
                     });
-                    const details = `Claimed ${currentType} meal stub for ${stubData.workerName}.`;
+                    const details = `Claimed meal stub for ${stubData.workerName}.`;
                     toast({ title: "Meal Stub Claimed!", description: details });
                     logScanEvent({ scanType: 'Meal Stub', details, mealStubId: todaysStubDoc.id, targetUserId: stubData.workerId, targetUserName: stubData.workerName });
                 } else {
                     const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
-                    toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid ${currentType} meal stub found for ${workerName} for today.` });
+                    toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid meal stub found for ${workerName} for today.` });
                 }
             } catch (e) {
                 console.error("Error processing meal stub:", e);

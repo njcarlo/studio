@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import Image from "next/image";
-import { collection, serverTimestamp, doc, query, where, updateDoc, addDoc, writeBatch, deleteDoc } from "firebase/firestore";
+import { collection, serverTimestamp, doc, query, where, updateDoc, addDoc, writeBatch } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,24 +29,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw, ShieldAlert, ClipboardList, ShieldCheck, Search, CheckCircle2, Trash2 } from "lucide-react";
 import type { MealStub, Worker, Ministry, MealStubSettings } from "@/lib/types";
 import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase, useDoc } from "@/firebase";
 import { useUserRole } from "@/hooks/use-user-role";
-import { format, isToday, subDays, startOfWeek, endOfWeek, isSunday, isWithinInterval, addDays } from 'date-fns';
+import { format, isToday, subDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
-import { getWeeklyWeekdayCount, getSundayCount, getTodayWeekdayCount } from "@/lib/utils";
+import { getTodayStubCount, getWeeklyStubCount } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Ticket } from "lucide-react";
@@ -164,7 +156,7 @@ function MealsPageContent() {
     if (!isAssigner || !allWorkers) return [];
     const ministryIds = assignerMinistries.map(m => m.id);
     return allWorkers.filter(w =>
-      (ministryIds.includes(w.primaryMinistryId) || ministryIds.includes(w.secondaryMinistryId)) &&
+      (ministryIds.includes(w.majorMinistryId) || ministryIds.includes(w.minorMinistryId)) &&
       w.status === 'Active'
     );
   }, [isAssigner, canManageAllMealStubs, allWorkers, assignerMinistries]);
@@ -180,155 +172,91 @@ function MealsPageContent() {
 
   // ---- Logic Handlers ----
 
-  const issueMultipleStubs = useCallback(async (targetId: string, type: 'weekday' | 'sunday', count: number) => {
+  const issueStub = useCallback(async (targetId: string) => {
     const assignerId = workerProfile?.id || user?.uid || 'system';
     const assignerName = workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.displayName || user?.email || 'System Admin');
 
-    const targetWorker = ministryWorkers.find(w => w.id === targetId);
+    const targetWorker = allWorkers?.find(w => w.id === targetId);
     if (!targetWorker) return;
 
-    // Rules: FT/On-call Weekday (Mon-Sat) is FREE. Volunteer Weekday & Sunday are DEDUCTIBLE.
-    const isVolunteer = targetWorker.employmentType === 'Volunteer';
-    const isDeductible = type === 'sunday' || isVolunteer;
+    // 1. Daily Check
+    const todayCount = getTodayStubCount(allMealStubs || [], targetId);
+    if (todayCount >= 1) {
+      toast({ variant: "destructive", title: "Already Assigned", description: "This worker already has a meal stub for today." });
+      return;
+    }
 
-    if (isDeductible) {
-      const ministry = ministries?.find(m => m.id === targetWorker.primaryMinistryId);
-      if (!ministry) {
-        toast({ variant: "destructive", title: "Config Error" });
+    // 2. Volunteer Day Check
+    if (targetWorker.employmentType === 'Volunteer') {
+      const d = new Date().getDay();
+      if (globalSettings?.disabledVolunteerDays?.includes(d)) {
+        toast({ variant: "destructive", title: "Disabled", description: "Volunteer stubs are disabled for today." });
         return;
       }
-      const mPool = ministry.mealStubTotalLimit || 0;
+    }
+
+    // 3. Ministry Pool Check
+    const targetMinistryId = targetWorker.majorMinistryId;
+    const ministry = ministries?.find(m => m.id === targetMinistryId);
+    if (ministry && ministry.mealStubWeeklyLimit !== undefined) {
       const start = startOfWeek(new Date(), { weekStartsOn: 1 });
       const end = endOfWeek(new Date());
+      const ministryWorkersIds = allWorkers?.filter(w => w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId).map(w => w.id) || [];
+      const usedThisWeek = allMealStubs?.filter(s => {
+        if (!ministryWorkersIds.includes(s.workerId)) return false;
+        const d = s.date && (s.date as any).seconds ? new Date((s.date as any).seconds * 1000) : new Date(s.date as any);
+        return isWithinInterval(d, { start, end });
+      }).length || 0;
 
-      const currentSpentCount = (allMealStubs || []).filter(s => {
-        if (!s.date) return false;
-        const d = new Date((s.date as any).seconds * 1000);
-        if (!isWithinInterval(d, { start, end })) return false;
-        const stubWorker = allWorkers?.find(wrk => wrk.id === s.workerId);
-        if (stubWorker?.primaryMinistryId !== targetWorker.primaryMinistryId) return false;
-        return s.stubType === 'sunday' || stubWorker?.employmentType === 'Volunteer';
-      }).length;
-
-      if (currentSpentCount + count > mPool) {
-        toast({ variant: "destructive", title: "Pool Exceeded", description: `Limit: ${mPool}. Spent: ${currentSpentCount}.` });
+      if (usedThisWeek >= ministry.mealStubWeeklyLimit) {
+        toast({ variant: "destructive", title: "Limit Reached", description: `Ministry ${ministry.name} has reached its weekly limit (${ministry.mealStubWeeklyLimit}).` });
         return;
       }
     }
 
     setIsAssigning(true);
     try {
-      const promises = [];
-      for (let i = 0; i < count; i++) {
-        promises.push(addDoc(collection(firestore, "mealstubs"), {
-          workerId: targetId,
-          workerName: `${targetWorker.firstName} ${targetWorker.lastName}`,
-          date: serverTimestamp(),
-          status: 'Issued',
-          assignedBy: assignerId,
-          assignedByName: assignerName,
-          stubType: type,
-        }));
-      }
-      await Promise.all(promises);
-      toast({ title: "Stubs Issued", description: `Assigned ${count} ${type} stub(s).` });
+      await addDoc(collection(firestore, "mealstubs"), {
+        workerId: targetId,
+        workerName: `${targetWorker.firstName} ${targetWorker.lastName}`,
+        date: serverTimestamp(),
+        status: 'Issued',
+        assignedBy: assignerId,
+        assignedByName: assignerName,
+        stubType: 'daily',
+      });
+      toast({ title: "Stub Issued", description: `Meal stub issued to ${targetWorker.firstName} ${targetWorker.lastName}.` });
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Error" });
     } finally {
       setIsAssigning(false);
     }
-  }, [workerProfile, user, ministryWorkers, firestore, ministries, allMealStubs, allWorkers, toast]);
+  }, [workerProfile, user, allWorkers, ministries, allMealStubs, globalSettings, firestore, toast]);
 
-  const handleQuickAssign = (w: Worker, type: 'weekday' | 'sunday', count: number) => {
-    const isVolunteer = w.employmentType === 'Volunteer';
-    const allStubs = allMealStubs || [];
-
-    if (type === 'weekday') {
-      if (isVolunteer) {
-        const d = new Date().getDay();
-        if (globalSettings?.disabledVolunteerDays?.includes(d)) {
-          toast({ variant: "destructive", title: "Disabled", description: "Volunteer stubs disabled for today." });
-          return;
-        }
-        if (getTodayWeekdayCount(allStubs, w.id) >= 1) {
-          toast({ variant: "destructive", title: "Already Assigned" });
-          return;
-        }
-        issueMultipleStubs(w.id, 'weekday', 1);
-        return;
-      } else {
-        const remaining = 5 - getWeeklyWeekdayCount(allStubs, w.id);
-        if (remaining <= 0) {
-          toast({ variant: "destructive", title: "Limit Reached" });
-          return;
-        }
-        issueMultipleStubs(w.id, 'weekday', Math.min(count, remaining));
-        return;
-      }
-    }
-    const remSun = 2 - getSundayCount(allStubs, w.id);
-    if (remSun <= 0) {
-      toast({ variant: "destructive", title: "Limit Reached" });
-      return;
-    }
-    issueMultipleStubs(w.id, 'sunday', Math.min(count, remSun));
-  };
-
-  // EFFECT: Automate 5 weekday stubs for FT & On-Call (Mon-Sat, non-deductible)
-  useEffect(() => {
-    if (!allMealStubs || !ministryWorkers || !user || (!isMealStubAssigner && !canManageAllMealStubs)) return;
-
-    const autoAssign = async () => {
-      const eligibleWorkers = ministryWorkers.filter(w => w.employmentType === 'Full-Time' || w.employmentType === 'On-Call');
-      const assignerId = workerProfile?.id || user?.uid || 'system';
-      const assignerName = workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.displayName || user?.email || 'System Admin');
-
-      for (const w of eligibleWorkers) {
-        const currentCount = getWeeklyWeekdayCount(allMealStubs, w.id);
-        const toAssign = Math.max(0, 5 - currentCount);
-
-        if (toAssign > 0) {
-          for (let i = 0; i < toAssign; i++) {
-            await addDoc(collection(firestore, "mealstubs"), {
-              workerId: w.id,
-              workerName: `${w.firstName} ${w.lastName}`,
-              date: serverTimestamp(),
-              status: 'Issued',
-              assignedBy: assignerId,
-              assignedByName: assignerName,
-              stubType: 'weekday',
-            });
-          }
-        }
-      }
-    };
-    autoAssign();
-  }, [allMealStubs, ministryWorkers, user, isMealStubAssigner, canManageAllMealStubs, firestore, workerProfile]);
+  const handleQuickAssign = (w: Worker) => issueStub(w.id);
 
   // Modal State
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>('');
-  const [stubType, setStubType] = useState<'weekday' | 'sunday'>('sunday');
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>([]);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
-  const [batchType, setBatchType] = useState<'weekday' | 'sunday'>('sunday');
-  const [batchCount, setBatchCount] = useState(1);
 
   const handleAssignStub = useCallback(async () => {
     if (!selectedWorkerId) return;
-    await issueMultipleStubs(selectedWorkerId, stubType, 1);
+    await issueStub(selectedWorkerId);
     setIsAssignOpen(false);
     setSelectedWorkerId('');
-  }, [selectedWorkerId, stubType, issueMultipleStubs]);
+  }, [selectedWorkerId, issueStub]);
 
   const handleBatchAssign = async () => {
     if (selectedWorkerIds.length === 0) return;
     setIsAssigning(true);
     try {
       for (const id of selectedWorkerIds) {
-        await issueMultipleStubs(id, batchType, batchCount);
+        // Here we just call issueStub one by one which handles all checks (daily, volunteer, pool)
+        await issueStub(id);
       }
       setSelectedWorkerIds([]);
       setIsBatchOpen(false);
@@ -340,33 +268,31 @@ function MealsPageContent() {
   };
 
   const handleCleanupExcess = useCallback(async () => {
-    if (!allMealStubs || !allWorkers) return;
+    if (!allMealStubs) return;
     setIsAssigning(true);
     let deletedCount = 0;
     const batch = writeBatch(firestore);
-    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const end = endOfWeek(new Date());
-
     try {
-      allWorkers.forEach(w => {
-        const weeklyStubs = allMealStubs.filter(s => {
-          if (s.workerId !== w.id || !s.date) return false;
-          const d = new Date((s.date as any).seconds * 1000);
-          return isWithinInterval(d, { start, end });
-        });
-        const weekdays = weeklyStubs.filter(s => s.stubType === 'weekday').sort((a, b) => (b.date as any).seconds - (a.date as any).seconds);
-        const sundays = weeklyStubs.filter(s => s.stubType === 'sunday').sort((a, b) => (b.date as any).seconds - (a.date as any).seconds);
-
-        if (weekdays.length > 5) {
-          weekdays.slice(5).forEach(s => { if (s.status === 'Issued') { batch.delete(doc(firestore, 'mealstubs', s.id)); deletedCount++; } });
-        }
-        if (sundays.length > 2) {
-          sundays.slice(2).forEach(s => { if (s.status === 'Issued') { batch.delete(doc(firestore, 'mealstubs', s.id)); deletedCount++; } });
+      const seen = new Set<string>();
+      allMealStubs.forEach(s => {
+        if (!s.date) return;
+        const d = new Date((s.date as any).seconds * 1000);
+        const dayKey = `${s.workerId}-${format(d, 'yyyy-MM-dd')}`;
+        if (seen.has(dayKey)) {
+          if (s.status === 'Issued') {
+            batch.delete(doc(firestore, 'mealstubs', s.id));
+            deletedCount++;
+          }
+        } else {
+          seen.add(dayKey);
         }
       });
-      if (deletedCount > 0) { await batch.commit(); toast({ title: "Cleanup Success", description: `Deleted ${deletedCount} stubs.` }); }
+      if (deletedCount > 0) {
+        await batch.commit();
+        toast({ title: "Cleanup Success", description: `Deleted ${deletedCount} duplicate stubs.` });
+      }
     } catch (e) { console.error(e); } finally { setIsAssigning(false); }
-  }, [allMealStubs, allWorkers, firestore, toast]);
+  }, [allMealStubs, firestore, toast]);
 
   const toggleSelectAll = (workers: Worker[]) => {
     if (selectedWorkerIds.length === workers.length && workers.length > 0) setSelectedWorkerIds([]);
@@ -374,25 +300,20 @@ function MealsPageContent() {
   };
   const toggleSelectWorker = (id: string) => setSelectedWorkerIds(prev => prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id]);
 
-  const claimedStubs = mealStubs?.filter(s => s.status === 'Claimed') || [];
-  const todayScans = claimedStubs.filter(s => s.date && isToday(new Date((s.date as any).seconds * 1000))).length;
-  const weekScans = claimedStubs.filter(s => {
-    if (!s.date) return false;
-    return new Date((s.date as any).seconds * 1000) > subDays(new Date(), 7);
-  }).length;
-
-  const todayIsSunday = isSunday(new Date());
   const isLoading = mealStubsLoading || workersLoading || isRoleLoading;
 
   if (isLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
   if (!canViewMealStubs) return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle></CardHeader></Card></AppLayout>;
+
+  const myTodayCount = getTodayStubCount(mealStubs || [], user?.uid || '');
+  const myWeekCount = getWeeklyStubCount(mealStubs || [], user?.uid || '');
 
   return (
     <AppLayout>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-headline font-bold">Mealstub Management</h1>
-          <p className="text-sm text-muted-foreground">Manage allocations (Mon-Sat defined as weekdays).</p>
+          <p className="text-sm text-muted-foreground">One meal stub per worker per day.</p>
         </div>
         <div className="flex items-center gap-2">
           {(isMealStubAssigner || canManageAllMealStubs) && (
@@ -433,15 +354,15 @@ function MealsPageContent() {
 
             <div className="lg:col-span-2 space-y-6">
               <Card>
-                <CardHeader><CardTitle className="text-base">Current Week Summary</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base">Daily Summary</CardTitle></CardHeader>
                 <CardContent className="flex gap-8">
                   <div>
-                    <span className="text-sm text-muted-foreground">Weekday (Mon-Sat)</span>
-                    <div className="text-3xl font-bold">{getWeeklyWeekdayCount(mealStubs || [], user?.uid || '')} / 5</div>
+                    <span className="text-sm text-muted-foreground">Today</span>
+                    <div className="text-3xl font-bold">{myTodayCount} / 1</div>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground">Sunday</span>
-                    <div className="text-3xl font-bold">{getSundayCount(mealStubs || [], user?.uid || '')} / 2</div>
+                    <span className="text-sm text-muted-foreground">This Week</span>
+                    <div className="text-3xl font-bold">{myWeekCount}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -450,7 +371,7 @@ function MealsPageContent() {
                 <CardHeader className="pb-2"><h3 className="text-sm font-semibold uppercase flex items-center gap-2"><Ticket className="h-4 w-4" /> Issued Stubs</h3></CardHeader>
                 <CardContent>
                   <Table>
-                    <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Time</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Time</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {mealStubs?.filter(s => {
                         if (!s.date) return false;
@@ -458,8 +379,8 @@ function MealsPageContent() {
                         return isWithinInterval(d, { start: startOfWeek(new Date(), { weekStartsOn: 1 }), end: endOfWeek(new Date()) });
                       }).sort((a, b) => (b.date as any).seconds - (a.date as any).seconds).map(s => (
                         <TableRow key={s.id}>
-                          <TableCell className="capitalize">{s.stubType}</TableCell>
-                          <TableCell>{format(new Date((s.date as any).seconds * 1000), 'MMM d, p')}</TableCell>
+                          <TableCell>{format(new Date((s.date as any).seconds * 1000), 'EEE, MMM d')}</TableCell>
+                          <TableCell>{format(new Date((s.date as any).seconds * 1000), 'p')}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={s.status === 'Issued' ? 'default' : 'secondary'}>{s.status === 'Issued' ? 'Not Used' : 'Claimed'}</Badge>
                           </TableCell>
@@ -498,27 +419,24 @@ function MealsPageContent() {
                 <Table>
                   <TableHeader><TableRow>
                     <TableHead><Checkbox checked={filteredAssignerWorkers.length > 0 && selectedWorkerIds.length === filteredAssignerWorkers.length} onCheckedChange={() => toggleSelectAll(filteredAssignerWorkers)} /></TableHead>
-                    <TableHead>Worker</TableHead><TableHead>Type</TableHead><TableHead>Weekly Usage</TableHead><TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Worker</TableHead><TableHead>Type</TableHead><TableHead>Today</TableHead><TableHead className="text-right">Action</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {filteredAssignerWorkers.map(w => {
-                      const wd = getWeeklyWeekdayCount(allMealStubs || [], w.id);
-                      const sun = getSundayCount(allMealStubs || [], w.id);
-                      const isVol = w.employmentType === 'Volunteer';
+                      const todayCount = getTodayStubCount(allMealStubs || [], w.id);
+                      const hasToday = todayCount >= 1;
                       return (
                         <TableRow key={w.id}>
                           <TableCell><Checkbox checked={selectedWorkerIds.includes(w.id)} onCheckedChange={() => toggleSelectWorker(w.id)} /></TableCell>
                           <TableCell className="font-medium">{w.firstName} {w.lastName}</TableCell>
                           <TableCell><Badge variant="outline" className="text-[10px]">{w.employmentType}</Badge></TableCell>
                           <TableCell>
-                            <div className="text-[10px] space-x-2">
-                              <span>WD: {wd}/5</span>
-                              <span>Sun: {sun}/2</span>
-                            </div>
+                            <Badge variant={hasToday ? 'secondary' : 'outline'} className="text-[10px]">
+                              {hasToday ? 'Issued' : 'None'}
+                            </Badge>
                           </TableCell>
-                          <TableCell className="text-right space-x-1">
-                            <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => handleQuickAssign(w, 'weekday', 1)} disabled={wd >= 5}>W1</Button>
-                            <Button size="sm" variant="secondary" className="h-7 px-2 text-[10px]" onClick={() => handleQuickAssign(w, 'sunday', 1)} disabled={sun >= 2}>S1</Button>
+                          <TableCell className="text-right">
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => handleQuickAssign(w)} disabled={hasToday}>Issue</Button>
                           </TableCell>
                         </TableRow>
                       );
@@ -533,17 +451,12 @@ function MealsPageContent() {
         <TabsContent value="reports" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
-              <CardHeader><CardTitle className="text-sm">FT / On-Call Weekday (Mon-Sat)</CardTitle><CardDescription>Non-deductible usage this week.</CardDescription></CardHeader>
+              <CardHeader><CardTitle className="text-sm">Total Issued Today</CardTitle><CardDescription>All stubs issued for today.</CardDescription></CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">
                   {allMealStubs?.filter(s => {
-                    if (s.stubType !== 'weekday' || !s.date) return false;
-                    const d = new Date((s.date as any).seconds * 1000);
-                    const sw = startOfWeek(new Date(), { weekStartsOn: 1 });
-                    const ew = endOfWeek(new Date());
-                    if (!isWithinInterval(d, { start: sw, end: ew })) return false;
-                    const w = allWorkers?.find(worker => worker.id === s.workerId);
-                    return w?.employmentType === 'Full-Time' || w?.employmentType === 'On-Call';
+                    if (!s.date) return false;
+                    return isToday(new Date((s.date as any).seconds * 1000));
                   }).length || 0}
                 </div>
               </CardContent>
@@ -557,15 +470,21 @@ function MealsPageContent() {
             </Card>
           </div>
           <Card>
-            <CardHeader><CardTitle>Breakdown</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Breakdown by Type</CardTitle></CardHeader>
             <CardContent>
               <Table>
-                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Deductible?</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead className="text-right">Issued Today</TableHead><TableHead className="text-right">Issued This Week</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {['Full-Time', 'On-Call', 'Volunteer'].map(t => (
                     <TableRow key={t}>
                       <TableCell className="font-medium">{t}</TableCell>
-                      <TableCell>{t === 'Volunteer' ? 'Yes (All)' : 'Yes (Sun) / No (WD)'}</TableCell>
+                      <TableCell className="text-right">
+                        {allMealStubs?.filter(s => {
+                          if (!s.date) return false;
+                          return isToday(new Date((s.date as any).seconds * 1000)) &&
+                            allWorkers?.find(wrk => wrk.id === s.workerId)?.employmentType === t;
+                        }).length || 0}
+                      </TableCell>
                       <TableCell className="text-right">
                         {allMealStubs?.filter(s => {
                           const d = s.date && new Date((s.date as any).seconds * 1000);
@@ -582,25 +501,37 @@ function MealsPageContent() {
         </TabsContent>
       </Tabs>
 
+      {/* Single Assign Dialog */}
       <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Assign Meal Stub</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Assign Meal Stub</DialogTitle><DialogDescription>Issue one meal stub to a worker for today.</DialogDescription></DialogHeader>
           <div className="space-y-4 py-2">
-            <div><Label>Worker</Label><Select value={selectedWorkerId} onValueChange={setSelectedWorkerId}><SelectTrigger><SelectValue placeholder="Select worker..." /></SelectTrigger><SelectContent>{ministryWorkers.map(w => <SelectItem key={w.id} value={w.id}>{w.firstName} {w.lastName}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>Type</Label><Select value={stubType} onValueChange={(v: any) => setStubType(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekday">Weekday (Mon-Sat)</SelectItem><SelectItem value="sunday">Sunday</SelectItem></SelectContent></Select></div>
+            <div>
+              <Label>Worker</Label>
+              <select
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm mt-1"
+                value={selectedWorkerId}
+                onChange={e => setSelectedWorkerId(e.target.value)}
+              >
+                <option value="">Select worker...</option>
+                {ministryWorkers.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {w.firstName} {w.lastName} {getTodayStubCount(allMealStubs || [], w.id) >= 1 ? '(already issued today)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setIsAssignOpen(false)}>Cancel</Button><Button onClick={handleAssignStub} disabled={!selectedWorkerId || isAssigning}>Issue</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Batch Dialog */}
       <Dialog open={isBatchOpen} onOpenChange={setIsBatchOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Batch Issue</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div><Label>Type</Label><Select value={batchType} onValueChange={(v: any) => setBatchType(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekday">Weekday</SelectItem><SelectItem value="sunday">Sunday</SelectItem></SelectContent></Select></div>
-            <div><Label>Count</Label><Select value={batchCount.toString()} onValueChange={v => setBatchCount(parseInt(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={n.toString()}>{n}</SelectItem>)}</SelectContent></Select></div>
-          </div>
-          <DialogFooter><Button onClick={handleBatchAssign}>Issue to {selectedWorkerIds.length}</Button></DialogFooter>
+          <DialogHeader><DialogTitle>Batch Issue</DialogTitle><DialogDescription>Issue 1 stub per worker for today. Workers who already have a stub today or those restricted will be skipped or blocked.</DialogDescription></DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">{selectedWorkerIds.length} worker(s) selected.</p>
+          <DialogFooter><Button onClick={handleBatchAssign} disabled={isAssigning}>Issue to {selectedWorkerIds.length}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>

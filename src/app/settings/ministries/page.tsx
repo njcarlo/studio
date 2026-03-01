@@ -48,7 +48,7 @@ import { Copy, ClipboardCheck } from "lucide-react";
 
 const generateMinistryId = (name: string, department: string) => {
   const firstLetter = department.charAt(0).toUpperCase();
-  const cleanedName = name.trim().replace(/\s+/g, '-');
+  const cleanedName = name.trim();
   return `${firstLetter}-${cleanedName}`;
 };
 
@@ -102,11 +102,11 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
     if (ministry) {
       setFormData(ministry);
     } else {
-      setFormData({ name: '', description: '', department: 'Worship', leaderId: '', headId: '' });
+      setFormData({ name: '', description: '', department: 'Worship', leaderId: '', headId: '', weight: 0 });
     }
   }, [ministry]);
 
-  const handleChange = (field: keyof Ministry, value: string) => {
+  const handleChange = (field: keyof Ministry, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }
 
@@ -153,6 +153,10 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
               {workers.map(w => <SelectItem key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="weight">Weight (for sorting)</Label>
+          <Input id="weight" type="number" value={formData.weight ?? 0} onChange={e => handleChange('weight', parseInt(e.target.value, 10) || 0)} placeholder="0" />
         </div>
       </div>
       <SheetFooter>
@@ -562,9 +566,14 @@ export default function MinistryManagementPage() {
             <div key={department}>
               <h2 className="text-xl font-headline font-semibold mb-4 border-b pb-2">{department}</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {departmentMinistries.sort((a, b) => a.name.localeCompare(b.name)).map(ministry => {
+                {departmentMinistries.sort((a, b) => {
+                  const weightA = a.weight ?? 0;
+                  const weightB = b.weight ?? 0;
+                  if (weightA !== weightB) return weightA - weightB;
+                  return a.name.localeCompare(b.name);
+                }).map(ministry => {
                   const leader = getWorker(ministry.leaderId);
-                  const members = workers?.filter(w => w.primaryMinistryId === ministry.id || w.secondaryMinistryId === ministry.id) || [];
+                  const members = workers?.filter(w => w.majorMinistryId === ministry.id || w.minorMinistryId === ministry.id) || [];
 
                   return (
                     <Card key={ministry.id}>
@@ -578,8 +587,13 @@ export default function MinistryManagementPage() {
                               setSelectedMinistryDetails(ministry);
                               setIsDetailsSheetOpen(true);
                             }}>
-                              <CardTitle className="text-lg hover:text-primary transition-colors">{ministry.name}</CardTitle>
-                              <p className="text-[10px] font-mono text-muted-foreground uppercase mt-0.5">{ministry.id}</p>
+                              <div className="flex items-center gap-2">
+                                <CardTitle className="text-lg hover:text-primary transition-colors">{ministry.name}</CardTitle>
+                                {ministry.weight !== undefined && (
+                                  <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-medium">W: {ministry.weight}</span>
+                                )}
+                              </div>
+                              <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{ministry.id}</p>
                             </div>
                           </div>
                           {(canManageMinistries || canAppointForMinistry(ministry)) && (
@@ -788,7 +802,7 @@ export default function MinistryManagementPage() {
             <MinistryDetailsSheet
               ministry={selectedMinistryDetails}
               workers={workers}
-              members={workers.filter(w => w.primaryMinistryId === selectedMinistryDetails.id || w.secondaryMinistryId === selectedMinistryDetails.id)}
+              members={workers.filter(w => w.majorMinistryId === selectedMinistryDetails.id || w.minorMinistryId === selectedMinistryDetails.id)}
               onEdit={() => {
                 setIsDetailsSheetOpen(false);
                 setSelectedMinistry(selectedMinistryDetails);

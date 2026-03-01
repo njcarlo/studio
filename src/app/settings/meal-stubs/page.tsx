@@ -76,7 +76,7 @@ export default function MealStubAllocationPage() {
         const deptMinistries = ministries?.filter(m => m.department === dept) || [];
         return deptMinistries.reduce((sum, m) => {
             const edit = ministryEdits[m.id];
-            return sum + (edit !== undefined ? edit : (m.mealStubTotalLimit || 0));
+            return sum + (edit !== undefined ? edit : (m.mealStubWeeklyLimit || 0));
         }, 0);
     };
 
@@ -166,9 +166,9 @@ export default function MealStubAllocationPage() {
         setSaving(ministry.id);
         try {
             await updateDoc(doc(firestore, "ministries", ministry.id), {
-                mealStubTotalLimit: value
+                mealStubWeeklyLimit: value
             });
-            await logAction('Updated Ministry Allocation', 'Settings', `Updated limit for ${ministry.name}: ${value}`);
+            await logAction('Updated Ministry Allocation', 'Settings', `Updated weekly limit for ${ministry.name}: ${value}`);
             toast({ title: "Ministry Allocation Saved" });
             setMinistryEdits(prev => {
                 const next = { ...prev };
@@ -264,21 +264,25 @@ export default function MealStubAllocationPage() {
                             <CardTitle className="text-sm">Allocation Rules</CardTitle>
                         </div>
                     </CardHeader>
-                    <CardContent className="text-xs text-muted-foreground grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <p className="font-bold text-foreground">Non-Deductible (Free)</p>
-                            <ul className="list-disc list-inside space-y-1">
-                                <li>Full-Time Workers (Mon-Sat)</li>
-                                <li>On-Call Workers (Mon-Sat)</li>
-                                <li className="text-[10px] italic font-medium">Automated at 5 per week.</li>
-                            </ul>
-                        </div>
-                        <div className="space-y-2">
-                            <p className="font-bold text-foreground text-amber-700">Deductible from Pool</p>
-                            <ul className="list-disc list-inside space-y-1">
-                                <li>All Sunday stubs (FT, On-call, Vol)</li>
-                                <li>Volunteer Weekday stubs (if enabled)</li>
-                            </ul>
+                    <CardContent className="text-xs text-muted-foreground">
+                        <div className="space-y-4">
+                            <p>Workers are limited to <span className="font-bold text-foreground">1 meal stub per day</span>. Assignments are managed through ministry distributions from the department's weekly pool.</p>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <p className="font-bold text-foreground">Weekly Pool Distribution</p>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        <li>Managed via "Weekly Limit" below.</li>
+                                        <li>Each issued stub (any day) deducts from the pool.</li>
+                                    </ul>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="font-bold text-foreground">Volunteer Restrictions</p>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        <li>Always limited to 1 per day.</li>
+                                        <li>Controlled by the day-of-week checkboxes.</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -379,7 +383,7 @@ export default function MealStubAllocationPage() {
                                                 <TableBody>
                                                     {deptMinistries.map(m => {
                                                         const editVal = ministryEdits[m.id];
-                                                        const current = editVal !== undefined ? editVal : (m.mealStubTotalLimit || 0);
+                                                        const current = editVal !== undefined ? editVal : (m.mealStubWeeklyLimit || 0);
                                                         const changed = editVal !== undefined;
                                                         return (
                                                             <TableRow key={m.id}>

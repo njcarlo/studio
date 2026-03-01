@@ -408,10 +408,13 @@ const WorkerForm = ({
                         <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">
                           {dept}
                         </SelectLabel>
-                        {mins.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.name}
-                          </SelectItem>
+                        {[...mins].sort((a, b) => {
+                          const weightA = a.weight ?? 0;
+                          const weightB = b.weight ?? 0;
+                          if (weightA !== weightB) return weightA - weightB;
+                          return a.name.localeCompare(b.name);
+                        }).map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                         ))}
                       </SelectGroup>
                     ))}
@@ -441,10 +444,13 @@ const WorkerForm = ({
                         <SelectLabel className="text-muted-foreground uppercase text-xs tracking-wider">
                           {dept}
                         </SelectLabel>
-                        {mins.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.name}
-                          </SelectItem>
+                        {[...mins].sort((a, b) => {
+                          const weightA = a.weight ?? 0;
+                          const weightB = b.weight ?? 0;
+                          if (weightA !== weightB) return weightA - weightB;
+                          return a.name.localeCompare(b.name);
+                        }).map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                         ))}
                       </SelectGroup>
                     ))}
@@ -1319,18 +1325,12 @@ export default function WorkersPage() {
         if (!w) return;
 
         const allStubs = allMealStubs || [];
-        const current =
-          type === "weekday"
-            ? getWeeklyWeekdayCount(allStubs, id)
-            : getSundayCount(allStubs, id);
+        const current = getWeeklyWeekdayCount(allStubs, id) + getSundayCount(allStubs, id);
 
         const ministry = ministries.find(
           (m) => m.id === w.majorMinistryId || m.id === w.minorMinistryId,
         );
-        const limit =
-          type === "weekday"
-            ? ministry?.mealStubWeekdayLimit || 5
-            : ministry?.mealStubSundayLimit || 2;
+        const limit = ministry?.mealStubWeeklyLimit || 7;
 
         const remaining = limit - current;
         if (remaining <= 0) {
@@ -1420,10 +1420,10 @@ export default function WorkersPage() {
         const isMinistryChanging =
           (dataToSave.majorMinistryId !== undefined &&
             dataToSave.majorMinistryId !==
-              (selectedWorker.majorMinistryId || "")) ||
+            (selectedWorker.majorMinistryId || "")) ||
           (dataToSave.minorMinistryId !== undefined &&
             dataToSave.minorMinistryId !==
-              (selectedWorker.minorMinistryId || ""));
+            (selectedWorker.minorMinistryId || ""));
 
         if (isMinistryChanging && !isSuperAdmin) {
           // Prepare ministry change data
@@ -1672,17 +1672,17 @@ export default function WorkersPage() {
   const primaryWorkers = isGlobalManager
     ? workers || []
     : (workers || []).filter(
-        (w) =>
-          w.majorMinistryId && statsMinistryIds.includes(w.majorMinistryId),
-      );
+      (w) =>
+        w.majorMinistryId && statsMinistryIds.includes(w.majorMinistryId),
+    );
 
   // Secondary workers: those whose SECONDARY ministry is in the stats scope — NOT counted in total
   const totalSecondary = isGlobalManager
     ? (workers || []).filter((w) => !!w.minorMinistryId).length
     : (workers || []).filter(
-        (w) =>
-          w.minorMinistryId && statsMinistryIds.includes(w.minorMinistryId),
-      ).length;
+      (w) =>
+        w.minorMinistryId && statsMinistryIds.includes(w.minorMinistryId),
+    ).length;
 
   const totalWorkers = primaryWorkers.length;
   const totalActive = primaryWorkers.filter(

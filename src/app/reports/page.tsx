@@ -608,8 +608,8 @@ function MealAllocationsReport({ dateRange }: { dateRange: DateRange }) {
     const isAssignerFor = useCallback((worker: Worker) => {
         if (isSuperAdmin) return true;
         if (!workerProfile) return false;
-        const primaryMinistry = getMinistry(worker.primaryMinistryId);
-        const secondaryMinistry = getMinistry(worker.secondaryMinistryId);
+        const primaryMinistry = getMinistry(worker.majorMinistryId);
+        const secondaryMinistry = getMinistry(worker.minorMinistryId);
         return (primaryMinistry?.mealStubAssignerId === workerProfile.id) ||
             (secondaryMinistry?.mealStubAssignerId === workerProfile.id);
     }, [isSuperAdmin, workerProfile, getMinistry]);
@@ -692,8 +692,8 @@ function MealAllocationsReport({ dateRange }: { dateRange: DateRange }) {
                                 </TableRow>
                             ) : filteredWorkers.map((worker) => {
                                 const stats = getWorkerStats(worker.id);
-                                const primaryMinistry = getMinistry(worker.primaryMinistryId);
-                                const secondaryMinistry = getMinistry(worker.secondaryMinistryId);
+                                const primaryMinistry = getMinistry(worker.majorMinistryId);
+                                const secondaryMinistry = getMinistry(worker.minorMinistryId);
                                 const canAssign = isAssignerFor(worker) && isCurrentlySunday;
 
                                 return (
