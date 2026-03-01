@@ -13,16 +13,19 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { LoaderCircle } from "lucide-react";
 import { ViewerDashboard } from "@/components/dashboard/viewer-dashboard";
 import { ApprovalsWidget } from "@/components/dashboard/approvals-widget";
+import { MinistryDashboard } from "@/components/dashboard/ministry-dashboard";
 
 export default function DashboardPage() {
     const { user } = useUser();
-    const { workerProfile, isLoading, canManageApprovals } = useUserRole();
+    const { workerProfile, isLoading, canManageApprovals, isMinistryHead, isMinistryApprover, isSuperAdmin } = useUserRole();
 
     if (isLoading) {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
     }
 
     const userName = workerProfile?.firstName || user?.displayName || user?.email?.split('@')[0] || 'User';
+
+    const showMinistryDashboard = (isMinistryHead || isMinistryApprover) && !isSuperAdmin;
 
     return (
         <AppLayout>
@@ -36,9 +39,15 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {canManageApprovals && (
+                {isSuperAdmin && canManageApprovals && (
                     <div className="animate-in fade-in slide-in-from-top-4 duration-500">
                         <ApprovalsWidget />
+                    </div>
+                )}
+
+                {showMinistryDashboard && (
+                    <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                        <MinistryDashboard />
                     </div>
                 )}
 

@@ -111,7 +111,7 @@ const ElementForm = ({
 
 export default function VenueElementsManagementPage() {
     const firestore = useFirestore();
-    const { canManageFacilities, isLoading: isRoleLoading } = useUserRole();
+    const { canManageFacilities, isLoading: isRoleLoading, myMinistryIds, isSuperAdmin } = useUserRole();
     const { toast } = useToast();
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -121,9 +121,21 @@ export default function VenueElementsManagementPage() {
     const { data: elements, isLoading: elementsLoading } = useCollection<VenueElement>(elementsRef);
 
     const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
-    const { data: ministries, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
+    const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
+    const ministries = ministriesData || [];
 
     const isLoading = elementsLoading || ministriesLoading || isRoleLoading;
+
+    const filteredElements = React.useMemo(() => {
+        if (!elements) return [];
+        if (isSuperAdmin) return elements;
+        return elements.filter(e => myMinistryIds.includes(e.providerMinistryId));
+    }, [elements, isSuperAdmin, myMinistryIds]);
+
+    const availableMinistries = React.useMemo(() => {
+        if (isSuperAdmin) return ministries;
+        return ministries.filter(m => myMinistryIds.includes(m.id));
+    }, [ministries, isSuperAdmin, myMinistryIds]);
 
     const handleSave = async (data: Partial<VenueElement>) => {
         if (!data.name || !data.providerMinistryId || !data.category) {
@@ -201,7 +213,7 @@ export default function VenueElementsManagementPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {elements?.map(element => (
+                            {filteredElements.map(element => (
                                 <TableRow key={element.id}>
                                     <TableCell className="font-medium">{element.name}</TableCell>
                                     <TableCell>
@@ -224,7 +236,7 @@ export default function VenueElementsManagementPage() {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {(!elements || elements.length === 0) && (
+                            {filteredElements.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                                         No elements found. Add your first venue element above.
@@ -241,7 +253,7 @@ export default function VenueElementsManagementPage() {
                     {isSheetOpen && (
                         <ElementForm
                             element={selectedElement}
-                            ministries={ministries || []}
+                            ministries={availableMinistries}
                             onSave={handleSave}
                         />
                     )}

@@ -232,7 +232,7 @@ const KanbanColumn = ({ title, requests, onUpdateStatus, checkCanManage, onCardC
 
 export default function ApprovalsPage() {
     const firestore = useFirestore();
-    const { canManageApprovals, canApproveRoomReservation, workerProfile, isLoading: isRoleLoading } = useUserRole();
+    const { canManageApprovals, canApproveAllRequests, canApproveRoomReservation, workerProfile, isLoading: isRoleLoading, isSuperAdmin } = useUserRole();
     const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
 
     const approvalsRef = useMemoFirebase(() => {
@@ -275,7 +275,6 @@ export default function ApprovalsPage() {
 
     const checkIsApprover = (request: ApprovalRequest) => {
         if (!workerProfile) return false;
-        if (request.type === 'Room Booking') return false;
         if (!request.workerId) return false;
 
         const targetWorker = workers?.find(w => w.id === request.workerId);
@@ -291,7 +290,8 @@ export default function ApprovalsPage() {
     };
 
     const checkCanManage = (request: ApprovalRequest) => {
-        if (canManageApprovals) return true;
+        const isApprover = checkIsApprover(request);
+        if (canApproveAllRequests || isSuperAdmin) return true;
 
         if (request.type === 'Ministry Change') {
             if (!workerProfile) return false;
@@ -299,26 +299,23 @@ export default function ApprovalsPage() {
             if (request.status === 'Pending Outgoing Approval') {
                 const oldMajor = ministries.find(m => m.id === request.oldMajorId);
                 const oldMinor = ministries.find(m => m.id === request.oldMinorId);
-                return (oldMajor?.headId === workerProfile.id || oldMajor?.approverId === workerProfile.id) ||
-                    (oldMinor?.headId === workerProfile.id || oldMinor?.approverId === workerProfile.id);
+                return (oldMajor?.headId === workerProfile.id || oldMajor?.approverId === workerProfile.id ||
+                    oldMinor?.headId === workerProfile.id || oldMinor?.approverId === workerProfile.id);
             }
+
             if (request.status === 'Pending Incoming Approval') {
                 const newMajor = ministries.find(m => m.id === request.newMajorId);
                 const newMinor = ministries.find(m => m.id === request.newMinorId);
-                return (newMajor?.headId === workerProfile.id || newMajor?.approverId === workerProfile.id) ||
-                    (newMinor?.headId === workerProfile.id || newMinor?.approverId === workerProfile.id);
+                return (newMajor?.headId === workerProfile.id || newMajor?.approverId === workerProfile.id ||
+                    newMinor?.headId === workerProfile.id || newMinor?.approverId === workerProfile.id);
             }
         }
 
-        if (request.type === 'Room Booking') {
-            if (request.status === 'Pending Ministry Approval' || request.status === 'Pending') {
-                return checkIsApprover(request);
-            }
-            if (request.status === 'Pending Admin Approval') {
-                return canApproveRoomReservation;
-            }
+        if (request.type === 'Room Booking' && request.status === 'Pending Admin Approval') {
+            return canApproveRoomReservation && (canApproveAllRequests || isSuperAdmin);
         }
-        return checkIsApprover(request);
+
+        return isApprover;
     };
 
     const handleUpdateRequestStatus = (request: ApprovalRequest, status: 'Approved' | 'Rejected') => {

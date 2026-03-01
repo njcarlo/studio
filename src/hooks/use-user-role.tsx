@@ -12,6 +12,7 @@ export type UserRoleContextType = {
   isLoading: boolean;
   allRoles: Role[];
   workerProfile: Worker | null;
+  myMinistryIds: string[];
   canManageWorkers: boolean;
   canManageRoles: boolean;
   canManageMinistries: boolean;
@@ -21,6 +22,7 @@ export type UserRoleContextType = {
   canDeleteRoomReservation: boolean;
   canApproveRoomReservation: boolean;
   canManageApprovals: boolean;
+  canApproveAllRequests: boolean;
   canOperateScanner: boolean;
   canViewAttendance: boolean;
   canViewMealStubs: boolean;
@@ -32,6 +34,7 @@ export type UserRoleContextType = {
   canViewScheduleMasterview: boolean;
   isMealStubAssigner: boolean;
   isMinistryHead: boolean;
+  isMinistryApprover: boolean;
 };
 
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
@@ -106,6 +109,18 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
     return allMinistries.some((m: any) => m.headId === realWorkerProfile.id);
   }, [user, allMinistries, realWorkerProfile]);
 
+  const isMinistryApprover = useMemo(() => {
+    if (!user || !allMinistries || !realWorkerProfile) return false;
+    return allMinistries.some((m: any) => m.approverId === realWorkerProfile.id);
+  }, [user, allMinistries, realWorkerProfile]);
+
+  const myMinistryIds = useMemo(() => {
+    if (!user || !allMinistries || !realWorkerProfile) return [];
+    return allMinistries
+      .filter((m: any) => m.headId === realWorkerProfile.id || m.approverId === realWorkerProfile.id)
+      .map((m: any) => m.id);
+  }, [user, allMinistries, realWorkerProfile]);
+
   const isLoading = isUserLoading || isRealProfileLoading || isProfileLoading || areRolesLoading || isAdminRoleLoading || isRealRoleLoading || isViewAsRoleLoading || areMinistriesLoading;
 
   const value = useMemo(() => {
@@ -116,15 +131,17 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       allRoles: allRoles || [],
       workerProfile: workerProfile || null,
-      canManageWorkers: isSuperAdmin || permissions.includes('manage_workers') || isMinistryHead,
+      myMinistryIds,
+      canManageWorkers: isSuperAdmin || permissions.includes('manage_workers') || isMinistryHead || isMinistryApprover,
       canManageRoles: isSuperAdmin || permissions.includes('manage_roles'),
       canManageMinistries: isSuperAdmin || permissions.includes('manage_ministries'),
-      canManageFacilities: isSuperAdmin || permissions.includes('manage_facilities'),
+      canManageFacilities: isSuperAdmin || permissions.includes('manage_facilities') || isMinistryApprover || isMinistryHead,
       canCreateRoomReservation: isSuperAdmin || permissions.includes('create_room_reservation'),
       canEditRoomReservation: isSuperAdmin || permissions.includes('edit_room_reservation'),
       canDeleteRoomReservation: isSuperAdmin || permissions.includes('delete_room_reservation'),
-      canApproveRoomReservation: isSuperAdmin || permissions.includes('approve_room_reservation'),
-      canManageApprovals: isSuperAdmin || permissions.includes('manage_approvals'),
+      canApproveRoomReservation: isSuperAdmin || permissions.includes('approve_room_reservation') || isMinistryApprover || isMinistryHead,
+      canManageApprovals: isSuperAdmin || permissions.includes('manage_approvals') || isMinistryApprover || isMinistryHead,
+      canApproveAllRequests: isSuperAdmin || permissions.includes('manage_approvals'),
       canOperateScanner: isSuperAdmin || permissions.includes('operate_scanner'),
       canViewAttendance: isSuperAdmin || permissions.includes('view_attendance_log'),
       canViewMealStubs: isSuperAdmin || permissions.includes('view_meal_stubs'),
@@ -136,8 +153,9 @@ export function UserRoleProvider({ children }: { children: React.ReactNode }) {
       canViewScheduleMasterview: isSuperAdmin || permissions.includes('view_schedule_masterview'),
       isMealStubAssigner: isSuperAdmin || isMealStubAssigner,
       isMinistryHead: isSuperAdmin || isMinistryHead,
+      isMinistryApprover: isSuperAdmin || isMinistryApprover,
     };
-  }, [isSuperAdmin, needsSeeding, isLoading, allRoles, workerProfile, realUserRole, isMealStubAssigner, isMinistryHead]);
+  }, [isSuperAdmin, needsSeeding, isLoading, allRoles, workerProfile, realUserRole, isMealStubAssigner, isMinistryHead, isMinistryApprover, myMinistryIds]);
 
   return (
     <UserRoleContext.Provider value={value}>
