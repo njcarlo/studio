@@ -1,0 +1,1 @@
+﻿src/app/login/page.tsx(19,10): error TS2305: Module '"firebase/auth"' has no exported member 'FirebaseError'.

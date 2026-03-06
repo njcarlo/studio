@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "74955aa5-ddfc-4dbb-8726-4d32532b2082"
+      }
+    },
+    "android": {
+      "package": "com.jace29.studiomonorepo"
+    },
+    "ios": {
+      "bundleIdentifier": "com.jace29.studiomonorepo",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}
