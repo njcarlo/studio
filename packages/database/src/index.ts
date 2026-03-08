@@ -2,7 +2,7 @@
 
 import { firebaseConfig } from './config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, getAuth, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
@@ -33,9 +33,20 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  let auth;
+  try {
+    // Use browserLocalPersistence for Capacitor/WKWebView compatibility
+    // (default indexedDB persistence doesn't work reliably in WKWebView)
+    auth = initializeAuth(firebaseApp, {
+      persistence: browserLocalPersistence,
+    });
+  } catch {
+    // Already initialized, get the existing instance
+    auth = getAuth(firebaseApp);
+  }
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
+    auth,
     firestore: getFirestore(firebaseApp)
   };
 }
