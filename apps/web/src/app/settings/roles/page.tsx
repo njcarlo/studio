@@ -1,8 +1,6 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { doc, collection } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import {
@@ -31,7 +29,6 @@ import {
 } from "@studio/ui";
 import { LoaderCircle, PlusCircle, Trash2, Save, ShieldCheck, Edit } from "lucide-react";
 import { Input } from "@studio/ui";
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@studio/database";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/use-audit-log";
@@ -50,6 +47,7 @@ import {
 } from "@studio/ui";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@studio/ui";
 import { Badge } from "@studio/ui";
+import { useRoles } from "@/hooks/use-roles";
 
 const PERMISSION_CATEGORIES = [
     {
@@ -223,8 +221,8 @@ const RolePermissionSheet = ({
 }
 
 export default function RoleManagementPage() {
-    const { canManageRoles, isLoading, allRoles } = useUserRole();
-    const firestore = useFirestore();
+    const { canManageRoles } = useUserRole();
+    const { roles, isLoading, createRole, updateRole, deleteRole } = useRoles();
     const { toast } = useToast();
     const { logAction } = useAuditLog();
 
@@ -250,13 +248,13 @@ export default function RoleManagementPage() {
         }
         try {
             if (id) {
-                await updateDocumentNonBlocking(doc(firestore, "roles", id), data);
-                await logAction('Updated Role', 'Roles', `Updated permissions for role "${data.name}"`);
-                toast({ title: "Role Updated", description: `The "${data.name}" role has been saved.` });
+                await updateRole({ id, data });
+                await logAction('Updated Role (SQL)', 'Roles', `Updated permissions for role "${data.name}"`);
+                toast({ title: "Role Updated", description: `The "${data.name}" role has been saved to SQL database.` });
             } else {
-                await addDocumentNonBlocking(collection(firestore, "roles"), data);
-                await logAction('Created Role', 'Roles', `Created new role "${data.name}"`);
-                toast({ title: "Role Added", description: `The "${data.name}" role has been created.` });
+                await createRole(data);
+                await logAction('Created Role (SQL)', 'Roles', `Created new role "${data.name}"`);
+                toast({ title: "Role Added", description: `The "${data.name}" role has been created in SQL database.` });
             }
             setSheetOpen(false);
         } catch (error) {
@@ -273,8 +271,8 @@ export default function RoleManagementPage() {
         if (!roleToDelete) return;
 
         try {
-            await deleteDocumentNonBlocking(doc(firestore, "roles", roleToDelete.id));
-            await logAction('Deleted Role', 'Roles', `Deleted role "${roleToDelete.name}"`);
+            await deleteRole(roleToDelete.id);
+            await logAction('Deleted Role (SQL)', 'Roles', `Deleted role "${roleToDelete.name}"`);
             toast({ title: "Role Deleted" });
             setRoleToDelete(null);
         } catch (error) {
@@ -290,7 +288,7 @@ export default function RoleManagementPage() {
         return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You do not have permission to view this page.</CardDescription></CardHeader></Card></AppLayout>;
     }
 
-    const sortedRoles = allRoles?.sort((a, b) => (a.id === 'admin' ? -1 : b.id === 'admin' ? 1 : a.name.localeCompare(b.name))) || [];
+    const sortedRoles = roles?.sort((a, b) => (a.id === 'admin' ? -1 : b.id === 'admin' ? 1 : a.name.localeCompare(b.name))) || [];
 
     return (
         <AppLayout>

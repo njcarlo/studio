@@ -1,0 +1,6 @@
+﻿
+> web@0.1.0 typecheck
+> tsc --noEmit
+
+.next/types/validator.ts(243,31): error TS2344: Type 'typeof import("C:/Users/Jace/Antigravity/studio/apps/web/src/app/settings/meal-stubs/page")' does not satisfy the constraint 'AppPageConfig<"/settings/meal-stubs">'.
+  Property 'default' is missing in type 'typeof import("C:/Users/Jace/Antigravity/studio/apps/web/src/app/settings/meal-stubs/page")' but required in type 'AppPageConfig<"/settings/meal-stubs">'.

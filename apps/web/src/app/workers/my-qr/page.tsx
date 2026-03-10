@@ -2,8 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@studio/database";
-import { doc, updateDoc } from "firebase/firestore";
+import { useUser } from "@studio/database";
 import {
   Card,
   CardContent,
@@ -14,19 +13,16 @@ import {
 import { Button } from "@studio/ui";
 import { QrCode, RefreshCw, Download, Printer } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
-import type { Worker } from "@studio/types";
+import { useUserRole } from "@/hooks/use-user-role";
+import { updateWorker as updateWorkerSql } from "@/actions/db";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MyQRCodePage() {
   const { user } = useUser();
-  const firestore = useFirestore();
+  const { workerProfile } = useUserRole();
+  const { toast } = useToast();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [localToken, setLocalToken] = useState<string | null>(null);
-
-  const workerProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, "workers", user.uid) : null),
-    [firestore, user],
-  );
-  const { data: workerProfile } = useDoc<Worker>(workerProfileRef);
 
   const activeUserId = workerProfile?.id || user?.uid;
   const activeToken =
@@ -39,15 +35,25 @@ export default function MyQRCodePage() {
     : "";
 
   const refreshCodes = async () => {
-    if (!user) return;
+    if (!workerProfile) return;
     setIsRegenerating(true);
     try {
       const newToken =
         Math.random().toString(36).slice(2) + Date.now().toString(36);
-      await updateDoc(doc(firestore, "workers", user.uid), {
-        qrToken: newToken,
-      });
+
+      await (updateWorkerSql as any)(workerProfile.id, { qrToken: newToken });
+
       setLocalToken(newToken);
+      toast({
+        title: "QR Code regenerated",
+        description: "Your identification token has been securely updated.",
+      });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Regeneration failed",
+        description: "Could not update your QR token. Please try again.",
+      });
     } finally {
       setIsRegenerating(false);
     }

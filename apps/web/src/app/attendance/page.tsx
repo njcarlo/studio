@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState, useCallback } from "react";
 import Image from "next/image";
-import { collection, query, where, doc, updateDoc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import {
@@ -13,49 +12,44 @@ import {
     CardContent
 } from "@studio/ui";
 import { LogIn, LogOut, LoaderCircle, ShieldAlert } from "lucide-react";
-import { useFirestore, useUser, useCollection, useMemoFirebase, useDoc } from "@studio/database";
+import { useUser } from "@studio/database";
 import { format, subDays } from "date-fns";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { Worker } from "@studio/types";
 import { useToast } from "@/hooks/use-toast";
+import { useAttendance } from "@/hooks/use-attendance";
+import { useWorkers } from "@/hooks/use-workers";
 
 function generateToken() {
     return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 export default function AttendancePage() {
-    const firestore = useFirestore();
     const { user } = useUser();
-    const { canViewAttendance, isLoading: isRoleLoading } = useUserRole();
+    const { canViewAttendance, workerProfile, isLoading: isRoleLoading } = useUserRole();
     const { toast } = useToast();
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [localToken, setLocalToken] = useState<string | null>(null);
 
-    // Live worker profile — needed for the persisted qrToken
-    const workerDocRef = useMemoFirebase(() => user ? doc(firestore, 'workers', user.uid) : null, [firestore, user]);
-    const { data: workerProfile } = useDoc<Worker>(workerDocRef);
+    const { updateWorker: updateWorkerSql } = useWorkers();
 
-    const attendanceQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, "attendance_records"), where('workerProfileId', '==', user.uid));
-    }, [firestore, user]);
-
-    const { data: allAttendance, isLoading: attendanceLoading } = useCollection<any>(attendanceQuery);
+    const { attendanceRecords: allAttendance, isLoading: attendanceLoading } = useAttendance(
+        workerProfile?.id ? { workerProfileId: workerProfile.id } : {}
+    );
 
     const isLoading = attendanceLoading || isRoleLoading;
 
     // Unified QR — same token used for both Attendance and Meal Stubs
-    const activeToken = localToken ?? workerProfile?.qrToken ?? user?.uid ?? '';
+    const activeToken = localToken ?? workerProfile?.qrToken ?? workerProfile?.id ?? '';
     // Use COG_USER prefix so BOTH scanners accept it
-    const qrData = user ? `COG_USER:${user.uid}:${activeToken}` : '';
+    const qrData = workerProfile?.id ? `COG_USER:${workerProfile.id}:${activeToken}` : '';
     const userQrCodeUrl = qrData ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}` : '';
 
     const handleRegenerateQR = useCallback(async () => {
-        if (!user) return;
+        if (!workerProfile?.id) return;
         setIsRegenerating(true);
         try {
             const newToken = generateToken();
-            await updateDoc(doc(firestore, 'workers', user.uid), { qrToken: newToken });
+            await updateWorkerSql({ id: workerProfile.id, data: { qrToken: newToken } });
             setLocalToken(newToken);
             toast({
                 title: "QR Code Regenerated",
@@ -67,14 +61,14 @@ export default function AttendancePage() {
         } finally {
             setIsRegenerating(false);
         }
-    }, [firestore, user, toast]);
+    }, [workerProfile?.id, updateWorkerSql, toast]);
 
     const attendanceLog = useMemo(() => {
         if (!allAttendance) return [];
         const oneWeekAgo = subDays(new Date(), 7);
         return allAttendance.filter((log: any) => {
-            if (!log.time?.seconds) return false;
-            return new Date(log.time.seconds * 1000) >= oneWeekAgo;
+            const d = log.time instanceof Date ? log.time : new Date(log.time);
+            return d >= oneWeekAgo;
         });
     }, [allAttendance]);
 
@@ -149,17 +143,24 @@ export default function AttendancePage() {
                             <p className="text-center text-muted-foreground">No records for this week.</p>
                         )}
                         <div className="space-y-4">
-                            {attendanceLog && [...attendanceLog].sort((a: any, b: any) => (b.time?.seconds || 0) - (a.time?.seconds || 0)).map((log: any) => (
-                                <div key={log.id} className="flex items-center space-x-4 p-3 rounded-lg bg-secondary/50">
-                                    <div className={`p-2 rounded-full ${log.type === 'Clock In' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                                        {log.type === 'Clock In' ? <LogIn className="h-5 w-5" /> : <LogOut className="h-5 w-5" />}
+                            {attendanceLog && [...attendanceLog].sort((a: any, b: any) => {
+                                const da = a.time instanceof Date ? a.time : new Date(a.time);
+                                const db = b.time instanceof Date ? b.time : new Date(b.time);
+                                return db.getTime() - da.getTime();
+                            }).map((log: any) => {
+                                const logTime = log.time instanceof Date ? log.time : new Date(log.time);
+                                return (
+                                    <div key={log.id} className="flex items-center space-x-4 p-3 rounded-lg bg-secondary/50">
+                                        <div className={`p-2 rounded-full ${log.type === 'Clock In' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                                            {log.type === 'Clock In' ? <LogIn className="h-5 w-5" /> : <LogOut className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold">{log.type}</p>
+                                            <p className="text-sm text-muted-foreground">{logTime ? format(logTime, 'EEE, p') : 'Just now'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-semibold">{log.type}</p>
-                                        <p className="text-sm text-muted-foreground">{log.time ? format(new Date(log.time.seconds * 1000), 'EEE, p') : 'Just now'}</p>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </CardContent>
                 </Card>

@@ -2,18 +2,19 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { collection, serverTimestamp, doc, getDoc, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { Button } from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
-import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History, AlertCircle } from "lucide-react";
+import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@studio/ui";
-import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, useCollection, useMemoFirebase, useUser } from "@studio/database";
-import type { Worker, ScanLog } from "@studio/types";
-import { useUserRole } from "@/hooks/use-user-role";
+import { useUser } from "@studio/database";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow, isToday } from "date-fns";
+import { useWorkers } from "@/hooks/use-workers";
+import { useAttendance } from "@/hooks/use-attendance";
+import { useScanLogs } from "@/hooks/use-scan-logs";
+import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { Tabs, TabsList, TabsTrigger } from "@studio/ui";
 
 
@@ -21,7 +22,7 @@ export default function QRScannerPage() {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [scannedWorker, setScannedWorker] = useState<Worker | null>(null);
+    const [scannedWorker, setScannedWorker] = useState<any | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [scanMode, setScanMode] = useState<'Attendance' | 'Meal Stub'>('Attendance');
 
@@ -29,15 +30,13 @@ export default function QRScannerPage() {
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
     const [isBarcodeDetectorSupported, setIsBarcodeDetectorSupported] = useState(true);
 
-    const firestore = useFirestore();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
 
-    const workersRef = useMemoFirebase(() => collection(firestore, "workers"), [firestore]);
-    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
-
-    const scanLogsQuery = useMemoFirebase(() => query(collection(firestore, "scan_logs"), orderBy('timestamp', 'desc'), limit(10)), [firestore]);
-    const { data: scanLogs, isLoading: logsLoading } = useCollection<ScanLog>(scanLogsQuery);
+    const { workers: allWorkers, isLoading: workersLoading } = useWorkers();
+    const { scanLogs, isLoading: logsLoading, createScanLog: createScanLogSql } = useScanLogs();
+    const { createAttendanceRecord: createAttendanceSql } = useAttendance();
+    const { mealStubs: allMealStubs, updateMealStub: updateMealStubSql } = useMealStubs();
 
     useEffect(() => {
         const getDevices = async () => {
@@ -102,18 +101,17 @@ export default function QRScannerPage() {
         setIsProcessing(false);
     }, []);
 
-    const logScanEvent = useCallback(async (logData: Omit<ScanLog, 'id' | 'timestamp' | 'scannerId' | 'scannerName'>) => {
+    const logScanEvent = useCallback(async (logData: any) => {
         try {
-            await addDocumentNonBlocking(collection(firestore, "scan_logs"), {
+            await createScanLogSql({
                 ...logData,
                 scannerId: 'public_scanner',
                 scannerName: `Public Kiosk Scanner`,
-                timestamp: serverTimestamp()
             });
         } catch (e) {
             console.error("Failed to write to scan log", e);
         }
-    }, [firestore]);
+    }, [createScanLogSql]);
 
     const handleScan = useCallback(async (data: string) => {
         if (!data || isProcessing) return;
@@ -122,7 +120,7 @@ export default function QRScannerPage() {
 
         // EXPECT DATA FORMAT: TYPE:ID[:TOKEN_OR_TIMESTAMP]
         const [type, payload, tokenOrTs] = data.split(':');
-        const worker = workers?.find(w => w.id === payload || w.workerId === payload);
+        const worker = allWorkers?.find(w => w.id === payload || w.workerId === payload);
 
         if (scanMode === 'Attendance') {
             if (type !== 'ATTENDANCE' && type !== 'STATIC' && type !== 'COG_USER' && type !== 'MEAL_STUB') {
@@ -191,29 +189,30 @@ export default function QRScannerPage() {
                     }
                 }
 
-                const isSundayToday = new Date().getDay() === 0;
-
-                const q = query(
-                    collection(firestore, "mealstubs"),
-                    where("workerId", "==", payload),
-                    where("status", "==", "Issued")
-                );
-                const querySnapshot = await getDocs(q);
-
-                const todaysStubDoc = querySnapshot.docs.find(doc => {
-                    const stub = doc.data();
-                    return stub.date && isToday(new Date(stub.date.seconds * 1000));
+                const todaysStub = allMealStubs?.find(s => {
+                    if (s.workerId !== payload && s.workerId !== worker?.id) return false;
+                    if (s.status !== 'Issued') return false;
+                    const d = s.date instanceof Date ? s.date : new Date(s.date);
+                    return isToday(d);
                 });
 
-                if (todaysStubDoc) {
-                    const stubData = todaysStubDoc.data();
-                    await updateDocumentNonBlocking(todaysStubDoc.ref, {
-                        status: 'Claimed',
-                        claimedAt: serverTimestamp()
+                if (todaysStub) {
+                    await updateMealStubSql({
+                        id: todaysStub.id,
+                        data: {
+                            status: 'Claimed',
+                            claimedAt: new Date()
+                        }
                     });
-                    const details = `Claimed meal stub for ${stubData.workerName}.`;
+                    const details = `Claimed meal stub for ${todaysStub.workerName}.`;
                     toast({ title: "Meal Stub Claimed!", description: details });
-                    logScanEvent({ scanType: 'Meal Stub', details, mealStubId: todaysStubDoc.id, targetUserId: stubData.workerId, targetUserName: stubData.workerName });
+                    logScanEvent({
+                        scanType: 'Meal Stub',
+                        details,
+                        mealStubId: todaysStub.id,
+                        targetUserId: todaysStub.workerId,
+                        targetUserName: todaysStub.workerName
+                    });
                 } else {
                     const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
                     toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid meal stub found for ${workerName} for today.` });
@@ -227,38 +226,35 @@ export default function QRScannerPage() {
             return;
         }
 
-        // Fallback for other QR code types
-        if (type === 'ROOM_CHECKIN') {
-            toast({ title: 'Room Check-in Scanned', description: `Booking ID: ${payload}. (This feature is not yet fully implemented)` });
-            setTimeout(resetScanner, 2000);
-            return;
-        }
-
         toast({ variant: 'destructive', title: 'Unknown Scan', description: 'Invalid QR code format.' });
         setTimeout(resetScanner, 2000);
-    }, [isProcessing, scanMode, workers, firestore, toast, resetScanner, logScanEvent]);
+    }, [isProcessing, scanMode, allWorkers, allMealStubs, updateMealStubSql, toast, resetScanner, logScanEvent]);
 
-    const handleRecordAttendance = useCallback((type: 'Clock In' | 'Clock Out') => {
+    const handleRecordAttendance = useCallback(async (type: 'Clock In' | 'Clock Out') => {
         if (!scannedWorker || !scannedWorker.id) return;
 
-        addDocumentNonBlocking(collection(firestore, "attendance_records"), {
-            workerProfileId: scannedWorker.id,
-            type,
-            time: serverTimestamp(),
-        });
+        try {
+            await createAttendanceSql({
+                workerProfileId: scannedWorker.id,
+                type,
+            });
 
-        const details = `${type === 'Clock In' ? 'Clocked in' : 'Clocked out'} ${scannedWorker.firstName} ${scannedWorker.lastName}.`;
-        toast({ title: "Success", description: details });
+            const details = `${type === 'Clock In' ? 'Clocked in' : 'Clocked out'} ${scannedWorker.firstName} ${scannedWorker.lastName}.`;
+            toast({ title: "Success", description: details });
 
-        logScanEvent({
-            scanType: 'Attendance',
-            details,
-            targetUserId: scannedWorker.id,
-            targetUserName: `${scannedWorker.firstName} ${scannedWorker.lastName}`,
-        });
-
-        resetScanner();
-    }, [firestore, logScanEvent, resetScanner, scannedWorker, toast]);
+            logScanEvent({
+                scanType: 'Attendance',
+                details,
+                targetUserId: scannedWorker.id,
+                targetUserName: `${scannedWorker.firstName} ${scannedWorker.lastName}`,
+            });
+        } catch (e) {
+            console.error("Failed to record attendance", e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not record attendance.' });
+        } finally {
+            resetScanner();
+        }
+    }, [createAttendanceSql, logScanEvent, resetScanner, scannedWorker, toast]);
 
     useEffect(() => {
         if (!isAuthenticated || !videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || !selectedDeviceId) {
@@ -271,7 +267,7 @@ export default function QRScannerPage() {
         let animationFrameId: number;
 
         const detectQrCode = async () => {
-            if (videoElement.readyState >= 2) { // HAVE_METADATA or more
+            if (videoElement.readyState >= 2) {
                 if (isProcessing || scannedWorker) {
                     animationFrameId = requestAnimationFrame(detectQrCode);
                     return;
@@ -283,12 +279,9 @@ export default function QRScannerPage() {
                         handleScan(barcodes[0].rawValue);
                     }
                 } catch (error) {
-                    // This can happen if the stream is temporarily unavailable.
-                    // The InvalidStateError is often transient. We'll just log it as a warning.
                     if (error instanceof Error && error.name === 'InvalidStateError') {
                         console.warn("Barcode detection failed for one frame:", error);
                     } else {
-                        // For other errors, log them more prominently.
                         console.error("Barcode detection failed:", error);
                     }
                 }
@@ -365,12 +358,20 @@ export default function QRScannerPage() {
                     <h1 className="text-2xl font-headline font-bold">Attendance Scanner</h1>
                     <p className="text-sm text-muted-foreground">Scan QR codes for attendance.</p>
                 </div>
-                <Button asChild variant="outline">
-                    <Link href="/dashboard">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Dashboard
-                    </Link>
-                </Button>
+                <div className="flex items-center gap-4">
+                    <Tabs value={scanMode} onValueChange={(v: any) => setScanMode(v)} className="w-[300px]">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="Attendance">Attendance</TabsTrigger>
+                            <TabsTrigger value="Meal Stub">Meal Stub</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Dashboard
+                        </Link>
+                    </Button>
+                </div>
             </header>
 
             <main className="grid flex-grow grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-6 lg:p-8 overflow-hidden">
@@ -381,7 +382,7 @@ export default function QRScannerPage() {
                         </div>
                         <CardTitle className="font-headline text-2xl">Live Scan</CardTitle>
                         <CardDescription>
-                            Position the QR code in the frame.
+                            Position the QR code in the frame ({scanMode} Mode).
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-grow items-center justify-center">
@@ -411,7 +412,11 @@ export default function QRScannerPage() {
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <div className="w-64 h-64 border-4 border-dashed border-primary rounded-lg" />
                                     </div>
-                                    {isProcessing && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin text-white" /></div>}
+                                    {(isProcessing || workersLoading) && (
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                            <LoaderCircle className="h-8 w-8 animate-spin text-white" />
+                                        </div>
+                                    )}
                                     <div className="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 animate-pulse" />
 
                                     {devices.length > 1 && (
@@ -457,14 +462,17 @@ export default function QRScannerPage() {
                                 <p className="text-sm text-center text-muted-foreground py-4">No recent scans.</p>
                             )}
                             <div className="space-y-4">
-                                {scanLogs?.map(log => (
-                                    <div key={log.id} className="text-sm">
-                                        <p className="font-medium">{log.details}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            By {log.scannerName} &bull; {log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}
-                                        </p>
-                                    </div>
-                                ))}
+                                {scanLogs?.map(log => {
+                                    const logTime = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp);
+                                    return (
+                                        <div key={log.id} className="text-sm border-b pb-2 last:border-0">
+                                            <p className="font-medium">{log.details}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                By {log.scannerName} &bull; {logTime ? formatDistanceToNow(logTime, { addSuffix: true }) : 'Just now'}
+                                            </p>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </ScrollArea>
                     </CardContent>

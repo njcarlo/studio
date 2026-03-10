@@ -10,3 +10,8 @@ export * from './src/non-blocking-login';
 export * from './src/errors';
 export * from './src/error-emitter';
 export * from './src/query-client';
+
+// Supabase & SQL
+export * from './src/supabase-client';
+export * from './src/supabase-provider';
+export * from './src/prisma';

@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import Image from "next/image";
-import { collection, serverTimestamp, doc, query, where, updateDoc, addDoc, writeBatch } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import {
@@ -32,9 +31,6 @@ import {
 import { Badge } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw, ShieldAlert, ClipboardList, ShieldCheck, Search, CheckCircle2, Trash2 } from "lucide-react";
-import type { MealStub, Worker, Ministry, MealStubSettings } from "@studio/types";
-import { useFirestore, useCollection, addDocumentNonBlocking, useUser, useMemoFirebase, useDoc } from "@studio/database";
-import { useUserRole } from "@/hooks/use-user-role";
 import { format, isToday, subDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -44,6 +40,13 @@ import { Checkbox } from "@studio/ui";
 import { Ticket, Layers } from "lucide-react";
 import { Progress } from "@studio/ui";
 import { useMealAudio } from "@/hooks/use-meal-audio";
+import { useWorkers } from "@/hooks/use-workers";
+import { useMinistries } from "@/hooks/use-ministries";
+import { useMealStubs } from "@/hooks/use-meal-stubs";
+import { useSettings } from "@/hooks/use-settings";
+import { useUser } from "@studio/database";
+import { useUserRole } from "@/hooks/use-user-role";
+import type { Worker } from "@studio/types";
 
 // ------------------------------------------------------------
 // helpers
@@ -54,7 +57,6 @@ function generateToken() {
 
 // ------------------------------------------------------------
 function MealsPageContent() {
-  const firestore = useFirestore();
   const { user } = useUser();
   const { canViewMealStubs, canManageAllMealStubs, isMealStubAssigner, workerProfile, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
@@ -84,24 +86,37 @@ function MealsPageContent() {
     router.push(`/meals?tab=${value}`);
   };
 
-  // Live worker profile with qrToken
-  const workerDocRef = useMemoFirebase(() => user ? doc(firestore, 'workers', user.uid) : null, [firestore, user]);
-  const { data: liveWorkerProfile } = useDoc<Worker>(workerDocRef);
+  const { workers: allWorkers, isLoading: workersLoading, updateWorker } = useWorkers();
+  const { ministries, isLoading: ministriesLoading } = useMinistries();
+  const { settings: globalSettings } = useSettings('mealstubs');
+
+  const thirtyDaysAgo = subDays(new Date(), 30);
+  const {
+    mealStubs,
+    isLoading: mealStubsLoading,
+    createMealStub,
+    deleteMealStub
+  } = useMealStubs(canManageAllMealStubs ? { dateFrom: thirtyDaysAgo } : { workerId: workerProfile?.id });
+
+  const { mealStubs: allMealStubsInRange } = useMealStubs({ dateFrom: thirtyDaysAgo });
+
+  // Live worker profile (for QR token)
+  const liveWorkerProfile = useMemo(() => allWorkers.find(w => w.id === (workerProfile?.id || user?.uid)), [allWorkers, workerProfile, user]);
 
   // QR Token
   const [localSeed, setLocalSeed] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
 
-  const activeToken = localSeed ?? liveWorkerProfile?.qrToken ?? user?.uid ?? '';
-  const qrData = activeToken ? `MEAL_STUB:${user?.uid}:${activeToken}` : '';
+  const activeToken = localSeed ?? liveWorkerProfile?.qrToken ?? workerProfile?.id ?? '';
+  const qrData = activeToken ? `MEAL_STUB:${workerProfile?.id}:${activeToken}` : '';
   const qrUrl = qrData ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}` : '';
 
   const handleRegenerateQR = useCallback(async () => {
-    if (!user) return;
+    if (!workerProfile?.id) return;
     setIsRegenerating(true);
     try {
       const newToken = generateToken();
-      await updateDoc(doc(firestore, 'workers', user.uid), { qrToken: newToken });
+      await updateWorker({ id: workerProfile.id, data: { qrToken: newToken } });
       setLocalSeed(newToken);
       toast({
         title: "QR Code Regenerated",
@@ -113,41 +128,7 @@ function MealsPageContent() {
     } finally {
       setIsRegenerating(false);
     }
-  }, [firestore, user, toast]);
-
-  // ---- Meal stubs data ----
-  const mealStubsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    if (canManageAllMealStubs) {
-      const thirtyDaysAgo = subDays(new Date(), 30);
-      return query(collection(firestore, "mealstubs"), where('date', '>=', thirtyDaysAgo));
-    }
-    return query(collection(firestore, "mealstubs"), where('workerId', '==', user.uid));
-  }, [firestore, user, canManageAllMealStubs]);
-  const { data: mealStubs, isLoading: mealStubsLoading } = useCollection<MealStub>(mealStubsQuery);
-
-  // ---- All workers (for admin + assigner) ----
-  const workersRef = useMemoFirebase(() => {
-    if (!user || (!canManageAllMealStubs && !workerProfile)) return null;
-    return collection(firestore, "workers");
-  }, [firestore, user, canManageAllMealStubs, workerProfile]);
-  const { data: allWorkers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
-
-  // ---- All ministries ----
-  const ministriesRef = useMemoFirebase(() => user ? collection(firestore, "ministries") : null, [firestore, user]);
-  const { data: ministries } = useCollection<Ministry>(ministriesRef);
-
-  // ---- Global Settings ----
-  const settingsRef = useMemoFirebase(() => doc(firestore, "settings", "mealstubs"), [firestore]);
-  const { data: globalSettings } = useDoc<MealStubSettings>(settingsRef);
-
-  // ---- All meal stubs for range ----
-  const allMealStubsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    const thirtyDaysAgo = subDays(new Date(), 30);
-    return query(collection(firestore, "mealstubs"), where('date', '>=', thirtyDaysAgo));
-  }, [firestore, user]);
-  const { data: allMealStubs } = useCollection<MealStub>(allMealStubsRef);
+  }, [user, updateWorker, toast]);
 
   const assignerMinistries = useMemo(() => {
     if (!workerProfile || !ministries) return [];
@@ -183,20 +164,19 @@ function MealsPageContent() {
     targetId: string,
     assignerId: string,
     assignerName: string,
-    targetWorker: Worker,
+    targetWorker: any,
     stubLabel: string = 'daily',
   ) => {
-    await addDoc(collection(firestore, "mealstubs"), {
+    await createMealStub({
       workerId: targetId,
       workerName: `${targetWorker.firstName} ${targetWorker.lastName}`,
       date: assignDateObj,
-      createdAt: serverTimestamp(),
       status: 'Issued',
       assignedBy: assignerId,
       assignedByName: assignerName,
       stubType: stubLabel,
     });
-  }, [firestore, assignDateObj]);
+  }, [createMealStub, assignDateObj]);
 
   // Main stub assignment function that validates and issues 1 or 2 stubs.
   const issueStub = useCallback(async (targetId: string, count: number = 1) => {
@@ -208,13 +188,13 @@ function MealsPageContent() {
 
     if (count === 0) {
       // Explicitly 0 stubs – nothing to issue.
-      playSuccess(targetWorker.employmentType, 0); // quiet blip
+      playSuccess(targetWorker.employmentType as 'Full-Time' | 'On-Call' | 'Volunteer' | undefined, 0); // quiet blip
       toast({ title: "No Stub Issued", description: `No stub assigned to ${targetWorker.firstName} ${targetWorker.lastName} today.` });
       return;
     }
 
     // 1. Daily Check – skip if already has a stub (unless Sunday 2-stub)
-    const dayCount = getStubCountForDate(allMealStubs || [], targetId, assignDateObj);
+    const dayCount = getStubCountForDate(allMealStubsInRange as any || [], targetId, assignDateObj);
     const maxAllowedToday = isSelectedSunday ? count : 1;
     if (dayCount >= maxAllowedToday) {
       playError();
@@ -225,7 +205,7 @@ function MealsPageContent() {
     // 2. Volunteer Day Check
     if (targetWorker.employmentType === 'Volunteer') {
       const d = assignDateObj.getDay();
-      if (globalSettings?.disabledVolunteerDays?.includes(d)) {
+      if ((globalSettings as any)?.disabledVolunteerDays?.includes(d)) {
         playError();
         toast({ variant: "destructive", title: "Disabled", description: "Volunteer stubs are disabled for today." });
         return;
@@ -235,17 +215,18 @@ function MealsPageContent() {
     // 3. Ministry Pool Check
     const targetMinistryId = targetWorker.majorMinistryId;
     const ministry = ministries?.find(m => m.id === targetMinistryId);
-    if (ministry && ministry.mealStubWeeklyLimit !== undefined) {
+    if (ministry && ministry.mealStubWeeklyLimit !== null) {
       const start = startOfWeek(new Date(), { weekStartsOn: 1 });
       const end = endOfWeek(new Date());
       const ministryWorkersIds = allWorkers?.filter(w => w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId).map(w => w.id) || [];
-      const usedThisWeek = allMealStubs?.filter(s => {
+      const usedThisWeek = allMealStubsInRange?.filter(s => {
         if (!ministryWorkersIds.includes(s.workerId)) return false;
-        const d = s.date && (s.date as any).seconds ? new Date((s.date as any).seconds * 1000) : new Date(s.date as any);
+        const d = s.date instanceof Date ? s.date : new Date(s.date as any);
         return isWithinInterval(d, { start, end });
       }).length || 0;
 
-      const remaining = ministry.mealStubWeeklyLimit - usedThisWeek;
+      const limit = ministry.mealStubWeeklyLimit ?? 0;
+      const remaining = limit - usedThisWeek;
       if (remaining <= 0) {
         playError();
         toast({ variant: "destructive", title: "Limit Reached", description: `Ministry ${ministry.name} has reached its weekly limit (${ministry.mealStubWeeklyLimit}).` });
@@ -266,7 +247,7 @@ function MealsPageContent() {
         await issueSingleStub(targetId, assignerId, assignerName, targetWorker, label);
       }
       // 🔊 Play success sound tuned to this worker's employment type
-      playSuccess(targetWorker.employmentType, count);
+      playSuccess(targetWorker.employmentType as 'Full-Time' | 'On-Call' | 'Volunteer' | undefined, count);
       toast({ title: `Stub${count > 1 ? 's' : ''} Issued`, description: `${count} meal stub(s) issued to ${targetWorker.firstName} ${targetWorker.lastName}.` });
     } catch (e) {
       console.error(e);
@@ -275,16 +256,16 @@ function MealsPageContent() {
     } finally {
       setIsAssigning(false);
     }
-  }, [workerProfile, user, allWorkers, ministries, allMealStubs, globalSettings, isSelectedSunday, assignDateObj, issueSingleStub, firestore, toast, playSuccess, playError]);
+  }, [workerProfile, user, allWorkers, ministries, allMealStubsInRange, globalSettings, isSelectedSunday, assignDateObj, issueSingleStub, toast, playSuccess, playError]);
 
-  const handleQuickAssign = (w: Worker, count: number = 1) => issueStub(w.id, count);
+  const handleQuickAssign = (w: any, count: number = 1) => issueStub(w.id, count);
 
   // ---- Ministry Pool Data ----
   const ministryPoolData = useMemo(() => {
-    if (!ministries || !allWorkers || !allMealStubs) return [];
+    if (!ministries || !allWorkers || !allMealStubsInRange) return [];
     const relevantMinistries = canManageAllMealStubs
-      ? ministries.filter(m => m.mealStubWeeklyLimit !== undefined)
-      : assignerMinistries.filter(m => m.mealStubWeeklyLimit !== undefined);
+      ? ministries.filter(m => m.mealStubWeeklyLimit !== null)
+      : assignerMinistries.filter(m => m.mealStubWeeklyLimit !== null);
 
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(new Date());
@@ -293,15 +274,15 @@ function MealsPageContent() {
       const mWorkerIds = allWorkers
         .filter(w => w.majorMinistryId === m.id || w.minorMinistryId === m.id)
         .map(w => w.id);
-      const usedThisWeek = allMealStubs.filter(s => {
+      const usedThisWeek = allMealStubsInRange.filter(s => {
         if (!mWorkerIds.includes(s.workerId)) return false;
-        const d = s.date && (s.date as any).seconds ? new Date((s.date as any).seconds * 1000) : new Date(s.date as any);
+        const d = s.date instanceof Date ? s.date : new Date(s.date as any);
         return isWithinInterval(d, { start: weekStart, end: weekEnd });
       }).length;
       const limit = m.mealStubWeeklyLimit!;
       return { id: m.id, name: m.name, used: usedThisWeek, limit, remaining: Math.max(0, limit - usedThisWeek) };
     });
-  }, [ministries, allWorkers, allMealStubs, canManageAllMealStubs, assignerMinistries]);
+  }, [ministries, allWorkers, allMealStubsInRange, canManageAllMealStubs, assignerMinistries]);
 
   // Modal State
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -335,31 +316,29 @@ function MealsPageContent() {
   };
 
   const handleCleanupExcess = useCallback(async () => {
-    if (!allMealStubs) return;
+    if (!allMealStubsInRange) return;
     setIsAssigning(true);
     let deletedCount = 0;
-    const batch = writeBatch(firestore);
     try {
       const seen = new Set<string>();
-      allMealStubs.forEach(s => {
-        if (!s.date) return;
-        const d = new Date((s.date as any).seconds * 1000);
+      for (const s of allMealStubsInRange) {
+        if (!s.date) continue;
+        const d = s.date instanceof Date ? s.date : new Date(s.date as any);
         const dayKey = `${s.workerId}-${format(d, 'yyyy-MM-dd')}`;
         if (seen.has(dayKey)) {
           if (s.status === 'Issued') {
-            batch.delete(doc(firestore, 'mealstubs', s.id));
+            await deleteMealStub(s.id);
             deletedCount++;
           }
         } else {
           seen.add(dayKey);
         }
-      });
+      }
       if (deletedCount > 0) {
-        await batch.commit();
         toast({ title: "Cleanup Success", description: `Deleted ${deletedCount} duplicate stubs.` });
       }
     } catch (e) { console.error(e); } finally { setIsAssigning(false); }
-  }, [allMealStubs, firestore, toast]);
+  }, [allMealStubsInRange, deleteMealStub, toast]);
 
   const toggleSelectAll = (workers: Worker[]) => {
     if (selectedWorkerIds.length === workers.length && workers.length > 0) setSelectedWorkerIds([]);
@@ -372,8 +351,8 @@ function MealsPageContent() {
   if (isLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
   if (!canViewMealStubs) return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle></CardHeader></Card></AppLayout>;
 
-  const myTodayCount = getTodayStubCount(mealStubs || [], user?.uid || '');
-  const myWeekCount = getWeeklyStubCount(mealStubs || [], user?.uid || '');
+  const myTodayCount = getTodayStubCount(mealStubs as any || [], workerProfile?.id || '');
+  const myWeekCount = getWeeklyStubCount(mealStubs as any || [], workerProfile?.id || '');
 
   return (
     <AppLayout>
@@ -442,12 +421,16 @@ function MealsPageContent() {
                     <TableBody>
                       {mealStubs?.filter(s => {
                         if (!s.date) return false;
-                        const d = new Date((s.date as any).seconds * 1000);
+                        const d = s.date instanceof Date ? s.date : new Date(s.date as any);
                         return isWithinInterval(d, { start: startOfWeek(new Date(), { weekStartsOn: 1 }), end: endOfWeek(new Date()) });
-                      }).sort((a, b) => (b.date as any).seconds - (a.date as any).seconds).map(s => (
+                      }).sort((a, b) => {
+                        const da = a.date instanceof Date ? a.date : new Date(a.date as any);
+                        const db = b.date instanceof Date ? b.date : new Date(b.date as any);
+                        return db.getTime() - da.getTime();
+                      }).map(s => (
                         <TableRow key={s.id}>
-                          <TableCell>{format(new Date((s.date as any).seconds * 1000), 'EEE, MMM d')}</TableCell>
-                          <TableCell>{format(new Date((s.date as any).seconds * 1000), 'p')}</TableCell>
+                          <TableCell>{format(s.date instanceof Date ? s.date : new Date(s.date as any), 'EEE, MMM d')}</TableCell>
+                          <TableCell>{format(s.date instanceof Date ? s.date : new Date(s.date as any), 'p')}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={s.status === 'Issued' ? 'default' : 'secondary'}>{s.status === 'Issued' ? 'Not Used' : 'Claimed'}</Badge>
                           </TableCell>
@@ -503,12 +486,17 @@ function MealsPageContent() {
               <div className="rounded-lg border">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead><Checkbox checked={filteredAssignerWorkers.length > 0 && selectedWorkerIds.length === filteredAssignerWorkers.length} onCheckedChange={() => toggleSelectAll(filteredAssignerWorkers)} /></TableHead>
+                    <TableHead><Checkbox checked={ministryWorkers.length > 0 && selectedWorkerIds.length === ministryWorkers.length} onCheckedChange={() => toggleSelectAll(ministryWorkers as any)} /></TableHead>
                     <TableHead>Worker</TableHead><TableHead>Type</TableHead><TableHead>Today</TableHead><TableHead className="text-right">Action</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {filteredAssignerWorkers.map(w => {
-                      const dayCount = getStubCountForDate(allMealStubs || [], w.id, assignDateObj);
+                    {ministryWorkers.filter(w => {
+                      const q = assignSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      return `${w.firstName} ${w.lastName}`.toLowerCase().includes(q) ||
+                        w.employmentType?.toLowerCase().includes(q);
+                    }).map(w => {
+                      const dayCount = getStubCountForDate(allMealStubsInRange as any || [], w.id, assignDateObj);
                       const hasToday = dayCount >= 1;
                       const hasTwoToday = dayCount >= 2;
                       return (
@@ -612,17 +600,18 @@ function MealsPageContent() {
               <CardHeader><CardTitle className="text-sm">Total Issued Today</CardTitle><CardDescription>All stubs issued for today.</CardDescription></CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">
-                  {allMealStubs?.filter(s => {
+                  {allMealStubsInRange?.filter(s => {
                     if (!s.date) return false;
-                    return isToday(new Date((s.date as any).seconds * 1000));
+                    const d = s.date instanceof Date ? s.date : new Date(s.date as any);
+                    return isToday(d);
                   }).length || 0}
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-sm">Total Allocated (Weekly)</CardTitle><CardDescription>All issued stubs this week.</CardDescription></CardHeader>
-              <CardContent><div className="text-3xl font-bold">{allMealStubs?.filter(s => {
-                const d = s.date && new Date((s.date as any).seconds * 1000);
+              <CardContent><div className="text-3xl font-bold">{allMealStubsInRange?.filter(s => {
+                const d = s.date instanceof Date ? s.date : new Date(s.date as any);
                 return d && isWithinInterval(d, { start: startOfWeek(new Date(), { weekStartsOn: 1 }), end: endOfWeek(new Date()) });
               }).length || 0}</div></CardContent>
             </Card>
@@ -637,15 +626,16 @@ function MealsPageContent() {
                     <TableRow key={t}>
                       <TableCell className="font-medium">{t}</TableCell>
                       <TableCell className="text-right">
-                        {allMealStubs?.filter(s => {
+                        {allMealStubsInRange?.filter(s => {
                           if (!s.date) return false;
-                          return isToday(new Date((s.date as any).seconds * 1000)) &&
+                          const d = s.date instanceof Date ? s.date : new Date(s.date as any);
+                          return isToday(d) &&
                             allWorkers?.find(wrk => wrk.id === s.workerId)?.employmentType === t;
                         }).length || 0}
                       </TableCell>
                       <TableCell className="text-right">
-                        {allMealStubs?.filter(s => {
-                          const d = s.date && new Date((s.date as any).seconds * 1000);
+                        {allMealStubsInRange?.filter(s => {
+                          const d = s.date instanceof Date ? s.date : new Date(s.date as any);
                           if (!d || !isWithinInterval(d, { start: startOfWeek(new Date(), { weekStartsOn: 1 }), end: endOfWeek(new Date()) })) return false;
                           return allWorkers?.find(wrk => wrk.id === s.workerId)?.employmentType === t;
                         }).length || 0}
@@ -674,7 +664,7 @@ function MealsPageContent() {
                 <option value="">Select worker...</option>
                 {ministryWorkers.map(w => (
                   <option key={w.id} value={w.id}>
-                    {w.firstName} {w.lastName} {getTodayStubCount(allMealStubs || [], w.id) >= 1 ? '(already issued today)' : ''}
+                    {w.firstName} {w.lastName} {getTodayStubCount(allMealStubsInRange as any || [], w.id) >= 1 ? '(already issued today)' : ''}
                   </option>
                 ))}
               </select>

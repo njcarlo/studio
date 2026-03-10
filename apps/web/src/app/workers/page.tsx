@@ -1,15 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  collection,
-  doc,
-  serverTimestamp,
-  writeBatch,
-  addDoc,
-  query,
-  where,
-} from "firebase/firestore";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
@@ -84,13 +75,13 @@ import {
   SelectLabel,
 } from "@studio/ui";
 import type { Worker, Role, Ministry } from "@studio/types";
-import {
-  useFirestore,
-  useCollection,
-  useMemoFirebase,
-  useUser,
-  useFirebase,
-} from "@studio/database";
+import { useUser, supabase } from "@studio/database";
+import { useWorkers } from "@/hooks/use-workers";
+import { useRoles } from "@/hooks/use-roles";
+import { useMinistries } from "@/hooks/use-ministries";
+import { useDepartments } from "@/hooks/use-departments";
+import { useMealStubs } from "@/hooks/use-meal-stubs";
+import { useAttendance } from "@/hooks/use-attendance";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
@@ -104,27 +95,22 @@ import {
 } from "@studio/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";
 import { initiatePasswordReset } from "@studio/database";
+import { format, subDays } from "date-fns";
+import { useApprovals } from "@/hooks/use-approvals";
 import {
-  deleteDocumentNonBlocking,
-  updateDocumentNonBlocking,
-  addDocumentNonBlocking,
-} from "@studio/database";
-import { orderBy, limit } from "firebase/firestore";
-import { format } from "date-fns";
+  updateWorker as updateWorkerSql,
+  createWorker as createWorkerSql,
+  updateWorkersMinistries,
+  createMealStub as createMealStubSql,
+  deleteWorker as deleteWorkerSql,
+  deleteWorkers as deleteWorkersSql,
+  createApproval as createApprovalSql
+} from "@/actions/db";
+
+import { useWorkerLogs } from "@/hooks/use-worker-logs";
 
 const WorkerActivityLog = ({ workerId }: { workerId: string }) => {
-  const firestore = useFirestore();
-  const logsQuery = useMemoFirebase(() => {
-    if (!firestore || !workerId) return null;
-    return query(
-      collection(firestore, "transaction_logs"),
-      where("targetId", "==", workerId),
-      orderBy("timestamp", "desc"),
-      limit(50),
-    );
-  }, [firestore, workerId]);
-
-  const { data: logs, isLoading } = useCollection<any>(logsQuery);
+  const { logs, isLoading } = useWorkerLogs(workerId);
 
   if (isLoading) {
     return (
@@ -158,7 +144,7 @@ const WorkerActivityLog = ({ workerId }: { workerId: string }) => {
               <span className="text-sm font-semibold">{log.action}</span>
               <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                 {log.timestamp
-                  ? format(log.timestamp.toDate(), "MMM d, h:mm a")
+                  ? format(new Date(log.timestamp), "MMM d, h:mm a")
                   : "Unknown"}
               </span>
             </div>
@@ -954,7 +940,6 @@ const BatchMealStubSheet = ({
 };
 
 export default function WorkersPage() {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const { user } = useUser();
   const {
@@ -966,49 +951,37 @@ export default function WorkersPage() {
   } = useUserRole();
   const { startImpersonation } = useImpersonation();
   const { logAction } = useAuditLog();
-  const { auth } = useFirebase();
   const { isMealStubAssigner, canManageAllMealStubs } = useUserRole();
 
-  const mealStubsRef = useMemoFirebase(() => {
-    if (!user || (!isMealStubAssigner && !canManageAllMealStubs)) return null;
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return query(
-      collection(firestore, "mealstubs"),
-      where("date", ">=", thirtyDaysAgo),
-    );
-  }, [firestore, user, isMealStubAssigner, canManageAllMealStubs]);
-  const { data: allMealStubs } = useCollection<any>(mealStubsRef);
+  // SQL Migration: Fetch data using the new hooks
+  const {
+    workers: allWorkers,
+    isLoading: workersLoading,
+    updateWorker: updateWorkerSql,
+    createWorker: createWorkerSql,
+    deleteWorker: deleteWorkerSql,
+    deleteWorkers: deleteWorkersSql
+  } = useWorkers();
 
-  const workersRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, "workers");
-  }, [firestore, user]);
-  const { data: allWorkers, isLoading: workersLoading } =
-    useCollection<Worker>(workersRef);
+  const {
+    ministries: ministries,
+    isLoading: ministriesLoading
+  } = useMinistries();
 
-  const rolesRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, "roles");
-  }, [firestore, user]);
-  const { data: rolesData, isLoading: rolesLoading } =
-    useCollection<Role>(rolesRef);
-  const roles = rolesData || [];
+  const {
+    roles: roles,
+    isLoading: rolesLoading
+  } = useRoles();
 
-  const ministriesRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, "ministries");
-  }, [firestore, user]);
-  const { data: ministriesData, isLoading: ministriesLoading } =
-    useCollection<Ministry>(ministriesRef);
-  const ministries = ministriesData || [];
+  const { mealStubs: allMealStubs } = useMealStubs({ dateFrom: subDays(new Date(), 30) });
+  const { createApproval: createApprovalSql } = useApprovals();
 
-  const departmentsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, "departments");
-  }, [firestore, user]);
-  const { data: departmentDataList, isLoading: departmentsLoading } =
-    useCollection<any>(departmentsRef);
+  const {
+    departments: allDepartments,
+    isLoading: departmentsLoading
+  } = useDepartments();
+
+  const departmentDataList = allDepartments;
 
   const isLoading =
     workersLoading ||
@@ -1021,7 +994,7 @@ export default function WorkersPage() {
   const explicitlyAssignedDepartment = useMemo(() => {
     if (!workerProfile?.id || !departmentDataList) return null;
     return (
-      departmentDataList.find((d) => d.headId === workerProfile.id) || null
+      (departmentDataList as any[]).find((d) => d.headId === workerProfile.id) || null
     );
   }, [workerProfile, departmentDataList]);
 
@@ -1116,7 +1089,7 @@ export default function WorkersPage() {
     setTimeout(() => setIsSheetOpen(true), 10);
   };
 
-  const handlePasswordReset = (worker: Worker) => {
+  const handlePasswordReset = async (worker: Worker) => {
     if (!worker.email) {
       toast({
         variant: "destructive",
@@ -1126,40 +1099,24 @@ export default function WorkersPage() {
       return;
     }
 
-    if (!auth) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(worker.email, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Reset link sent",
+        description: `A password reset link has been sent to ${worker.email}.`,
+      });
+    } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Auth Error",
-        description: "Firebase Auth is not initialized.",
+        title: "Failed to send reset link",
+        description: error.message || "An unexpected error occurred.",
       });
-      return;
     }
-
-    initiatePasswordReset(
-      auth,
-      worker.email,
-      async () => {
-        await logAction(
-          "Password Reset requested",
-          "Workers",
-          `Requested password reset link for ${worker.firstName} ${worker.lastName}`,
-          worker.id,
-          `${worker.firstName} ${worker.lastName}`,
-        );
-        toast({
-          title: "Email Sent",
-          description: `A password reset link has been sent to ${worker.email}.`,
-        });
-      },
-      (error) => {
-        console.error("Password reset error:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message,
-        });
-      },
-    );
   };
   const handleImpersonate = (worker: Worker) => {
     toast({
@@ -1172,37 +1129,42 @@ export default function WorkersPage() {
   const handleDelete = async (workerId: string) => {
     if (!workerId) return;
     const w = allWorkers?.find((w) => w.id === workerId);
-    deleteDocumentNonBlocking(doc(firestore, "workers", workerId));
-    if (w) {
-      await logAction(
-        "Deleted Worker",
-        "Workers",
-        `Removed worker profile for ${w.firstName} ${w.lastName} (ID: ${w.workerId})`,
-        workerId,
-        `${w.firstName} ${w.lastName}`,
-      );
+
+    try {
+      await deleteWorkerSql(workerId);
+      if (w) {
+        await logAction(
+          "Deleted Worker (SQL)",
+          "Workers",
+          `Removed worker profile for ${w.firstName} ${w.lastName} (ID: ${w.workerId})`,
+          workerId,
+          `${w.firstName} ${w.lastName}`,
+        );
+      }
+      toast({
+        title: "Worker Deleted",
+        description: "The worker profile has been removed from SQL database.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: "Could not delete worker from SQL database.",
+      });
     }
-    toast({
-      title: "Worker Deleted",
-      description: "The worker profile has been removed.",
-    });
   };
 
   const handleBatchDelete = async () => {
     try {
-      const batch = writeBatch(firestore);
-      selectedWorkerIds.forEach((id) => {
-        batch.delete(doc(firestore, "workers", id));
-      });
-      await batch.commit();
+      await deleteWorkersSql(selectedWorkerIds);
       await logAction(
-        "Batch Deleted Workers",
+        "Batch Deleted Workers (SQL)",
         "Workers",
-        `Deleted ${selectedWorkerIds.length} workers.`,
+        `Deleted ${selectedWorkerIds.length} workers from SQL.`,
       );
       toast({
         title: "Batch Delete Successful",
-        description: `${selectedWorkerIds.length} workers have been removed.`,
+        description: `${selectedWorkerIds.length} workers have been removed from SQL database.`,
       });
       setSelectedWorkerIds([]);
       setIsBatchDeleteDialogOpen(false);
@@ -1210,7 +1172,7 @@ export default function WorkersPage() {
       toast({
         variant: "destructive",
         title: "Batch Delete Failed",
-        description: "Could not delete workers.",
+        description: "Could not delete workers from SQL database.",
       });
     }
   };
@@ -1250,11 +1212,10 @@ export default function WorkersPage() {
               ? `Minor: ${ministries.find((m) => m.id === w.minorMinistryId)?.name || "None"} -> ${ministries.find((m) => m.id === newMinorId)?.name || "None"}`
               : "");
 
-          return addDoc(collection(firestore, "approvals"), {
+          return createApprovalSql({
             requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
             type: "Ministry Change",
             details,
-            date: serverTimestamp(),
             status: "Pending Outgoing Approval",
             workerId: w.id,
             oldMajorId: w.majorMinistryId || "",
@@ -1278,19 +1239,11 @@ export default function WorkersPage() {
             "Batch ministry changes have been submitted for approval by the respective ministry heads.",
         });
       } else {
-        const batch = writeBatch(firestore);
-        const updates: any = {};
-        if (major !== "unchanged")
-          updates.majorMinistryId = major === "none" ? "" : major;
-        if (minor !== "unchanged")
-          updates.minorMinistryId = minor === "none" ? "" : minor;
-
-        selectedWorkerIds.forEach((id) => {
-          batch.update(doc(firestore, "workers", id), updates);
-        });
-        await batch.commit();
+        const majorVal = major === "unchanged" ? undefined : major === "none" ? "" : major;
+        const minorVal = minor === "unchanged" ? undefined : minor === "none" ? "" : minor;
+        await updateWorkersMinistries(selectedWorkerIds, majorVal, minorVal);
         await logAction(
-          "Batch Moved Workers",
+          "Batch Moved Workers (SQL)",
           "Workers",
           `Updated ministries for ${selectedWorkerIds.length} workers.`,
         );
@@ -1341,10 +1294,9 @@ export default function WorkersPage() {
         const toIssue = Math.min(count, remaining);
 
         for (let i = 0; i < toIssue; i++) {
-          await addDoc(collection(firestore, "mealstubs"), {
-            workerId: id,
+          await createMealStubSql({
+            workerId: id as any,
             workerName: `${w.firstName} ${w.lastName}`,
-            date: serverTimestamp(),
             status: "Issued",
             assignedBy: workerProfile?.id,
             assignedByName: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
@@ -1442,11 +1394,10 @@ export default function WorkersPage() {
               ? `Minor: ${ministries.find((m) => m.id === selectedWorker.minorMinistryId)?.name || "None"} -> ${ministries.find((m) => m.id === ministryUpdate.newMinorId)?.name || "None"}`
               : "");
 
-          await addDoc(collection(firestore, "approvals"), {
+          await createApprovalSql({
             requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
             type: "Ministry Change",
             details,
-            date: serverTimestamp(),
             status: "Pending Outgoing Approval",
             workerId: selectedWorker.id,
             oldMajorId: selectedWorker.majorMinistryId || "",
@@ -1462,12 +1413,7 @@ export default function WorkersPage() {
           // Update other fields but NOT ministries
           const { majorMinistryId, minorMinistryId, ...otherFields } =
             dataToSave;
-          if (Object.keys(otherFields).length > 0) {
-            await updateDocumentNonBlocking(
-              doc(firestore, "workers", selectedWorker.id),
-              otherFields,
-            );
-          }
+          await (updateWorkerSql as any)(selectedWorker.id, otherFields);
 
           await logAction(
             "Requested Ministry Change",
@@ -1482,14 +1428,14 @@ export default function WorkersPage() {
               "The ministry change has been submitted for approval by both outgoing and incoming ministry heads.",
           });
         } else {
-          await updateDocumentNonBlocking(
-            doc(firestore, "workers", selectedWorker.id),
-            dataToSave,
+          await (updateWorkerSql as any)(
+            selectedWorker.id,
+            dataToSave
           );
           await logAction(
             "Updated Worker",
             "Workers",
-            `Updated details for ${dataToSave.firstName} ${dataToSave.lastName}`,
+            `Updated worker: ${dataToSave.firstName} ${dataToSave.lastName}`,
             selectedWorker.id,
             `${dataToSave.firstName} ${dataToSave.lastName}`,
           );
@@ -1506,32 +1452,28 @@ export default function WorkersPage() {
         const dataToSaveWithId = {
           ...dataToSave,
           workerId: newWorkerId,
-          createdAt: serverTimestamp(),
         };
-        const newWorkerRef = await addDocumentNonBlocking(
-          collection(firestore, "workers"),
-          dataToSaveWithId,
-        );
+        const newWorker = await (createWorkerSql as any)(dataToSaveWithId);
+        const newWorkerIdInDb = newWorker.id;
         await logAction(
-          "Added Worker",
+          "Created Worker",
           "Workers",
-          `Created profile for ${dataToSave.firstName} ${dataToSave.lastName} (ID: ${newWorkerId})`,
-          newWorkerRef.id,
+          `Created worker: ${dataToSave.firstName} ${dataToSave.lastName} (EID: ${dataToSave.workerId})`,
+          newWorker.id,
           `${dataToSave.firstName} ${dataToSave.lastName}`,
         );
 
         if (
-          newWorkerRef &&
+          newWorker &&
           workerProfile &&
           dataToSave.status === "Pending Approval"
         ) {
-          await addDocumentNonBlocking(collection(firestore, "approvals"), {
+          await createApprovalSql({
             requester: `${workerProfile.firstName} ${workerProfile.lastName}`,
             type: "New Worker",
             details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
-            date: serverTimestamp(),
             status: "Pending",
-            workerId: newWorkerRef.id,
+            workerId: newWorkerIdInDb,
           });
           toast({
             title: "Worker Added",
@@ -1574,25 +1516,25 @@ export default function WorkersPage() {
         }
 
         try {
-          const batch = writeBatch(firestore);
           let approvalCount = 0;
+          let importedCount = 0;
 
-          newWorkers.forEach((newWorker: any, index) => {
+          for (let index = 0; index < newWorkers.length; index++) {
+            const newWorker = newWorkers[index] as any;
             if (
               !newWorker.firstName ||
               !newWorker.lastName ||
               !newWorker.email
             ) {
               console.warn("Skipping invalid row:", newWorker);
-              return;
+              continue;
             }
 
-            const newDocRef = doc(collection(firestore, "workers"));
             const workerId = String(
               100000 + (allWorkers?.length || 0) + index,
             ).slice(-6);
 
-            batch.set(newDocRef, {
+            const created = await createWorkerSql({
               firstName: newWorker.firstName || "",
               lastName: newWorker.lastName || "",
               email: newWorker.email || "",
@@ -1602,34 +1544,29 @@ export default function WorkersPage() {
               majorMinistryId: newWorker.majorMinistryId || "",
               minorMinistryId: newWorker.minorMinistryId || "",
               employmentType: newWorker.employmentType || "Volunteer",
-              workerId: workerId,
-              createdAt: serverTimestamp(),
-              avatarUrl: `https://picsum.photos/seed/${newDocRef.id.slice(0, 5)}/100/100`,
+              workerId,
+              avatarUrl: `https://picsum.photos/seed/${workerId}/100/100`,
             });
 
-            if (
-              (newWorker.status || "Pending Approval") === "Pending Approval"
-            ) {
+            importedCount++;
+
+            if ((newWorker.status || "Pending Approval") === "Pending Approval") {
               approvalCount++;
-              const approvalRef = doc(collection(firestore, "approvals"));
-              batch.set(approvalRef, {
+              await createApprovalSql({
                 requester: workerProfile
                   ? `${workerProfile.firstName} ${workerProfile.lastName}`
                   : "System Import",
                 type: "New Worker",
                 details: `New worker import: ${newWorker.email}`,
-                date: serverTimestamp(),
                 status: "Pending",
-                workerId: newDocRef.id,
+                workerId: created.id,
               });
             }
-          });
-
-          await batch.commit();
+          }
 
           toast({
             title: "Import Successful",
-            description: `${newWorkers.length} workers were imported. ${approvalCount} approval requests were created.`,
+            description: `${importedCount} workers were imported. ${approvalCount} approval requests were created.`,
           });
           setIsImportSheetOpen(false);
         } catch (error) {

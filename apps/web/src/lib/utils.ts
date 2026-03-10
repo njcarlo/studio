@@ -60,3 +60,15 @@ export function getSundayCount(stubs: MealStub[], workerId: string, status?: 'Is
 export function getTodayWeekdayCount(stubs: MealStub[], workerId: string, status?: 'Issued' | 'Claimed') {
   return getTodayStubCount(stubs, workerId, status);
 }
+
+/**
+ * Normalizes Date-like inputs (Date, Timestamp, or seconds number) into a JS Date object.
+ */
+export function toJsDate(d: any): Date {
+  if (!d) return new Date();
+  if (d instanceof Date) return d;
+  if (d && typeof d.toDate === "function") return d.toDate();
+  if (d && typeof d.seconds === "number") return new Date(d.seconds * 1000);
+  return new Date(d);
+}
+

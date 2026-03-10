@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { Button } from "@studio/ui";
@@ -9,8 +8,10 @@ import { UserPlus, Calendar, UserCog, LoaderCircle, GanttChartSquare, CheckCircl
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Input } from "@studio/ui";
 import { cn } from "@/lib/utils";
-import type { ApprovalRequest, Worker, Ministry } from "@studio/types";
-import { useFirestore, useCollection, useMemoFirebase } from "@studio/database";
+import { ApprovalRequest, Worker, Ministry } from "@studio/types";
+import { useApprovals } from "@/hooks/use-approvals";
+import { useWorkers } from "@/hooks/use-workers";
+import { useMinistries } from "@/hooks/use-ministries";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useApprovalMutations } from "@/hooks/use-approval-mutations";
 import { format, formatDistanceToNow } from "date-fns";
@@ -87,7 +88,7 @@ const ApprovalRequestDetailsDialog = ({ request, open, onOpenChange, requesterWo
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Submitted By</p>
                             <p className="text-sm font-semibold">{request.requester}</p>
                             <p className="text-[10px] text-muted-foreground">
-                                {request.date ? format(new Date((request.date as any).seconds * 1000), 'MMM d, yyyy • h:mm a') : 'N/A'}
+                                {request.date ? format(new Date(request.date as any), 'MMM d, yyyy • h:mm a') : 'N/A'}
                             </p>
                         </div>
                         <div className="ml-auto">
@@ -139,7 +140,7 @@ const KanbanCard = ({ request, onUpdateStatus, canManage, onClick, requesterWork
                             <p className="text-[13px] font-semibold truncate">{request.requester}</p>
                             <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {request.date ? formatDistanceToNow(new Date((request.date as any).seconds * 1000), { addSuffix: true }) : ''}
+                                {request.date ? formatDistanceToNow(new Date(request.date as any), { addSuffix: true }) : ''}
                             </p>
                         </div>
                     </div>
@@ -235,27 +236,16 @@ const KanbanColumn = ({ title, requests, onUpdateStatus, checkCanManage, onCardC
 }
 
 export default function ApprovalsPage() {
-    const firestore = useFirestore();
     const { canManageApprovals, canApproveAllRequests, canApproveRoomReservation, workerProfile, isLoading: isRoleLoading, isSuperAdmin } = useUserRole();
     const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
 
+    // SQL Hooks
+    const { approvals: requests, isLoading: approvalsLoading } = useApprovals();
+    const { workers, isLoading: workersLoading } = useWorkers();
+    const { ministries, isLoading: ministriesLoading } = useMinistries();
+
     // Mutations
     const { updateStatus, isUpdating } = useApprovalMutations();
-
-    const approvalsRef = useMemoFirebase(() => {
-        return collection(firestore, "approvals");
-    }, [firestore]);
-
-    const { data: requests, isLoading: approvalsLoading } = useCollection<ApprovalRequest>(approvalsRef);
-
-    const workersRef = useMemoFirebase(() => collection(firestore, "workers"), [firestore]);
-    const { data: workersData, isLoading: workersLoading } = useCollection<Worker>(workersRef);
-    const workers = workersData || [];
-
-    const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
-    const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
-    const ministries = ministriesData || [];
-
 
     const isLoading = isRoleLoading || approvalsLoading || workersLoading || ministriesLoading;
 
@@ -263,7 +253,7 @@ export default function ApprovalsPage() {
     const [filterType, setFilterType] = useState<string>("all");
 
     const filteredRequests = useMemo(() => {
-        let results = [...(requests || [])];
+        let results = [...(requests || [])] as ApprovalRequest[];
 
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
@@ -277,7 +267,7 @@ export default function ApprovalsPage() {
             results = results.filter(r => r.type === filterType);
         }
 
-        return results.sort((a, b) => ((b.date as any)?.seconds || 0) - ((a.date as any)?.seconds || 0));
+        return results.sort((a, b) => new Date(b.date as any).getTime() - new Date(a.date as any).getTime());
     }, [requests, searchTerm, filterType]);
 
     const checkIsApprover = (request: ApprovalRequest) => {

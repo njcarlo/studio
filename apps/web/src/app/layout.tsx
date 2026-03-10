@@ -24,6 +24,7 @@ export const viewport: Viewport = {
 };
 
 import { AuthSync } from "./auth-sync";
+import { ReactQueryProvider } from "@/providers/react-query-provider";
 
 export default function RootLayout({
   children,
@@ -33,10 +34,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-body antialiased">
-        <AuthSync>
-          {children}
-          <Toaster />
-        </AuthSync>
+        <ReactQueryProvider>
+          <AuthSync>
+            {children}
+            <Toaster />
+          </AuthSync>
+        </ReactQueryProvider>
       </body>
     </html>
   );

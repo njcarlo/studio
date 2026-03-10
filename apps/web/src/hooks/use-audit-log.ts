@@ -1,10 +1,9 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, useUser } from '@studio/database';
+import { useUser } from '@studio/database';
 import { useUserRole } from './use-user-role';
 import { useCallback } from 'react';
+import { createTransactionLog } from '@/actions/db';
 
 export function useAuditLog() {
-    const firestore = useFirestore();
     const { user } = useUser();
     const { workerProfile } = useUserRole();
 
@@ -15,27 +14,23 @@ export function useAuditLog() {
         targetId?: string,
         targetName?: string
     ) => {
-        if (!user) return;
-        const userName = workerProfile
-            ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
-            : 'User';
+        if (!user || !workerProfile) return;
 
         try {
-            await addDoc(collection(firestore, 'transaction_logs'), {
-                userId: user.uid,
+            await createTransactionLog({
+                userId: workerProfile.id,
                 userEmail: user.email || 'Unknown',
-                userName,
+                userName: `${workerProfile.firstName} ${workerProfile.lastName}`.trim(),
                 action,
                 module,
                 details: details || '',
                 targetId: targetId || null,
                 targetName: targetName || null,
-                timestamp: serverTimestamp(),
             });
         } catch (e) {
             console.error('Failed to write audit log', e);
         }
-    }, [firestore, user, workerProfile]);
+    }, [user, workerProfile]);
 
     return { logAction };
 }

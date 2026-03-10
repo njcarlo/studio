@@ -3,21 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  useUser,
-  useFirestore,
-  useCollection,
-  useMemoFirebase,
-} from "@studio/database";
-import {
-  collection,
-  collectionGroup,
-  query,
-  where,
-  Timestamp,
-  orderBy,
-  limit,
-} from "firebase/firestore";
+import { useUser } from "@studio/database";
 import { format, isToday, isAfter } from "date-fns";
 import {
   Card,
@@ -43,11 +29,14 @@ import {
 import type { Booking, Room, AttendanceRecord, MealStub } from "@studio/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@studio/ui";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useRooms } from "@/hooks/use-rooms";
+import { useBookings } from "@/hooks/use-bookings";
+import { useAttendance } from "@/hooks/use-attendance";
+import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { cn } from "@/lib/utils";
 
 export function ViewerDashboard() {
   const { user } = useUser();
-  const firestore = useFirestore();
   const { workerProfile, canCreateRoomReservation } = useUserRole();
 
   const [qrSeed, setQrSeed] = useState(Date.now());
@@ -60,68 +49,30 @@ export function ViewerDashboard() {
     ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(combinedData)}`
     : "";
 
-  const roomsRef = useMemoFirebase(() => {
-    if (!activeUserId) return null;
-    return collection(firestore, "rooms");
-  }, [firestore, activeUserId]);
-  const { data: rooms, isLoading: roomsLoading } =
-    useCollection<Room>(roomsRef);
+  const { rooms, isLoading: roomsLoading } = useRooms();
 
-  const bookingsQuery = useMemoFirebase(() => {
-    if (!activeUserId) return null;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+  const { bookings, isLoading: bookingsLoading } = useBookings(
+    activeUserId ? { workerProfileId: activeUserId, dateFrom: todayStart } : {}
+  );
 
-    // Fetch user's approved reservations from today onwards
-    return query(
-      collectionGroup(firestore, "reservations"),
-      where("workerProfileId", "==", activeUserId),
-      where("start", ">=", Timestamp.fromDate(todayStart)),
-      orderBy("start", "asc"),
-      limit(10),
-    );
-  }, [firestore, activeUserId]);
-  const { data: bookings, isLoading: bookingsLoading } =
-    useCollection<Booking>(bookingsQuery);
+  const { attendanceRecords: attendanceHistory, isLoading: attendanceLoading } = useAttendance(
+    activeUserId ? { workerProfileId: activeUserId } : {}
+  );
 
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!activeUserId) return null;
-    return query(
-      collection(firestore, "attendance_records"),
-      where("workerProfileId", "==", activeUserId),
-      orderBy("time", "desc"),
-      limit(5),
-    );
-  }, [firestore, activeUserId]);
-  const { data: attendanceHistory, isLoading: attendanceLoading } =
-    useCollection<AttendanceRecord>(attendanceQuery);
+  const { mealStubs: mealStubsHistory, isLoading: mealStubsLoading } = useMealStubs(
+    activeUserId ? { workerId: activeUserId } : {}
+  );
 
-  const mealStubsQuery = useMemoFirebase(() => {
-    if (!activeUserId) return null;
-    return query(
-      collection(firestore, "mealstubs"),
-      where("workerId", "==", activeUserId),
-      orderBy("date", "desc"),
-      limit(5),
-    );
-  }, [firestore, activeUserId]);
-  const { data: mealStubsHistory, isLoading: mealStubsLoading } =
-    useCollection<MealStub>(mealStubsQuery);
-
-  const upcomingBookings =
-    bookings
-      ?.map((b) => ({
-        ...b,
-        start: (b.start as any).toDate(),
-        end: (b.end as any).toDate(),
-      }))
-      .filter(
-        (b) =>
-          b.status === "Approved" &&
-          (isToday(b.start) || isAfter(b.start, new Date())),
-      )
-      .slice(0, 3) || [];
+  const upcomingBookings = (bookings as any[])
+    .filter(
+      (b) =>
+        b.status === "Approved" &&
+        (isToday(new Date(b.start)) || isAfter(new Date(b.start), new Date())),
+    )
+    .slice(0, 3) || [];
 
   const getRoomName = (roomId: string) => {
     return rooms?.find((r) => r.id === roomId)?.name || "Unknown Room";
@@ -196,14 +147,14 @@ export function ViewerDashboard() {
                       id: a.id,
                       type: "attendance",
                       title: a.type,
-                      time: a.time.toDate(),
+                      time: a.time instanceof Date ? a.time : new Date((a.time as any)?.seconds * 1000),
                       status: "Logged",
                     })),
                     ...(mealStubsHistory || []).map((m) => ({
                       id: m.id,
                       type: "mealstub",
                       title: "Meal Stub",
-                      time: m.date.toDate(),
+                      time: m.date instanceof Date ? m.date : new Date((m.date as any)?.seconds * 1000),
                       status: m.status,
                     })),
                   ].sort((a, b) => b.time.getTime() - a.time.getTime());
@@ -257,9 +208,9 @@ export function ViewerDashboard() {
                         className={cn(
                           "text-[9px] sm:text-[10px] px-2 py-0 h-5 shrink-0",
                           log.status === "Claimed" &&
-                            "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400",
+                          "bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400",
                           log.status === "Issued" &&
-                            "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400",
+                          "bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400",
                         )}
                       >
                         {log.status}

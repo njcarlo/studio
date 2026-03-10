@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow, isToday } from "date-fns";
 import { Tabs, TabsList, TabsTrigger } from "@studio/ui";
+import { toJsDate } from "@/lib/utils";
 
 
 export default function QRScannerPage() {
@@ -195,7 +196,7 @@ export default function QRScannerPage() {
                 const validStubDoc = querySnapshot.docs.find(doc => {
                     const stub = doc.data();
                     if (!stub.date) return false;
-                    const stubDate = new Date(stub.date.seconds * 1000);
+                    const stubDate = toJsDate(stub.date);
                     return stubDate >= todayStart && stubDate <= todayEnd;
                 });
 
@@ -456,7 +457,7 @@ export default function QRScannerPage() {
                                     <div key={log.id} className="text-sm">
                                         <p className="font-medium">{log.details}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            By {log.scannerName} &bull; {log.timestamp ? formatDistanceToNow(new Date(log.timestamp.seconds * 1000), { addSuffix: true }) : 'Just now'}
+                                            By {log.scannerName} &bull; {log.timestamp ? formatDistanceToNow(toJsDate(log.timestamp), { addSuffix: true }) : 'Just now'}
                                         </p>
                                     </div>
                                 ))}

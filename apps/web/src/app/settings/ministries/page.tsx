@@ -2,14 +2,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { collection, writeBatch, doc } from "firebase/firestore";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { HeartHandshake, User as UserIcon, Users, LoaderCircle, Upload, PlusCircle, MoreHorizontal, Edit, Trash2, UserCog, Utensils } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@studio/ui";
-import { useFirestore, useCollection, useMemoFirebase, useUser, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@studio/database";
 import type { Ministry, Worker, Department } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
@@ -45,6 +43,9 @@ import { Input } from "@studio/ui";
 import { Textarea } from "@studio/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
 import { Copy, ClipboardCheck } from "lucide-react";
+import { useMinistries } from "@/hooks/use-ministries";
+import { useWorkers } from "@/hooks/use-workers";
+import { createMinistries } from "@/actions/db";
 
 const generateMinistryId = (name: string, department: string) => {
   const firstLetter = department.charAt(0).toUpperCase();
@@ -353,9 +354,9 @@ const ProfileItem = ({ label, worker }: { label: string; worker?: Worker | null 
 
 
 export default function MinistryManagementPage() {
-  const firestore = useFirestore();
-  const { user } = useUser();
   const { canManageMinistries, canAppointApprovers, workerProfile, isLoading: isRoleLoading } = useUserRole();
+  const { ministries, isLoading: ministriesLoading, createMinistry, updateMinistry, deleteMinistry } = useMinistries();
+  const { workers, isLoading: workersLoading } = useWorkers();
   const { toast } = useToast();
   const { logAction } = useAuditLog();
 
@@ -368,18 +369,6 @@ export default function MinistryManagementPage() {
   const [isAppointApproverSheetOpen, setIsAppointApproverSheetOpen] = useState(false);
   const [appointType, setAppointType] = useState<'approver' | 'assigner' | 'head'>('approver');
   const [ministryToAppoint, setMinistryToAppoint] = useState<Ministry | null>(null);
-
-  const ministriesRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, "ministries");
-  }, [firestore, user]);
-  const { data: ministries, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
-
-  const workersRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, "workers");
-  }, [firestore, user]);
-  const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
 
   const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
 
@@ -404,19 +393,19 @@ export default function MinistryManagementPage() {
   const handleSaveMinistry = async (data: Partial<Ministry>) => {
     try {
       if (selectedMinistry) {
-        await updateDocumentNonBlocking(doc(firestore, 'ministries', selectedMinistry.id), data);
-        await logAction('Updated Ministry', 'Ministries', `Updated configuration for "${data.name || selectedMinistry.name}"`);
+        await updateMinistry({ id: selectedMinistry.id, data });
+        await logAction('Updated Ministry (SQL)', 'Ministries', `Updated configuration for "${data.name || selectedMinistry.name}"`);
         toast({ title: 'Ministry Updated' });
       } else {
-        const customId = generateMinistryId(data.name || 'New', data.department || 'Worship');
-        await setDocumentNonBlocking(doc(firestore, 'ministries', customId), {
+        const customId = generateMinistryId(data.name || 'New', data.department as string || 'Worship');
+        await createMinistry({
           ...data,
           id: customId,
           description: data.description || '',
           leaderId: data.leaderId || '',
           headId: data.headId || ''
-        }, { merge: true });
-        await logAction('Created Ministry', 'Ministries', `Created new ministry "${data.name}" in ${data.department}`);
+        });
+        await logAction('Created Ministry (SQL)', 'Ministries', `Created new ministry "${data.name}" in ${data.department}`);
         toast({ title: 'Ministry Added', description: `Assigned ID: ${customId}` });
       }
       setIsFormSheetOpen(false);
@@ -428,7 +417,7 @@ export default function MinistryManagementPage() {
   const handleSaveAppointedUser = async (ministryId: string, userId: string | null, type: 'approver' | 'assigner' | 'head') => {
     try {
       const field = type === 'approver' ? 'approverId' : type === 'assigner' ? 'mealStubAssignerId' : 'headId';
-      await updateDocumentNonBlocking(doc(firestore, 'ministries', ministryId), { [field]: userId === null ? '' : userId });
+      await updateMinistry({ id: ministryId, data: { [field]: userId === null ? '' : userId } });
       const minInfo = ministries?.find((m: Ministry) => m.id === ministryId);
       const wInfo = userId ? getWorker(userId) : null;
       await logAction('Updated Ministry Assignment', 'Ministries', `Assigned ${wInfo ? `${wInfo.firstName} ${wInfo.lastName}` : 'None'} as ${type} for "${minInfo?.name}"`);
@@ -442,8 +431,8 @@ export default function MinistryManagementPage() {
   const handleDeleteMinistry = async () => {
     if (!ministryToDelete) return;
     try {
-      await deleteDocumentNonBlocking(doc(firestore, 'ministries', ministryToDelete.id));
-      await logAction('Deleted Ministry', 'Ministries', `Deleted ministry "${ministryToDelete.name}"`);
+      await deleteMinistry(ministryToDelete.id);
+      await logAction('Deleted Ministry (SQL)', 'Ministries', `Deleted ministry "${ministryToDelete.name}"`);
       toast({ title: 'Ministry Deleted' });
       setMinistryToDelete(null);
     } catch (error) {
@@ -471,45 +460,42 @@ export default function MinistryManagementPage() {
         }
 
         try {
-          const batch = writeBatch(firestore);
-          let invalidRowCount = 0;
-
-          newMinistries.forEach((newMinistry: any) => {
+          const importData = newMinistries.map((newMinistry: any) => {
             const departmentCode = newMinistry.department;
             const departmentName = departmentMap[departmentCode];
 
             if (!newMinistry.name || !departmentName) {
-              console.warn('Skipping invalid row:', newMinistry);
-              invalidRowCount++;
-              return;
+              return null;
             }
 
             const customId = generateMinistryId(newMinistry.name, departmentName);
-            const newDocRef = doc(firestore, "ministries", customId);
-            batch.set(newDocRef, {
+            return {
               id: customId,
               name: newMinistry.name,
               department: departmentName,
               description: '',
               leaderId: '',
               headId: ''
-            });
-          });
+            };
+          }).filter(Boolean);
 
-          if (invalidRowCount === newMinistries.length) {
+          if (importData.length === 0) {
             toast({
               variant: "destructive",
               title: "Import Failed",
-              description: `All ${invalidRowCount} rows were invalid. Please check the department codes and ensure all ministries have a name.`,
+              description: `No valid rows found. Please check the department codes and ensure all ministries have a name.`,
             });
             return;
           }
 
-          await batch.commit();
+          await createMinistries(importData as any[]);
 
-          let description = `${newMinistries.length - invalidRowCount} ministries were imported.`;
-          if (invalidRowCount > 0) {
-            description += ` ${invalidRowCount} rows were skipped due to invalid data.`
+          const importedCount = importData.length;
+          const skippedCount = newMinistries.length - importedCount;
+
+          let description = `${importedCount} ministries were imported.`;
+          if (skippedCount > 0) {
+            description += ` ${skippedCount} rows were skipped due to invalid data.`
           }
 
           toast({

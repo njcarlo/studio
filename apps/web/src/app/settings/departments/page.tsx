@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Building2, UserCog, LoaderCircle, Users, Utensils } from "lucide-react";
-import { useFirestore, useCollection, useMemoFirebase, useUser, setDocumentNonBlocking } from "@studio/database";
 import type { Department, Worker } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkers } from "@/hooks/use-workers";
+import { useDepartments } from "@/hooks/use-departments";
 import { Button } from "@studio/ui";
 import { Input } from "@studio/ui";
 import {
@@ -27,8 +27,8 @@ import { Textarea } from "@studio/ui";
 
 type DepartmentData = {
     id: string; // The literal department name like "Worship"
-    headId?: string;
-    description?: string;
+    headId?: string | null;
+    description?: string | null;
     mealStubWeekdayAllocation?: number;
     mealStubSundayAllocation?: number;
 }
@@ -116,28 +116,17 @@ const AppointHeadForm = ({
 };
 
 export default function DepartmentManagementPage() {
-    const firestore = useFirestore();
-    const { user } = useUser();
     const { canManageMinistries, isLoading: isRoleLoading } = useUserRole();
     const { toast } = useToast();
 
     const [isAppointHeadSheetOpen, setIsAppointHeadSheetOpen] = useState(false);
     const [departmentToAppoint, setDepartmentToAppoint] = useState<Department | null>(null);
 
-    const workersRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, "workers");
-    }, [firestore, user]);
-    const { data: workers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
-
-    const departmentsRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, "departments");
-    }, [firestore, user]);
-    const { data: departmentDataList, isLoading: departmentsLoading } = useCollection<DepartmentData>(departmentsRef);
+    const { workers, isLoading: workersLoading } = useWorkers();
+    const { departments: departmentDataList, isLoading: departmentsLoading, upsertDepartment } = useDepartments();
 
     const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
-    const getDepartmentData = (deptName: string) => departmentDataList?.find(d => d.id === deptName);
+    const getDepartmentData = (deptName: string) => departmentDataList?.find((d: any) => d.id === deptName);
 
     const isLoading = workersLoading || departmentsLoading || isRoleLoading;
 
@@ -145,13 +134,15 @@ export default function DepartmentManagementPage() {
 
     const handleSaveDepartment = async (departmentId: string, headId: string | null, description: string, weekdayAlloc: number, sundayAlloc: number) => {
         try {
-            await setDocumentNonBlocking(doc(firestore, 'departments', departmentId), {
+            await upsertDepartment({
                 id: departmentId,
-                headId: headId || '',
-                description: description,
-                mealStubWeekdayAllocation: weekdayAlloc,
-                mealStubSundayAllocation: sundayAlloc
-            }, { merge: true });
+                data: {
+                    headId: headId,
+                    description: description,
+                    mealStubWeekdayAllocation: weekdayAlloc,
+                    mealStubSundayAllocation: sundayAlloc
+                }
+            });
 
             toast({ title: 'Department Updated', description: `${departmentId} department has been successfully updated.` });
             setIsAppointHeadSheetOpen(false);
@@ -180,11 +171,6 @@ export default function DepartmentManagementPage() {
                     {departments.map((departmentName) => {
                         const data = getDepartmentData(departmentName);
                         const head = data?.headId ? getWorker(data.headId) : null;
-                        const members = workers?.filter(w => {
-                            // Approximate full department member count (anyone with a ministry under this dept, but since ministry isn't joined here, we just use a generic representation or omit it if complex)
-                            // We'll skip member count here since it requires joining ministries
-                            return false;
-                        }) || [];
 
                         return (
                             <Card key={departmentName} className="flex flex-col">

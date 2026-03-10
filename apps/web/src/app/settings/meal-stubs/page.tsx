@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { collection, doc, updateDoc, setDoc } from "firebase/firestore";
+import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import {
@@ -16,9 +15,8 @@ import { Input } from "@studio/ui";
 import { Button } from "@studio/ui";
 import { Badge } from "@studio/ui";
 import { Checkbox } from "@studio/ui";
-import { LoaderCircle, Utensils, Save, Search, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Info, Settings2, ShieldCheck } from "lucide-react";
-import { useFirestore, useCollection, useMemoFirebase, useUser, setDocumentNonBlocking, useDoc } from "@studio/database";
-import type { Ministry, DepartmentData, Department, MealStubSettings } from "@studio/types";
+import { LoaderCircle, Utensils, Save, Search, ChevronDown, ChevronRight, Settings2, ShieldCheck } from "lucide-react";
+import type { Ministry, Department, MealStubSettings } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +25,9 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@studio/ui";
+import { useMinistries } from "@/hooks/use-ministries";
+import { useDepartments } from "@/hooks/use-departments";
+import { useSettings } from "@/hooks/use-settings";
 
 const DEPARTMENTS: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
 const WEEKDAYS = [
@@ -39,8 +40,6 @@ const WEEKDAYS = [
 ];
 
 export default function MealStubAllocationPage() {
-    const firestore = useFirestore();
-    const { user } = useUser();
     const { isSuperAdmin, canManageMinistries, isLoading: isRoleLoading } = useUserRole();
     const { toast } = useToast();
     const { logAction } = useAuditLog();
@@ -54,26 +53,21 @@ export default function MealStubAllocationPage() {
     const [deptEdits, setDeptEdits] = useState<Record<string, number>>({});
     const [tempDisabledDays, setTempDisabledDays] = useState<number[]>([]);
 
-    const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
-    const { data: ministries, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
-
-    const departmentsRef = useMemoFirebase(() => collection(firestore, "departments"), [firestore]);
-    const { data: departmentData, isLoading: departmentsLoading } = useCollection<DepartmentData>(departmentsRef);
-
-    const settingsRef = useMemoFirebase(() => doc(firestore, "settings", "mealstubs"), [firestore]);
-    const { data: globalSettings, isLoading: settingsLoading } = useDoc<MealStubSettings>(settingsRef);
+    const { ministries, isLoading: ministriesLoading, updateMinistry } = useMinistries();
+    const { departments, isLoading: departmentsLoading, upsertDepartment } = useDepartments();
+    const { settings: globalSettings, isLoading: settingsLoading, updateSettings } = useSettings('mealstubs');
 
     useEffect(() => {
-        if (globalSettings?.disabledVolunteerDays) {
-            setTempDisabledDays(globalSettings.disabledVolunteerDays);
+        if ((globalSettings as any)?.disabledVolunteerDays) {
+            setTempDisabledDays((globalSettings as any).disabledVolunteerDays);
         }
     }, [globalSettings]);
 
     // --- Department Pool Helpers ---
-    const getDeptInfo = (dept: string) => departmentData?.find(d => d.id === dept);
+    const getDeptInfo = (dept: string) => (departments as any[])?.find(d => d.id === dept);
 
     const getDeptAllocated = (dept: string) => {
-        const deptMinistries = ministries?.filter(m => m.department === dept) || [];
+        const deptMinistries = (ministries as any[])?.filter(m => m.department === dept) || [];
         return deptMinistries.reduce((sum, m) => {
             const edit = ministryEdits[m.id];
             return sum + (edit !== undefined ? edit : (m.mealStubWeeklyLimit || 0));
@@ -83,7 +77,7 @@ export default function MealStubAllocationPage() {
     const getDeptPool = (dept: string) => {
         const info = getDeptInfo(dept);
         const edit = deptEdits[dept];
-        return edit !== undefined ? edit : (info?.mealStubTotalAllocation || 0);
+        return edit !== undefined ? edit : (info?.mealStubWeekdayAllocation || 0);
     };
 
     // --- Edit Handlers ---
@@ -109,9 +103,9 @@ export default function MealStubAllocationPage() {
     const handleSaveSettings = async () => {
         setSaving('settings');
         try {
-            await setDoc(doc(firestore, "settings", "mealstubs"), {
+            await updateSettings({
                 disabledVolunteerDays: tempDisabledDays
-            }, { merge: true });
+            });
             toast({ title: "Global Settings Saved", description: "Volunteer day restrictions updated." });
             await logAction('Updated Meal Stub Settings', 'Settings', `Disabled volunteer days: ${tempDisabledDays.join(', ')}`);
         } catch (error) {
@@ -128,10 +122,12 @@ export default function MealStubAllocationPage() {
 
         setSaving(`dept-${dept}`);
         try {
-            await setDocumentNonBlocking(doc(firestore, 'departments', dept), {
+            await upsertDepartment({
                 id: dept,
-                mealStubTotalAllocation: value,
-            }, { merge: true });
+                data: {
+                    mealStubWeekdayAllocation: value,
+                }
+            });
 
             toast({ title: "Department Pool Updated", description: `${dept} allocation saved.` });
             setDeptEdits(prev => {
@@ -165,8 +161,11 @@ export default function MealStubAllocationPage() {
 
         setSaving(ministry.id);
         try {
-            await updateDoc(doc(firestore, "ministries", ministry.id), {
-                mealStubWeeklyLimit: value
+            await updateMinistry({
+                id: ministry.id,
+                data: {
+                    mealStubWeeklyLimit: value
+                }
             });
             await logAction('Updated Ministry Allocation', 'Settings', `Updated weekly limit for ${ministry.name}: ${value}`);
             toast({ title: "Ministry Allocation Saved" });
@@ -206,7 +205,7 @@ export default function MealStubAllocationPage() {
         );
     }
 
-    const hasSettingsChanges = JSON.stringify(tempDisabledDays.sort()) !== JSON.stringify((globalSettings?.disabledVolunteerDays || []).sort());
+    const hasSettingsChanges = JSON.stringify(tempDisabledDays.sort()) !== JSON.stringify(((globalSettings as any)?.disabledVolunteerDays || []).sort());
 
     return (
         <AppLayout>
@@ -309,7 +308,7 @@ export default function MealStubAllocationPage() {
                     const isOver = allocated > pool;
                     const remaining = pool - allocated;
 
-                    const deptMinistries = (ministries?.filter(m => m.department === dept) || [])
+                    const deptMinistries = ((ministries as any[])?.filter(m => m.department === dept) || [])
                         .filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()))
                         .sort((a, b) => a.name.localeCompare(b.name));
 

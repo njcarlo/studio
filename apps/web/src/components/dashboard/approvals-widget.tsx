@@ -1,19 +1,16 @@
 "use client";
 
 import React from 'react';
-import { collection, query, where } from 'firebase/firestore';
-import { useFirestore, useCollection, useMemoFirebase } from '@studio/database';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@studio/ui';
 import { Badge } from '@studio/ui';
 import { LoaderCircle, CheckCircle2, Clock } from 'lucide-react';
 import type { ApprovalRequest } from '@studio/types';
 import Link from 'next/link';
 import { Button } from '@studio/ui';
+import { useApprovals } from '@/hooks/use-approvals';
 
 export function ApprovalsWidget() {
-    const firestore = useFirestore();
-    const approvalsRef = useMemoFirebase(() => query(collection(firestore, "approvals"), where("status", "==", "Pending")), [firestore]);
-    const { data: approvals, isLoading } = useCollection<ApprovalRequest>(approvalsRef);
+    const { approvals, isLoading } = useApprovals();
 
     if (isLoading) {
         return (

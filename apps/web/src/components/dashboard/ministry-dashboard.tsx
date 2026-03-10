@@ -1,8 +1,6 @@
 "use client";
 
 import React from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { useFirestore, useCollection, useMemoFirebase } from '@studio/database';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@studio/ui';
 import { Badge } from '@studio/ui';
 import { LoaderCircle, CheckCircle2, Clock, Calendar, Users, Package, ArrowRight } from 'lucide-react';
@@ -11,24 +9,19 @@ import Link from 'next/link';
 import { Button } from '@studio/ui';
 import { useUserRole } from '@/hooks/use-user-role';
 import { format } from 'date-fns';
+import { useApprovals } from '@/hooks/use-approvals';
+import { useWorkers } from '@/hooks/use-workers';
 
 export function MinistryDashboard() {
-    const firestore = useFirestore();
     const { workerProfile, myMinistryIds, isSuperAdmin } = useUserRole();
-
-    // Fetch all pending approvals
-    const approvalsRef = useMemoFirebase(() => collection(firestore, "approvals"), [firestore]);
-    const { data: allApprovals, isLoading: approvalsLoading } = useCollection<ApprovalRequest>(approvalsRef);
-
-    // Fetch workers to look up ministry membership
-    const workersRef = useMemoFirebase(() => collection(firestore, "workers"), [firestore]);
-    const { data: allWorkers, isLoading: workersLoading } = useCollection<Worker>(workersRef);
+    const { approvals: allApprovals, isLoading: approvalsLoading } = useApprovals();
+    const { workers: allWorkers, isLoading: workersLoading } = useWorkers();
 
     // Filter approvals for this ministry's users
     const myApprovals = React.useMemo(() => {
-        if (!allApprovals || !allWorkers || isSuperAdmin) return allApprovals || [];
+        if (!allApprovals || !allWorkers || isSuperAdmin) return (allApprovals as any[]) || [];
 
-        return allApprovals.filter(req => {
+        return (allApprovals as any[]).filter(req => {
             if (!req.status.startsWith('Pending')) return false;
 
             // If it's a ministry change, check if it's incoming or outgoing for one of my ministries

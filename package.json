@@ -10,13 +10,21 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "migrate:sql": "tsx scripts/migrate.ts"
   },
   "devDependencies": {
     "@apollo/server": "^5.4.0",
     "@as-integrations/next": "^4.1.0",
+    "firebase-admin": "^13.7.0",
     "graphql": "^16.13.0",
     "graphql-tag": "^2.12.6",
+    "prisma": "^5.22.0",
+    "tsx": "^4.21.0",
     "turbo": "^2.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.98.0"
   }
 }

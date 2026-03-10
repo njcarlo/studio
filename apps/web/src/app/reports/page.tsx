@@ -49,7 +49,7 @@ import {
     getDay,
 } from "date-fns";
 import type { AttendanceRecord, MealStub, Booking, Worker, Room, Ministry } from "@studio/types";
-import { cn } from "@/lib/utils";
+import { cn, toJsDate } from "@/lib/utils";
 import { Badge } from "@studio/ui";
 import {
     BarChart,
@@ -243,7 +243,7 @@ function SummaryDashboard() {
         return days.map((day) => {
             const dayStr = format(day, "MMM d");
             const clockIns = attendanceData?.filter((a) => {
-                const d = a.time.toDate();
+                const d = toJsDate(a.time);
                 return a.type === "Clock In" && format(d, "MMM d") === dayStr;
             }).length ?? 0;
             return { date: dayStr, "Clock Ins": clockIns };
@@ -402,7 +402,7 @@ function AttendanceReport({ dateRange }: { dateRange: DateRange }) {
         exportCsv(
             `attendance-${format(dateRange.start, "yyyy-MM-dd")}.csv`,
             ["Worker", "Type", "Time"],
-            attendance.map((a) => [getWorkerName(a.workerProfileId), a.type, format(a.time.toDate(), "Pp")])
+            attendance.map((a) => [getWorkerName(a.workerProfileId), a.type, format(toJsDate(a.time), "Pp")])
         );
     };
 
@@ -453,7 +453,7 @@ function AttendanceReport({ dateRange }: { dateRange: DateRange }) {
                                                 {log.type}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">{format(log.time.toDate(), "PPp")}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">{format(toJsDate(log.time), "PPp")}</TableCell>
                                     </TableRow>
                                 ))}
                                 {!isLoading && attendance?.length === 0 && (
@@ -502,7 +502,7 @@ function MealStubsReport({ dateRange }: { dateRange: DateRange }) {
         exportCsv(
             `mealstubs-${format(dateRange.start, "yyyy-MM-dd")}.csv`,
             ["Worker", "Date", "Status"],
-            mealstubs.map((s) => [s.workerName, format(s.date.toDate(), "P"), s.status])
+            mealstubs.map((s) => [s.workerName, format(toJsDate(s.date), "P"), s.status])
         );
     };
 
@@ -545,7 +545,7 @@ function MealStubsReport({ dateRange }: { dateRange: DateRange }) {
                                 {!isLoading && mealstubs?.map((stub) => (
                                     <TableRow key={stub.id}>
                                         <TableCell className="font-medium">{stub.workerName}</TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">{format(stub.date.toDate(), "PPP")}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">{format(toJsDate(stub.date), "PPP")}</TableCell>
                                         <TableCell>
                                             <Badge className={cn(
                                                 "text-xs",
@@ -644,11 +644,11 @@ function MealAllocationsReport({ dateRange }: { dateRange: DateRange }) {
     const getWorkerStats = (workerId: string) => {
         const workerStubs = mealstubs?.filter(s => s.workerId === workerId) || [];
         const weekdayStubs = workerStubs.filter(s => {
-            const d = s.date.toDate();
+            const d = toJsDate(s.date);
             return !isSunday(d) && isWithinInterval(d, dateRange);
         });
         const sundayStubs = workerStubs.filter(s => {
-            const d = s.date.toDate();
+            const d = toJsDate(s.date);
             return isSunday(d) && isWithinInterval(d, dateRange);
         });
 
@@ -822,8 +822,8 @@ function ReservationsReport({ dateRange }: { dateRange: DateRange }) {
                 getRoomName(r.roomId),
                 r.title,
                 r.workerProfileId ? getWorkerName(r.workerProfileId) : "N/A",
-                format(r.start.toDate(), "Pp"),
-                format(r.end.toDate(), "p"),
+                format(toJsDate(r.start), "Pp"),
+                format(toJsDate(r.end), "p"),
                 r.status,
             ])
         );
@@ -871,7 +871,7 @@ function ReservationsReport({ dateRange }: { dateRange: DateRange }) {
                                     <TableCell className="text-muted-foreground text-sm">
                                         {res.workerProfileId ? getWorkerName(res.workerProfileId) : "N/A"}
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">{format(res.start.toDate(), "PPp")}</TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">{format(toJsDate(res.start), "PPp")}</TableCell>
                                     <TableCell>
                                         <Badge className={cn(
                                             "text-xs",

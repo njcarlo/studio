@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { collection, doc, writeBatch } from "firebase/firestore";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
@@ -55,9 +54,10 @@ import {
     SelectLabel,
 } from "@studio/ui";
 import type { Room, Branch, Area, VenueElement } from "@studio/types";
-import { useFirestore, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, setDocumentNonBlocking } from "@studio/database";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useRooms } from "@/hooks/use-rooms";
+import { useVenueElements } from "@/hooks/use-venue-elements";
 import { Badge } from "@studio/ui";
 import { Textarea } from "@studio/ui";
 
@@ -249,10 +249,10 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
                     <TableBody>
                         {isLoading && <TableRow><TableCell colSpan={5} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>}
                         {areas.map(area => {
-                            const roomCount = getRoomCount(area.areaId || '');
+                            const roomCount = getRoomCount(area.id);
                             return (
                                 <TableRow key={area.id}>
-                                    <TableCell className="font-mono text-xs">{area.areaId}</TableCell>
+                                    <TableCell className="font-mono text-xs">{area.areaId || area.id}</TableCell>
                                     <TableCell className="font-medium">{area.name}</TableCell>
                                     <TableCell>{getBranchName(area.branchId)}</TableCell>
                                     <TableCell>{roomCount}</TableCell>
@@ -312,7 +312,7 @@ const RoomImportSheet = ({ areas, branches, onImport, onClose }: { areas: Area[]
                                     <ul className="pl-4">
                                         {group.areas.map(area => (
                                             <li key={area.id}>
-                                                <span className="font-semibold">{area.name}:</span> {area.areaId}
+                                                <span className="font-semibold">{area.name}:</span> {area.areaId || area.id}
                                             </li>
                                         ))}
                                     </ul>
@@ -366,7 +366,7 @@ const RoomForm = ({ room, areas, branches, venueElements, onSave }: { room: Part
     const groupedAreas = useMemo(() => {
         return branches.map(branch => ({
             branchName: branch.name,
-            areas: areas.filter(area => area.branchId === branch.id && area.areaId)
+            areas: areas.filter(area => area.branchId === branch.id)
         })).filter(group => group.areas.length > 0);
     }, [areas, branches]);
 
@@ -389,7 +389,7 @@ const RoomForm = ({ room, areas, branches, venueElements, onSave }: { room: Part
                                 <SelectGroup key={group.branchName}>
                                     <SelectLabel>{group.branchName}</SelectLabel>
                                     {group.areas.map(area => (
-                                        <SelectItem key={area.id} value={area.areaId!}>{area.name}</SelectItem>
+                                        <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
                                     ))}
                                 </SelectGroup>
                             ))}
@@ -432,7 +432,7 @@ const RoomForm = ({ room, areas, branches, venueElements, onSave }: { room: Part
 
 const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onEdit, onDelete, onImport }: { rooms: Room[], areas: Area[], branches: Branch[], venueElements: VenueElement[], isLoading: boolean, onAdd: () => void, onEdit: (room: Room) => void, onDelete: (room: Room) => void, onImport: () => void }) => {
     const getAreaAndBranch = (areaIdValue: string) => {
-        const area = areas.find(a => a.areaId === areaIdValue);
+        const area = areas.find(a => a.id === areaIdValue);
         if (!area) return { areaName: 'N/A', branchName: 'N/A' };
         const branch = branches.find(b => b.id === area.branchId);
         return {
@@ -507,9 +507,17 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
 // --- Main Page Component ---
 
 export default function RoomManagementPage() {
-    const firestore = useFirestore();
     const { canManageFacilities, isLoading: isRoleLoading } = useUserRole();
     const { toast } = useToast();
+
+    // SQL Hooks
+    const {
+        rooms, areas, branches, isLoading: roomsDataLoading,
+        createRoom, updateRoom, deleteRoom, createRooms,
+        createArea, updateArea, deleteArea, createAreas,
+        createBranch, updateBranch, deleteBranch
+    } = useRooms();
+    const { venueElements, isLoading: venueElementsLoading } = useVenueElements();
 
     // State for forms and dialogs
     const [isBranchSheetOpen, setIsBranchSheetOpen] = useState(false);
@@ -526,30 +534,17 @@ export default function RoomManagementPage() {
     const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
     const [isRoomImportSheetOpen, setIsRoomImportSheetOpen] = useState(false);
 
-    // Data fetching
-    const branchesRef = useMemoFirebase(() => collection(firestore, "branches"), [firestore]);
-    const { data: branches, isLoading: branchesLoading } = useCollection<Branch>(branchesRef);
-
-    const areasRef = useMemoFirebase(() => collection(firestore, "areas"), [firestore]);
-    const { data: areas, isLoading: areasLoading } = useCollection<Area>(areasRef);
-
-    const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
-    const { data: rooms, isLoading: roomsLoading } = useCollection<Room>(roomsRef);
-
-    const venueElementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
-    const { data: venueElements, isLoading: venueElementsLoading } = useCollection<VenueElement>(venueElementsRef);
-
-    const isLoading = branchesLoading || roomsLoading || isRoleLoading || areasLoading || venueElementsLoading;
+    const isLoading = roomsDataLoading || isRoleLoading || venueElementsLoading;
 
     // --- Branch Handlers ---
     const handleSaveBranch = async (data: Partial<Branch>) => {
         try {
             if (data.id) {
-                await updateDocumentNonBlocking(doc(firestore, 'branches', data.id), data);
+                await updateBranch({ id: data.id, data });
                 toast({ title: 'Satellite Updated' });
             } else {
                 const customId = `B-${data.name!.trim().replace(/\s+/g, ' ')}`;
-                await setDocumentNonBlocking(doc(firestore, 'branches', customId), { ...data, id: customId }, { merge: true });
+                await createBranch({ ...data, id: customId });
                 toast({ title: 'Satellite Added' });
             }
             setIsBranchSheetOpen(false);
@@ -561,7 +556,7 @@ export default function RoomManagementPage() {
     const handleDeleteBranch = async () => {
         if (!branchToDelete) return;
         try {
-            await deleteDocumentNonBlocking(doc(firestore, 'branches', branchToDelete.id));
+            await deleteBranch(branchToDelete.id);
             toast({ title: 'Satellite Deleted' });
             setBranchToDelete(null);
         } catch (error) {
@@ -573,7 +568,7 @@ export default function RoomManagementPage() {
     const handleSaveArea = async (data: Partial<Area>) => {
         try {
             if (data.id) {
-                await updateDocumentNonBlocking(doc(firestore, 'areas', data.id), data);
+                await updateArea({ id: data.id, data });
                 toast({ title: 'Area Updated' });
             } else {
                 if (!data.name || !data.branchId) {
@@ -584,11 +579,11 @@ export default function RoomManagementPage() {
                 const branchInitial = branchName.charAt(0).toUpperCase();
                 const customId = `${branchInitial}-${data.name!.trim()}`;
 
-                await setDocumentNonBlocking(doc(firestore, 'areas', customId), {
+                await createArea({
                     ...data,
                     id: customId,
                     areaId: customId
-                }, { merge: true });
+                });
                 toast({ title: 'Area Added' });
             }
             setIsAreaSheetOpen(false);
@@ -609,32 +604,32 @@ export default function RoomManagementPage() {
             header: true,
             skipEmptyLines: true,
             complete: async (results) => {
-                const newAreas = results.data;
-                if (newAreas.length === 0) {
+                const newAreasData = results.data;
+                if (newAreasData.length === 0) {
                     toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.' });
                     return;
                 }
 
                 try {
-                    const batch = writeBatch(firestore);
+                    const toImport: any[] = [];
                     let invalidRowCount = 0;
 
-                    newAreas.forEach((newArea: any) => {
+                    newAreasData.forEach((newArea: any) => {
                         if (!newArea.areaId || !newArea.name || !newArea.branchId || !validBranchIds.has(newArea.branchId)) {
                             console.warn('Skipping invalid row:', newArea);
                             invalidRowCount++;
                             return;
                         }
 
-                        const newDocRef = doc(collection(firestore, "areas"));
-                        batch.set(newDocRef, {
+                        toImport.push({
+                            id: newArea.areaId,
                             areaId: newArea.areaId,
                             name: newArea.name,
                             branchId: newArea.branchId,
                         });
                     });
 
-                    if (invalidRowCount === newAreas.length) {
+                    if (toImport.length === 0) {
                         toast({
                             variant: "destructive",
                             title: "Import Failed",
@@ -643,9 +638,9 @@ export default function RoomManagementPage() {
                         return;
                     }
 
-                    await batch.commit();
+                    await createAreas(toImport);
 
-                    let description = `${newAreas.length - invalidRowCount} areas were imported.`;
+                    let description = `${toImport.length} areas were imported.`;
                     if (invalidRowCount > 0) {
                         description += ` ${invalidRowCount} rows were skipped due to invalid data.`
                     }
@@ -671,7 +666,7 @@ export default function RoomManagementPage() {
     const handleDeleteArea = async () => {
         if (!areaToDelete) return;
         try {
-            await deleteDocumentNonBlocking(doc(firestore, 'areas', areaToDelete.id));
+            await deleteArea(areaToDelete.id);
             toast({ title: 'Area Deleted' });
             setAreaToDelete(null);
         } catch (error) {
@@ -687,23 +682,23 @@ export default function RoomManagementPage() {
             return;
         }
 
-        const validAreaIds = new Set(areas.map(a => a.areaId).filter(Boolean));
+        const validAreaIds = new Set(areas.map(a => a.id));
 
         Papa.parse(csvData, {
             header: true,
             skipEmptyLines: true,
             complete: async (results) => {
-                const newRooms = results.data;
-                if (newRooms.length === 0) {
+                const newRoomsData = results.data;
+                if (newRoomsData.length === 0) {
                     toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.' });
                     return;
                 }
 
                 try {
-                    const batch = writeBatch(firestore);
+                    const toImport: any[] = [];
                     let invalidRowCount = 0;
 
-                    newRooms.forEach((newRoom: any) => {
+                    newRoomsData.forEach((newRoom: any) => {
                         const capacity = parseInt(newRoom.capacity, 10);
                         const areaIdFromCsv = newRoom.areaId;
 
@@ -715,8 +710,7 @@ export default function RoomManagementPage() {
 
                         const elements = newRoom.elements ? newRoom.elements.split(';').map((e: string) => e.trim()).filter(Boolean) : [];
 
-                        const newDocRef = doc(collection(firestore, "rooms"));
-                        batch.set(newDocRef, {
+                        toImport.push({
                             name: newRoom.name,
                             areaId: areaIdFromCsv,
                             capacity: capacity,
@@ -724,7 +718,7 @@ export default function RoomManagementPage() {
                         });
                     });
 
-                    if (invalidRowCount === newRooms.length) {
+                    if (toImport.length === 0) {
                         toast({
                             variant: "destructive",
                             title: "Import Failed",
@@ -733,9 +727,9 @@ export default function RoomManagementPage() {
                         return;
                     }
 
-                    await batch.commit();
+                    await createRooms(toImport);
 
-                    let description = `${newRooms.length - invalidRowCount} rooms were imported.`;
+                    let description = `${toImport.length} rooms were imported.`;
                     if (invalidRowCount > 0) {
                         description += ` ${invalidRowCount} rows were skipped due to invalid data.`
                     }
@@ -761,18 +755,18 @@ export default function RoomManagementPage() {
     const handleSaveRoom = async (data: Partial<Room>) => {
         try {
             if (data.id) {
-                await updateDocumentNonBlocking(doc(firestore, 'rooms', data.id), data);
+                await updateRoom({ id: data.id, data });
                 toast({ title: 'Room Updated' });
             } else {
-                const area = areas?.find(a => a.areaId === data.areaId);
+                const area = areas?.find(a => a.id === data.areaId);
                 const areaName = area?.name || 'X';
                 const areaInitial = areaName.charAt(0).toUpperCase();
                 const customId = `${areaInitial}-${data.name!.trim()}`;
 
-                await setDocumentNonBlocking(doc(firestore, 'rooms', customId), {
+                await createRoom({
                     ...data,
                     id: customId
-                }, { merge: true });
+                });
                 toast({ title: 'Room Added' });
             }
             setIsRoomSheetOpen(false);
@@ -784,7 +778,7 @@ export default function RoomManagementPage() {
     const handleDeleteRoom = async () => {
         if (!roomToDelete) return;
         try {
-            await deleteDocumentNonBlocking(doc(firestore, 'rooms', roomToDelete.id));
+            await deleteRoom(roomToDelete.id);
             toast({ title: 'Room Deleted' });
             setRoomToDelete(null);
         } catch (error) {
