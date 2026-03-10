@@ -1,5 +1,3 @@
-kind: "AppHostingYaml"
-apiVersion: "v1"
 runConfig:
   maxInstances: 4
 scripts:
