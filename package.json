@@ -20,11 +20,7 @@
     "turbo": "^2.8.15"
   },
   "dependencies": {
-    "@apollo/server": "^5.4.0",
-    "@as-integrations/next": "^4.1.0",
     "@prisma/client": "^5.22.0",
-    "@supabase/supabase-js": "^2.98.0",
-    "graphql": "^16.13.0",
-    "graphql-tag": "^2.12.6"
+    "@supabase/supabase-js": "^2.98.0"
   }
 }
