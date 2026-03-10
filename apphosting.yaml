@@ -1,8 +1,12 @@
 runConfig:
   maxInstances: 4
 scripts:
-  buildCommand: "npm run build:web"
+  buildCommand: "npm run build"
 env:
+  - variable: GOOGLE_BUILDABLE
+    value: apps/web
+    availability:
+      - BUILD
   - variable: DATABASE_URL
     secret: DATABASE_URL
     availability:
