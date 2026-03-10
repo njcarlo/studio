@@ -1,7 +1,7 @@
 runConfig:
   maxInstances: 4
 scripts:
-  buildCommand: "npm run build -w apps/web"
+  buildCommand: "npm run build:web"
 env:
   - variable: DATABASE_URL
     secret: DATABASE_URL
