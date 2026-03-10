@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 import path from 'path';
 
+const monorepoRoot = path.resolve(__dirname, '../..');
+
 const nextConfig: NextConfig = {
   output: process.env.BUILD_MOBILE === 'true' ? 'export' : 'standalone',
   typescript: {
@@ -11,6 +13,14 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ["@apollo/server"],
   transpilePackages: ["@studio/ui", "@studio/database", "@studio/store", "@studio/types", "@studio/graphql"],
+  outputFileTracingRoot: monorepoRoot,
+  webpack: (config) => {
+    config.resolve.modules = [
+      path.resolve(__dirname, 'node_modules'),
+      'node_modules',
+    ];
+    return config;
+  },
   images: {
     unoptimized: true,
     remotePatterns: [
