@@ -88,24 +88,36 @@ async function main() {
         }));
 
         // 5. Workers
-        await migrateCollection('workers', prisma.worker, (data) => ({
-            id: data.id,
-            workerId: data.workerId,
-            firstName: data.firstName || '',
-            lastName: data.lastName || '',
-            email: data.email || `${data.id}@placeholder.com`,
-            phone: data.phone || '',
-            roleId: data.roleId || 'default-role',
-            status: data.status || 'Active',
-            avatarUrl: data.avatarUrl || '',
-            majorMinistryId: data.majorMinistryId || '',
-            minorMinistryId: data.minorMinistryId || '',
-            employmentType: data.employmentType,
-            birthDate: data.birthDate,
-            passwordChangeRequired: data.passwordChangeRequired || false,
-            qrToken: data.qrToken,
-            createdAt: toDate(data.createdAt),
-        }));
+        console.log('Fetching roles for validation...');
+        const roles = await prisma.role.findMany();
+        const validRoleIds = new Set(roles.map(r => r.id));
+
+        await migrateCollection('workers', prisma.worker, (data) => {
+            let roleId = data.roleId || 'viewer';
+            if (!validRoleIds.has(roleId)) {
+                console.warn(`Warning: Worker ${data.id} has invalid roleId "${roleId}". Defaulting to "viewer".`);
+                roleId = 'viewer';
+            }
+
+            return {
+                id: data.id,
+                workerId: data.workerId,
+                firstName: data.firstName || '',
+                lastName: data.lastName || '',
+                email: data.email || `${data.id}@placeholder.com`,
+                phone: data.phone || '',
+                roleId: roleId,
+                status: data.status || 'Active',
+                avatarUrl: data.avatarUrl || '',
+                majorMinistryId: data.majorMinistryId || '',
+                minorMinistryId: data.minorMinistryId || '',
+                employmentType: data.employmentType,
+                birthDate: data.birthDate,
+                passwordChangeRequired: data.passwordChangeRequired || false,
+                qrToken: data.qrToken,
+                createdAt: toDate(data.createdAt),
+            };
+        });
 
         // 6. Ministries
         await migrateCollection('ministries', prisma.ministry, (data) => ({
