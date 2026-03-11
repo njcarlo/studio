@@ -1,7 +1,8 @@
-'use server';
+"use server";
 
 import { prisma } from '@studio/database';
 import { revalidatePath } from 'next/cache';
+import { NotificationService } from '@/services/notification-service';
 
 // --- Roles ---
 
@@ -113,6 +114,10 @@ export async function createApproval(data: any) {
             date: new Date(),
         },
     });
+
+    // Trigger async notification
+    NotificationService.notifyNewRequest(approval);
+
     return approval;
 }
 
