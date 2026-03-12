@@ -23,13 +23,19 @@ export function getAdminApp() {
     }
   }
 
-  const config: admin.AppOptions = {};
+  const config: admin.AppOptions = {
+    projectId: 'studio-3072837227-9a1db' // Explicitly set the project ID
+  };
 
   if (serviceAccountPath && fs.existsSync(serviceAccountPath)) {
     config.credential = admin.credential.cert(serviceAccountPath);
   } else {
     // Fallback to application default (works in App Hosting/Cloud Run)
-    config.credential = admin.credential.applicationDefault();
+    try {
+      config.credential = admin.credential.applicationDefault();
+    } catch (e) {
+      console.warn('Failed to load application default credentials, proceeding without credentials (may fail if used)');
+    }
   }
 
   return admin.initializeApp(config);

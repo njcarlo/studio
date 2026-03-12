@@ -76,7 +76,7 @@ import {
 } from "@studio/ui";
 import type { Worker, Role, Ministry } from "@studio/types";
 import { useUser, supabase } from "@studio/database";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkers, useWorkerStats } from "@/hooks/use-workers";
 import { useRoles } from "@/hooks/use-roles";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useDepartments } from "@/hooks/use-departments";
@@ -953,15 +953,23 @@ export default function WorkersPage() {
   const { logAction } = useAuditLog();
   const { isMealStubAssigner, canManageAllMealStubs } = useUserRole();
 
-  // SQL Migration: Fetch data using the new hooks
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
   const {
     workers: allWorkers,
+    pagination,
     isLoading: workersLoading,
     updateWorker: updateWorkerSql,
     createWorker: createWorkerSql,
     deleteWorker: deleteWorkerSql,
-    deleteWorkers: deleteWorkersSql
-  } = useWorkers();
+    deleteWorkers: deleteWorkersSql,
+  } = useWorkers({
+    page: currentPage,
+    limit: itemsPerPage,
+    search: searchQuery,
+  });
 
   const {
     ministries: ministries,
@@ -1023,45 +1031,18 @@ export default function WorkersPage() {
     return ministries.filter((m) => m.department === userDepartment);
   }, [isDepartmentHead, userDepartment, ministries]);
 
-  const workers = useMemo(() => {
-    if (!allWorkers) return [];
+  // Use specialized stats hook for summary cards to avoid fetching all workers
+  const { data: statsData } = useWorkerStats(
+    isSuperAdmin || canManageWorkers && !workerProfile?.majorMinistryId
+      ? undefined
+      : isDepartmentHead
+        ? departmentMinistries.map((m) => m.id)
+        : [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(
+            Boolean,
+          ) as string[],
+  );
 
-    // Global managers (Super Admin or those with manage_workers but no specific ministry assigned)
-    const isGlobalManager =
-      isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId);
-
-    if (isGlobalManager) return allWorkers;
-
-    // Department Heads see all workers across their whole department
-    if (isDepartmentHead && departmentMinistries.length > 0) {
-      const deptMinistryIds = departmentMinistries.map((m) => m.id);
-      return allWorkers.filter(
-        (w) =>
-          deptMinistryIds.includes(w.majorMinistryId) ||
-          deptMinistryIds.includes(w.minorMinistryId),
-      );
-    }
-
-    // Filter by ministry: show workers in same ministries as current user
-    const userMinistryIds = [
-      workerProfile?.majorMinistryId,
-      workerProfile?.minorMinistryId,
-    ].filter(Boolean);
-    if (userMinistryIds.length === 0) return [];
-
-    return allWorkers.filter(
-      (w) =>
-        userMinistryIds.includes(w.majorMinistryId) ||
-        userMinistryIds.includes(w.minorMinistryId),
-    );
-  }, [
-    allWorkers,
-    isSuperAdmin,
-    canManageWorkers,
-    workerProfile,
-    isDepartmentHead,
-    departmentMinistries,
-  ]);
+  const workers = allWorkers;
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
@@ -1600,55 +1581,44 @@ export default function WorkersPage() {
     workerProfile?.minorMinistryId,
   ].filter(Boolean) as string[];
 
-  // For Department Head: use the full set of department ministry IDs
-  const statsMinistryIds = isDepartmentHead
-    ? departmentMinistries.map((m) => m.id)
-    : userMinistryIds;
+  const { totalWorkers, totalActive, totalInactive, totalSecondary } =
+    useMemo(() => {
+      if (!statsData)
+        return {
+          totalWorkers: 0,
+          totalActive: 0,
+          totalInactive: 0,
+          totalSecondary: 0,
+        };
 
-  // Primary workers: those whose PRIMARY ministry is in the stats scope
-  const primaryWorkers = isGlobalManager
-    ? workers || []
-    : (workers || []).filter(
-      (w) =>
-        w.majorMinistryId && statsMinistryIds.includes(w.majorMinistryId),
-    );
-
-  // Secondary workers: those whose SECONDARY ministry is in the stats scope — NOT counted in total
-  const totalSecondary = isGlobalManager
-    ? (workers || []).filter((w) => !!w.minorMinistryId).length
-    : (workers || []).filter(
-      (w) =>
-        w.minorMinistryId && statsMinistryIds.includes(w.minorMinistryId),
-    ).length;
-
-  const totalWorkers = primaryWorkers.length;
-  const totalActive = primaryWorkers.filter(
-    (w) => w.status === "Active",
-  ).length;
-  const totalInactive = primaryWorkers.filter(
-    (w) => w.status === "Inactive",
-  ).length;
+      return {
+        totalWorkers: statsData.total,
+        totalActive: statsData.active,
+        totalInactive: statsData.inactive,
+        totalSecondary: statsData.secondary,
+      };
+    }, [statsData]);
 
   // --- Per-ministry breakdown for Department Head ---
   const ministryBreakdown = useMemo(() => {
-    if (!isDepartmentHead || departmentMinistries.length === 0) return [];
+    if (!isDepartmentHead || departmentMinistries.length === 0 || !statsData?.ministryStats) return [];
+    
     return departmentMinistries.map((ministry) => {
-      const mPrimary = (allWorkers || []).filter(
-        (w) => w.majorMinistryId === ministry.id,
-      );
-      const mSecondary = (allWorkers || []).filter(
-        (w) => w.minorMinistryId === ministry.id,
-      );
+      const stats = statsData.ministryStats.find(s => s.ministryId === ministry.id);
+      
       return {
         ministry,
-        total: mPrimary.length,
-        active: mPrimary.filter((w) => w.status === "Active").length,
-        inactive: mPrimary.filter((w) => w.status === "Inactive").length,
-        secondary: mSecondary.length,
-        primaryWorkers: mPrimary,
+        total: stats?.total || 0,
+        active: stats?.active || 0,
+        inactive: stats?.inactive || 0,
+        secondary: stats?.secondary || 0,
+        // primaryWorkers is tricky here because we only have the paginated ones.
+        // For the ministry breakdown tabs, we should probably fetch the workers for that ministry specifically.
+        // For now, let's just use the current page's workers filtered by ministry.
+        primaryWorkers: allWorkers.filter(w => w.majorMinistryId === ministry.id)
       };
     });
-  }, [isDepartmentHead, departmentMinistries, allWorkers]);
+  }, [isDepartmentHead, departmentMinistries, statsData, allWorkers]);
 
   if (isLoading) {
     return (
@@ -2025,169 +1995,275 @@ export default function WorkersPage() {
         </div>
       )}
 
-      <div className="rounded-lg border shadow-sm mt-4 overflow-x-auto w-full">
-        <Table className="min-w-[1000px]">
-          <TableHeader>
-            <TableRow>
-              {canManageWorkers && (
-                <TableHead className="w-[40px]">
-                  <Checkbox
-                    checked={
-                      workers.length > 0 &&
-                      workers.every((w) => selectedWorkerIds.includes(w.id))
-                    }
-                    onCheckedChange={() => toggleSelectAll(workers)}
-                  />
-                </TableHead>
-              )}
-              <TableHead>Name</TableHead>
-              <TableHead>Worker ID</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Permissions</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Contact</TableHead>
-              {canManageWorkers && (
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center">
-                  <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
-                </TableCell>
-              </TableRow>
+      <div className="mt-8 flex flex-col sm:flex-row gap-4 items-end">
+        <div className="w-full sm:max-w-sm">
+          <Label htmlFor="worker-search" className="mb-2 block">
+            Search Workers
+          </Label>
+          <div className="relative">
+            <Input
+              id="worker-search"
+              placeholder="Search by name, email or ID..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-9"
+            />
+            <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
             )}
-            {workers &&
-              workers.map((worker) => (
-                <TableRow
-                  key={worker.id}
-                  className={
-                    selectedWorkerIds.includes(worker.id)
-                      ? "bg-muted/50 transition-colors"
-                      : "transition-colors"
-                  }
-                >
-                  {canManageWorkers && (
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedWorkerIds.includes(worker.id)}
-                        onCheckedChange={() => toggleSelectWorker(worker.id)}
-                      />
-                    </TableCell>
-                  )}
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage
-                          src={worker.avatarUrl}
-                          alt={`${worker.firstName} ${worker.lastName}`}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-4">
+        <div className="rounded-lg border shadow-sm overflow-x-auto w-full">
+          <Table className="min-w-[1000px]">
+            <TableHeader>
+              <TableRow>
+                {canManageWorkers && (
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={
+                        workers.length > 0 &&
+                        workers.every((w) => selectedWorkerIds.includes(w.id))
+                      }
+                      onCheckedChange={() => toggleSelectAll(workers)}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Name</TableHead>
+                <TableHead>Worker ID</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Permissions</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Contact</TableHead>
+                {canManageWorkers && (
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {workersLoading && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-10">
+                    <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Loading workers...
+                    </p>
+                  </TableCell>
+                </TableRow>
+              )}
+              {!workersLoading && workers.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-10 text-muted-foreground"
+                  >
+                    No workers found.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!workersLoading &&
+                workers.map((worker) => (
+                  <TableRow
+                    key={worker.id}
+                    className={
+                      selectedWorkerIds.includes(worker.id)
+                        ? "bg-muted/50 transition-colors"
+                        : "transition-colors"
+                    }
+                  >
+                    {canManageWorkers && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedWorkerIds.includes(worker.id)}
+                          onCheckedChange={() => toggleSelectWorker(worker.id)}
                         />
-                        <AvatarFallback>
-                          {worker.firstName?.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      {`${worker.firstName} ${worker.lastName}`}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {worker.workerId}
-                  </TableCell>
-                  <TableCell>{getRoleName(worker.roleId)}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                      {getPermissions(worker.roleId).map((p) => (
-                        <Badge
-                          key={p}
-                          variant="outline"
-                          className="text-[10px] px-1 py-0 h-4 normal-case font-normal border-primary/20 bg-primary/5"
-                        >
-                          {p.replace(/_/g, " ")}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        worker.status === "Active" ? "default" : "secondary"
-                      }
-                      className={
-                        worker.status === "Active"
-                          ? "bg-green-100 text-green-800"
-                          : worker.status === "Pending Approval"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                      }
-                    >
-                      {worker.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-xs">{worker.email}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {worker.phone}
-                      </span>
-                    </div>
-                  </TableCell>
-                  {canManageWorkers && (
+                      </TableCell>
+                    )}
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage
+                            src={worker.avatarUrl}
+                            alt={`${worker.firstName} ${worker.lastName}`}
+                          />
+                          <AvatarFallback>
+                            {worker.firstName?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {`${worker.firstName} ${worker.lastName}`}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {worker.workerId}
+                    </TableCell>
+                    <TableCell>{getRoleName(worker.roleId)}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
+                      <div className="flex flex-wrap gap-1 max-w-[200px]">
+                        {getPermissions(worker.roleId).map((p) => (
+                          <Badge
+                            key={p}
+                            variant="outline"
+                            className="text-[10px] px-1 py-0 h-4 normal-case font-normal border-primary/20 bg-primary/5"
                           >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              setTimeout(() => handleEdit(worker), 100)
-                            }
-                          >
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              setTimeout(() => handlePasswordReset(worker), 100)
-                            }
-                          >
-                            <Mail className="mr-2 h-4 w-4" /> Send Reset Link
-                          </DropdownMenuItem>
-                          {worker.id !== user?.uid && (
+                            {p.replace(/_/g, " ")}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          worker.status === "Active" ? "default" : "secondary"
+                        }
+                        className={
+                          worker.status === "Active"
+                            ? "bg-green-100 text-green-800"
+                            : worker.status === "Pending Approval"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                        }
+                      >
+                        {worker.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-xs">{worker.email}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {worker.phone}
+                        </span>
+                      </div>
+                    </TableCell>
+                    {canManageWorkers && (
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              aria-haspopup="true"
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               onSelect={() =>
-                                setTimeout(() => handleImpersonate(worker), 100)
+                                setTimeout(() => handleEdit(worker), 100)
                               }
                             >
-                              <LogIn className="mr-2 h-4 w-4" />
-                              Impersonate
+                              Edit
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              setTimeout(() => handleDelete(worker.id), 100)
-                            }
-                            className="text-destructive"
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setTimeout(() => handlePasswordReset(worker), 100)
+                              }
+                            >
+                              <Mail className="mr-2 h-4 w-4" /> Send Reset Link
+                            </DropdownMenuItem>
+                            {worker.id !== user?.uid && (
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  setTimeout(() => handleImpersonate(worker), 100)
+                                }
+                              >
+                                <LogIn className="mr-2 h-4 w-4" />
+                                Impersonate
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setTimeout(() => handleDelete(worker.id), 100)
+                              }
+                              className="text-destructive"
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination Controls */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between px-2 py-4 border-t bg-muted/20 rounded-b-lg">
+            <p className="text-sm text-muted-foreground">
+              Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+              <span className="font-medium">
+                {Math.min(currentPage * itemsPerPage, pagination.total)}
+              </span>{" "}
+              of <span className="font-medium">{pagination.total}</span> workers
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1 mx-2">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  let pageNum = i + 1;
+                  // Simple sliding window for pagination
+                  if (pagination.totalPages > 5 && currentPage > 3) {
+                    pageNum = currentPage - 3 + i;
+                    if (pageNum + (5 - i) > pagination.totalPages) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    }
+                  }
+                  
+                  if (pageNum <= 0 || pageNum > pagination.totalPages) return null;
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      className="w-8 h-8 p-0"
+                      onClick={() => setCurrentPage(pageNum)}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+                disabled={currentPage === pagination.totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>

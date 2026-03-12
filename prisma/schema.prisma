@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -16,38 +17,29 @@ model Role {
 }
 
 model Worker {
-  id                     String   @id @default(uuid())
+  id                     String               @id @default(uuid())
   workerId               String?
   firstName              String
   lastName               String
-  email                  String   @unique
+  email                  String               @unique
   phone                  String
   roleId                 String
-  status                 String // 'Active' | 'Inactive' | 'Pending Approval'
+  status                 String
   avatarUrl              String
   majorMinistryId        String
   minorMinistryId        String
-  employmentType         String? // 'Full-Time' | 'On-Call' | 'Volunteer'
+  employmentType         String?
   birthDate              String?
-  passwordChangeRequired Boolean  @default(false)
+  passwordChangeRequired Boolean              @default(false)
   qrToken                String?
-  createdAt              DateTime @default(now())
-
-  role               Role                 @relation(fields: [roleId], references: [id])
-  bookings           Booking[]
-  attendanceRecords  AttendanceRecord[]
-  mealStubs          MealStub[]
-  approvals          ApprovalRequest[]
-  InventoryBorrowing InventoryBorrowing[] @relation("WorkerBorrowings")
-  InventoryLog       InventoryLog[]       @relation("WorkerLogs")
-}
-
-enum Department {
-  Worship
-  Outreach
-  Relationship
-  Discipleship
-  Administration
+  createdAt              DateTime             @default(now())
+  approvals              ApprovalRequest[]
+  attendanceRecords      AttendanceRecord[]
+  bookings               Booking[]
+  InventoryBorrowing     InventoryBorrowing[] @relation("WorkerBorrowings")
+  InventoryLog           InventoryLog[]       @relation("WorkerLogs")
+  mealStubs              MealStub[]
+  role                   Role                 @relation(fields: [roleId], references: [id])
 }
 
 model Ministry {
@@ -66,7 +58,7 @@ model Ministry {
 model AttendanceRecord {
   id              String   @id @default(uuid())
   workerProfileId String
-  type            String // "Clock In" | "Clock Out"
+  type            String
   time            DateTime @default(now())
   worker          Worker   @relation(fields: [workerProfileId], references: [id])
 }
@@ -79,7 +71,7 @@ model Booking {
   purpose            String?
   start              DateTime
   end                DateTime
-  status             String // 'Pending' | 'Pending Ministry Approval' | 'Pending Admin Approval' | 'Approved' | 'Rejected'
+  status             String
   workerProfileId    String
   name               String
   ministryId         String
@@ -95,9 +87,8 @@ model Booking {
   requestedElements  String[]
   guidelinesAccepted Boolean
   checkedInAt        DateTime?
-
-  worker Worker @relation(fields: [workerProfileId], references: [id])
-  room   Room   @relation(fields: [roomId], references: [id])
+  room               Room      @relation(fields: [roomId], references: [id])
+  worker             Worker    @relation(fields: [workerProfileId], references: [id])
 }
 
 model Room {
@@ -107,8 +98,8 @@ model Room {
   elements String[]
   areaId   String
   weight   Int?
-  area     Area      @relation(fields: [areaId], references: [id])
   bookings Booking[]
+  area     Area      @relation(fields: [areaId], references: [id])
 }
 
 model Area {
@@ -131,7 +122,7 @@ model MealStub {
   workerId       String
   workerName     String
   date           DateTime
-  status         String // 'Issued' | 'Claimed'
+  status         String
   stubType       String?
   assignedBy     String?
   assignedByName String?
@@ -142,17 +133,17 @@ model MealStub {
 model VenueElement {
   id                 String @id @default(uuid())
   name               String
-  category           String // 'Equipment' | 'Manpower' | 'Other'
+  category           String
   providerMinistryId String
 }
 
 model ApprovalRequest {
   id               String   @id @default(uuid())
   requester        String
-  type             String // 'New Worker' | 'Profile Update' | 'Room Booking' | 'Ministry Change'
+  type             String
   details          String
   date             DateTime @default(now())
-  status           String // 'Pending' | ...
+  status           String
   workerId         String?
   roomId           String?
   reservationId    String?
@@ -171,7 +162,7 @@ model ScanLog {
   scannerId      String
   scannerName    String
   timestamp      DateTime @default(now())
-  scanType       String // 'Attendance' | 'Meal Stub' | 'Room Check-in'
+  scanType       String
   details        String
   targetUserId   String?
   targetUserName String?
@@ -185,7 +176,7 @@ model C2SMentee {
   lastName  String
   email     String
   phone     String
-  status    String // 'In Progress' | 'Completed' | 'Dropped'
+  status    String
   groupId   String
   mentorId  String
   createdAt DateTime @default(now())
@@ -207,7 +198,7 @@ model Setting {
 }
 
 model DepartmentSetting {
-  id                        String  @id // e.g., 'Worship'
+  id                        String  @id
   headId                    String?
   description               String?
   mealStubWeekdayAllocation Int     @default(0)
@@ -231,25 +222,20 @@ model InventoryCategory {
   id          String          @id @default(uuid())
   name        String          @unique
   description String?
-  color       String? // For UI categorization (e.g., hex code)
-  icon        String? // Lucide icon name
-  group       String? // Primary group mapping from spreadsheet
+  color       String?
+  icon        String?
+  group       String?
   isActive    Boolean         @default(true)
   items       InventoryItem[]
 }
 
-enum InventoryType {
-  EQUIPMENT
-  CONSUMABLE
-}
-
 model InventoryItem {
-  id                  String        @id @default(uuid())
-  type                InventoryType @default(EQUIPMENT)
+  id                  String               @id @default(uuid())
+  type                InventoryType        @default(EQUIPMENT)
   weight              Int?
   group               String?
   categoryId          String
-  inventoryCode       String?       @unique
+  inventoryCode       String?              @unique
   name                String
   role                String?
   location            String?
@@ -260,64 +246,67 @@ model InventoryItem {
   purchaseDate        String?
   expiryDate          DateTime?
   nextMaintenanceDate DateTime?
-
-  parentId           String? // Self-relation for Kits/Bundles
-  isApprovalRequired Boolean @default(false)
-
-  statusCode     Int?
-  status         String? @default("Good Condition")
-  statusDetails  String?
-  recommendation String?
-
-  // Stock Management
-  quantity     Int      @default(0)
-  minQuantity  Int      @default(0)
-  reorderLevel Int?
-  unit         String   @default("pcs")
-  imageUrl     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  category   InventoryCategory    @relation(fields: [categoryId], references: [id])
-  logs       InventoryLog[]
-  borrowings InventoryBorrowing[]
-
-  parent   InventoryItem?  @relation("ItemBundles", fields: [parentId], references: [id])
-  children InventoryItem[] @relation("ItemBundles")
+  parentId            String?
+  isApprovalRequired  Boolean              @default(false)
+  statusCode          Int?
+  status              String?              @default("Good Condition")
+  statusDetails       String?
+  recommendation      String?
+  quantity            Int                  @default(0)
+  minQuantity         Int                  @default(0)
+  reorderLevel        Int?
+  unit                String               @default("pcs")
+  imageUrl            String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  borrowings          InventoryBorrowing[]
+  category            InventoryCategory    @relation(fields: [categoryId], references: [id])
+  parent              InventoryItem?       @relation("ItemBundles", fields: [parentId], references: [id])
+  children            InventoryItem[]      @relation("ItemBundles")
+  logs                InventoryLog[]
 }
 
 model InventoryBorrowing {
-  id         String    @id @default(uuid())
-  itemId     String
-  borrowerId String
-  borrowedAt DateTime  @default(now())
-  dueDate    DateTime?
-  returnedAt DateTime?
-  status     String    @default("BORROWED")
-
+  id                String        @id @default(uuid())
+  itemId            String
+  borrowerId        String
+  borrowedAt        DateTime      @default(now())
+  dueDate           DateTime?
+  returnedAt        DateTime?
+  status            String        @default("BORROWED")
   checkoutNotes     String?
   checkoutCondition String?
   checkoutChecklist Json?
-
-  returnNotes     String?
-  returnCondition String?
-  returnChecklist Json?
-  returnPhotos    String[] // Photo URLs for damage proof
-
-  item     InventoryItem @relation(fields: [itemId], references: [id])
-  borrower Worker        @relation("WorkerBorrowings", fields: [borrowerId], references: [id])
+  returnNotes       String?
+  returnCondition   String?
+  returnChecklist   Json?
+  returnPhotos      String[]
+  borrower          Worker        @relation("WorkerBorrowings", fields: [borrowerId], references: [id])
+  item              InventoryItem @relation(fields: [itemId], references: [id])
 }
 
 model InventoryLog {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   itemId    String
   workerId  String?
-  type      String // IN, OUT, AUDIT, ADJUSTMENT
+  type      String
   quantity  Int
   balance   Int
   notes     String?
-  timestamp DateTime @default(now())
+  timestamp DateTime      @default(now())
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+  worker    Worker?       @relation("WorkerLogs", fields: [workerId], references: [id])
+}
 
-  item   InventoryItem @relation(fields: [itemId], references: [id])
-  worker Worker?       @relation("WorkerLogs", fields: [workerId], references: [id])
+enum Department {
+  Worship
+  Outreach
+  Relationship
+  Discipleship
+  Administration
+}
+
+enum InventoryType {
+  EQUIPMENT
+  CONSUMABLE
 }

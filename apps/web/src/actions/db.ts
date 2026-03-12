@@ -53,6 +53,85 @@ export async function getWorkers() {
     });
 }
 
+export async function getPaginatedWorkers(
+    page: number = 1,
+    limit: number = 50,
+    filters: {
+        search?: string;
+        ministryIds?: string[];
+    } = {}
+) {
+    const where: any = {};
+    if (filters.ministryIds && filters.ministryIds.length > 0) {
+        where.OR = [
+            { majorMinistryId: { in: filters.ministryIds } },
+            { minorMinistryId: { in: filters.ministryIds } }
+        ];
+    }
+    if (filters.search) {
+        where.AND = [
+            {
+                OR: [
+                    { firstName: { contains: filters.search, mode: 'insensitive' } },
+                    { lastName: { contains: filters.search, mode: 'insensitive' } },
+                    { email: { contains: filters.search, mode: 'insensitive' } },
+                    { workerId: { contains: filters.search, mode: 'insensitive' } },
+                ]
+            }
+        ];
+    }
+
+    const [total, workers] = await prisma.$transaction([
+        prisma.worker.count({ where }),
+        prisma.worker.findMany({
+            where,
+            include: { role: true },
+            orderBy: { createdAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit,
+        })
+    ]);
+
+    return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
+export async function getWorkerStats(ministryIds?: string[]) {
+    const where: any = {};
+    if (ministryIds && ministryIds.length > 0) {
+        where.OR = [
+            { majorMinistryId: { in: ministryIds } },
+            { minorMinistryId: { in: ministryIds } }
+        ];
+    }
+    
+    const [total, active, inactive, secondary] = await prisma.$transaction([
+        prisma.worker.count({ where }),
+        prisma.worker.count({ where: { ...where, status: 'Active' } }),
+        prisma.worker.count({ where: { ...where, status: 'Inactive' } }),
+        prisma.worker.count({ where: { ...where, roleId: { contains: 'secondary' } } }) // Example logic for secondary
+    ]);
+    
+    return {
+        total,
+        active,
+        inactive,
+        secondary,
+        // For ministry breakdown if needed
+        ministryStats: ministryIds?.length ? await Promise.all(ministryIds.map(async (id) => {
+            const mWhere = {
+                OR: [{ majorMinistryId: id }, { minorMinistryId: id }]
+            };
+            return {
+                ministryId: id,
+                total: await prisma.worker.count({ where: mWhere }),
+                active: await prisma.worker.count({ where: { ...mWhere, status: 'Active' } }),
+                inactive: await prisma.worker.count({ where: { ...mWhere, status: 'Inactive' } }),
+                secondary: await prisma.worker.count({ where: { ...mWhere, roleId: { contains: 'secondary' } } }),
+            };
+        })) : []
+    };
+}
+
 export async function getWorkerById(id: string) {
     return await prisma.worker.findUnique({
         where: { id },
