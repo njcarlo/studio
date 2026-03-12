@@ -1,6 +1,6 @@
 {
   "name": "studio-monorepo",
-  "packageManager": "npm@10.2.4",
+  "packageManager": "npm@11.1.0",
   "private": true,
   "workspaces": [
     "apps/*",

@@ -7,6 +7,7 @@ import { NotificationService } from '@/services/notification-service';
 // --- Roles ---
 
 export async function getRoles() {
+    console.log('Prisma keys:', Object.keys(prisma || {}));
     return await prisma.role.findMany({
         orderBy: {
             name: 'asc',

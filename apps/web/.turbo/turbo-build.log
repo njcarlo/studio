@@ -3,27 +3,21 @@
 > next build
 
    ▲ Next.js 15.5.12
+   - Environments: .env
 
    Creating an optimized production build ...
-Failed to compile.
+ ✓ Compiled successfully in 9.7s
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+[Error [PageNotFoundError]: Cannot find module for page: /reservations/my] {
+  code: 'ENOENT'
+}
 
-./src/app/api/graphql/route.ts
-Module not found: Can't resolve '@apollo/server'
-
-https://nextjs.org/docs/messages/module-not-found
-
-../../node_modules/@as-integrations/next/dist/lib/getHeaders.js
-Module not found: Can't resolve '@apollo/server'
-
-https://nextjs.org/docs/messages/module-not-found
-
-Import trace for requested module:
-../../node_modules/@as-integrations/next/dist/startServerAndCreateNextHandler.js
-../../node_modules/@as-integrations/next/dist/index.js
-./src/app/api/graphql/route.ts
-
-
-> Build failed because of webpack errors
+> Build error occurred
+[Error: Failed to collect page data for /reservations/my] {
+  type: 'Error'
+}
 npm error Lifecycle script `build` failed with error:
 npm error code 1
 npm error path C:\Users\Jace\Antigravity\studio\apps\web
@@ -31,8 +25,3 @@ npm error workspace web@0.1.0
 npm error location C:\Users\Jace\Antigravity\studio\apps\web
 npm error command failed
 npm error command C:\WINDOWS\system32\cmd.exe /d /s /c next build
-npm notice
-npm notice New minor version of npm available! 11.6.1 -> 11.11.0
-npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.11.0
-npm notice To update run: npm install -g npm@11.11.0
-npm notice
