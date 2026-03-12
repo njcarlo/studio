@@ -1,8 +1,8 @@
 runConfig:
   maxInstances: 4
 scripts:
-  buildCommand: "npx prisma generate --schema=prisma/schema.prisma && cd apps/web && npm install && npm run build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static"
-  runCommand: "node apps/web/.next/standalone/apps/web/server.js"
+  buildCommand: "npx prisma generate --schema=prisma/schema.prisma && cd apps/web && npm install && npm run build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static && cp -r ../../node_modules/.prisma .next/standalone/node_modules/ && cp -r ../../node_modules/@prisma .next/standalone/node_modules/ && mkdir -p .next/standalone/prisma && cp ../../prisma/schema.prisma .next/standalone/prisma/schema.prisma"
+  runCommand: "cd apps/web/.next/standalone && HOSTNAME=0.0.0.0 node apps/web/server.js"
 
 
 env:

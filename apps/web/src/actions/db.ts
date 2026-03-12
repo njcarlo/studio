@@ -7,7 +7,6 @@ import { NotificationService } from '@/services/notification-service';
 // --- Roles ---
 
 export async function getRoles() {
-    console.log('Prisma keys:', Object.keys(prisma || {}));
     return await prisma.role.findMany({
         orderBy: {
             name: 'asc',
@@ -62,19 +61,6 @@ export async function getPaginatedWorkers(
         ministryIds?: string[];
     } = {}
 ) {
-    console.log('--- DEBUG: getPaginatedWorkers called ---');
-    console.log('Imported prisma type:', typeof prisma);
-    if (prisma) {
-        console.log('Prisma keys:', Object.keys(prisma));
-        console.log('Prisma model worker exists:', !!(prisma as any).worker);
-        console.log('Prisma model mealStub exists:', !!(prisma as any).mealStub);
-    } else {
-        console.log('CRITICAL: prisma is NULL or UNDEFINED');
-    }
-    
-    if (!prisma ) {
-        throw new Error('Prisma database client is not initialized');
-    }
     const where: any = {};
     if (filters.ministryIds && filters.ministryIds.length > 0) {
         where.OR = [
