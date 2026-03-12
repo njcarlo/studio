@@ -1,7 +1,7 @@
 runConfig:
   maxInstances: 4
 scripts:
-  buildCommand: "npx prisma generate --schema=prisma/schema.prisma && npm install && npm run build:web"
+  buildCommand: "npx prisma generate --schema=prisma/schema.prisma && npm install && npx turbo run build --filter=web"
 env:
   - variable: DATABASE_URL
     secret: DATABASE_URL

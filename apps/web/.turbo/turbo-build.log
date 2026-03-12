@@ -6,7 +6,7 @@
    - Environments: .env
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 9.7s
+ ✓ Compiled successfully in 7.3s
    Skipping validation of types
    Skipping linting
    Collecting page data ...

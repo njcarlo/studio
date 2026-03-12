@@ -62,6 +62,19 @@ export async function getPaginatedWorkers(
         ministryIds?: string[];
     } = {}
 ) {
+    console.log('--- DEBUG: getPaginatedWorkers called ---');
+    console.log('Imported prisma type:', typeof prisma);
+    if (prisma) {
+        console.log('Prisma keys:', Object.keys(prisma));
+        console.log('Prisma model worker exists:', !!(prisma as any).worker);
+        console.log('Prisma model mealStub exists:', !!(prisma as any).mealStub);
+    } else {
+        console.log('CRITICAL: prisma is NULL or UNDEFINED');
+    }
+    
+    if (!prisma ) {
+        throw new Error('Prisma database client is not initialized');
+    }
     const where: any = {};
     if (filters.ministryIds && filters.ministryIds.length > 0) {
         where.OR = [
@@ -346,6 +359,11 @@ export async function deleteBooking(id: string) {
 // --- Meal Stubs ---
 
 export async function getMealStubs(filters: { workerId?: string; dateFrom?: Date } = {}) {
+    console.log('--- DEBUG: getMealStubs called ---');
+    console.log('Prisma exists:', !!prisma);
+    if (prisma) {
+        console.log('Prisma.mealStub exists:', !!(prisma as any).mealStub);
+    }
     const where: any = {};
     if (filters.workerId) where.workerId = filters.workerId;
     if (filters.dateFrom) where.date = { gte: filters.dateFrom };
