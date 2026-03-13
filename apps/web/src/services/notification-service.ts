@@ -1,4 +1,4 @@
-import { prisma } from '@studio/database';
+import { prisma } from '@studio/database/prisma';
 import { EmailService } from './email-service';
 import type { ApprovalRequest } from '@/lib/types';
 import { toJsDate } from '@/lib/utils';

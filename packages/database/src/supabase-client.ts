@@ -1,15 +1,32 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    if (process.env.NODE_ENV === 'production') {
-        console.warn('Supabase URL or Anon Key is missing. Database features may not work.');
-    }
+const missingSupabaseConfigError =
+    'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.';
+
+function createMissingSupabaseClient(): SupabaseClient {
+    return new Proxy(
+        {},
+        {
+            get() {
+                throw new Error(missingSupabaseConfigError);
+            },
+        }
+    ) as SupabaseClient;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!hasSupabaseConfig) {
+    console.warn('Supabase URL or Anon Key is missing. Database features may not work.');
+}
+
+export const supabase: SupabaseClient = hasSupabaseConfig
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : createMissingSupabaseClient();
+
+export const isSupabaseConfigured = hasSupabaseConfig;
 
 /**
  * Helper to get a typed Supabase client if needed.

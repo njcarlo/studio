@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from '@studio/database';
+import { prisma } from '@studio/database/prisma';
 import { revalidatePath } from 'next/cache';
 import { NotificationService } from '@/services/notification-service';
 

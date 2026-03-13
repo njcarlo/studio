@@ -14,13 +14,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@apollo/server"],
   transpilePackages: ["@studio/ui", "@studio/database", "@studio/store", "@studio/types", "@studio/graphql"],
   outputFileTracingRoot: monorepoRoot,
-  webpack: (config) => {
-    config.resolve.modules = [
-      path.resolve(__dirname, 'node_modules'),
-      'node_modules',
-    ];
-    return config;
-  },
   images: {
     unoptimized: true,
     remotePatterns: [

@@ -10,6 +10,9 @@
     "build": "turbo run build",
     "build:web": "turbo run build --filter=web",
     "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:inventory": "turbo run dev --filter=inventory",
+    "dev:tract-tracker": "turbo run dev --filter=tract-tracker",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "migrate:sql": "tsx scripts/migrate.ts"
@@ -18,10 +21,13 @@
     "firebase-admin": "^13.7.0",
     "prisma": "^5.22.0",
     "tsx": "^4.21.0",
-    "turbo": "^2.8.15"
+    "turbo": "^2.8.16"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.98.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-arm64": "^4.59.0"
   }
 }

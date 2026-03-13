@@ -1,7 +1,79 @@
 
+
 > web@0.1.0 build
 > next build
 
-   ▲ Next.js 15.5.12
-   - Environments: .env
+[1G[0K   [1m[38;2;173;127;168m▲ Next.js 15.5.12[39m[22m
 
+ [37m[1m [22m[39m Creating an optimized production build ...
+ [32m[1m✓[22m[39m Compiled successfully in 6.3s
+ [37m[1m [22m[39m Skipping validation of types
+ [37m[1m [22m[39m Skipping linting
+[?25l [37m[1m [22m[39m Collecting page data  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Collecting page data     [32m[1m✓[22m[39m Collecting page data 
+[?25l [37m[1m [22m[39m Generating static pages (0/37)  [36m[    ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/37)  [36m[=   ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/37)  [36m[==  ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/37)  [36m[=== ][39m[2K[1G[?25hSupabase URL or Anon Key is missing. Database features may not work.
+Automatic initialization failed. Falling back to firebase config object. Error [FirebaseError]: Firebase: Need to provide options, when not being deployed to hosting via source. (app/no-options).
+    at W (.next/server/chunks/2614.js:69:95600)
+    at <unknown> (.next/server/chunks/3661.js:1:12473)
+    at <unknown> (.next/server/chunks/3661.js:1:12624)
+    at s (.next/server/chunks/3661.js:1:12413) {
+  code: 'app/no-options',
+  customData: {}
+}
+Supabase URL or Anon Key is missing. Database features may not work.
+Automatic initialization failed. Falling back to firebase config object. Error [FirebaseError]: Firebase: Need to provide options, when not being deployed to hosting via source. (app/no-options).
+    at W (.next/server/chunks/2614.js:69:95600)
+    at <unknown> (.next/server/chunks/3661.js:1:12473)
+    at <unknown> (.next/server/chunks/3661.js:1:12624)
+    at s (.next/server/chunks/3661.js:1:12413) {
+  code: 'app/no-options',
+  customData: {}
+}
+[?25h [32m[1m✓[22m[39m Generating static pages (37/37)
+[?25l [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[?25l [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Collecting build traces     [32m[1m✓[22m[39m Collecting build traces 
+[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Finalizing page optimization     [32m[1m✓[22m[39m Finalizing page optimization 
+
+[4mRoute (app)[24m                                 [4mSize[24m  [4mFirst Load JS[24m  [4m[24m  [4m[24m
+┌ ○ /                                      138 B         [37m[1m102 kB[22m[39m
+├ ○ /_not-found                             1 kB         [37m[1m102 kB[22m[39m
+├ ƒ /api/debug-prisma                      138 B         [37m[1m102 kB[22m[39m
+├ ƒ /api/graphql                           138 B         [37m[1m102 kB[22m[39m
+├ ○ /approvals                           7.26 kB         [37m[1m453 kB[22m[39m
+├ ○ /attendance                             4 kB         [37m[1m449 kB[22m[39m
+├ ○ /attendance/scanner                  9.04 kB         [37m[1m271 kB[22m[39m
+├ ○ /c2s                                 6.15 kB         [37m[1m523 kB[22m[39m
+├ ○ /dashboard                           8.22 kB         [37m[1m453 kB[22m[39m
+├ ○ /login                               4.77 kB         [37m[1m423 kB[22m[39m
+├ ○ /meals                               9.32 kB         [37m[1m454 kB[22m[39m
+├ ○ /mealstub/scanner                    6.96 kB         [37m[1m429 kB[22m[39m
+├ ○ /ministries                            138 B         [37m[1m102 kB[22m[39m
+├ ○ /reports                             9.85 kB         [37m[1m533 kB[22m[39m
+├ ○ /reservations/all                    4.01 kB         [37m[1m445 kB[22m[39m
+├ ○ /reservations/calendar               5.93 kB         [37m[1m447 kB[22m[39m
+├ ○ /reservations/masterview                4 kB         [37m[1m445 kB[22m[39m
+├ ○ /reservations/masterview/daily       3.88 kB         [37m[1m445 kB[22m[39m
+├ ○ /reservations/my                     3.89 kB         [37m[1m445 kB[22m[39m
+├ ○ /reservations/new                    4.98 kB         [37m[1m446 kB[22m[39m
+├ ○ /rooms                               1.04 kB         [37m[1m102 kB[22m[39m
+├ ○ /rooms/display                       5.37 kB         [37m[1m432 kB[22m[39m
+├ ○ /scan                                4.16 kB         [37m[1m423 kB[22m[39m
+├ ○ /settings                            1.68 kB         [37m[1m437 kB[22m[39m
+├ ○ /settings/departments                4.68 kB         [37m[1m443 kB[22m[39m
+├ ○ /settings/meal-stubs                 6.07 kB         [37m[1m445 kB[22m[39m
+├ ○ /settings/ministries                 7.61 kB         [37m[1m454 kB[22m[39m
+├ ○ /settings/roles                      5.25 kB         [37m[1m444 kB[22m[39m
+├ ○ /settings/rooms                      6.43 kB         [37m[1m453 kB[22m[39m
+├ ○ /settings/transaction-logs           1.93 kB         [37m[1m443 kB[22m[39m
+├ ○ /settings/venue-elements             2.77 kB         [37m[1m438 kB[22m[39m
+├ ○ /signup                              4.37 kB         [37m[1m423 kB[22m[39m
+├ ○ /workers                             13.3 kB         [37m[1m466 kB[22m[39m
+└ ○ /workers/my-qr                       5.36 kB         [37m[1m440 kB[22m[39m
++ First Load JS shared by all             [37m[1m101 kB[22m[39m
+  ├ chunks/1255-e409bd83d8d00fcc.js      45.2 kB
+  ├ chunks/4bd1b696-2fbb49a7b03e9cd6.js  54.2 kB
+  └ other shared chunks (total)             2 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+[?25h[1G[0K⠙[1G[0K
