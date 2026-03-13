@@ -120,10 +120,9 @@ const allNavItems: NavItem[] = [
     icon: Users,
     label: "Workers",
     subItems: [
-      { href: "/workers/my-qr", label: "My QR Code" },
       {
         href: "/workers",
-        label: "View and Update Workers",
+        label: "Worker Management",
         permissionKey: "canManageWorkers",
       },
     ],
@@ -213,9 +212,9 @@ export function Nav({
   const hasAccess = (
     key:
       | keyof Omit<
-        UserRoleContextType,
-        "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
-      >
+          UserRoleContextType,
+          "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
+        >
       | undefined,
   ) => {
     if (!key) return true; // No permission required
@@ -391,8 +390,8 @@ export function Nav({
                             asChild
                             defaultOpen={
                               pathname.startsWith(subItem.href.split("?")[0]) ||
-                              visibleNestedItems.some(
-                                (n) => isActiveHref(n.href),
+                              visibleNestedItems.some((n) =>
+                                isActiveHref(n.href),
                               )
                             }
                           >

@@ -13,13 +13,18 @@ import {
 } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from "@studio/database";
+import {
+  useAuth,
+  useUser,
+  useFirestore,
+  useDoc,
+  useMemoFirebase,
+} from "@studio/database";
 import { signOut, sendPasswordResetEmail } from "firebase/auth";
 import type { Worker as AppWorker } from "@studio/types";
-import { doc } from 'firebase/firestore';
+import { doc } from "firebase/firestore";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { LogOut } from "lucide-react";
-
 
 export function UserNav() {
   const { user } = useUser();
@@ -28,7 +33,11 @@ export function UserNav() {
   const { toast } = useToast();
   const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
 
-  const workerProfileRef = useMemoFirebase(() => user ? doc(firestore, 'workers', impersonatedWorkerId || user.uid) : null, [firestore, user, impersonatedWorkerId]);
+  const workerProfileRef = useMemoFirebase(
+    () =>
+      user ? doc(firestore, "workers", impersonatedWorkerId || user.uid) : null,
+    [firestore, user, impersonatedWorkerId],
+  );
   const { data: workerProfile } = useDoc<AppWorker>(workerProfileRef);
 
   const handleLogout = () => {
@@ -44,26 +53,28 @@ export function UserNav() {
     try {
       await sendPasswordResetEmail(auth, user.email);
       toast({
-        title: 'Password Reset Email Sent',
-        description: 'Please check your inbox to reset your password.',
+        title: "Password Reset Email Sent",
+        description: "Please check your inbox to reset your password.",
       });
     } catch (error: any) {
       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Failed to send password reset email.',
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to send password reset email.",
       });
     }
   };
 
-  const displayName = (workerProfile?.firstName && workerProfile?.lastName)
-    ? `${workerProfile.firstName} ${workerProfile.lastName}`
-    : user?.displayName || user?.email?.split('@')[0] || 'User';
+  const displayName =
+    workerProfile?.firstName && workerProfile?.lastName
+      ? `${workerProfile.firstName} ${workerProfile.lastName}`
+      : user?.displayName || user?.email?.split("@")[0] || "User";
 
   const altText = displayName;
 
-  const fallbackChar = (workerProfile?.firstName || user?.email || 'U').charAt(0).toUpperCase();
-
+  const fallbackChar = (workerProfile?.firstName || user?.email || "U")
+    .charAt(0)
+    .toUpperCase();
 
   return (
     <DropdownMenu>
@@ -78,9 +89,11 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName || 'User'}</p>
+            <p className="text-sm font-medium leading-none">
+              {displayName || "User"}
+            </p>
             <p className="text-xs leading-none text-muted-foreground">
-              Role: {workerProfile?.roleId || 'N/A'}
+              Role: {workerProfile?.roleId || "N/A"}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -92,18 +105,17 @@ export function UserNav() {
               <span>Exit Impersonation</span>
             </DropdownMenuItem>
           ) : (
-            <DropdownMenuItem>
-              Profile
-            </DropdownMenuItem>
+            <DropdownMenuItem>Profile</DropdownMenuItem>
           )}
+          <DropdownMenuItem asChild>
+            <Link href="/workers/my-qr">My QR Code</Link>
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleChangePassword}>
             Change Password
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={handleLogout}>
-          Log out
-        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={handleLogout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
