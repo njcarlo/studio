@@ -179,6 +179,11 @@ const allNavItems: NavItem[] = [
         label: "Transaction Logs",
         permissionKey: "isSuperAdmin",
       },
+      {
+        href: "/settings/ors-sync",
+        label: "ORS Legacy Sync",
+        permissionKey: "isSuperAdmin",
+      },
     ],
   },
 ];

@@ -345,11 +345,6 @@ export async function deleteBooking(id: string) {
 // --- Meal Stubs ---
 
 export async function getMealStubs(filters: { workerId?: string; dateFrom?: Date } = {}) {
-    console.log('--- DEBUG: getMealStubs called ---');
-    console.log('Prisma exists:', !!prisma);
-    if (prisma) {
-        console.log('Prisma.mealStub exists:', !!(prisma as any).mealStub);
-    }
     const where: any = {};
     if (filters.workerId) where.workerId = filters.workerId;
     if (filters.dateFrom) where.date = { gte: filters.dateFrom };
