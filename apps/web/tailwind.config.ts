@@ -11,8 +11,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['var(--font-inter)', 'sans-serif'],
-        headline: ['var(--font-inter)', 'sans-serif'],
+        body: ['var(--font-ibm-plex-sans)', 'sans-serif'],
+        headline: ['var(--font-ibm-plex-sans)', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
@@ -71,6 +71,9 @@ export default {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      boxShadow: {
+        card: '0 0.75rem 1.5rem rgba(18, 38, 63, 0.03)',
       },
       keyframes: {
         'accordion-down': {

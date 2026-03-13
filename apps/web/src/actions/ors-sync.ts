@@ -1,12 +1,13 @@
 "use server";
 
+import { randomUUID } from 'crypto';
 import { prisma } from '@studio/database/prisma';
 import { adminAuth } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 
 const ORS_BASE = 'https://cogdasma.com/ors-reader/public';
 
-// ─── Shared types ───────────────────────────────────────────────────────────
+// ─── Shared types ────────────────────────────────────────────────────────────
 
 export type OrsPagedResponse<T> = {
     data: T[];
@@ -20,7 +21,7 @@ export type ImportResult = {
     errors: string[];
 };
 
-// ─── ORS entity types ───────────────────────────────────────────────────────
+// ─── ORS entity types ────────────────────────────────────────────────────────
 
 export type OrsWorker = {
     id: number;
@@ -88,9 +89,40 @@ export type OrsAttendanceScan = {
     date_scanned: string;
 };
 
-// ─── ORS department → Prisma enum mapping ───────────────────────────────────
-// ORS departments: 1=Worship, 2=Outreach, 3=Relationship, 4=Discipleship,
-// 5=Administration, 6=Pastoral (no direct match → Discipleship)
+// ─── Worker diff types ───────────────────────────────────────────────────────
+
+export type HashType = 'MD5' | 'SHA1' | 'SHA256' | 'PLAIN' | 'NONE';
+
+export type WorkerSyncStatus = 'new' | 'updated' | 'synced';
+
+export type ExistingWorkerSummary = {
+    id: string;
+    workerId: string | null;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    status: string;
+    majorMinistryId: string;
+    minorMinistryId: string;
+    employmentType: string | null;
+    roleId: string;
+};
+
+export type WorkerDiffRecord = {
+    ors: OrsWorker & { hash_type: HashType };
+    existing: ExistingWorkerSummary | null;
+    status: WorkerSyncStatus;
+    diffFields: DiffField[];
+};
+
+export type DiffField = {
+    label: string;
+    ors: string;
+    current: string;
+};
+
+// ─── ORS department → Prisma enum mapping ────────────────────────────────────
 
 const ORS_DEPT_MAP: Record<number, string> = {
     1: 'Worship',
@@ -98,7 +130,7 @@ const ORS_DEPT_MAP: Record<number, string> = {
     3: 'Relationship',
     4: 'Discipleship',
     5: 'Administration',
-    6: 'Discipleship', // Pastoral → closest
+    6: 'Discipleship',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -113,6 +145,40 @@ function mapEmploymentType(workerType: string | null): string {
 
 function mapStatus(status: string | null): string {
     return status?.toLowerCase() === 'active' ? 'Active' : 'Inactive';
+}
+
+function detectHashType(password: string | null | undefined): HashType {
+    if (!password) return 'NONE';
+    const p = password.trim();
+    if (p.length === 32 && /^[a-fA-F0-9]+$/.test(p)) return 'MD5';
+    if (p.length === 40 && /^[a-fA-F0-9]+$/.test(p)) return 'SHA1';
+    if (p.length === 64 && /^[a-fA-F0-9]+$/.test(p)) return 'SHA256';
+    if (p.length > 0) return 'PLAIN';
+    return 'NONE';
+}
+
+function computeDiffFields(
+    ors: OrsWorker,
+    existing: ExistingWorkerSummary,
+    ministryMap: Record<string, string>
+): DiffField[] {
+    const diffs: DiffField[] = [];
+
+    const orsFirst = (ors.first_name || '').trim();
+    const orsLast = (ors.last_name || '').trim();
+    if (orsFirst !== existing.firstName) diffs.push({ label: 'First Name', ors: orsFirst, current: existing.firstName });
+    if (orsLast !== existing.lastName) diffs.push({ label: 'Last Name', ors: orsLast, current: existing.lastName });
+    if ((ors.mobile || '') !== (existing.phone || '')) diffs.push({ label: 'Phone', ors: ors.mobile || '—', current: existing.phone || '—' });
+    if (mapStatus(ors.status) !== existing.status) diffs.push({ label: 'Status', ors: mapStatus(ors.status), current: existing.status });
+    if (mapEmploymentType(ors.worker_type) !== (existing.employmentType || 'Volunteer')) {
+        diffs.push({ label: 'Employment', ors: mapEmploymentType(ors.worker_type), current: existing.employmentType || 'Volunteer' });
+    }
+    const orsMajorId = ors.ministry_id ? (ministryMap[String(ors.ministry_id)] || '') : '';
+    if (orsMajorId && orsMajorId !== existing.majorMinistryId) {
+        diffs.push({ label: 'Ministry', ors: `ID:${orsMajorId}`, current: `ID:${existing.majorMinistryId}` });
+    }
+
+    return diffs;
 }
 
 async function orsFetch<T>(path: string): Promise<T> {
@@ -167,7 +233,7 @@ export async function getOrsSyncStats(): Promise<OrsSyncStats> {
     };
 }
 
-// ─── Ministry map (ORS ministry id → new ministry id, matched by name) ──────
+// ─── Ministry map (ORS id → new app id, matched by name) ────────────────────
 
 export async function getOrsMinistryMap(): Promise<Record<string, string>> {
     const [orsRes, newMinistries] = await Promise.all([
@@ -183,73 +249,352 @@ export async function getOrsMinistryMap(): Promise<Record<string, string>> {
     return map;
 }
 
-// ─── WORKERS ─────────────────────────────────────────────────────────────────
+// ─── WORKER DIFF ─────────────────────────────────────────────────────────────
 
-export async function previewOrsWorkers(
-    page = 1, limit = 50, search?: string
-): Promise<OrsPagedResponse<OrsWorker>> {
+/**
+ * Returns a paginated diff between ORS workers and the new app's DB.
+ * Each record shows the ORS data, current state in new app (if any),
+ * sync status (new/updated/synced), and field-level diffs.
+ * Password hashes are detected server-side; only the hash type is returned.
+ */
+export async function getWorkerDiffPage(
+    page = 1,
+    limit = 50,
+    search?: string,
+    ministryMap: Record<string, string> = {}
+): Promise<OrsPagedResponse<WorkerDiffRecord>> {
     let path = `/tables/worker?page=${page}&limit=${limit}`;
     if (search) path += `&filter[first_name]=${encodeURIComponent(search)}`;
-    return orsFetch(path);
+
+    const orsRes = await orsFetch<OrsPagedResponse<any>>(path);
+    const orsWorkers: any[] = orsRes.data;
+
+    if (orsWorkers.length === 0) {
+        return { data: [], meta: orsRes.meta };
+    }
+
+    // Bulk-lookup existing workers in one DB query
+    const emails = orsWorkers.map(w => w.email).filter(Boolean) as string[];
+    const orsIds = orsWorkers.map(w => String(w.id));
+
+    const existing = await prisma.worker.findMany({
+        where: {
+            OR: [
+                { workerId: { in: orsIds } },
+                ...(emails.length ? [{ email: { in: emails } }] : []),
+            ],
+        },
+        select: {
+            id: true, workerId: true, firstName: true, lastName: true,
+            email: true, phone: true, status: true,
+            majorMinistryId: true, minorMinistryId: true,
+            employmentType: true, roleId: true,
+        },
+    });
+
+    const byWorkerId: Record<string, ExistingWorkerSummary> = Object.fromEntries(
+        existing.filter((w: any) => w.workerId).map((w: any) => [w.workerId, w])
+    );
+    const byEmail: Record<string, ExistingWorkerSummary> = Object.fromEntries(
+        existing.map((w: any) => [w.email, w])
+    );
+
+    const records: WorkerDiffRecord[] = orsWorkers.map((orsWorker: any) => {
+        const existingWorker =
+            byWorkerId[String(orsWorker.id)] ||
+            (orsWorker.email ? byEmail[orsWorker.email] : null) ||
+            null;
+
+        const hash_type = detectHashType(orsWorker.password);
+        let status: WorkerSyncStatus;
+        let diffFields: DiffField[] = [];
+
+        if (!existingWorker) {
+            status = 'new';
+        } else {
+            diffFields = computeDiffFields(orsWorker, existingWorker, ministryMap);
+            status = diffFields.length > 0 ? 'updated' : 'synced';
+        }
+
+        // Strip password from what we return to the client
+        const { password: _pw, ...safeOrs } = orsWorker;
+
+        return {
+            ors: { ...safeOrs, hash_type },
+            existing: existingWorker,
+            status,
+            diffFields,
+        };
+    });
+
+    return { data: records, meta: orsRes.meta };
 }
 
-export async function importOrsWorkersBatch(
+// ─── IMPORT NEW WORKERS ───────────────────────────────────────────────────────
+
+/**
+ * Imports NEW workers from ORS into the new app.
+ * Re-fetches each worker from the ORS API server-side to get the password hash.
+ * Uses Firebase importUsers for MD5/SHA1/SHA256 hashes (users can log in with
+ * their legacy password). Falls back to createUser + passwordChangeRequired for
+ * unrecognized or missing hashes.
+ */
+export async function importOrsNewWorkers(
+    orsWorkerIds: number[],
+    options: {
+        defaultRoleId: string;
+        ministryIdMap: Record<string, string>;
+        migratePasswordHash: boolean;
+    }
+): Promise<ImportResult> {
+    const { defaultRoleId, ministryIdMap, migratePasswordHash } = options;
+    const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
+
+    // Re-fetch workers from ORS server-side (includes password hash)
+    // Chunk into batches of 10 concurrent requests
+    const CHUNK = 10;
+    const allWorkers: any[] = [];
+    for (let i = 0; i < orsWorkerIds.length; i += CHUNK) {
+        const chunk = orsWorkerIds.slice(i, i + CHUNK);
+        const fetched = await Promise.all(
+            chunk.map(id => orsFetch<any>(`/tables/worker/${id}`).catch(() => null))
+        );
+        allWorkers.push(...fetched.filter(Boolean));
+    }
+
+    // Group by hash type for batch Firebase importUsers
+    type WorkerWithHash = { worker: any; uid: string };
+    const md5Group: WorkerWithHash[] = [];
+    const sha1Group: WorkerWithHash[] = [];
+    const sha256Group: WorkerWithHash[] = [];
+    const plainGroup: WorkerWithHash[] = [];
+    const noHashGroup: WorkerWithHash[] = [];
+
+    for (const w of allWorkers) {
+        if (!w.email) {
+            result.skipped++;
+            result.errors.push(`Worker #${w.id} (${w.first_name} ${w.last_name}): no email, skipped`);
+            continue;
+        }
+
+        const existingWorker = await prisma.worker.findFirst({
+            where: { OR: [{ workerId: String(w.id) }, { email: w.email }] },
+        });
+        if (existingWorker) {
+            result.skipped++;
+            continue;
+        }
+
+        const uid = randomUUID();
+        const hashType = detectHashType(w.password);
+        const entry = { worker: w, uid };
+
+        if (migratePasswordHash) {
+            if (hashType === 'MD5') md5Group.push(entry);
+            else if (hashType === 'SHA1') sha1Group.push(entry);
+            else if (hashType === 'SHA256') sha256Group.push(entry);
+            else if (hashType === 'PLAIN') plainGroup.push(entry);
+            else noHashGroup.push(entry);
+        } else {
+            noHashGroup.push(entry);
+        }
+    }
+
+    // Helper: create DB worker record after Firebase account is established
+    const createDbWorker = async (w: any, uid: string, passwordChangeRequired: boolean) => {
+        const majorMinistryId = w.ministry_id ? (ministryIdMap[String(w.ministry_id)] || '') : '';
+        const minorMinistryId = w.sec_ministry_id ? (ministryIdMap[String(w.sec_ministry_id)] || '') : '';
+        await prisma.worker.create({
+            data: {
+                id: uid,
+                workerId: String(w.id),
+                firstName: w.first_name || '',
+                lastName: w.last_name || '',
+                email: w.email,
+                phone: w.mobile || '',
+                roleId: defaultRoleId,
+                status: mapStatus(w.status),
+                avatarUrl: `https://picsum.photos/seed/${w.id}/100/100`,
+                majorMinistryId,
+                minorMinistryId,
+                employmentType: mapEmploymentType(w.worker_type),
+                birthDate: w.birthdate || null,
+                passwordChangeRequired,
+                qrToken: w.qrdata || null,
+            },
+        });
+    };
+
+    // Helper: batch Firebase importUsers for a hash group
+    const importHashGroup = async (
+        group: WorkerWithHash[],
+        algorithm: 'MD5' | 'SHA1' | 'SHA256'
+    ) => {
+        if (!group.length) return;
+        const userRecords = group.map(({ worker: w, uid }) => ({
+            uid,
+            email: w.email!,
+            displayName: `${w.first_name} ${w.last_name}`.trim(),
+            disabled: mapStatus(w.status) !== 'Active',
+            passwordHash: Buffer.from(w.password.trim(), 'hex'),
+        }));
+
+        try {
+            const importRes = await adminAuth().importUsers(userRecords, {
+                hash: { algorithm, rounds: 0 },
+            });
+
+            if (importRes.errors?.length) {
+                for (const e of importRes.errors) {
+                    result.failed++;
+                    result.errors.push(`Worker ${group[e.index]?.worker?.email}: Firebase import error — ${e.error?.message}`);
+                }
+            }
+
+            // Create DB records for successfully imported users
+            const failedIndices = new Set(importRes.errors?.map(e => e.index) || []);
+            for (let i = 0; i < group.length; i++) {
+                if (failedIndices.has(i)) continue;
+                try {
+                    await createDbWorker(group[i].worker, group[i].uid, false);
+                    result.success++;
+                } catch (dbErr: any) {
+                    result.failed++;
+                    result.errors.push(`Worker #${group[i].worker.id} (DB): ${dbErr.message}`);
+                }
+            }
+        } catch (err: any) {
+            result.errors.push(`${algorithm} batch import failed: ${err.message} — falling back to individual createUser`);
+            // Fall back to individual createUser
+            for (const { worker: w, uid } of group) {
+                noHashGroup.push({ worker: w, uid });
+            }
+        }
+    };
+
+    await importHashGroup(md5Group, 'MD5');
+    await importHashGroup(sha1Group, 'SHA1');
+    await importHashGroup(sha256Group, 'SHA256');
+
+    // Plain text passwords: use createUser directly
+    for (const { worker: w, uid } of plainGroup) {
+        try {
+            await adminAuth().createUser({
+                uid,
+                email: w.email!,
+                password: w.password.trim(),
+                displayName: `${w.first_name} ${w.last_name}`.trim(),
+                disabled: mapStatus(w.status) !== 'Active',
+            });
+            await createDbWorker(w, uid, false);
+            result.success++;
+        } catch (err: any) {
+            if (err.code === 'auth/email-already-exists') {
+                try {
+                    const existing = await adminAuth().getUserByEmail(w.email!);
+                    await createDbWorker(w, existing.uid, false);
+                    result.success++;
+                } catch (dbErr: any) {
+                    result.failed++;
+                    result.errors.push(`Worker #${w.id}: ${dbErr.message}`);
+                }
+            } else {
+                result.failed++;
+                result.errors.push(`Worker #${w.id}: ${err.message}`);
+            }
+        }
+    }
+
+    // No hash / hash migration disabled: createUser with temp password + flag
+    for (const { worker: w, uid } of noHashGroup) {
+        try {
+            const tempPw = `ORS_${w.id}_${Math.random().toString(36).slice(2, 10)}`;
+            let finalUid = uid;
+            try {
+                await adminAuth().createUser({
+                    uid,
+                    email: w.email!,
+                    password: tempPw,
+                    displayName: `${w.first_name} ${w.last_name}`.trim(),
+                    disabled: mapStatus(w.status) !== 'Active',
+                });
+            } catch (authErr: any) {
+                if (authErr.code === 'auth/email-already-exists') {
+                    const existing = await adminAuth().getUserByEmail(w.email!);
+                    finalUid = existing.uid;
+                } else throw authErr;
+            }
+            await createDbWorker(w, finalUid, true);
+            result.success++;
+        } catch (err: any) {
+            result.failed++;
+            result.errors.push(`Worker #${w.id}: ${err.message}`);
+        }
+    }
+
+    if (result.success > 0) revalidatePath('/workers');
+    return result;
+}
+
+// ─── SYNC UPDATED WORKERS ────────────────────────────────────────────────────
+
+/**
+ * Updates fields on already-imported workers whose ORS data has changed.
+ * Updates: firstName, lastName, phone, status, employmentType, ministry, qrToken.
+ * Also syncs Firebase Auth displayName and disabled state.
+ */
+export async function syncOrsUpdatedWorkers(
     workers: OrsWorker[],
-    defaultRoleId = 'viewer',
     ministryIdMap: Record<string, string> = {}
 ): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
     for (const w of workers) {
-        if (!w.email) {
-            result.skipped++;
-            result.errors.push(`Worker #${w.id} (${w.first_name} ${w.last_name}): no email`);
-            continue;
-        }
         try {
             const existing = await prisma.worker.findFirst({
-                where: { OR: [{ workerId: String(w.id) }, { email: w.email }] },
+                where: {
+                    OR: [
+                        { workerId: String(w.id) },
+                        ...(w.email ? [{ email: w.email }] : []),
+                    ],
+                },
             });
-            if (existing) { result.skipped++; continue; }
+            if (!existing) {
+                result.skipped++;
+                result.errors.push(`Worker #${w.id}: not found in new system — import first`);
+                continue;
+            }
 
-            let firebaseUid: string | undefined;
+            const majorMinistryId = w.ministry_id
+                ? (ministryIdMap[String(w.ministry_id)] || existing.majorMinistryId)
+                : existing.majorMinistryId;
+            const minorMinistryId = w.sec_ministry_id
+                ? (ministryIdMap[String(w.sec_ministry_id)] || existing.minorMinistryId)
+                : existing.minorMinistryId;
+
+            await prisma.worker.update({
+                where: { id: existing.id },
+                data: {
+                    firstName: w.first_name || existing.firstName,
+                    lastName: w.last_name || existing.lastName,
+                    phone: w.mobile || existing.phone,
+                    status: mapStatus(w.status),
+                    employmentType: mapEmploymentType(w.worker_type),
+                    majorMinistryId,
+                    minorMinistryId,
+                    qrToken: w.qrdata || existing.qrToken,
+                    birthDate: w.birthdate || existing.birthDate,
+                },
+            });
+
+            // Sync Firebase Auth display name and disabled state
             try {
-                const tempPw = `ORS_${w.id}_${Math.random().toString(36).slice(2, 10)}`;
-                const rec = await adminAuth().createUser({
-                    email: w.email,
-                    password: tempPw,
+                await adminAuth().updateUser(existing.id, {
                     displayName: `${w.first_name} ${w.last_name}`.trim(),
                     disabled: mapStatus(w.status) !== 'Active',
                 });
-                firebaseUid = rec.uid;
-            } catch (authErr: any) {
-                if (authErr.code === 'auth/email-already-exists') {
-                    try { firebaseUid = (await adminAuth().getUserByEmail(w.email)).uid; } catch { /* ok */ }
-                }
-            }
+            } catch { /* Firebase user may not exist yet, that's OK */ }
 
-            const majorMinistryId = w.ministry_id ? (ministryIdMap[String(w.ministry_id)] || '') : '';
-            const minorMinistryId = w.sec_ministry_id ? (ministryIdMap[String(w.sec_ministry_id)] || '') : '';
-
-            await prisma.worker.create({
-                data: {
-                    ...(firebaseUid ? { id: firebaseUid } : {}),
-                    workerId: String(w.id),
-                    firstName: w.first_name || '',
-                    lastName: w.last_name || '',
-                    email: w.email,
-                    phone: w.mobile || '',
-                    roleId: defaultRoleId,
-                    status: mapStatus(w.status),
-                    avatarUrl: `https://picsum.photos/seed/${w.id}/100/100`,
-                    majorMinistryId,
-                    minorMinistryId,
-                    employmentType: mapEmploymentType(w.worker_type),
-                    birthDate: w.birthdate || null,
-                    passwordChangeRequired: true,
-                    qrToken: w.qrdata || null,
-                },
-            });
             result.success++;
         } catch (err: any) {
             result.failed++;
@@ -274,7 +619,6 @@ export async function importOrsMinistries(
 ): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
-    // Build worker lookup for head_id → new worker id
     const allWorkers = await prisma.worker.findMany({ select: { id: true, workerId: true } });
     const workerIdMap = Object.fromEntries(
         allWorkers.filter((w: any) => w.workerId).map((w: any) => [w.workerId, w.id])
@@ -324,18 +668,14 @@ export async function previewOrsAreas(
     return orsFetch(`/tables/area?page=${page}&limit=${limit}`);
 }
 
-export async function importOrsSatellites(
-    satellites: OrsSatellite[]
-): Promise<ImportResult> {
+export async function importOrsSatellites(satellites: OrsSatellite[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
-
     for (const s of satellites) {
         try {
             const existing = await prisma.branch.findFirst({
                 where: { name: { equals: s.name, mode: 'insensitive' } },
             });
             if (existing) { result.skipped++; continue; }
-
             await prisma.branch.create({ data: { name: s.name } });
             result.success++;
         } catch (err: any) {
@@ -346,12 +686,9 @@ export async function importOrsSatellites(
     return result;
 }
 
-export async function importOrsAreas(
-    areas: OrsArea[]
-): Promise<ImportResult> {
+export async function importOrsAreas(areas: OrsArea[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
-    // Find or create a "Main" branch to place imported areas under
     let mainBranch = await prisma.branch.findFirst({
         where: { name: { equals: 'Main', mode: 'insensitive' } },
     });
@@ -365,13 +702,8 @@ export async function importOrsAreas(
                 where: { name: { equals: a.name, mode: 'insensitive' }, branchId: mainBranch!.id },
             });
             if (existing) { result.skipped++; continue; }
-
             await prisma.area.create({
-                data: {
-                    name: a.name,
-                    areaId: a.short_name || null,
-                    branchId: mainBranch!.id,
-                },
+                data: { name: a.name, areaId: a.short_name || null, branchId: mainBranch!.id },
             });
             result.success++;
         } catch (err: any) {
@@ -382,7 +714,7 @@ export async function importOrsAreas(
     return result;
 }
 
-// ─── C2S GROUPS ──────────────────────────────────────────────────────────────
+// ─── C2S GROUPS & MENTEES ────────────────────────────────────────────────────
 
 export async function previewOrsMentorGroups(
     page = 1, limit = 50
@@ -390,12 +722,9 @@ export async function previewOrsMentorGroups(
     return orsFetch(`/tables/c2s_online_group_view?page=${page}&limit=${limit}`);
 }
 
-export async function importOrsMentorGroups(
-    groups: OrsMentorGroup[]
-): Promise<ImportResult> {
+export async function importOrsMentorGroups(groups: OrsMentorGroup[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
-    // Build worker id map: ORS worker id → new worker id
     const allWorkers = await prisma.worker.findMany({ select: { id: true, workerId: true } });
     const workerIdMap = Object.fromEntries(
         allWorkers.filter((w: any) => w.workerId).map((w: any) => [w.workerId, w.id])
@@ -404,18 +733,13 @@ export async function importOrsMentorGroups(
     for (const g of groups) {
         try {
             const mentorNewId = workerIdMap[String(g.mentor_id)];
-            // Deduplicate by ORS group_id in the group name prefix
             const existing = await prisma.c2SGroup.findFirst({
                 where: { name: g.name, mentorId: mentorNewId || '' },
             });
             if (existing) { result.skipped++; continue; }
 
             await prisma.c2SGroup.create({
-                data: {
-                    name: g.name,
-                    mentorId: mentorNewId || '',
-                    menteeIds: [],
-                },
+                data: { name: g.name, mentorId: mentorNewId || '', menteeIds: [] },
             });
             result.success++;
         } catch (err: any) {
@@ -428,35 +752,31 @@ export async function importOrsMentorGroups(
     return result;
 }
 
-// ─── C2S MENTEES ─────────────────────────────────────────────────────────────
-
 export async function previewOrsMentees(
     page = 1, limit = 50
 ): Promise<OrsPagedResponse<OrsMentee>> {
     return orsFetch(`/tables/mentee?page=${page}&limit=${limit}`);
 }
 
-export async function importOrsMentees(
-    mentees: OrsMentee[]
-): Promise<ImportResult> {
+export async function importOrsMentees(mentees: OrsMentee[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
-    const allWorkers = await prisma.worker.findMany({ select: { id: true, workerId: true, firstName: true, lastName: true, email: true, phone: true } });
+    const allWorkers = await prisma.worker.findMany({
+        select: { id: true, workerId: true, firstName: true, lastName: true, email: true, phone: true },
+    });
     const workerByOrsId = Object.fromEntries(
         allWorkers.filter((w: any) => w.workerId).map((w: any) => [w.workerId, w])
     );
 
     const allGroups = await prisma.c2SGroup.findMany({ select: { id: true, mentorId: true, name: true } });
-    // Build map: mentorNewId → groups[]
     const groupsByMentor: Record<string, typeof allGroups> = {};
     for (const g of allGroups) {
         if (!groupsByMentor[g.mentorId]) groupsByMentor[g.mentorId] = [];
         groupsByMentor[g.mentorId].push(g);
     }
 
-    // Pre-fetch ORS groups to resolve ORS group_id → mentor_id
     const orsGroups = await orsFetch<OrsPagedResponse<OrsMentorGroup>>('/tables/c2s_online_group_view?limit=200');
-    const orsGroupMap = Object.fromEntries(orsGroups.data.map((g) => [String(g.group_id || g.id), g]));
+    const orsGroupMap = Object.fromEntries(orsGroups.data.map(g => [String(g.group_id || g.id), g]));
 
     for (const m of mentees) {
         try {
@@ -465,45 +785,32 @@ export async function importOrsMentees(
             });
             if (existing) { result.skipped++; continue; }
 
-            // Resolve worker (mentee is a worker in ORS)
             const workerRec = workerByOrsId[String(m.worker_id)] as any;
-
-            // Split name → firstName / lastName
             const nameParts = (m.name || '').trim().split(/\s+/);
             const firstName = workerRec?.firstName || nameParts[0] || 'Unknown';
             const lastName = workerRec?.lastName || nameParts.slice(1).join(' ') || '';
             const email = workerRec?.email || `ors_mentee_${m.id}@legacy.ors`;
             const phone = workerRec?.phone || m.contact || '';
 
-            // Resolve group → find new C2SGroup via ORS group mentor_id
             let groupId = '';
             let mentorId = '';
             const orsGroup = orsGroupMap[String(m.group_id)];
             if (orsGroup) {
-                const mentorNewId = workerByOrsId[String(orsGroup.mentor_id)]?.id as string || '';
+                const mentorNewId = (workerByOrsId[String(orsGroup.mentor_id)] as any)?.id || '';
                 mentorId = mentorNewId;
-                const candidateGroups = groupsByMentor[mentorNewId] || [];
-                const matchedGroup = candidateGroups.find((g: any) => g.name === orsGroup.name)
-                    || candidateGroups[0];
-                if (matchedGroup) groupId = matchedGroup.id;
+                const candidates = groupsByMentor[mentorNewId] || [];
+                const matched = candidates.find((g: any) => g.name === orsGroup.name) || candidates[0];
+                if (matched) groupId = matched.id;
             }
 
             if (!groupId) {
                 result.skipped++;
-                result.errors.push(`Mentee #${m.id} (${m.name}): no matching C2S group found — import groups first`);
+                result.errors.push(`Mentee #${m.id} (${m.name}): no matching C2S group — import groups first`);
                 continue;
             }
 
             await prisma.c2SMentee.create({
-                data: {
-                    firstName,
-                    lastName,
-                    email,
-                    phone,
-                    status: mapStatus(m.c2s_manual_status),
-                    groupId,
-                    mentorId,
-                },
+                data: { firstName, lastName, email, phone, status: mapStatus(m.c2s_manual_status), groupId, mentorId },
             });
             result.success++;
         } catch (err: any) {
@@ -524,9 +831,7 @@ export async function previewOrsAttendance(
     return orsFetch(`/tables/hr_attendance_scan?page=${page}&limit=${limit}`);
 }
 
-export async function importOrsAttendanceBatch(
-    records: OrsAttendanceScan[]
-): Promise<ImportResult> {
+export async function importOrsAttendanceBatch(records: OrsAttendanceScan[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
     const allWorkers = await prisma.worker.findMany({ select: { id: true, workerId: true } });
@@ -534,29 +839,18 @@ export async function importOrsAttendanceBatch(
         allWorkers.filter((w: any) => w.workerId).map((w: any) => [w.workerId, w.id])
     );
 
-    const toCreate: { workerProfileId: string; type: string; time: Date }[] = [];
-
-    for (const r of records) {
-        const newWorkerId = workerIdMap[String(r.worker_id)];
-        if (!newWorkerId) {
-            result.skipped++;
-            continue;
-        }
-        toCreate.push({
-            workerProfileId: newWorkerId,
-            type: 'Attendance Scan',
-            time: new Date(r.date_scanned),
-        });
-    }
+    const toCreate = records
+        .map(r => {
+            const newWorkerId = workerIdMap[String(r.worker_id)];
+            if (!newWorkerId) { result.skipped++; return null; }
+            return { workerProfileId: newWorkerId, type: 'Attendance Scan', time: new Date(r.date_scanned) };
+        })
+        .filter(Boolean) as any[];
 
     if (toCreate.length > 0) {
         try {
-            const inserted = await prisma.attendanceRecord.createMany({
-                data: toCreate,
-                skipDuplicates: true,
-            });
+            const inserted = await prisma.attendanceRecord.createMany({ data: toCreate, skipDuplicates: true });
             result.success = inserted.count;
-            result.skipped += records.length - toCreate.length;
         } catch (err: any) {
             result.failed = toCreate.length;
             result.errors.push(err.message);

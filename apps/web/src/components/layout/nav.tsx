@@ -15,6 +15,9 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -250,6 +253,11 @@ export function Nav({
 
   return (
     <nav className={cn("flex flex-col", className)}>
+      <SidebarGroup>
+        <SidebarGroupLabel className="uppercase tracking-wider text-[10px] font-semibold text-muted-foreground/60 px-3 mb-1">
+          Menu
+        </SidebarGroupLabel>
+        <SidebarGroupContent>
       <SidebarMenu>
         {navItems.map((item) => {
           const visibleSubItems =
@@ -448,6 +456,8 @@ export function Nav({
           );
         })}
       </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
     </nav>
   );
 }
