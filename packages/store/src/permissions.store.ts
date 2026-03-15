@@ -47,6 +47,8 @@ export interface PermissionsState {
     canManageC2S: boolean;
     canViewC2SAnalytics: boolean;
     canViewScheduleMasterview: boolean;
+    canViewTransactionLogs: boolean;
+    canManageOrsSync: boolean;
 
     // Internal action — called by UserRoleSyncer
     _setPermissions: (state: Omit<PermissionsState, '_setPermissions'>) => void;
@@ -81,6 +83,8 @@ const DEFAULT_STATE: Omit<PermissionsState, '_setPermissions'> = {
     canManageC2S: false,
     canViewC2SAnalytics: false,
     canViewScheduleMasterview: false,
+    canViewTransactionLogs: false,
+    canManageOrsSync: false,
 };
 
 export const usePermissionsStore = create<PermissionsState>()(

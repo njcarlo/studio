@@ -1,0 +1,210 @@
+﻿================================================================================
+  STUDIO MONOREPO — QUICK REFERENCE / NAVIGATION GUIDE
+  Last updated: March 15, 2026
+================================================================================
+
+This file is a quick-reference for AI assistants and developers to orient
+quickly in this monorepo without re-exploring the entire codebase.
+
+--------------------------------------------------------------------------------
+MONOREPO STRUCTURE
+--------------------------------------------------------------------------------
+
+/
+├── apps/
+│   ├── web/              → Next.js 15 web app (COG App - church management)
+│   └── tract-tracker/    → Expo React Native app (COG Nation Tracts Giving Day)
+├── packages/
+│   ├── database/         → Prisma client + Firebase/Supabase providers
+│   ├── graphql/          → GraphQL schema + resolvers
+│   ├── store/            → Zustand stores (auth, permissions, impersonation)
+│   ├── types/            → Shared TypeScript types
+│   └── ui/               → Shared UI components (shadcn/ui based)
+└── turbo.json            → Turborepo config
+
+--------------------------------------------------------------------------------
+apps/web — COG App (Next.js)
+--------------------------------------------------------------------------------
+
+PURPOSE: Church management system for COG Dasmariñas
+  - Worker profiles, roles, ministries
+  - Room reservations, meal stubs, attendance
+  - QR scanning, approvals, C2S discipleship groups
+  - ORS legacy system data sync
+
+KEY FILES:
+  apps/web/src/app/layout.tsx           → Root layout, fonts, providers
+  apps/web/src/app/page.tsx             → Redirects to /login
+  apps/web/src/app/auth-sync.tsx        → Auth + permissions bootstrap component
+  apps/web/src/actions/db.ts            → ALL Prisma server actions (CRUD for everything)
+  apps/web/src/actions/auth.ts          → Firebase password reset server action
+  apps/web/src/actions/ors-sync.ts      → ORS legacy sync (import workers, ministries, etc.)
+  apps/web/src/store/user-role-syncer-sql.tsx → Syncs Firebase user → Prisma worker → permissions
+  apps/web/src/lib/firebase-admin.ts    → Firebase Admin SDK init
+  apps/web/src/services/notification-service.ts → Email notification orchestration
+  apps/web/src/services/email-service.ts        → Resend SDK email sender
+  apps/web/src/lib/types.ts             → Re-exports from @studio/types
+  apps/web/src/firebase/index.ts        → Re-exports from @studio/database
+  apps/web/src/store/index.ts           → Re-exports from @studio/store
+  apps/web/next.config.ts               → Next.js config (standalone/export, transpile packages)
+  apps/web/package.json                 → Dependencies
+  apps/web/.env                         → Env vars (Supabase DB, Firebase, Resend)
+  apps/web/docs/blueprint.md            → Original feature blueprint
+
+ROUTES (all under apps/web/src/app/):
+  /login                  → login/page.tsx
+  /signup                 → signup/page.tsx
+  /dashboard              → dashboard/page.tsx
+  /workers                → workers/page.tsx
+  /workers/my-qr          → workers/my-qr/
+  /approvals              → approvals/page.tsx
+  /attendance             → attendance/page.tsx
+  /attendance/scanner     → attendance/scanner/
+  /meals                  → meals/page.tsx
+  /mealstub/scanner       → mealstub/scanner/
+  /ministries             → ministries/page.tsx
+  /reservations           → reservations/ (all, calendar, masterview, my, new)
+  /rooms                  → rooms/page.tsx
+  /rooms/display          → rooms/display/
+  /scan                   → scan/page.tsx
+  /c2s                    → c2s/page.tsx
+  /reports                → reports/page.tsx
+  /settings               → settings/ (roles, ministries, rooms, departments,
+                             meal-stubs, venue-elements, ors-sync, transaction-logs)
+  /api/graphql            → Apollo GraphQL endpoint
+
+AUTH: Firebase Auth (NOT Supabase Auth)
+  - Login via Firebase client SDK
+  - Worker profile fetched from Prisma DB by UID or email
+  - Permissions computed in UserRoleSyncerSQL and stored in Zustand
+
+DATABASE: Supabase PostgreSQL via Prisma
+  DATABASE_URL = pooled (pgbouncer port 6543)
+  DIRECT_URL   = direct (port 5432) for migrations
+
+HOOKS (apps/web/src/hooks/):
+  use-workers.ts, use-approvals.ts, use-bookings.ts, use-ministries.ts,
+  use-roles.ts, use-rooms.ts, use-attendance.ts, use-meal-stubs.ts,
+  use-scan-logs.ts, use-settings.ts, use-departments.ts,
+  use-worker-logs.ts, use-audit-log.ts, use-impersonation.tsx,
+  use-user-role.tsx, use-permissions (via store), use-mobile.tsx
+
+COMPONENTS (apps/web/src/components/):
+  auth/           → Auth-related components
+  dashboard/      → Dashboard widgets
+  layout/         → Sidebar, nav, shell
+  FirebaseErrorListener.tsx → Global Firebase error handler
+
+SCRIPTS (apps/web/scripts/):
+  seed-data.ts, seed-admin.js, seed-audio-ministry.js
+  check-firestore.js, list-cols.js, list-ministries.js
+
+--------------------------------------------------------------------------------
+apps/tract-tracker — Tracts Giving Day (Expo React Native)
+--------------------------------------------------------------------------------
+
+PURPOSE: Mobile app for tracking gospel tract distribution
+  - Users log in, select region/barangay, tap +1 to record tracts given
+  - Shows regional count and personal count
+  - Map view (OpenStreetMap via Leaflet WebView) for Dasmariñas barangays
+  - Admin dashboard for managing users
+
+KEY FILES:
+  apps/tract-tracker/src/supabase.ts              → Supabase client + admin client
+  apps/tract-tracker/src/context/AuthContext.tsx  → Auth state, signIn/signUp/signOut
+  apps/tract-tracker/src/AppNavigator.tsx         → Navigation (Stack + BottomTabs)
+  apps/tract-tracker/src/screens/ActionScreen.tsx → Main screen (counter + +1 button)
+  apps/tract-tracker/src/screens/AuthScreen.tsx   → Login/signup form
+  apps/tract-tracker/src/screens/MapScreen.tsx    → Leaflet map (OpenStreetMap, no API key)
+  apps/tract-tracker/src/screens/AdminDashboardScreen.tsx → Admin user management
+  apps/tract-tracker/app.json                     → Expo config (bundle IDs, EAS project)
+  apps/tract-tracker/eas.json                     → EAS build profiles
+  apps/tract-tracker/.env                         → Supabase credentials
+  apps/tract-tracker/supabase/migrations/001_create_tract_users.sql → DB schema
+
+AUTH: Supabase Auth (NOT Firebase)
+  - signInWithPassword / signUp
+  - Session persisted via Supabase client
+  - AppNavigator uses conditional rendering based on session (no manual navigation)
+
+DATABASE: Supabase (same project as web app)
+  Table: tract_users
+    id, user_id, name, email, region, sub_region, barangay, tracts_given
+  RPC: increment_tracts(uid) → increments tracts_given by 1
+
+NAVIGATION RULES:
+  - After login/signup: DO NOT call navigation.replace() — session change
+    triggers AppNavigator to swap screens automatically
+  - Main tabs: Action (always), Map (only if isDasmarinas)
+  - AdminDashboard accessible from Action screen header
+
+MAP:
+  - Uses react-native-webview + Leaflet.js + OpenStreetMap tiles
+  - NO Google Maps API key required
+  - Loads live barangay counts from Supabase tract_users table
+  - Barangay coordinates hardcoded in MapScreen.tsx
+
+BUILD:
+  - Debug APK: apps/tract-tracker/android/app/build/outputs/apk/debug/app-debug.apk
+  - EAS project: @jace29/tract-tracker (projectId: b0c32484-eafd-4599-9baf-9ceea8a5de80)
+  - Bundle ID (Android): com.cognation.tracks
+  - Bundle ID (iOS): com.cognation.tracks
+
+--------------------------------------------------------------------------------
+SUPABASE PROJECT
+--------------------------------------------------------------------------------
+
+URL:      https://vpgykxfbrfnojmgmzriq.supabase.co
+Region:   ap-northeast-1 (AWS)
+Used by:  BOTH apps/web (Prisma DB) and apps/tract-tracker (Auth + tract_users)
+
+apps/web uses Supabase as a PostgreSQL database via Prisma (not Supabase client)
+apps/tract-tracker uses Supabase client SDK for auth and direct table queries
+
+--------------------------------------------------------------------------------
+KNOWN ISSUES / WATCH OUT FOR
+--------------------------------------------------------------------------------
+
+1. ActionScreen.tsx in tract-tracker gets wiped by fsWrite tool — always use
+   PowerShell [System.IO.File]::WriteAllText() to write this file.
+
+2. Dual auth: web uses Firebase Auth, tract-tracker uses Supabase Auth.
+   These are separate user bases — not unified.
+   - apps/web login/signup use Firebase (signInWithEmailAndPassword / createUserWithEmailAndPassword)
+   - auth-sync.tsx wraps app in FirebaseClientProvider; onAuthChange bridges to Zustand AuthStore
+   - UserRoleSyncerSQL reads user.uid (Firebase UID) to fetch worker profile from Prisma
+
+3. apps/web has TypeScript errors suppressed (ignoreBuildErrors: true in next.config.ts)
+
+4. service-account.json (Firebase Admin credentials) is at the repo root —
+   do not commit or expose this file.
+
+5. Debug API routes /api/debug-prisma and /api/debug-workers are live —
+   should be removed before production.
+
+6. Email sender is Resend sandbox (onboarding@resend.dev) — needs verified
+   domain for production.
+
+7. Metro cache issues in tract-tracker: always run `npx expo start --clear`
+   after file changes to avoid stale cache.
+
+--------------------------------------------------------------------------------
+ENV VARS SUMMARY
+--------------------------------------------------------------------------------
+
+apps/web/.env:
+  DATABASE_URL                    → Supabase pooled connection (Prisma)
+  DIRECT_URL                      → Supabase direct connection (migrations)
+  NEXT_PUBLIC_SUPABASE_URL        → Supabase project URL
+  NEXT_PUBLIC_SUPABASE_ANON_KEY   → Supabase anon key
+  SUPABASE_SERVICE_ROLE_KEY       → Supabase service role key
+  GOOGLE_APPLICATION_CREDENTIALS  → Path to Firebase service account JSON
+
+apps/tract-tracker/.env:
+  EXPO_PUBLIC_SUPABASE_URL        → Same Supabase project
+  EXPO_PUBLIC_SUPABASE_ANON_KEY   → Same anon key
+  EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY → Service role key
+
+================================================================================
+  End of Navigation Guide
+================================================================================

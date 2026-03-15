@@ -122,11 +122,16 @@ const allNavItems: NavItem[] = [
     href: "/workers",
     icon: Users,
     label: "Workers",
+    permissionKey: "canManageWorkers",
     subItems: [
       {
         href: "/workers",
         label: "Worker Management",
         permissionKey: "canManageWorkers",
+      },
+      {
+        href: "/workers/my-qr",
+        label: "My QR Code",
       },
     ],
   },
@@ -180,12 +185,12 @@ const allNavItems: NavItem[] = [
       {
         href: "/settings/transaction-logs",
         label: "Transaction Logs",
-        permissionKey: "isSuperAdmin",
+        permissionKey: "canViewTransactionLogs",
       },
       {
         href: "/settings/ors-sync",
         label: "ORS Legacy Sync",
-        permissionKey: "isSuperAdmin",
+        permissionKey: "canManageOrsSync",
       },
     ],
   },
@@ -232,18 +237,22 @@ export function Nav({
   const navItems = allNavItems.filter((item) => {
     if (isLoading) return false;
 
-    // For settings, show if user has access to any sub-item or the main settings page itself
+    // Settings: show only if user has access to at least one sub-item
     if (item.href === "/settings") {
       const hasNoRole = workerProfile && !workerProfile.roleId;
       if (needsSeeding || hasNoRole) return true;
-
       if (item.subItems && item.subItems.length > 0) {
         return item.subItems.some((sub) => hasAccess(sub.permissionKey));
       }
+      return false;
     }
 
-    // For workers, show if user can see their own QR or manage others
-    if (item.href === "/workers") return true;
+    // Workers: show if user can manage workers OR has no permissionKey sub-items (e.g. my-qr)
+    if (item.href === "/workers") {
+      if (hasAccess("canManageWorkers")) return true;
+      // Still show if there are sub-items with no permission requirement (my-qr)
+      return item.subItems?.some((sub) => !sub.permissionKey) ?? false;
+    }
 
     return hasAccess(item.permissionKey);
   });

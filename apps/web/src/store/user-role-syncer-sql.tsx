@@ -54,6 +54,14 @@ export function UserRoleSyncerSQL() {
         return allRoles?.find(r => r.id === realWorkerProfile.roleId) || null;
     }, [realWorkerProfile, allRoles]);
 
+    // When impersonating, use the impersonated worker's role for permissions
+    const effectiveUserRole = useMemo(() => {
+        if (viewAsWorkerId && workerProfile?.roleId) {
+            return allRoles?.find(r => r.id === workerProfile.roleId) || null;
+        }
+        return realUserRole;
+    }, [viewAsWorkerId, workerProfile, allRoles, realUserRole]);
+
     const needsSeeding = !!user && !areRolesLoading && (!allRoles || allRoles.length === 0);
 
     // ── 5. Ministries ─────────────────────────────────────────────────────────
@@ -63,36 +71,44 @@ export function UserRoleSyncerSQL() {
         enabled: !!user,
     });
 
-    // ── 6. Derived flags ──────────────────────────────────────────────────────
+    // ── 6. Derived flags — based on the EFFECTIVE (possibly impersonated) profile ──
+    // When impersonating, use the impersonated worker's profile for ministry checks
+    const effectiveProfile = viewAsWorkerId ? workerProfile : realWorkerProfile;
+
+    // isSuperAdmin reflects the REAL user's admin status (used for the banner + allowing impersonation)
+    // but permissions are computed as if we ARE the impersonated user
+    const isImpersonating = !!viewAsWorkerId;
+    const effectiveIsSuperAdmin = useMemo(() => isImpersonating ? false : isSuperAdmin, [isImpersonating, isSuperAdmin]);
+
     const isMealStubAssigner = useMemo(() => {
-        if (!user || !allMinistries || !realWorkerProfile) return false;
+        if (!user || !allMinistries || !effectiveProfile) return false;
         return allMinistries.some(
-            (m: any) => m.mealStubAssignerId === realWorkerProfile.id
+            (m: any) => m.mealStubAssignerId === effectiveProfile.id
         );
-    }, [user, allMinistries, realWorkerProfile]);
+    }, [user, allMinistries, effectiveProfile]);
 
     const isMinistryHead = useMemo(() => {
-        if (!user || !allMinistries || !realWorkerProfile) return false;
-        return allMinistries.some((m: any) => m.headId === realWorkerProfile.id);
-    }, [user, allMinistries, realWorkerProfile]);
+        if (!user || !allMinistries || !effectiveProfile) return false;
+        return allMinistries.some((m: any) => m.headId === effectiveProfile.id);
+    }, [user, allMinistries, effectiveProfile]);
 
     const isMinistryApprover = useMemo(() => {
-        if (!user || !allMinistries || !realWorkerProfile) return false;
+        if (!user || !allMinistries || !effectiveProfile) return false;
         return allMinistries.some(
-            (m: any) => m.approverId === realWorkerProfile.id
+            (m: any) => m.approverId === effectiveProfile.id
         );
-    }, [user, allMinistries, realWorkerProfile]);
+    }, [user, allMinistries, effectiveProfile]);
 
     const myMinistryIds = useMemo(() => {
-        if (!user || !allMinistries || !realWorkerProfile) return [];
+        if (!user || !allMinistries || !effectiveProfile) return [];
         return allMinistries
             .filter(
                 (m: any) =>
-                    m.headId === realWorkerProfile.id ||
-                    m.approverId === realWorkerProfile.id
+                    m.headId === effectiveProfile.id ||
+                    m.approverId === effectiveProfile.id
             )
             .map((m: any) => m.id);
-    }, [user, allMinistries, realWorkerProfile]);
+    }, [user, allMinistries, effectiveProfile]);
 
     const isLoading =
         isUserLoading ||
@@ -102,81 +118,78 @@ export function UserRoleSyncerSQL() {
         areMinistriesLoading;
 
     // ── 7. Sync to PermissionsStore ───────────────────────────────────────────
-    useEffect(() => {
-        const permissions = (realUserRole as any)?.permissions ?? [];
+    // Use useMemo to compute the permissions object, then sync it in a stable useEffect
+    const permissionsPayload = useMemo(() => {
+        const permissions = (effectiveUserRole as any)?.permissions ?? [];
 
-        _setPermissions({
+        return {
             isLoading,
             needsSeeding,
             workerProfile: workerProfile ?? null,
             allRoles: (allRoles as any) ?? [],
             myMinistryIds,
             isSuperAdmin,
-            isMinistryHead: isSuperAdmin || isMinistryHead,
-            isMinistryApprover: isSuperAdmin || isMinistryApprover,
-            isMealStubAssigner: isSuperAdmin || isMealStubAssigner,
-            // Permissions
+            isMinistryHead: effectiveIsSuperAdmin || isMinistryHead,
+            isMinistryApprover: effectiveIsSuperAdmin || isMinistryApprover,
+            isMealStubAssigner: effectiveIsSuperAdmin || isMealStubAssigner,
             canManageWorkers:
-                isSuperAdmin ||
+                effectiveIsSuperAdmin ||
                 permissions.includes('manage_workers') ||
                 isMinistryHead ||
                 isMinistryApprover,
-            canManageRoles: isSuperAdmin || permissions.includes('manage_roles'),
+            canManageRoles: effectiveIsSuperAdmin || permissions.includes('manage_roles'),
             canManageMinistries:
-                isSuperAdmin || permissions.includes('manage_ministries'),
+                effectiveIsSuperAdmin || permissions.includes('manage_ministries'),
             canManageFacilities:
-                isSuperAdmin ||
+                effectiveIsSuperAdmin ||
                 permissions.includes('manage_facilities') ||
                 isMinistryApprover ||
                 isMinistryHead,
             canCreateRoomReservation:
-                isSuperAdmin || permissions.includes('create_room_reservation'),
+                effectiveIsSuperAdmin || permissions.includes('create_room_reservation'),
             canEditRoomReservation:
-                isSuperAdmin || permissions.includes('edit_room_reservation'),
+                effectiveIsSuperAdmin || permissions.includes('edit_room_reservation'),
             canDeleteRoomReservation:
-                isSuperAdmin || permissions.includes('delete_room_reservation'),
+                effectiveIsSuperAdmin || permissions.includes('delete_room_reservation'),
             canApproveRoomReservation:
-                isSuperAdmin ||
+                effectiveIsSuperAdmin ||
                 permissions.includes('approve_room_reservation') ||
                 isMinistryApprover ||
                 isMinistryHead,
             canManageApprovals:
-                isSuperAdmin ||
+                effectiveIsSuperAdmin ||
                 permissions.includes('manage_approvals') ||
                 isMinistryApprover ||
                 isMinistryHead,
             canApproveAllRequests:
-                isSuperAdmin || permissions.includes('manage_approvals'),
+                effectiveIsSuperAdmin || permissions.includes('manage_approvals'),
             canOperateScanner:
-                isSuperAdmin || permissions.includes('operate_scanner'),
+                effectiveIsSuperAdmin || permissions.includes('operate_scanner'),
             canViewAttendance:
-                isSuperAdmin || permissions.includes('view_attendance_log'),
+                effectiveIsSuperAdmin || permissions.includes('view_attendance_log'),
             canViewMealStubs:
-                isSuperAdmin || permissions.includes('view_meal_stubs'),
+                effectiveIsSuperAdmin || permissions.includes('view_meal_stubs'),
             canManageAllMealStubs:
-                isSuperAdmin || permissions.includes('manage_all_mealstubs'),
-            canViewReports: isSuperAdmin || permissions.includes('view_reports'),
+                effectiveIsSuperAdmin || permissions.includes('manage_all_mealstubs'),
+            canViewReports: effectiveIsSuperAdmin || permissions.includes('view_reports'),
             canAppointApprovers:
-                isSuperAdmin || permissions.includes('manage_ministries'),
-            canManageC2S: isSuperAdmin || permissions.includes('manage_c2s'),
+                effectiveIsSuperAdmin || permissions.includes('manage_ministries'),
+            canManageC2S: effectiveIsSuperAdmin || permissions.includes('manage_c2s'),
             canViewC2SAnalytics:
-                isSuperAdmin || permissions.includes('view_c2s_analytics'),
+                effectiveIsSuperAdmin || permissions.includes('view_c2s_analytics'),
             canViewScheduleMasterview:
-                isSuperAdmin || permissions.includes('view_schedule_masterview'),
-        });
-    }, [
-        isLoading,
-        needsSeeding,
-        workerProfile,
-        allRoles,
-        myMinistryIds,
-        isSuperAdmin,
-        isMinistryHead,
-        isMinistryApprover,
-        isMealStubAssigner,
-        realUserRole,
-        _setPermissions,
-    ]);
+                effectiveIsSuperAdmin || permissions.includes('view_schedule_masterview'),
+            canViewTransactionLogs:
+                effectiveIsSuperAdmin || permissions.includes('view_transaction_logs'),
+            canManageOrsSync:
+                effectiveIsSuperAdmin || permissions.includes('manage_ors_sync'),
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoading, needsSeeding, workerProfile, allRoles, myMinistryIds, isSuperAdmin, effectiveIsSuperAdmin, isMinistryHead, isMinistryApprover, isMealStubAssigner, effectiveUserRole]);
+
+    useEffect(() => {
+        _setPermissions(permissionsPayload);
+    }, [permissionsPayload, _setPermissions]);
 
     return null;
 }

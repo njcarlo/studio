@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, FlatList, useWindowDimensions, ImageBackground, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, FlatList, useWindowDimensions, ImageBackground, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
 
 const REGIONS = ['NLR', 'SLR', 'MMR', 'Vis', 'Min'];
@@ -57,7 +55,6 @@ export default function AuthScreen() {
         b.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { signIn, signUp } = useAuth();
 
     const handleAuth = async () => {
@@ -73,20 +70,23 @@ export default function AuthScreen() {
                 setIsSubmitting(false);
                 return;
             }
+            // Session change in AuthContext will automatically navigate to Main
         } else {
             const { error } = await signUp(email, password, {
+                name,
                 region: region || 'Unknown',
                 subRegion: subRegion || 'Unknown',
                 barangay,
             });
             if (error) {
-                Alert.alert('Sign Up Failed', error);
+                const isConfirmMsg = error.includes('Check your email');
+                Alert.alert(isConfirmMsg ? 'Almost there!' : 'Sign Up Failed', error);
                 setIsSubmitting(false);
                 return;
             }
+            // Session change in AuthContext will automatically navigate to Main
         }
         setIsSubmitting(false);
-        navigation.replace('Main');
     };
 
     const renderAuthForm = () => (

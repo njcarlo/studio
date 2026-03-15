@@ -1,1 +1,0 @@
-﻿../../packages/database/src/error-emitter.ts(2,42): error TS2307: Cannot find module '@/firebase/errors' or its corresponding type declarations.

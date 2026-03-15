@@ -2,10 +2,11 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 
-interface AuthState {
+export interface AuthState {
     region: string;
     subRegion: string;
     barangay: string;
+    name: string;
 }
 
 interface AuthContextType {
@@ -20,7 +21,7 @@ interface AuthContextType {
     signOut: () => Promise<void>;
 }
 
-const initialState: AuthState = { region: '', subRegion: '', barangay: '' };
+const initialState: AuthState = { region: '', subRegion: '', barangay: '', name: '' };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -40,6 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     region: meta.region || '',
                     subRegion: meta.subRegion || '',
                     barangay: meta.barangay || '',
+                    name: meta.name || '',
                 });
             }
             setIsLoading(false);
@@ -54,6 +56,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     region: meta.region || '',
                     subRegion: meta.subRegion || '',
                     barangay: meta.barangay || '',
+                    name: meta.name || '',
                 });
             }
         });
@@ -78,12 +81,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
         if (error) return { error: error.message };
 
+        // If email confirmation is on, user will be null — tell the user to check email
+        if (!data.session) {
+            return { error: 'Check your email to confirm your account, then log in.' };
+        }
+
         // Create the tract_users profile row
         if (data.user) {
             await supabase.from('tract_users').insert({
                 user_id: data.user.id,
                 email,
-                name: metadata.subRegion ? `${metadata.region} - ${metadata.subRegion}` : metadata.region,
+                name: metadata.name || email.split('@')[0],
                 region: metadata.region,
                 sub_region: metadata.subRegion,
                 barangay: metadata.barangay,
