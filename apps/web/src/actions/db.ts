@@ -61,6 +61,7 @@ export async function getPaginatedWorkers(
         ministryIds?: string[];
     } = {}
 ) {
+    console.log('--- DEBUG: getPaginatedWorkers ---', { page, limit, filters });
     const where: any = {};
     if (filters.ministryIds && filters.ministryIds.length > 0) {
         where.OR = [
@@ -80,22 +81,28 @@ export async function getPaginatedWorkers(
             }
         ];
     }
-
-    const [total, workers] = await prisma.$transaction([
-        prisma.worker.count({ where }),
-        prisma.worker.findMany({
-            where,
-            include: { role: true },
-            orderBy: { createdAt: 'desc' },
-            skip: (page - 1) * limit,
-            take: limit,
-        })
-    ]);
-
-    return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
+    console.log('--- DEBUG: getPaginatedWorkers WHERE ---', JSON.stringify(where, null, 2));
+    try {
+        const [total, workers] = await prisma.$transaction([
+            prisma.worker.count({ where }),
+            prisma.worker.findMany({
+                where,
+                include: { role: true },
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * limit,
+                take: limit,
+            })
+        ]);
+        console.log(`--- DEBUG: getPaginatedWorkers SUCCESS ---`, { total, count: workers.length });
+        return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
+    } catch (error: any) {
+        console.error('--- DEBUG: getPaginatedWorkers ERROR ---', error);
+        throw error;
+    }
 }
 
 export async function getWorkerStats(ministryIds?: string[]) {
+    console.log('--- DEBUG: getWorkerStats ---', { ministryIds });
     const where: any = {};
     if (ministryIds && ministryIds.length > 0) {
         where.OR = [
@@ -104,32 +111,39 @@ export async function getWorkerStats(ministryIds?: string[]) {
         ];
     }
     
-    const [total, active, inactive, secondary] = await prisma.$transaction([
-        prisma.worker.count({ where }),
-        prisma.worker.count({ where: { ...where, status: 'Active' } }),
-        prisma.worker.count({ where: { ...where, status: 'Inactive' } }),
-        prisma.worker.count({ where: { ...where, roleId: { contains: 'secondary' } } }) // Example logic for secondary
-    ]);
-    
-    return {
-        total,
-        active,
-        inactive,
-        secondary,
-        // For ministry breakdown if needed
-        ministryStats: ministryIds?.length ? await Promise.all(ministryIds.map(async (id) => {
-            const mWhere = {
-                OR: [{ majorMinistryId: id }, { minorMinistryId: id }]
-            };
-            return {
-                ministryId: id,
-                total: await prisma.worker.count({ where: mWhere }),
-                active: await prisma.worker.count({ where: { ...mWhere, status: 'Active' } }),
-                inactive: await prisma.worker.count({ where: { ...mWhere, status: 'Inactive' } }),
-                secondary: await prisma.worker.count({ where: { ...mWhere, roleId: { contains: 'secondary' } } }),
-            };
-        })) : []
-    };
+    try {
+        const [total, active, inactive, secondary] = await prisma.$transaction([
+            prisma.worker.count({ where }),
+            prisma.worker.count({ where: { ...where, status: 'Active' } }),
+            prisma.worker.count({ where: { ...where, status: 'Inactive' } }),
+            prisma.worker.count({ where: { ...where, roleId: { contains: 'secondary' } } }) // Example logic for secondary
+        ]);
+        
+        const result = {
+            total,
+            active,
+            inactive,
+            secondary,
+            // For ministry breakdown if needed
+            ministryStats: ministryIds?.length ? await Promise.all(ministryIds.map(async (id) => {
+                const mWhere = {
+                    OR: [{ majorMinistryId: id }, { minorMinistryId: id }]
+                };
+                return {
+                    ministryId: id,
+                    total: await prisma.worker.count({ where: mWhere }),
+                    active: await prisma.worker.count({ where: { ...mWhere, status: 'Active' } }),
+                    inactive: await prisma.worker.count({ where: { ...mWhere, status: 'Inactive' } }),
+                    secondary: await prisma.worker.count({ where: { ...mWhere, roleId: { contains: 'secondary' } } }),
+                };
+            })) : []
+        };
+        console.log('--- DEBUG: getWorkerStats SUCCESS ---', result);
+        return result;
+    } catch (error: any) {
+        console.error('--- DEBUG: getWorkerStats ERROR ---', error);
+        throw error;
+    }
 }
 
 export async function getWorkerById(id: string) {

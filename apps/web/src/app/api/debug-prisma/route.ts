@@ -23,7 +23,9 @@ export async function GET() {
       modelAccess: modelAccess,
       env: process.env.NODE_ENV,
       clientVersion: (prisma as any)._clientVersion,
-      globalPrismaType: typeof (globalThis as any).prisma
+      globalPrismaType: typeof (globalThis as any).prisma,
+      workerCount: await prisma.worker.count(),
+      sampleWorker: await prisma.worker.findFirst({ select: { id: true, email: true } })
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message, stack: err.stack }, { status: 500 });

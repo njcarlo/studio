@@ -965,6 +965,7 @@ export default function WorkersPage() {
     createWorker: createWorkerSql,
     deleteWorker: deleteWorkerSql,
     deleteWorkers: deleteWorkersSql,
+    error: workersError,
   } = useWorkers({
     page: currentPage,
     limit: itemsPerPage,
@@ -1649,6 +1650,9 @@ export default function WorkersPage() {
     <AppLayout>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-headline font-bold">Worker Management</h1>
+        <div className="text-xs bg-slate-100 p-2 rounded border">
+          DEBUG: count={allWorkers?.length}, loading={workersLoading ? 'yes' : 'no'}, err={workersError ? String(workersError) : 'none'}
+        </div>
         {canManageWorkers && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleOpenImport}>
