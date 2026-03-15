@@ -12,7 +12,7 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
-import { supabase } from '../supabase';
+import { supabase, supabaseAdmin } from '../supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -115,8 +115,8 @@ export default function AdminDashboardScreen() {
                 setUsers(prev => prev.map(u => ({ ...u, tractsGiven: 0 })));
                 setMetrics(prev => prev ? { ...prev, totalTracts: 0 } : prev);
             } else {
-                // Real Supabase batch update
-                const { error } = await supabase
+                // Real Supabase batch update — uses admin client to bypass RLS
+                const { error } = await supabaseAdmin
                     .from('tract_users')
                     .update({ tracts_given: 0 })
                     .in('id', users.map(u => u.id));
