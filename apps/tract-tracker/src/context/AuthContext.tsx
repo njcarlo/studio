@@ -71,12 +71,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signUp = async (email: string, password: string, metadata: Partial<AuthState>) => {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: { data: metadata },
         });
-        return { error: error?.message ?? null };
+        if (error) return { error: error.message };
+
+        // Create the tract_users profile row
+        if (data.user) {
+            await supabase.from('tract_users').insert({
+                user_id: data.user.id,
+                email,
+                name: metadata.subRegion ? `${metadata.region} - ${metadata.subRegion}` : metadata.region,
+                region: metadata.region,
+                sub_region: metadata.subRegion,
+                barangay: metadata.barangay,
+                tracts_given: 0,
+            });
+        }
+        return { error: null };
     };
 
     const signOut = async () => {

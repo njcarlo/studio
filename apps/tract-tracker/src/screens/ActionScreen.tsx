@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
     Animated,
     SafeAreaView,
@@ -11,22 +11,21 @@ import {
 } from 'react-native';
 import AnimatedCounter from '../components/AnimatedCounter';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabase';
 
-const INITIAL_NATIONAL_COUNT = 8900;
-const INITIAL_REGIONAL_COUNT = 1243;
-const INITIAL_CITY_COUNT = 450;
-const INITIAL_PERSONAL_COUNT = 12;
+const INITIAL_NATIONAL_COUNT = 0;
+const INITIAL_REGIONAL_COUNT = 0;
+const INITIAL_CITY_COUNT = 0;
+const INITIAL_PERSONAL_COUNT = 0;
 
 export default function ActionScreen() {
     const { width } = useWindowDimensions();
     const isWide = width >= 640;
-    const { authState } = useAuth();
+    const { authState, user } = useAuth();
 
-    // Provide fallbacks if they bypassed auth somehow
     const currentRegion = authState.region || 'Region';
     const currentCity = authState.subRegion || 'City';
 
-    // Counts State (Mocking updates for the locked session)
     const [nationalCount, setNationalCount] = useState(INITIAL_NATIONAL_COUNT);
     const [regionCount, setRegionCount] = useState(INITIAL_REGIONAL_COUNT);
     const [cityCount, setCityCount] = useState(INITIAL_CITY_COUNT);
@@ -35,7 +34,43 @@ export default function ActionScreen() {
     const [isCooldown, setIsCooldown] = useState(false);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
-    const handleGive = () => {
+    // Load live counts from Supabase
+    const loadCounts = useCallback(async () => {
+        const { data } = await supabase
+            .from('tract_users')
+            .select('tracts_given, region, sub_region');
+        if (!data) return;
+
+        const national = data.reduce((sum, r) => sum + (r.tracts_given ?? 0), 0);
+        const regional = data
+            .filter(r => r.region === currentRegion)
+            .reduce((sum, r) => sum + (r.tracts_given ?? 0), 0);
+        const city = data
+            .filter(r => r.sub_region === currentCity)
+            .reduce((sum, r) => sum + (r.tracts_given ?? 0), 0);
+
+        setNationalCount(national);
+        setRegionCount(regional);
+        setCityCount(city);
+    }, [currentRegion, currentCity]);
+
+    // Load personal count
+    const loadPersonal = useCallback(async () => {
+        if (!user) return;
+        const { data } = await supabase
+            .from('tract_users')
+            .select('tracts_given')
+            .eq('user_id', user.id)
+            .single();
+        if (data) setPersonalCount(data.tracts_given ?? 0);
+    }, [user]);
+
+    useEffect(() => {
+        loadCounts();
+        loadPersonal();
+    }, [loadCounts, loadPersonal]);
+
+    const handleGive = async () => {
         if (isCooldown) return;
 
         Animated.sequence([
@@ -44,7 +79,7 @@ export default function ActionScreen() {
             Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }),
         ]).start();
 
-        // Increment all hierarchical levels for the locked location
+        // Optimistic update
         setNationalCount(prev => prev + 1);
         setRegionCount(prev => prev + 1);
         setCityCount(prev => prev + 1);
@@ -52,6 +87,11 @@ export default function ActionScreen() {
 
         setIsCooldown(true);
         setTimeout(() => setIsCooldown(false), 1000);
+
+        // Persist to Supabase
+        if (user) {
+            await supabase.rpc('increment_tracts', { uid: user.id });
+        }
     };
 
     const renderLocationDisplay = (label: string, value: string) => (
