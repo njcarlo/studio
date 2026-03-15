@@ -12,8 +12,7 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -72,10 +71,19 @@ export default function AdminDashboardScreen() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const usersCol = collection(db, 'users');
-            const userSnapshot = await getDocs(usersCol);
-            if (userSnapshot.empty) throw new Error('No data');
-            const fetched = userSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as UserData[];
+            const { data, error } = await supabase
+                .from('tract_users')
+                .select('id, name, email, region, barangay, tracts_given');
+            if (error || !data || data.length === 0) throw new Error('No data');
+
+            const fetched: UserData[] = data.map(d => ({
+                id: d.id,
+                name: d.name,
+                email: d.email,
+                region: d.region,
+                barangay: d.barangay,
+                tractsGiven: d.tracts_given ?? 0,
+            }));
             setUsers(fetched);
 
             const total = fetched.reduce((acc, u) => acc + (u.tractsGiven || 0), 0);
@@ -107,12 +115,12 @@ export default function AdminDashboardScreen() {
                 setUsers(prev => prev.map(u => ({ ...u, tractsGiven: 0 })));
                 setMetrics(prev => prev ? { ...prev, totalTracts: 0 } : prev);
             } else {
-                // Real Firestore batch update
-                const batch = writeBatch(db);
-                users.forEach(u => {
-                    batch.update(doc(db, 'users', u.id), { tractsGiven: 0 });
-                });
-                await batch.commit();
+                // Real Supabase batch update
+                const { error } = await supabase
+                    .from('tract_users')
+                    .update({ tracts_given: 0 })
+                    .in('id', users.map(u => u.id));
+                if (error) throw error;
                 await fetchData();
             }
         } catch (err) {

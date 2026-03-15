@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { ActivityIndicator, View } from 'react-native';
 
 import AuthScreen from './screens/AuthScreen';
 import ActionScreen from './screens/ActionScreen';
@@ -64,12 +65,27 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 export default function AppNavigator() {
+    const { session, isLoading } = useAuth();
+
+    if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#e74c3c" />
+            </View>
+        );
+    }
+
     return (
         <NavigationContainer linking={linking}>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="Auth" component={AuthScreen} />
-                <Stack.Screen name="Main" component={MainTabs} />
-                <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+                {session ? (
+                    <>
+                        <Stack.Screen name="Main" component={MainTabs} />
+                        <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+                    </>
+                ) : (
+                    <Stack.Screen name="Auth" component={AuthScreen} />
+                )}
             </Stack.Navigator>
         </NavigationContainer>
     );
