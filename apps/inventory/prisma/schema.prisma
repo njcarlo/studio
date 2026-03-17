@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id    String @id @default(cuid())
+  name  String @unique
+  items Item[]
+}
+
+model Location {
+  id    String @id @default(cuid())
+  name  String @unique
+  items Item[]
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  name        String
+  categoryId  String
+  type        String   // "Equipment" or "Consumable"
+  stock       Int      @default(0)
+  status      String   // "In Stock", "Low Stock", "Out of Stock"
+  locationId  String
+  lastUpdated DateTime @default(now()) @updatedAt
+
+  category    Category @relation(fields: [categoryId], references: [id])
+  location    Location @relation(fields: [locationId], references: [id])
+  logs        InventoryLog[]
+}
+
+model InventoryLog {
+  id        String   @id @default(cuid())
+  itemId    String
+  action    String   // "Stock In", "Stock Out", "Adjustment"
+  quantity  Int
+  timestamp DateTime @default(now())
+
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}

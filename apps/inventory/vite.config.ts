@@ -7,5 +7,11 @@ export default defineConfig({
   server: {
     host: true, // Enable network access for mobile dev
     port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      }
+    }
   },
 })
