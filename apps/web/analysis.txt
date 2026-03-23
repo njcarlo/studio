@@ -1,0 +1,334 @@
+﻿================================================================================
+  apps/web — COG App Analysis
+  Generated: March 15, 2026
+================================================================================
+
+--------------------------------------------------------------------------------
+1. OVERVIEW
+--------------------------------------------------------------------------------
+
+Name:        COG App (Church Operations and Governance)
+Framework:   Next.js 15 (App Router) with Turbopack
+Language:    TypeScript
+Styling:     Tailwind CSS + Radix UI (shadcn/ui component library)
+Font:        IBM Plex Sans (Google Fonts)
+Port:        9002 (dev)
+
+This is a church management web application for COG Dasmariñas. It handles
+worker profiles, ministry management, room reservations, meal stubs, attendance
+tracking, QR scanning, approvals, and C2S (Connect to Serve) discipleship groups.
+
+It is part of a monorepo (Turborepo) alongside apps/tract-tracker and shared
+packages (database, graphql, store, types, ui).
+
+--------------------------------------------------------------------------------
+2. TECH STACK
+--------------------------------------------------------------------------------
+
+Frontend:
+  - Next.js 15 (App Router, standalone output for server / export for mobile)
+  - React 19
+  - Tailwind CSS 3 + tailwindcss-animate
+  - Radix UI (full suite: dialog, select, tabs, toast, etc.)
+  - Lucide React (icons)
+  - Recharts (charts/reports)
+  - TanStack React Query v5 (server state management)
+  - Zustand v5 (client state: auth, permissions, impersonation)
+  - React Hook Form + Zod (forms and validation)
+  - date-fns (date utilities)
+  - Embla Carousel
+
+Backend / Data:
+  - Prisma ORM → PostgreSQL (Supabase)
+  - Firebase Auth (authentication — still in use for web)
+  - Firebase Admin SDK (server-side: password reset, user import)
+  - Apollo Server + GraphQL (API layer at /api/graphql)
+  - Supabase (database + also used in tract-tracker)
+  - Resend (transactional email)
+  - Google Genkit + Gemini AI (AI features, dev mode)
+
+Mobile (Capacitor):
+  - @capacitor/android + @capacitor/ios
+  - Separate build script that renames /api to /_api for static export
+
+--------------------------------------------------------------------------------
+3. AUTHENTICATION
+--------------------------------------------------------------------------------
+
+The web app uses Firebase Auth (NOT Supabase Auth) for user login.
+
+Flow:
+  - FirebaseClientProvider (from @studio/database) listens to onAuthStateChange
+  - Auth state is stored in Zustand via useAuthStore
+  - UserRoleSyncerSQL component runs on every auth change:
+      1. Fetches worker profile from Prisma DB by UID or email
+      2. Fetches all roles and ministries
+      3. Computes permission flags (isSuperAdmin, canManageWorkers, etc.)
+      4. Syncs everything into usePermissionsStore (Zustand)
+  - Password reset uses Firebase Admin to generate reset link, then sends via Resend
+
+Auth is split:
+  - apps/web  → Firebase Auth
+  - apps/tract-tracker → Supabase Auth
+
+This dual-auth setup is a known inconsistency. The .env has both Firebase
+credentials (GOOGLE_APPLICATION_CREDENTIALS) and Supabase credentials.
+
+--------------------------------------------------------------------------------
+4. DATABASE
+--------------------------------------------------------------------------------
+
+Provider: Supabase PostgreSQL
+ORM:      Prisma (via @studio/database package)
+
+Connection:
+  DATABASE_URL  = pooled (pgbouncer, port 6543) — used by Prisma at runtime
+  DIRECT_URL    = direct (port 5432) — used by Prisma migrations
+
+Key Models (inferred from db.ts actions):
+  - Worker          (id, workerId, firstName, lastName, email, phone, roleId,
+                     status, majorMinistryId, minorMinistryId, employmentType,
+                     birthDate, avatarUrl, qrToken, passwordChangeRequired)
+  - Role            (id, name, permissions[])
+  - Ministry        (id, name, description, department, leaderId, headId,
+                     approverId, mealStubAssignerId, weight)
+  - Booking         (id, workerProfileId, roomId, ministryId, start, status)
+  - Room            (id, areaId, weight)
+  - Area            (id, name, areaId, branchId)
+  - Branch          (id, name)
+  - MealStub        (id, workerId, workerName, status, stubType, assignedBy,
+                     assignedByName, date)
+  - AttendanceRecord(id, workerProfileId, type, time)
+  - ScanLog         (id, timestamp, ...)
+  - ApprovalRequest (id, type, workerId, reservationId, requester, details,
+                     date, status, newMajorId, newMinorId)
+  - C2SGroup        (id, name, mentorId, menteeIds[])
+  - C2SMentee       (id, groupId, email, ...)
+  - VenueElement    (id, name)
+  - Setting         (id, data JSON)
+  - DepartmentSetting (id, ...)
+  - TransactionLog  (id, userId, targetId, timestamp, ...)
+
+--------------------------------------------------------------------------------
+5. ROUTES / PAGES
+--------------------------------------------------------------------------------
+
+/                     → redirects to /login
+/login                → Firebase login page
+/signup               → Worker signup
+/dashboard            → Main dashboard (stats, pending approvals, upcoming bookings)
+/workers              → Worker list (paginated, searchable, filterable by ministry)
+/workers/my-qr        → Personal QR code page
+/approvals            → Approval queue (New Worker, Ministry Change, Room Booking)
+/attendance           → Attendance log
+/attendance/scanner   → QR scanner for attendance
+/meals                → Meal stub management
+/mealstub/scanner     → QR scanner for meal stub validation
+/ministries           → Ministry list
+/reservations         → Room reservations
+/reservations/all     → All reservations view
+/reservations/calendar→ Calendar view
+/reservations/masterview → Master schedule view
+/reservations/my      → My reservations
+/reservations/new     → New reservation form
+/rooms                → Room list
+/rooms/display        → Room display board
+/scan                 → General QR scan page
+/c2s                  → C2S (Connect to Serve) discipleship groups
+/reports              → Reports and analytics
+/settings             → Settings hub
+/settings/roles       → Role management
+/settings/ministries  → Ministry settings
+/settings/rooms       → Room/area/branch settings
+/settings/departments → Department settings
+/settings/meal-stubs  → Meal stub settings
+/settings/venue-elements → Venue element management
+/settings/ors-sync    → ORS (legacy system) data sync
+/settings/transaction-logs → Audit/transaction log viewer
+
+API Routes:
+/api/graphql          → Apollo GraphQL endpoint
+/api/debug-prisma     → Debug endpoint for Prisma
+/api/debug-workers    → Debug endpoint for workers
+
+--------------------------------------------------------------------------------
+6. KEY FEATURES
+--------------------------------------------------------------------------------
+
+A. Worker Management
+   - Full CRUD via Prisma server actions
+   - Paginated list with search + ministry filter
+   - Worker stats (total, active, inactive, secondary)
+   - Batch ministry assignment
+   - QR token per worker for scanning
+
+B. Approval Workflow
+   - Types: New Worker, Ministry Change, Room Booking
+   - Email notifications via Resend when new request submitted
+   - Approvers resolved by ministry or role permissions
+   - Side effects on approval: worker activated, ministry updated, booking status synced
+
+C. Room Reservations
+   - Calendar-based booking system
+   - Conflict detection (implied by booking model)
+   - Role-based approval flow
+   - Venue elements (equipment) management
+
+D. Meal Stubs
+   - Manual and automatic generation
+   - Stub types, assigned by named staff
+   - QR scanner for validation at meal service
+
+E. Attendance Tracking
+   - QR-based clock in/out
+   - Linked to worker profiles
+   - Scan logs stored separately
+
+F. ORS Sync (Legacy Migration)
+   - Full sync from cogdasma.com/ors-reader/public API
+   - Imports: workers, ministries, branches, areas, C2S groups, mentees, attendance
+   - Worker diff view: shows new/updated/synced status per worker
+   - Password hash migration: MD5, SHA1, SHA256, plain text → Firebase Auth
+   - Firebase importUsers for batch hash migration
+   - Paginated diff with field-level comparison
+
+G. C2S (Connect to Serve)
+   - Mentor groups with mentees
+   - Synced from ORS legacy system
+   - Analytics view (permission-gated)
+
+H. AI Features (Genkit)
+   - Google Genkit + Gemini integration
+   - Dev mode only (genkit:dev script)
+   - Not yet wired to production features (dev.ts only)
+
+I. Email Notifications
+   - Resend SDK for transactional email
+   - Approval request notifications
+   - Password reset emails
+   - Falls back to console.log mock if RESEND_API_KEY not set
+
+J. Impersonation
+   - Super admins can view the app as any worker
+   - useImpersonationStore (Zustand) tracks impersonated worker ID
+   - UserRoleSyncerSQL fetches the impersonated worker's profile when active
+
+--------------------------------------------------------------------------------
+7. STATE MANAGEMENT
+--------------------------------------------------------------------------------
+
+Zustand stores (from @studio/store):
+  - useAuthStore       → Firebase user, isUserLoading
+  - usePermissionsStore→ All computed permission flags + worker profile
+  - useImpersonationStore → impersonatedWorkerId
+
+TanStack React Query:
+  - Used for all server data fetching (workers, roles, ministries, etc.)
+  - Queries keyed by ['worker', uid], ['roles'], ['ministries'], etc.
+  - ReactQueryProvider wraps the entire app
+
+--------------------------------------------------------------------------------
+8. MONOREPO PACKAGES USED
+--------------------------------------------------------------------------------
+
+@studio/database  → Prisma client, FirebaseClientProvider, SupabaseProvider
+@studio/graphql   → GraphQL schema and resolvers
+@studio/store     → Zustand stores (auth, permissions, impersonation)
+@studio/types     → Shared TypeScript types
+@studio/ui        → Shared UI components (shadcn/ui based), Toaster
+
+--------------------------------------------------------------------------------
+9. ISSUES & CONCERNS
+--------------------------------------------------------------------------------
+
+CRITICAL:
+  1. Dual auth systems — Firebase Auth for web, Supabase Auth for tract-tracker.
+     This creates two separate user bases. Workers in the web app cannot log into
+     tract-tracker with the same credentials without a separate account.
+
+  2. TypeScript errors suppressed — next.config.ts has ignoreBuildErrors: true
+     and ESLint is also ignored during builds. This masks real type errors.
+
+  3. service-account.json committed to repo — Firebase Admin credentials file
+     is referenced at ./service-account.json and appears to be in the repo root.
+     This is a security risk if the repo is public.
+
+  4. Credentials in .env — DATABASE_URL contains plaintext Supabase password.
+     The .env file should never be committed to version control.
+
+MODERATE:
+  5. Debug endpoints exposed — /api/debug-prisma and /api/debug-workers are
+     live API routes. These should be removed or protected before production.
+
+  6. getWorkerStats uses roleId: { contains: 'secondary' } for secondary count
+     which is a fragile string match, not a proper enum/flag check.
+
+  7. AI features (Genkit) are only wired in dev mode (src/ai/dev.ts). No
+     production AI flows are connected yet.
+
+  8. Email sender is 'onboarding@resend.dev' (Resend sandbox). This needs to
+     be changed to a verified domain sender for production.
+
+  9. ORS sync fetches workers one-by-one in some paths (importOrsNewWorkers
+     fetches each worker individually). For large imports this will be slow.
+
+MINOR:
+  10. build_output*.txt, dev_logs*.txt, errors.txt, tsc_errors.txt, etc. are
+      leftover debug files in the repo root of apps/web. Should be cleaned up
+      or added to .gitignore.
+
+  11. users_temp.json and initial-data.json are data files sitting in the
+      app root — likely leftover from seeding/migration work.
+
+  12. The Capacitor mobile build (apps/web/android) appears to be a separate
+      mobile wrapper around the web app. It has its own google-services.json
+      and release keystore (cogapp-release.jks) committed to the repo.
+
+  13. GraphQL layer (@studio/graphql) exists but it's unclear how much of the
+      app uses it vs. direct Prisma server actions. Most data fetching appears
+      to go through server actions in src/actions/db.ts.
+
+--------------------------------------------------------------------------------
+10. WHAT IS WORKING
+--------------------------------------------------------------------------------
+
+  - Next.js app builds successfully (standalone output confirmed in .next/)
+  - Prisma connected to Supabase PostgreSQL
+  - Firebase Auth login/signup flow
+  - Worker CRUD with pagination and search
+  - Approval workflow with email notifications (if RESEND_API_KEY set)
+  - Room booking system
+  - Meal stub generation and QR scanning
+  - Attendance tracking
+  - ORS legacy sync (full import pipeline)
+  - Role-based permissions system
+  - Admin impersonation
+  - Monorepo packages transpiled correctly
+
+--------------------------------------------------------------------------------
+11. RECOMMENDED NEXT STEPS
+--------------------------------------------------------------------------------
+
+  1. Unify auth — migrate web app from Firebase Auth to Supabase Auth so both
+     apps share the same user base.
+
+  2. Remove/protect debug API routes before any public deployment.
+
+  3. Move service-account.json out of the repo, use environment variable with
+     the JSON content instead (GOOGLE_APPLICATION_CREDENTIALS_JSON).
+
+  4. Fix TypeScript errors — turn off ignoreBuildErrors and resolve type issues.
+
+  5. Set up a verified Resend sender domain for production emails.
+
+  6. Clean up leftover debug/log files from apps/web root.
+
+  7. Wire Genkit AI flows to actual features (e.g., smart meal stub generation,
+     attendance anomaly detection).
+
+  8. Add proper error boundaries and loading states to pages that currently
+     have none.
+
+================================================================================
+  End of Analysis
+================================================================================

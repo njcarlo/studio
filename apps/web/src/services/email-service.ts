@@ -6,7 +6,7 @@ import { Resend } from 'resend';
  */
 export class EmailService {
     private static _resend: Resend | null = null;
-    private static FROM_EMAIL = 'onboarding@resend.dev'; // Default sandbox sender
+    private static FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
     private static get resend() {
         if (!this._resend && process.env.RESEND_API_KEY) {

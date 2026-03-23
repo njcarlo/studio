@@ -4,88 +4,65 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Church } from "lucide-react";
-import { Button } from "@studio/ui";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@studio/ui";
-import { Input } from "@studio/ui";
-import { Label } from "@studio/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useFirestore, setDocumentNonBlocking, addDocumentNonBlocking } from "@studio/database";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, serverTimestamp, collection } from "firebase/firestore";
+import { supabase } from "@studio/database";
+import { createWorker, createApproval } from "@/actions/db";
 
 export default function SignUpPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   const handleSignUp = async () => {
     if (!firstName || !lastName || !email || !password) {
-      toast({
-        variant: "destructive",
-        title: "Missing fields",
-        description: "Please fill out all fields.",
-      });
+      toast({ variant: "destructive", title: "Missing fields", description: "Please fill out all fields." });
       return;
     }
-
+    setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      // 1. Create Supabase auth user
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
 
-      const newWorker = {
+      const uid = data.user?.id;
+      if (!uid) throw new Error("Failed to get user ID after sign up.");
+
+      // 2. Create worker profile in Prisma DB
+      await createWorker({
+        id: uid,
         firstName,
         lastName,
         email,
         roleId: 'viewer',
         status: 'Pending Approval',
-        createdAt: serverTimestamp(),
-        avatarUrl: `https://picsum.photos/seed/${user.uid.slice(0, 5)}/100/100`,
+        avatarUrl: `https://picsum.photos/seed/${uid.slice(0, 5)}/100/100`,
         workerId: String(20000 + Math.floor(Math.random() * 1000)).padStart(6, '0'),
-      };
-
-      const workerRef = doc(firestore, 'workers', user.uid);
-      await setDocumentNonBlocking(workerRef, newWorker, {});
-
-      // Create an approval request
-      await addDocumentNonBlocking(collection(firestore, "approvals"), {
-          requester: `${newWorker.firstName} ${newWorker.lastName}`,
-          type: 'New Worker',
-          details: `New worker self-registration: ${newWorker.email}.`,
-          date: serverTimestamp(),
-          status: 'Pending',
-          workerId: user.uid
       });
 
-      toast({
-        title: "Account Registration Submitted",
-        description: "Your account is pending approval. You will be redirected to the login page.",
+      // 3. Create approval request
+      await createApproval({
+        requester: `${firstName} ${lastName}`,
+        type: 'New Worker',
+        details: `New worker self-registration: ${email}.`,
+        status: 'Pending',
+        workerId: uid,
       });
-      
+
+      toast({ title: "Registration Submitted", description: "Your account is pending approval." });
       router.push("/login");
-
     } catch (error: any) {
-      let description = "An unknown error occurred.";
-      if (error.code === 'auth/email-already-in-use') {
+      let description = error.message || "An unknown error occurred.";
+      if (error.message?.includes('already registered') || error.message?.includes('already been registered')) {
         description = "This email address is already in use.";
-      } else if (error.code === 'auth/weak-password') {
-        description = "The password is too weak. It must be at least 6 characters long.";
       }
-      toast({
-        variant: "destructive",
-        title: "Sign-up failed",
-        description,
-      });
+      toast({ variant: "destructive", title: "Sign-up failed", description });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -97,21 +74,19 @@ export default function SignUpPage() {
             <Church className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
-          <CardDescription>
-            Enter your details below to sign up
-          </CardDescription>
+          <CardDescription>Enter your details below to sign up</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-             <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" placeholder="John" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" placeholder="Doe" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input id="firstName" placeholder="John" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input id="lastName" placeholder="Doe" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -121,14 +96,12 @@ export default function SignUpPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button onClick={handleSignUp} className="w-full">
-              Sign Up
+            <Button onClick={handleSignUp} className="w-full" disabled={isLoading}>
+              {isLoading ? "Signing up..." : "Sign Up"}
             </Button>
             <div className="mt-4 text-center text-sm">
               Already have an account?{" "}
-              <Link href="/login" className="underline">
-                Login
-              </Link>
+              <Link href="/login" className="underline">Login</Link>
             </div>
           </div>
         </CardContent>

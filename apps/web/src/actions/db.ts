@@ -80,7 +80,6 @@ export async function getPaginatedWorkers(
             }
         ];
     }
-
     const [total, workers] = await prisma.$transaction([
         prisma.worker.count({ where }),
         prisma.worker.findMany({
@@ -91,7 +90,6 @@ export async function getPaginatedWorkers(
             take: limit,
         })
     ]);
-
     return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
@@ -103,33 +101,38 @@ export async function getWorkerStats(ministryIds?: string[]) {
             { minorMinistryId: { in: ministryIds } }
         ];
     }
-    
+
     const [total, active, inactive, secondary] = await prisma.$transaction([
         prisma.worker.count({ where }),
         prisma.worker.count({ where: { ...where, status: 'Active' } }),
         prisma.worker.count({ where: { ...where, status: 'Inactive' } }),
-        prisma.worker.count({ where: { ...where, roleId: { contains: 'secondary' } } }) // Example logic for secondary
+        prisma.worker.count({ where: { ...where, roleId: { contains: 'secondary' } } })
     ]);
-    
-    return {
-        total,
-        active,
-        inactive,
-        secondary,
-        // For ministry breakdown if needed
-        ministryStats: ministryIds?.length ? await Promise.all(ministryIds.map(async (id) => {
-            const mWhere = {
-                OR: [{ majorMinistryId: id }, { minorMinistryId: id }]
-            };
-            return {
-                ministryId: id,
-                total: await prisma.worker.count({ where: mWhere }),
-                active: await prisma.worker.count({ where: { ...mWhere, status: 'Active' } }),
-                inactive: await prisma.worker.count({ where: { ...mWhere, status: 'Inactive' } }),
-                secondary: await prisma.worker.count({ where: { ...mWhere, roleId: { contains: 'secondary' } } }),
-            };
-        })) : []
-    };
+
+    let ministryStats: { ministryId: string; total: number; active: number; inactive: number; secondary: number }[] = [];
+
+    if (ministryIds?.length) {
+        // Single query per status instead of N queries per ministry
+        const [allWorkers, activeWorkers, inactiveWorkers, secondaryWorkers] = await prisma.$transaction([
+            prisma.worker.findMany({ where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }] }, select: { majorMinistryId: true, minorMinistryId: true } }),
+            prisma.worker.findMany({ where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }], status: 'Active' }, select: { majorMinistryId: true, minorMinistryId: true } }),
+            prisma.worker.findMany({ where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }], status: 'Inactive' }, select: { majorMinistryId: true, minorMinistryId: true } }),
+            prisma.worker.findMany({ where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }], roleId: { contains: 'secondary' } }, select: { majorMinistryId: true, minorMinistryId: true } }),
+        ]);
+
+        const countByMinistry = (workers: { majorMinistryId: string | null; minorMinistryId: string | null }[], id: string) =>
+            workers.filter(w => w.majorMinistryId === id || w.minorMinistryId === id).length;
+
+        ministryStats = ministryIds.map(id => ({
+            ministryId: id,
+            total: countByMinistry(allWorkers, id),
+            active: countByMinistry(activeWorkers, id),
+            inactive: countByMinistry(inactiveWorkers, id),
+            secondary: countByMinistry(secondaryWorkers, id),
+        }));
+    }
+
+    return { total, active, inactive, secondary, ministryStats };
 }
 
 export async function getWorkerById(id: string) {

@@ -2,29 +2,25 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { User } from 'firebase/auth';
 
 /**
- * Auth store — holds the authenticated Firebase user and loading state.
- * Populated by the FirebaseProvider via `syncAuthToStore`.
- *
- * This is the single source of truth for auth state across the app,
- * replacing fragmented `useUser()` / `useContext(FirebaseContext)` calls.
+ * Auth store — holds the authenticated user and loading state.
+ * Populated by FirebaseClientProvider via `_setAuthState` in auth-sync.tsx.
+ * Uses `any` for User type to stay compatible with Firebase User shape.
  */
 export interface AuthState {
-    user: User | null;
+    user: any | null;
     isUserLoading: boolean;
     userError: Error | null;
 
-    // Actions
-    _setAuthState: (user: User | null, isLoading: boolean, error: Error | null) => void;
+    _setAuthState: (user: any | null, isLoading: boolean, error: Error | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
     devtools(
         (set) => ({
             user: null,
-            isUserLoading: true, // starts true — we don't know yet
+            isUserLoading: true,
             userError: null,
 
             _setAuthState: (user, isUserLoading, userError) =>

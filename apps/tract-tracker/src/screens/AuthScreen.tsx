@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, FlatList, useWindowDimensions, ImageBackground } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, FlatList, useWindowDimensions, ImageBackground, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
 
 const REGIONS = ['NLR', 'SLR', 'MMR', 'Vis', 'Min'];
@@ -41,12 +39,14 @@ const BARANGAYS = [
 export default function AuthScreen() {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [region, setRegion] = useState('');
     const [subRegion, setSubRegion] = useState('');
     const [barangay, setBarangay] = useState('');
     const [showBarangayModal, setShowBarangayModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { width } = useWindowDimensions();
     const isDesktop = width >= 768;
@@ -55,28 +55,38 @@ export default function AuthScreen() {
         b.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { setAuthState } = useAuth();
+    const { signIn, signUp } = useAuth();
 
-    const handleAuth = () => {
+    const handleAuth = async () => {
+        if (!email || !password) {
+            Alert.alert('Missing fields', 'Please enter your email and password.');
+            return;
+        }
+        setIsSubmitting(true);
         if (isLogin) {
-            // Mock a default user for login
-            setAuthState({
-                region: 'MMR',
-                subRegion: 'Dasmarinas',
-                barangay: '',
-            });
+            const { error } = await signIn(email, password);
+            if (error) {
+                Alert.alert('Login Failed', error);
+                setIsSubmitting(false);
+                return;
+            }
+            // Session change in AuthContext will automatically navigate to Main
         } else {
-            // Save selected signup details
-            setAuthState({
+            const { error } = await signUp(email, password, {
+                name,
                 region: region || 'Unknown',
                 subRegion: subRegion || 'Unknown',
-                barangay: barangay,
+                barangay,
             });
+            if (error) {
+                const isConfirmMsg = error.includes('Check your email');
+                Alert.alert(isConfirmMsg ? 'Almost there!' : 'Sign Up Failed', error);
+                setIsSubmitting(false);
+                return;
+            }
+            // Session change in AuthContext will automatically navigate to Main
         }
-
-        // Basic mock navigation to main tabs
-        navigation.replace('Main');
+        setIsSubmitting(false);
     };
 
     const renderAuthForm = () => (
@@ -102,6 +112,14 @@ export default function AuthScreen() {
                     onChangeText={setEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                />
+
+                <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
                 />
 
                 {!isLogin && (
@@ -197,8 +215,11 @@ export default function AuthScreen() {
                     </>
                 )}
 
-                <TouchableOpacity style={styles.primaryButton} onPress={handleAuth}>
-                    <Text style={styles.primaryButtonText}>{isLogin ? 'Login' : 'Sign Up'}</Text>
+                <TouchableOpacity style={styles.primaryButton} onPress={handleAuth} disabled={isSubmitting}>
+                    {isSubmitting
+                        ? <ActivityIndicator color="#fff" />
+                        : <Text style={styles.primaryButtonText}>{isLogin ? 'Login' : 'Sign Up'}</Text>
+                    }
                 </TouchableOpacity>
             </View>
         </View>

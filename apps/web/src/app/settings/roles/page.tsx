@@ -63,6 +63,12 @@ const PERMISSION_CATEGORIES = [
         ]
     },
     {
+        category: 'Ministries',
+        permissions: [
+            { id: 'manage_ministries', label: 'Manage Ministries & Departments', description: 'Can create and edit ministries, departments, and appoint approvers.' },
+        ]
+    },
+    {
         category: 'Facilities',
         permissions: [
             { id: 'manage_facilities', label: 'Manage Facilities', description: 'Can manage rooms, areas, and branches.' },
@@ -75,6 +81,7 @@ const PERMISSION_CATEGORIES = [
             { id: 'edit_room_reservation', label: 'Edit Room Reservation', description: 'Can edit details of existing reservations.' },
             { id: 'delete_room_reservation', label: 'Delete Room Reservation', description: 'Can cancel or remove existing reservations.' },
             { id: 'approve_room_reservation', label: 'Approve Room Reservation', description: 'Can approve or reject pending room booking requests.' },
+            { id: 'view_schedule_masterview', label: 'View Schedule Masterview', description: 'Can access the full schedule masterview and daily view.' },
         ]
     },
     {
@@ -108,6 +115,13 @@ const PERMISSION_CATEGORIES = [
         category: 'Reports',
         permissions: [
             { id: 'view_reports', label: 'View Reports', description: 'Can access the reports page for attendance, meal stubs, and room reservations.' },
+        ]
+    },
+    {
+        category: 'System',
+        permissions: [
+            { id: 'view_transaction_logs', label: 'View Transaction Logs', description: 'Can access the transaction logs in settings.' },
+            { id: 'manage_ors_sync', label: 'ORS Legacy Sync', description: 'Can run and manage the ORS legacy data sync.' },
         ]
     },
 ];

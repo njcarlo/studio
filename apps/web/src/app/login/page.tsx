@@ -5,27 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Church, LoaderCircle } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  Button,
-  Input,
-  Label,
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  DialogTrigger, DialogFooter, Button, Input, Label,
 } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useUser, initiateEmailSignIn } from "@studio/database";
-import { FirebaseError } from "firebase/app";
-import { requestPasswordReset } from "@/actions/auth";
-import type { KeyboardEvent, ChangeEvent } from "react";
+import { useAuthStore } from "@studio/store";
+import { supabase } from "@studio/database";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -34,9 +20,8 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [isResetting, setIsResetting] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+
+  const { user, isUserLoading } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -46,78 +31,38 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const validateFields = () => {
+  const handleSignIn = async () => {
     if (!email || !password) {
-      toast({
-        variant: "destructive",
-        title: "Missing fields",
-        description: "Please enter both email and password.",
-      });
-      return false;
+      toast({ variant: "destructive", title: "Missing fields", description: "Please enter both email and password." });
+      return;
     }
-    return true;
-  };
-
-  const handleSignIn = () => {
-    if (!validateFields() || isSigningIn) return;
     setIsSigningIn(true);
-
-    const onError = (error: FirebaseError) => {
-      let description = "An unknown error occurred. Please try again.";
-      if (
-        error.code === "auth/invalid-credential" ||
-        error.code === "auth/user-not-found" ||
-        error.code === "auth/wrong-password"
-      ) {
-        description = "The email or password you entered is incorrect.";
-      } else {
-        description = error.message || description;
-      }
-
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description,
-      });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // Auth state change triggers redirect via useEffect
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Login Failed", description: error.message });
       setIsSigningIn(false);
-    };
-
-    initiateEmailSignIn(auth, email, password, onError);
+    }
   };
 
   const handlePasswordReset = async () => {
     if (!resetEmail) {
-      toast({
-        variant: "destructive",
-        title: "Email Required",
-        description: "Please enter your email to reset your password.",
-      });
+      toast({ variant: "destructive", title: "Email Required", description: "Please enter your email." });
       return;
     }
-
     setIsResetting(true);
     try {
-      const result = await requestPasswordReset(resetEmail);
-      if (result.success) {
-        toast({
-          title: "Reset Email Sent",
-          description: `Instructions have been sent to ${resetEmail}`,
-        });
-        setIsResetDialogOpen(false);
-        setResetEmail("");
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Reset Failed",
-          description: result.error || "Failed to send reset email.",
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Reset Failed",
-        description: "An unexpected error occurred.",
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
       });
+      if (error) throw error;
+      toast({ title: "Reset Email Sent", description: `Instructions sent to ${resetEmail}` });
+      setIsResetDialogOpen(false);
+      setResetEmail("");
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Reset Failed", description: error.message });
     } finally {
       setIsResetting(false);
     }
@@ -130,103 +75,57 @@ export default function LoginPage() {
           <div className="flex justify-center items-center">
             <Church className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="font-headline text-2xl">
-            COG App Login
-          </CardTitle>
-          <CardDescription>
-            Enter your email below to login to your account
-          </CardDescription>
+          <CardTitle className="font-headline text-2xl">COG App Login</CardTitle>
+          <CardDescription>Enter your email below to login to your account</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isSigningIn}
-              />
+              <Input id="email" type="email" placeholder="m@example.com" required value={email}
+                onChange={(e) => setEmail(e.target.value)} disabled={isSigningIn} />
             </div>
             <div className="grid gap-2">
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
                 <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
                   <DialogTrigger asChild>
-                    <button
-                      type="button"
-                      className="ml-auto inline-block text-sm underline hover:text-primary transition-colors"
-                    >
+                    <button type="button" className="ml-auto inline-block text-sm underline hover:text-primary transition-colors">
                       Forgot your password?
                     </button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Reset Password</DialogTitle>
-                      <DialogDescription>
-                        Enter your email address and we'll send you a link to reset your password.
-                      </DialogDescription>
+                      <DialogDescription>Enter your email and we'll send a reset link.</DialogDescription>
                     </DialogHeader>
                     <div className="flex items-center space-x-2 py-4">
                       <div className="grid flex-1 gap-2">
-                        <Label htmlFor="reset-email" className="sr-only">
-                          Email
-                        </Label>
-                        <Input
-                          id="reset-email"
-                          placeholder="m@example.com"
-                          value={resetEmail}
-                          onChange={(e) => setResetEmail(e.target.value)}
-                          disabled={isResetting}
-                        />
+                        <Label htmlFor="reset-email" className="sr-only">Email</Label>
+                        <Input id="reset-email" placeholder="m@example.com" value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)} disabled={isResetting} />
                       </div>
                     </div>
                     <DialogFooter className="sm:justify-start">
-                      <Button
-                        type="button"
-                        onClick={handlePasswordReset}
-                        disabled={isResetting}
-                        className="w-full sm:w-auto"
-                      >
-                        {isResetting ? (
-                          <LoaderCircle className="h-4 w-4 animate-spin mr-2" />
-                        ) : null}
+                      <Button type="button" onClick={handlePasswordReset} disabled={isResetting} className="w-full sm:w-auto">
+                        {isResetting ? <LoaderCircle className="h-4 w-4 animate-spin mr-2" /> : null}
                         Send Reset Link
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isSigningIn}
-                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
-              />
+              <Input id="password" type="password" required value={password}
+                onChange={(e) => setPassword(e.target.value)} disabled={isSigningIn}
+                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()} />
             </div>
-            <Button
-              onClick={handleSignIn}
-              className="w-full"
-              disabled={isSigningIn || isUserLoading}
-            >
-              {isSigningIn ? (
-                <LoaderCircle className="animate-spin" />
-              ) : (
-                "Login"
-              )}
+            <Button onClick={handleSignIn} className="w-full" disabled={isSigningIn || isUserLoading}>
+              {isSigningIn ? <LoaderCircle className="animate-spin" /> : "Login"}
             </Button>
           </div>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="underline hover:text-primary">
-              Sign up
-            </Link>
+            <Link href="/signup" className="underline hover:text-primary">Sign up</Link>
           </div>
         </CardContent>
       </Card>

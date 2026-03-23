@@ -13,6 +13,7 @@ import {
   HeartHandshake,
   BarChart3,
   UtensilsCrossed,
+  Building2,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -51,6 +52,10 @@ type NavSubItem = {
     UserRoleContextType,
     "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
   >;
+  anyPermissionKeys?: Array<keyof Omit<
+    UserRoleContextType,
+    "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
+  >>;
   subItems?: NavSubItem[];
 };
 
@@ -122,11 +127,16 @@ const allNavItems: NavItem[] = [
     href: "/workers",
     icon: Users,
     label: "Workers",
+    permissionKey: "canManageWorkers",
     subItems: [
       {
         href: "/workers",
         label: "Worker Management",
         permissionKey: "canManageWorkers",
+      },
+      {
+        href: "/workers/my-qr",
+        label: "My QR Code",
       },
     ],
   },
@@ -141,6 +151,18 @@ const allNavItems: NavItem[] = [
     icon: BarChart3,
     label: "Reports",
     permissionKey: "canViewReports",
+  },
+  {
+    href: "/venue",
+    icon: Building2,
+    label: "Venue",
+    subItems: [
+      {
+        href: "/venue/command-center",
+        label: "Command Center",
+        permissionKey: "canManageVenueAssistance",
+      },
+    ],
   },
   {
     href: "/settings",
@@ -180,12 +202,17 @@ const allNavItems: NavItem[] = [
       {
         href: "/settings/transaction-logs",
         label: "Transaction Logs",
-        permissionKey: "isSuperAdmin",
+        permissionKey: "canViewTransactionLogs",
       },
       {
         href: "/settings/ors-sync",
         label: "ORS Legacy Sync",
-        permissionKey: "isSuperAdmin",
+        permissionKey: "canManageOrsSync",
+      },
+      {
+        href: "/settings/venue-assistance",
+        label: "Venue Assistance",
+        anyPermissionKeys: ["canManageVenueAssistance", "canManageOwnMinistryAssistance"],
       },
     ],
   },
@@ -224,7 +251,14 @@ export function Nav({
           "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
         >
       | undefined,
+    anyKeys?: Array<keyof Omit<
+      UserRoleContextType,
+      "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
+    >>,
   ) => {
+    if (anyKeys && anyKeys.length > 0) {
+      return anyKeys.some((k) => userRole[k] === true);
+    }
     if (!key) return true; // No permission required
     return userRole[key] === true;
   };
@@ -232,18 +266,22 @@ export function Nav({
   const navItems = allNavItems.filter((item) => {
     if (isLoading) return false;
 
-    // For settings, show if user has access to any sub-item or the main settings page itself
+    // Settings: show only if user has access to at least one sub-item
     if (item.href === "/settings") {
       const hasNoRole = workerProfile && !workerProfile.roleId;
       if (needsSeeding || hasNoRole) return true;
-
       if (item.subItems && item.subItems.length > 0) {
         return item.subItems.some((sub) => hasAccess(sub.permissionKey));
       }
+      return false;
     }
 
-    // For workers, show if user can see their own QR or manage others
-    if (item.href === "/workers") return true;
+    // Workers: show if user can manage workers OR has no permissionKey sub-items (e.g. my-qr)
+    if (item.href === "/workers") {
+      if (hasAccess("canManageWorkers")) return true;
+      // Still show if there are sub-items with no permission requirement (my-qr)
+      return item.subItems?.some((sub) => !sub.permissionKey) ?? false;
+    }
 
     return hasAccess(item.permissionKey);
   });
@@ -261,7 +299,7 @@ export function Nav({
       <SidebarMenu>
         {navItems.map((item) => {
           const visibleSubItems =
-            item.subItems?.filter((sub) => hasAccess(sub.permissionKey)) || [];
+            item.subItems?.filter((sub) => hasAccess(sub.permissionKey, sub.anyPermissionKeys)) || [];
 
           // No sub-items: simple link
           if (!item.subItems || visibleSubItems.length === 0) {

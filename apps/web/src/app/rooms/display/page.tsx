@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { collection, doc, query, where } from 'firebase/firestore';
@@ -9,6 +9,7 @@ import { format, isToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@studio/ui';
 import { Calendar, Clock, DoorOpen, VideoOff, LoaderCircle } from 'lucide-react';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@studio/database';
+import { handleBookingCheckIn } from '@/actions/venue-assistance';
 
 const ClockComponent = () => {
     const [time, setTime] = useState(new Date());
@@ -52,6 +53,21 @@ function RoomDisplayContent() {
 
     const isLoading = roomLoading || bookingsLoading || workersLoading || branchesLoading || areasLoading;
 
+    // Fire-and-forget check-in when a booking becomes active on this display.
+    // Tracks the last checked-in bookingId to avoid duplicate calls.
+    const checkedInBookingRef = useRef<string | null>(null);
+    const now = new Date();
+    const currentBookingForCheckIn = !isLoading
+        ? todaysBookings.find(b => now >= b.start && now <= b.end)
+        : undefined;
+
+    useEffect(() => {
+        if (currentBookingForCheckIn && currentBookingForCheckIn.id !== checkedInBookingRef.current) {
+            checkedInBookingRef.current = currentBookingForCheckIn.id;
+            handleBookingCheckIn(currentBookingForCheckIn.id).catch(console.error);
+        }
+    }, [currentBookingForCheckIn?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const area = areas?.find(a => a.areaId === room?.areaId);
     const branch = branches?.find(l => l.id === area?.branchId);
 
@@ -74,8 +90,7 @@ function RoomDisplayContent() {
         )
     }
 
-    const now = new Date();
-    const currentBooking = todaysBookings.find(b => now >= b.start && now <= b.end);
+    const currentBooking = currentBookingForCheckIn;
     const nextBooking = todaysBookings.find(b => now < b.start);
 
     const qrCodeUrl = currentBooking ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`ROOM_CHECKIN:${currentBooking.id}`)}&bgcolor=374151&color=ffffff&qzone=1` : '';

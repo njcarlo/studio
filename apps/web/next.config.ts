@@ -6,10 +6,10 @@ const monorepoRoot = path.resolve(__dirname, '../..');
 const nextConfig: NextConfig = {
   output: process.env.BUILD_MOBILE === 'true' ? 'export' : 'standalone',
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   serverExternalPackages: ["@apollo/server"],
   transpilePackages: ["@studio/ui", "@studio/database", "@studio/store", "@studio/types", "@studio/graphql"],

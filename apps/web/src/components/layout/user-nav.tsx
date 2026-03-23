@@ -13,45 +13,33 @@ import {
 } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import {
-  useAuth,
-  useUser,
-  useFirestore,
-  useDoc,
-  useMemoFirebase,
-} from "@studio/database";
-import { signOut, sendPasswordResetEmail } from "firebase/auth";
-import type { Worker as AppWorker } from "@studio/types";
-import { doc } from "firebase/firestore";
+import { supabase } from "@studio/database";
+import { useAuthStore } from "@studio/store";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { LogOut } from "lucide-react";
 
 export function UserNav() {
-  const { user } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { user } = useAuthStore();
+  const { workerProfile } = useUserRole();
   const { toast } = useToast();
   const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
 
-  const workerProfileRef = useMemoFirebase(
-    () =>
-      user ? doc(firestore, "workers", impersonatedWorkerId || user.uid) : null,
-    [firestore, user, impersonatedWorkerId],
-  );
-  const { data: workerProfile } = useDoc<AppWorker>(workerProfileRef);
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (impersonatedWorkerId) {
       stopImpersonation();
+      return;
     }
-    signOut(auth);
+    await supabase.auth.signOut();
   };
 
   const handleChangePassword = async () => {
-    if (!user || !user.email) return;
-
+    if (!user?.email) return;
     try {
-      await sendPasswordResetEmail(auth, user.email);
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      });
+      if (error) throw error;
       toast({
         title: "Password Reset Email Sent",
         description: "Please check your inbox to reset your password.",
@@ -68,9 +56,7 @@ export function UserNav() {
   const displayName =
     workerProfile?.firstName && workerProfile?.lastName
       ? `${workerProfile.firstName} ${workerProfile.lastName}`
-      : user?.displayName || user?.email?.split("@")[0] || "User";
-
-  const altText = displayName;
+      : user?.email?.split("@")[0] || "User";
 
   const fallbackChar = (workerProfile?.firstName || user?.email || "U")
     .charAt(0)
@@ -81,7 +67,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={workerProfile?.avatarUrl} alt={altText} />
+            <AvatarImage src={workerProfile?.avatarUrl} alt={displayName} />
             <AvatarFallback>{fallbackChar}</AvatarFallback>
           </Avatar>
         </Button>
@@ -89,9 +75,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">
-              {displayName || "User"}
-            </p>
+            <p className="text-sm font-medium leading-none">{displayName}</p>
             <p className="text-xs leading-none text-muted-foreground">
               Role: {workerProfile?.roleId || "N/A"}
             </p>
