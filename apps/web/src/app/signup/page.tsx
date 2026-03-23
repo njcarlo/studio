@@ -6,8 +6,7 @@ import Link from "next/link";
 import { Church } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@studio/database";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { supabase } from "@studio/database";
 import { createWorker, createApproval } from "@/actions/db";
 
 export default function SignUpPage() {
@@ -16,7 +15,6 @@ export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -27,9 +25,12 @@ export default function SignUpPage() {
     }
     setIsLoading(true);
     try {
-      // 1. Create Firebase auth user
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = user.uid;
+      // 1. Create Supabase auth user
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+
+      const uid = data.user?.id;
+      if (!uid) throw new Error("Failed to get user ID after sign up.");
 
       // 2. Create worker profile in Prisma DB
       await createWorker({
@@ -56,7 +57,7 @@ export default function SignUpPage() {
       router.push("/login");
     } catch (error: any) {
       let description = error.message || "An unknown error occurred.";
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.message?.includes('already registered') || error.message?.includes('already been registered')) {
         description = "This email address is already in use.";
       }
       toast({ variant: "destructive", title: "Sign-up failed", description });

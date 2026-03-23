@@ -11,8 +11,7 @@ import {
 } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@studio/store";
-import { useAuth, initiatePasswordReset } from "@studio/database";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { supabase } from "@studio/database";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -23,7 +22,6 @@ export default function LoginPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const { user, isUserLoading } = useAuthStore();
-  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -40,7 +38,8 @@ export default function LoginPage() {
     }
     setIsSigningIn(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
       // Auth state change triggers redirect via useEffect
     } catch (error: any) {
       toast({ variant: "destructive", title: "Login Failed", description: error.message });
@@ -48,26 +47,25 @@ export default function LoginPage() {
     }
   };
 
-  const handlePasswordReset = () => {
+  const handlePasswordReset = async () => {
     if (!resetEmail) {
       toast({ variant: "destructive", title: "Email Required", description: "Please enter your email." });
       return;
     }
     setIsResetting(true);
-    initiatePasswordReset(
-      auth,
-      resetEmail,
-      () => {
-        toast({ title: "Reset Email Sent", description: `Instructions sent to ${resetEmail}` });
-        setIsResetDialogOpen(false);
-        setResetEmail("");
-        setIsResetting(false);
-      },
-      (error) => {
-        toast({ variant: "destructive", title: "Reset Failed", description: error.message });
-        setIsResetting(false);
-      }
-    );
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      });
+      if (error) throw error;
+      toast({ title: "Reset Email Sent", description: `Instructions sent to ${resetEmail}` });
+      setIsResetDialogOpen(false);
+      setResetEmail("");
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Reset Failed", description: error.message });
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (

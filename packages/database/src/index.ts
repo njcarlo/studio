@@ -60,3 +60,6 @@ export * from './non-blocking-login';
 export * from './errors';
 export * from './error-emitter';
 export * from './prisma';
+export * from './supabase-client';
+export * from './supabase-provider';
+export * from './query-client';

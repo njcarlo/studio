@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
     ImageBackground, ActivityIndicator, Alert,
@@ -24,6 +24,7 @@ export default function ActionScreen() {
     const loadCounts = useCallback(async () => {
         if (!user) return;
         try {
+            // Personal count
             const { data: userData } = await supabase
                 .from('tract_users')
                 .select('tracts_given')
@@ -31,6 +32,7 @@ export default function ActionScreen() {
                 .single();
             if (userData) setPersonalCount(userData.tracts_given ?? 0);
 
+            // Regional count
             const { data: regionData } = await supabase
                 .from('tract_users')
                 .select('tracts_given')
@@ -68,14 +70,13 @@ export default function ActionScreen() {
     const handleAdminNav = () => navigation.navigate('AdminDashboard');
 
     const regionLabel = authState.region || 'MMR';
-    const subLabel = authState.subRegion
-        ? authState.region + ' > ' + authState.subRegion
-        : regionLabel;
+    const subLabel = authState.subRegion ? `${authState.region} › ${authState.subRegion}` : regionLabel;
 
     return (
         <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
             <View style={styles.overlay} />
             <SafeAreaView style={styles.safe}>
+                {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={handleAdminNav} style={styles.adminBtn}>
                         <Text style={styles.adminBtnText}>Admin</Text>
@@ -85,12 +86,14 @@ export default function ActionScreen() {
                     </TouchableOpacity>
                 </View>
 
+                {/* Title */}
                 <View style={styles.titleBlock}>
                     <Text style={styles.titleSmall}>COG NATION</Text>
-                    <Text style={styles.titleMain}>National Tracts Giving Day</Text>
+                    <Text style={styles.titleMain}>National Tracts{'\n'}Giving Day</Text>
                     <Text style={styles.regionLabel}>{subLabel}</Text>
                 </View>
 
+                {/* Regional count */}
                 {isLoading ? (
                     <ActivityIndicator color="#FFD700" size="large" style={{ marginVertical: 24 }} />
                 ) : (
@@ -98,13 +101,16 @@ export default function ActionScreen() {
                 )}
                 <Text style={styles.regionalCountLabel}>tracts given in {regionLabel}</Text>
 
+                {/* Personal card */}
                 <View style={styles.card}>
                     <Text style={styles.cardName}>{authState.name || 'You'}</Text>
                     <Text style={styles.cardSub}>{authState.barangay || authState.subRegion || authState.region}</Text>
+
                     <View style={styles.cardCountRow}>
                         <Text style={styles.cardCount}>{personalCount}</Text>
                         <Text style={styles.cardCountLabel}>tracts given</Text>
                     </View>
+
                     <TouchableOpacity
                         style={[styles.plusBtn, isIncrementing && styles.plusBtnDisabled]}
                         onPress={handleIncrement}
@@ -140,10 +146,10 @@ const styles = StyleSheet.create({
     titleSmall: { color: '#FFD700', fontSize: 13, fontWeight: '700', letterSpacing: 4 },
     titleMain: {
         color: '#fff',
-        fontSize: 32,
+        fontSize: 36,
         fontWeight: '900',
         textAlign: 'center',
-        lineHeight: 40,
+        lineHeight: 42,
         marginTop: 6,
     },
     regionLabel: { color: '#FFD700', fontSize: 16, fontWeight: '600', marginTop: 10 },

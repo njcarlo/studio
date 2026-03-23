@@ -36,6 +36,7 @@ model Worker {
   approvals              ApprovalRequest[]
   attendanceRecords      AttendanceRecord[]
   bookings               Booking[]
+  venueBookings          VenueBooking[]       @relation("WorkerVenueBookings")
   InventoryBorrowing     InventoryBorrowing[] @relation("WorkerBorrowings")
   InventoryLog           InventoryLog[]       @relation("WorkerLogs")
   mealStubs              MealStub[]
@@ -92,14 +93,16 @@ model Booking {
 }
 
 model Room {
-  id       String    @id @default(uuid())
-  name     String
-  capacity Int
-  elements String[]
-  areaId   String
-  weight   Int?
-  bookings Booking[]
-  area     Area      @relation(fields: [areaId], references: [id])
+  id                     String                    @id @default(uuid())
+  name                   String
+  capacity               Int
+  elements               String[]
+  areaId                 String
+  weight                 Int?
+  bookings               Booking[]
+  venueBookings          VenueBooking[]            @relation("RoomVenueBookings")
+  assistanceConfigurations AssistanceConfiguration[] @relation("RoomAssistanceConfigs")
+  area                   Area                      @relation(fields: [areaId], references: [id])
 }
 
 model Area {
@@ -309,4 +312,126 @@ enum Department {
 enum InventoryType {
   EQUIPMENT
   CONSUMABLE
+}
+
+model VenueBooking {
+  id                 String              @id @default(cuid())
+  requestId          String              @unique
+  roomId             String
+  room               Room                @relation("RoomVenueBookings", fields: [roomId], references: [id])
+  workerProfileId    String
+  worker             Worker              @relation("WorkerVenueBookings", fields: [workerProfileId], references: [id])
+  title              String
+  purpose            String?
+  start              DateTime
+  end                DateTime
+  status             String              @default("Pending Ministry Approval")
+  pax                Int                 @default(0)
+  numTables          Int                 @default(0)
+  numChairs          Int                 @default(0)
+  guidelinesAccepted Boolean             @default(false)
+  recurringBookingId String?
+  recurringBooking   RecurringBooking?   @relation(fields: [recurringBookingId], references: [id])
+  assistanceRequests AssistanceRequest[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model RecurringBooking {
+  id              String         @id @default(cuid())
+  roomId          String
+  workerProfileId String
+  title           String
+  purpose         String?
+  recurrenceRule  String
+  startTime       String
+  endTime         String
+  startDate       DateTime
+  endDate         DateTime?
+  pax             Int            @default(0)
+  status          String         @default("Active")
+  occurrences     VenueBooking[]
+  createdAt       DateTime       @default(now())
+}
+
+model AssistanceConfiguration {
+  id         String                 @id @default(cuid())
+  roomId     String
+  room       Room                   @relation("RoomAssistanceConfigs", fields: [roomId], references: [id])
+  ministryId String
+  items      AssistanceConfigItem[]
+  createdBy  String
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  @@unique([roomId, ministryId])
+}
+
+model AssistanceConfigItem {
+  id          String                  @id @default(cuid())
+  configId    String
+  config      AssistanceConfiguration @relation(fields: [configId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  quantity    Int                     @default(1)
+  isRequired  Boolean                 @default(true)
+}
+
+model AssistanceRequest {
+  id             String                  @id @default(cuid())
+  bookingId      String
+  booking        VenueBooking            @relation(fields: [bookingId], references: [id])
+  ministryId     String
+  status         String                  @default("Pending")
+  explanation    String?
+  respondedAt    DateTime?
+  respondedBy    String?
+  slaEscalatedAt DateTime?
+  items          AssistanceRequestItem[]
+  auditLogs      VenueAuditLog[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+}
+
+model AssistanceRequestItem {
+  id           String            @id @default(cuid())
+  requestId    String
+  request      AssistanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  quantity     Int               @default(1)
+  isRequired   Boolean           @default(true)
+  status       String            @default("Pending")
+  adjustedQty  Int?
+  adjustedDesc String?
+}
+
+model VenueAuditLog {
+  id            String             @id @default(cuid())
+  requestId     String?
+  request       AssistanceRequest? @relation(fields: [requestId], references: [id])
+  configId      String?
+  action        String
+  actorId       String
+  before        Json?
+  after         Json?
+  triggerSource String?
+  createdAt     DateTime           @default(now())
+}
+
+model VenueAssistanceSetting {
+  id        String   @id @default("global")
+  slaDays   Int      @default(3)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+model InAppNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

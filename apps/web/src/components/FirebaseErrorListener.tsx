@@ -1,27 +1,22 @@
 'use client';
 
 import { useEffect } from 'react';
-import { errorEmitter, FirestorePermissionError, useUser } from '@studio/database';
+import { errorEmitter, FirestorePermissionError } from '@studio/database';
+import { useAuthStore } from '@studio/store';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * An invisible component that listens for globally emitted 'permission-error' events.
- * When the user IS authenticated, it shows a toast notification.
- * When unauthenticated, permission errors are expected and silently ignored.
+ * Listens for globally emitted Firestore permission errors and surfaces them as toasts.
+ * Silently ignores errors when the user is not authenticated.
  */
 export function FirebaseErrorListener() {
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useAuthStore();
 
   useEffect(() => {
     const handleError = (error: FirestorePermissionError) => {
-      // Ignore permission errors that occur before the user is authenticated.
-      // These are expected (e.g., pre-auth Firestore reads hitting the rules wall)
-      // and do NOT indicate a real problem.
       if (isUserLoading || !user) return;
-
-      // Only surface the error as a toast when logged in — something actually went wrong.
-      console.error('Firestore permission error:', error.message);
+      console.error('Permission error:', error.message);
       toast({
         variant: 'destructive',
         title: 'Permission Denied',
@@ -35,6 +30,5 @@ export function FirebaseErrorListener() {
     };
   }, [user, isUserLoading, toast]);
 
-  // This component renders nothing.
   return null;
 }

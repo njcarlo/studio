@@ -13,6 +13,7 @@ import {
   HeartHandshake,
   BarChart3,
   UtensilsCrossed,
+  Building2,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -51,6 +52,10 @@ type NavSubItem = {
     UserRoleContextType,
     "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
   >;
+  anyPermissionKeys?: Array<keyof Omit<
+    UserRoleContextType,
+    "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
+  >>;
   subItems?: NavSubItem[];
 };
 
@@ -148,6 +153,18 @@ const allNavItems: NavItem[] = [
     permissionKey: "canViewReports",
   },
   {
+    href: "/venue",
+    icon: Building2,
+    label: "Venue",
+    subItems: [
+      {
+        href: "/venue/command-center",
+        label: "Command Center",
+        permissionKey: "canManageVenueAssistance",
+      },
+    ],
+  },
+  {
     href: "/settings",
     icon: Settings,
     label: "Settings",
@@ -192,6 +209,11 @@ const allNavItems: NavItem[] = [
         label: "ORS Legacy Sync",
         permissionKey: "canManageOrsSync",
       },
+      {
+        href: "/settings/venue-assistance",
+        label: "Venue Assistance",
+        anyPermissionKeys: ["canManageVenueAssistance", "canManageOwnMinistryAssistance"],
+      },
     ],
   },
 ];
@@ -229,7 +251,14 @@ export function Nav({
           "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
         >
       | undefined,
+    anyKeys?: Array<keyof Omit<
+      UserRoleContextType,
+      "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
+    >>,
   ) => {
+    if (anyKeys && anyKeys.length > 0) {
+      return anyKeys.some((k) => userRole[k] === true);
+    }
     if (!key) return true; // No permission required
     return userRole[key] === true;
   };
@@ -270,7 +299,7 @@ export function Nav({
       <SidebarMenu>
         {navItems.map((item) => {
           const visibleSubItems =
-            item.subItems?.filter((sub) => hasAccess(sub.permissionKey)) || [];
+            item.subItems?.filter((sub) => hasAccess(sub.permissionKey, sub.anyPermissionKeys)) || [];
 
           // No sub-items: simple link
           if (!item.subItems || visibleSubItems.length === 0) {

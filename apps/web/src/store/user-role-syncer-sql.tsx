@@ -183,6 +183,10 @@ export function UserRoleSyncerSQL() {
                 effectiveIsSuperAdmin || permissions.includes('view_transaction_logs'),
             canManageOrsSync:
                 effectiveIsSuperAdmin || permissions.includes('manage_ors_sync'),
+            canManageVenueAssistance:
+                effectiveIsSuperAdmin || permissions.includes('manage_venue_assistance'),
+            canManageOwnMinistryAssistance:
+                effectiveIsSuperAdmin || permissions.includes('manage_own_ministry_assistance'),
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isLoading, needsSeeding, workerProfile, allRoles, myMinistryIds, isSuperAdmin, effectiveIsSuperAdmin, isMinistryHead, isMinistryApprover, isMealStubAssigner, effectiveUserRole]);

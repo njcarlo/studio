@@ -55,6 +55,10 @@ export function useUserRole(): UserRoleContextType {
       canManageC2S: s.canManageC2S,
       canViewC2SAnalytics: s.canViewC2SAnalytics,
       canViewScheduleMasterview: s.canViewScheduleMasterview,
+      canViewTransactionLogs: s.canViewTransactionLogs,
+      canManageOrsSync: s.canManageOrsSync,
+      canManageVenueAssistance: s.canManageVenueAssistance,
+      canManageOwnMinistryAssistance: s.canManageOwnMinistryAssistance,
     }))
   );
 }

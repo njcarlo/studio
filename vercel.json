@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/venue-assistance",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}
