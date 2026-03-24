@@ -10,50 +10,80 @@ import {
 import {
   getWorkerById,
   getWorkerByEmail,
-  getRoleById,
   getRoles,
   getMinistries,
 } from "@/actions/db";
 
 const SUPER_ADMIN_EMAILS = new Set(["admin@system.com", "pacleb@gmail.com"]);
 
+/** Aggregate all module:action permission strings from a worker's roles. */
+function aggregatePermissions(worker: any): Set<string> {
+  const perms = new Set<string>();
+  if (!worker) return perms;
+
+  // Primary: WorkerRole join table (new RBAC)
+  if (worker.roles && worker.roles.length > 0) {
+    for (const wr of worker.roles) {
+      if (wr.role?.rolePermissions) {
+        for (const rp of wr.role.rolePermissions) {
+          if (rp.permission) {
+            perms.add(`${rp.permission.module}:${rp.permission.action}`);
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback: legacy Role.permissions string[] (old flat strings)
+  if (worker.role?.permissions) {
+    for (const p of worker.role.permissions) {
+      perms.add(p);
+    }
+  }
+
+  return perms;
+}
+
+/** Check if any of the worker's roles has isSuperAdmin = true. */
+function hasSuperAdminRole(worker: any): boolean {
+  if (!worker) return false;
+  if (worker.roles?.some((wr: any) => wr.role?.isSuperAdmin)) return true;
+  if (worker.role?.isSuperAdmin) return true;
+  // Legacy: role id 'admin' is treated as super admin
+  if (worker.role?.id === 'admin' || worker.roleId === 'admin') return true;
+  return false;
+}
+
 export function UserRoleSyncerSQL() {
   const { user, isUserLoading } = useAuthStore();
   const { impersonatedWorkerId } = useImpersonationStore();
   const _setPermissions = usePermissionsStore((s) => s._setPermissions);
 
-  // ── 1. Real worker profile (by UID or Email) ───────────────────────────
-  const { data: realWorkerProfile, isLoading: isRealProfileLoading } = useQuery(
-    {
-      queryKey: ["worker", user?.uid, user?.email],
-      queryFn: async () => {
-        if (!user) return null;
-        let worker = await getWorkerById(user.uid);
-        if (!worker && user.email) {
-          worker = await getWorkerByEmail(user.email);
-        }
-        return worker;
-      },
-      enabled: !!user,
+  // ── 1. Real worker profile ────────────────────────────────────────────────
+  const { data: realWorkerProfile, isLoading: isRealProfileLoading } = useQuery({
+    queryKey: ["worker", user?.uid, user?.email],
+    queryFn: async () => {
+      if (!user) return null;
+      let worker = await getWorkerById(user.uid);
+      if (!worker && user.email) {
+        worker = await getWorkerByEmail(user.email);
+      }
+      return worker;
     },
-  );
+    enabled: !!user,
+  });
 
-  // ── 2. Admin status + impersonation ─────────────────────────────────────
+  // ── 2. Super-admin determination ──────────────────────────────────────────
   const isSuperAdmin = useMemo(() => {
     const normalizedEmail = user?.email?.trim().toLowerCase();
-    const isWhitelistedSuperAdmin =
-      !!normalizedEmail && SUPER_ADMIN_EMAILS.has(normalizedEmail);
-    return (
-      isWhitelistedSuperAdmin ||
-      realWorkerProfile?.role?.id === "admin" ||
-      realWorkerProfile?.roleId === "admin"
-    );
+    const isWhitelisted = !!normalizedEmail && SUPER_ADMIN_EMAILS.has(normalizedEmail);
+    return isWhitelisted || hasSuperAdminRole(realWorkerProfile);
   }, [user, realWorkerProfile]);
 
   const viewAsWorkerId = isSuperAdmin ? impersonatedWorkerId : null;
   const idToFetch = viewAsWorkerId ?? user?.uid;
 
-  // ── 3. "View As" profile (by ID) ─────────────────────────────────────────
+  // ── 3. "View As" profile (impersonated worker) ────────────────────────────
   const { data: workerProfile, isLoading: isProfileLoading } = useQuery({
     queryKey: ["worker-view-as", idToFetch],
     queryFn: async () => {
@@ -63,25 +93,12 @@ export function UserRoleSyncerSQL() {
     enabled: !!idToFetch,
   });
 
-  // ── 4. Roles ─────────────────────────────────────────────────────────────
+  // ── 4. Roles (for allRoles in store) ──────────────────────────────────────
   const { data: allRoles, isLoading: areRolesLoading } = useQuery({
     queryKey: ["roles"],
     queryFn: getRoles,
     enabled: !!user,
   });
-
-  const realUserRole = useMemo(() => {
-    if (!realWorkerProfile?.roleId) return null;
-    return allRoles?.find((r) => r.id === realWorkerProfile.roleId) || null;
-  }, [realWorkerProfile, allRoles]);
-
-  // When impersonating, use the impersonated worker's role for permissions
-  const effectiveUserRole = useMemo(() => {
-    if (viewAsWorkerId && workerProfile?.roleId) {
-      return allRoles?.find((r) => r.id === workerProfile.roleId) || null;
-    }
-    return realUserRole;
-  }, [viewAsWorkerId, workerProfile, allRoles, realUserRole]);
 
   const needsSeeding =
     !!user && !areRolesLoading && (!allRoles || allRoles.length === 0);
@@ -93,23 +110,23 @@ export function UserRoleSyncerSQL() {
     enabled: !!user,
   });
 
-  // ── 6. Derived flags — based on the EFFECTIVE (possibly impersonated) profile ──
-  // When impersonating, use the impersonated worker's profile for ministry checks
-  const effectiveProfile = viewAsWorkerId ? workerProfile : realWorkerProfile;
-
-  // isSuperAdmin reflects the REAL user's admin status (used for the banner + allowing impersonation)
-  // but permissions are computed as if we ARE the impersonated user
+  // ── 6. Effective profile (impersonated or real) ───────────────────────────
   const isImpersonating = !!viewAsWorkerId;
-  const effectiveIsSuperAdmin = useMemo(
-    () => (isImpersonating ? false : isSuperAdmin),
-    [isImpersonating, isSuperAdmin],
+  const effectiveProfile = isImpersonating ? workerProfile : realWorkerProfile;
+  const effectiveIsSuperAdmin = isImpersonating ? false : isSuperAdmin;
+
+  // Aggregate permissions from all roles of the effective profile
+  const effectivePermissions = useMemo(
+    () => aggregatePermissions(effectiveProfile),
+    [effectiveProfile],
   );
 
+  const hasPerm = (key: string) => effectivePermissions.has(key);
+
+  // Ministry-level flags
   const isMealStubAssigner = useMemo(() => {
     if (!user || !allMinistries || !effectiveProfile) return false;
-    return allMinistries.some(
-      (m: any) => m.mealStubAssignerId === effectiveProfile.id,
-    );
+    return allMinistries.some((m: any) => m.mealStubAssignerId === effectiveProfile.id);
   }, [user, allMinistries, effectiveProfile]);
 
   const isMinistryHead = useMemo(() => {
@@ -125,11 +142,7 @@ export function UserRoleSyncerSQL() {
   const myMinistryIds = useMemo(() => {
     if (!user || !allMinistries || !effectiveProfile) return [];
     return allMinistries
-      .filter(
-        (m: any) =>
-          m.headId === effectiveProfile.id ||
-          m.approverId === effectiveProfile.id,
-      )
+      .filter((m: any) => m.headId === effectiveProfile.id || m.approverId === effectiveProfile.id)
       .map((m: any) => m.id);
   }, [user, allMinistries, effectiveProfile]);
 
@@ -140,10 +153,9 @@ export function UserRoleSyncerSQL() {
     areRolesLoading ||
     areMinistriesLoading;
 
-  // ── 7. Sync to PermissionsStore ───────────────────────────────────────────
-  // Use useMemo to compute the permissions object, then sync it in a stable useEffect
+  // ── 7. Build permissions payload and sync to store ────────────────────────
   const permissionsPayload = useMemo(() => {
-    const permissions = (effectiveUserRole as any)?.permissions ?? [];
+    const sa = effectiveIsSuperAdmin;
 
     return {
       isLoading,
@@ -152,71 +164,62 @@ export function UserRoleSyncerSQL() {
       allRoles: (allRoles as any) ?? [],
       myMinistryIds,
       isSuperAdmin,
-      isMinistryHead: effectiveIsSuperAdmin || isMinistryHead,
-      isMinistryApprover: effectiveIsSuperAdmin || isMinistryApprover,
-      isMealStubAssigner: effectiveIsSuperAdmin || isMealStubAssigner,
+      isMinistryHead: sa || isMinistryHead,
+      isMinistryApprover: sa || isMinistryApprover,
+      isMealStubAssigner: sa || isMealStubAssigner,
+
+      // module:action checks (with legacy string fallback)
       canManageWorkers:
-        effectiveIsSuperAdmin ||
-        permissions.includes("manage_workers") ||
-        isMinistryHead ||
-        isMinistryApprover,
+        sa || hasPerm('workers:create') || hasPerm('workers:update') || hasPerm('manage_workers') ||
+        isMinistryHead || isMinistryApprover,
       canManageRoles:
-        effectiveIsSuperAdmin || permissions.includes("manage_roles"),
+        sa || hasPerm('roles:update') || hasPerm('manage_roles'),
       canManageMinistries:
-        effectiveIsSuperAdmin || permissions.includes("manage_ministries"),
+        sa || hasPerm('ministries:manage') || hasPerm('manage_ministries'),
       canManageFacilities:
-        effectiveIsSuperAdmin ||
-        permissions.includes("manage_facilities") ||
-        isMinistryApprover ||
-        isMinistryHead,
+        sa || hasPerm('facilities:manage') || hasPerm('manage_facilities') ||
+        isMinistryApprover || isMinistryHead,
       canCreateRoomReservation:
-        effectiveIsSuperAdmin ||
-        permissions.includes("create_room_reservation"),
+        sa || hasPerm('venues:create') || hasPerm('create_room_reservation'),
       canEditRoomReservation:
-        effectiveIsSuperAdmin || permissions.includes("edit_room_reservation"),
+        sa || hasPerm('venues:update') || hasPerm('edit_room_reservation'),
       canDeleteRoomReservation:
-        effectiveIsSuperAdmin ||
-        permissions.includes("delete_room_reservation"),
+        sa || hasPerm('venues:delete') || hasPerm('delete_room_reservation'),
       canApproveRoomReservation:
-        effectiveIsSuperAdmin ||
-        permissions.includes("approve_room_reservation") ||
-        isMinistryApprover ||
-        isMinistryHead,
+        sa || hasPerm('venues:approve') || hasPerm('approve_room_reservation') ||
+        isMinistryApprover || isMinistryHead,
       canManageApprovals:
-        effectiveIsSuperAdmin ||
-        permissions.includes("manage_approvals") ||
-        isMinistryApprover ||
-        isMinistryHead,
+        sa || hasPerm('approvals:manage') || hasPerm('manage_approvals') ||
+        isMinistryApprover || isMinistryHead,
       canApproveAllRequests:
-        effectiveIsSuperAdmin || permissions.includes("manage_approvals"),
+        sa || hasPerm('approvals:manage') || hasPerm('manage_approvals'),
       canOperateScanner:
-        effectiveIsSuperAdmin || permissions.includes("operate_scanner"),
+        sa || hasPerm('attendance:scan') || hasPerm('operate_scanner'),
       canViewAttendance:
-        effectiveIsSuperAdmin || permissions.includes("view_attendance_log"),
+        sa || hasPerm('attendance:view') || hasPerm('view_attendance_log'),
       canViewMealStubs:
-        effectiveIsSuperAdmin || permissions.includes("view_meal_stubs"),
+        sa || hasPerm('meals:view') || hasPerm('view_meal_stubs'),
       canManageAllMealStubs:
-        effectiveIsSuperAdmin || permissions.includes("manage_all_mealstubs"),
+        sa || hasPerm('meals:manage') || hasPerm('manage_all_mealstubs'),
       canViewReports:
-        effectiveIsSuperAdmin || permissions.includes("view_reports"),
+        sa || hasPerm('reports:view') || hasPerm('view_reports'),
       canAppointApprovers:
-        effectiveIsSuperAdmin || permissions.includes("manage_ministries"),
-      canManageC2S: effectiveIsSuperAdmin || permissions.includes("manage_c2s"),
+        sa || hasPerm('ministries:manage') || hasPerm('manage_ministries'),
+      canManageC2S:
+        sa || hasPerm('mentorship:manage') || hasPerm('manage_c2s'),
       canViewC2SAnalytics:
-        effectiveIsSuperAdmin || permissions.includes("view_c2s_analytics"),
+        sa || hasPerm('mentorship:view_reports') || hasPerm('view_c2s_analytics'),
       canViewScheduleMasterview:
-        effectiveIsSuperAdmin ||
-        permissions.includes("view_schedule_masterview"),
+        sa || hasPerm('venues:view_calendar') || hasPerm('view_schedule_masterview'),
       canViewTransactionLogs:
-        effectiveIsSuperAdmin || permissions.includes("view_transaction_logs"),
+        sa || hasPerm('system:view_audit_logs') || hasPerm('view_transaction_logs'),
       canManageOrsSync:
-        effectiveIsSuperAdmin || permissions.includes("manage_ors_sync"),
+        sa || hasPerm('system:manage_ors_sync') || hasPerm('manage_ors_sync'),
       canManageVenueAssistance:
-        effectiveIsSuperAdmin ||
-        permissions.includes("manage_venue_assistance"),
+        sa || hasPerm('venue_assistance:manage') || hasPerm('manage_venue_assistance'),
       canManageOwnMinistryAssistance:
-        effectiveIsSuperAdmin ||
-        permissions.includes("manage_own_ministry_assistance"),
+        sa || hasPerm('venue_assistance:manage_own_ministry') ||
+        hasPerm('manage_own_ministry_assistance'),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -227,10 +230,10 @@ export function UserRoleSyncerSQL() {
     myMinistryIds,
     isSuperAdmin,
     effectiveIsSuperAdmin,
+    effectivePermissions,
     isMinistryHead,
     isMinistryApprover,
     isMealStubAssigner,
-    effectiveUserRole,
   ]);
 
   useEffect(() => {

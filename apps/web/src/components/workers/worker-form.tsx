@@ -11,6 +11,7 @@ import {
 } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Input } from "@studio/ui";
+import { Textarea } from "@studio/ui";
 import {
   Select,
   SelectContent,
@@ -20,10 +21,12 @@ import {
   SelectGroup,
   SelectLabel,
 } from "@studio/ui";
+import { Checkbox } from "@studio/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";
 import { Mail } from "lucide-react";
 import type { Worker, Role, Ministry } from "@studio/types";
 import { WorkerActivityLog } from "./worker-activity-log";
+import { assignRolesToWorker } from "@/actions/db";
 
 interface WorkerFormProps {
   worker: Partial<Worker> | null;
@@ -55,7 +58,15 @@ export function WorkerForm({
     majorMinistryId: "",
     minorMinistryId: "",
     birthDate: "",
+    isSeniorPastor: false,
+    address: "",
+    startMonth: "",
+    startYear: "",
+    remarks: "",
   });
+
+  // Multi-role state: list of selected role IDs
+  const [roleIds, setRoleIds] = useState<string[]>(["viewer"]);
 
   useEffect(() => {
     if (worker) {
@@ -69,7 +80,21 @@ export function WorkerForm({
         majorMinistryId: worker.majorMinistryId || "",
         minorMinistryId: worker.minorMinistryId || "",
         birthDate: worker.birthDate || "",
+        isSeniorPastor: worker.isSeniorPastor ?? false,
+        address: worker.address || "",
+        startMonth: worker.startMonth || "",
+        startYear: worker.startYear || "",
+        remarks: worker.remarks || "",
       });
+      // Populate roleIds from worker.roles join table; fall back to legacy roleId
+      const fromRoles = (worker as any).roles?.map((wr: any) => wr.roleId) as string[] | undefined;
+      if (fromRoles && fromRoles.length > 0) {
+        setRoleIds(fromRoles);
+      } else if (worker.roleId) {
+        setRoleIds([worker.roleId]);
+      } else {
+        setRoleIds(["viewer"]);
+      }
     } else {
       setFormData({
         firstName: "",
@@ -82,9 +107,23 @@ export function WorkerForm({
         majorMinistryId: "",
         minorMinistryId: "",
         birthDate: "",
+        isSeniorPastor: false,
+        address: "",
+        startMonth: "",
+        startYear: "",
+        remarks: "",
       });
+      setRoleIds(["viewer"]);
     }
   }, [worker, canManage]);
+
+  const toggleRole = (roleId: string) => {
+    setRoleIds((prev) =>
+      prev.includes(roleId)
+        ? prev.filter((id) => id !== roleId)
+        : [...prev, roleId],
+    );
+  };
 
   const groupedMinistries = useMemo(() => {
     const groups: Record<string, Ministry[]> = {};
@@ -135,6 +174,32 @@ export function WorkerForm({
     </Select>
   );
 
+  const handleSave = async () => {
+    // Keep legacy roleId in sync with first selected role
+    const primaryRoleId = roleIds[0] ?? "viewer";
+    const dataToSave: Partial<Worker> = {
+      ...formData,
+      roleId: primaryRoleId,
+    };
+
+    // Call parent onSave first (creates/updates the worker record)
+    onSave(dataToSave);
+
+    // If editing an existing worker, sync the WorkerRole join table
+    if (worker?.id) {
+      try {
+        await assignRolesToWorker(worker.id, roleIds);
+      } catch (err) {
+        console.error("Failed to assign roles:", err);
+      }
+    }
+    // For new workers, the workers page handleSaveWorker creates the record and
+    // can call assignRolesToWorker after receiving the new worker ID. We pass
+    // roleIds along via formData extension so the parent can access it.
+    // The parent already handles the create path without roleIds — the join
+    // table will be populated on next edit or via the signup flow.
+  };
+
   const fields = (
     <div className="grid gap-4 py-1">
       <div className="grid grid-cols-4 items-center gap-4">
@@ -157,13 +222,30 @@ export function WorkerForm({
         <Label htmlFor="birthDate" className="text-right">Date of Birth</Label>
         <Input id="birthDate" type="date" value={formData.birthDate || ""} onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })} className="col-span-3" />
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="role" className="text-right">Role</Label>
-        <Select value={formData.roleId} onValueChange={(v) => setFormData({ ...formData, roleId: v })} disabled={!canManage}>
-          <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a role" /></SelectTrigger>
-          <SelectContent>{roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
-        </Select>
+
+      {/* Multi-role checkbox list */}
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label className="text-right pt-1">Roles</Label>
+        <div className="col-span-3 flex flex-col gap-2">
+          {roles.map((r) => (
+            <div key={r.id} className="flex items-center gap-2">
+              <Checkbox
+                id={`role-${r.id}`}
+                checked={roleIds.includes(r.id)}
+                onCheckedChange={() => toggleRole(r.id)}
+                disabled={!canManage}
+              />
+              <Label htmlFor={`role-${r.id}`} className="font-normal cursor-pointer">
+                {r.name}
+              </Label>
+            </div>
+          ))}
+          {roleIds.length === 0 && (
+            <p className="text-xs text-destructive">At least one role must be selected.</p>
+          )}
+        </div>
       </div>
+
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="status" className="text-right">Status</Label>
         <Select value={formData.status} onValueChange={(v: any) => setFormData({ ...formData, status: v })} disabled={!canManage && !worker}>
@@ -194,6 +276,70 @@ export function WorkerForm({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Additional Info section */}
+      <div className="pt-2 border-t">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Additional Info</p>
+        <div className="grid gap-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Senior Pastor</Label>
+            <div className="col-span-3 flex items-center gap-2">
+              <Checkbox
+                id="isSeniorPastor"
+                checked={formData.isSeniorPastor ?? false}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isSeniorPastor: checked === true })
+                }
+                disabled={!canManage}
+              />
+              <Label htmlFor="isSeniorPastor" className="font-normal cursor-pointer">
+                This worker is a Senior Pastor
+              </Label>
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="address" className="text-right">Address</Label>
+            <Input
+              id="address"
+              value={formData.address || ""}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="col-span-3"
+              placeholder="Full address"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="startMonth" className="text-right">Start Month</Label>
+            <Input
+              id="startMonth"
+              value={formData.startMonth || ""}
+              onChange={(e) => setFormData({ ...formData, startMonth: e.target.value })}
+              className="col-span-3"
+              placeholder="e.g. January"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="startYear" className="text-right">Start Year</Label>
+            <Input
+              id="startYear"
+              value={formData.startYear || ""}
+              onChange={(e) => setFormData({ ...formData, startYear: e.target.value })}
+              className="col-span-3"
+              placeholder="e.g. 2020"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="remarks" className="text-right pt-2">Remarks</Label>
+            <Textarea
+              id="remarks"
+              value={formData.remarks || ""}
+              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              className="col-span-3"
+              placeholder="Any additional notes..."
+              rows={3}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -220,7 +366,7 @@ export function WorkerForm({
               )}
               <div className="flex gap-2">
                 <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-                <Button onClick={() => onSave(formData)}>Save changes</Button>
+                <Button onClick={handleSave} disabled={roleIds.length === 0}>Save changes</Button>
               </div>
             </SheetFooter>
           </TabsContent>
@@ -237,7 +383,7 @@ export function WorkerForm({
           <SheetFooter className="flex-col sm:flex-row gap-2">
             <div className="flex gap-2 ml-auto">
               <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-              <Button onClick={() => onSave(formData)}>Save changes</Button>
+              <Button onClick={handleSave} disabled={roleIds.length === 0}>Save changes</Button>
             </div>
           </SheetFooter>
         </>

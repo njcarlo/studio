@@ -46,16 +46,89 @@ function mapMinistryForClient(ministry: any) {
 
 export async function getRoles() {
     return await prisma.role.findMany({
-        orderBy: {
-            name: 'asc',
+        include: {
+            rolePermissions: {
+                include: { permission: true },
+            },
         },
+        orderBy: { name: 'asc' },
     });
 }
 
 export async function getRoleById(id: string) {
     return await prisma.role.findUnique({
         where: { id },
+        include: {
+            rolePermissions: {
+                include: { permission: true },
+            },
+        },
     });
+}
+
+// --- Permissions ---
+
+export async function getPermissions() {
+    return await prisma.permission.findMany({
+        orderBy: [{ module: 'asc' }, { action: 'asc' }],
+    });
+}
+
+export async function setRolePermissions(roleId: string, permissionIds: string[]) {
+    await prisma.rolePermission.deleteMany({ where: { roleId } });
+    if (permissionIds.length > 0) {
+        await prisma.rolePermission.createMany({
+            data: permissionIds.map(permissionId => ({ roleId, permissionId })),
+        });
+    }
+    revalidatePath('/settings/roles');
+}
+
+/** Set permissions using "module:action" strings instead of UUIDs. */
+export async function setRolePermissionsByKeys(roleId: string, permKeys: string[]) {
+    const permissions = await prisma.permission.findMany();
+    const ids = permissions
+        .filter(p => permKeys.includes(`${p.module}:${p.action}`))
+        .map(p => p.id);
+    return setRolePermissions(roleId, ids);
+}
+
+// --- WorkerRole ---
+
+export async function getWorkerRoles(workerId: string) {
+    return await prisma.workerRole.findMany({
+        where: { workerId },
+        include: {
+            role: {
+                include: {
+                    rolePermissions: { include: { permission: true } },
+                },
+            },
+        },
+    });
+}
+
+export async function assignRolesToWorker(workerId: string, roleIds: string[], assignedBy?: string) {
+    // Remove roles not in the new list
+    await prisma.workerRole.deleteMany({
+        where: { workerId, roleId: { notIn: roleIds } },
+    });
+    // Add any new roles
+    for (const roleId of roleIds) {
+        await prisma.workerRole.upsert({
+            where: { workerId_roleId: { workerId, roleId } },
+            update: {},
+            create: { workerId, roleId, assignedBy },
+        });
+    }
+    // Keep legacy roleId in sync (use first role as primary)
+    if (roleIds.length > 0) {
+        await prisma.worker.update({
+            where: { id: workerId },
+            data: { roleId: roleIds[0] },
+        });
+    }
+    revalidatePath('/workers');
 }
 
 export async function createRole(data: any) {
@@ -64,7 +137,7 @@ export async function createRole(data: any) {
     return role;
 }
 
-export async function upsertRole(id: string, data: { name: string; permissions: string[] }) {
+export async function upsertRole(id: string, data: { name: string; permissions: string[]; isSuperAdmin?: boolean; isSystemRole?: boolean }) {
     return prisma.role.upsert({
         where: { id },
         update: data,
@@ -92,10 +165,9 @@ export async function getWorkers() {
     return await prisma.worker.findMany({
         include: {
             role: true,
+            roles: { include: { role: true } },
         },
-        orderBy: {
-            createdAt: 'desc',
-        },
+        orderBy: { createdAt: 'desc' },
     });
 }
 
@@ -186,6 +258,15 @@ export async function getWorkerById(id: string) {
         where: { id },
         include: {
             role: true,
+            roles: {
+                include: {
+                    role: {
+                        include: {
+                            rolePermissions: { include: { permission: true } },
+                        },
+                    },
+                },
+            },
         },
     });
 }
@@ -195,6 +276,15 @@ export async function getWorkerByEmail(email: string) {
         where: { email },
         include: {
             role: true,
+            roles: {
+                include: {
+                    role: {
+                        include: {
+                            rolePermissions: { include: { permission: true } },
+                        },
+                    },
+                },
+            },
         },
     });
 }

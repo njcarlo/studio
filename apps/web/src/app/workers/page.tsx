@@ -1056,7 +1056,11 @@ export default function WorkersPage() {
                             <TableCell className="font-mono text-xs">
                               {worker.workerId}
                             </TableCell>
-                            <TableCell>{getRoleName(worker.roleId)}</TableCell>
+                            <TableCell>
+                              {(worker as any).roles?.length > 0
+                                ? (worker as any).roles.map((wr: any) => wr.role?.name ?? wr.roleId).join(", ")
+                                : getRoleName(worker.roleId)}
+                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant={
@@ -1279,7 +1283,11 @@ export default function WorkersPage() {
                     <TableCell className="font-mono text-xs">
                       {worker.workerId}
                     </TableCell>
-                    <TableCell>{getRoleName(worker.roleId)}</TableCell>
+                    <TableCell>
+                      {(worker as any).roles?.length > 0
+                        ? (worker as any).roles.map((wr: any) => wr.role?.name ?? wr.roleId).join(", ")
+                        : getRoleName(worker.roleId)}
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
                         {getPermissions(worker.roleId).map((p) => (

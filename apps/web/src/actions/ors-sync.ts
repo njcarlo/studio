@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from '@studio/database/prisma';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { revalidatePath } from 'next/cache';
 
 const ORS_BASE = 'https://cogdasma.com/ors-reader/public';
@@ -346,6 +346,7 @@ export async function importOrsNewWorkers(
     }
 ): Promise<ImportResult> {
     const { defaultRoleId, ministryIdMap, migratePasswordHash } = options;
+    const supabaseAdmin = getSupabaseAdminClient();
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
     // Re-fetch workers from ORS server-side (includes password hash)

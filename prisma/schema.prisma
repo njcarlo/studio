@@ -10,20 +10,55 @@ datasource db {
 }
 
 model Role {
-  id          String   @id @default(uuid())
-  name        String
-  permissions String[]
-  workers     Worker[]
+  id              String           @id @default(uuid())
+  name            String
+  permissions     String[]         // Legacy — kept for backward compat during migration
+  isSuperAdmin    Boolean          @default(false)
+  isSystemRole    Boolean          @default(false)
+  workers         Worker[]
+  workerRoles     WorkerRole[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  module      String
+  action      String
+  description String?
+  roles       RolePermission[]
+
+  @@unique([module, action])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model WorkerRole {
+  workerId   String
+  roleId     String
+  assignedBy String?
+  assignedAt DateTime @default(now())
+  worker     Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([workerId, roleId])
 }
 
 model Worker {
   id                     String               @id @default(uuid())
   workerId               String?
+  workerNumber           Int?                 @unique
   firstName              String
   lastName               String
   email                  String               @unique
   phone                  String
-  roleId                 String
+  roleId                 String?              // Optional — legacy FK, use WorkerRole going forward
   status                 String
   avatarUrl              String
   majorMinistryId        String
@@ -32,7 +67,14 @@ model Worker {
   birthDate              String?
   passwordChangeRequired Boolean              @default(false)
   qrToken                String?
+  isSeniorPastor         Boolean              @default(false)
+  address                String?
+  biometricsId           Int?
+  startMonth             String?
+  startYear              String?
+  remarks                String?
   createdAt              DateTime             @default(now())
+  roles                  WorkerRole[]
   approvals              ApprovalRequest[]
   attendanceRecords      AttendanceRecord[]
   bookings               Booking[]
@@ -40,7 +82,7 @@ model Worker {
   InventoryBorrowing     InventoryBorrowing[] @relation("WorkerBorrowings")
   InventoryLog           InventoryLog[]       @relation("WorkerLogs")
   mealStubs              MealStub[]
-  role                   Role                 @relation(fields: [roleId], references: [id])
+  role                   Role?                @relation(fields: [roleId], references: [id])
 }
 
 model Ministry {

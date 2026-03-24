@@ -36,14 +36,14 @@ export default function SettingsPage() {
             return;
         }
         try {
-            const rolesData: { id: string; name: string; permissions: string[] }[] = [
-                { id: 'admin', name: 'Admin', permissions: [] },
-                { id: 'approver', name: 'Approver', permissions: ['manage_approvals'] },
-                { id: 'editor', name: 'Editor', permissions: ['manage_ministries', 'manage_rooms'] },
-                { id: 'viewer', name: 'Viewer', permissions: [] },
+            const rolesData = [
+                { id: 'admin', name: 'Admin', permissions: [], isSuperAdmin: true, isSystemRole: true },
+                { id: 'approver', name: 'Approver', permissions: ['manage_approvals'], isSystemRole: true },
+                { id: 'editor', name: 'Editor', permissions: ['manage_ministries', 'manage_rooms'], isSystemRole: true },
+                { id: 'viewer', name: 'Viewer', permissions: [], isSystemRole: true },
             ];
             for (const role of rolesData) {
-                await upsertRole(role.id, { name: role.name, permissions: role.permissions });
+                await upsertRole(role.id, { name: role.name, permissions: role.permissions, isSuperAdmin: role.isSuperAdmin, isSystemRole: role.isSystemRole });
             }
 
             // Set current user as admin
