@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('Supabase/SQL migration mode is active.');
-  console.log('No legacy Firebase migration steps remain in this repository.');
+  console.log('No legacy provider migration steps remain in this repository.');
 
   const workerCount = await prisma.worker.count();
   const bookingCount = await prisma.booking.count();

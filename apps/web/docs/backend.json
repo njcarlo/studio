@@ -10,14 +10,27 @@
         "lastName": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "phone": { "type": "string" },
-        "roleId": { "type": "string", "description": "A reference to the user's role in the 'roles' collection." },
-        "status": { "type": "string", "enum": ["Active", "Inactive", "Pending Approval"] },
+        "roleId": {
+          "type": "string",
+          "description": "A reference to the user's role in the 'roles' collection."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Active", "Inactive", "Pending Approval"]
+        },
         "avatarUrl": { "type": "string", "format": "uri" },
         "primaryMinistryId": { "type": "string" },
         "secondaryMinistryId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["firstName", "lastName", "email", "roleId", "status", "createdAt"]
+      "required": [
+        "firstName",
+        "lastName",
+        "email",
+        "roleId",
+        "status",
+        "createdAt"
+      ]
     },
     "Role": {
       "title": "Role",
@@ -59,7 +72,10 @@
       "type": "object",
       "description": "A specific area or floor within a Branch.",
       "properties": {
-        "areaId": { "type": "string", "description": "A unique identifier for the area." },
+        "areaId": {
+          "type": "string",
+          "description": "A unique identifier for the area."
+        },
         "name": { "type": "string" },
         "branchId": { "type": "string" }
       },
@@ -86,10 +102,20 @@
         "title": { "type": "string" },
         "start": { "type": "string", "format": "date-time" },
         "end": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "Approved", "Rejected"]
+        },
         "workerProfileId": { "type": "string" }
       },
-      "required": ["roomId", "title", "start", "end", "status", "workerProfileId"]
+      "required": [
+        "roomId",
+        "title",
+        "start",
+        "end",
+        "status",
+        "workerProfileId"
+      ]
     },
     "ApprovalRequest": {
       "title": "Approval Request",
@@ -100,7 +126,10 @@
         "type": { "type": "string" },
         "details": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "Approved", "Rejected"]
+        },
         "workerId": { "type": "string" },
         "roomId": { "type": "string" },
         "reservationId": { "type": "string" }
@@ -135,17 +164,38 @@
       "type": "object",
       "description": "A record of a QR code scan event.",
       "properties": {
-        "scannerId": { "type": "string", "description": "The UID of the user operating the scanner." },
-        "scannerName": { "type": "string", "description": "The name of the user operating the scanner." },
+        "scannerId": {
+          "type": "string",
+          "description": "The UID of the user operating the scanner."
+        },
+        "scannerName": {
+          "type": "string",
+          "description": "The name of the user operating the scanner."
+        },
         "timestamp": { "type": "string", "format": "date-time" },
-        "scanType": { "type": "string", "enum": ["Attendance", "Meal Stub", "Room Check-in"] },
-        "details": { "type": "string", "description": "A human-readable summary of the scan event." },
-        "targetUserId": { "type": "string", "description": "The UID of the user who was the subject of the scan (e.g., for attendance)." },
+        "scanType": {
+          "type": "string",
+          "enum": ["Attendance", "Meal Stub", "Room Check-in"]
+        },
+        "details": {
+          "type": "string",
+          "description": "A human-readable summary of the scan event."
+        },
+        "targetUserId": {
+          "type": "string",
+          "description": "The UID of the user who was the subject of the scan (e.g., for attendance)."
+        },
         "targetUserName": { "type": "string" },
         "mealStubId": { "type": "string" },
         "reservationId": { "type": "string" }
       },
-      "required": ["scannerId", "scannerName", "timestamp", "scanType", "details"]
+      "required": [
+        "scannerId",
+        "scannerName",
+        "timestamp",
+        "scanType",
+        "details"
+      ]
     }
   },
   "auth": {
