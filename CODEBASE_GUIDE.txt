@@ -154,7 +154,7 @@ BUILD:
 SUPABASE PROJECT
 --------------------------------------------------------------------------------
 
-URL:      https://vpgykxfbrfnojmgmzriq.supabase.co
+URL:      set via environment variable (NEXT_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_URL)
 Region:   ap-northeast-1 (AWS)
 Used by:  BOTH apps/web (Prisma DB) and apps/tract-tracker (Auth + tract_users)
 

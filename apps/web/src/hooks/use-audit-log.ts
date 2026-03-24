@@ -1,10 +1,10 @@
-import { useUser } from '@studio/database';
+import { useSupabaseUser } from '@studio/database';
 import { useUserRole } from './use-user-role';
 import { useCallback } from 'react';
 import { createTransactionLog } from '@/actions/db';
 
 export function useAuditLog() {
-    const { user } = useUser();
+    const { user } = useSupabaseUser();
     const { workerProfile } = useUserRole();
 
     const logAction = useCallback(async (

@@ -1,8 +1,7 @@
 "use server";
 
-import { randomUUID } from 'crypto';
 import { prisma } from '@studio/database/prisma';
-import { adminAuth } from '@/lib/firebase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { revalidatePath } from 'next/cache';
 
 const ORS_BASE = 'https://cogdasma.com/ors-reader/public';
@@ -122,15 +121,15 @@ export type DiffField = {
     current: string;
 };
 
-// ─── ORS department → Prisma enum mapping ────────────────────────────────────
+// ─── ORS department → Department code mapping ───────────────────────────────
 
 const ORS_DEPT_MAP: Record<number, string> = {
-    1: 'Worship',
-    2: 'Outreach',
-    3: 'Relationship',
-    4: 'Discipleship',
-    5: 'Administration',
-    6: 'Discipleship',
+    1: 'W',
+    2: 'O',
+    3: 'R',
+    4: 'D',
+    5: 'A',
+    6: 'D',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -335,9 +334,8 @@ export async function getWorkerDiffPage(
 /**
  * Imports NEW workers from ORS into the new app.
  * Re-fetches each worker from the ORS API server-side to get the password hash.
- * Uses Firebase importUsers for MD5/SHA1/SHA256 hashes (users can log in with
- * their legacy password). Falls back to createUser + passwordChangeRequired for
- * unrecognized or missing hashes.
+ * Creates Supabase Auth users with a temp password + passwordChangeRequired flag.
+ * Legacy MD5/SHA1/SHA256 hashes are not migrated — workers must reset on first login.
  */
 export async function importOrsNewWorkers(
     orsWorkerIds: number[],
@@ -362,13 +360,10 @@ export async function importOrsNewWorkers(
         allWorkers.push(...fetched.filter(Boolean));
     }
 
-    // Group by hash type for batch Firebase importUsers
-    type WorkerWithHash = { worker: any; uid: string };
-    const md5Group: WorkerWithHash[] = [];
-    const sha1Group: WorkerWithHash[] = [];
-    const sha256Group: WorkerWithHash[] = [];
-    const plainGroup: WorkerWithHash[] = [];
-    const noHashGroup: WorkerWithHash[] = [];
+    // Supabase Auth does not support importing pre-hashed passwords.
+    // All workers are created with a temp password and passwordChangeRequired = true.
+    type WorkerWithHash = { worker: any };
+    const toImport: WorkerWithHash[] = [];
 
     for (const w of allWorkers) {
         if (!w.email) {
@@ -385,22 +380,10 @@ export async function importOrsNewWorkers(
             continue;
         }
 
-        const uid = randomUUID();
-        const hashType = detectHashType(w.password);
-        const entry = { worker: w, uid };
-
-        if (migratePasswordHash) {
-            if (hashType === 'MD5') md5Group.push(entry);
-            else if (hashType === 'SHA1') sha1Group.push(entry);
-            else if (hashType === 'SHA256') sha256Group.push(entry);
-            else if (hashType === 'PLAIN') plainGroup.push(entry);
-            else noHashGroup.push(entry);
-        } else {
-            noHashGroup.push(entry);
-        }
+        toImport.push({ worker: w });
     }
 
-    // Helper: create DB worker record after Firebase account is established
+    // Helper: create DB worker record after Supabase auth user is established
     const createDbWorker = async (w: any, uid: string, passwordChangeRequired: boolean) => {
         const majorMinistryId = w.ministry_id ? (ministryIdMap[String(w.ministry_id)] || '') : '';
         const minorMinistryId = w.sec_ministry_id ? (ministryIdMap[String(w.sec_ministry_id)] || '') : '';
@@ -425,106 +408,39 @@ export async function importOrsNewWorkers(
         });
     };
 
-    // Helper: batch Firebase importUsers for a hash group
-    const importHashGroup = async (
-        group: WorkerWithHash[],
-        algorithm: 'MD5' | 'SHA1' | 'SHA256'
-    ) => {
-        if (!group.length) return;
-        const userRecords = group.map(({ worker: w, uid }) => ({
-            uid,
-            email: w.email!,
-            displayName: `${w.first_name} ${w.last_name}`.trim(),
-            disabled: mapStatus(w.status) !== 'Active',
-            passwordHash: Buffer.from(w.password.trim(), 'hex'),
-        }));
-
-        try {
-            const importRes = await adminAuth().importUsers(userRecords, {
-                hash: { algorithm, rounds: 0 },
-            });
-
-            if (importRes.errors?.length) {
-                for (const e of importRes.errors) {
-                    result.failed++;
-                    result.errors.push(`Worker ${group[e.index]?.worker?.email}: Firebase import error — ${e.error?.message}`);
-                }
-            }
-
-            // Create DB records for successfully imported users
-            const failedIndices = new Set(importRes.errors?.map(e => e.index) || []);
-            for (let i = 0; i < group.length; i++) {
-                if (failedIndices.has(i)) continue;
-                try {
-                    await createDbWorker(group[i].worker, group[i].uid, false);
-                    result.success++;
-                } catch (dbErr: any) {
-                    result.failed++;
-                    result.errors.push(`Worker #${group[i].worker.id} (DB): ${dbErr.message}`);
-                }
-            }
-        } catch (err: any) {
-            result.errors.push(`${algorithm} batch import failed: ${err.message} — falling back to individual createUser`);
-            // Fall back to individual createUser
-            for (const { worker: w, uid } of group) {
-                noHashGroup.push({ worker: w, uid });
-            }
-        }
-    };
-
-    await importHashGroup(md5Group, 'MD5');
-    await importHashGroup(sha1Group, 'SHA1');
-    await importHashGroup(sha256Group, 'SHA256');
-
-    // Plain text passwords: use createUser directly
-    for (const { worker: w, uid } of plainGroup) {
-        try {
-            await adminAuth().createUser({
-                uid,
-                email: w.email!,
-                password: w.password.trim(),
-                displayName: `${w.first_name} ${w.last_name}`.trim(),
-                disabled: mapStatus(w.status) !== 'Active',
-            });
-            await createDbWorker(w, uid, false);
-            result.success++;
-        } catch (err: any) {
-            if (err.code === 'auth/email-already-exists') {
-                try {
-                    const existing = await adminAuth().getUserByEmail(w.email!);
-                    await createDbWorker(w, existing.uid, false);
-                    result.success++;
-                } catch (dbErr: any) {
-                    result.failed++;
-                    result.errors.push(`Worker #${w.id}: ${dbErr.message}`);
-                }
-            } else {
-                result.failed++;
-                result.errors.push(`Worker #${w.id}: ${err.message}`);
-            }
-        }
-    }
-
-    // No hash / hash migration disabled: createUser with temp password + flag
-    for (const { worker: w, uid } of noHashGroup) {
+    // Create a Supabase auth account, then mirror the user in Prisma
+    for (const { worker: w } of toImport) {
         try {
             const tempPw = `ORS_${w.id}_${Math.random().toString(36).slice(2, 10)}`;
-            let finalUid = uid;
-            try {
-                await adminAuth().createUser({
-                    uid,
-                    email: w.email!,
-                    password: tempPw,
-                    displayName: `${w.first_name} ${w.last_name}`.trim(),
-                    disabled: mapStatus(w.status) !== 'Active',
-                });
-            } catch (authErr: any) {
-                if (authErr.code === 'auth/email-already-exists') {
-                    const existing = await adminAuth().getUserByEmail(w.email!);
-                    finalUid = existing.uid;
-                } else throw authErr;
+            let uid: string;
+
+            const { data, error } = await supabaseAdmin.auth.admin.createUser({
+                email: w.email!,
+                password: tempPw,
+                email_confirm: true,
+            });
+
+            if (error) {
+                if (error.message.toLowerCase().includes('already registered')) {
+                    // Worker already has a Supabase Auth account — find them in DB
+                    const existingWorker = await prisma.worker.findFirst({
+                        where: { email: w.email },
+                        select: { id: true },
+                    });
+                    if (!existingWorker) {
+                        result.failed++;
+                        result.errors.push(`Worker #${w.id}: auth user exists but no DB record found`);
+                        continue;
+                    }
+                    uid = existingWorker.id;
+                } else {
+                    throw new Error(error.message);
+                }
+            } else {
+                uid = data.user.id;
             }
-            await createDbWorker(w, finalUid, true);
+
+            await createDbWorker(w, uid, true);
             result.success++;
         } catch (err: any) {
             result.failed++;
@@ -541,7 +457,7 @@ export async function importOrsNewWorkers(
 /**
  * Updates fields on already-imported workers whose ORS data has changed.
  * Updates: firstName, lastName, phone, status, employmentType, ministry, qrToken.
- * Also syncs Firebase Auth displayName and disabled state.
+ * Auth accounts remain in Supabase; this sync only updates Prisma worker fields.
  */
 export async function syncOrsUpdatedWorkers(
     workers: OrsWorker[],
@@ -587,14 +503,6 @@ export async function syncOrsUpdatedWorkers(
                 },
             });
 
-            // Sync Firebase Auth display name and disabled state
-            try {
-                await adminAuth().updateUser(existing.id, {
-                    displayName: `${w.first_name} ${w.last_name}`.trim(),
-                    disabled: mapStatus(w.status) !== 'Active',
-                });
-            } catch { /* Firebase user may not exist yet, that's OK */ }
-
             result.success++;
         } catch (err: any) {
             result.failed++;
@@ -631,14 +539,16 @@ export async function importOrsMinistries(
             });
             if (existing) { result.skipped++; continue; }
 
-            const department = ORS_DEPT_MAP[m.department_id] || 'Discipleship';
+            const departmentCode = ORS_DEPT_MAP[m.department_id] || 'D';
             const headId = m.head_id ? (workerIdMap[String(m.head_id)] || null) : null;
 
             await prisma.ministry.create({
                 data: {
                     name: m.name,
                     description: '',
-                    department: department as any,
+                    department: {
+                        connect: { code: departmentCode },
+                    },
                     leaderId: headId || '',
                     headId: headId || null,
                 },

@@ -1,8 +1,7 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
-import { doc } from 'firebase/firestore';
-import { useFirestore, updateDocumentNonBlocking } from '@studio/database';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { updateBooking } from '@/actions/db';
 import { useToast } from '@/hooks/use-toast';
 import type { Booking } from '@/lib/types';
 
@@ -11,8 +10,8 @@ import type { Booking } from '@/lib/types';
  * Uses React Query's useMutation for automatic loading/error state management.
  */
 export function useBookingMutations() {
-    const firestore = useFirestore();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     const updateStatusMutation = useMutation({
         mutationFn: async ({
@@ -22,21 +21,13 @@ export function useBookingMutations() {
             booking: Booking;
             newStatus: 'Approved' | 'Rejected';
         }) => {
-            if (!booking.id || !booking.roomId) {
-                throw new Error('Missing booking ID or room ID');
+            if (!booking.id) {
+                throw new Error('Missing booking ID');
             }
-
-            const bookingRef = doc(
-                firestore,
-                `rooms/${booking.roomId}/reservations`,
-                booking.id
-            );
-
-            return updateDocumentNonBlocking(bookingRef, {
-                status: newStatus,
-            });
+            return updateBooking(booking.id, { status: newStatus });
         },
         onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['bookings'] });
             toast({
                 title: `Reservation ${variables.newStatus}`,
                 description: `Successfully updated the status to ${variables.newStatus}.`,

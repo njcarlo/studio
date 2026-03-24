@@ -151,10 +151,10 @@
   "auth": {
     "providers": ["password"]
   },
-  "firestore": {
+  "database": {
     "/workers/{userId}": {
       "schema": { "$ref": "#/entities/Worker" },
-      "description": "Stores worker profile information. Document ID should match the Firebase Auth UID."
+      "description": "Stores worker profile information. Record ID should match the Supabase Auth UID."
     },
     "/roles/{roleId}": {
       "schema": { "$ref": "#/entities/Role" },

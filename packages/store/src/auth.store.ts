@@ -4,9 +4,8 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
 /**
- * Auth store — holds the authenticated user and loading state.
- * Populated by FirebaseClientProvider via `_setAuthState` in auth-sync.tsx.
- * Uses `any` for User type to stay compatible with Firebase User shape.
+ * Auth store — holds the authenticated Supabase user and loading state.
+ * Populated by SupabaseAuthBridge via `_setAuthState` in auth-sync.tsx.
  */
 export interface AuthState {
     user: any | null;

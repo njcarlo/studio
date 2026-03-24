@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { collection, doc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import {
@@ -39,7 +38,8 @@ import {
     SelectValue,
 } from "@studio/ui";
 import type { VenueElement, Ministry } from "@studio/types";
-import { useFirestore, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase } from "@studio/database";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getVenueElements, createVenueElement, updateVenueElement, deleteVenueElement, getMinistries } from "@/actions/db";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 
@@ -110,26 +110,59 @@ const ElementForm = ({
 };
 
 export default function VenueElementsManagementPage() {
-    const firestore = useFirestore();
     const { canManageFacilities, isLoading: isRoleLoading, myMinistryIds, isSuperAdmin } = useUserRole();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [selectedElement, setSelectedElement] = useState<VenueElement | null>(null);
 
-    const elementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
-    const { data: elements, isLoading: elementsLoading } = useCollection<VenueElement>(elementsRef);
+    const { data: elements, isLoading: elementsLoading } = useQuery({
+        queryKey: ["venue-elements"],
+        queryFn: getVenueElements,
+    });
 
-    const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
-    const { data: ministriesData, isLoading: ministriesLoading } = useCollection<Ministry>(ministriesRef);
-    const ministries = ministriesData || [];
+    const { data: ministriesData, isLoading: ministriesLoading } = useQuery({
+        queryKey: ["ministries"],
+        queryFn: getMinistries,
+    });
+    const ministries = (ministriesData || []) as Ministry[];
+
+    const saveMutation = useMutation({
+        mutationFn: async (data: Partial<VenueElement>) => {
+            if (data.id) {
+                return updateVenueElement(data.id, data);
+            } else {
+                return createVenueElement(data);
+            }
+        },
+        onSuccess: (_, data) => {
+            queryClient.invalidateQueries({ queryKey: ["venue-elements"] });
+            toast({ title: data.id ? 'Element Updated' : 'Element Added' });
+            setIsSheetOpen(false);
+        },
+        onError: () => {
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save venue element.' });
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => deleteVenueElement(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["venue-elements"] });
+            toast({ title: 'Element Deleted' });
+        },
+        onError: () => {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete venue element.' });
+        },
+    });
 
     const isLoading = elementsLoading || ministriesLoading || isRoleLoading;
 
     const filteredElements = React.useMemo(() => {
         if (!elements) return [];
         if (isSuperAdmin) return elements;
-        return elements.filter(e => myMinistryIds.includes(e.providerMinistryId));
+        return elements.filter((e: any) => myMinistryIds.includes(e.providerMinistryId));
     }, [elements, isSuperAdmin, myMinistryIds]);
 
     const availableMinistries = React.useMemo(() => {
@@ -137,41 +170,17 @@ export default function VenueElementsManagementPage() {
         return ministries.filter(m => myMinistryIds.includes(m.id));
     }, [ministries, isSuperAdmin, myMinistryIds]);
 
-    const handleSave = async (data: Partial<VenueElement>) => {
+    const handleSave = (data: Partial<VenueElement>) => {
         if (!data.name || !data.providerMinistryId || !data.category) {
             toast({ variant: 'destructive', title: 'Missing fields', description: 'Please fill out all required fields.' });
             return;
         }
-
-        try {
-            if (data.id) {
-                await updateDocumentNonBlocking(doc(firestore, 'venueElements', data.id), data);
-                toast({ title: 'Element Updated' });
-            } else {
-                const prefix = data.category.charAt(0).toUpperCase();
-                const cleanName = data.name.replace(/[^a-zA-Z0-9]/g, '');
-                const customId = `${prefix}-${cleanName}-${Date.now().toString().slice(-4)}`;
-
-                await setDocumentNonBlocking(doc(firestore, 'venueElements', customId), {
-                    ...data,
-                    id: customId
-                }, { merge: true });
-                toast({ title: 'Element Added' });
-            }
-            setIsSheetOpen(false);
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save venue element.' });
-        }
+        saveMutation.mutate(data);
     };
 
-    const handleDelete = async (element: VenueElement) => {
+    const handleDelete = (element: VenueElement) => {
         if (confirm(`Are you sure you want to delete ${element.name}?`)) {
-            try {
-                await deleteDocumentNonBlocking(doc(firestore, 'venueElements', element.id));
-                toast({ title: 'Element Deleted' });
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete venue element.' });
-            }
+            deleteMutation.mutate(element.id);
         }
     };
 
@@ -213,7 +222,7 @@ export default function VenueElementsManagementPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredElements.map(element => (
+                            {filteredElements.map((element: any) => (
                                 <TableRow key={element.id}>
                                     <TableCell className="font-medium">{element.name}</TableCell>
                                     <TableCell>

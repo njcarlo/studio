@@ -1,4 +1,8 @@
-import type { Timestamp } from 'firebase/firestore';
+export type TimestampLike = {
+    toDate?: () => Date;
+    seconds?: number;
+    nanoseconds?: number;
+};
 
 export type Role = {
     id: string;
@@ -22,7 +26,7 @@ export type Worker = {
     birthDate?: string | null;
     passwordChangeRequired?: boolean | null;
     qrToken?: string | null;
-    createdAt: Timestamp | Date;
+    createdAt: TimestampLike | Date;
 };
 
 export type Ministry = {
@@ -30,6 +34,7 @@ export type Ministry = {
     name: string;
     description: string;
     department: Department | string;
+    departmentCode?: DepartmentCode | string;
     leaderId: string;
     headId?: string | null;
     approverId?: string | null;
@@ -39,6 +44,7 @@ export type Ministry = {
 };
 
 export type Department = 'Worship' | 'Outreach' | 'Relationship' | 'Discipleship' | 'Administration';
+export type DepartmentCode = 'W' | 'O' | 'R' | 'D' | 'A';
 
 export type DepartmentData = {
     id: Department;
@@ -55,7 +61,7 @@ export type AttendanceRecord = {
     id: string;
     workerProfileId: string;
     type: "Clock In" | "Clock Out";
-    time: Timestamp | Date;
+    time: TimestampLike | Date;
 };
 
 export type Booking = {
@@ -64,15 +70,15 @@ export type Booking = {
     roomId: string;
     title: string;
     purpose?: string;
-    start: Timestamp | Date;
-    end: Timestamp | Date;
+    start: TimestampLike | Date;
+    end: TimestampLike | Date;
     status: 'Pending' | 'Pending Ministry Approval' | 'Pending Admin Approval' | 'Approved' | 'Rejected';
     workerProfileId: string;
     name: string;
     ministryId: string;
     email: string;
     requesterEmail?: string;
-    dateRequested: Timestamp | Date;
+    dateRequested: TimestampLike | Date;
     pax: number;
     numTables?: number;
     numChairs?: number;
@@ -81,7 +87,7 @@ export type Booking = {
     equipment_Speakers?: boolean;
     requestedElements?: string[]; // IDs of VenueElements requested
     guidelinesAccepted: boolean;
-    checkedInAt?: Timestamp | Date;
+    checkedInAt?: TimestampLike | Date;
 };
 
 export type Room = {
@@ -109,12 +115,12 @@ export type MealStub = {
     id: string;
     workerId: string;
     workerName: string;
-    date: Timestamp | Date;
+    date: TimestampLike | Date;
     status: 'Issued' | 'Claimed' | string;
     stubType?: string | null;
     assignedBy?: string | null;
     assignedByName?: string | null;
-    claimedAt?: Timestamp | Date | null;
+    claimedAt?: TimestampLike | Date | null;
 };
 
 export type VenueElement = {
@@ -129,7 +135,7 @@ export type ApprovalRequest = {
     requester: string;
     type: 'New Worker' | 'Profile Update' | 'Room Booking' | 'Ministry Change';
     details: string;
-    date: Timestamp | Date;
+    date: TimestampLike | Date;
     status: 'Pending' | 'Pending Ministry Approval' | 'Pending Admin Approval' | 'Approved' | 'Rejected' | 'Pending Outgoing Approval' | 'Pending Incoming Approval';
     workerId?: string;
     roomId?: string;
@@ -147,7 +153,7 @@ export type ScanLog = {
     id: string;
     scannerId: string;
     scannerName: string;
-    timestamp: Timestamp | Date;
+    timestamp: TimestampLike | Date;
     scanType: 'Attendance' | 'Meal Stub' | 'Room Check-in';
     details: string;
     targetUserId?: string;
@@ -165,7 +171,7 @@ export type C2SMentee = {
     status: 'In Progress' | 'Completed' | 'Dropped';
     groupId: string;
     mentorId: string;
-    createdAt: Timestamp;
+    createdAt: TimestampLike;
 };
 
 export type C2SGroup = {
@@ -173,5 +179,5 @@ export type C2SGroup = {
     name: string;
     mentorId: string;
     menteeIds: string[];
-    createdAt: Timestamp;
+    createdAt: TimestampLike;
 };

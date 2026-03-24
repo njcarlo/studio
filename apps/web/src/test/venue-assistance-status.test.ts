@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveRequestStatus } from '@/actions/venue-assistance';
-import type { ItemStatus } from '@/actions/venue-assistance';
+import { deriveRequestStatus, type ItemStatus } from '@/actions/venue-assistance-status';
 
 /**
  * Unit tests for `deriveRequestStatus` helper.

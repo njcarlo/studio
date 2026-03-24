@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-/** Helper to parse Date from various formats (Prisma Date, Firestore Timestamp, string) */
+/** Helper to parse Date from various formats (Prisma Date, timestamp-like object, string) */
 function parseDate(date: any): Date {
   if (!date) return new Date(NaN);
   if (date instanceof Date) return date;

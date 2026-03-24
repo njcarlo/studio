@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { deriveRequestStatus } from '@/actions/venue-assistance';
-import type { ItemStatus } from '@/actions/venue-assistance';
+import { deriveRequestStatus, type ItemStatus } from '@/actions/venue-assistance-status';
 
 /**
  * Property-based tests for `deriveRequestStatus`.

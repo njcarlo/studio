@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { writeBatch, doc, serverTimestamp } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import {
@@ -12,9 +11,10 @@ import {
     CardDescription,
 } from "@studio/ui";
 import { LoaderCircle, AlertTriangle } from "lucide-react";
-import { useFirestore, useUser } from "@studio/database";
+import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+import { upsertRole, updateWorker } from "@/actions/db";
 
 
 export default function SettingsPage() {
@@ -26,8 +26,7 @@ export default function SettingsPage() {
         canManageMinistries,
         canManageFacilities
     } = useUserRole();
-    const { user } = useUser();
-    const firestore = useFirestore();
+    const { user } = useAuthStore();
     const { toast } = useToast();
 
     // System Initializer
@@ -37,32 +36,19 @@ export default function SettingsPage() {
             return;
         }
         try {
-            const batch = writeBatch(firestore);
-
-            // 1. Roles
-            const rolesData: { [key: string]: { name: string, permissions: string[] } } = {
-                admin: { name: 'Admin', permissions: [] }, // Admin has implicit all access
-                approver: { name: 'Approver', permissions: ['manage_approvals'] },
-                editor: { name: 'Editor', permissions: ['manage_ministries', 'manage_rooms'] },
-                viewer: { name: 'Viewer', permissions: [] }
-            };
-            for (const [roleId, roleData] of Object.entries(rolesData)) {
-                batch.set(doc(firestore, 'roles', roleId), roleData);
+            const rolesData: { id: string; name: string; permissions: string[] }[] = [
+                { id: 'admin', name: 'Admin', permissions: [] },
+                { id: 'approver', name: 'Approver', permissions: ['manage_approvals'] },
+                { id: 'editor', name: 'Editor', permissions: ['manage_ministries', 'manage_rooms'] },
+                { id: 'viewer', name: 'Viewer', permissions: [] },
+            ];
+            for (const role of rolesData) {
+                await upsertRole(role.id, { name: role.name, permissions: role.permissions });
             }
 
             // Set current user as admin
-            const adminWorkerData = {
-                roleId: 'admin',
-                status: 'Active',
-                email: user.email,
-                firstName: user.email?.split('@')[0] || 'Admin',
-                lastName: 'User',
-                avatarUrl: `https://picsum.photos/seed/${user.uid.slice(0, 5)}/100/100`,
-                createdAt: serverTimestamp(),
-            };
-            batch.set(doc(firestore, 'workers', user.uid), adminWorkerData, { merge: true });
+            await updateWorker(user.uid, { roleId: 'admin', status: 'Active' });
 
-            await batch.commit();
             toast({ title: "System Initialized", description: "Default roles have been created. Please refresh." });
         } catch (dbError: any) {
             toast({ variant: "destructive", title: "Database Seed Failed", description: dbError.message || "Could not seed the database." });

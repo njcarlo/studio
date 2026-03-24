@@ -275,20 +275,23 @@ const HASH_COLORS: Record<HashType, string> = {
 };
 
 function HashBadge({ type }: { type: HashType }) {
-  if (type === "NONE") return <span className="text-muted-foreground text-xs">—</span>;
+  if (type === "NONE")
+    return <span className="text-muted-foreground text-xs">—</span>;
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className={`inline-flex items-center gap-1 text-xs border rounded px-1.5 py-0.5 font-mono cursor-default ${HASH_COLORS[type]}`}>
+          <span
+            className={`inline-flex items-center gap-1 text-xs border rounded px-1.5 py-0.5 font-mono cursor-default ${HASH_COLORS[type]}`}
+          >
             <Key className="h-2.5 w-2.5" />
             {type}
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs max-w-48">
           {type === "PLAIN"
-            ? "Plain-text password detected — will be set directly in Firebase Auth."
-            : `${type} hash detected — will be imported to Firebase using native hash algorithm. Users can log in with their existing password.`}
+            ? "Plain-text password detected — a temporary password will be set in Supabase Auth."
+            : `${type} hash detected from legacy ORS data. Supabase Auth does not support hash import, so users will reset password on first login.`}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -302,25 +305,40 @@ function SyncBadge({ status }: { status: WorkerSyncStatus }) {
     return <Badge className="bg-blue-600 text-white text-xs">NEW</Badge>;
   if (status === "updated")
     return <Badge className="bg-amber-500 text-white text-xs">UPDATED</Badge>;
-  return <Badge variant="outline" className="text-xs text-green-700 border-green-400">SYNCED</Badge>;
+  return (
+    <Badge
+      variant="outline"
+      className="text-xs text-green-700 border-green-400"
+    >
+      SYNCED
+    </Badge>
+  );
 }
 
 // ─── Diff detail row ──────────────────────────────────────────────────────────
 
 function DiffDetail({ record }: { record: WorkerDiffRecord }) {
-  if (record.status !== "updated" || record.diffFields.length === 0) return null;
+  if (record.status !== "updated" || record.diffFields.length === 0)
+    return null;
   return (
     <tr className="bg-amber-50/60">
       <td colSpan={8} className="px-4 pb-3 pt-0">
         <div className="text-xs rounded border border-amber-200 bg-white overflow-hidden">
           <div className="grid grid-cols-[auto_1fr_1fr] text-muted-foreground font-medium bg-amber-50 border-b border-amber-200 px-3 py-1.5 gap-4">
-            <span>Field</span><span>ORS (legacy)</span><span>New app (current)</span>
+            <span>Field</span>
+            <span>ORS (legacy)</span>
+            <span>New app (current)</span>
           </div>
           {record.diffFields.map((f) => (
-            <div key={f.label} className="grid grid-cols-[auto_1fr_1fr] gap-4 px-3 py-1 border-b border-amber-100 last:border-0">
+            <div
+              key={f.label}
+              className="grid grid-cols-[auto_1fr_1fr] gap-4 px-3 py-1 border-b border-amber-100 last:border-0"
+            >
               <span className="font-medium min-w-[80px]">{f.label}</span>
               <span className="text-blue-700">{f.ors}</span>
-              <span className="text-muted-foreground line-through">{f.current}</span>
+              <span className="text-muted-foreground line-through">
+                {f.current}
+              </span>
             </div>
           ))}
         </div>
@@ -345,7 +363,9 @@ function WorkersTab({
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<WorkerSyncStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<WorkerSyncStatus | "all">(
+    "all",
+  );
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [roleId, setRoleId] = useState("viewer");
@@ -355,7 +375,8 @@ function WorkersTab({
 
   const { data, isLoading } = useQuery({
     queryKey: ["ors-worker-diff", page, search, ministryMap],
-    queryFn: () => getWorkerDiffPage(page, 50, search || undefined, ministryMap),
+    queryFn: () =>
+      getWorkerDiffPage(page, 50, search || undefined, ministryMap),
     placeholderData: (p) => p,
   });
 
@@ -363,28 +384,40 @@ function WorkersTab({
 
   // Client-side status filter
   const records = useMemo(
-    () => statusFilter === "all" ? allRecords : allRecords.filter(r => r.status === statusFilter),
-    [allRecords, statusFilter]
+    () =>
+      statusFilter === "all"
+        ? allRecords
+        : allRecords.filter((r) => r.status === statusFilter),
+    [allRecords, statusFilter],
   );
 
   // Status counts for current page
-  const counts = useMemo(() => ({
-    new: allRecords.filter(r => r.status === "new").length,
-    updated: allRecords.filter(r => r.status === "updated").length,
-    synced: allRecords.filter(r => r.status === "synced").length,
-  }), [allRecords]);
+  const counts = useMemo(
+    () => ({
+      new: allRecords.filter((r) => r.status === "new").length,
+      updated: allRecords.filter((r) => r.status === "updated").length,
+      synced: allRecords.filter((r) => r.status === "synced").length,
+    }),
+    [allRecords],
+  );
 
   // Selection helpers
-  const selectableRecords = records.filter(r => r.status !== "synced");
-  const allSelected = selectableRecords.length > 0 && selectableRecords.every(r => selectedIds.has(r.ors.id));
-  const someSelected = selectableRecords.some(r => selectedIds.has(r.ors.id));
+  const selectableRecords = records.filter((r) => r.status !== "synced");
+  const allSelected =
+    selectableRecords.length > 0 &&
+    selectableRecords.every((r) => selectedIds.has(r.ors.id));
+  const someSelected = selectableRecords.some((r) => selectedIds.has(r.ors.id));
 
-  const selectedNew = records.filter(r => r.status === "new" && selectedIds.has(r.ors.id));
-  const selectedUpdated = records.filter(r => r.status === "updated" && selectedIds.has(r.ors.id));
+  const selectedNew = records.filter(
+    (r) => r.status === "new" && selectedIds.has(r.ors.id),
+  );
+  const selectedUpdated = records.filter(
+    (r) => r.status === "updated" && selectedIds.has(r.ors.id),
+  );
 
   // Whether any selected worker has a migratable hash
   const hasHashes = [...selectedNew, ...selectedUpdated].some(
-    r => r.ors.hash_type !== "NONE"
+    (r) => r.ors.hash_type !== "NONE",
   );
 
   const doImport = async () => {
@@ -392,15 +425,26 @@ function WorkersTab({
     setConfirm(null);
     try {
       const result = await importOrsNewWorkers(
-        selectedNew.map(r => r.ors.id),
-        { defaultRoleId: roleId, ministryIdMap: ministryMap, migratePasswordHash: migrateHash }
+        selectedNew.map((r) => r.ors.id),
+        {
+          defaultRoleId: roleId,
+          ministryIdMap: ministryMap,
+          migratePasswordHash: migrateHash,
+        },
       );
       onResult(result);
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ["ors-worker-diff"] });
-      toast({ title: "Import done", description: `${result.success} imported, ${result.skipped} skipped` });
+      toast({
+        title: "Import done",
+        description: `${result.success} imported, ${result.skipped} skipped`,
+      });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Import failed", description: e.message });
+      toast({
+        variant: "destructive",
+        title: "Import failed",
+        description: e.message,
+      });
     } finally {
       setIsImporting(false);
     }
@@ -411,25 +455,40 @@ function WorkersTab({
     setConfirm(null);
     try {
       const result = await syncOrsUpdatedWorkers(
-        selectedUpdated.map(r => r.ors),
-        ministryMap
+        selectedUpdated.map((r) => r.ors),
+        ministryMap,
       );
       onResult(result);
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ["ors-worker-diff"] });
-      toast({ title: "Sync done", description: `${result.success} updated, ${result.skipped} skipped` });
+      toast({
+        title: "Sync done",
+        description: `${result.success} updated, ${result.skipped} skipped`,
+      });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Sync failed", description: e.message });
+      toast({
+        variant: "destructive",
+        title: "Sync failed",
+        description: e.message,
+      });
     } finally {
       setIsImporting(false);
     }
   };
 
   const toggleExpand = (id: number) =>
-    setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setExpandedIds((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
 
   const toggleSelect = (id: number, checked: boolean) =>
-    setSelectedIds(prev => { const n = new Set(prev); checked ? n.add(id) : n.delete(id); return n; });
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      checked ? n.add(id) : n.delete(id);
+      return n;
+    });
 
   return (
     <div className="space-y-3">
@@ -439,26 +498,49 @@ function WorkersTab({
           placeholder="Search first name…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { setSearch(searchInput); setPage(1); setSelectedIds(new Set()); } }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              setSearch(searchInput);
+              setPage(1);
+              setSelectedIds(new Set());
+            }
+          }}
           className="max-w-xs"
         />
-        <Button variant="outline" size="sm" onClick={() => { setSearch(searchInput); setPage(1); setSelectedIds(new Set()); }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setSearch(searchInput);
+            setPage(1);
+            setSelectedIds(new Set());
+          }}
+        >
           Search
         </Button>
 
         {/* Status filter pills */}
         <div className="flex gap-1 ml-2">
-          {(["all", "new", "updated", "synced"] as const).map(s => (
+          {(["all", "new", "updated", "synced"] as const).map((s) => (
             <button
               key={s}
-              onClick={() => { setStatusFilter(s); setSelectedIds(new Set()); }}
+              onClick={() => {
+                setStatusFilter(s);
+                setSelectedIds(new Set());
+              }}
               className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
                 statusFilter === s
                   ? "bg-foreground text-background border-foreground"
                   : "bg-background text-muted-foreground border-border hover:border-foreground/40"
               }`}
             >
-              {s === "all" ? `All (${allRecords.length})` : s === "new" ? `New (${counts.new})` : s === "updated" ? `Updated (${counts.updated})` : `Synced (${counts.synced})`}
+              {s === "all"
+                ? `All (${allRecords.length})`
+                : s === "new"
+                  ? `New (${counts.new})`
+                  : s === "updated"
+                    ? `Updated (${counts.updated})`
+                    : `Synced (${counts.synced})`}
             </button>
           ))}
         </div>
@@ -466,9 +548,15 @@ function WorkersTab({
         <div className="flex items-center gap-1.5 ml-auto">
           <span className="text-xs text-muted-foreground">Role:</span>
           <Select value={roleId} onValueChange={setRoleId}>
-            <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-28 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {roles?.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+              {roles?.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -479,9 +567,13 @@ function WorkersTab({
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-blue-200 bg-blue-50/50 text-sm">
           <Key className="h-4 w-4 text-blue-600 shrink-0" />
           <div className="flex-1">
-            <span className="font-medium text-blue-800">Migrate password hash</span>
+            <span className="font-medium text-blue-800">
+              Migrate password hash
+            </span>
             <p className="text-xs text-blue-600 mt-0.5">
-              Selected workers have MD5/SHA1/SHA256 hashes. When enabled, their existing passwords are imported into Firebase — users can log in without resetting.
+              Selected workers have MD5/SHA1/SHA256 hashes from ORS. Supabase
+              Auth cannot import these hashes, so temporary passwords are used
+              and users reset on first login.
             </p>
           </div>
           <Switch checked={migrateHash} onCheckedChange={setMigrateHash} />
@@ -498,15 +590,25 @@ function WorkersTab({
                   <SelectAllHeader
                     allSelected={allSelected}
                     someSelected={someSelected}
-                    onToggle={v => setSelectedIds(v ? new Set(selectableRecords.map(r => r.ors.id)) : new Set())}
+                    onToggle={(v) =>
+                      setSelectedIds(
+                        v
+                          ? new Set(selectableRecords.map((r) => r.ors.id))
+                          : new Set(),
+                      )
+                    }
                     disabled={selectableRecords.length === 0}
                   />
                 </TableHead>
                 <TableHead className="w-24">Status</TableHead>
                 <TableHead>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <span className="text-blue-700 font-semibold">ORS (legacy)</span>
-                    <span className="text-muted-foreground">New App (current)</span>
+                    <span className="text-blue-700 font-semibold">
+                      ORS (legacy)
+                    </span>
+                    <span className="text-muted-foreground">
+                      New App (current)
+                    </span>
                   </div>
                 </TableHead>
                 <TableHead className="w-40 text-xs">Phone</TableHead>
@@ -526,102 +628,160 @@ function WorkersTab({
               )}
               {!isLoading && records.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-16 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={8}
+                    className="h-16 text-center text-muted-foreground"
+                  >
                     No workers found.
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && records.map((rec: WorkerDiffRecord) => {
-                const isExpanded = expandedIds.has(rec.ors.id);
-                const isChecked = selectedIds.has(rec.ors.id);
-                const isSynced = rec.status === "synced";
-                const hasChanges = rec.diffFields.length > 0;
+              {!isLoading &&
+                records.map((rec: WorkerDiffRecord) => {
+                  const isExpanded = expandedIds.has(rec.ors.id);
+                  const isChecked = selectedIds.has(rec.ors.id);
+                  const isSynced = rec.status === "synced";
+                  const hasChanges = rec.diffFields.length > 0;
 
-                return (
-                  <React.Fragment key={rec.ors.id}>
-                    <TableRow className={`${isChecked ? "bg-muted/40" : ""} ${isSynced ? "opacity-60" : ""}`}>
-                      <TableCell>
-                        <Checkbox
-                          checked={isChecked}
-                          disabled={isSynced}
-                          onCheckedChange={c => toggleSelect(rec.ors.id, !!c)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <SyncBadge status={rec.status} />
-                      </TableCell>
+                  return (
+                    <React.Fragment key={rec.ors.id}>
+                      <TableRow
+                        className={`${isChecked ? "bg-muted/40" : ""} ${isSynced ? "opacity-60" : ""}`}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={isChecked}
+                            disabled={isSynced}
+                            onCheckedChange={(c) =>
+                              toggleSelect(rec.ors.id, !!c)
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <SyncBadge status={rec.status} />
+                        </TableCell>
 
-                      {/* Name column: ORS top, New bottom */}
-                      <TableCell>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <p className="font-medium text-sm text-blue-800">
-                              {rec.ors.first_name} {rec.ors.last_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">
-                              {rec.ors.email || <span className="italic text-destructive">no email</span>}
-                            </p>
-                          </div>
-                          <div>
-                            {rec.existing ? (
-                              <>
-                                <p className={`text-sm ${rec.diffFields.some(d => d.label === "First Name" || d.label === "Last Name") ? "text-amber-700 font-medium" : "text-muted-foreground"}`}>
-                                  {rec.existing.firstName} {rec.existing.lastName}
+                        {/* Name column: ORS top, New bottom */}
+                        <TableCell>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="font-medium text-sm text-blue-800">
+                                {rec.ors.first_name} {rec.ors.last_name}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                {rec.ors.email || (
+                                  <span className="italic text-destructive">
+                                    no email
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              {rec.existing ? (
+                                <>
+                                  <p
+                                    className={`text-sm ${rec.diffFields.some((d) => d.label === "First Name" || d.label === "Last Name") ? "text-amber-700 font-medium" : "text-muted-foreground"}`}
+                                  >
+                                    {rec.existing.firstName}{" "}
+                                    {rec.existing.lastName}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                    {rec.existing.email}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-xs text-muted-foreground italic">
+                                  Not imported yet
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate max-w-[180px]">{rec.existing.email}</p>
-                              </>
-                            ) : (
-                              <p className="text-xs text-muted-foreground italic">Not imported yet</p>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
+                        </TableCell>
 
-                      {/* Phone */}
-                      <TableCell className="text-xs">
-                        <div className={rec.diffFields.some(d => d.label === "Phone") ? "space-y-0.5" : ""}>
-                          <p className={rec.diffFields.some(d => d.label === "Phone") ? "text-blue-700 font-medium" : ""}>{rec.ors.mobile || "—"}</p>
-                          {rec.existing && rec.diffFields.some(d => d.label === "Phone") && (
-                            <p className="text-muted-foreground line-through text-[11px]">{rec.existing.phone || "—"}</p>
-                          )}
-                        </div>
-                      </TableCell>
-
-                      {/* Employment */}
-                      <TableCell className="text-xs">
-                        <p className={rec.diffFields.some(d => d.label === "Employment") ? "text-blue-700 font-medium" : ""}>{rec.ors.worker_type || "—"}</p>
-                      </TableCell>
-
-                      {/* Status */}
-                      <TableCell>
-                        <Badge
-                          variant={rec.ors.status?.toLowerCase() === "active" ? "default" : "secondary"}
-                          className={`text-xs ${rec.ors.status?.toLowerCase() === "active" ? "bg-green-600" : ""} ${rec.diffFields.some(d => d.label === "Status") ? "ring-1 ring-amber-400" : ""}`}
-                        >
-                          {rec.ors.status || "—"}
-                        </Badge>
-                      </TableCell>
-
-                      {/* Hash */}
-                      <TableCell><HashBadge type={rec.ors.hash_type} /></TableCell>
-
-                      {/* Expand toggle for updated rows */}
-                      <TableCell>
-                        {hasChanges && (
-                          <button
-                            onClick={() => toggleExpand(rec.ors.id)}
-                            className="p-1 rounded hover:bg-muted text-muted-foreground"
-                            title={isExpanded ? "Hide diff" : "Show diff"}
+                        {/* Phone */}
+                        <TableCell className="text-xs">
+                          <div
+                            className={
+                              rec.diffFields.some((d) => d.label === "Phone")
+                                ? "space-y-0.5"
+                                : ""
+                            }
                           >
-                            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                          </button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                    {isExpanded && <DiffDetail record={rec} />}
-                  </React.Fragment>
-                );
-              })}
+                            <p
+                              className={
+                                rec.diffFields.some((d) => d.label === "Phone")
+                                  ? "text-blue-700 font-medium"
+                                  : ""
+                              }
+                            >
+                              {rec.ors.mobile || "—"}
+                            </p>
+                            {rec.existing &&
+                              rec.diffFields.some(
+                                (d) => d.label === "Phone",
+                              ) && (
+                                <p className="text-muted-foreground line-through text-[11px]">
+                                  {rec.existing.phone || "—"}
+                                </p>
+                              )}
+                          </div>
+                        </TableCell>
+
+                        {/* Employment */}
+                        <TableCell className="text-xs">
+                          <p
+                            className={
+                              rec.diffFields.some(
+                                (d) => d.label === "Employment",
+                              )
+                                ? "text-blue-700 font-medium"
+                                : ""
+                            }
+                          >
+                            {rec.ors.worker_type || "—"}
+                          </p>
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell>
+                          <Badge
+                            variant={
+                              rec.ors.status?.toLowerCase() === "active"
+                                ? "default"
+                                : "secondary"
+                            }
+                            className={`text-xs ${rec.ors.status?.toLowerCase() === "active" ? "bg-green-600" : ""} ${rec.diffFields.some((d) => d.label === "Status") ? "ring-1 ring-amber-400" : ""}`}
+                          >
+                            {rec.ors.status || "—"}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Hash */}
+                        <TableCell>
+                          <HashBadge type={rec.ors.hash_type} />
+                        </TableCell>
+
+                        {/* Expand toggle for updated rows */}
+                        <TableCell>
+                          {hasChanges && (
+                            <button
+                              onClick={() => toggleExpand(rec.ors.id)}
+                              className="p-1 rounded hover:bg-muted text-muted-foreground"
+                              title={isExpanded ? "Hide diff" : "Show diff"}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && <DiffDetail record={rec} />}
+                    </React.Fragment>
+                  );
+                })}
             </TableBody>
           </Table>
         </CardContent>
@@ -635,24 +795,57 @@ function WorkersTab({
             : "No results"}
         </span>
         <div className="flex gap-2 items-center flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => { setPage(p => p - 1); setSelectedIds(new Set()); }} disabled={page <= 1 || isLoading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPage((p) => p - 1);
+              setSelectedIds(new Set());
+            }}
+            disabled={page <= 1 || isLoading}
+          >
             <ChevronLeft className="h-4 w-4" /> Prev
           </Button>
-          <Button variant="outline" size="sm" onClick={() => { setPage(p => p + 1); setSelectedIds(new Set()); }} disabled={page >= (data?.meta?.totalPages || 1) || isLoading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPage((p) => p + 1);
+              setSelectedIds(new Set());
+            }}
+            disabled={page >= (data?.meta?.totalPages || 1) || isLoading}
+          >
             Next <ChevronRight className="h-4 w-4" />
           </Button>
 
           {selectedUpdated.length > 0 && (
-            <Button size="sm" variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-50"
-              disabled={isImporting} onClick={() => setConfirm("sync")}>
-              {isImporting ? <LoaderCircle className="h-4 w-4 mr-1.5 animate-spin" /> : <GitMerge className="h-4 w-4 mr-1.5" />}
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-400 text-amber-700 hover:bg-amber-50"
+              disabled={isImporting}
+              onClick={() => setConfirm("sync")}
+            >
+              {isImporting ? (
+                <LoaderCircle className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <GitMerge className="h-4 w-4 mr-1.5" />
+              )}
               Sync Updated ({selectedUpdated.length})
             </Button>
           )}
 
           {selectedNew.length > 0 && (
-            <Button size="sm" disabled={isImporting} onClick={() => setConfirm("import")}>
-              {isImporting ? <LoaderCircle className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
+            <Button
+              size="sm"
+              disabled={isImporting}
+              onClick={() => setConfirm("import")}
+            >
+              {isImporting ? (
+                <LoaderCircle className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-1.5" />
+              )}
               Import New ({selectedNew.length})
             </Button>
           )}
@@ -660,22 +853,32 @@ function WorkersTab({
       </div>
 
       {/* Confirm: Import */}
-      <AlertDialog open={confirm === "import"} onOpenChange={o => !o && setConfirm(null)}>
+      <AlertDialog
+        open={confirm === "import"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Import {selectedNew.length} new worker(s)?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Import {selectedNew.length} new worker(s)?
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Firebase Auth accounts will be created. Workers already in the system (matched by ORS ID or email) are skipped automatically.</p>
+                <p>
+                  Supabase Auth accounts will be created. Workers already in the
+                  system (matched by ORS ID or email) are skipped automatically.
+                </p>
                 {migrateHash && hasHashes && (
                   <p className="flex items-center gap-1.5 text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1.5">
                     <Key className="h-3.5 w-3.5 shrink-0" />
-                    Password hashes will be imported — users can log in with their existing passwords.
+                    Legacy hashes are detected, but Supabase does not import
+                    hashes; temporary passwords are created.
                   </p>
                 )}
                 {!migrateHash && (
                   <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-                    Hash migration is off — a temporary password will be set and workers must reset on first login.
+                    Hash migration is off — a temporary password will be set and
+                    workers must reset on first login.
                   </p>
                 )}
               </div>
@@ -689,12 +892,19 @@ function WorkersTab({
       </AlertDialog>
 
       {/* Confirm: Sync */}
-      <AlertDialog open={confirm === "sync"} onOpenChange={o => !o && setConfirm(null)}>
+      <AlertDialog
+        open={confirm === "sync"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sync {selectedUpdated.length} updated worker(s)?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Sync {selectedUpdated.length} updated worker(s)?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Fields that differ (name, phone, status, employment, ministry) will be overwritten in the new app from ORS data. Firebase Auth display name and disabled state will also be updated. Passwords are not changed by sync.
+              Fields that differ (name, phone, status, employment, ministry)
+              will be overwritten in the new app from ORS data. Supabase profile
+              metadata is unchanged by sync. Passwords are not changed by sync.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

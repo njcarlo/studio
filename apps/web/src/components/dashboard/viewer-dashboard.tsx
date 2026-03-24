@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useUser } from "@studio/database";
+import { useAuthStore } from "@studio/store";
 import { format, isToday, isAfter } from "date-fns";
 import {
   Card,
@@ -36,7 +36,7 @@ import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { cn } from "@/lib/utils";
 
 export function ViewerDashboard() {
-  const { user } = useUser();
+  const { user } = useAuthStore();
   const { workerProfile, canCreateRoomReservation } = useUserRole();
 
   const [qrSeed, setQrSeed] = useState(Date.now());

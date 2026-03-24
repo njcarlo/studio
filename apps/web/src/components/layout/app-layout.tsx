@@ -22,7 +22,7 @@ import {
   Menu,
 } from "lucide-react";
 import Image from "next/image";
-import { useUser } from "@studio/database";
+import { useAuthStore } from "@studio/store";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@studio/ui";
@@ -77,7 +77,7 @@ const ImpersonationBanner = () => {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
   const router = useRouter();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useAuthStore();
 
   useEffect(() => {
     // If auth is done loading and there's no user, redirect to login

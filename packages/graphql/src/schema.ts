@@ -1,13 +1,5 @@
 import { gql } from 'graphql-tag';
-import * as admin from 'firebase-admin';
-
-// Re-initialize only if not already initialized
-if (admin.apps.length === 0) {
-  // We use the default environment in Firebase or need a Service Account locally
-  admin.initializeApp();
-}
-
-const db = admin.firestore();
+import { prisma } from '@studio/database/prisma';
 
 export const typeDefs = gql`
   """
@@ -42,10 +34,10 @@ export const typeDefs = gql`
   type Query {
     # Publicly accessible list (filtered fields)
     publicWorkers: [PublicWorker!]!
-    
+
     # Internal full list
     workers: [Worker!]!
-    
+
     worker(id: ID!): Worker
   }
 `;
@@ -53,33 +45,23 @@ export const typeDefs = gql`
 export const resolvers = {
   Query: {
     publicWorkers: async () => {
-      const snapshot = await db.collection('workers').where('status', '==', 'Active').get();
-      return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          avatarUrl: data.avatarUrl,
-          majorMinistryId: data.majorMinistryId,
-          status: data.status,
-        };
+      return prisma.worker.findMany({
+        where: { status: 'Active' },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatarUrl: true,
+          majorMinistryId: true,
+          status: true,
+        },
       });
     },
     workers: async () => {
-      const snapshot = await db.collection('workers').get();
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      return prisma.worker.findMany();
     },
-    worker: async (_: any, { id }: { id: string }) => {
-      const doc = await db.collection('workers').doc(id).get();
-      if (!doc.exists) return null;
-      return {
-        id: doc.id,
-        ...doc.data()
-      };
-    }
-  }
+    worker: async (_: unknown, { id }: { id: string }) => {
+      return prisma.worker.findUnique({ where: { id } });
+    },
+  },
 };

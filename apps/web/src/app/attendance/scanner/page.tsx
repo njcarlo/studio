@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@stud
 import { useToast } from "@/hooks/use-toast";
 import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@studio/ui";
-import { useUser } from "@studio/database";
+import { useAuthStore } from "@studio/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow, isToday } from "date-fns";

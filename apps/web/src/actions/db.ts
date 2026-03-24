@@ -4,6 +4,44 @@ import { prisma } from '@studio/database/prisma';
 import { revalidatePath } from 'next/cache';
 import { NotificationService } from '@/services/notification-service';
 
+const DEPARTMENT_NAME_TO_CODE: Record<string, string> = {
+    Worship: 'W',
+    Outreach: 'O',
+    Relationship: 'R',
+    Discipleship: 'D',
+    Administration: 'A',
+};
+
+const DEPARTMENT_CODE_TO_NAME: Record<string, string> = {
+    W: 'Worship',
+    O: 'Outreach',
+    R: 'Relationship',
+    D: 'Discipleship',
+    A: 'Administration',
+};
+
+function normalizeDepartmentCode(input: string | null | undefined): string {
+    if (!input) return 'D';
+    const trimmed = input.trim();
+    if (!trimmed) return 'D';
+
+    if (trimmed.length === 1) {
+        const code = trimmed.toUpperCase();
+        return DEPARTMENT_CODE_TO_NAME[code] ? code : 'D';
+    }
+
+    return DEPARTMENT_NAME_TO_CODE[trimmed] || 'D';
+}
+
+function mapMinistryForClient(ministry: any) {
+    const departmentCode = ministry.departmentCode;
+    return {
+        ...ministry,
+        department: DEPARTMENT_CODE_TO_NAME[departmentCode] || 'Discipleship',
+        departmentCode,
+    };
+}
+
 // --- Roles ---
 
 export async function getRoles() {
@@ -24,6 +62,14 @@ export async function createRole(data: any) {
     const role = await prisma.role.create({ data });
     revalidatePath('/settings/roles');
     return role;
+}
+
+export async function upsertRole(id: string, data: { name: string; permissions: string[] }) {
+    return prisma.role.upsert({
+        where: { id },
+        update: data,
+        create: { id, ...data },
+    });
 }
 
 export async function updateRole(id: string, data: any) {
@@ -261,35 +307,95 @@ export async function updateApproval(id: string, data: any) {
 // --- Ministries ---
 
 export async function getMinistries() {
-    return await prisma.ministry.findMany({
-        orderBy: {
-            weight: 'asc',
+    const ministries = await prisma.ministry.findMany({
+        include: {
+            department: true,
         },
+        orderBy: [
+            { department: { weight: 'asc' } },
+            { weight: 'asc' },
+            { name: 'asc' },
+        ],
     });
+
+    return ministries.map(mapMinistryForClient);
 }
 
 export async function createMinistry(data: any) {
-    const ministry = await prisma.ministry.create({ data });
+    const departmentCode = normalizeDepartmentCode(data.departmentCode || data.department);
+    const { department, departmentCode: _departmentCode, ...rest } = data;
+    const ministry = await prisma.ministry.create({
+        data: {
+            ...rest,
+            department: {
+                connect: { code: departmentCode },
+            },
+        },
+        include: {
+            department: true,
+        },
+    });
     revalidatePath('/settings/ministries');
-    return ministry;
+    return mapMinistryForClient(ministry);
 }
 
 export async function updateMinistry(id: string, data: any) {
+    const departmentCode = data.department || data.departmentCode
+        ? normalizeDepartmentCode(data.departmentCode || data.department)
+        : null;
+
+    const { department, departmentCode: _departmentCode, ...rest } = data;
+    const updateData: any = { ...rest };
+
+    if (departmentCode) {
+        updateData.department = {
+            connect: { code: departmentCode },
+        };
+    }
+
     const ministry = await prisma.ministry.update({
         where: { id },
-        data,
+        data: updateData,
+        include: {
+            department: true,
+        },
     });
     revalidatePath('/settings/ministries');
-    return ministry;
+    return mapMinistryForClient(ministry);
 }
 
 export async function createMinistries(data: any[]) {
-    const result = await prisma.ministry.createMany({
-        data,
-        skipDuplicates: true,
-    });
+    let createdCount = 0;
+
+    for (const row of data) {
+        const departmentCode = normalizeDepartmentCode(row.departmentCode || row.department);
+        const { department, departmentCode: _departmentCode, ...rest } = row;
+
+        const existing = await prisma.ministry.findFirst({
+            where: {
+                OR: [
+                    { id: rest.id },
+                    { name: { equals: rest.name, mode: 'insensitive' } },
+                ],
+            },
+            select: { id: true },
+        });
+
+        if (existing) continue;
+
+        await prisma.ministry.create({
+            data: {
+                ...rest,
+                department: {
+                    connect: { code: departmentCode },
+                },
+            },
+        });
+        createdCount++;
+    }
+
     revalidatePath('/settings/ministries');
-    return result;
+    return { count: createdCount };
 }
 
 export async function deleteMinistry(id: string) {
@@ -299,14 +405,27 @@ export async function deleteMinistry(id: string) {
 
 // --- Bookings ---
 
-export async function getBookings(filters: { workerProfileId?: string; dateFrom?: Date } = {}) {
+export async function getBookings(filters: {
+    workerProfileId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    roomId?: string;
+    status?: string;
+} = {}) {
     const where: any = {};
     if (filters.workerProfileId) {
         where.workerProfileId = filters.workerProfileId;
     }
-    if (filters.dateFrom) {
+    if (filters.roomId) {
+        where.roomId = filters.roomId;
+    }
+    if (filters.status) {
+        where.status = filters.status;
+    }
+    if (filters.dateFrom || filters.dateTo) {
         where.start = {
-            gte: filters.dateFrom,
+            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
         };
     }
 
@@ -318,6 +437,19 @@ export async function getBookings(filters: { workerProfileId?: string; dateFrom?
         },
         orderBy: {
             start: 'asc',
+        },
+    });
+}
+
+export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    return prisma.booking.findMany({
+        where: {
+            roomId,
+            start: { gte: startOfDay, lte: endOfDay },
         },
     });
 }
@@ -347,10 +479,15 @@ export async function deleteBooking(id: string) {
 
 // --- Meal Stubs ---
 
-export async function getMealStubs(filters: { workerId?: string; dateFrom?: Date } = {}) {
+export async function getMealStubs(filters: { workerId?: string; dateFrom?: Date; dateTo?: Date } = {}) {
     const where: any = {};
     if (filters.workerId) where.workerId = filters.workerId;
-    if (filters.dateFrom) where.date = { gte: filters.dateFrom };
+    if (filters.dateFrom || filters.dateTo) {
+        where.date = {
+            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+        };
+    }
 
     return await prisma.mealStub.findMany({
         where,
@@ -393,10 +530,15 @@ export async function deleteMealStub(id: string) {
 
 // --- Attendance ---
 
-export async function getAttendanceRecords(filters: { workerProfileId?: string; dateFrom?: Date } = {}) {
+export async function getAttendanceRecords(filters: { workerProfileId?: string; dateFrom?: Date; dateTo?: Date } = {}) {
     const where: any = {};
     if (filters.workerProfileId) where.workerProfileId = filters.workerProfileId;
-    if (filters.dateFrom) where.time = { gte: filters.dateFrom };
+    if (filters.dateFrom || filters.dateTo) {
+        where.time = {
+            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+        };
+    }
 
     return await prisma.attendanceRecord.findMany({
         where,
@@ -570,6 +712,72 @@ export async function getC2SMentees() {
     });
 }
 
+export async function createC2SGroup(data: {
+    name: string;
+    mentorId: string;
+    menteeIds?: string[];
+}) {
+    const group = await prisma.c2SGroup.create({
+        data: {
+            name: data.name,
+            mentorId: data.mentorId,
+            menteeIds: data.menteeIds ?? [],
+        },
+    });
+    revalidatePath('/c2s');
+    return group;
+}
+
+export async function updateC2SGroup(id: string, data: { name?: string; mentorId?: string; menteeIds?: string[] }) {
+    const group = await prisma.c2SGroup.update({
+        where: { id },
+        data,
+    });
+    revalidatePath('/c2s');
+    return group;
+}
+
+export async function deleteC2SGroup(id: string) {
+    await prisma.c2SGroup.delete({ where: { id } });
+    revalidatePath('/c2s');
+}
+
+export async function createC2SMentee(data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    status: string;
+    groupId: string;
+    mentorId: string;
+}) {
+    const mentee = await prisma.c2SMentee.create({ data });
+    revalidatePath('/c2s');
+    return mentee;
+}
+
+export async function updateC2SMentee(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    status?: string;
+    groupId?: string;
+    mentorId?: string;
+}) {
+    const mentee = await prisma.c2SMentee.update({
+        where: { id },
+        data,
+    });
+    revalidatePath('/c2s');
+    return mentee;
+}
+
+export async function deleteC2SMentee(id: string) {
+    await prisma.c2SMentee.delete({ where: { id } });
+    revalidatePath('/c2s');
+}
+
 // --- Venue Elements ---
 
 export async function getVenueElements() {
@@ -688,6 +896,13 @@ export async function deleteDepartmentSetting(id: string) {
 export async function createTransactionLog(data: any) {
     return await prisma.transactionLog.create({
         data,
+    });
+}
+
+export async function getTransactionLogs() {
+    return await prisma.transactionLog.findMany({
+        orderBy: { timestamp: 'desc' },
+        take: 200,
     });
 }
 

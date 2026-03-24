@@ -1,8 +1,7 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@studio/database';
+import { createWorker, updateWorker, deleteWorker } from '@/actions/db';
 import { useToast } from '@/hooks/use-toast';
 import type { Worker } from '@/lib/types';
 
@@ -11,13 +10,11 @@ import type { Worker } from '@/lib/types';
  * Handles single worker updates, additions, deletions, and batch operations.
  */
 export function useWorkerMutations() {
-    const firestore = useFirestore();
     const { toast } = useToast();
 
     const updateWorkerMutation = useMutation({
         mutationFn: async ({ id, data }: { id: string; data: Partial<Worker> }) => {
-            const workerRef = doc(firestore, 'workers', id);
-            return updateDocumentNonBlocking(workerRef, data);
+            return updateWorker(id, data);
         },
         onSuccess: () => {
             toast({
@@ -37,11 +34,7 @@ export function useWorkerMutations() {
 
     const addWorkerMutation = useMutation({
         mutationFn: async (data: Partial<Worker>) => {
-            const workersRef = collection(firestore, 'workers');
-            return addDocumentNonBlocking(workersRef, {
-                ...data,
-                createdAt: serverTimestamp(),
-            });
+            return createWorker(data);
         },
         onSuccess: () => {
             toast({
@@ -61,8 +54,7 @@ export function useWorkerMutations() {
 
     const deleteWorkerMutation = useMutation({
         mutationFn: async (id: string) => {
-            const workerRef = doc(firestore, 'workers', id);
-            return deleteDocumentNonBlocking(workerRef);
+            return deleteWorker(id);
         },
         onSuccess: () => {
             toast({
@@ -88,12 +80,7 @@ export function useWorkerMutations() {
             workerIds: string[];
             data: Partial<Worker>;
         }) => {
-            const batch = writeBatch(firestore);
-            workerIds.forEach((id) => {
-                const workerRef = doc(firestore, 'workers', id);
-                batch.update(workerRef, data);
-            });
-            return batch.commit();
+            await Promise.all(workerIds.map((id) => updateWorker(id, data)));
         },
         onSuccess: (_, variables) => {
             toast({

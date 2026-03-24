@@ -12,10 +12,7 @@ import {
   TableBody,
   TableCell,
 } from "@studio/ui";
-import {
-  Sheet,
-  SheetContent,
-} from "@studio/ui";
+import { Sheet, SheetContent } from "@studio/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,7 +83,7 @@ import {
   createMealStub as createMealStubSql,
   deleteWorker as deleteWorkerSql,
   deleteWorkers as deleteWorkersSql,
-  createApproval as createApprovalSql
+  createApproval as createApprovalSql,
 } from "@/actions/db";
 
 import { WorkerForm } from "@/components/workers/worker-form";
@@ -127,23 +124,18 @@ export default function WorkersPage() {
     search: searchQuery,
   });
 
-  const {
-    ministries: ministries,
-    isLoading: ministriesLoading
-  } = useMinistries();
+  const { ministries: ministries, isLoading: ministriesLoading } =
+    useMinistries();
 
-  const {
-    roles: roles,
-    isLoading: rolesLoading
-  } = useRoles();
+  const { roles: roles, isLoading: rolesLoading } = useRoles();
 
-  const { mealStubs: allMealStubs } = useMealStubs({ dateFrom: subDays(new Date(), 30) });
+  const { mealStubs: allMealStubs } = useMealStubs({
+    dateFrom: subDays(new Date(), 30),
+  });
   const { createApproval: createApprovalSql } = useApprovals();
 
-  const {
-    departments: allDepartments,
-    isLoading: departmentsLoading
-  } = useDepartments();
+  const { departments: allDepartments, isLoading: departmentsLoading } =
+    useDepartments();
 
   const departmentDataList = allDepartments;
 
@@ -158,7 +150,9 @@ export default function WorkersPage() {
   const explicitlyAssignedDepartment = useMemo(() => {
     if (!workerProfile?.id || !departmentDataList) return null;
     return (
-      (departmentDataList as any[]).find((d) => d.headId === workerProfile.id) || null
+      (departmentDataList as any[]).find(
+        (d) => d.headId === workerProfile.id,
+      ) || null
     );
   }, [workerProfile, departmentDataList]);
 
@@ -189,13 +183,14 @@ export default function WorkersPage() {
 
   // Use specialized stats hook for summary cards to avoid fetching all workers
   const { data: statsData } = useWorkerStats(
-    isSuperAdmin || canManageWorkers && !workerProfile?.majorMinistryId
+    isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId)
       ? undefined
       : isDepartmentHead
         ? departmentMinistries.map((m) => m.id)
-        : [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(
-            Boolean,
-          ) as string[],
+        : ([
+            workerProfile?.majorMinistryId,
+            workerProfile?.minorMinistryId,
+          ].filter(Boolean) as string[]),
   );
 
   const workers = allWorkers;
@@ -237,9 +232,12 @@ export default function WorkersPage() {
     }
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(worker.email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        worker.email,
+        {
+          redirectTo: `${window.location.origin}/auth/update-password`,
+        },
+      );
 
       if (error) throw error;
 
@@ -376,8 +374,10 @@ export default function WorkersPage() {
             "Batch ministry changes have been submitted for approval by the respective ministry heads.",
         });
       } else {
-        const majorVal = major === "unchanged" ? undefined : major === "none" ? "" : major;
-        const minorVal = minor === "unchanged" ? undefined : minor === "none" ? "" : minor;
+        const majorVal =
+          major === "unchanged" ? undefined : major === "none" ? "" : major;
+        const minorVal =
+          minor === "unchanged" ? undefined : minor === "none" ? "" : minor;
         await updateWorkersMinistries(selectedWorkerIds, majorVal, minorVal);
         await logAction(
           "Batch Moved Workers (SQL)",
@@ -415,7 +415,8 @@ export default function WorkersPage() {
         if (!w) return;
 
         const allStubs = allMealStubs || [];
-        const current = getWeeklyWeekdayCount(allStubs, id) + getSundayCount(allStubs, id);
+        const current =
+          getWeeklyWeekdayCount(allStubs, id) + getSundayCount(allStubs, id);
 
         const ministry = ministries.find(
           (m) => m.id === w.majorMinistryId || m.id === w.minorMinistryId,
@@ -509,10 +510,10 @@ export default function WorkersPage() {
         const isMinistryChanging =
           (dataToSave.majorMinistryId !== undefined &&
             dataToSave.majorMinistryId !==
-            (selectedWorker.majorMinistryId || "")) ||
+              (selectedWorker.majorMinistryId || "")) ||
           (dataToSave.minorMinistryId !== undefined &&
             dataToSave.minorMinistryId !==
-            (selectedWorker.minorMinistryId || ""));
+              (selectedWorker.minorMinistryId || ""));
 
         if (isMinistryChanging && !isSuperAdmin) {
           // Prepare ministry change data
@@ -565,10 +566,7 @@ export default function WorkersPage() {
               "The ministry change has been submitted for approval by both outgoing and incoming ministry heads.",
           });
         } else {
-          await (updateWorkerSql as any)(
-            selectedWorker.id,
-            dataToSave
-          );
+          await (updateWorkerSql as any)(selectedWorker.id, dataToSave);
           await logAction(
             "Updated Worker",
             "Workers",
@@ -623,7 +621,7 @@ export default function WorkersPage() {
           });
         }
       }
-      // Close the sheet after a tiny delay to ensure Firestore operations
+      // Close the sheet after a tiny delay to ensure async save operations
       // and state transitions don't conflict with Radix UI animations.
       setTimeout(() => setIsSheetOpen(false), 50);
     } catch (error) {
@@ -687,7 +685,9 @@ export default function WorkersPage() {
 
             importedCount++;
 
-            if ((newWorker.status || "Pending Approval") === "Pending Approval") {
+            if (
+              (newWorker.status || "Pending Approval") === "Pending Approval"
+            ) {
               approvalCount++;
               await createApprovalSql({
                 requester: workerProfile
@@ -757,11 +757,18 @@ export default function WorkersPage() {
 
   // --- Per-ministry breakdown for Department Head ---
   const ministryBreakdown = useMemo(() => {
-    if (!isDepartmentHead || departmentMinistries.length === 0 || !statsData?.ministryStats) return [];
-    
+    if (
+      !isDepartmentHead ||
+      departmentMinistries.length === 0 ||
+      !statsData?.ministryStats
+    )
+      return [];
+
     return departmentMinistries.map((ministry) => {
-      const stats = statsData.ministryStats.find(s => s.ministryId === ministry.id);
-      
+      const stats = statsData.ministryStats.find(
+        (s) => s.ministryId === ministry.id,
+      );
+
       return {
         ministry,
         total: stats?.total || 0,
@@ -771,7 +778,9 @@ export default function WorkersPage() {
         // primaryWorkers is tricky here because we only have the paginated ones.
         // For the ministry breakdown tabs, we should probably fetch the workers for that ministry specifically.
         // For now, let's just use the current page's workers filtered by ministry.
-        primaryWorkers: allWorkers.filter(w => w.majorMinistryId === ministry.id)
+        primaryWorkers: allWorkers.filter(
+          (w) => w.majorMinistryId === ministry.id,
+        ),
       };
     });
   }, [isDepartmentHead, departmentMinistries, statsData, allWorkers]);
@@ -1331,7 +1340,10 @@ export default function WorkersPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() =>
-                                setTimeout(() => handlePasswordReset(worker), 100)
+                                setTimeout(
+                                  () => handlePasswordReset(worker),
+                                  100,
+                                )
                               }
                             >
                               <Mail className="mr-2 h-4 w-4" /> Send Reset Link
@@ -1339,7 +1351,10 @@ export default function WorkersPage() {
                             {worker.id !== user?.uid && (
                               <DropdownMenuItem
                                 onSelect={() =>
-                                  setTimeout(() => handleImpersonate(worker), 100)
+                                  setTimeout(
+                                    () => handleImpersonate(worker),
+                                    100,
+                                  )
                                 }
                               >
                                 <LogIn className="mr-2 h-4 w-4" />
@@ -1368,7 +1383,11 @@ export default function WorkersPage() {
         {pagination && pagination.totalPages > 1 && (
           <div className="flex items-center justify-between px-2 py-4 border-t bg-muted/20 rounded-b-lg">
             <p className="text-sm text-muted-foreground">
-              Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+              Showing{" "}
+              <span className="font-medium">
+                {(currentPage - 1) * itemsPerPage + 1}
+              </span>{" "}
+              to{" "}
               <span className="font-medium">
                 {Math.min(currentPage * itemsPerPage, pagination.total)}
               </span>{" "}
@@ -1384,35 +1403,43 @@ export default function WorkersPage() {
                 Previous
               </Button>
               <div className="flex items-center gap-1 mx-2">
-                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                  let pageNum = i + 1;
-                  // Simple sliding window for pagination
-                  if (pagination.totalPages > 5 && currentPage > 3) {
-                    pageNum = currentPage - 3 + i;
-                    if (pageNum + (5 - i) > pagination.totalPages) {
-                      pageNum = pagination.totalPages - 4 + i;
+                {Array.from(
+                  { length: Math.min(5, pagination.totalPages) },
+                  (_, i) => {
+                    let pageNum = i + 1;
+                    // Simple sliding window for pagination
+                    if (pagination.totalPages > 5 && currentPage > 3) {
+                      pageNum = currentPage - 3 + i;
+                      if (pageNum + (5 - i) > pagination.totalPages) {
+                        pageNum = pagination.totalPages - 4 + i;
+                      }
                     }
-                  }
-                  
-                  if (pageNum <= 0 || pageNum > pagination.totalPages) return null;
 
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      className="w-8 h-8 p-0"
-                      onClick={() => setCurrentPage(pageNum)}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
+                    if (pageNum <= 0 || pageNum > pagination.totalPages)
+                      return null;
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={
+                          currentPage === pageNum ? "default" : "outline"
+                        }
+                        size="sm"
+                        className="w-8 h-8 p-0"
+                        onClick={() => setCurrentPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  },
+                )}
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))
+                }
                 disabled={currentPage === pagination.totalPages}
               >
                 Next

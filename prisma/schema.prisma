@@ -47,13 +47,23 @@ model Ministry {
   id                  String     @id @default(uuid())
   name                String
   description         String
-  department          Department
+  departmentCode      String
   leaderId            String
   headId              String?
   approverId          String?
   mealStubAssignerId  String?
   mealStubWeeklyLimit Int?
   weight              Int?
+  department          Department @relation(fields: [departmentCode], references: [code])
+
+  @@index([departmentCode])
+}
+
+model Department {
+  code       String     @id
+  name       String     @unique
+  weight     Int
+  ministries Ministry[]
 }
 
 model AttendanceRecord {
@@ -299,14 +309,6 @@ model InventoryLog {
   timestamp DateTime      @default(now())
   item      InventoryItem @relation(fields: [itemId], references: [id])
   worker    Worker?       @relation("WorkerLogs", fields: [workerId], references: [id])
-}
-
-enum Department {
-  Worship
-  Outreach
-  Relationship
-  Discipleship
-  Administration
 }
 
 enum InventoryType {

@@ -7,17 +7,17 @@
  * All existing consumers using `useUserRole()` continue to work without changes —
  * they simply read from the Zustand store instead of a React Context.
  *
- * The heavy lifting (Firestore listeners + permission derivation) now lives in:
- *   src/store/user-role-syncer.tsx  — renderless component mounted in FirebaseClientProvider
+ * The heavy lifting (store sync + permission derivation) now lives in:
+ *   src/store/user-role-syncer-sql.tsx  — renderless component mounted in AuthSync
  *   src/store/permissions.store.ts  — Zustand store
  */
 
-import React from 'react';
-import { usePermissionsStore, type PermissionsState } from '@studio/store';
-import { useShallow } from 'zustand/react/shallow';
+import React from "react";
+import { usePermissionsStore, type PermissionsState } from "@studio/store";
+import { useShallow } from "zustand/react/shallow";
 
 // Re-export the combined type under its original name for backward compatibility.
-export type UserRoleContextType = Omit<PermissionsState, '_setPermissions'>;
+export type UserRoleContextType = Omit<PermissionsState, "_setPermissions">;
 
 /**
  * Primary hook — reads all permission flags from the Zustand store.
@@ -59,7 +59,7 @@ export function useUserRole(): UserRoleContextType {
       canManageOrsSync: s.canManageOrsSync,
       canManageVenueAssistance: s.canManageVenueAssistance,
       canManageOwnMinistryAssistance: s.canManageOwnMinistryAssistance,
-    }))
+    })),
   );
 }
 

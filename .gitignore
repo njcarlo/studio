@@ -43,15 +43,9 @@ next-env.d.ts
 .genkit/*
 .env*
 
-# firebase
-firebase-debug.log
-firestore-debug.log
-
 # mobile signing & secrets
 *.jks
 *.keystore
-ios/App/App/GoogleService-Info.plist
-android/app/google-services.json
 
 /generated/prisma
 service-account.json

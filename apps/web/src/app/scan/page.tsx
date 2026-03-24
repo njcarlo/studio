@@ -2,26 +2,24 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { doc } from "firebase/firestore";
 import { Button } from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import { QrCode, ArrowLeft } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@studio/ui";
-import { useFirestore, useDoc, updateDocumentNonBlocking } from "@studio/database";
+import { updateMealStub } from "@/actions/db";
 
 export default function ScanMealStubPage() {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const firestore = useFirestore();
 
     useEffect(() => {
         const getCameraPermission = async () => {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             setHasCameraPermission(true);
-    
+
             if (videoRef.current) {
               videoRef.current.srcObject = stream;
             }
@@ -35,13 +33,13 @@ export default function ScanMealStubPage() {
             });
           }
         };
-    
+
         getCameraPermission();
       }, [toast]);
 
-    const handleScan = (stubId: string, currentStatus: 'Issued' | 'Claimed') => {
+    const handleScan = async (stubId: string, currentStatus: 'Issued' | 'Claimed') => {
         if (currentStatus === 'Issued') {
-            updateDocumentNonBlocking(doc(firestore, "mealstubs", stubId), { status: 'Claimed' });
+            await updateMealStub(stubId, { status: 'Claimed' });
             toast({
                 title: "Meal Stub Claimed!",
                 description: "The meal stub has been successfully validated and claimed.",
@@ -83,7 +81,7 @@ export default function ScanMealStubPage() {
                         </div>
                         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 animate-pulse" />
                     </div>
-                    
+
                     {hasCameraPermission === false && (
                          <Alert variant="destructive">
                             <AlertTitle>Camera Access Required</AlertTitle>

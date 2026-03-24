@@ -39,15 +39,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useFirestore, useUser, useCollection, addDocumentNonBlocking, useMemoFirebase } from "@studio/database";
-import { collection, serverTimestamp, Timestamp as FirebaseTimestamp, query, where, getDocs } from "firebase/firestore";
+import { useAuthStore } from "@studio/store";
+import { useQuery } from "@tanstack/react-query";
+import { getRooms, getBranches, getAreas, getMinistries, getVenueElements, getBookingsForRoomOnDate, createBooking, createApproval } from "@/actions/db";
 import { useToast } from "@/hooks/use-toast";
 import type { Room, Branch, Area, Ministry, VenueElement } from "@studio/types";
 
 export default function NewReservationPage() {
-    const { user } = useUser();
+    const { user } = useAuthStore();
     const { workerProfile, isSuperAdmin, isLoading: roleLoading } = useUserRole();
-    const firestore = useFirestore();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -76,20 +76,11 @@ export default function NewReservationPage() {
     const [guidelinesAccepted, setGuidelinesAccepted] = useState(false);
 
     // Data fetching
-    const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
-    const { data: rooms } = useCollection<Room>(roomsRef);
-
-    const branchesRef = useMemoFirebase(() => collection(firestore, "branches"), [firestore]);
-    const { data: branches } = useCollection<Branch>(branchesRef);
-
-    const areasRef = useMemoFirebase(() => collection(firestore, "areas"), [firestore]);
-    const { data: areas } = useCollection<Area>(areasRef);
-
-    const ministriesRef = useMemoFirebase(() => collection(firestore, "ministries"), [firestore]);
-    const { data: ministries } = useCollection<Ministry>(ministriesRef);
-
-    const venueElementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
-    const { data: venueElements } = useCollection<VenueElement>(venueElementsRef);
+    const { data: rooms } = useQuery({ queryKey: ['rooms'], queryFn: getRooms });
+    const { data: branches } = useQuery({ queryKey: ['branches'], queryFn: getBranches });
+    const { data: areas } = useQuery({ queryKey: ['areas'], queryFn: getAreas });
+    const { data: ministries } = useQuery({ queryKey: ['ministries'], queryFn: getMinistries });
+    const { data: venueElements } = useQuery({ queryKey: ['venue-elements'], queryFn: getVenueElements });
 
     const workerMinistry = useMemo(() => {
         if (!workerProfile || !ministries) return null;
@@ -165,20 +156,7 @@ export default function NewReservationPage() {
                 return;
             }
 
-            const startOfDay = new Date(date);
-            startOfDay.setHours(0, 0, 0, 0);
-
-            const endOfDay = new Date(date);
-            endOfDay.setHours(23, 59, 59, 999);
-
-            const q = query(
-                collection(firestore, 'rooms', roomId, 'reservations'),
-                where('start', '>=', FirebaseTimestamp.fromDate(startOfDay)),
-                where('start', '<=', FirebaseTimestamp.fromDate(endOfDay))
-            );
-
-            const querySnapshot = await getDocs(q);
-            const existingReservations = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+            const existingReservations = await getBookingsForRoomOnDate(roomId, date!);
 
             let hasConflict = false;
             let conflictingStatus = '';
@@ -187,8 +165,8 @@ export default function NewReservationPage() {
             for (const res of existingReservations) {
                 if (res.status === 'Rejected') continue;
 
-                const resStart = res.start?.toDate();
-                const resEnd = res.end?.toDate();
+                const resStart = new Date(res.start);
+                const resEnd = new Date(res.end);
 
                 if (resStart && resEnd && start < resEnd && end > resStart) {
                     hasConflict = true;
@@ -222,7 +200,7 @@ export default function NewReservationPage() {
 
             const requesterName = workerProfile
                 ? `${workerProfile.firstName} ${workerProfile.lastName}`
-                : (user?.displayName || user?.email?.split('@')[0] || "System Admin");
+                : (user?.email?.split('@')[0] || "System Admin");
             const requesterEmail = workerProfile?.email || user?.email || "admin@system.com";
             const requesterMinistryId = workerProfile?.majorMinistryId || "";
 
@@ -231,14 +209,12 @@ export default function NewReservationPage() {
                 roomId,
                 title: purpose, // Using purpose as title for compatibility
                 purpose,
-                start: FirebaseTimestamp.fromDate(start),
-                end: FirebaseTimestamp.fromDate(end),
                 status: 'Pending Ministry Approval',
                 workerProfileId: workerProfile?.id || "system-admin",
                 name: requesterName,
                 ministryId: requesterMinistryId,
                 email: requesterEmail,
-                dateRequested: serverTimestamp(),
+                dateRequested: new Date(),
                 pax: paxNum || 0,
                 numTables: parseInt(numTables) || 0,
                 numChairs: parseInt(numChairs) || 0,
@@ -250,22 +226,22 @@ export default function NewReservationPage() {
                 guidelinesAccepted: true,
             };
 
-            const reservationRef = await addDocumentNonBlocking(collection(firestore, 'rooms', roomId, 'reservations'), bookingData);
+            const newBooking = await createBooking({ ...bookingData, start, end });
 
-            if (reservationRef?.id) {
-                await addDocumentNonBlocking(collection(firestore, 'approvals'), {
+            if (newBooking?.id) {
+                await createApproval({
                     requester: requesterName,
                     type: 'Room Booking',
                     details: `"${purpose}" for room: ${selectedRoom?.name}` + (hasConflict && conflictingStatus === 'Pending' ? `\n(⚠️ Conflicts with pending request by ${conflictingRequester})` : ""),
-                    date: serverTimestamp(),
+                    date: new Date(),
                     status: 'Pending Ministry Approval',
                     roomId,
-                    reservationId: reservationRef.id,
+                    reservationId: newBooking.id,
                     workerId: workerProfile?.id || "system-admin",
                     requestId
                 });
 
-                setNewRequestId(reservationRef.id);
+                setNewRequestId(newBooking.id);
                 setIsSubmitted(true);
             }
         } catch (error) {
@@ -370,7 +346,7 @@ export default function NewReservationPage() {
                                 <Input
                                     value={workerProfile
                                         ? `${workerProfile.firstName} ${workerProfile.lastName}`
-                                        : (user?.displayName || user?.email?.split('@')[0] || "System Admin")
+                                        : (user?.email?.split('@')[0] || "System Admin")
                                     }
                                     disabled
                                     className="bg-muted"

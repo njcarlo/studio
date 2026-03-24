@@ -7,7 +7,7 @@ This document captures the planned updates to the Worker Management and RBAC sys
 **Decisions made:**
 - Keep the Department / Ministry org structure (not the full generic `org_nodes` tree) — but make it more flexible
 - Workers can have **multiple roles** (`WorkerRole` join table)
-- Auth migrates from **Firebase → Supabase Auth**
+- Auth standardizes on **Supabase Auth**
 - Permissions renamed to **`module:action`** format
 
 ---
@@ -88,32 +88,26 @@ The four hardcoded position fields on Ministry (`leaderId`, `headId`, `approverI
 
 ---
 
-## 2. Auth Migration: Firebase → Supabase
+## 2. Auth Migration: Supabase
 
-### Files that touch Firebase today
+**Status: Already done.** Supabase Auth is the active authentication system.
 
-| File | What it does |
-|---|---|
-| `packages/store/src/auth.store.ts` | Holds Firebase `User` object |
-| `apps/web/src/lib/firebase-admin.ts` | Admin SDK for server-side auth |
-| `apps/web/src/app/auth-sync.tsx` | Bridges Firebase auth → Zustand |
-| `apps/web/src/actions/auth.ts` | Server auth actions (login, logout, reset) |
-| `apps/web/src/store/user-role-syncer-sql.tsx` | Reads Firebase UID to load worker |
-| `apps/web/src/app/login/page.tsx` | Firebase sign-in |
-| `apps/web/src/app/signup/page.tsx` | Firebase createUserWithEmailAndPassword |
+### What's in place
 
-### Migration steps (in order)
+- Login, signup, and password reset all use `supabase.auth.signInWithPassword()` / `signUp()`
+- `auth-sync.tsx` wraps the app in `<SupabaseProvider>` and syncs Supabase session into Zustand
+- `user-role-syncer-sql.tsx` reads from the Supabase session to load worker + permissions
+- `@supabase/supabase-js` is installed across all packages
 
-1. Install `@supabase/supabase-js` and `@supabase/ssr` — set up browser + server clients in `src/lib/supabase/`
-2. Replace `auth.store.ts` — swap Firebase `User` for Supabase `Session`
-3. Replace `auth-sync.tsx` — use `supabase.auth.onAuthStateChange`
-4. Replace `firebase-admin.ts` — use Supabase service role client for server-side
-5. Rewrite `auth.ts` server actions — `signInWithPassword`, `signOut`, `resetPasswordForEmail`
-6. Update login/signup pages
-7. Update `user-role-syncer-sql.tsx` — use Supabase session UID to look up worker via `authUserId`
-8. Worker number login: workers log in with their numeric `workerNumber` + password. Look up `workerNumber` in the `workers` table pre-login to resolve their Supabase Auth identity.
+### Design note: Worker.id = Supabase UID
 
-QR token and QR-based auth paths remain unchanged.
+The Worker `id` field stores the Supabase Auth user ID directly (set as `id: uid` on signup). There is no separate `authUserId` field — the primary key *is* the auth identity. This differs from the PROMPT spec but is a valid and simpler approach. No change needed here.
+
+### Cleanup remaining (not blocking)
+
+- Verify no legacy document-store artifacts remain in shared packages
+- Remove stale comments that reference retired auth/storage implementations
+- Ensure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set in `.env.local`
 
 ---
 
@@ -227,6 +221,6 @@ export const PERMISSIONS = {
 1. **Schema migration** — New Prisma models + migration (Worker, Role, Permission, RolePermission, WorkerRole). No logic changes yet.
 2. **Seed permissions** — Populate `Permission` table with all `module:action` strings; migrate existing role `permissions String[]` to `RolePermission` rows.
 3. **RBAC rewrite** — `UserRoleSyncer` + `PermissionsStore` to aggregate permissions from multiple roles.
-4. **Auth migration** — Firebase → Supabase (can run in parallel with step 3).
+4. **Auth hardening** — Supabase session and role flows (can run in parallel with step 3).
 5. **Worker module updates** — Multi-role UI, renamed fields, new profile fields.
 6. **Roles admin page** — Permission matrix using registry, `isSuperAdmin` / `isSystemRole` handling.

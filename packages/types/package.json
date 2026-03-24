@@ -1,9 +1,6 @@
 {
-    "name": "@studio/types",
-    "version": "0.0.0",
-    "private": true,
-    "main": "./index.ts",
-    "dependencies": {
-        "firebase": "^11.9.1"
-    }
+  "name": "@studio/types",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./index.ts"
 }

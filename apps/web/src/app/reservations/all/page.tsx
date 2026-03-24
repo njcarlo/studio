@@ -15,50 +15,51 @@ import {
 } from "@studio/ui";
 import {
     Calendar,
-    Filter,
     Search,
     LoaderCircle,
     CheckCircle2,
     XCircle,
     Clock,
     Building2,
-    Info
 } from "lucide-react";
 import { Input } from "@studio/ui";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useFirestore, useCollection, useMemoFirebase } from "@studio/database";
-import { collection, collectionGroup } from "firebase/firestore";
+import { useQuery } from "@tanstack/react-query";
+import { getBookings, getRooms, getVenueElements } from "@/actions/db";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useBookingMutations } from "@/hooks/use-booking-mutations";
-import type { Booking, Room, VenueElement } from "@studio/types";
+import type { Booking, VenueElement } from "@studio/types";
 
 export default function AllReservationsPage() {
     const { canApproveRoomReservation, isLoading: roleLoading } = useUserRole();
-    const firestore = useFirestore();
     const { toast } = useToast();
 
-    // Mutations
     const { updateStatus, isUpdatingStatus } = useBookingMutations();
 
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
 
-    // Data fetching
-    const reservationsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
-    const { data: allBookings, isLoading: bookingsLoading } = useCollection<Booking>(reservationsQuery);
+    const { data: allBookings, isLoading: bookingsLoading } = useQuery({
+        queryKey: ["bookings"],
+        queryFn: () => getBookings(),
+    });
 
-    const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
-    const { data: rooms } = useCollection<Room>(roomsRef);
+    const { data: rooms } = useQuery({
+        queryKey: ["rooms"],
+        queryFn: getRooms,
+    });
 
-    const venueElementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
-    const { data: venueElements } = useCollection<VenueElement>(venueElementsRef);
+    const { data: venueElements } = useQuery({
+        queryKey: ["venue-elements"],
+        queryFn: getVenueElements,
+    });
 
     const filteredBookings = useMemo(() => {
         if (!allBookings) return [];
         return allBookings
-            .filter(b => {
+            .filter((b: any) => {
                 const matchesSearch =
                     b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -69,14 +70,14 @@ export default function AllReservationsPage() {
 
                 return matchesSearch && matchesStatus;
             })
-            .sort((a, b) => (b.start as any).seconds - (a.start as any).seconds);
+            .sort((a: any, b: any) => new Date(b.start).getTime() - new Date(a.start).getTime());
     }, [allBookings, searchTerm, statusFilter]);
 
     const getRoomName = (roomId: string) => {
-        return rooms?.find(r => r.id === roomId)?.name || "Unknown Room";
+        return (rooms as any[])?.find((r: any) => r.id === roomId)?.name || "Unknown Room";
     };
 
-    const handleUpdateStatus = (booking: Booking, newStatus: 'Approved' | 'Rejected') => {
+    const handleUpdateStatus = (booking: any, newStatus: 'Approved' | 'Rejected') => {
         updateStatus({ booking, newStatus });
     };
 
@@ -181,9 +182,9 @@ export default function AllReservationsPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredBookings.map((booking) => {
-                                    const startTime = (booking.start as any).toDate();
-                                    const endTime = (booking.end as any).toDate();
+                                filteredBookings.map((booking: any) => {
+                                    const startTime = new Date(booking.start);
+                                    const endTime = new Date(booking.end);
 
                                     const statusClass =
                                         booking.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
@@ -227,8 +228,8 @@ export default function AllReservationsPage() {
                                                         </div>
                                                     ) : null}
                                                     <div className="flex gap-1 flex-wrap">
-                                                        {booking.requestedElements?.map(elId => {
-                                                            const el = venueElements?.find(v => v.id === elId);
+                                                        {booking.requestedElements?.map((elId: string) => {
+                                                            const el = (venueElements as any[])?.find((v: any) => v.id === elId);
                                                             let shortName = el?.name || elId;
                                                             if (shortName.length > 8) shortName = shortName.substring(0, 6) + '..';
                                                             return <Badge key={elId} variant="outline" className="text-[9px] h-4 px-1">{shortName}</Badge>;
@@ -272,7 +273,7 @@ export default function AllReservationsPage() {
                                                         </Button>
                                                     </div>
                                                 ) : (
-                                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => {/* Detail view? */ }}>
+                                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => {}}>
                                                         View
                                                     </Button>
                                                 )}

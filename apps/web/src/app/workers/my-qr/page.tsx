@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { useUser } from "@studio/database";
+import { useAuthStore } from "@studio/store";
 import {
   Card,
   CardContent,
@@ -18,7 +18,7 @@ import { updateWorker as updateWorkerSql } from "@/actions/db";
 import { useToast } from "@/hooks/use-toast";
 
 export default function MyQRCodePage() {
-  const { user } = useUser();
+  const { user } = useAuthStore();
   const { workerProfile } = useUserRole();
   const { toast } = useToast();
   const [isRegenerating, setIsRegenerating] = useState(false);

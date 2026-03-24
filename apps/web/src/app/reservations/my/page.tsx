@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
+import { Card, CardContent, CardTitle, CardDescription } from "@studio/ui";
 import { Button } from "@studio/ui";
 import { Badge } from "@studio/ui";
 import {
@@ -29,77 +28,69 @@ import {
 import { Separator } from "@studio/ui";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useFirestore, useUser, useCollection, updateDocumentNonBlocking, useMemoFirebase, addDocumentNonBlocking } from "@studio/database";
-import { collection, collectionGroup, query, where, serverTimestamp, Timestamp as FirebaseTimestamp, doc } from "firebase/firestore";
-import { format, isAfter, isBefore, addMinutes, subMinutes } from "date-fns";
+import { useAuthStore } from "@studio/store";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getBookings, getRooms, getVenueElements, updateBooking, createScanLog } from "@/actions/db";
+import { format, isAfter, isBefore, subMinutes } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import type { Booking, Room, VenueElement } from "@studio/types";
+import type { VenueElement } from "@studio/types";
 
 export default function MyReservationsPage() {
-    const { user } = useUser();
+    const { user } = useAuthStore();
     const { workerProfile, isLoading: roleLoading } = useUserRole();
-    const firestore = useFirestore();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
-    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+    const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-    // Data fetching
-    const reservationsQuery = useMemoFirebase(() => collectionGroup(firestore, 'reservations'), [firestore]);
-    const { data: allBookings, isLoading: bookingsLoading } = useCollection<Booking>(reservationsQuery);
+    const { data: allBookings, isLoading: bookingsLoading } = useQuery({
+        queryKey: ["bookings"],
+        queryFn: () => getBookings(),
+    });
 
-    const roomsRef = useMemoFirebase(() => collection(firestore, "rooms"), [firestore]);
-    const { data: rooms } = useCollection<Room>(roomsRef);
+    const { data: rooms } = useQuery({
+        queryKey: ["rooms"],
+        queryFn: getRooms,
+    });
 
-    const venueElementsRef = useMemoFirebase(() => collection(firestore, "venueElements"), [firestore]);
-    const { data: venueElements } = useCollection<VenueElement>(venueElementsRef);
+    const { data: venueElements } = useQuery({
+        queryKey: ["venue-elements"],
+        queryFn: getVenueElements,
+    });
 
     const myBookings = useMemo(() => {
         if (!allBookings) return [];
-
-        return allBookings
-            .filter(b => {
-                // Filter by Profile ID if profile exists
+        return (allBookings as any[])
+            .filter((b: any) => {
                 const matchesProfile = workerProfile && b.workerProfileId === workerProfile.id;
-                // Fallback: Filter by Email (important for admins or unlinked profiles)
                 const matchesEmail = user?.email && (b.email === user.email || b.requesterEmail === user.email);
-
                 return matchesProfile || matchesEmail;
             })
-            .sort((a, b) => {
-                const aTime = (a.start as any)?.seconds || 0;
-                const bTime = (b.start as any)?.seconds || 0;
-                return bTime - aTime;
-            });
+            .sort((a: any, b: any) => new Date(b.start).getTime() - new Date(a.start).getTime());
     }, [allBookings, workerProfile, user]);
 
     const getRoomName = (roomId: string) => {
-        return rooms?.find(r => r.id === roomId)?.name || "Unknown Room";
+        return (rooms as any[])?.find((r: any) => r.id === roomId)?.name || "Unknown Room";
     };
 
-    const handleCheckIn = async (booking: Booking) => {
-        if (!booking.id || !booking.roomId) return;
+    const handleCheckIn = async (booking: any) => {
+        if (!booking.id) return;
 
         try {
-            // Update the reservation document
-            await updateDocumentNonBlocking(doc(firestore, `rooms/${booking.roomId}/reservations`, booking.id), {
-                checkedInAt: serverTimestamp()
-            });
+            await updateBooking(booking.id, { checkedInAt: new Date() });
 
-            // Create a scan log
-            await addDocumentNonBlocking(collection(firestore, "scan_logs"), {
-                workerProfileId: workerProfile?.id || "system-admin",
-                name: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.displayName || "System Admin"),
-                ministryId: workerProfile?.majorMinistryId || "",
-                email: workerProfile?.email || user?.email || "",
-                timestamp: serverTimestamp(),
+            await createScanLog({
+                scannerId: workerProfile?.id || "system-admin",
+                scannerName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : "System Admin",
                 scanType: 'Room Check-in',
                 details: `Self check-in for: ${booking.title}`,
                 reservationId: booking.id,
                 targetUserId: workerProfile?.id,
-                targetUserName: `${workerProfile?.firstName} ${workerProfile?.lastName}`
+                targetUserName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : undefined,
             });
 
+            queryClient.invalidateQueries({ queryKey: ['bookings'] });
             toast({
                 title: "Checked In Successfully",
                 description: `You have checked into ${getRoomName(booking.roomId)}.`
@@ -114,14 +105,11 @@ export default function MyReservationsPage() {
         }
     };
 
-    const canCheckIn = (booking: Booking) => {
+    const canCheckIn = (booking: any) => {
         if (booking.status !== 'Approved' || booking.checkedInAt) return false;
-
         const now = new Date();
-        const start = (booking.start as any).toDate();
-        const end = (booking.end as any).toDate();
-
-        // Allow check-in 15 minutes before and anytime during the booking
+        const start = new Date(booking.start);
+        const end = new Date(booking.end);
         const allowStart = subMinutes(start, 15);
         return isAfter(now, allowStart) && isBefore(now, end);
     };
@@ -160,9 +148,9 @@ export default function MyReservationsPage() {
                     </Card>
                 ) : (
                     <div className="grid gap-4">
-                        {myBookings.map((booking) => {
-                            const startTime = (booking.start as any).toDate();
-                            const endTime = (booking.end as any).toDate();
+                        {myBookings.map((booking: any) => {
+                            const startTime = new Date(booking.start);
+                            const endTime = new Date(booking.end);
                             const isUpcoming = isAfter(startTime, new Date());
                             const isPast = isBefore(endTime, new Date());
 
@@ -211,7 +199,7 @@ export default function MyReservationsPage() {
                                                     </div>
                                                     <div className="flex items-center gap-2 text-muted-foreground">
                                                         <Timer className="h-4 w-4" />
-                                                        <span>Requested on: {booking.dateRequested ? format((booking.dateRequested as any).toDate(), "PP") : "N/A"}</span>
+                                                        <span>Requested on: {booking.dateRequested ? format(new Date(booking.dateRequested), "PP") : "N/A"}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -223,7 +211,7 @@ export default function MyReservationsPage() {
                                                     </Button>
                                                 ) : booking.checkedInAt ? (
                                                     <div className="text-center text-xs text-green-600 font-medium bg-green-50 p-2 rounded border border-green-100">
-                                                        Checked in at {format((booking.checkedInAt as any).toDate(), "p")}
+                                                        Checked in at {format(new Date(booking.checkedInAt), "p")}
                                                     </div>
                                                 ) : isPast && booking.status === 'Approved' ? (
                                                     <div className="text-center text-xs text-muted-foreground bg-muted p-2 rounded">
@@ -251,18 +239,18 @@ export default function MyReservationsPage() {
                     onClose={() => setIsDetailsOpen(false)}
                     booking={selectedBooking}
                     roomName={selectedBooking ? getRoomName(selectedBooking.roomId) : ""}
-                    venueElements={venueElements || []}
+                    venueElements={(venueElements as any[]) || []}
                 />
             </div>
         </AppLayout>
     );
 }
 
-const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, venueElements }: { isOpen: boolean; onClose: () => void; booking: Booking | null; roomName: string; venueElements: VenueElement[]; }) => {
+const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, venueElements }: { isOpen: boolean; onClose: () => void; booking: any | null; roomName: string; venueElements: any[]; }) => {
     if (!booking) return null;
 
-    const startTime = (booking.start as any).toDate();
-    const endTime = (booking.end as any).toDate();
+    const startTime = new Date(booking.start);
+    const endTime = new Date(booking.end);
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
@@ -341,8 +329,8 @@ const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, venueElements
                         <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Requested Elements</h4>
                         <div className="grid grid-cols-1 gap-2">
                             {booking.requestedElements && booking.requestedElements.length > 0 ? (
-                                booking.requestedElements.map(elId => {
-                                    const el = venueElements.find(v => v.id === elId);
+                                booking.requestedElements.map((elId: string) => {
+                                    const el = venueElements.find((v: any) => v.id === elId);
                                     return (
                                         <div key={elId} className="flex items-center gap-2 text-sm">
                                             <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -352,7 +340,6 @@ const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, venueElements
                                 })
                             ) : null}
 
-                            {/* Legacy fallback */}
                             {(!booking.requestedElements || booking.requestedElements.length === 0) && (
                                 <>
                                     {booking.equipment_TV && (
@@ -386,7 +373,7 @@ const BookingDetailsSheet = ({ isOpen, onClose, booking, roomName, venueElements
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Timer className="h-3 w-3" />
-                            <span>Requested on: {booking.dateRequested ? format((booking.dateRequested as any).toDate(), "PPP p") : "N/A"}</span>
+                            <span>Requested on: {booking.dateRequested ? format(new Date(booking.dateRequested), "PPP p") : "N/A"}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Users className="h-3 w-3" />

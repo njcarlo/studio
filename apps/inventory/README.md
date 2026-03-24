@@ -55,7 +55,7 @@ This application is responsible for tracking physical assets, stock levels, and 
     - [ ] **Consumable Analytics**: Track consumption rates, predictable depletion dates, and low-stock trends.
     - [ ] **Detailed Audit Trail**: Chronological history for every item (Who, When, What).
 - [ ] **4.3 Media & Polish**:
-    - [ ] **Item Photos**: Firebase Storage integration for visual asset management.
+    - [ ] **Item Photos**: Supabase Storage integration for visual asset management.
     - [ ] **Permissions**: RBAC (Read-only vs Manager vs Admin).
     - [ ] **Mobile optimization**: Touch-friendly buttons and haptic feedback for scanning.
 

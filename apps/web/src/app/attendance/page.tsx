@@ -12,7 +12,7 @@ import {
     CardContent
 } from "@studio/ui";
 import { LogIn, LogOut, LoaderCircle, ShieldAlert } from "lucide-react";
-import { useUser } from "@studio/database";
+import { useAuthStore } from "@studio/store";
 import { format, subDays } from "date-fns";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +24,7 @@ function generateToken() {
 }
 
 export default function AttendancePage() {
-    const { user } = useUser();
+    const { user } = useAuthStore();
     const { canViewAttendance, workerProfile, isLoading: isRoleLoading } = useUserRole();
     const { toast } = useToast();
     const [isRegenerating, setIsRegenerating] = useState(false);

@@ -4,8 +4,8 @@
     "private": true,
     "main": "./index.ts",
     "dependencies": {
+        "@studio/database": "*",
         "@studio/types": "*",
-        "firebase-admin": "^13.7.0",
         "graphql": "^16.11.0",
         "graphql-tag": "^2.12.6"
     }

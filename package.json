@@ -18,7 +18,6 @@
     "migrate:sql": "tsx scripts/migrate.ts"
   },
   "devDependencies": {
-    "firebase-admin": "^13.7.0",
     "prisma": "^5.22.0",
     "tsx": "^4.21.0",
     "turbo": "^2.8.16"

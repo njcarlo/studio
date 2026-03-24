@@ -20,29 +20,26 @@ import {
 import { Badge } from "@studio/ui";
 import { Input } from "@studio/ui";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useFirestore, useCollection, useMemoFirebase } from "@studio/database";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { useQuery } from "@tanstack/react-query";
+import { getTransactionLogs } from "@/actions/db";
 import { format } from "date-fns";
 import { LoaderCircle, Search, ShieldAlert } from "lucide-react";
 
 export default function TransactionLogsPage() {
     const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
-    const firestore = useFirestore();
-
     const [searchTerm, setSearchTerm] = useState("");
 
-    const logsQuery = useMemoFirebase(() => {
-        if (!firestore || !isSuperAdmin) return null;
-        return query(collection(firestore, "transaction_logs"), orderBy("timestamp", "desc"), limit(200));
-    }, [firestore, isSuperAdmin]);
-
-    const { data: logs, isLoading: isLogsLoading } = useCollection<any>(logsQuery);
+    const { data: logs, isLoading: isLogsLoading } = useQuery({
+        queryKey: ["transaction-logs"],
+        queryFn: getTransactionLogs,
+        enabled: isSuperAdmin,
+    });
 
     const filteredLogs = React.useMemo(() => {
         if (!logs) return [];
         if (!searchTerm) return logs;
         const lower = searchTerm.toLowerCase();
-        return logs.filter((log: any) =>
+        return logs.filter((log) =>
             (log.userName || '').toLowerCase().includes(lower) ||
             (log.targetName || '').toLowerCase().includes(lower) ||
             (log.action || '').toLowerCase().includes(lower) ||
@@ -129,10 +126,10 @@ export default function TransactionLogsPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredLogs.map((log: any) => (
+                                    filteredLogs.map((log) => (
                                         <TableRow key={log.id} className="hover:bg-muted/30">
                                             <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                                                {log.timestamp ? format(log.timestamp.toDate(), "MMM d, yyyy h:mm a") : "Unknown"}
+                                                {log.timestamp ? format(new Date(log.timestamp), "MMM d, yyyy h:mm a") : "Unknown"}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="font-medium text-sm">{log.userName}</div>

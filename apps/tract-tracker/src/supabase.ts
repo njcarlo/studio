@@ -1,16 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL =
-    process.env.EXPO_PUBLIC_SUPABASE_URL ??
-    'https://vpgykxfbrfnojmgmzriq.supabase.co';
+function requireEnv(name: 'EXPO_PUBLIC_SUPABASE_URL' | 'EXPO_PUBLIC_SUPABASE_ANON_KEY' | 'EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY') {
+    const value = process.env[name];
 
-const SUPABASE_ANON_KEY =
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZ3lreGZicmZub2ptZ216cmlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNDg4NjMsImV4cCI6MjA4ODcyNDg2M30.mUTWubXZxKcWmPFhYaDuVef5oYs9fgDRFo0yD1dgHa8';
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
 
-const SUPABASE_SERVICE_ROLE_KEY =
-    process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ??
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZ3lreGZicmZub2ptZ216cmlxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzE0ODg2MywiZXhwIjoyMDg4NzI0ODYzfQ.l91kILTm8em0hz1etzHJsRY71vAAoCfeiAF831bZUeo';
+    return value;
+}
+
+const SUPABASE_URL = requireEnv('EXPO_PUBLIC_SUPABASE_URL');
+const SUPABASE_ANON_KEY = requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+const SUPABASE_SERVICE_ROLE_KEY = requireEnv('EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY');
 
 // Standard client — respects RLS
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

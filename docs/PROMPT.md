@@ -42,7 +42,7 @@ This app is designed to be **scalable and extensible** — C2S and ORS are the i
 | Channel | Technology                     | Notes                                                   |
 | ------- | ------------------------------ | ------------------------------------------------------- |
 | Email   | Resend                         | Transactional email — replaces legacy `email_job` queue |
-| Push    | Firebase Cloud Messaging (FCM) | Cross-platform push — web + future mobile               |
+| Push    | Supabase Realtime + Web Push   | Cross-platform push path for web + future mobile        |
 | In-App  | Supabase Realtime              | Live approval/status notifications                      |
 
 ### UI & Libraries

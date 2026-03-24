@@ -44,7 +44,7 @@ import { useWorkers } from "@/hooks/use-workers";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { useSettings } from "@/hooks/use-settings";
-import { useUser } from "@studio/database";
+import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import type { Worker } from "@studio/types";
 
@@ -57,7 +57,7 @@ function generateToken() {
 
 // ------------------------------------------------------------
 function MealsPageContent() {
-  const { user } = useUser();
+  const { user } = useAuthStore();
   const { canViewMealStubs, canManageAllMealStubs, isMealStubAssigner, workerProfile, isLoading: isRoleLoading } = useUserRole();
   const { toast } = useToast();
   const { playSuccess, playError } = useMealAudio();
