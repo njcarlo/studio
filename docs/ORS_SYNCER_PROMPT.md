@@ -119,6 +119,18 @@ The new system currently uses **Supabase Auth** with email + password via `supab
 - **API bridge**: All legacy data accessed via `https://cogdasma.com/ors-reader/public` REST API — no direct MySQL connection
 - **Permission**: `system:manage_ors_sync` registered in `src/lib/permissions/registry.ts`
 
+### Baseline Reality Check (Current vs Target)
+
+Use this as a non-negotiable alignment checklist while implementing:
+
+- Current sync supports `new` / `updated` / `synced` worker statuses only; add `orphan` and direction-aware sync views.
+- Current login is email-only; add Worker ID login mode.
+- Current import does **not** store legacy password hash; add persisted `legacyPasswordHash` support.
+- Current Worker import writes `workerId` but not `workerNumber`; write both.
+- Current sync updates selected profile fields but does not sync password hash; add password-only sync action.
+- Current ORS Sync access is super-admin only; allow permission-based access (`system:manage_ors_sync`) while still allowing super-admin override.
+- Current ORS sync actions do not write `TransactionLog`; add explicit audit logging for import/sync/auth events.
+
 ---
 
 ## Requirements
@@ -286,6 +298,11 @@ model Worker {
 }
 ```
 
+Also ensure imports write both legacy identifiers:
+
+- `workerId` (string form of legacy `worker.id`)
+- `workerNumber` (numeric form of legacy `worker.id`)
+
 Run migration:
 
 ```bash
@@ -436,7 +453,65 @@ apps/web/src/
 
 ---
 
-### 9. Important Notes
+### 9. Phase Plan (Recommended)
+
+Implement in small, safe phases to avoid auth and sync regressions:
+
+#### Phase 1 — Schema + Action Plumbing
+
+- Add `legacyPasswordHash` to Prisma `Worker`.
+- Update import to set `workerId`, `workerNumber`, and `legacyPasswordHash`.
+- Add password sync status computation (`Synced`, `Changed`, `Not Set`, `No Password`, `Has Password`) server-side.
+- Add `syncOrsWorkerPasswords()` server action.
+
+#### Phase 2 — Diff/Orphan Coverage
+
+- Extend worker diff API to support:
+  - Direction filter (`Legacy -> New`, `New -> Legacy`, `Both`)
+  - `orphan` status for workers existing only in new system
+  - Search by Worker ID, name, and email (not first-name-only)
+- Expand compared/syncable fields (email, address, startMonth, startYear, biometricsId, remarks, qrToken, ministries).
+
+#### Phase 3 — UI and Permission Gates
+
+- Add direction and password-status filters in `/settings/ors-sync` worker tab.
+- Replace hash-type display with password sync-state badges.
+- Add explicit "Sync Passwords" batch action.
+- Gate page access by `isSuperAdmin || canManageOrsSync`.
+
+#### Phase 4 — Legacy Login Bridge
+
+- Add Worker ID login tab in `/login`.
+- Implement `legacy-auth.ts` server action with server-only MD5 comparison.
+- Bridge successful auth into a valid Supabase session.
+- Add rate limiting and consistent generic error responses.
+
+#### Phase 5 — Audit + Hardening
+
+- Log all sync/auth events to `TransactionLog`.
+- Add safe retry and partial-failure handling for batch operations.
+- Add feature flag to disable Worker ID login when migration is complete.
+
+---
+
+### 10. Definition of Done (Acceptance Criteria)
+
+The module is considered complete only if all items below pass:
+
+1. Worker ID login works for an imported worker with valid MD5 legacy hash.
+2. Invalid Worker ID/password attempts are rejected with generic errors and logged.
+3. Worker import writes `workerId`, `workerNumber`, and `legacyPasswordHash`.
+4. Worker diff table includes `orphan` status and direction filtering.
+5. Password column shows sync-state badges, never raw hash values.
+6. "Sync Passwords" updates only `legacyPasswordHash` and never Supabase password.
+7. Worker sync can update required profile fields without breaking existing worker-role relations.
+8. ORS sync access works for super admin and `system:manage_ors_sync` permission holders.
+9. All import/sync/login operations create `TransactionLog` entries.
+10. Existing ORS sync tabs (ministries/areas/c2s/attendance) continue to function unchanged.
+
+---
+
+### 11. Important Notes
 
 - **MD5 is a transitional bridge** — not a permanent auth solution. Plan to deprecate Worker ID login after all workers have migrated to email-based Supabase Auth.
 - **Password hashes stay server-side** — never expose MD5 hashes to the client. The UI only shows flag badges.
@@ -444,3 +519,9 @@ apps/web/src/
 - **Ministry mapping uses name matching** — the existing `getOrsMinistryMap()` function handles this. Ministry names must match between legacy and new system.
 - **Workers without email** cannot be imported (Supabase Auth requires email). These should be flagged in the UI with a clear message.
 - **Rate limiting** on the Worker ID login endpoint is critical since MD5 hashes are vulnerable to brute-force attacks.
+
+### 12. Explicit Non-Goals (for this iteration)
+
+- Writing updates back to legacy MySQL / CodeIgniter database.
+- Replacing Supabase Auth as the primary auth system.
+- Migrating every legacy module in ORS; this scope is worker sync + worker login continuity.

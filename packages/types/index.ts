@@ -13,17 +13,25 @@ export type Role = {
 export type Worker = {
     id: string;
     workerId?: string | null;
+    workerNumber?: number | null;
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
-    roleId: string;
+    roleId?: string | null;
     status: 'Active' | 'Inactive' | 'Pending Approval' | string;
     avatarUrl: string;
     majorMinistryId: string;
     minorMinistryId: string;
     employmentType?: 'Full-Time' | 'On-Call' | 'Volunteer' | string | null;
     birthDate?: string | null;
+    address?: string | null;
+    startMonth?: string | null;
+    startYear?: string | null;
+    remarks?: string | null;
+    biometricsId?: number | null;
+    isSeniorPastor?: boolean | null;
+    legacyPasswordHash?: string | null;
     passwordChangeRequired?: boolean | null;
     qrToken?: string | null;
     createdAt: TimestampLike | Date;

@@ -54,6 +54,7 @@ model Worker {
   id                     String               @id @default(uuid())
   workerId               String?
   workerNumber           Int?                 @unique
+  legacyPasswordHash     String?
   firstName              String
   lastName               String
   email                  String               @unique

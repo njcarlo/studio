@@ -4,361 +4,475 @@ import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import {
-    Card,
-    CardHeader,
-    CardTitle,
-    CardContent,
-    CardDescription,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
 } from "@studio/ui";
 import {
-    Table,
-    TableHeader,
-    TableRow,
-    TableHead,
-    TableBody,
-    TableCell,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
 } from "@studio/ui";
 import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetDescription,
-    SheetFooter,
-    SheetClose,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetClose,
 } from "@studio/ui";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@studio/ui";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@studio/ui";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@studio/ui";
 import { Badge } from "@studio/ui";
 import { Checkbox } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Input } from "@studio/ui";
-import { LoaderCircle, PlusCircle, Trash2, Save, ShieldCheck, Edit } from "lucide-react";
+import {
+  LoaderCircle,
+  PlusCircle,
+  Trash2,
+  Save,
+  ShieldCheck,
+  Edit,
+} from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { useRoles } from "@/hooks/use-roles";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { setRolePermissionsByKeys, createRole, updateRole, deleteRole } from "@/actions/db";
+import {
+  setRolePermissionsByKeys,
+  createRole,
+  updateRole,
+  deleteRole,
+} from "@/actions/db";
 import { ALL_PERMISSIONS } from "@/lib/permissions/registry";
 
 // Group permissions by module for the accordion UI
 const PERMISSION_CATEGORIES = (() => {
-    const grouped: Record<string, { key: string; label: string; description: string }[]> = {};
-    for (const p of ALL_PERMISSIONS) {
-        if (!grouped[p.module]) grouped[p.module] = [];
-        grouped[p.module].push({
-            key: `${p.module}:${p.action}`,
-            label: p.action.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-            description: p.description || '',
-        });
-    }
-    // Friendly module labels
-    const MODULE_LABELS: Record<string, string> = {
-        roles: 'Roles',
-        workers: 'Workers',
-        ministries: 'Ministries',
-        facilities: 'Facilities',
-        venues: 'Room Reservations',
-        approvals: 'Approvals',
-        attendance: 'Scanner & Attendance',
-        meals: 'Meal Stubs',
-        mentorship: 'Connect 2 Souls',
-        reports: 'Reports',
-        system: 'System',
-        venue_assistance: 'Venue Assistance',
-    };
-    return Object.entries(grouped).map(([module, permissions]) => ({
-        module,
-        category: MODULE_LABELS[module] || module,
-        permissions,
-    }));
+  const grouped: Record<
+    string,
+    { key: string; label: string; description: string }[]
+  > = {};
+  for (const p of ALL_PERMISSIONS) {
+    if (!grouped[p.module]) grouped[p.module] = [];
+    grouped[p.module].push({
+      key: `${p.module}:${p.action}`,
+      label: p.action
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase()),
+      description: p.description || "",
+    });
+  }
+  // Friendly module labels
+  const MODULE_LABELS: Record<string, string> = {
+    roles: "Roles",
+    workers: "Workers",
+    ministries: "Ministries",
+    facilities: "Facilities",
+    venues: "Room Reservations",
+    approvals: "Approvals",
+    attendance: "Scanner & Attendance",
+    meals: "Meal Stubs",
+    mentorship: "Connect 2 Souls",
+    reports: "Reports",
+    system: "System",
+    venue_assistance: "Venue Assistance",
+  };
+  return Object.entries(grouped).map(([module, permissions]) => ({
+    module,
+    category: MODULE_LABELS[module] || module,
+    permissions,
+  }));
 })();
 
 const RolePermissionSheet = ({
-    role,
-    isOpen,
-    onOpenChange,
-    onSave,
-    onDelete,
+  role,
+  isOpen,
+  onOpenChange,
+  onSave,
+  onDelete,
 }: {
-    role: any | null;
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    onSave: (name: string, permKeys: string[]) => void;
-    onDelete: (roleId: string) => void;
+  role: any | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (name: string, permKeys: string[]) => void;
+  onDelete: (roleId: string) => void;
 }) => {
-    const [name, setName] = useState('');
-    const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [name, setName] = useState("");
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
-    useEffect(() => {
-        if (isOpen) {
-            setName(role?.name || 'New Role');
-            // Derive checked keys from rolePermissions join table
-            const keys = (role?.rolePermissions || []).map((rp: any) =>
-                `${rp.permission.module}:${rp.permission.action}`
-            );
-            setSelectedKeys(keys);
-        }
-    }, [role, isOpen]);
+  useEffect(() => {
+    if (isOpen) {
+      setName(role?.name || "New Role");
+      // Derive checked keys from rolePermissions join table
+      const keys = (role?.rolePermissions || []).map(
+        (rp: any) => `${rp.permission.module}:${rp.permission.action}`,
+      );
+      setSelectedKeys(keys);
+    }
+  }, [role, isOpen]);
 
-    const isAdminRole = role?.isSuperAdmin || role?.id === 'admin';
+  const isAdminRole = role?.isSuperAdmin || role?.id === "admin";
 
-    const toggle = (key: string, checked: boolean) => {
-        setSelectedKeys(curr =>
-            checked ? [...curr, key] : curr.filter(k => k !== key)
-        );
-    };
-
-    return (
-        <Sheet open={isOpen} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-xl overflow-y-auto">
-                <SheetHeader>
-                    <SheetTitle className="font-headline">{role?.id ? 'Edit Role' : 'Add New Role'}</SheetTitle>
-                    <SheetDescription>
-                        {isAdminRole
-                            ? 'Super Admin roles have all permissions and cannot be changed.'
-                            : 'Configure granular permissions for this role.'}
-                    </SheetDescription>
-                </SheetHeader>
-
-                <div className="py-4 space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="role-name">Role Name</Label>
-                        <Input
-                            id="role-name"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            disabled={isAdminRole}
-                            placeholder="e.g., Ministry Coordinator"
-                        />
-                    </div>
-
-                    {!isAdminRole && (
-                        <div className="space-y-2">
-                            <Label>Permissions</Label>
-                            <Accordion type="multiple" className="w-full border rounded-lg" defaultValue={PERMISSION_CATEGORIES.map(c => c.module)}>
-                                {PERMISSION_CATEGORIES.map(({ module, category, permissions }) => (
-                                    <AccordionItem value={module} key={module} className="px-4">
-                                        <AccordionTrigger className="text-base font-semibold py-3">
-                                            {category}
-                                            <Badge variant="outline" className="ml-2 text-xs">
-                                                {permissions.filter(p => selectedKeys.includes(p.key)).length}/{permissions.length}
-                                            </Badge>
-                                        </AccordionTrigger>
-                                        <AccordionContent className="pt-2 pl-2">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                                {permissions.map(permission => (
-                                                    <div className="flex items-start space-x-2" key={permission.key}>
-                                                        <Checkbox
-                                                            id={`${role?.id || 'new'}-${permission.key}`}
-                                                            checked={selectedKeys.includes(permission.key)}
-                                                            onCheckedChange={checked => toggle(permission.key, !!checked)}
-                                                        />
-                                                        <div className="grid gap-1.5 leading-none">
-                                                            <Label
-                                                                htmlFor={`${role?.id || 'new'}-${permission.key}`}
-                                                                className="font-medium cursor-pointer text-xs font-mono text-muted-foreground"
-                                                            >
-                                                                {permission.key}
-                                                            </Label>
-                                                            <p className="text-xs text-muted-foreground">{permission.description}</p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                ))}
-                            </Accordion>
-                        </div>
-                    )}
-                </div>
-
-                {!isAdminRole && (
-                    <SheetFooter className="pt-4">
-                        {role?.id && (
-                            <Button
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive mr-auto"
-                                onClick={() => onDelete(role.id)}
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete Role
-                            </Button>
-                        )}
-                        <SheetClose asChild>
-                            <Button type="button" variant="secondary">Cancel</Button>
-                        </SheetClose>
-                        <Button onClick={() => onSave(name, selectedKeys)}>
-                            <Save className="h-4 w-4 mr-2" /> Save Role
-                        </Button>
-                    </SheetFooter>
-                )}
-            </SheetContent>
-        </Sheet>
+  const toggle = (key: string, checked: boolean) => {
+    setSelectedKeys((curr) =>
+      checked ? [...curr, key] : curr.filter((k) => k !== key),
     );
+  };
+
+  return (
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="font-headline">
+            {role?.id ? "Edit Role" : "Add New Role"}
+          </SheetTitle>
+          <SheetDescription>
+            {isAdminRole
+              ? "Super Admin roles have all permissions and cannot be changed."
+              : "Configure granular permissions for this role."}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="py-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="role-name">Role Name</Label>
+            <Input
+              id="role-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={isAdminRole}
+              placeholder="e.g., Ministry Coordinator"
+            />
+          </div>
+
+          {!isAdminRole && (
+            <div className="space-y-2">
+              <Label>Permissions</Label>
+              <Accordion
+                type="multiple"
+                className="w-full border rounded-lg"
+                defaultValue={PERMISSION_CATEGORIES.map((c) => c.module)}
+              >
+                {PERMISSION_CATEGORIES.map(
+                  ({ module, category, permissions }) => (
+                    <AccordionItem value={module} key={module} className="px-4">
+                      <AccordionTrigger className="text-base font-semibold py-3">
+                        {category}
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {
+                            permissions.filter((p) =>
+                              selectedKeys.includes(p.key),
+                            ).length
+                          }
+                          /{permissions.length}
+                        </Badge>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-2 pl-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                          {permissions.map((permission) => (
+                            <div
+                              className="flex items-start space-x-2"
+                              key={permission.key}
+                            >
+                              <Checkbox
+                                id={`${role?.id || "new"}-${permission.key}`}
+                                checked={selectedKeys.includes(permission.key)}
+                                onCheckedChange={(checked) =>
+                                  toggle(permission.key, !!checked)
+                                }
+                              />
+                              <div className="grid gap-1.5 leading-none">
+                                <Label
+                                  htmlFor={`${role?.id || "new"}-${permission.key}`}
+                                  className="font-medium cursor-pointer text-xs font-mono text-muted-foreground"
+                                >
+                                  {permission.key}
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                  {permission.description}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ),
+                )}
+              </Accordion>
+            </div>
+          )}
+        </div>
+
+        {!isAdminRole && (
+          <SheetFooter className="pt-4">
+            {role?.id && (
+              <Button
+                variant="ghost"
+                className="text-destructive hover:text-destructive mr-auto"
+                onClick={() => onDelete(role.id)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Delete Role
+              </Button>
+            )}
+            <SheetClose asChild>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </SheetClose>
+            <Button onClick={() => onSave(name, selectedKeys)}>
+              <Save className="h-4 w-4 mr-2" /> Save Role
+            </Button>
+          </SheetFooter>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
 };
 
 export default function RoleManagementPage() {
-    const { canManageRoles } = useUserRole();
-    const { roles, isLoading } = useRoles();
-    const { toast } = useToast();
-    const { logAction } = useAuditLog();
-    const queryClient = useQueryClient();
+  const { canManageRoles } = useUserRole();
+  const { roles, isLoading } = useRoles();
+  const { toast } = useToast();
+  const { logAction } = useAuditLog();
+  const queryClient = useQueryClient();
 
-    const [sheetOpen, setSheetOpen] = useState(false);
-    const [selectedRole, setSelectedRole] = useState<any | null>(null);
-    const [roleToDelete, setRoleToDelete] = useState<any | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<any | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<any | null>(null);
 
-    const saveMutation = useMutation({
-        mutationFn: async ({ role, name, permKeys }: { role: any | null; name: string; permKeys: string[] }) => {
-            if (role?.id) {
-                await updateRole(role.id, { name });
-                await setRolePermissionsByKeys(role.id, permKeys);
-                return { id: role.id, name };
-            } else {
-                const created = await createRole({ name, permissions: [] });
-                await setRolePermissionsByKeys(created.id, permKeys);
-                return created;
-            }
-        },
-        onSuccess: async (result, { role }) => {
-            queryClient.invalidateQueries({ queryKey: ['roles'] });
-            await logAction(
-                role?.id ? 'Updated Role' : 'Created Role',
-                'Roles',
-                `${role?.id ? 'Updated' : 'Created'} role "${result.name}"`
-            );
-            toast({ title: role?.id ? 'Role Updated' : 'Role Created' });
-            setSheetOpen(false);
-        },
-        onError: () => {
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the role.' });
-        },
-    });
+  const saveMutation = useMutation({
+    mutationFn: async ({
+      role,
+      name,
+      permKeys,
+    }: {
+      role: any | null;
+      name: string;
+      permKeys: string[];
+    }) => {
+      if (role?.id) {
+        await updateRole(role.id, { name });
+        await setRolePermissionsByKeys(role.id, permKeys);
+        return { id: role.id, name };
+      } else {
+        const created = await createRole({ name, permissions: [] });
+        await setRolePermissionsByKeys(created.id, permKeys);
+        return created;
+      }
+    },
+    onSuccess: async (result, { role }) => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      await logAction(
+        role?.id ? "Updated Role" : "Created Role",
+        "Roles",
+        `${role?.id ? "Updated" : "Created"} role "${result.name}"`,
+      );
+      toast({ title: role?.id ? "Role Updated" : "Role Created" });
+      setSheetOpen(false);
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save the role.",
+      });
+    },
+  });
 
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) => deleteRole(id),
-        onSuccess: async () => {
-            queryClient.invalidateQueries({ queryKey: ['roles'] });
-            await logAction('Deleted Role', 'Roles', `Deleted role "${roleToDelete?.name}"`);
-            toast({ title: 'Role Deleted' });
-            setRoleToDelete(null);
-        },
-        onError: () => {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete role.' });
-        },
-    });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteRole(id),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      await logAction(
+        "Deleted Role",
+        "Roles",
+        `Deleted role "${roleToDelete?.name}"`,
+      );
+      toast({ title: "Role Deleted" });
+      setRoleToDelete(null);
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: "Could not delete role.",
+      });
+    },
+  });
 
-    const handleSaveRole = (name: string, permKeys: string[]) => {
-        if (!name.trim()) {
-            toast({ variant: 'destructive', title: 'Role name is required.' });
-            return;
-        }
-        saveMutation.mutate({ role: selectedRole, name, permKeys });
-    };
-
-    if (isLoading) {
-        return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+  const handleSaveRole = (name: string, permKeys: string[]) => {
+    if (!name.trim()) {
+      toast({ variant: "destructive", title: "Role name is required." });
+      return;
     }
+    saveMutation.mutate({ role: selectedRole, name, permKeys });
+  };
 
-    if (!canManageRoles) {
-        return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You do not have permission to view this page.</CardDescription></CardHeader></Card></AppLayout>;
-    }
-
-    const sortedRoles = [...(roles || [])].sort((a: any, b: any) =>
-        a.isSuperAdmin ? -1 : b.isSuperAdmin ? 1 : a.name.localeCompare(b.name)
-    );
-
+  if (isLoading) {
     return (
-        <AppLayout>
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-headline font-bold">Role Management</h1>
-                    <p className="text-muted-foreground">Define roles and their granular access permissions.</p>
-                </div>
-                <Button onClick={() => { setSelectedRole(null); setSheetOpen(true); }}>
-                    <PlusCircle className="h-4 w-4 mr-2" /> Add New Role
-                </Button>
-            </div>
-
-            <Card className="mt-6">
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Role Name</TableHead>
-                                <TableHead>Permissions</TableHead>
-                                <TableHead className="w-[100px] text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedRoles.map((role: any) => {
-                                const permCount = role.rolePermissions?.length || 0;
-                                return (
-                                    <TableRow key={role.id}>
-                                        <TableCell className="font-medium">
-                                            <div className="flex items-center gap-2">
-                                                {role.name}
-                                                {role.isSuperAdmin && <ShieldCheck className="h-4 w-4 text-primary" title="Super Admin" />}
-                                                {role.isSystemRole && <Badge variant="secondary" className="text-xs">System</Badge>}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {role.isSuperAdmin
-                                                ? <Badge variant="secondary">All Permissions</Badge>
-                                                : <Badge variant="outline">{permCount} permission{permCount !== 1 ? 's' : ''}</Badge>
-                                            }
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => { setSelectedRole(role); setSheetOpen(true); }}>
-                                                <Edit className="h-4 w-4 mr-2" /> Edit
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-
-            <RolePermissionSheet
-                isOpen={sheetOpen}
-                onOpenChange={setSheetOpen}
-                role={selectedRole}
-                onSave={handleSaveRole}
-                onDelete={(roleId) => {
-                    const role = sortedRoles.find((r: any) => r.id === roleId);
-                    if (role) { setRoleToDelete(role); setSheetOpen(false); }
-                }}
-            />
-
-            <AlertDialog open={!!roleToDelete} onOpenChange={(open) => !open && setRoleToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete role?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete <span className="font-bold">{roleToDelete?.name}</span> and remove it from all assigned workers.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteMutation.mutate(roleToDelete.id)}>
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </AppLayout>
+      <AppLayout>
+        <div className="flex justify-center py-10">
+          <LoaderCircle className="h-8 w-8 animate-spin" />
+        </div>
+      </AppLayout>
     );
+  }
+
+  if (!canManageRoles) {
+    return (
+      <AppLayout>
+        <Card>
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>
+              You do not have permission to view this page.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </AppLayout>
+    );
+  }
+
+  const sortedRoles = [...(roles || [])].sort((a: any, b: any) =>
+    a.isSuperAdmin ? -1 : b.isSuperAdmin ? 1 : a.name.localeCompare(b.name),
+  );
+
+  return (
+    <AppLayout>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-headline font-bold">Role Management</h1>
+          <p className="text-muted-foreground">
+            Define roles and their granular access permissions.
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setSelectedRole(null);
+            setSheetOpen(true);
+          }}
+        >
+          <PlusCircle className="h-4 w-4 mr-2" /> Add New Role
+        </Button>
+      </div>
+
+      <Card className="mt-6">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Role Name</TableHead>
+                <TableHead>Permissions</TableHead>
+                <TableHead className="w-[100px] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedRoles.map((role: any) => {
+                const permCount = role.rolePermissions?.length || 0;
+                return (
+                  <TableRow key={role.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {role.name}
+                        {role.isSuperAdmin && (
+                          <ShieldCheck className="h-4 w-4 text-primary" />
+                        )}
+                        {role.isSystemRole && (
+                          <Badge variant="secondary" className="text-xs">
+                            System
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {role.isSuperAdmin ? (
+                        <Badge variant="secondary">All Permissions</Badge>
+                      ) : (
+                        <Badge variant="outline">
+                          {permCount} permission{permCount !== 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedRole(role);
+                          setSheetOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-2" /> Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <RolePermissionSheet
+        isOpen={sheetOpen}
+        onOpenChange={setSheetOpen}
+        role={selectedRole}
+        onSave={handleSaveRole}
+        onDelete={(roleId) => {
+          const role = sortedRoles.find((r: any) => r.id === roleId);
+          if (role) {
+            setRoleToDelete(role);
+            setSheetOpen(false);
+          }
+        }}
+      />
+
+      <AlertDialog
+        open={!!roleToDelete}
+        onOpenChange={(open) => !open && setRoleToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete role?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete{" "}
+              <span className="font-bold">{roleToDelete?.name}</span> and remove
+              it from all assigned workers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate(roleToDelete.id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AppLayout>
+  );
 }

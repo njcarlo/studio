@@ -36,6 +36,10 @@ export type OrsWorker = {
     worker_type: string | null;
     qrdata: string | null;
     address: string | null;
+    start_month: string | null;
+    start_year: string | null;
+    remarks: string | null;
+    biometrics_id: number | null;
     facebook_handle: string | null;
     worker_status: string | null;
     area_id: number | null;
@@ -92,26 +96,41 @@ export type OrsAttendanceScan = {
 
 export type HashType = 'MD5' | 'SHA1' | 'SHA256' | 'PLAIN' | 'NONE';
 
-export type WorkerSyncStatus = 'new' | 'updated' | 'synced';
+export type WorkerSyncStatus = 'new' | 'updated' | 'synced' | 'orphan';
+
+export type WorkerSyncDirection = 'legacy_to_new' | 'new_to_legacy';
+
+export type PasswordSyncStatus = 'synced' | 'has_password' | 'changed' | 'no_password' | 'not_set';
 
 export type ExistingWorkerSummary = {
     id: string;
     workerId: string | null;
+    workerNumber: number | null;
+    legacyPasswordHash: string | null;
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
+    address: string | null;
+    birthDate: string | null;
+    startMonth: string | null;
+    startYear: string | null;
+    remarks: string | null;
+    biometricsId: number | null;
+    qrToken: string | null;
     status: string;
     majorMinistryId: string;
     minorMinistryId: string;
     employmentType: string | null;
-    roleId: string;
+    roleId: string | null;
 };
 
 export type WorkerDiffRecord = {
     ors: OrsWorker & { hash_type: HashType };
     existing: ExistingWorkerSummary | null;
     status: WorkerSyncStatus;
+    direction: WorkerSyncDirection;
+    passwordStatus: PasswordSyncStatus;
     diffFields: DiffField[];
 };
 
@@ -119,6 +138,11 @@ export type DiffField = {
     label: string;
     ors: string;
     current: string;
+};
+
+export type SyncUpdatedWorkerInput = {
+    worker: OrsWorker;
+    fields?: string[];
 };
 
 // ─── ORS department → Department code mapping ───────────────────────────────
@@ -156,6 +180,26 @@ function detectHashType(password: string | null | undefined): HashType {
     return 'NONE';
 }
 
+function normalizeLegacyPasswordHash(password: string | null | undefined): string | null {
+    if (!password) return null;
+    const p = password.trim();
+    return p.length > 0 ? p : null;
+}
+
+function computePasswordStatus(
+    legacyPassword: string | null | undefined,
+    existing: ExistingWorkerSummary | null
+): PasswordSyncStatus {
+    const incoming = normalizeLegacyPasswordHash(legacyPassword);
+    const current = normalizeLegacyPasswordHash(existing?.legacyPasswordHash);
+
+    if (!incoming) return 'no_password';
+    if (!existing) return 'has_password';
+    if (!current) return 'not_set';
+    if (incoming === current) return 'synced';
+    return 'changed';
+}
+
 function computeDiffFields(
     ors: OrsWorker,
     existing: ExistingWorkerSummary,
@@ -165,9 +209,31 @@ function computeDiffFields(
 
     const orsFirst = (ors.first_name || '').trim();
     const orsLast = (ors.last_name || '').trim();
+    const orsEmail = (ors.email || '').trim();
+    const orsAddress = (ors.address || '').trim();
+    const orsBirth = (ors.birthdate || '').trim();
+    const orsStartMonth = (ors.start_month || '').trim();
+    const orsStartYear = (ors.start_year || '').trim();
+    const orsRemarks = (ors.remarks || '').trim();
+    const orsBio = ors.biometrics_id != null ? String(ors.biometrics_id) : '';
+    const orsQr = (ors.qrdata || '').trim();
+
+    if (existing.workerNumber !== null && existing.workerNumber !== ors.id) {
+        diffs.push({ label: 'Worker ID', ors: String(ors.id), current: String(existing.workerNumber) });
+    }
     if (orsFirst !== existing.firstName) diffs.push({ label: 'First Name', ors: orsFirst, current: existing.firstName });
     if (orsLast !== existing.lastName) diffs.push({ label: 'Last Name', ors: orsLast, current: existing.lastName });
+    if (orsEmail !== (existing.email || '').trim()) diffs.push({ label: 'Email', ors: orsEmail || '—', current: existing.email || '—' });
     if ((ors.mobile || '') !== (existing.phone || '')) diffs.push({ label: 'Phone', ors: ors.mobile || '—', current: existing.phone || '—' });
+    if (orsAddress !== (existing.address || '').trim()) diffs.push({ label: 'Address', ors: orsAddress || '—', current: existing.address || '—' });
+    if (orsBirth !== (existing.birthDate || '').trim()) diffs.push({ label: 'Birthdate', ors: orsBirth || '—', current: existing.birthDate || '—' });
+    if (orsStartMonth !== (existing.startMonth || '').trim()) diffs.push({ label: 'Start Month', ors: orsStartMonth || '—', current: existing.startMonth || '—' });
+    if (orsStartYear !== (existing.startYear || '').trim()) diffs.push({ label: 'Start Year', ors: orsStartYear || '—', current: existing.startYear || '—' });
+    if (orsRemarks !== (existing.remarks || '').trim()) diffs.push({ label: 'Remarks', ors: orsRemarks || '—', current: existing.remarks || '—' });
+    if (orsBio !== (existing.biometricsId != null ? String(existing.biometricsId) : '')) {
+        diffs.push({ label: 'Biometrics ID', ors: orsBio || '—', current: existing.biometricsId != null ? String(existing.biometricsId) : '—' });
+    }
+    if (orsQr !== (existing.qrToken || '').trim()) diffs.push({ label: 'QR Data', ors: orsQr || '—', current: existing.qrToken || '—' });
     if (mapStatus(ors.status) !== existing.status) diffs.push({ label: 'Status', ors: mapStatus(ors.status), current: existing.status });
     if (mapEmploymentType(ors.worker_type) !== (existing.employmentType || 'Volunteer')) {
         diffs.push({ label: 'Employment', ors: mapEmploymentType(ors.worker_type), current: existing.employmentType || 'Volunteer' });
@@ -184,6 +250,48 @@ async function orsFetch<T>(path: string): Promise<T> {
     const res = await fetch(`${ORS_BASE}${path}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`ORS fetch failed: ${path} (${res.status})`);
     return res.json();
+}
+
+async function fetchAllOrsWorkerIds(): Promise<Set<string>> {
+    const limit = 500;
+    const first = await orsFetch<OrsPagedResponse<{ id: number }>>(`/tables/worker?page=1&limit=${limit}`);
+    const all = new Set<string>(first.data.map((w) => String(w.id)));
+
+    for (let page = 2; page <= first.meta.totalPages; page++) {
+        const res = await orsFetch<OrsPagedResponse<{ id: number }>>(`/tables/worker?page=${page}&limit=${limit}`);
+        for (const w of res.data) all.add(String(w.id));
+    }
+
+    return all;
+}
+
+async function fetchAllOrsWorkers(): Promise<any[]> {
+    const limit = 500;
+    const first = await orsFetch<OrsPagedResponse<any>>(`/tables/worker?page=1&limit=${limit}`);
+    const all = [...first.data];
+
+    for (let page = 2; page <= first.meta.totalPages; page++) {
+        const res = await orsFetch<OrsPagedResponse<any>>(`/tables/worker?page=${page}&limit=${limit}`);
+        all.push(...res.data);
+    }
+
+    return all;
+}
+
+async function logOrsSyncEvent(action: string, details: string, targetId?: string, targetName?: string) {
+    try {
+        await prisma.transactionLog.create({
+            data: {
+                action,
+                module: 'ors-sync',
+                details,
+                targetId,
+                targetName,
+            },
+        });
+    } catch {
+        // Logging must never block import/sync operations.
+    }
 }
 
 // ─── Overview stats ──────────────────────────────────────────────────────────
@@ -260,36 +368,67 @@ export async function getWorkerDiffPage(
     page = 1,
     limit = 50,
     search?: string,
-    ministryMap: Record<string, string> = {}
+    ministryMap: Record<string, string> = {},
+    direction: WorkerSyncDirection | 'all' = 'all'
 ): Promise<OrsPagedResponse<WorkerDiffRecord>> {
-    let path = `/tables/worker?page=${page}&limit=${limit}`;
-    if (search) path += `&filter[first_name]=${encodeURIComponent(search)}`;
+    const includeLegacy = direction === 'all' || direction === 'legacy_to_new';
+    const includeOrphans = direction === 'all' || direction === 'new_to_legacy';
 
-    const orsRes = await orsFetch<OrsPagedResponse<any>>(path);
-    const orsWorkers: any[] = orsRes.data;
+    let orsRes: OrsPagedResponse<any> = {
+        data: [],
+        meta: { total: 0, page, limit, totalPages: 1 },
+    };
 
-    if (orsWorkers.length === 0) {
-        return { data: [], meta: orsRes.meta };
+    let orsWorkers: any[] = [];
+
+    if (includeLegacy) {
+        if (!search) {
+            const path = `/tables/worker?page=${page}&limit=${limit}`;
+            orsRes = await orsFetch<OrsPagedResponse<any>>(path);
+            orsWorkers = orsRes.data;
+        } else {
+            const q = search.toLowerCase().trim();
+            const allLegacy = await fetchAllOrsWorkers();
+            const filtered = allLegacy.filter((w) =>
+                String(w.id || '').includes(q) ||
+                String(w.first_name || '').toLowerCase().includes(q) ||
+                String(w.last_name || '').toLowerCase().includes(q) ||
+                String(w.email || '').toLowerCase().includes(q)
+            );
+            const start = (page - 1) * limit;
+            orsWorkers = filtered.slice(start, start + limit);
+            orsRes = {
+                data: orsWorkers,
+                meta: {
+                    total: filtered.length,
+                    page,
+                    limit,
+                    totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
+                },
+            };
+        }
     }
 
-    // Bulk-lookup existing workers in one DB query
+    // Bulk-lookup existing workers in one DB query for current ORS page
     const emails = orsWorkers.map(w => w.email).filter(Boolean) as string[];
     const orsIds = orsWorkers.map(w => String(w.id));
 
-    const existing = await prisma.worker.findMany({
-        where: {
-            OR: [
-                { workerId: { in: orsIds } },
-                ...(emails.length ? [{ email: { in: emails } }] : []),
-            ],
-        },
-        select: {
-            id: true, workerId: true, firstName: true, lastName: true,
-            email: true, phone: true, status: true,
-            majorMinistryId: true, minorMinistryId: true,
-            employmentType: true, roleId: true,
-        },
-    });
+    const existing = orsWorkers.length > 0
+        ? await prisma.worker.findMany({
+            where: {
+                OR: [
+                    { workerId: { in: orsIds } },
+                    ...(emails.length ? [{ email: { in: emails } }] : []),
+                ],
+            },
+            select: {
+                id: true, workerId: true, workerNumber: true, legacyPasswordHash: true, firstName: true, lastName: true,
+                email: true, phone: true, address: true, birthDate: true, startMonth: true, startYear: true, remarks: true, biometricsId: true, qrToken: true, status: true,
+                majorMinistryId: true, minorMinistryId: true,
+                employmentType: true, roleId: true,
+            },
+        })
+        : [];
 
     const byWorkerId: Record<string, ExistingWorkerSummary> = Object.fromEntries(
         existing.filter((w: any) => w.workerId).map((w: any) => [w.workerId, w])
@@ -305,6 +444,7 @@ export async function getWorkerDiffPage(
             null;
 
         const hash_type = detectHashType(orsWorker.password);
+        const passwordStatus = computePasswordStatus(orsWorker.password, existingWorker);
         let status: WorkerSyncStatus;
         let diffFields: DiffField[] = [];
 
@@ -322,11 +462,116 @@ export async function getWorkerDiffPage(
             ors: { ...safeOrs, hash_type },
             existing: existingWorker,
             status,
+            direction: 'legacy_to_new',
+            passwordStatus,
             diffFields,
         };
     });
 
-    return { data: records, meta: orsRes.meta };
+    const orphanRecords: WorkerDiffRecord[] = [];
+    if (includeOrphans) {
+        const allOrsIds = await fetchAllOrsWorkerIds();
+        const allNewWorkers = await prisma.worker.findMany({
+            select: {
+                id: true,
+                workerId: true,
+                workerNumber: true,
+                legacyPasswordHash: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                address: true,
+                birthDate: true,
+                startMonth: true,
+                startYear: true,
+                remarks: true,
+                biometricsId: true,
+                qrToken: true,
+                status: true,
+                majorMinistryId: true,
+                minorMinistryId: true,
+                employmentType: true,
+                roleId: true,
+            },
+        });
+
+        const baseOrphans = allNewWorkers.filter((w) => {
+            if (!w.workerId) return true;
+            return !allOrsIds.has(String(w.workerId));
+        });
+
+        const filteredOrphans = (search
+            ? baseOrphans.filter((w) => {
+                const q = search.toLowerCase();
+                return (
+                    (w.firstName || '').toLowerCase().includes(q) ||
+                    (w.lastName || '').toLowerCase().includes(q) ||
+                    (w.email || '').toLowerCase().includes(q) ||
+                    (w.workerId || '').toLowerCase().includes(q) ||
+                    String(w.workerNumber || '').includes(q)
+                );
+            })
+            : baseOrphans);
+
+        const start = (page - 1) * limit;
+        const slice = filteredOrphans.slice(start, start + limit);
+
+        slice.forEach((w, idx) => {
+            const stableId = (w.workerNumber ?? Number(w.workerId)) || -(start + idx + 1);
+            orphanRecords.push({
+                ors: {
+                    id: stableId,
+                    first_name: w.firstName,
+                    last_name: w.lastName,
+                    email: w.email,
+                    username: null,
+                    mobile: w.phone,
+                    birthdate: null,
+                    ministry_id: null,
+                    sec_ministry_id: null,
+                    status: w.status,
+                    worker_type: w.employmentType,
+                    qrdata: null,
+                    address: null,
+                    start_month: null,
+                    start_year: null,
+                    remarks: null,
+                    biometrics_id: null,
+                    facebook_handle: null,
+                    worker_status: null,
+                    area_id: null,
+                    church_id: null,
+                    hash_type: 'NONE',
+                },
+                existing: w,
+                status: 'orphan',
+                direction: 'new_to_legacy',
+                passwordStatus: w.legacyPasswordHash ? 'has_password' : 'not_set',
+                diffFields: [
+                    {
+                        label: 'Legacy Record',
+                        ors: 'Missing in legacy ORS',
+                        current: 'Exists in new system',
+                    },
+                ],
+            });
+        });
+
+        if (!includeLegacy) {
+            return {
+                data: orphanRecords,
+                meta: {
+                    total: filteredOrphans.length,
+                    page,
+                    limit,
+                    totalPages: Math.max(1, Math.ceil(filteredOrphans.length / limit)),
+                },
+            };
+        }
+    }
+
+    return { data: [...records, ...orphanRecords], meta: orsRes.meta };
 }
 
 // ─── IMPORT NEW WORKERS ───────────────────────────────────────────────────────
@@ -388,10 +633,13 @@ export async function importOrsNewWorkers(
     const createDbWorker = async (w: any, uid: string, passwordChangeRequired: boolean) => {
         const majorMinistryId = w.ministry_id ? (ministryIdMap[String(w.ministry_id)] || '') : '';
         const minorMinistryId = w.sec_ministry_id ? (ministryIdMap[String(w.sec_ministry_id)] || '') : '';
+        const legacyPasswordHash = migratePasswordHash ? normalizeLegacyPasswordHash(w.password) : null;
         await prisma.worker.create({
             data: {
                 id: uid,
                 workerId: String(w.id),
+                workerNumber: Number(w.id),
+                legacyPasswordHash,
                 firstName: w.first_name || '',
                 lastName: w.last_name || '',
                 email: w.email,
@@ -403,6 +651,11 @@ export async function importOrsNewWorkers(
                 minorMinistryId,
                 employmentType: mapEmploymentType(w.worker_type),
                 birthDate: w.birthdate || null,
+                address: w.address || null,
+                startMonth: w.start_month || null,
+                startYear: w.start_year || null,
+                remarks: w.remarks || null,
+                biometricsId: w.biometrics_id ?? null,
                 passwordChangeRequired,
                 qrToken: w.qrdata || null,
             },
@@ -443,6 +696,12 @@ export async function importOrsNewWorkers(
 
             await createDbWorker(w, uid, true);
             result.success++;
+            await logOrsSyncEvent(
+                'worker_imported',
+                `Imported worker #${w.id} (${w.first_name} ${w.last_name}) from ORS`,
+                String(w.id),
+                `${w.first_name} ${w.last_name}`
+            );
         } catch (err: any) {
             result.failed++;
             result.errors.push(`Worker #${w.id}: ${err.message}`);
@@ -461,13 +720,20 @@ export async function importOrsNewWorkers(
  * Auth accounts remain in Supabase; this sync only updates Prisma worker fields.
  */
 export async function syncOrsUpdatedWorkers(
-    workers: OrsWorker[],
+    workers: Array<OrsWorker | SyncUpdatedWorkerInput>,
     ministryIdMap: Record<string, string> = {}
 ): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
-    for (const w of workers) {
+    for (const item of workers) {
+        const wrapped = typeof item === 'object' && item !== null && 'worker' in item;
+        const w = (wrapped ? item.worker : item) as OrsWorker;
         try {
+            const selected = wrapped && item.fields && item.fields.length > 0
+                ? new Set(item.fields)
+                : null;
+            const wants = (label: string) => !selected || selected.has(label);
+
             const existing = await prisma.worker.findFirst({
                 where: {
                     OR: [
@@ -489,22 +755,48 @@ export async function syncOrsUpdatedWorkers(
                 ? (ministryIdMap[String(w.sec_ministry_id)] || existing.minorMinistryId)
                 : existing.minorMinistryId;
 
+            const data: any = {};
+            if (wants('Worker ID')) {
+                data.workerId = String(w.id);
+                data.workerNumber = Number(w.id);
+            }
+            if (wants('First Name')) data.firstName = w.first_name || existing.firstName;
+            if (wants('Last Name')) data.lastName = w.last_name || existing.lastName;
+            if (wants('Email') && w.email) data.email = w.email;
+            if (wants('Phone')) data.phone = w.mobile || existing.phone;
+            if (wants('Address')) data.address = w.address || existing.address;
+            if (wants('Status')) data.status = mapStatus(w.status);
+            if (wants('Employment')) data.employmentType = mapEmploymentType(w.worker_type);
+            if (wants('Ministry')) {
+                data.majorMinistryId = majorMinistryId;
+                data.minorMinistryId = minorMinistryId;
+            }
+            if (wants('QR Data')) data.qrToken = w.qrdata || existing.qrToken;
+            if (wants('Birthdate')) data.birthDate = w.birthdate || existing.birthDate;
+            if (wants('Start Month')) data.startMonth = w.start_month || existing.startMonth;
+            if (wants('Start Year')) data.startYear = w.start_year || existing.startYear;
+            if (wants('Remarks')) data.remarks = w.remarks || existing.remarks;
+            if (wants('Biometrics ID')) data.biometricsId = w.biometrics_id ?? existing.biometricsId;
+
+            if (Object.keys(data).length === 0) {
+                result.skipped++;
+                result.errors.push(`Worker #${w.id}: no fields selected for sync`);
+                continue;
+            }
+
             await prisma.worker.update({
                 where: { id: existing.id },
-                data: {
-                    firstName: w.first_name || existing.firstName,
-                    lastName: w.last_name || existing.lastName,
-                    phone: w.mobile || existing.phone,
-                    status: mapStatus(w.status),
-                    employmentType: mapEmploymentType(w.worker_type),
-                    majorMinistryId,
-                    minorMinistryId,
-                    qrToken: w.qrdata || existing.qrToken,
-                    birthDate: w.birthdate || existing.birthDate,
-                },
+                data,
             });
 
             result.success++;
+            const syncedFields = selected ? Array.from(selected).join(', ') : 'all mapped fields';
+            await logOrsSyncEvent(
+                'worker_synced',
+                `Synced worker #${w.id} (${w.first_name} ${w.last_name}) from ORS [fields: ${syncedFields}]`,
+                String(w.id),
+                `${w.first_name} ${w.last_name}`
+            );
         } catch (err: any) {
             result.failed++;
             result.errors.push(`Worker #${w.id}: ${err.message}`);
@@ -512,6 +804,69 @@ export async function syncOrsUpdatedWorkers(
     }
 
     if (result.success > 0) revalidatePath('/workers');
+    return result;
+}
+
+/**
+ * Syncs legacy password hashes only (without touching Supabase Auth passwords).
+ * Useful for workers with changed or missing legacy hash mapping.
+ */
+export async function syncOrsWorkerPasswords(
+    orsWorkerIds: number[]
+): Promise<ImportResult> {
+    const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
+
+    const CHUNK = 10;
+    const allWorkers: any[] = [];
+    for (let i = 0; i < orsWorkerIds.length; i += CHUNK) {
+        const chunk = orsWorkerIds.slice(i, i + CHUNK);
+        const fetched = await Promise.all(
+            chunk.map(id => orsFetch<any>(`/tables/worker/${id}`).catch(() => null))
+        );
+        allWorkers.push(...fetched.filter(Boolean));
+    }
+
+    for (const w of allWorkers) {
+        try {
+            const existing = await prisma.worker.findFirst({
+                where: {
+                    OR: [
+                        { workerId: String(w.id) },
+                        ...(w.email ? [{ email: w.email }] : []),
+                    ],
+                },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                result.skipped++;
+                result.errors.push(`Worker #${w.id}: not found in new system`);
+                continue;
+            }
+
+            const legacyPasswordHash = normalizeLegacyPasswordHash(w.password);
+            await prisma.worker.update({
+                where: { id: existing.id },
+                data: { legacyPasswordHash },
+            });
+            result.success++;
+            await logOrsSyncEvent(
+                'password_synced',
+                `Synced legacy password hash for worker #${w.id} (${w.first_name} ${w.last_name})`,
+                String(w.id),
+                `${w.first_name} ${w.last_name}`
+            );
+        } catch (err: any) {
+            result.failed++;
+            result.errors.push(`Worker #${w.id}: ${err.message}`);
+        }
+    }
+
+    if (result.success > 0) {
+        revalidatePath('/workers');
+        revalidatePath('/settings/ors-sync');
+    }
+
     return result;
 }
 

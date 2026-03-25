@@ -77,6 +77,7 @@ import {
   getWorkerDiffPage,
   importOrsNewWorkers,
   syncOrsUpdatedWorkers,
+  syncOrsWorkerPasswords,
   previewOrsMinistries,
   previewOrsSatellites,
   previewOrsAreas,
@@ -101,8 +102,9 @@ import {
   type ImportResult,
   type OrsSyncStats,
   type WorkerDiffRecord,
+  type WorkerSyncDirection,
   type WorkerSyncStatus,
-  type HashType,
+  type PasswordSyncStatus,
 } from "@/actions/ors-sync";
 
 // ─── Shared sub-components ──────────────────────────────────────────────────
@@ -264,34 +266,53 @@ function SelectAllHeader({
 
 // ─── Workers tab ─────────────────────────────────────────────────────────────
 
-// ─── Hash type badge ──────────────────────────────────────────────────────────
+// ─── Password sync-state badge ───────────────────────────────────────────────
 
-const HASH_COLORS: Record<HashType, string> = {
-  MD5: "bg-blue-100 text-blue-700 border-blue-200",
-  SHA1: "bg-purple-100 text-purple-700 border-purple-200",
-  SHA256: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  PLAIN: "bg-amber-100 text-amber-700 border-amber-200",
-  NONE: "bg-muted text-muted-foreground",
+const PASSWORD_STATUS_META: Record<
+  PasswordSyncStatus,
+  { label: string; cls: string; hint: string }
+> = {
+  synced: {
+    label: "Synced",
+    cls: "bg-green-100 text-green-800 border-green-300",
+    hint: "Legacy password hash is in sync.",
+  },
+  has_password: {
+    label: "Has Password",
+    cls: "bg-blue-100 text-blue-800 border-blue-300",
+    hint: "Legacy record has a password hash ready to import.",
+  },
+  changed: {
+    label: "Changed",
+    cls: "bg-amber-100 text-amber-800 border-amber-300",
+    hint: "Legacy password hash changed and should be synced.",
+  },
+  no_password: {
+    label: "No Password",
+    cls: "bg-muted text-muted-foreground border-border",
+    hint: "Legacy worker has no password hash.",
+  },
+  not_set: {
+    label: "Not Set",
+    cls: "bg-rose-100 text-rose-800 border-rose-300",
+    hint: "New app worker has no saved legacy password hash.",
+  },
 };
 
-function HashBadge({ type }: { type: HashType }) {
-  if (type === "NONE")
-    return <span className="text-muted-foreground text-xs">—</span>;
+function PasswordStatusBadge({ status }: { status: PasswordSyncStatus }) {
+  const meta = PASSWORD_STATUS_META[status];
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className={`inline-flex items-center gap-1 text-xs border rounded px-1.5 py-0.5 font-mono cursor-default ${HASH_COLORS[type]}`}
+            className={`inline-flex items-center text-[11px] border rounded px-1.5 py-0.5 font-medium cursor-default ${meta.cls}`}
           >
-            <Key className="h-2.5 w-2.5" />
-            {type}
+            {meta.label}
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs max-w-48">
-          {type === "PLAIN"
-            ? "Plain-text password detected — a temporary password will be set in Supabase Auth."
-            : `${type} hash detected from legacy ORS data. Supabase Auth does not support hash import, so users will reset password on first login.`}
+        <TooltipContent side="top" className="text-xs max-w-52">
+          {meta.hint}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -305,6 +326,8 @@ function SyncBadge({ status }: { status: WorkerSyncStatus }) {
     return <Badge className="bg-blue-600 text-white text-xs">NEW</Badge>;
   if (status === "updated")
     return <Badge className="bg-amber-500 text-white text-xs">UPDATED</Badge>;
+  if (status === "orphan")
+    return <Badge className="bg-rose-600 text-white text-xs">ORPHAN</Badge>;
   return (
     <Badge
       variant="outline"
@@ -322,7 +345,7 @@ function DiffDetail({ record }: { record: WorkerDiffRecord }) {
     return null;
   return (
     <tr className="bg-amber-50/60">
-      <td colSpan={8} className="px-4 pb-3 pt-0">
+      <td colSpan={9} className="px-4 pb-3 pt-0">
         <div className="text-xs rounded border border-amber-200 bg-white overflow-hidden">
           <div className="grid grid-cols-[auto_1fr_1fr] text-muted-foreground font-medium bg-amber-50 border-b border-amber-200 px-3 py-1.5 gap-4">
             <span>Field</span>
@@ -347,6 +370,24 @@ function DiffDetail({ record }: { record: WorkerDiffRecord }) {
   );
 }
 
+function DirectionBadge({ direction }: { direction: WorkerSyncDirection }) {
+  if (direction === "new_to_legacy") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-xs border-rose-300 text-rose-700"
+      >
+        New → Legacy
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+      Legacy → New
+    </Badge>
+  );
+}
+
 // ─── Workers diff tab ─────────────────────────────────────────────────────────
 
 function WorkersTab({
@@ -366,30 +407,49 @@ function WorkersTab({
   const [statusFilter, setStatusFilter] = useState<WorkerSyncStatus | "all">(
     "all",
   );
+  const [directionFilter, setDirectionFilter] = useState<
+    WorkerSyncDirection | "all"
+  >("all");
+  const [passwordFilter, setPasswordFilter] = useState<
+    PasswordSyncStatus | "all"
+  >("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [roleId, setRoleId] = useState("viewer");
   const [migrateHash, setMigrateHash] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
-  const [confirm, setConfirm] = useState<"import" | "sync" | null>(null);
+  const [syncFieldSelection, setSyncFieldSelection] = useState<Set<string>>(
+    new Set(),
+  );
+  const [confirm, setConfirm] = useState<
+    "import" | "sync" | "passwords" | null
+  >(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["ors-worker-diff", page, search, ministryMap],
+    queryKey: ["ors-worker-diff", page, search, ministryMap, directionFilter],
     queryFn: () =>
-      getWorkerDiffPage(page, 50, search || undefined, ministryMap),
+      getWorkerDiffPage(
+        page,
+        50,
+        search || undefined,
+        ministryMap,
+        directionFilter,
+      ),
     placeholderData: (p) => p,
   });
 
   const allRecords: WorkerDiffRecord[] = data?.data || [];
 
   // Client-side status filter
-  const records = useMemo(
-    () =>
+  const records = useMemo(() => {
+    const byStatus =
       statusFilter === "all"
         ? allRecords
-        : allRecords.filter((r) => r.status === statusFilter),
-    [allRecords, statusFilter],
-  );
+        : allRecords.filter((r) => r.status === statusFilter);
+    return passwordFilter === "all"
+      ? byStatus
+      : byStatus.filter((r) => r.passwordStatus === passwordFilter);
+  }, [allRecords, statusFilter, passwordFilter]);
 
   // Status counts for current page
   const counts = useMemo(
@@ -397,12 +457,18 @@ function WorkersTab({
       new: allRecords.filter((r) => r.status === "new").length,
       updated: allRecords.filter((r) => r.status === "updated").length,
       synced: allRecords.filter((r) => r.status === "synced").length,
+      orphan: allRecords.filter((r) => r.status === "orphan").length,
     }),
     [allRecords],
   );
 
   // Selection helpers
-  const selectableRecords = records.filter((r) => r.status !== "synced");
+  const selectableRecords = records.filter(
+    (r) =>
+      (r.status !== "synced" && r.status !== "orphan") ||
+      r.passwordStatus === "changed" ||
+      r.passwordStatus === "not_set",
+  );
   const allSelected =
     selectableRecords.length > 0 &&
     selectableRecords.every((r) => selectedIds.has(r.ors.id));
@@ -414,6 +480,19 @@ function WorkersTab({
   const selectedUpdated = records.filter(
     (r) => r.status === "updated" && selectedIds.has(r.ors.id),
   );
+  const selectedPasswordTargets = records.filter(
+    (r) =>
+      selectedIds.has(r.ors.id) &&
+      (r.passwordStatus === "changed" || r.passwordStatus === "not_set"),
+  );
+
+  const availableSyncFields = useMemo(() => {
+    const labels = new Set<string>();
+    selectedUpdated.forEach((r) => {
+      r.diffFields.forEach((f) => labels.add(f.label));
+    });
+    return Array.from(labels).sort((a, b) => a.localeCompare(b));
+  }, [selectedUpdated]);
 
   // Whether any selected worker has a migratable hash
   const hasHashes = [...selectedNew, ...selectedUpdated].some(
@@ -451,11 +530,23 @@ function WorkersTab({
   };
 
   const doSync = async () => {
+    if (availableSyncFields.length > 0 && syncFieldSelection.size === 0) {
+      toast({
+        variant: "destructive",
+        title: "No fields selected",
+        description: "Select at least one field to sync.",
+      });
+      return;
+    }
+
     setIsImporting(true);
     setConfirm(null);
     try {
       const result = await syncOrsUpdatedWorkers(
-        selectedUpdated.map((r) => r.ors),
+        selectedUpdated.map((r) => ({
+          worker: r.ors,
+          fields: Array.from(syncFieldSelection),
+        })),
         ministryMap,
       );
       onResult(result);
@@ -469,6 +560,31 @@ function WorkersTab({
       toast({
         variant: "destructive",
         title: "Sync failed",
+        description: e.message,
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const doSyncPasswords = async () => {
+    setIsImporting(true);
+    setConfirm(null);
+    try {
+      const result = await syncOrsWorkerPasswords(
+        selectedPasswordTargets.map((r) => r.ors.id),
+      );
+      onResult(result);
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["ors-worker-diff"] });
+      toast({
+        title: "Password sync done",
+        description: `${result.success} updated, ${result.skipped} skipped`,
+      });
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Password sync failed",
         description: e.message,
       });
     } finally {
@@ -495,7 +611,7 @@ function WorkersTab({
       {/* Toolbar */}
       <div className="flex gap-2 flex-wrap items-center">
         <Input
-          placeholder="Search first name…"
+          placeholder="Search worker ID, name, or email…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={(e) => {
@@ -521,7 +637,7 @@ function WorkersTab({
 
         {/* Status filter pills */}
         <div className="flex gap-1 ml-2">
-          {(["all", "new", "updated", "synced"] as const).map((s) => (
+          {(["all", "new", "updated", "synced", "orphan"] as const).map((s) => (
             <button
               key={s}
               onClick={() => {
@@ -540,10 +656,50 @@ function WorkersTab({
                   ? `New (${counts.new})`
                   : s === "updated"
                     ? `Updated (${counts.updated})`
-                    : `Synced (${counts.synced})`}
+                    : s === "synced"
+                      ? `Synced (${counts.synced})`
+                      : `Orphan (${counts.orphan})`}
             </button>
           ))}
         </div>
+
+        <Select
+          value={directionFilter}
+          onValueChange={(v: WorkerSyncDirection | "all") => {
+            setDirectionFilter(v);
+            setPage(1);
+            setSelectedIds(new Set());
+          }}
+        >
+          <SelectTrigger className="w-44 h-8 text-xs">
+            <SelectValue placeholder="Direction" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Direction: All</SelectItem>
+            <SelectItem value="legacy_to_new">Legacy → New</SelectItem>
+            <SelectItem value="new_to_legacy">New → Legacy</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={passwordFilter}
+          onValueChange={(v: PasswordSyncStatus | "all") => {
+            setPasswordFilter(v);
+            setSelectedIds(new Set());
+          }}
+        >
+          <SelectTrigger className="w-44 h-8 text-xs">
+            <SelectValue placeholder="Password status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Password: All</SelectItem>
+            <SelectItem value="synced">Password: Synced</SelectItem>
+            <SelectItem value="has_password">Password: Has Password</SelectItem>
+            <SelectItem value="changed">Password: Changed</SelectItem>
+            <SelectItem value="not_set">Password: Not Set</SelectItem>
+            <SelectItem value="no_password">Password: No Password</SelectItem>
+          </SelectContent>
+        </Select>
 
         <div className="flex items-center gap-1.5 ml-auto">
           <span className="text-xs text-muted-foreground">Role:</span>
@@ -601,6 +757,7 @@ function WorkersTab({
                   />
                 </TableHead>
                 <TableHead className="w-24">Status</TableHead>
+                <TableHead className="w-32 text-xs">Direction</TableHead>
                 <TableHead>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <span className="text-blue-700 font-semibold">
@@ -614,14 +771,14 @@ function WorkersTab({
                 <TableHead className="w-40 text-xs">Phone</TableHead>
                 <TableHead className="w-28 text-xs">Employment</TableHead>
                 <TableHead className="w-20 text-xs">Status</TableHead>
-                <TableHead className="w-20 text-xs">Hash</TableHead>
+                <TableHead className="w-28 text-xs">Password</TableHead>
                 <TableHead className="w-8" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-32 text-center">
+                  <TableCell colSpan={9} className="h-32 text-center">
                     <LoaderCircle className="mx-auto h-5 w-5 animate-spin" />
                   </TableCell>
                 </TableRow>
@@ -641,6 +798,11 @@ function WorkersTab({
                   const isExpanded = expandedIds.has(rec.ors.id);
                   const isChecked = selectedIds.has(rec.ors.id);
                   const isSynced = rec.status === "synced";
+                  const canPasswordSync =
+                    rec.status !== "orphan" &&
+                    (rec.passwordStatus === "changed" ||
+                      rec.passwordStatus === "not_set");
+                  const rowSelectable = !isSynced || canPasswordSync;
                   const hasChanges = rec.diffFields.length > 0;
 
                   return (
@@ -651,7 +813,7 @@ function WorkersTab({
                         <TableCell>
                           <Checkbox
                             checked={isChecked}
-                            disabled={isSynced}
+                            disabled={!rowSelectable}
                             onCheckedChange={(c) =>
                               toggleSelect(rec.ors.id, !!c)
                             }
@@ -659,6 +821,9 @@ function WorkersTab({
                         </TableCell>
                         <TableCell>
                           <SyncBadge status={rec.status} />
+                        </TableCell>
+                        <TableCell>
+                          <DirectionBadge direction={rec.direction} />
                         </TableCell>
 
                         {/* Name column: ORS top, New bottom */}
@@ -756,9 +921,9 @@ function WorkersTab({
                           </Badge>
                         </TableCell>
 
-                        {/* Hash */}
+                        {/* Password sync status */}
                         <TableCell>
-                          <HashBadge type={rec.ors.hash_type} />
+                          <PasswordStatusBadge status={rec.passwordStatus} />
                         </TableCell>
 
                         {/* Expand toggle for updated rows */}
@@ -824,7 +989,10 @@ function WorkersTab({
               variant="outline"
               className="border-amber-400 text-amber-700 hover:bg-amber-50"
               disabled={isImporting}
-              onClick={() => setConfirm("sync")}
+              onClick={() => {
+                setSyncFieldSelection(new Set(availableSyncFields));
+                setConfirm("sync");
+              }}
             >
               {isImporting ? (
                 <LoaderCircle className="h-4 w-4 mr-1.5 animate-spin" />
@@ -832,6 +1000,23 @@ function WorkersTab({
                 <GitMerge className="h-4 w-4 mr-1.5" />
               )}
               Sync Updated ({selectedUpdated.length})
+            </Button>
+          )}
+
+          {selectedPasswordTargets.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-blue-400 text-blue-700 hover:bg-blue-50"
+              disabled={isImporting}
+              onClick={() => setConfirm("passwords")}
+            >
+              {isImporting ? (
+                <LoaderCircle className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Key className="h-4 w-4 mr-1.5" />
+              )}
+              Sync Passwords ({selectedPasswordTargets.length})
             </Button>
           )}
 
@@ -901,15 +1086,110 @@ function WorkersTab({
             <AlertDialogTitle>
               Sync {selectedUpdated.length} updated worker(s)?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Fields that differ (name, phone, status, employment, ministry)
-              will be overwritten in the new app from ORS data. Supabase profile
-              metadata is unchanged by sync. Passwords are not changed by sync.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  Choose which changed fields to sync from ORS to the new app.
+                  Password hashes are not changed by this action.
+                </p>
+
+                {availableSyncFields.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-foreground">
+                        Sync fields
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() =>
+                            setSyncFieldSelection(new Set(availableSyncFields))
+                          }
+                        >
+                          Select all
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setSyncFieldSelection(new Set())}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto rounded border p-2">
+                      {availableSyncFields.map((label) => {
+                        const checked = syncFieldSelection.has(label);
+                        return (
+                          <label
+                            key={label}
+                            className="flex items-center gap-2 text-xs"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setSyncFieldSelection((prev) => {
+                                  const next = new Set(prev);
+                                  if (v) next.add(label);
+                                  else next.delete(label);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs">
+                    No diff fields found in selected rows.
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doSync}>Sync Now</AlertDialogAction>
+            <AlertDialogAction
+              onClick={doSync}
+              disabled={
+                availableSyncFields.length > 0 && syncFieldSelection.size === 0
+              }
+            >
+              Sync Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm: Password sync */}
+      <AlertDialog
+        open={confirm === "passwords"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Sync password hashes for {selectedPasswordTargets.length}{" "}
+              worker(s)?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This updates only the saved legacy hash field in the new system.
+              It does not change Supabase Auth passwords.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={doSyncPasswords}>
+              Sync Passwords
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1830,7 +2110,11 @@ function AttendanceTab({ onResult }: { onResult: (r: ImportResult) => void }) {
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function OrsLegacySyncPage() {
-  const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
+  const {
+    isSuperAdmin,
+    canManageOrsSync,
+    isLoading: isRoleLoading,
+  } = useUserRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -1871,14 +2155,14 @@ export default function OrsLegacySyncPage() {
     );
   }
 
-  if (!isSuperAdmin) {
+  if (!isSuperAdmin && !canManageOrsSync) {
     return (
       <AppLayout>
         <Card>
           <CardHeader>
             <CardTitle>Access Denied</CardTitle>
             <CardDescription>
-              Only super admins can access ORS Legacy Sync.
+              You need super admin or ORS Sync permission to access this page.
             </CardDescription>
           </CardHeader>
         </Card>

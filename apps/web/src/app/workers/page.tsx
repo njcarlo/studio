@@ -719,11 +719,13 @@ export default function WorkersPage() {
     });
   };
 
-  const getRoleName = (roleId: string) => {
+  const getRoleName = (roleId?: string | null) => {
+    if (!roleId) return "Unassigned";
     return roles.find((r) => r.id === roleId)?.name || roleId;
   };
 
-  const getPermissions = (roleId: string) => {
+  const getPermissions = (roleId?: string | null) => {
+    if (!roleId) return [];
     const role = roles.find((r) => r.id === roleId);
     if (roleId === "admin") return ["all_access"];
     return role?.permissions || [];
@@ -1058,7 +1060,11 @@ export default function WorkersPage() {
                             </TableCell>
                             <TableCell>
                               {(worker as any).roles?.length > 0
-                                ? (worker as any).roles.map((wr: any) => wr.role?.name ?? wr.roleId).join(", ")
+                                ? (worker as any).roles
+                                    .map(
+                                      (wr: any) => wr.role?.name ?? wr.roleId,
+                                    )
+                                    .join(", ")
                                 : getRoleName(worker.roleId)}
                             </TableCell>
                             <TableCell>
@@ -1285,7 +1291,9 @@ export default function WorkersPage() {
                     </TableCell>
                     <TableCell>
                       {(worker as any).roles?.length > 0
-                        ? (worker as any).roles.map((wr: any) => wr.role?.name ?? wr.roleId).join(", ")
+                        ? (worker as any).roles
+                            .map((wr: any) => wr.role?.name ?? wr.roleId)
+                            .join(", ")
                         : getRoleName(worker.roleId)}
                     </TableCell>
                     <TableCell>
