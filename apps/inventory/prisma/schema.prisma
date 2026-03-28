@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client"
 }
 
 datasource db {
@@ -8,9 +9,13 @@ datasource db {
 }
 
 model Category {
-  id    String @id @default(cuid())
-  name  String @unique
-  items Item[]
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  color       String?
+  icon        String?
+  isActive    Boolean @default(true)
+  items       Item[]
 }
 
 model Location {
@@ -20,26 +25,70 @@ model Location {
 }
 
 model Item {
-  id          String   @id @default(cuid())
-  name        String
-  categoryId  String
-  type        String   // "Equipment" or "Consumable"
-  stock       Int      @default(0)
-  status      String   // "In Stock", "Low Stock", "Out of Stock"
-  locationId  String
-  lastUpdated DateTime @default(now()) @updatedAt
+  id                  String    @id @default(cuid())
+  name                String
+  inventoryCode       String?   @unique
+  categoryId          String
+  type                String    @default("Equipment")
+  stock               Int       @default(0)
+  minStock            Int       @default(0)
+  unit                String    @default("pcs")
+  status              String    @default("Good Condition")
+  statusDetails       String?
+  locationId          String?
+  aisle               String?
+  shelf               String?
+  bin                 String?
+  assignedTo          String?
+  imageUrl            String?
+  isApprovalRequired  Boolean   @default(false)
+  lastUpdated         DateTime  @default(now()) @updatedAt
+  createdAt           DateTime  @default(now())
 
-  category    Category @relation(fields: [categoryId], references: [id])
-  location    Location @relation(fields: [locationId], references: [id])
+  category    Category          @relation(fields: [categoryId], references: [id])
+  location    Location?         @relation(fields: [locationId], references: [id])
   logs        InventoryLog[]
+  borrowings  InventoryBorrowing[]
 }
 
 model InventoryLog {
   id        String   @id @default(cuid())
   itemId    String
-  action    String   // "Stock In", "Stock Out", "Adjustment"
+  workerId  String?
+  action    String   // "Stock In", "Stock Out", "Checkout", "Return", "Adjustment"
   quantity  Int
+  balance   Int      @default(0)
+  notes     String?
   timestamp DateTime @default(now())
 
   item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model InventoryBorrowing {
+  id                String    @id @default(cuid())
+  itemId            String
+  quantity          Int       @default(1)
+  borrowerId        String    // Worker ID (string reference)
+  borrowerName      String    // Denormalized name
+  borrowerEmail     String?
+  borrowedAt        DateTime  @default(now())
+  dueDate           DateTime?
+  returnedAt        DateTime?
+  status            String    @default("BORROWED")
+
+  checkoutNotes     String?
+  checkoutCondition String?
+  checkoutChecklist String?   // JSON string
+
+  returnNotes       String?
+  returnCondition   String?
+  returnChecklist   String?   // JSON string
+  returnPhotos      String?   // JSON array string
+
+  item              Item      @relation(fields: [itemId], references: [id])
+}
+
+model Setting {
+  id   String @id
+  data String // JSON string
 }

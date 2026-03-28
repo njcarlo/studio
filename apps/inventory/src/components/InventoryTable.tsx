@@ -3,15 +3,15 @@ import type { CSSProperties } from 'react';
 import {
   Filter, Search,
   Plus, ChevronLeft, ChevronRight,
-  CheckSquare, Square, X, RefreshCw,
-  LayoutList, LayoutGrid, MoreHorizontal, ArrowDownToLine
+  CheckSquare, Square, X, RefreshCw, QrCode, Trash2,
+  LayoutList, LayoutGrid, MoreHorizontal, ArrowDownToLine, ArrowUpFromLine
 } from 'lucide-react';
 import { useInventory } from '../hooks/useInventory';
 import { QRModal } from './QRModal';
 import { ItemModal } from './ItemModal';
 
 export function InventoryTable() {
-  const { items, totalItems, loading, categories, locations, fetchItems, fetchLocations, updateStock, deleteItem, fetchCategories, bulkUpdateItems } = useInventory();
+  const { items, totalItems, loading, categories, locations, fetchItems, fetchLocations, updateStock, deleteItem, fetchCategories, bulkUpdateItems, bulkDeleteItems } = useInventory();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
@@ -25,7 +25,7 @@ export function InventoryTable() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   const [isQrModalOpen, setQrModalOpen] = useState(false);
-  const [qrItem, setQrItem] = useState<{ id: string, name: string } | null>(null);
+  const [qrItems, setQrItems] = useState<{ id: string, name: string }[]>([]);
 
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [modalItem, setModalItem] = useState<any>(null);
@@ -58,6 +58,9 @@ export function InventoryTable() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState<string>('');
 
+  // Bulk Delete confirmation modal
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
   const hasActiveFilters = !!(activeCategory || activeType || activeStatus);
 
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
@@ -86,17 +89,37 @@ export function InventoryTable() {
 
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
-    await deleteItem(deleteConfirmId);
-    await fetchItems({ search, skip: skip.toString(), take: take.toString() });
-    setDeleteConfirmId(null);
-    setDeleteConfirmName('');
+    try {
+      await deleteItem(deleteConfirmId);
+      await fetchItems({ search, skip: skip.toString(), take: take.toString() });
+      setDeleteConfirmId(null);
+      setDeleteConfirmName('');
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      alert('Failed to delete the item. Please try again or check for existing dependencies.');
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    try {
+      await bulkDeleteItems(Array.from(selectedIds));
+      await fetchItems({ search, skip: skip.toString(), take: take.toString() });
+      setBulkDeleteConfirm(false);
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error('Failed to bulk delete items:', error);
+      alert('Failed to delete the selected items. Please try again.');
+    }
   };
 
   const handleExportCSV = () => {
     const selected = items.filter(i => selectedIds.has(i.id));
     if (!selected.length) return;
     const headers = ['ID', 'Name', 'Category', 'Type', 'Stock', 'Status', 'Location'];
-    const rows = selected.map(i => [i.id, `"${i.name}"`, `"${i.category?.name || ''}"`, i.type, i.stock, i.status, `"${i.location?.name || ''}"` ]);
+    const rows = selected.map(i => {
+      const computedStatus = i.stock === 0 ? 'Out of Stock' : i.stock < 10 ? 'Low Stock' : 'In Stock';
+      return [i.id, `"${i.name}"`, `"${i.category?.name || ''}"`, i.type, i.stock, computedStatus, `"${i.location?.name || ''}"`];
+    });
     const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const link = document.createElement('a');
     link.setAttribute('href', encodeURI(csv));
@@ -192,17 +215,9 @@ export function InventoryTable() {
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', padding: '1.25rem' }}>
 
         {/* ── Controls Bar ────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
+        <div className="action-bar">
           {/* Search */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-            padding: '0.375rem 0.75rem',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            backgroundColor: '#f9fafb',
-            width: '200px',
-            transition: 'border-color 0.15s'
-          }}>
+          <div className="search-container">
             <Search size={14} color="#9ca3af" />
             <input
               type="text" placeholder="Search" className="search-input"
@@ -217,7 +232,7 @@ export function InventoryTable() {
           </div>
 
           {/* Push right */}
-          <div style={{ marginLeft: 'auto' }} />
+          <div className="action-bar-spacer" />
 
           {/* Item count pill */}
           <span style={{
@@ -273,6 +288,17 @@ export function InventoryTable() {
           >
             <Filter size={14} /> Filter
           </button>
+
+          {/* Import Excel */}
+          <label className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', height: '34px', gap: '0.35rem', fontSize: '0.8125rem', padding: '0 0.75rem', borderRadius: '8px', cursor: 'pointer', margin: 0 }}>
+            <ArrowUpFromLine size={14} /> Import
+            <input type="file" accept=".xlsx, .xls, .csv" style={{ display: 'none' }} onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                alert(`Selected file: ${e.target.files[0].name}. Import functionality is pending backend integration.`);
+                e.target.value = '';
+              }
+            }} />
+          </label>
 
           {/* Add Item */}
           <button className="btn btn-primary" style={{ height: '34px', gap: '0.35rem', fontSize: '0.8125rem', padding: '0 0.875rem', borderRadius: '8px' }}
@@ -365,16 +391,29 @@ export function InventoryTable() {
                 <button className="btn btn-outline" style={{ height: '32px', fontSize: '0.8rem' }} onClick={() => setBulkAction(null)}>Cancel</button>
               </>
             ) : (
-              <div style={{ display: 'flex', gap: '0.4rem', marginLeft: 'auto' }}>
-                <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', backgroundColor: '#fff' }} onClick={() => { setBulkAction('status'); setBulkValue(''); }}>Update Status</button>
-                <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', backgroundColor: '#fff' }} onClick={() => { setBulkAction('location'); setBulkValue(''); }}>Assign Location</button>
-                <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', backgroundColor: '#fff', gap: '0.3rem' }} onClick={handleExportCSV}>
-                  <ArrowDownToLine size={13} /> Export CSV
-                </button>
-                <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger)', backgroundColor: '#fff' }} onClick={() => setSelectedIds(new Set())}>
-                  <X size={12} /> Deselect
-                </button>
-              </div>
+              <>
+                <div className="action-bar-spacer" />
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', backgroundColor: '#fff' }} onClick={() => { setBulkAction('status'); setBulkValue(''); }}>Update Status</button>
+                  <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', backgroundColor: '#fff' }} onClick={() => { setBulkAction('location'); setBulkValue(''); }}>Assign Location</button>
+                  <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', backgroundColor: '#fff' }} onClick={() => {
+                    const selectedArr = items.filter(i => selectedIds.has(i.id)).map(i => ({ id: i.id, name: i.name, inventoryCode: i.inventoryCode || 'No Code' }));
+                    setQrItems(selectedArr);
+                    setQrModalOpen(true);
+                  }}>
+                    Print Labels
+                  </button>
+                  <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', backgroundColor: '#fff', gap: '0.3rem' }} onClick={handleExportCSV}>
+                    <ArrowDownToLine size={13} /> Export CSV
+                  </button>
+                  <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger)', backgroundColor: '#fff', gap: '0.3rem' }} onClick={() => setBulkDeleteConfirm(true)}>
+                    <Trash2 size={13} /> Delete
+                  </button>
+                  <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger)', backgroundColor: '#fff' }} onClick={() => setSelectedIds(new Set())}>
+                    <X size={12} /> Deselect
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -420,6 +459,7 @@ export function InventoryTable() {
                 ) : items.map((item) => {
                   const isSelected = selectedIds.has(item.id);
                   const isMoreOpen = moreMenuId === item.id;
+                  const computedStatus = item.stock === 0 ? 'Out of Stock' : item.stock < 10 ? 'Low Stock' : 'In Stock';
 
                   return (
                     <tr
@@ -437,8 +477,8 @@ export function InventoryTable() {
                       </td>
                       <td style={{ padding: '0.625rem 0.875rem' }}>
                         <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#1a1a2e' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', marginTop: '0.05rem' }}>
-                          {item.id.slice(0, 7).toUpperCase().replace(/(.{3})/, '$1-')}
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', marginTop: '0.05rem', fontFamily: 'monospace' }}>
+                          {item.inventoryCode || 'No Code'}
                         </div>
                       </td>
                       <td style={{ padding: '0.625rem 0.875rem' }}>
@@ -453,9 +493,9 @@ export function InventoryTable() {
                         </span>
                       </td>
                       <td style={{ padding: '0.625rem 0.875rem', whiteSpace: 'nowrap' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8125rem', whiteSpace: 'nowrap', ...getStatusStyle(item.status) }}>
-                          <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: getStatusDot(item.status), display: 'inline-block', flexShrink: 0 }} />
-                          {item.status}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8125rem', whiteSpace: 'nowrap', ...getStatusStyle(computedStatus) }}>
+                          <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: getStatusDot(computedStatus), display: 'inline-block', flexShrink: 0 }} />
+                          {computedStatus}
                         </span>
                       </td>
                       <td style={{ padding: '0.625rem 0.875rem', fontSize: '0.8rem', color: '#6b7280' }}>{item.location?.name || '—'}</td>
@@ -478,7 +518,7 @@ export function InventoryTable() {
                               whiteSpace: 'nowrap'
                             }}
                           >
-                            + In
+                            +
                           </button>
                           {/* – Out */}
                           <button
@@ -496,7 +536,23 @@ export function InventoryTable() {
                               whiteSpace: 'nowrap'
                             }}
                           >
-                            – Out
+                            –
+                          </button>
+                          {/* QR Label */}
+                          <button
+                            onClick={() => { setQrItems([{ id: item.id, name: item.name }]); setQrModalOpen(true); }}
+                            title="QR Label"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              width: '28px', height: '28px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '6px',
+                              backgroundColor: '#fff',
+                              color: '#6b7280',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <QrCode size={14} />
                           </button>
                           {/* ··· More */}
                           <div style={{ position: 'relative' }}>
@@ -537,12 +593,6 @@ export function InventoryTable() {
                                 >
                                   Edit Item
                                 </button>
-                                <button
-                                  onClick={() => { setQrItem({ id: item.id, name: item.name }); setQrModalOpen(true); setMoreMenuId(null); }}
-                                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 0.875rem', fontSize: '0.8125rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#374151', textAlign: 'left' }}
-                                >
-                                  QR Label
-                                </button>
                                 <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '0.2rem 0' }} />
                                 <button
                                   onClick={() => handleDelete(item.id, item.name)}
@@ -573,30 +623,34 @@ export function InventoryTable() {
                 <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📦</div>
                 <div style={{ fontWeight: 600, color: '#374151' }}>No items found</div>
               </div>
-            ) : items.map((item) => (
-              <div key={item.id} style={{
-                backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
-                padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'
-              }}>
-                <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1a1a2e' }}>{item.name}</div>
-                <span style={getCategoryPillStyle()}>{item.category?.name || '—'}</span>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: item.stock === 0 ? '#ef4444' : '#1a1a2e' }}>{item.stock}</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', ...getStatusStyle(item.status) }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: getStatusDot(item.status), display: 'inline-block' }} />
-                    {item.status}
-                  </span>
+            ) : items.map((item) => {
+              const computedStatus = item.stock === 0 ? 'Out of Stock' : item.stock < 10 ? 'Low Stock' : 'In Stock';
+              return (
+                <div key={item.id} style={{
+                  backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
+                  padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'
+                }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1a1a2e' }}>{item.name}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '-0.35rem', fontFamily: 'monospace' }}>{item.inventoryCode || 'No Code'}</div>
+                  <span style={getCategoryPillStyle()}>{item.category?.name || '—'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: item.stock === 0 ? '#ef4444' : '#1a1a2e' }}>{item.stock}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', ...getStatusStyle(computedStatus) }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: getStatusDot(computedStatus), display: 'inline-block' }} />
+                      {computedStatus}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{item.location?.name || '—'}</div>
+                  <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.25rem' }}>
+                    <button onClick={() => handleStockIn(item.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#374151' }}>+ In</button>
+                    <button onClick={() => handleStockOut(item.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#374151' }}>– Out</button>
+                    <button onClick={() => { setModalItem(item); setIsItemModalOpen(true); }} style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#6b7280' }}>
+                      <MoreHorizontal size={13} />
+                    </button>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{item.location?.name || '—'}</div>
-                <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.25rem' }}>
-                  <button onClick={() => handleStockIn(item.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#374151' }}>+ In</button>
-                  <button onClick={() => handleStockOut(item.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#374151' }}>– Out</button>
-                  <button onClick={() => { setModalItem(item); setIsItemModalOpen(true); }} style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#6b7280' }}>
-                    <MoreHorizontal size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -621,7 +675,7 @@ export function InventoryTable() {
         </div>
       </div>
 
-      <QRModal isOpen={isQrModalOpen} onClose={() => setQrModalOpen(false)} item={qrItem} />
+      <QRModal isOpen={isQrModalOpen} onClose={() => setQrModalOpen(false)} items={qrItems} />
       <ItemModal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} item={modalItem} onSaved={() => fetchItems({ search, skip: skip.toString(), take: take.toString() })} />
 
       {/* Delete Confirmation Modal */}
@@ -687,6 +741,80 @@ export function InventoryTable() {
                   border: 'none',
                   borderRadius: '8px',
                   backgroundColor: '#10b981',
+                  color: '#fff',
+                  fontWeight: 600, fontSize: '0.875rem',
+                  cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {bulkDeleteConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 200, padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            padding: '1.75rem',
+            width: '100%',
+            maxWidth: '380px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem'
+          }}>
+            {/* Icon */}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                width: '52px', height: '52px', borderRadius: '50%',
+                backgroundColor: '#fee2e2',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>🗑️</span>
+              </div>
+            </div>
+            {/* Text */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e', marginBottom: '0.4rem' }}>
+                Bulk Delete Items
+              </div>
+              <div style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
+                Are you sure you want to delete <strong style={{ color: '#1a1a2e' }}>{selectedIds.size}</strong> selected items?
+                <br />This action cannot be undone.
+              </div>
+            </div>
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => setBulkDeleteConfirm(false)}
+                style={{
+                  flex: 1, padding: '0.6rem',
+                  border: '1.5px solid #ef4444',
+                  borderRadius: '8px',
+                  backgroundColor: '#fff',
+                  color: '#ef4444',
+                  fontWeight: 600, fontSize: '0.875rem',
+                  cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >
+                No, Cancel
+              </button>
+              <button
+                onClick={confirmBulkDelete}
+                style={{
+                  flex: 1, padding: '0.6rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: '#ef4444',
                   color: '#fff',
                   fontWeight: 600, fontSize: '0.875rem',
                   cursor: 'pointer', fontFamily: 'inherit'

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, ArrowDownRight, ArrowUpRight, CopyMinus } from 'lucide-react';
+import { Bell, ArrowDownRight, ArrowUpRight, CopyMinus, ScanBarcode, AlertTriangle, X } from 'lucide-react';
 import { useInventory } from '../hooks/useInventory';
 import { useLocation } from 'react-router-dom';
+import { StockScanModal } from './StockScanModal';
 
 const routeTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -14,6 +15,8 @@ const routeTitles: Record<string, string> = {
 
 export function Header() {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [overdueAlerts, setOverdueAlerts] = useState<any[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
   const { logs, fetchLogs } = useInventory();
   const location = useLocation();
@@ -22,6 +25,16 @@ export function Header() {
 
   useEffect(() => {
     fetchLogs();
+    
+    // Check for overdue items (Automated Alerts)
+    fetch('/api/borrowings/overdue')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setOverdueAlerts(data);
+        }
+      })
+      .catch(() => {});
   }, [fetchLogs]);
 
   useEffect(() => {
@@ -43,6 +56,7 @@ export function Header() {
   };
 
   return (
+    <>
     <header className="app-header">
       {/* Mobile hamburger placeholder — actual button is in Sidebar.tsx */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -53,6 +67,15 @@ export function Header() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '2rem' }}>
+        {/* Global Scan to Action */}
+        <button
+          className="btn btn-primary"
+          style={{ height: '34px', fontSize: '0.8125rem', padding: '0 0.75rem', borderRadius: '8px', marginRight: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          onClick={() => setShowScanner(true)}
+        >
+          <ScanBarcode size={14} /> Scan
+        </button>
+
         {/* Notification Bell */}
         <div style={{ position: 'relative' }} ref={notifRef}>
           <button
@@ -118,5 +141,40 @@ export function Header() {
         </div>
       </div>
     </header>
+
+    {/* Status Automated Alerts / Toast Notification */}
+    {overdueAlerts.length > 0 && (
+      <div style={{ 
+        position: 'fixed', 
+        top: '72px', 
+        right: '24px', 
+        zIndex: 9999, 
+        padding: '1rem 1.25rem', 
+        backgroundColor: '#fef2f2', 
+        border: '1px solid #fecaca', 
+        borderRadius: '8px', 
+        boxShadow: '0 4px 12px rgba(220, 38, 38, 0.15)',
+        display: 'flex', 
+        gap: '0.75rem',
+        alignItems: 'flex-start',
+        maxWidth: '380px'
+      }}>
+        <AlertTriangle size={18} color="#dc2626" style={{ marginTop: '2px', flexShrink: 0 }} />
+        <div>
+          <div style={{ color: '#dc2626', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+            Overdue Warning
+          </div>
+          <div style={{ color: '#991b1b', fontSize: '0.8125rem', lineHeight: 1.4 }}>
+            You have {overdueAlerts.length} overdue borrowing{overdueAlerts.length > 1 ? 's' : ''}. Please check the borrowings page to follow up.
+          </div>
+        </div>
+        <button onClick={() => setOverdueAlerts([])} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: '0', flexShrink: 0, marginLeft: '0.25rem' }}>
+          <X size={16} />
+        </button>
+      </div>
+    )}
+
+    {showScanner && <StockScanModal onClose={() => setShowScanner(false)} />}
+    </>
   );
 }

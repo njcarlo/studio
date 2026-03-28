@@ -17,9 +17,12 @@ async function main() {
   const catFurniture = await prisma.category.create({ data: { name: 'Furniture' } });
 
   // Locations
-  const locA = await prisma.location.create({ data: { name: 'Storage Room A' } });
-  const locB = await prisma.location.create({ data: { name: 'Warehouse B' } });
-  const locCab1 = await prisma.location.create({ data: { name: 'Cabinet 1' } });
+  const loc1 = await prisma.location.create({ data: { name: '4th Floor Studio' } });
+  const loc2 = await prisma.location.create({ data: { name: 'Main Sanc Techbooth' } });
+  const loc3 = await prisma.location.create({ data: { name: 'Broadcast Room' } });
+  await prisma.location.create({ data: { name: 'GB Sanc Techbooth' } });
+  await prisma.location.create({ data: { name: '4th floor EE Room' } });
+  await prisma.location.create({ data: { name: 'SVC' } });
 
   // Items
   const item1 = await prisma.item.create({
@@ -29,7 +32,7 @@ async function main() {
       type: 'Equipment',
       stock: 45,
       status: 'In Stock',
-      locationId: locA.id,
+      locationId: loc1.id,
     }
   });
 
@@ -40,7 +43,7 @@ async function main() {
       type: 'Consumable',
       stock: 12,
       status: 'Low Stock',
-      locationId: locCab1.id,
+      locationId: loc2.id,
     }
   });
 
@@ -51,7 +54,7 @@ async function main() {
       type: 'Equipment',
       stock: 0,
       status: 'Out of Stock',
-      locationId: locB.id,
+      locationId: loc3.id,
     }
   });
 
@@ -62,7 +65,7 @@ async function main() {
       type: 'Equipment',
       stock: 28,
       status: 'In Stock',
-      locationId: locA.id,
+      locationId: loc1.id,
     }
   });
 

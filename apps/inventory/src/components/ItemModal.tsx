@@ -31,6 +31,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
     stock: 0,
     status: 'In Stock',
     locationId: '',
+    inventoryCode: '',
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -51,6 +52,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
         stock: item.stock || 0,
         status: item.status || 'In Stock',
         locationId: item.locationId || '',
+        inventoryCode: item.inventoryCode || '',
       });
     } else {
       setFormData({
@@ -60,6 +62,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
         stock: 0,
         status: 'In Stock',
         locationId: '',
+        inventoryCode: '',
       });
     }
   }, [item, isOpen]);
@@ -97,16 +100,27 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="modal-body">
 
-            <Field label="Item Name">
-              <input
-                required
-                autoFocus
-                className="form-control"
-                placeholder="e.g. Dell XPS 15 Laptop"
-                value={formData.name}
-                onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </Field>
+            <div className="form-row-2col">
+              <Field label="Item Name">
+                <input
+                  required
+                  autoFocus
+                  className="form-control"
+                  placeholder="e.g. Dell XPS 15 Laptop"
+                  value={formData.name}
+                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                />
+              </Field>
+
+              <Field label="Inventory Code">
+                <input
+                  className="form-control"
+                  placeholder="Auto-generated if empty"
+                  value={formData.inventoryCode}
+                  onChange={e => setFormData(prev => ({ ...prev, inventoryCode: e.target.value }))}
+                />
+              </Field>
+            </div>
 
             <div className="form-row-2col">
               <Field label="Category">
@@ -146,32 +160,20 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                 />
               </Field>
 
-              <Field label="Status">
+              <Field label="Location">
                 <select
+                  required
                   className="form-control"
-                  value={formData.status}
-                  onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                  value={formData.locationId}
+                  onChange={e => setFormData(prev => ({ ...prev, locationId: e.target.value }))}
                 >
-                  <option value="In Stock">In Stock</option>
-                  <option value="Low Stock">Low Stock</option>
-                  <option value="Out of Stock">Out of Stock</option>
+                  <option value="">Select location</option>
+                  {locations.map((l: any) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
                 </select>
               </Field>
             </div>
-
-            <Field label="Location">
-              <select
-                required
-                className="form-control"
-                value={formData.locationId}
-                onChange={e => setFormData(prev => ({ ...prev, locationId: e.target.value }))}
-              >
-                <option value="">Select location</option>
-                {locations.map((l: any) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
-            </Field>
 
           </div>
 

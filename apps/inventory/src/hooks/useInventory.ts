@@ -115,13 +115,17 @@ export function useInventory() {
 
   const deleteItem = async (id: string) => {
     try {
-      await fetch(`/api/inventory/items/${id}`, {
+      const res = await fetch(`/api/inventory/items/${id}`, {
         method: 'DELETE'
       });
+      if (!res.ok) {
+        throw new Error('Server returned ' + res.status);
+      }
       fetchItems();
       fetchStats();
     } catch (error) {
       console.error('Failed to delete item', error);
+      throw error;
     }
   };
 
@@ -136,6 +140,24 @@ export function useInventory() {
       fetchStats();
     } catch (error) {
       console.error('Failed to bulk update items', error);
+    }
+  };
+
+  const bulkDeleteItems = async (itemIds: string[]) => {
+    try {
+      const res = await fetch('/api/inventory/items/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds })
+      });
+      if (!res.ok) {
+        throw new Error('Server returned ' + res.status);
+      }
+      fetchItems();
+      fetchStats();
+    } catch (error) {
+      console.error('Failed to bulk delete items', error);
+      throw error;
     }
   };
 
@@ -156,6 +178,7 @@ export function useInventory() {
     createItem,
     updateItem,
     deleteItem,
-    bulkUpdateItems
+    bulkUpdateItems,
+    bulkDeleteItems
   };
 }

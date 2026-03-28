@@ -9,11 +9,12 @@ import {
   Settings,
   Menu,
   X,
+  Briefcase,
 } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard', path: '/dashboard' },
-  { icon: Package, label: 'Inventory', id: 'inventory', path: '/inventory' },
+  { icon: Briefcase, label: 'Borrowings', id: 'borrowings', path: '/borrowings' },
   { icon: Tags, label: 'Categories', id: 'categories', path: '/categories' },
   { icon: History, label: 'Stock Logs', id: 'logs', path: '/logs' },
   { icon: FileText, label: 'Reports', id: 'reports', path: '/reports' },
