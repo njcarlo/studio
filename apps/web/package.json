@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
-    "build": "next build",
+    "build": "cd ../.. && npx prisma generate && cd apps/web && next build",
     "mobile:dev": "cross-env CAP_LIVE_RELOAD=true npx cap sync android && npx cap open android",
     "mobile:build": "node -e \"const fs=require('fs'); if(fs.existsSync('src/app/api')){fs.renameSync('src/app/api','src/app/_api')}\" && cross-env BUILD_MOBILE=true npm run build; node -e \"const fs=require('fs'); if(fs.existsSync('src/app/_api')){fs.renameSync('src/app/_api','src/app/api')}\"",
     "mobile:sync": "npm run mobile:build && npx cap sync",
