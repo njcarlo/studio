@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, FlatList, useWindowDimensions, ImageBackground, Alert, ActivityIndicator } from 'react-native';
+import {
+    View, Text, TextInput, TouchableOpacity, StyleSheet,
+    ScrollView, Modal, FlatList, ImageBackground, Alert,
+    ActivityIndicator, KeyboardAvoidingView, Platform, Linking,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 
-const REGIONS = ['NLR', 'SLR', 'MMR', 'Vis', 'Min'];
+const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
+
+const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN'];
 const CHURCHES = ['Dasmarinas', 'Others'];
 const BARANGAYS = [
     'Burol', 'Burol I', 'Burol II', 'Burol III', 'Datu Esmael',
@@ -33,11 +39,13 @@ const BARANGAYS = [
     'Santa Cruz I', 'Santa Cruz II',
     'Santa Fe', 'Santa Lucia', 'Santa Maria',
     'Santo Cristo', 'Santo Niño I', 'Santo Niño II',
-    'Victoria Reyes', 'Zone I', 'Zone I-B', 'Zone II', 'Zone III', 'Zone IV'
+    'Victoria Reyes', 'Zone I', 'Zone I-B', 'Zone II', 'Zone III', 'Zone IV',
 ];
 
+type Screen = 'landing' | 'login' | 'signup';
+
 export default function AuthScreen() {
-    const [isLogin, setIsLogin] = useState(true);
+    const [screen, setScreen] = useState<Screen>('landing');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
@@ -48,14 +56,11 @@ export default function AuthScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { width } = useWindowDimensions();
-    const isDesktop = width >= 768;
+    const { signIn, signUp } = useAuth();
 
     const filteredBarangays = BARANGAYS.filter(b =>
         b.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-    const { signIn, signUp } = useAuth();
 
     const handleAuth = async () => {
         if (!email || !password) {
@@ -63,14 +68,9 @@ export default function AuthScreen() {
             return;
         }
         setIsSubmitting(true);
-        if (isLogin) {
+        if (screen === 'login') {
             const { error } = await signIn(email, password);
-            if (error) {
-                Alert.alert('Login Failed', error);
-                setIsSubmitting(false);
-                return;
-            }
-            // Session change in AuthContext will automatically navigate to Main
+            if (error) { Alert.alert('Login Failed', error); setIsSubmitting(false); return; }
         } else {
             const { error } = await signUp(email, password, {
                 name,
@@ -78,248 +78,293 @@ export default function AuthScreen() {
                 subRegion: subRegion || 'Unknown',
                 barangay,
             });
-            if (error) {
-                const isConfirmMsg = error.includes('Check your email');
-                Alert.alert(isConfirmMsg ? 'Almost there!' : 'Sign Up Failed', error);
-                setIsSubmitting(false);
-                return;
-            }
-            // Session change in AuthContext will automatically navigate to Main
+            if (error) { Alert.alert('Sign Up Failed', error); setIsSubmitting(false); return; }
         }
         setIsSubmitting(false);
     };
 
-    const renderAuthForm = () => (
-        <View style={isDesktop ? styles.desktopFormContainer : styles.fullWidthContainer}>
-            <View style={styles.formInner}>
-                <View style={styles.logoPlaceholder}>
-                    <Text style={styles.logoText}>TractTracker</Text>
-                </View>
-
-                <View style={styles.toggleContainer}>
-                    <TouchableOpacity onPress={() => setIsLogin(true)} style={[styles.toggleBtn, isLogin && styles.activeBtn]}>
-                        <Text style={[styles.toggleText, isLogin && styles.activeText]}>Login</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setIsLogin(false)} style={[styles.toggleBtn, !isLogin && styles.activeBtn]}>
-                        <Text style={[styles.toggleText, !isLogin && styles.activeText]}>Sign Up</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                />
-
-                <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
-
-                {!isLogin && (
-                    <>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Name"
-                            value={name}
-                            onChangeText={setName}
-                        />
-                        {/* Simple mock selects for regions */}
-                        <Text style={styles.label}>Select Region</Text>
-                        <View style={styles.rowWrap}>
-                            {REGIONS.map((r) => (
-                                <TouchableOpacity key={r} onPress={() => { setRegion(r); setSubRegion(''); setBarangay(''); }} style={[styles.chip, region === r && styles.chipActive]}>
-                                    <Text style={[styles.chipText, region === r && styles.chipTextActive]}>{r}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        {region === 'MMR' && (
-                            <>
-                                <Text style={styles.label}>Church</Text>
-                                <View style={styles.rowWrap}>
-                                    {CHURCHES.map((sr) => (
-                                        <TouchableOpacity key={sr} onPress={() => { setSubRegion(sr); setBarangay(''); }} style={[styles.chip, subRegion === sr && styles.chipActive]}>
-                                            <Text style={[styles.chipText, subRegion === sr && styles.chipTextActive]}>{sr}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </>
-                        )}
-
-                        {region === 'MMR' && subRegion === 'Dasmarinas' && (
-                            <>
-                                <Text style={styles.label}>Barangay</Text>
-                                <TouchableOpacity
-                                    style={styles.dropdownTrigger}
-                                    onPress={() => setShowBarangayModal(true)}
-                                >
-                                    <Text style={[styles.dropdownText, !barangay && styles.placeholderText]}>
-                                        {barangay || 'Select Barangay'}
-                                    </Text>
-                                    <Ionicons name="chevron-down" size={20} color="#666" />
-                                </TouchableOpacity>
-
-                                <Modal visible={showBarangayModal} animationType="slide" transparent>
-                                    <SafeAreaView style={styles.modalOverlay}>
-                                        <View style={isDesktop ? styles.desktopModalContent : styles.modalContent}>
-                                            <View style={styles.modalHeader}>
-                                                <Text style={styles.modalTitle}>Select Barangay</Text>
-                                                <TouchableOpacity onPress={() => setShowBarangayModal(false)}>
-                                                    <Ionicons name="close" size={24} color="#333" />
-                                                </TouchableOpacity>
-                                            </View>
-
-                                            <View style={styles.searchContainer}>
-                                                <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
-                                                <TextInput
-                                                    style={styles.searchInput}
-                                                    placeholder="Search barangay..."
-                                                    value={searchQuery}
-                                                    onChangeText={setSearchQuery}
-                                                    autoFocus
-                                                />
-                                            </View>
-
-                                            <FlatList
-                                                data={filteredBarangays}
-                                                keyExtractor={(item) => item}
-                                                renderItem={({ item }) => (
-                                                    <TouchableOpacity
-                                                        style={styles.barangayItem}
-                                                        onPress={() => {
-                                                            setBarangay(item);
-                                                            setShowBarangayModal(false);
-                                                            setSearchQuery('');
-                                                        }}
-                                                    >
-                                                        <Text style={[styles.barangayItemText, barangay === item && styles.selectedItemText]}>
-                                                            {item}
-                                                        </Text>
-                                                        {barangay === item && <Ionicons name="checkmark" size={20} color="#4a90e2" />}
-                                                    </TouchableOpacity>
-                                                )}
-                                                contentContainerStyle={styles.listContent}
-                                            />
-                                        </View>
-                                    </SafeAreaView>
-                                </Modal>
-                            </>
-                        )}
-                    </>
-                )}
-
-                <TouchableOpacity style={styles.primaryButton} onPress={handleAuth} disabled={isSubmitting}>
-                    {isSubmitting
-                        ? <ActivityIndicator color="#fff" />
-                        : <Text style={styles.primaryButtonText}>{isLogin ? 'Login' : 'Sign Up'}</Text>
-                    }
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    return (
-        <SafeAreaView style={styles.safe}>
-            {isDesktop ? (
-                <View style={styles.desktopContainer}>
-                    <View style={styles.desktopGraphicContainer}>
-                        <ImageBackground
-                            source={{ uri: 'https://images.unsplash.com/photo-1517482810332-9c3dbbd33682?q=80&w=2699&auto=format&fit=crop' }}
-                            style={styles.graphicBackground}
-                            resizeMode="cover"
-                        >
-                            <View style={styles.graphicOverlay}>
-                                <Text style={styles.graphicTitle}>COG Nation Tracks</Text>
-                                <Text style={styles.graphicSubtitle}>Join the Giving Day initiative and track your impact across Dasmariñas City.</Text>
-                            </View>
-                        </ImageBackground>
+    // ── Landing screen ──────────────────────────────────────────────
+    if (screen === 'landing') {
+        return (
+            <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
+                <View style={styles.overlay} />
+                <SafeAreaView style={styles.landingSafe}>
+                    <View style={styles.landingContent}>
+                        <Text style={styles.landingEyebrow}>Ready to step out and{'\n'}spread the good news?</Text>
+                        <Text style={styles.landingTitle}>National Tracts{'\n'}Giving Day</Text>
+                        <Text style={styles.landingScript}>Outside is Beautiful</Text>
                     </View>
-                    <ScrollView contentContainerStyle={styles.desktopScrollView}>
-                        {renderAuthForm()}
+
+                    <View style={styles.landingBottom}>
+                        <TouchableOpacity style={styles.loginBtn} onPress={() => setScreen('login')}>
+                            <Text style={styles.loginBtnText}>Login</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.signupPrompt}>
+                            Don't have an account yet?{' '}
+                            <Text style={styles.signupLink} onPress={() => setScreen('signup')}>Sign up</Text>
+                        </Text>
+                    </View>
+                </SafeAreaView>
+            </ImageBackground>
+        );
+    }
+
+    // ── Login / Sign up form ─────────────────────────────────────────
+    return (
+        <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
+            <View style={styles.overlay} />
+            <SafeAreaView style={styles.formSafe}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+                    <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
+
+                        {/* Back */}
+                        <TouchableOpacity style={styles.backBtn} onPress={() => setScreen('landing')}>
+                            <Ionicons name="arrow-back" size={22} color="#fff" />
+                        </TouchableOpacity>
+
+                        {/* Header */}
+                        <Text style={styles.formTitle}>{screen === 'login' ? 'Welcome back' : 'Create account'}</Text>
+                        <Text style={styles.formSub}>National Tracts Giving Day</Text>
+
+                        {/* Card */}
+                        <View style={styles.card}>
+                            {screen === 'signup' && (
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Full Name"
+                                    placeholderTextColor="#999"
+                                    value={name}
+                                    onChangeText={setName}
+                                />
+                            )}
+
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Email"
+                                placeholderTextColor="#999"
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
+
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Password"
+                                placeholderTextColor="#999"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                            />
+
+                            {screen === 'signup' && (
+                                <>
+                                    <Text style={styles.label}>Region</Text>
+                                    <View style={styles.rowWrap}>
+                                        {REGIONS.map(r => (
+                                            <TouchableOpacity
+                                                key={r}
+                                                onPress={() => { setRegion(r); setSubRegion(''); setBarangay(''); }}
+                                                style={[styles.chip, region === r && styles.chipActive]}
+                                            >
+                                                <Text style={[styles.chipText, region === r && styles.chipTextActive]}>{r}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+
+                                    {region === 'MMR' && (
+                                        <>
+                                            <Text style={styles.label}>Church</Text>
+                                            <View style={styles.rowWrap}>
+                                                {CHURCHES.map(sr => (
+                                                    <TouchableOpacity
+                                                        key={sr}
+                                                        onPress={() => { setSubRegion(sr); setBarangay(''); }}
+                                                        style={[styles.chip, subRegion === sr && styles.chipActive]}
+                                                    >
+                                                        <Text style={[styles.chipText, subRegion === sr && styles.chipTextActive]}>{sr}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </>
+                                    )}
+
+                                    {region === 'MMR' && subRegion === 'Dasmarinas' && (
+                                        <>
+                                            <Text style={styles.label}>Barangay</Text>
+                                            <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowBarangayModal(true)}>
+                                                <Text style={[styles.dropdownText, !barangay && styles.placeholderText]}>
+                                                    {barangay || 'Select Barangay'}
+                                                </Text>
+                                                <Ionicons name="chevron-down" size={18} color="#666" />
+                                            </TouchableOpacity>
+                                        </>
+                                    )}
+                                </>
+                            )}
+
+                            <TouchableOpacity style={styles.submitBtn} onPress={handleAuth} disabled={isSubmitting}>
+                                {isSubmitting
+                                    ? <ActivityIndicator color="#1a1a2e" />
+                                    : <Text style={styles.submitBtnText}>{screen === 'login' ? 'Login' : 'Sign Up'}</Text>
+                                }
+                            </TouchableOpacity>
+
+                            <Text style={styles.switchPrompt}>
+                                {screen === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                                <Text
+                                    style={styles.switchLink}
+                                    onPress={() => setScreen(screen === 'login' ? 'signup' : 'login')}
+                                >
+                                    {screen === 'login' ? 'Sign up' : 'Login'}
+                                </Text>
+                            </Text>
+                        </View>
                     </ScrollView>
-                </View>
-            ) : (
-                <ScrollView contentContainerStyle={styles.container}>
-                    {renderAuthForm()}
-                </ScrollView>
-            )}
-        </SafeAreaView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+
+            {/* Barangay modal */}
+            <Modal visible={showBarangayModal} animationType="slide" transparent>
+                <SafeAreaView style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Barangay</Text>
+                            <TouchableOpacity onPress={() => setShowBarangayModal(false)}>
+                                <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.searchContainer}>
+                            <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search barangay..."
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoFocus
+                            />
+                        </View>
+                        <FlatList
+                            data={filteredBarangays}
+                            keyExtractor={item => item}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.barangayItem}
+                                    onPress={() => { setBarangay(item); setShowBarangayModal(false); setSearchQuery(''); }}
+                                >
+                                    <Text style={[styles.barangayItemText, barangay === item && styles.selectedItemText]}>{item}</Text>
+                                    {barangay === item && <Ionicons name="checkmark" size={18} color="#C9A84C" />}
+                                </TouchableOpacity>
+                            )}
+                            contentContainerStyle={{ paddingBottom: 20 }}
+                        />
+                    </View>
+                </SafeAreaView>
+            </Modal>
+        </ImageBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: '#fcfcfc' },
-    container: { flexGrow: 1, justifyContent: 'center' },
-    fullWidthContainer: { flex: 1, padding: 20 },
-    desktopContainer: { flex: 1, flexDirection: 'row' },
-    desktopGraphicContainer: { flex: 1, backgroundColor: '#000' },
-    graphicBackground: { flex: 1, justifyContent: 'center' },
-    graphicOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 40 },
-    graphicTitle: { color: '#fff', fontSize: 48, fontWeight: 'bold', marginBottom: 16 },
-    graphicSubtitle: { color: '#ddd', fontSize: 20, lineHeight: 30 },
-    desktopScrollView: { flexGrow: 1, flexBasis: '50%', justifyContent: 'center', backgroundColor: '#fcfcfc' },
-    desktopFormContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-    formInner: { width: '100%', maxWidth: 450, backgroundColor: '#fff', padding: 30, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 },
-    logoPlaceholder: { height: 120, width: 120, backgroundColor: '#4a90e2', alignSelf: 'center', justifyContent: 'center', alignItems: 'center', borderRadius: 60, marginBottom: 40 },
-    logoText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    toggleContainer: { flexDirection: 'row', marginBottom: 20, backgroundColor: '#eee', borderRadius: 8, padding: 4 },
-    toggleBtn: { flex: 1, padding: 12, alignItems: 'center', borderRadius: 6 },
-    activeBtn: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-    toggleText: { fontSize: 16, fontWeight: '600', color: '#666' },
-    activeText: { color: '#333' },
-    input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 16, fontSize: 16, marginBottom: 16 },
-    primaryButton: { backgroundColor: '#4a90e2', padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 20 },
-    primaryButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-    label: { fontSize: 16, fontWeight: '600', marginBottom: 8, marginTop: 10, color: '#333' },
-    rowWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
-    chip: { borderWidth: 1, borderColor: '#4a90e2', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 16, marginRight: 8, marginBottom: 8 },
-    chipActive: { backgroundColor: '#4a90e2' },
-    chipText: { color: '#4a90e2', fontWeight: '500' },
-    chipTextActive: { color: '#fff' },
-    dropdownTrigger: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 16,
+    bg: { flex: 1 },
+    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,60,0.75)' },
+
+    // ── Landing ──
+    landingSafe: { flex: 1, justifyContent: 'space-between' },
+    landingContent: { flex: 1, justifyContent: 'center', paddingHorizontal: 32, paddingTop: 60 },
+    landingEyebrow: { color: '#fff', fontSize: 18, lineHeight: 26, marginBottom: 20 },
+    landingTitle: {
+        color: '#C9A84C',
+        fontSize: 52,
+        lineHeight: 58,
         marginBottom: 16,
+        fontFamily: 'Anton_400Regular',
     },
-    dropdownText: { fontSize: 16, color: '#333' },
-    placeholderText: { color: '#999' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', alignItems: 'center' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '80%', padding: 20, width: '100%' },
-    desktopModalContent: { backgroundColor: '#fff', borderRadius: 20, height: '80%', padding: 20, width: '100%', maxWidth: 500, alignSelf: 'center', top: '10%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
-    searchContainer: {
-        flexDirection: 'row',
+    landingScript: {
+        color: '#fff',
+        fontSize: 26,
+        fontStyle: 'italic',
+        fontWeight: '400',
+        opacity: 0.9,
+        fontFamily: 'Inter_400Regular_Italic',
+    },
+    landingBottom: { paddingHorizontal: 32, paddingBottom: 48 },
+    loginBtn: {
+        backgroundColor: '#C9A84C',
+        borderRadius: 14,
+        paddingVertical: 18,
         alignItems: 'center',
-        backgroundColor: '#f0f0f0',
+        marginBottom: 16,
+        shadowColor: '#C9A84C',
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+    },
+    loginBtnText: { color: '#1a1a2e', fontSize: 18, fontFamily: 'Anton_400Regular' },
+    signupPrompt: { color: '#ccc', fontSize: 14, textAlign: 'center' },
+    signupLink: { color: '#C9A84C', textDecorationLine: 'underline' },
+
+    // ── Form ──
+    formSafe: { flex: 1 },
+    formScroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
+    backBtn: { marginTop: 12, marginBottom: 24, alignSelf: 'flex-start', padding: 4 },
+    formTitle: { color: '#fff', fontSize: 32, marginBottom: 4, fontFamily: 'Anton_400Regular' },
+    formSub: { color: '#C9A84C', fontSize: 14, marginBottom: 28, letterSpacing: 1, fontFamily: 'Anton_400Regular' },
+    card: {
+        backgroundColor: 'rgba(255,255,255,0.97)',
+        borderRadius: 20,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 8,
+    },
+    input: {
+        backgroundColor: '#f5f5f5',
         borderRadius: 10,
-        paddingHorizontal: 12,
-        marginBottom: 15,
+        padding: 14,
+        fontSize: 15,
+        marginBottom: 14,
+        color: '#1a1a2e',
     },
-    searchIcon: { marginRight: 8 },
-    searchInput: { flex: 1, height: 45, fontSize: 16 },
-    barangayItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    label: { fontSize: 13, color: '#444', marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+    rowWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+    chip: { borderWidth: 1.5, borderColor: '#C9A84C', borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, marginRight: 8, marginBottom: 8 },
+    chipActive: { backgroundColor: '#C9A84C' },
+    chipText: { color: '#C9A84C', fontSize: 13 },
+    chipTextActive: { color: '#1a1a2e' },
+    dropdownTrigger: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: '#f5f5f5', borderRadius: 10, padding: 14, marginBottom: 14,
+    },
+    dropdownText: { fontSize: 15, color: '#1a1a2e' },
+    placeholderText: { color: '#999' },
+    submitBtn: {
+        backgroundColor: '#C9A84C',
+        borderRadius: 12,
+        paddingVertical: 16,
         alignItems: 'center',
-        paddingVertical: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        marginTop: 8,
+        shadowColor: '#C9A84C',
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 4,
     },
-    barangayItemText: { fontSize: 16, color: '#444' },
-    selectedItemText: { color: '#4a90e2', fontWeight: 'bold' },
-    listContent: { paddingBottom: 20 },
+    submitBtnText: { color: '#1a1a2e', fontSize: 17, fontFamily: 'Anton_400Regular' },
+    switchPrompt: { color: '#666', fontSize: 13, textAlign: 'center', marginTop: 16 },
+    switchLink: { color: '#C9A84C' },
+
+    // ── Barangay modal ──
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '80%', padding: 20 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    modalTitle: { fontSize: 18, color: '#1a1a2e' },
+    searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12 },
+    searchInput: { flex: 1, height: 42, fontSize: 15 },
+    barangayItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    barangayItemText: { fontSize: 15, color: '#444' },
+    selectedItemText: { color: '#C9A84C' },
 });

@@ -1,0 +1,324 @@
+"use server";
+
+import { prisma } from '@studio/database/prisma';
+import { revalidatePath } from 'next/cache';
+import { EmailService } from '@/services/email-service';
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+
+// ── Service Schedules ─────────────────────────────────────────────────────────
+
+export async function getServiceSchedules() {
+    return prisma.serviceSchedule.findMany({
+        orderBy: { date: 'desc' },
+        include: {
+            assignments: true,
+        },
+    });
+}
+
+export async function getServiceSchedule(id: string) {
+    return prisma.serviceSchedule.findUnique({
+        where: { id },
+        include: {
+            assignments: {
+                orderBy: [{ ministryId: 'asc' }, { order: 'asc' }],
+            },
+        },
+    });
+}
+
+export async function createServiceSchedule(data: {
+    date: Date;
+    title?: string;
+    notes?: string;
+    createdBy: string;
+}) {
+    const schedule = await prisma.serviceSchedule.create({
+        data: {
+            date: data.date,
+            title: data.title || 'Sunday Service',
+            notes: data.notes,
+            createdBy: data.createdBy,
+        },
+    });
+    revalidatePath('/schedule');
+    return schedule;
+}
+
+export async function updateServiceSchedule(id: string, data: {
+    title?: string;
+    notes?: string;
+    status?: string;
+}) {
+    const schedule = await prisma.serviceSchedule.update({
+        where: { id },
+        data,
+    });
+    revalidatePath('/schedule');
+    revalidatePath(`/schedule/${id}`);
+    return schedule;
+}
+
+export async function deleteServiceSchedule(id: string) {
+    await prisma.serviceSchedule.delete({ where: { id } });
+    revalidatePath('/schedule');
+}
+
+// ── Schedule Assignments ──────────────────────────────────────────────────────
+
+export async function upsertAssignment(data: {
+    scheduleId: string;
+    ministryId: string;
+    roleName: string;
+    workerId?: string | null;
+    workerName?: string | null;
+    notes?: string | null;
+    order?: number;
+}) {
+    // Find existing slot for this schedule + ministry + role + order
+    const existing = await prisma.scheduleAssignment.findFirst({
+        where: {
+            scheduleId: data.scheduleId,
+            ministryId: data.ministryId,
+            roleName: data.roleName,
+            order: data.order ?? 0,
+        },
+    });
+
+    if (existing) {
+        return prisma.scheduleAssignment.update({
+            where: { id: existing.id },
+            data: {
+                workerId: data.workerId ?? null,
+                workerName: data.workerName ?? null,
+                notes: data.notes ?? null,
+            },
+        });
+    }
+
+    return prisma.scheduleAssignment.create({ data: {
+        scheduleId: data.scheduleId,
+        ministryId: data.ministryId,
+        roleName: data.roleName,
+        workerId: data.workerId ?? null,
+        workerName: data.workerName ?? null,
+        notes: data.notes ?? null,
+        order: data.order ?? 0,
+    }});
+}
+
+export async function deleteAssignment(id: string) {
+    await prisma.scheduleAssignment.delete({ where: { id } });
+}
+
+export async function applyTemplateToSchedule(scheduleId: string, templateId: string) {
+    const template = await prisma.serviceTemplate.findUnique({
+        where: { id: templateId },
+        include: { roles: { orderBy: { order: 'asc' } } },
+    });
+    if (!template) throw new Error('Template not found');
+
+    // Remove existing assignments for this ministry on this schedule
+    await prisma.scheduleAssignment.deleteMany({
+        where: { scheduleId, ministryId: template.ministryId },
+    });
+
+    // Create blank slots from template
+    await prisma.scheduleAssignment.createMany({
+        data: template.roles.flatMap(role =>
+            Array.from({ length: role.count }, (_, i) => ({
+                scheduleId,
+                ministryId: template.ministryId,
+                roleName: role.roleName,
+                order: i,
+                notes: role.notes ?? null,
+            }))
+        ),
+    });
+
+    revalidatePath(`/schedule/${scheduleId}`);
+}
+
+// ── Service Templates ─────────────────────────────────────────────────────────
+
+export async function getServiceTemplates(ministryId?: string) {
+    return prisma.serviceTemplate.findMany({
+        where: ministryId ? { ministryId } : undefined,
+        include: { roles: { orderBy: { order: 'asc' } } },
+        orderBy: [{ ministryId: 'asc' }, { name: 'asc' }],
+    });
+}
+
+export async function createServiceTemplate(data: {
+    ministryId: string;
+    name: string;
+    isDefault?: boolean;
+    createdBy: string;
+    roles: { roleName: string; count: number; notes?: string; order?: number }[];
+}) {
+    const template = await prisma.serviceTemplate.create({
+        data: {
+            ministryId: data.ministryId,
+            name: data.name,
+            isDefault: data.isDefault ?? false,
+            createdBy: data.createdBy,
+            roles: {
+                create: data.roles.map((r, i) => ({
+                    roleName: r.roleName,
+                    count: r.count,
+                    notes: r.notes ?? null,
+                    order: r.order ?? i,
+                })),
+            },
+        },
+        include: { roles: true },
+    });
+    revalidatePath('/schedule/templates');
+    return template;
+}
+
+export async function updateServiceTemplate(id: string, data: {
+    name?: string;
+    isDefault?: boolean;
+    roles?: { roleName: string; count: number; notes?: string; order?: number }[];
+}) {
+    if (data.roles) {
+        await prisma.templateRole.deleteMany({ where: { templateId: id } });
+        await prisma.templateRole.createMany({
+            data: data.roles.map((r, i) => ({
+                templateId: id,
+                roleName: r.roleName,
+                count: r.count,
+                notes: r.notes ?? null,
+                order: r.order ?? i,
+            })),
+        });
+    }
+
+    const template = await prisma.serviceTemplate.update({
+        where: { id },
+        data: {
+            name: data.name,
+            isDefault: data.isDefault,
+        },
+        include: { roles: { orderBy: { order: 'asc' } } },
+    });
+    revalidatePath('/schedule/templates');
+    return template;
+}
+
+export async function deleteServiceTemplate(id: string) {
+    await prisma.serviceTemplate.delete({ where: { id } });
+    revalidatePath('/schedule/templates');
+}
+
+// ── Publish & Notify ──────────────────────────────────────────────────────────
+
+export async function publishScheduleAndNotify(scheduleId: string, publishedBy: string) {
+    const schedule = await prisma.serviceSchedule.update({
+        where: { id: scheduleId },
+        data: { status: 'Published' },
+        include: { assignments: true },
+    });
+
+    // Get unique worker IDs that are assigned
+    const workerIds = [...new Set(
+        schedule.assignments
+            .filter(a => a.workerId)
+            .map(a => a.workerId as string)
+    )];
+
+    if (workerIds.length === 0) {
+        revalidatePath(`/schedule/${scheduleId}`);
+        return { schedule, notified: 0 };
+    }
+
+    // Fetch worker emails
+    const workers = await prisma.worker.findMany({
+        where: { id: { in: workerIds } },
+        select: { id: true, firstName: true, lastName: true, email: true },
+    });
+
+    const scheduleDate = new Date(schedule.date).toLocaleDateString('en-PH', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    // Send individual emails with their specific assignments
+    let notified = 0;
+    for (const worker of workers) {
+        if (!worker.email) continue;
+
+        const myAssignments = schedule.assignments.filter(a => a.workerId === worker.id);
+        const rolesList = myAssignments.map(a => `<li><strong>${a.roleName}</strong></li>`).join('');
+
+        await EmailService.sendEmail({
+            to: worker.email,
+            subject: `You're scheduled for ${schedule.title} — ${scheduleDate}`,
+            html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px;">
+                    <h2 style="color: #2563eb;">Service Schedule Notification</h2>
+                    <p>Hi <strong>${worker.firstName}</strong>,</p>
+                    <p>You have been assigned to serve in the upcoming <strong>${schedule.title}</strong>.</p>
+
+                    <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0 0 8px;"><strong>Date:</strong> ${scheduleDate}</p>
+                        <p style="margin: 0 0 8px;"><strong>Your Role(s):</strong></p>
+                        <ul style="margin: 0; padding-left: 20px;">${rolesList}</ul>
+                    </div>
+
+                    <p>Please confirm your availability by clicking the button below:</p>
+
+                    <a href="${APP_URL}/schedule/${scheduleId}/confirm?workerId=${worker.id}"
+                       style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">
+                        Confirm My Schedule
+                    </a>
+
+                    <p style="font-size: 0.8rem; color: #6b7280; margin-top: 24px;">
+                        If you have any concerns, please contact your ministry scheduler directly.
+                    </p>
+                </div>
+            `,
+        });
+        notified++;
+    }
+
+    revalidatePath(`/schedule/${scheduleId}`);
+    revalidatePath('/schedule');
+    return { schedule, notified };
+}
+
+// ── Confirm Assignment ────────────────────────────────────────────────────────
+
+export async function confirmAssignment(assignmentId: string, confirmedBy: string) {
+    const assignment = await prisma.scheduleAssignment.update({
+        where: { id: assignmentId },
+        data: {
+            acknowledgedAt: new Date(),
+            acknowledgedBy: confirmedBy,
+        },
+    });
+    revalidatePath(`/schedule/${assignment.scheduleId}`);
+    return assignment;
+}
+
+export async function getScheduleConfirmationStatus(scheduleId: string) {
+    const assignments = await prisma.scheduleAssignment.findMany({
+        where: { scheduleId, workerId: { not: null } },
+        select: {
+            id: true, workerId: true, workerName: true,
+            roleName: true, ministryId: true,
+            acknowledgedAt: true, acknowledgedBy: true,
+        },
+    });
+    return assignments;
+}
+
+// ── Worker ID lookup for assignment ──────────────────────────────────────────
+
+export async function findWorkerByWorkerId(workerId: string) {
+    return prisma.worker.findFirst({
+        where: { workerId },
+        select: { id: true, firstName: true, lastName: true, majorMinistryId: true, status: true },
+    });
+}

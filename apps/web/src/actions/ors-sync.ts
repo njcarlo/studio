@@ -105,7 +105,6 @@ export type PasswordSyncStatus = 'synced' | 'has_password' | 'changed' | 'no_pas
 export type ExistingWorkerSummary = {
     id: string;
     workerId: string | null;
-    workerNumber: number | null;
     legacyPasswordHash: string | null;
     firstName: string;
     lastName: string;
@@ -218,8 +217,8 @@ function computeDiffFields(
     const orsBio = ors.biometrics_id != null ? String(ors.biometrics_id) : '';
     const orsQr = (ors.qrdata || '').trim();
 
-    if (existing.workerNumber !== null && existing.workerNumber !== ors.id) {
-        diffs.push({ label: 'Worker ID', ors: String(ors.id), current: String(existing.workerNumber) });
+    if (existing.workerId !== null && existing.workerId !== String(ors.id)) {
+        diffs.push({ label: 'Worker ID', ors: String(ors.id), current: existing.workerId });
     }
     if (orsFirst !== existing.firstName) diffs.push({ label: 'First Name', ors: orsFirst, current: existing.firstName });
     if (orsLast !== existing.lastName) diffs.push({ label: 'Last Name', ors: orsLast, current: existing.lastName });
@@ -422,7 +421,7 @@ export async function getWorkerDiffPage(
                 ],
             },
             select: {
-                id: true, workerId: true, workerNumber: true, legacyPasswordHash: true, firstName: true, lastName: true,
+                id: true, workerId: true, legacyPasswordHash: true, firstName: true, lastName: true,
                 email: true, phone: true, address: true, birthDate: true, startMonth: true, startYear: true, remarks: true, biometricsId: true, qrToken: true, status: true,
                 majorMinistryId: true, minorMinistryId: true,
                 employmentType: true, roleId: true,
@@ -475,7 +474,6 @@ export async function getWorkerDiffPage(
             select: {
                 id: true,
                 workerId: true,
-                workerNumber: true,
                 legacyPasswordHash: true,
                 firstName: true,
                 lastName: true,
@@ -508,8 +506,7 @@ export async function getWorkerDiffPage(
                     (w.firstName || '').toLowerCase().includes(q) ||
                     (w.lastName || '').toLowerCase().includes(q) ||
                     (w.email || '').toLowerCase().includes(q) ||
-                    (w.workerId || '').toLowerCase().includes(q) ||
-                    String(w.workerNumber || '').includes(q)
+                    (w.workerId || '').toLowerCase().includes(q)
                 );
             })
             : baseOrphans);
@@ -518,7 +515,7 @@ export async function getWorkerDiffPage(
         const slice = filteredOrphans.slice(start, start + limit);
 
         slice.forEach((w, idx) => {
-            const stableId = (w.workerNumber ?? Number(w.workerId)) || -(start + idx + 1);
+            const stableId = Number(w.workerId) || -(start + idx + 1);
             orphanRecords.push({
                 ors: {
                     id: stableId,
@@ -638,7 +635,6 @@ export async function importOrsNewWorkers(
             data: {
                 id: uid,
                 workerId: String(w.id),
-                workerNumber: Number(w.id),
                 legacyPasswordHash,
                 firstName: w.first_name || '',
                 lastName: w.last_name || '',
@@ -758,7 +754,6 @@ export async function syncOrsUpdatedWorkers(
             const data: any = {};
             if (wants('Worker ID')) {
                 data.workerId = String(w.id);
-                data.workerNumber = Number(w.id);
             }
             if (wants('First Name')) data.firstName = w.first_name || existing.firstName;
             if (wants('Last Name')) data.lastName = w.last_name || existing.lastName;

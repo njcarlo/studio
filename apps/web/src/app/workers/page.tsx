@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
@@ -86,12 +87,12 @@ import {
   createApproval as createApprovalSql,
 } from "@/actions/db";
 
-import { WorkerForm } from "@/components/workers/worker-form";
 import { ImportSheet } from "@/components/workers/import-sheet";
 import { BatchMinistrySheet } from "@/components/workers/batch-ministry-sheet";
 import { BatchMealStubSheet } from "@/components/workers/batch-meal-stub-sheet";
 
 export default function WorkersPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuthStore();
   const {
@@ -215,10 +216,7 @@ export default function WorkersPage() {
   };
 
   const handleEdit = (worker: Worker) => {
-    setSelectedWorker(worker);
-    // Add a tiny delay to allow the dropdown menu to close fully before opening the sheet.
-    // This prevents focus-trap and scroll-lock conflicts.
-    setTimeout(() => setIsSheetOpen(true), 10);
+    router.push(`/workers/${worker.id}/edit`);
   };
 
   const handlePasswordReset = async (worker: Worker) => {
@@ -485,154 +483,6 @@ export default function WorkersPage() {
     setSelectedWorkerIds((prev) =>
       prev.includes(id) ? prev.filter((wId) => wId !== id) : [...prev, id],
     );
-  };
-
-  const handleSaveWorker = async (workerData: Partial<Worker>) => {
-    if (!workerData.firstName || !workerData.lastName || !workerData.email) {
-      toast({
-        variant: "destructive",
-        title: "Missing required fields",
-        description: "Please fill out first name, last name, and email.",
-      });
-      return;
-    }
-
-    const dataToSave = { ...workerData };
-    if (dataToSave.majorMinistryId === "none") {
-      dataToSave.majorMinistryId = "";
-    }
-    if (dataToSave.minorMinistryId === "none") {
-      dataToSave.minorMinistryId = "";
-    }
-
-    try {
-      if (selectedWorker?.id) {
-        const isMinistryChanging =
-          (dataToSave.majorMinistryId !== undefined &&
-            dataToSave.majorMinistryId !==
-              (selectedWorker.majorMinistryId || "")) ||
-          (dataToSave.minorMinistryId !== undefined &&
-            dataToSave.minorMinistryId !==
-              (selectedWorker.minorMinistryId || ""));
-
-        if (isMinistryChanging && !isSuperAdmin) {
-          // Prepare ministry change data
-          const ministryUpdate: any = {};
-          if (dataToSave.majorMinistryId !== undefined)
-            ministryUpdate.newMajorId = dataToSave.majorMinistryId;
-          if (dataToSave.minorMinistryId !== undefined)
-            ministryUpdate.newMinorId = dataToSave.minorMinistryId;
-
-          const details =
-            `Ministry change request for ${selectedWorker.firstName} ${selectedWorker.lastName}.\n` +
-            (ministryUpdate.newMajorId !== undefined
-              ? `Major: ${ministries.find((m) => m.id === selectedWorker.majorMinistryId)?.name || "None"} -> ${ministries.find((m) => m.id === ministryUpdate.newMajorId)?.name || "None"}\n`
-              : "") +
-            (ministryUpdate.newMinorId !== undefined
-              ? `Minor: ${ministries.find((m) => m.id === selectedWorker.minorMinistryId)?.name || "None"} -> ${ministries.find((m) => m.id === ministryUpdate.newMinorId)?.name || "None"}`
-              : "");
-
-          await createApprovalSql({
-            requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
-            type: "Ministry Change",
-            details,
-            status: "Pending Outgoing Approval",
-            workerId: selectedWorker.id,
-            oldMajorId: selectedWorker.majorMinistryId || "",
-            newMajorId:
-              dataToSave.majorMinistryId ?? selectedWorker.majorMinistryId,
-            oldMinorId: selectedWorker.minorMinistryId || "",
-            newMinorId:
-              dataToSave.minorMinistryId ?? selectedWorker.minorMinistryId,
-            outgoingApproved: false,
-            incomingApproved: false,
-          });
-
-          // Update other fields but NOT ministries
-          const { majorMinistryId, minorMinistryId, ...otherFields } =
-            dataToSave;
-          await (updateWorkerSql as any)(selectedWorker.id, otherFields);
-
-          await logAction(
-            "Requested Ministry Change",
-            "Workers",
-            `Requested ministry change for ${selectedWorker.firstName} ${selectedWorker.lastName}`,
-            selectedWorker.id,
-            `${selectedWorker.firstName} ${selectedWorker.lastName}`,
-          );
-          toast({
-            title: "Change Pending Approval",
-            description:
-              "The ministry change has been submitted for approval by both outgoing and incoming ministry heads.",
-          });
-        } else {
-          await (updateWorkerSql as any)(selectedWorker.id, dataToSave);
-          await logAction(
-            "Updated Worker",
-            "Workers",
-            `Updated worker: ${dataToSave.firstName} ${dataToSave.lastName}`,
-            selectedWorker.id,
-            `${dataToSave.firstName} ${dataToSave.lastName}`,
-          );
-          toast({
-            title: "Worker Updated",
-            description: `${dataToSave.firstName} ${dataToSave.lastName}'s profile has been updated.`,
-          });
-        }
-      } else {
-        const newWorkerId = String(20000 + (allWorkers?.length || 0)).padStart(
-          6,
-          "0",
-        );
-        const dataToSaveWithId = {
-          ...dataToSave,
-          workerId: newWorkerId,
-        };
-        const newWorker = await (createWorkerSql as any)(dataToSaveWithId);
-        const newWorkerIdInDb = newWorker.id;
-        await logAction(
-          "Created Worker",
-          "Workers",
-          `Created worker: ${dataToSave.firstName} ${dataToSave.lastName} (EID: ${dataToSave.workerId})`,
-          newWorker.id,
-          `${dataToSave.firstName} ${dataToSave.lastName}`,
-        );
-
-        if (
-          newWorker &&
-          workerProfile &&
-          dataToSave.status === "Pending Approval"
-        ) {
-          await createApprovalSql({
-            requester: `${workerProfile.firstName} ${workerProfile.lastName}`,
-            type: "New Worker",
-            details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
-            status: "Pending",
-            workerId: newWorkerIdInDb,
-          });
-          toast({
-            title: "Worker Added",
-            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`,
-          });
-        } else {
-          toast({
-            title: "Worker Added",
-            description: `${dataToSave.firstName} ${dataToSave.lastName} has been added with status: ${dataToSave.status}.`,
-          });
-        }
-      }
-      // Close the sheet after a tiny delay to ensure async save operations
-      // and state transitions don't conflict with Radix UI animations.
-      setTimeout(() => setIsSheetOpen(false), 50);
-    } catch (error) {
-      console.error("Failed to save worker:", error);
-      toast({
-        variant: "destructive",
-        title: "Save Failed",
-        description:
-          "Could not save worker profile. Check console for details.",
-      });
-    }
   };
 
   const handleImportWorkers = (csvData: string) => {
@@ -1465,20 +1315,6 @@ export default function WorkersPage() {
         )}
       </div>
 
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="sm:max-w-lg">
-          <WorkerForm
-            key={selectedWorker?.id || "new-worker-form"}
-            worker={selectedWorker}
-            roles={roles}
-            ministries={ministries}
-            onSave={handleSaveWorker}
-            onClose={() => setIsSheetOpen(false)}
-            onResetPassword={handlePasswordReset}
-            canManage={canManageWorkers}
-          />
-        </SheetContent>
-      </Sheet>
 
       <Sheet open={isImportSheetOpen} onOpenChange={setIsImportSheetOpen}>
         <SheetContent className="sm:max-w-lg">

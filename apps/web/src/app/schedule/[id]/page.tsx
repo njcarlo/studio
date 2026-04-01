@@ -1,0 +1,558 @@
+"use client";
+
+import React, { useState, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { format } from "date-fns";
+import { AppLayout } from "@/components/layout/app-layout";
+import { Button } from "@studio/ui";
+import { Badge } from "@studio/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@studio/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@studio/ui";
+import { Input } from "@studio/ui";
+import { Label } from "@studio/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";
+import {
+    ArrowLeft, LoaderCircle, UserPlus, X, LayoutTemplate,
+    CheckCircle2, Circle, ChevronDown, ChevronUp, Plus, Trash2,
+    Send, ShieldCheck,
+} from "lucide-react";
+import { useServiceSchedule, useServiceTemplates } from "@/hooks/use-schedule";
+import { useMinistries } from "@/hooks/use-ministries";
+import { useWorkers } from "@/hooks/use-workers";
+import { useAuthStore } from "@studio/store";
+import { useUserRole } from "@/hooks/use-user-role";
+import { useToast } from "@/hooks/use-toast";
+import { findWorkerByWorkerId } from "@/actions/schedule";
+
+export default function ScheduleDetailPage() {
+    const { id } = useParams<{ id: string }>();
+    const router = useRouter();
+    const { toast } = useToast();
+    const { user } = useAuthStore();
+    const { canManageSchedule, canConfirmSchedule, workerProfile } = useUserRole();
+
+    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus } = useServiceSchedule(id);
+    const { ministries } = useMinistries();
+    const { workers } = useWorkers({ limit: 500 });
+    const { templates } = useServiceTemplates();
+
+    const [expandedMinistries, setExpandedMinistries] = useState<Set<string>>(new Set());
+    const [assignDialog, setAssignDialog] = useState<{ assignmentId: string; ministryId: string; roleName: string } | null>(null);
+    const [workerSearch, setWorkerSearch] = useState("");
+    const [workerIdSearch, setWorkerIdSearch] = useState("");
+    const [workerIdResult, setWorkerIdResult] = useState<any>(null);
+    const [workerIdSearching, setWorkerIdSearching] = useState(false);
+    const [applyTemplateDialog, setApplyTemplateDialog] = useState<string | null>(null); // ministryId
+    const [addRoleDialog, setAddRoleDialog] = useState<string | null>(null); // ministryId
+    const [newRoleName, setNewRoleName] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Group assignments by ministry
+    const byMinistry = useMemo(() => {
+        if (!schedule) return {} as Record<string, typeof schedule.assignments>;
+        return schedule.assignments.reduce<Record<string, typeof schedule.assignments>>((acc: Record<string, typeof schedule.assignments>, a: (typeof schedule.assignments)[0]) => {
+            if (!acc[a.ministryId]) acc[a.ministryId] = [];
+            acc[a.ministryId].push(a);
+            return acc;
+        }, {});
+    }, [schedule]);
+
+    const ministryIds = Object.keys(byMinistry);
+    const allMinistryIds = useMemo(() => {
+        const fromAssignments = new Set(ministryIds);
+        return [...fromAssignments];
+    }, [ministryIds]);
+
+    const toggleMinistry = (id: string) => {
+        setExpandedMinistries(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
+    const getMinistryName = (id: string) =>
+        ministries.find(m => m.id === id)?.name || id;
+
+    const filteredWorkers = useMemo(() =>
+        workers.filter((w: any) =>
+            w.status === "Active" &&
+            `${w.firstName} ${w.lastName}`.toLowerCase().includes(workerSearch.toLowerCase())
+        ), [workers, workerSearch]);
+
+    const handleAssign = async (workerId: string | null) => {
+        if (!assignDialog) return;
+        const worker = workerId ? workers.find((w: any) => w.id === workerId) : null;
+        try {
+            await upsertAssignment({
+                scheduleId: id,
+                ministryId: assignDialog.ministryId,
+                roleName: assignDialog.roleName,
+                workerId: workerId ?? null,
+                workerName: worker ? `${(worker as any).firstName} ${(worker as any).lastName}` : null,
+                order: schedule?.assignments.filter(
+                    (a: any) => a.ministryId === assignDialog.ministryId && a.roleName === assignDialog.roleName
+                ).findIndex((a: any) => a.id === assignDialog.assignmentId) ?? 0,
+            });
+            toast({ title: workerId ? "Worker assigned" : "Assignment cleared" });
+            setAssignDialog(null);
+        } catch {
+            toast({ variant: "destructive", title: "Failed to assign" });
+        }
+    };
+
+    const handleAddRole = async () => {
+        if (!addRoleDialog || !newRoleName.trim()) return;
+        setIsSaving(true);
+        try {
+            await upsertAssignment({
+                scheduleId: id,
+                ministryId: addRoleDialog,
+                roleName: newRoleName.trim(),
+                order: (byMinistry[addRoleDialog]?.length ?? 0),
+            });
+            toast({ title: "Role slot added" });
+            setAddRoleDialog(null);
+            setNewRoleName("");
+        } catch {
+            toast({ variant: "destructive", title: "Failed to add role" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleApplyTemplate = async (templateId: string) => {
+        try {
+            await applyTemplate({ templateId });
+            toast({ title: "Template applied" });
+            setApplyTemplateDialog(null);
+        } catch {
+            toast({ variant: "destructive", title: "Failed to apply template" });
+        }
+    };
+
+    const handlePublish = async () => {
+        try {
+            const result = await publishSchedule({ publishedBy: workerProfile?.id || user?.uid || 'system' });
+            toast({ title: `Schedule published — ${result.notified} worker(s) notified by email` });
+        } catch {
+            toast({ variant: "destructive", title: "Failed to publish" });
+        }
+    };
+
+    const handleWorkerIdSearch = async () => {
+        if (!workerIdSearch.trim()) return;
+        setWorkerIdSearching(true);
+        setWorkerIdResult(null);
+        try {
+            const w = await findWorkerByWorkerId(workerIdSearch.trim());
+            setWorkerIdResult(w || 'not_found');
+        } finally {
+            setWorkerIdSearching(false);
+        }
+    };
+
+    const handleConfirmAssignment = async (assignmentId: string) => {
+        try {
+            await confirmAssignment({ assignmentId, confirmedBy: workerProfile?.id || user?.uid || 'system' });
+            toast({ title: "Assignment confirmed" });
+        } catch {
+            toast({ variant: "destructive", title: "Failed to confirm" });
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <AppLayout>
+                <div className="flex justify-center py-10">
+                    <LoaderCircle className="h-8 w-8 animate-spin" />
+                </div>
+            </AppLayout>
+        );
+    }
+
+    if (!schedule) {
+        return (
+            <AppLayout>
+                <p className="text-muted-foreground">Schedule not found.</p>
+            </AppLayout>
+        );
+    }
+
+    const totalSlots = schedule.assignments.length;
+    const filledSlots = schedule.assignments.filter((a: any) => a.workerId).length;
+
+    return (
+        <AppLayout>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <Button variant="ghost" size="icon" onClick={() => router.push("/schedule")}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div>
+                        <h1 className="text-2xl font-headline font-bold">{schedule.title}</h1>
+                        <p className="text-sm text-muted-foreground">
+                            {format(new Date(schedule.date), "EEEE, MMMM d, yyyy")}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Badge variant={schedule.status === "Published" ? "default" : "secondary"}>
+                        {schedule.status}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">{filledSlots}/{totalSlots} filled</span>
+                    {schedule.status === "Draft" && canManageSchedule && (
+                        <Button size="sm" onClick={handlePublish} disabled={isPublishing}>
+                            {isPublishing && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                            <Send className="mr-2 h-4 w-4" /> Publish & Notify
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Tabs: Assignments | Confirmation Status */}
+            <Tabs defaultValue="assignments" className="mt-6">
+                <TabsList>
+                    <TabsTrigger value="assignments">Assignments</TabsTrigger>
+                    {(canConfirmSchedule || schedule.status === "Published") && (
+                        <TabsTrigger value="confirmation">
+                            Confirmation Status
+                            {confirmationStatus.length > 0 && (
+                                <Badge variant="secondary" className="ml-2 text-xs">
+                                    {confirmationStatus.filter((a: any) => a.acknowledgedAt).length}/{confirmationStatus.length}
+                                </Badge>
+                            )}
+                        </TabsTrigger>
+                    )}
+                </TabsList>
+
+                <TabsContent value="assignments">
+            {/* Add Ministry */}
+            <div className="mt-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Ministries</h2>
+                {canManageSchedule && (
+                <Select onValueChange={(ministryId) => {
+                    upsertAssignment({ scheduleId: id, ministryId, roleName: "Role", order: 0 });
+                    setExpandedMinistries(prev => new Set([...prev, ministryId]));
+                }}>
+                    <SelectTrigger className="w-[200px] h-8 text-sm">
+                        <SelectValue placeholder="+ Add Ministry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {ministries
+                            .filter(m => !allMinistryIds.includes(m.id))
+                            .map(m => (
+                                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                            ))}
+                    </SelectContent>
+                </Select>
+                )}
+            </div>
+
+            {/* Ministry Cards */}
+            <div className="mt-3 space-y-3">
+                {allMinistryIds.length === 0 && (
+                    <Card>
+                        <CardContent className="py-10 text-center text-muted-foreground">
+                            No ministries added yet. Use the dropdown above to add one.
+                        </CardContent>
+                    </Card>
+                )}
+
+                {allMinistryIds.map(ministryId => {
+                    const assignments = (byMinistry[ministryId] || []) as NonNullable<typeof schedule>['assignments'];
+                    const filled = assignments.filter((a: any) => a.workerId).length;
+                    const isExpanded = expandedMinistries.has(ministryId);
+                    const ministryTemplates = templates.filter((t: any) => t.ministryId === ministryId);
+
+                    // Group by role name
+                    const byRole = assignments.reduce<Record<string, typeof assignments>>((acc: Record<string, typeof assignments>, a: any) => {
+                        if (!acc[a.roleName]) acc[a.roleName] = [];
+                        acc[a.roleName].push(a);
+                        return acc;
+                    }, {});
+
+                    return (
+                        <Card key={ministryId}>
+                            <CardHeader
+                                className="cursor-pointer py-3 px-4"
+                                onClick={() => toggleMinistry(ministryId)}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                        <CardTitle className="text-base">{getMinistryName(ministryId)}</CardTitle>
+                                        <span className="text-xs text-muted-foreground">{filled}/{assignments.length} filled</span>
+                                    </div>
+                                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                        {ministryTemplates.length > 0 && (
+                                            <Button variant="outline" size="sm" className="h-7 text-xs"
+                                                onClick={() => setApplyTemplateDialog(ministryId)}>
+                                                <LayoutTemplate className="mr-1 h-3 w-3" /> Apply Template
+                                            </Button>
+                                        )}
+                                        <Button variant="outline" size="sm" className="h-7 text-xs"
+                                            onClick={() => { setAddRoleDialog(ministryId); setNewRoleName(""); }}>
+                                            <Plus className="mr-1 h-3 w-3" /> Add Role
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardHeader>
+
+                            {isExpanded && (
+                                <CardContent className="pt-0 pb-4 px-4">
+                                    <div className="space-y-4">
+                                        {Object.entries(byRole).map(([roleName, slots]) => (
+                                            <div key={roleName}>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                                    {roleName}
+                                                </p>
+                                                <div className="space-y-1.5">
+                                                    {(slots as any[]).map((slot: any) => (
+                                                        <div key={slot.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
+                                                            {slot.workerId ? (
+                                                                <>
+                                                                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                                                                    <Avatar className="h-6 w-6">
+                                                                        <AvatarImage src={workers.find((w: any) => w.id === slot.workerId)?.avatarUrl} />
+                                                                        <AvatarFallback className="text-[10px]">
+                                                                            {slot.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                    <span className="text-sm flex-1">{slot.workerName}</span>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6"
+                                                                        onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
+                                                                        <UserPlus className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                                                                        onClick={() => deleteAssignment(slot.id)}>
+                                                                        <X className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                                    <span className="text-sm text-muted-foreground flex-1">Unassigned</span>
+                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs"
+                                                                        onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
+                                                                        <UserPlus className="mr-1 h-3 w-3" /> Assign
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                                                                        onClick={() => deleteAssignment(slot.id)}>
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+                    );
+                })}
+            </div>
+
+                </TabsContent>
+
+                {(canConfirmSchedule || schedule.status === "Published") && (
+                <TabsContent value="confirmation">
+                    <div className="mt-4 space-y-2">
+                        {confirmationStatus.length === 0 ? (
+                            <Card>
+                                <CardContent className="py-10 text-center text-muted-foreground">
+                                    No assigned workers yet.
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Card>
+                                <div className="divide-y">
+                                    {confirmationStatus.map((a: any) => (
+                                        <div key={a.id} className="flex items-center gap-3 px-4 py-3">
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium">{a.workerName || "—"}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {getMinistryName(a.ministryId)} · {a.roleName}
+                                                </p>
+                                            </div>
+                                            {a.acknowledgedAt ? (
+                                                <div className="flex items-center gap-1.5 text-green-600">
+                                                    <CheckCircle2 className="h-4 w-4" />
+                                                    <span className="text-xs">
+                                                        Confirmed {format(new Date(a.acknowledgedAt), "MMM d, h:mm a")}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-muted-foreground">Pending</span>
+                                                    {canConfirmSchedule && (
+                                                        <Button
+                                                            size="sm" variant="outline" className="h-7 text-xs"
+                                                            onClick={() => handleConfirmAssignment(a.id)}
+                                                        >
+                                                            <ShieldCheck className="mr-1 h-3 w-3" /> Mark Confirmed
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        )}
+                    </div>
+                </TabsContent>
+                )}
+            </Tabs>
+
+            {/* Assign Worker Dialog */}
+            <Dialog open={!!assignDialog} onOpenChange={() => { setAssignDialog(null); setWorkerIdSearch(""); setWorkerIdResult(null); }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Assign Worker — {assignDialog?.roleName}</DialogTitle>
+                    </DialogHeader>
+                    <Tabs defaultValue="search">
+                        <TabsList className="w-full">
+                            <TabsTrigger value="search" className="flex-1">Search by Name</TabsTrigger>
+                            <TabsTrigger value="workerid" className="flex-1">Search by Worker ID</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="search">
+                            <div className="space-y-3 mt-2">
+                                <Input
+                                    placeholder="Search workers..."
+                                    value={workerSearch}
+                                    onChange={e => setWorkerSearch(e.target.value)}
+                                    autoFocus
+                                />
+                                <div className="max-h-64 overflow-y-auto space-y-1">
+                                    <button
+                                        className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-sm text-muted-foreground"
+                                        onClick={() => handleAssign(null)}
+                                    >
+                                        <X className="h-4 w-4" /> Clear assignment
+                                    </button>
+                                    {filteredWorkers.map((w: any) => (
+                                        <button
+                                            key={w.id}
+                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-left"
+                                            onClick={() => handleAssign(w.id)}
+                                        >
+                                            <Avatar className="h-7 w-7">
+                                                <AvatarImage src={w.avatarUrl} />
+                                                <AvatarFallback className="text-[10px]">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="text-sm font-medium">{w.firstName} {w.lastName}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {ministries.find((m: any) => m.id === w.majorMinistryId)?.name || "—"}
+                                                </p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="workerid">
+                            <div className="space-y-3 mt-2">
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Enter Worker ID (e.g. 3320)"
+                                        value={workerIdSearch}
+                                        onChange={e => setWorkerIdSearch(e.target.value)}
+                                        onKeyDown={e => e.key === "Enter" && handleWorkerIdSearch()}
+                                        autoFocus
+                                    />
+                                    <Button onClick={handleWorkerIdSearch} disabled={workerIdSearching} size="sm">
+                                        {workerIdSearching ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Find"}
+                                    </Button>
+                                </div>
+                                {workerIdResult === 'not_found' && (
+                                    <p className="text-sm text-destructive">No worker found with that ID.</p>
+                                )}
+                                {workerIdResult && workerIdResult !== 'not_found' && (
+                                    <button
+                                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md border hover:bg-muted text-left"
+                                        onClick={() => handleAssign(workerIdResult.id)}
+                                    >
+                                        <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                                        <div>
+                                            <p className="text-sm font-medium">{workerIdResult.firstName} {workerIdResult.lastName}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {ministries.find((m: any) => m.id === workerIdResult.majorMinistryId)?.name || "—"} · {workerIdResult.status}
+                                            </p>
+                                        </div>
+                                    </button>
+                                )}
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </DialogContent>
+            </Dialog>
+
+            {/* Apply Template Dialog */}
+            <Dialog open={!!applyTemplateDialog} onOpenChange={() => setApplyTemplateDialog(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Apply Template — {applyTemplateDialog ? getMinistryName(applyTemplateDialog) : ""}</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        This will replace all current role slots for this ministry with the template's roles.
+                    </p>
+                    <div className="space-y-2 mt-2">
+                        {templates
+                            .filter((t: any) => t.ministryId === applyTemplateDialog)
+                            .map((t: any) => (
+                                <button
+                                    key={t.id}
+                                    className="w-full flex items-center justify-between px-4 py-3 rounded-md border hover:bg-muted text-left"
+                                    onClick={() => handleApplyTemplate(t.id)}
+                                    disabled={isApplyingTemplate}
+                                >
+                                    <div>
+                                        <p className="font-medium text-sm">{t.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t.roles.reduce((s: number, r: any) => s + r.count, 0)} slots · {t.roles.map((r: any) => r.roleName).join(", ")}
+                                        </p>
+                                    </div>
+                                    {t.isDefault && <Badge variant="secondary" className="text-xs">Default</Badge>}
+                                </button>
+                            ))}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add Role Dialog */}
+            <Dialog open={!!addRoleDialog} onOpenChange={() => setAddRoleDialog(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Role Slot</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div className="space-y-1.5">
+                            <Label>Role Name</Label>
+                            <Input
+                                value={newRoleName}
+                                onChange={e => setNewRoleName(e.target.value)}
+                                placeholder="e.g. Worship Leader, Sound Engineer"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAddRoleDialog(null)}>Cancel</Button>
+                        <Button onClick={handleAddRole} disabled={isSaving || !newRoleName.trim()}>
+                            {isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                            Add Slot
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </AppLayout>
+    );
+}

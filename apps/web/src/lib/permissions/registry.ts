@@ -55,6 +55,10 @@ export const PERMISSIONS = {
     manage:            'venue_assistance:manage',
     manage_own_ministry: 'venue_assistance:manage_own_ministry',
   },
+  schedule: {
+    manage:  'schedule:manage',
+    confirm: 'schedule:confirm',
+  },
 } as const;
 
 /** Flat list of all permission strings for iteration/seeding. */
@@ -87,6 +91,8 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'system',           action: 'manage_ors_sync',     description: 'Manage ORS worker sync' },
   { module: 'venue_assistance', action: 'manage',              description: 'Manage all venue assistance requests' },
   { module: 'venue_assistance', action: 'manage_own_ministry', description: 'Manage own ministry assistance requests' },
+  { module: 'schedule',         action: 'manage',              description: 'Create and manage Sunday service schedules' },
+  { module: 'schedule',         action: 'confirm',             description: 'Confirm worker acknowledgement of schedule assignments' },
 ];
 
 /**

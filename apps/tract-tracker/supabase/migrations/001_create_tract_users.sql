@@ -3,7 +3,7 @@
 
 create table if not exists public.tract_users (
   id          uuid primary key default gen_random_uuid(),
-  user_id     uuid references auth.users(id) on delete cascade,
+  password    text not null, -- Stores the raw or hashed password directly in the table
   name        text,
   email       text unique not null,
   region      text,
@@ -14,9 +14,7 @@ create table if not exists public.tract_users (
 );
 
 -- Index for fast lookups by auth user
-create index if not exists tract_users_user_id_idx on public.tract_users(user_id);
-
--- Enable Row Level Security
+-- Enable Row Level Security (optional, we use service_role admin client)
 alter table public.tract_users enable row level security;
 
 -- Users can read all rows (for leaderboard/admin view)
@@ -24,15 +22,7 @@ create policy "Anyone can read tract_users"
   on public.tract_users for select
   using (true);
 
--- Users can only insert their own row
-create policy "Users can insert own row"
-  on public.tract_users for insert
-  with check (auth.uid() = user_id);
-
--- Users can only update their own row
-create policy "Users can update own row"
-  on public.tract_users for update
-  using (auth.uid() = user_id);
+-- To bypass inserts and updates, we just use the supabaseAdmin client in the app.
 
 -- Service role can update all rows (for admin reset)
 -- This is handled automatically by the service role key bypassing RLS
@@ -45,5 +35,5 @@ security definer
 as $$
   update public.tract_users
   set tracts_given = tracts_given + 1
-  where user_id = uid;
+  where id = uid;
 $$;

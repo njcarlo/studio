@@ -254,39 +254,54 @@ export async function getWorkerStats(ministryIds?: string[]) {
 }
 
 export async function getWorkerById(id: string) {
-    return await prisma.worker.findUnique({
-        where: { id },
-        include: {
-            role: true,
-            roles: {
-                include: {
-                    role: {
-                        include: {
-                            rolePermissions: { include: { permission: true } },
+    try {
+        return await prisma.worker.findUnique({
+            where: { id },
+            include: {
+                role: true,
+                roles: {
+                    include: {
+                        role: {
+                            include: {
+                                rolePermissions: { include: { permission: true } },
+                            },
                         },
                     },
                 },
             },
-        },
-    });
+        });
+    } catch {
+        // Fallback if rolePermissions table doesn't exist yet
+        return await prisma.worker.findUnique({
+            where: { id },
+            include: { role: true },
+        });
+    }
 }
 
 export async function getWorkerByEmail(email: string) {
-    return await prisma.worker.findUnique({
-        where: { email },
-        include: {
-            role: true,
-            roles: {
-                include: {
-                    role: {
-                        include: {
-                            rolePermissions: { include: { permission: true } },
+    try {
+        return await prisma.worker.findUnique({
+            where: { email },
+            include: {
+                role: true,
+                roles: {
+                    include: {
+                        role: {
+                            include: {
+                                rolePermissions: { include: { permission: true } },
+                            },
                         },
                     },
                 },
             },
-        },
-    });
+        });
+    } catch {
+        return await prisma.worker.findUnique({
+            where: { email },
+            include: { role: true },
+        });
+    }
 }
 
 export async function createWorker(data: any) {

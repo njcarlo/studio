@@ -1,45 +1,213 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
-    ImageBackground, ActivityIndicator, Alert,
+    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabase';
+import { supabaseAdmin } from '../supabase';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
+const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN'];
+const CHURCHES = ['Dasmarinas', 'Others'];
+const BARANGAYS = [
+    'Burol', 'Burol I', 'Burol II', 'Burol III', 'Datu Esmael',
+    'Emmanuel Bergado I', 'Emmanuel Bergado II',
+    'Fatima I', 'Fatima II', 'Fatima III',
+    'H-2', 'Langkaan I', 'Langkaan II',
+    'Luzviminda I', 'Luzviminda II',
+    'Paliparan I', 'Paliparan II', 'Paliparan III',
+    'Sabang', 'Saint Peter I', 'Saint Peter II',
+    'Salawag', 'Salitran I', 'Salitran II', 'Salitran III', 'Salitran IV',
+    'Sampaloc I', 'Sampaloc II', 'Sampaloc III', 'Sampaloc IV', 'Sampaloc V',
+    'San Agustin I', 'San Agustin II', 'San Agustin III',
+    'San Andres I', 'San Andres II',
+    'San Antonio de Padua I', 'San Antonio de Padua II',
+    'San Dionisio', 'San Esteban',
+    'San Francisco I', 'San Francisco II',
+    'San Isidro Labrador I', 'San Isidro Labrador II',
+    'San Jose', 'San Juan',
+    'San Lorenzo Ruiz I', 'San Lorenzo Ruiz II',
+    'San Luis I', 'San Luis II',
+    'San Manuel I', 'San Manuel II',
+    'San Mateo', 'San Miguel', 'San Miguel II',
+    'San Nicolas I', 'San Nicolas II',
+    'San Roque', 'San Simon',
+    'Santa Cristina I', 'Santa Cristina II',
+    'Santa Cruz I', 'Santa Cruz II',
+    'Santa Fe', 'Santa Lucia', 'Santa Maria',
+    'Santo Cristo', 'Santo Niño I', 'Santo Niño II',
+    'Victoria Reyes', 'Zone I', 'Zone I-B', 'Zone II', 'Zone III', 'Zone IV',
+];
+
+// ── Setup Screen ─────────────────────────────────────────────────────────────
+function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
+    const { user, authState, setAuthState } = useAuth();
+    const [region, setRegion] = useState(authState.region || '');
+    const [subRegion, setSubRegion] = useState(authState.subRegion || '');
+    const [barangay, setBarangay] = useState(authState.barangay || '');
+    const [showBarangayModal, setShowBarangayModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const firstName = authState.name ? authState.name.split(' ')[0] : 'Friend';
+    const filteredBarangays = BARANGAYS.filter(b => b.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const handleConfirm = async () => {
+        if (!region) { Alert.alert('Required', 'Please select your region.'); return; }
+        setSaving(true);
+        try {
+            await supabaseAdmin
+                .from('tract_users')
+                .update({ region, sub_region: subRegion || null, barangay: barangay || null })
+                .eq('id', user.id);
+            setAuthState({ region, subRegion, barangay });
+            onConfirm();
+        } catch (e: any) {
+            Alert.alert('Error', e.message || 'Could not save.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
+            <View style={styles.overlay} />
+            <SafeAreaView style={styles.safe}>
+                <View style={styles.setupContent}>
+                    <Text style={styles.setupTitle}>National Tracts{'\n'}Giving Day</Text>
+                    <Text style={styles.script}>Outside is Beautiful</Text>
+
+                    <Text style={styles.greeting}>Hello, {firstName}!</Text>
+
+                    <Text style={styles.fieldLabel}>Please select your Region</Text>
+                    <View style={styles.rowWrap}>
+                        {REGIONS.map(r => (
+                            <TouchableOpacity
+                                key={r}
+                                onPress={() => { setRegion(r); setSubRegion(''); setBarangay(''); }}
+                                style={[styles.chip, region === r && styles.chipActive]}
+                            >
+                                <Text style={[styles.chipText, region === r && styles.chipTextActive]}>{r}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {region === 'MMR' && (
+                        <>
+                            <Text style={styles.fieldLabel}>Church</Text>
+                            <View style={styles.rowWrap}>
+                                {CHURCHES.map(sr => (
+                                    <TouchableOpacity
+                                        key={sr}
+                                        onPress={() => { setSubRegion(sr); setBarangay(''); }}
+                                        style={[styles.chip, subRegion === sr && styles.chipActive]}
+                                    >
+                                        <Text style={[styles.chipText, subRegion === sr && styles.chipTextActive]}>{sr}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </>
+                    )}
+
+                    {region === 'MMR' && subRegion === 'Dasmarinas' && (
+                        <>
+                            <Text style={styles.fieldLabel}>Please select your Barangay</Text>
+                            <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowBarangayModal(true)}>
+                                <Text style={[styles.dropdownText, !barangay && { color: 'rgba(255,255,255,0.5)' }]}>
+                                    {barangay || 'Select Barangay'}
+                                </Text>
+                                <Ionicons name="chevron-down" size={18} color="#fff" />
+                            </TouchableOpacity>
+                        </>
+                    )}
+
+                    <Text style={styles.setupNote}>
+                        Note: Once you click confirm, you will not be able to edit your Region and Barangay.
+                    </Text>
+
+                    <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm} disabled={saving}>
+                        {saving ? <ActivityIndicator color="#1a1a2e" /> : <Text style={styles.confirmBtnText}>Confirm</Text>}
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+
+            <Modal visible={showBarangayModal} animationType="slide" transparent>
+                <SafeAreaView style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Barangay</Text>
+                            <TouchableOpacity onPress={() => setShowBarangayModal(false)}>
+                                <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.searchContainer}>
+                            <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search barangay..."
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoFocus
+                            />
+                        </View>
+                        <FlatList
+                            data={filteredBarangays}
+                            keyExtractor={item => item}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.barangayItem}
+                                    onPress={() => { setBarangay(item); setShowBarangayModal(false); setSearchQuery(''); }}
+                                >
+                                    <Text style={[styles.barangayItemText, barangay === item && styles.selectedItemText]}>{item}</Text>
+                                    {barangay === item && <Ionicons name="checkmark" size={18} color="#C9A84C" />}
+                                </TouchableOpacity>
+                            )}
+                            contentContainerStyle={{ paddingBottom: 20 }}
+                        />
+                    </View>
+                </SafeAreaView>
+            </Modal>
+        </ImageBackground>
+    );
+}
+
+// ── Main Action Screen ────────────────────────────────────────────────────────
 export default function ActionScreen() {
-    const { user, authState, signOut } = useAuth();
+    const { user, authState, signOut, isAdmin } = useAuth();
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-    const [regionalCount, setRegionalCount] = useState<number>(0);
-    const [personalCount, setPersonalCount] = useState<number>(0);
+    const [setupDone, setSetupDone] = useState(!!authState.region);
+    const [regionalCount, setRegionalCount] = useState(0);
+    const [personalCount, setPersonalCount] = useState(0);
     const [isIncrementing, setIsIncrementing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Re-check setup when authState changes
+    useEffect(() => {
+        if (authState.region) setSetupDone(true);
+    }, [authState.region]);
 
     const loadCounts = useCallback(async () => {
         if (!user) return;
         try {
-            // Personal count
-            const { data: userData } = await supabase
+            const { data: userData } = await supabaseAdmin
                 .from('tract_users')
                 .select('tracts_given')
-                .eq('user_id', user.id)
+                .eq('id', user.id)
                 .single();
             if (userData) setPersonalCount(userData.tracts_given ?? 0);
 
-            // Regional count
-            const { data: regionData } = await supabase
-                .from('tract_users')
-                .select('tracts_given')
-                .eq('region', authState.region || 'MMR');
+            let regionQuery = supabaseAdmin.from('tract_users').select('tracts_given');
+            if (authState.region) regionQuery = regionQuery.eq('region', authState.region);
+            const { data: regionData } = await regionQuery;
             if (regionData) {
-                const total = regionData.reduce((sum, r) => sum + (r.tracts_given ?? 0), 0);
-                setRegionalCount(total);
+                setRegionalCount(regionData.reduce((sum, r) => sum + (r.tracts_given ?? 0), 0));
             }
         } catch (e) {
             console.error('loadCounts error', e);
@@ -49,16 +217,25 @@ export default function ActionScreen() {
     }, [user, authState.region]);
 
     useEffect(() => {
-        loadCounts();
-    }, [loadCounts]);
+        if (setupDone) loadCounts();
+    }, [setupDone, loadCounts]);
 
     const handleIncrement = async () => {
         if (!user || isIncrementing) return;
         setIsIncrementing(true);
         try {
-            const { error } = await supabase.rpc('increment_tracts', { uid: user.id });
+            const newCount = personalCount + 1;
+            const { data, error } = await supabaseAdmin
+                .from('tract_users')
+                .update({ tracts_given: newCount })
+                .eq('id', user.id)
+                .select();
             if (error) throw error;
-            setPersonalCount(prev => prev + 1);
+            if (!data || data.length === 0) {
+                Alert.alert('Warning', 'No rows updated. Check your account.');
+                return;
+            }
+            setPersonalCount(newCount);
             setRegionalCount(prev => prev + 1);
         } catch (e: any) {
             Alert.alert('Error', e.message || 'Could not update count');
@@ -67,50 +244,53 @@ export default function ActionScreen() {
         }
     };
 
-    const handleAdminNav = () => navigation.navigate('AdminDashboard');
+    if (!setupDone) {
+        return <SetupScreen onConfirm={() => setSetupDone(true)} />;
+    }
 
-    const regionLabel = authState.region || 'MMR';
-    const subLabel = authState.subRegion ? `${authState.region} › ${authState.subRegion}` : regionLabel;
+    const locationLabel = authState.barangay
+        ? `Brgy. ${authState.barangay}`
+        : authState.subRegion
+        ? `COG ${authState.subRegion}`
+        : authState.region || 'My Region';
+
+    const now = new Date();
+    const timeLabel = `as of ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric' })}, ${now.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}`;
 
     return (
         <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
             <View style={styles.overlay} />
             <SafeAreaView style={styles.safe}>
-                {/* Header */}
+                {/* Header row */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={handleAdminNav} style={styles.adminBtn}>
-                        <Text style={styles.adminBtnText}>Admin</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
-                        <Text style={styles.signOutText}>Sign Out</Text>
+                    {isAdmin && (
+                        <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={styles.headerBtn}>
+                            <Text style={styles.headerBtnText}>Admin</Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={signOut} style={styles.headerBtn}>
+                        <Text style={styles.headerBtnText}>Sign Out</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Title */}
-                <View style={styles.titleBlock}>
-                    <Text style={styles.titleSmall}>COG NATION</Text>
-                    <Text style={styles.titleMain}>National Tracts{'\n'}Giving Day</Text>
-                    <Text style={styles.regionLabel}>{subLabel}</Text>
-                </View>
+                <Text style={styles.title}>National Tracts Giving Day</Text>
 
-                {/* Regional count */}
-                {isLoading ? (
-                    <ActivityIndicator color="#FFD700" size="large" style={{ marginVertical: 24 }} />
-                ) : (
-                    <Text style={styles.regionalCount}>{regionalCount.toLocaleString()}</Text>
-                )}
-                <Text style={styles.regionalCountLabel}>tracts given in {regionLabel}</Text>
+                {/* Regional block */}
+                <View style={styles.regionalBlock}>
+                    <Text style={styles.locationLabel}>{locationLabel}</Text>
+                    {isLoading
+                        ? <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} />
+                        : <Text style={styles.regionalCount}>{regionalCount.toLocaleString()}</Text>
+                    }
+                    <Text style={styles.regionalSub}>Total Tracts Given</Text>
+                    <Text style={styles.regionalSub}>{timeLabel}</Text>
+                </View>
 
                 {/* Personal card */}
                 <View style={styles.card}>
-                    <Text style={styles.cardName}>{authState.name || 'You'}</Text>
-                    <Text style={styles.cardSub}>{authState.barangay || authState.subRegion || authState.region}</Text>
-
-                    <View style={styles.cardCountRow}>
-                        <Text style={styles.cardCount}>{personalCount}</Text>
-                        <Text style={styles.cardCountLabel}>tracts given</Text>
-                    </View>
-
+                    <Text style={styles.cardTitle}>My Tract Counter</Text>
+                    <Text style={styles.cardCount}>{personalCount}</Text>
                     <TouchableOpacity
                         style={[styles.plusBtn, isIncrementing && styles.plusBtnDisabled]}
                         onPress={handleIncrement}
@@ -130,73 +310,84 @@ export default function ActionScreen() {
 
 const styles = StyleSheet.create({
     bg: { flex: 1 },
-    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,40,0.72)' },
+    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,60,0.78)' },
     safe: { flex: 1 },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 8,
+
+    // ── Setup ──
+    setupContent: { flex: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 32 },
+    greeting: { color: '#fff', fontSize: 26, marginBottom: 24 },
+    fieldLabel: { color: '#fff', fontSize: 13, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+    rowWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
+    chip: { borderWidth: 1.5, borderColor: '#C9A84C', borderRadius: 20, paddingVertical: 7, paddingHorizontal: 16, marginRight: 8, marginBottom: 8 },
+    chipActive: { backgroundColor: '#C9A84C' },
+    chipText: { color: '#C9A84C', fontSize: 13 },
+    chipTextActive: { color: '#1a1a2e' },
+    dropdownTrigger: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10,
+        padding: 14, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
     },
-    adminBtn: { padding: 8 },
-    adminBtnText: { color: '#FFD700', fontWeight: '700', fontSize: 14 },
-    signOutBtn: { padding: 8 },
-    signOutText: { color: '#aaa', fontSize: 14 },
-    titleBlock: { alignItems: 'center', marginTop: 24, paddingHorizontal: 20 },
-    titleSmall: { color: '#FFD700', fontSize: 13, fontWeight: '700', letterSpacing: 4 },
-    titleMain: {
-        color: '#fff',
-        fontSize: 36,
-        fontWeight: '900',
-        textAlign: 'center',
-        lineHeight: 42,
-        marginTop: 6,
+    dropdownText: { fontSize: 15, color: '#fff' },
+    setupNote: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginBottom: 24, lineHeight: 18 },
+    confirmBtn: {
+        backgroundColor: '#C9A84C', borderRadius: 14, paddingVertical: 18,
+        alignItems: 'center', shadowColor: '#C9A84C', shadowOpacity: 0.4,
+        shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
     },
-    regionLabel: { color: '#FFD700', fontSize: 16, fontWeight: '600', marginTop: 10 },
-    regionalCount: {
-        color: '#FFD700',
-        fontSize: 72,
-        fontWeight: '900',
-        textAlign: 'center',
-        marginTop: 16,
-        letterSpacing: -2,
-    },
-    regionalCountLabel: {
-        color: '#ccc',
-        fontSize: 14,
-        textAlign: 'center',
-        marginBottom: 24,
-    },
+    confirmBtnText: { color: '#1a1a2e', fontSize: 17 },
+
+    // ── Barangay modal ──
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '80%', padding: 20 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    modalTitle: { fontSize: 18, color: '#1a1a2e' },
+    searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12 },
+    searchInput: { flex: 1, height: 42, fontSize: 15 },
+    barangayItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    barangayItemText: { fontSize: 15, color: '#444' },
+    selectedItemText: { color: '#C9A84C' },
+
+    // ── Action ──
+    header: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
+    headerBtn: { padding: 8 },
+    headerBtnText: { color: '#C9A84C', fontSize: 14 },
+    title: { color: '#C9A84C', fontSize: 28, textAlign: 'center', marginTop: 16, marginBottom: 20, paddingHorizontal: 20, fontFamily: 'Anton_400Regular' },
+    regionalBlock: { alignItems: 'center', marginBottom: 28, paddingHorizontal: 20 },
+    locationLabel: { color: '#fff', fontSize: 18, marginBottom: 4, fontFamily: 'Anton_400Regular' },
+    regionalCount: { color: '#fff', fontSize: 64, letterSpacing: -2, fontFamily: 'Anton_400Regular' },
+    regionalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
+
     card: {
         marginHorizontal: 24,
         backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 24,
+        borderRadius: 24,
+        paddingVertical: 32,
+        paddingHorizontal: 24,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.25,
         shadowRadius: 16,
         elevation: 10,
     },
-    cardName: { fontSize: 20, fontWeight: '800', color: '#1a1a2e' },
-    cardSub: { fontSize: 13, color: '#94a3b8', marginTop: 2, marginBottom: 16 },
-    cardCountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 20 },
-    cardCount: { fontSize: 56, fontWeight: '900', color: '#1a1a2e' },
-    cardCountLabel: { fontSize: 16, color: '#64748b', fontWeight: '600' },
+    cardTitle: { fontSize: 16, color: '#1a1a2e', marginBottom: 12, fontFamily: 'Anton_400Regular' },
+    cardCount: { fontSize: 96, color: '#1a1a2e', lineHeight: 110, marginBottom: 20, fontFamily: 'Anton_400Regular' },
     plusBtn: {
-        backgroundColor: '#FFD700',
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        justifyContent: 'center',
+        backgroundColor: '#C9A84C',
+        borderRadius: 12,
+        paddingVertical: 16,
+        width: '100%',
         alignItems: 'center',
-        shadowColor: '#FFD700',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.5,
+        shadowColor: '#C9A84C',
+        shadowOpacity: 0.4,
         shadowRadius: 8,
-        elevation: 6,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 5,
     },
     plusBtnDisabled: { opacity: 0.6 },
-    plusBtnText: { fontSize: 28, fontWeight: '900', color: '#1a1a2e' },
+    plusBtnText: { fontSize: 22, color: '#1a1a2e', fontFamily: 'Anton_400Regular' },
+
+    // ── Shared ──
+    setupTitle: { color: '#C9A84C', fontSize: 40, lineHeight: 46, marginBottom: 10, fontFamily: 'Anton_400Regular' },
+    script: { color: '#fff', fontSize: 22, fontStyle: 'italic', marginBottom: 28, opacity: 0.9, fontFamily: 'Inter_400Regular_Italic' },
 });

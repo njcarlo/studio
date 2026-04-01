@@ -53,8 +53,7 @@ model WorkerRole {
 model Worker {
   id                     String               @id @default(uuid())
   workerId               String?
-  workerNumber           Int?                 @unique
-  legacyPasswordHash     String?
+  legacyPasswordHash     String?              @map("legacy_password_hash")
   firstName              String
   lastName               String
   email                  String               @unique
@@ -479,4 +478,57 @@ model InAppNotification {
   link      String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// ── Sunday Service Scheduling ─────────────────────────────────────────────────
+
+model ServiceSchedule {
+  id          String               @id @default(uuid())
+  date        DateTime             // The Sunday date
+  title       String               @default("Sunday Service")
+  notes       String?
+  status      String               @default("Draft") // Draft | Published | Completed
+  createdBy   String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  assignments ScheduleAssignment[]
+}
+
+model ServiceTemplate {
+  id         String         @id @default(uuid())
+  ministryId String
+  name       String         // e.g. "Standard Sunday", "Special Service"
+  isDefault  Boolean        @default(false)
+  createdBy  String
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  roles      TemplateRole[]
+}
+
+model TemplateRole {
+  id         String          @id @default(uuid())
+  templateId String
+  template   ServiceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  roleName   String          // e.g. "Worship Leader", "Sound Engineer"
+  count      Int             @default(1) // How many workers needed for this role
+  notes      String?
+  order      Int             @default(0)
+}
+
+model ScheduleAssignment {
+  id             String          @id @default(uuid())
+  scheduleId     String
+  schedule       ServiceSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  ministryId     String
+  roleName       String
+  workerId       String?
+  workerName     String?
+  notes          String?
+  order          Int             @default(0)
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  createdAt      DateTime        @default(now())
+
+  @@index([scheduleId])
+  @@index([ministryId])
 }

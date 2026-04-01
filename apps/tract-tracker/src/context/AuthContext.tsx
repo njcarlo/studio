@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabaseAdmin } from '../supabase';
 
 export interface AuthState {
     region: string;
@@ -13,8 +13,10 @@ interface AuthContextType {
     authState: AuthState;
     setAuthState: (state: Partial<AuthState>) => void;
     isDasmarinas: boolean;
-    session: Session | null;
-    user: User | null;
+    isTester: boolean;
+    isAdmin: boolean;
+    session: any | null;
+    user: any | null;
     isLoading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
     signUp: (email: string, password: string, metadata: Partial<AuthState>) => Promise<{ error: string | null }>;
@@ -22,46 +24,43 @@ interface AuthContextType {
 }
 
 const initialState: AuthState = { region: '', subRegion: '', barangay: '', name: '' };
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [authState, setAuthStateInternal] = useState<AuthState>(initialState);
-    const [session, setSession] = useState<Session | null>(null);
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user?.user_metadata) {
-                const meta = session.user.user_metadata;
-                setAuthStateInternal({
-                    region: meta.region || '',
-                    subRegion: meta.subRegion || '',
-                    barangay: meta.barangay || '',
-                    name: meta.name || '',
-                });
+        const loadSession = async () => {
+            try {
+                const storedUserId = await AsyncStorage.getItem('tract_user_id');
+                if (storedUserId) {
+                    const { data, error } = await supabaseAdmin
+                        .from('tract_users')
+                        .select('*')
+                        .eq('id', storedUserId)
+                        .single();
+                        
+                    if (data && !error) {
+                        setUser(data);
+                        setAuthStateInternal({
+                            region: data.region || '',
+                            subRegion: data.sub_region || '',
+                            barangay: data.barangay || '',
+                            name: data.name || '',
+                        });
+                    } else {
+                        await AsyncStorage.removeItem('tract_user_id');
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load session", e);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user?.user_metadata) {
-                const meta = session.user.user_metadata;
-                setAuthStateInternal({
-                    region: meta.region || '',
-                    subRegion: meta.subRegion || '',
-                    barangay: meta.barangay || '',
-                    name: meta.name || '',
-                });
-            }
-        });
-
-        return () => subscription.unsubscribe();
+        };
+        loadSession();
     }, []);
 
     const setAuthState = (newState: Partial<AuthState>) => {
@@ -69,40 +68,69 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signIn = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        return { error: error?.message ?? null };
+        const { data, error } = await supabaseAdmin
+            .from('tract_users')
+            .select('*')
+            .eq('email', email)
+            .eq('password', password)
+            .single();
+            
+        if (error || !data) {
+            return { error: 'Invalid email or password.' };
+        }
+        
+        await AsyncStorage.setItem('tract_user_id', data.id);
+        setUser(data);
+        setAuthStateInternal({
+            region: data.region || '',
+            subRegion: data.sub_region || '',
+            barangay: data.barangay || '',
+            name: data.name || '',
+        });
+        
+        return { error: null };
     };
 
     const signUp = async (email: string, password: string, metadata: Partial<AuthState>) => {
-        const { data, error } = await supabase.auth.signUp({
+        const { data: existing } = await supabaseAdmin
+            .from('tract_users')
+            .select('id')
+            .eq('email', email)
+            .single();
+            
+        if (existing) {
+            return { error: 'Email already registered.' };
+        }
+    
+        const { data, error } = await supabaseAdmin.from('tract_users').insert({
             email,
             password,
-            options: { data: metadata },
+            name: metadata.name || email.split('@')[0],
+            region: metadata.region,
+            sub_region: metadata.subRegion,
+            barangay: metadata.barangay,
+            tracts_given: 0,
+        }).select().single();
+        
+        if (error || !data) {
+            return { error: error?.message || 'Failed to create account.' };
+        }
+
+        await AsyncStorage.setItem('tract_user_id', data.id);
+        setUser(data);
+        setAuthStateInternal({
+            region: data.region || '',
+            subRegion: data.sub_region || '',
+            barangay: data.barangay || '',
+            name: data.name || '',
         });
-        if (error) return { error: error.message };
-
-        // If email confirmation is on, user will be null — tell the user to check email
-        if (!data.session) {
-            return { error: 'Check your email to confirm your account, then log in.' };
-        }
-
-        // Create the tract_users profile row
-        if (data.user) {
-            await supabase.from('tract_users').insert({
-                user_id: data.user.id,
-                email,
-                name: metadata.name || email.split('@')[0],
-                region: metadata.region,
-                sub_region: metadata.subRegion,
-                barangay: metadata.barangay,
-                tracts_given: 0,
-            });
-        }
+        
         return { error: null };
     };
 
     const signOut = async () => {
-        await supabase.auth.signOut();
+        await AsyncStorage.removeItem('tract_user_id');
+        setUser(null);
         setAuthStateInternal(initialState);
     };
 
@@ -110,8 +138,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         authState.subRegion.toLowerCase() === 'dasmarinas' ||
         authState.subRegion.toLowerCase() === 'dasmariñas';
 
+    const isTester = user?.is_tester === true;
+    const isAdmin = user?.is_admin === true;
+    const session = user ? { user } : null;
+
     return (
-        <AuthContext.Provider value={{ authState, setAuthState, isDasmarinas, session, user, isLoading, signIn, signUp, signOut }}>
+        <AuthContext.Provider value={{ authState, setAuthState, isDasmarinas, isTester, isAdmin, session, user, isLoading, signIn, signUp, signOut }}>
             {children}
         </AuthContext.Provider>
     );

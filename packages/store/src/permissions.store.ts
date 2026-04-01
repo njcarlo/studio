@@ -51,6 +51,8 @@ export interface PermissionsState {
     canManageOrsSync: boolean;
     canManageVenueAssistance: boolean;
     canManageOwnMinistryAssistance: boolean;
+    canManageSchedule: boolean;
+    canConfirmSchedule: boolean;
 
     // Internal action — called by UserRoleSyncer
     _setPermissions: (state: Omit<PermissionsState, '_setPermissions'>) => void;
@@ -89,6 +91,8 @@ const DEFAULT_STATE: Omit<PermissionsState, '_setPermissions'> = {
     canManageOrsSync: false,
     canManageVenueAssistance: false,
     canManageOwnMinistryAssistance: false,
+    canManageSchedule: false,
+    canConfirmSchedule: false,
 };
 
 export const usePermissionsStore = create<PermissionsState>()(

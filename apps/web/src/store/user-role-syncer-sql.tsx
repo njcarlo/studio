@@ -220,6 +220,10 @@ export function UserRoleSyncerSQL() {
       canManageOwnMinistryAssistance:
         sa || hasPerm('venue_assistance:manage_own_ministry') ||
         hasPerm('manage_own_ministry_assistance'),
+      canManageSchedule:
+        sa || hasPerm('schedule:manage'),
+      canConfirmSchedule:
+        sa || hasPerm('schedule:confirm') || hasPerm('schedule:manage'),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [

@@ -110,11 +110,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     digit: {
-        fontWeight: '900',
         fontVariant: ['tabular-nums'],
     },
     separator: {
-        fontWeight: '900',
         paddingBottom: 2,
     },
 });

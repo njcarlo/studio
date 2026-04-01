@@ -37,6 +37,9 @@
         "projectId": "b0c32484-eafd-4599-9baf-9ceea8a5de80"
       }
     },
-    "owner": "jace29"
+    "owner": "jace29",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

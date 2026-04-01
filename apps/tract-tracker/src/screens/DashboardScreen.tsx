@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
         borderBottomColor: '#e8ecf0',
         alignItems: 'center',
     },
-    headerTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a2e', letterSpacing: -0.5 },
+    headerTitle: { fontSize: 18, color: '#1a1a2e', letterSpacing: -0.5 },
     headerSub: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
 
     container: { padding: 20, paddingBottom: 40 },
@@ -70,8 +70,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         elevation: 4,
     },
-    heroLabel: { fontSize: 15, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
-    heroSub: { fontSize: 14, color: '#94a3b8', marginTop: 8, fontWeight: '600' },
+    heroLabel: { fontSize: 15, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+    heroSub: { fontSize: 14, color: '#94a3b8', marginTop: 8 },
 
     grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     gridWide: {},
@@ -90,5 +90,5 @@ const styles = StyleSheet.create({
     },
     statCardWide: { width: '31.5%' },
 
-    statLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, textAlign: 'center' },
+    statLabel: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, textAlign: 'center' },
 });

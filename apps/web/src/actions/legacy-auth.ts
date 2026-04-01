@@ -7,6 +7,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 type LegacyLoginResult = {
   success: boolean;
   email?: string;
+  passwordChangeRequired?: boolean;
   error?: string;
 };
 
@@ -40,7 +41,7 @@ async function logLegacyAuthEvent(
   }
 }
 
-async function getRecentFailedAttempts(workerNumber: number): Promise<number> {
+async function getRecentFailedAttempts(workerId: string): Promise<number> {
   const windowStart = new Date(
     Date.now() - LEGACY_LOGIN_WINDOW_MINUTES * 60 * 1000,
   );
@@ -49,131 +50,332 @@ async function getRecentFailedAttempts(workerNumber: number): Promise<number> {
     where: {
       module: "auth",
       action: "legacy_login_failed",
-      targetId: String(workerNumber),
+      targetId: workerId,
       timestamp: { gte: windowStart },
     },
   });
 }
 
+/**
+ * Dynamically determines the correct column name for the legacy password hash.
+ * This handles issues where DB migrations might have used different casing or snake_case.
+ */
+async function getLegacyPasswordColumnName(): Promise<string | null> {
+  try {
+    const columns = await prisma.$queryRaw<any[]>`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'Worker' AND (column_name = 'legacyPasswordHash' OR column_name = 'legacy_password_hash' OR column_name = 'password')
+    `;
+    if (columns.length === 0) return null;
+    
+    // Prioritize legacyPasswordHash if both exist for some reason
+    const match = columns.find(c => c.column_name === 'legacyPasswordHash') || columns[0];
+    return match.column_name;
+  } catch (e) {
+    console.error("Failed to probe Worker columns:", e);
+    return null;
+  }
+}
+
 export async function legacyWorkerIdLogin(
-  workerNumber: number,
+  workerId: string,
   password: string,
 ): Promise<LegacyLoginResult> {
-  const genericError = "Invalid Worker ID or password.";
+  return withRetry(async () => {
+    const genericError = "Invalid Worker ID or password.";
 
-  if (!isWorkerIdLoginEnabled()) {
+    if (!isWorkerIdLoginEnabled()) {
+      await logLegacyAuthEvent(
+        "legacy_login_failed",
+        "Worker ID login attempted while feature flag is disabled",
+        workerId,
+      );
+      return {
+        success: false,
+        error: "Worker ID login is currently disabled.",
+      };
+    }
+
+    if (!workerId || !password) {
+      return { success: false, error: genericError };
+    }
+
+    const recentAttempts = await getRecentFailedAttempts(workerId);
+    if (recentAttempts >= LEGACY_LOGIN_MAX_ATTEMPTS) {
+      await logLegacyAuthEvent(
+        "legacy_login_failed",
+        `Rate limit hit for worker #${workerId}`,
+        workerId,
+      );
+      return {
+        success: false,
+        error: "Too many failed attempts. Please try again later.",
+      };
+    }
+
+    // 1. Fetch worker via type-safe client
+    const worker = await (prisma.worker as any).findFirst({
+      where: { workerId },
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        firstName: true,
+        lastName: true,
+        passwordChangeRequired: true,
+        legacyPasswordHash: true,
+      }
+    });
+
+    if (!worker || !worker.email) {
+      await logLegacyAuthEvent(
+        "legacy_login_failed",
+        `Failed legacy login for workerId ${workerId}: worker not found`,
+        workerId,
+      );
+      return { success: false, error: genericError };
+    }
+
+    if (worker.status !== "Active") {
+      await logLegacyAuthEvent(
+        "legacy_login_failed",
+        `Failed legacy login for worker #${workerId}: inactive account`,
+        workerId,
+      );
+      return {
+        success: false,
+        error: "Your account is inactive. Please contact your administrator.",
+      };
+    }
+
+    // If password change is required, we don't necessarily need the old password 
+    // if the user handles it via First Name verification (in migration flow).
+    if (worker.passwordChangeRequired) {
+      return { 
+        success: true, 
+        email: worker.email, 
+        passwordChangeRequired: true 
+      };
+    }
+
+    // If no legacy hash exists but passwordChangeRequired is false,
+    // the user already completed migration — let Supabase handle it directly
+    const storedHash = (worker.legacyPasswordHash || "").trim().toLowerCase();
+
+    if (!storedHash) {
+      // No legacy hash — user should sign in directly via Supabase
+      // Try signing in directly; if it fails, return a helpful error
+      return { success: false, error: "Please use Email Login — your account has already been migrated." };
+    }
+
+    const submittedHash = crypto
+      .createHash("md5")
+      .update(password)
+      .digest("hex")
+      .toLowerCase();
+
+    if (submittedHash !== storedHash) {
+      await logLegacyAuthEvent(
+        "legacy_login_failed",
+        `Failed legacy login for worker #${workerId}: hash mismatch`,
+        workerId,
+      );
+      return { success: false, error: genericError };
+    }
+
+    const supabaseAdmin = getSupabaseAdminClient();
+
+    // Look up Supabase auth user by email to get the real UUID
+    const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
+    const authUser = authList?.users?.find(u => u.email === worker.email);
+
+    if (!authUser) {
+      // No Supabase auth user yet — create one
+      const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: worker.email,
+        password,
+        email_confirm: true,
+      });
+      if (createError) {
+        await logLegacyAuthEvent("legacy_login_failed", `Failed to create auth user for worker #${workerId}: ${createError.message}`, workerId);
+        return { success: false, error: genericError };
+      }
+    } else {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+        password,
+        email_confirm: true,
+      });
+      if (error) {
+        await logLegacyAuthEvent("legacy_login_failed", `Failed legacy login for worker #${workerId}: ${error.message}`, workerId);
+        return { success: false, error: genericError };
+      }
+    }
+
     await logLegacyAuthEvent(
-      "legacy_login_failed",
-      "Worker ID login attempted while feature flag is disabled",
-      String(workerNumber),
+      "legacy_login",
+      `Worker #${workerId} (${worker.firstName} ${worker.lastName}) logged in via Worker ID`,
+      worker.id,
     );
-    return {
-      success: false,
-      error: "Worker ID login is currently disabled.",
-    };
-  }
 
-  if (!Number.isInteger(workerNumber) || workerNumber <= 0 || !password) {
-    return { success: false, error: genericError };
-  }
-
-  const recentAttempts = await getRecentFailedAttempts(workerNumber);
-  if (recentAttempts >= LEGACY_LOGIN_MAX_ATTEMPTS) {
-    await logLegacyAuthEvent(
-      "legacy_login_failed",
-      `Rate limit hit for worker #${workerNumber}`,
-      String(workerNumber),
-    );
-    return {
-      success: false,
-      error: "Too many failed attempts. Please try again later.",
-    };
-  }
-
-  type LegacyWorkerLookup = {
-    id: string;
-    email: string | null;
-    status: string;
-    legacyPasswordHash: string | null;
-    firstName: string;
-    lastName: string;
-  };
-
-  const rows = await prisma.$queryRaw<LegacyWorkerLookup[]>`
-    SELECT
-      "id",
-      "email",
-      "status",
-      "legacyPasswordHash",
-      "firstName",
-      "lastName"
-    FROM "Worker"
-    WHERE "workerNumber" = ${workerNumber}
-       OR "workerId" = ${String(workerNumber)}
-    LIMIT 1
-  `;
-  const worker = rows[0];
-
-  if (!worker || !worker.email || !worker.legacyPasswordHash) {
-    await logLegacyAuthEvent(
-      "legacy_login_failed",
-      `Failed legacy login for workerNumber ${workerNumber}: missing worker/email/hash`,
-      String(workerNumber),
-    );
-    return { success: false, error: genericError };
-  }
-
-  if (worker.status !== "Active") {
-    await logLegacyAuthEvent(
-      "legacy_login_failed",
-      `Failed legacy login for worker #${workerNumber}: inactive account`,
-      String(workerNumber),
-    );
-    return {
-      success: false,
-      error: "Your account is inactive. Please contact your administrator.",
-    };
-  }
-
-  const submittedHash = crypto
-    .createHash("md5")
-    .update(password)
-    .digest("hex")
-    .toLowerCase();
-  const storedHash = worker.legacyPasswordHash.trim().toLowerCase();
-
-  if (submittedHash !== storedHash) {
-    await logLegacyAuthEvent(
-      "legacy_login_failed",
-      `Failed legacy login for worker #${workerNumber}: hash mismatch`,
-      String(workerNumber),
-    );
-    return { success: false, error: genericError };
-  }
-
-  const supabaseAdmin = getSupabaseAdminClient();
-  const { error } = await supabaseAdmin.auth.admin.updateUserById(worker.id, {
-    password,
-    email_confirm: true,
+    return { success: true, email: worker.email, passwordChangeRequired: false };
   });
+}
 
-  if (error) {
-    await logLegacyAuthEvent(
-      "legacy_login_failed",
-      `Failed legacy login for worker #${workerNumber}: ${error.message}`,
-      String(workerNumber),
-    );
-    return {
-      success: false,
-      error: genericError,
-    };
+/**
+ * Utility to retry a database operation if it fails due to transient connection issues.
+ * This is particularly useful for Supabase/Pgbouncer pooler resets.
+ */
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 500): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const errorMessage = error?.message || "";
+    // Detect common Supabase pooler/connection reset errors
+    const isTransientError = 
+      errorMessage.includes("Can't reach database") || 
+      errorMessage.includes("connection was forcibly closed") ||
+      errorMessage.includes("Remote host reset connection") ||
+      error?.code === 'P1001' || // Can't reach database
+      error?.code === 'P2024' || // Connection timed out
+      error?.code === 'P1017';   // Server closed connection
+
+    if (isTransientError && retries > 0) {
+      console.log(`Database connection glitch. Retrying in ${delay}ms... (${retries} attempts left)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
   }
+}
 
-  await logLegacyAuthEvent(
-    "legacy_login",
-    `Worker #${workerNumber} (${worker.firstName} ${worker.lastName}) logged in via Worker ID`,
-    worker.id,
-  );
+/**
+ * Checks if a worker (identified by email or workerId) requires a password change.
+ * Used for both Email and Worker ID login flows.
+ */
+export async function getWorkerAuthStatus(identifier: string) {
+  return withRetry(async () => {
+    try {
+      const worker = await prisma.worker.findFirst({
+        where: {
+          OR: [
+            { email: identifier },
+            { workerId: identifier }
+          ]
+        },
+        select: {
+          id: true,
+          email: true,
+          passwordChangeRequired: true,
+          firstName: true,
+        }
+      });
 
-  return { success: true, email: worker.email };
+      return {
+        exists: !!worker,
+        passwordChangeRequired: worker?.passwordChangeRequired ?? false,
+        email: worker?.email,
+        firstName: worker?.firstName,
+      };
+    } catch (error) {
+      console.error("Critical error in getWorkerAuthStatus:", error);
+      throw error;
+    }
+  });
+}
+
+/**
+ * Completes the first-time password change for a legacy worker.
+ * For Worker ID login, we verify identity using 'firstName' instead of 'legacyPassword'.
+ * We also allow confirming/updating the associated email.
+ */
+export async function completeFirstLoginPasswordChange(
+  identifier: string,
+  verificationValue: string, // Can be legacyPassword (email flow) or firstName (workerId flow)
+  newPassword: string,
+  mode: "email" | "worker" = "email",
+  updatedEmail?: string // New: allow updating email during migration
+) {
+  return withRetry(async () => {
+    // 1. Fetch worker record via type-safe client
+    const workerRecord = await prisma.worker.findFirst({
+      where: mode === "email" ? { email: identifier } : { workerId: identifier },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        passwordChangeRequired: true
+      }
+    });
+
+    if (!workerRecord) {
+      return { success: false, error: "Worker not found." };
+    }
+
+    // 2. Verify identity
+    if (mode === "worker") {
+      // For worker logins, verificationValue is the First Name
+      if (workerRecord.firstName.toLowerCase().trim() !== verificationValue.toLowerCase().trim()) {
+        return { success: false, error: "Invalid identity confirmation (First Name mismatch)." };
+      }
+    } else {
+      // For email logins, we still use the legacy password verify
+      const loginResult = await legacyWorkerIdLogin(identifier, verificationValue);
+      if (!loginResult.success) {
+        return { success: false, error: "Invalid legacy password." };
+      }
+    }
+
+    const finalEmail = updatedEmail || workerRecord.email;
+
+    // 3. Update Supabase User (Email & Password)
+    const supabaseAdmin = getSupabaseAdminClient();
+
+    // Look up the Supabase auth user by email to get the real UUID
+    const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
+    const authUser = authList?.users?.find(u => u.email === workerRecord.email);
+
+    if (authUser) {
+      // Update existing Supabase auth user
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+        email: finalEmail,
+        password: newPassword,
+        email_confirm: true,
+      });
+      if (error) {
+        return { success: false, error: `Failed to update account: ${error.message}` };
+      }
+    } else {
+      // No Supabase auth user yet — create one using the worker's DB id as the UUID if valid, else generate
+      const { error } = await supabaseAdmin.auth.admin.createUser({
+        email: finalEmail,
+        password: newPassword,
+        email_confirm: true,
+        user_metadata: { workerId: workerRecord.id },
+      });
+      if (error) {
+        return { success: false, error: `Failed to create account: ${error.message}` };
+      }
+    }
+
+    // 4. Update Worker Table
+    const legacyColumn = await getLegacyPasswordColumnName();
+    
+    // Using raw update to avoid Prisma client casting issues for missing/renamed columns
+    await prisma.$executeRawUnsafe(`
+      UPDATE "Worker" 
+      SET "passwordChangeRequired" = false,
+          "email" = $1
+      ${legacyColumn ? `, "${legacyColumn}" = NULL` : ""}
+      WHERE "id" = $2
+    `, finalEmail, workerRecord.id);
+
+    await logLegacyAuthEvent(
+      "legacy_login",
+      `Worker #${identifier} completed mandatory password change and confirmed email (${finalEmail})`,
+      workerRecord.id
+    );
+
+    return { success: true, email: finalEmail };
+  });
 }

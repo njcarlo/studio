@@ -8,13 +8,20 @@ import AuthScreen from './screens/AuthScreen';
 import ActionScreen from './screens/ActionScreen';
 import MapScreen from './screens/MapScreen';
 import AdminDashboardScreen from './screens/AdminDashboardScreen';
+import CountdownScreen from './screens/CountdownScreen';
+import LiveBoardScreen from './screens/LiveBoardScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from './context/AuthContext';
 
+const EVENT_DATE = new Date('2026-06-12T00:00:00+08:00');
+const isEventLive = () => new Date() >= EVENT_DATE;
+
 export type RootStackParamList = {
     Auth: undefined;
+    Countdown: undefined;
     Main: undefined;
     AdminDashboard: undefined;
+    LiveBoard: undefined;
 };
 
 export type MainTabParamList = {
@@ -65,7 +72,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 export default function AppNavigator() {
-    const { session, isLoading } = useAuth();
+    const { session, isLoading, isTester } = useAuth();
 
     if (isLoading) {
         return (
@@ -80,8 +87,13 @@ export default function AppNavigator() {
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 {session ? (
                     <>
-                        <Stack.Screen name="Main" component={MainTabs} />
+                        {isTester || isEventLive() ? (
+                            <Stack.Screen name="Main" component={MainTabs} />
+                        ) : (
+                            <Stack.Screen name="Countdown" component={CountdownScreen} />
+                        )}
                         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+                        <Stack.Screen name="LiveBoard" component={LiveBoardScreen} />
                     </>
                 ) : (
                     <Stack.Screen name="Auth" component={AuthScreen} />

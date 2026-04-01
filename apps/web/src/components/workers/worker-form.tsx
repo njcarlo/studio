@@ -2,13 +2,6 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@studio/ui";
-import {
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose,
-} from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Input } from "@studio/ui";
 import { Textarea } from "@studio/ui";
@@ -32,7 +25,7 @@ interface WorkerFormProps {
   worker: Partial<Worker> | null;
   roles: Role[];
   ministries: Ministry[];
-  onSave: (worker: Partial<Worker>) => void;
+  onSave: (worker: Partial<Worker>, roleIds: string[]) => Promise<void>;
   onClose: () => void;
   onResetPassword?: (worker: Worker) => void;
   canManage: boolean;
@@ -182,22 +175,8 @@ export function WorkerForm({
       roleId: primaryRoleId,
     };
 
-    // Call parent onSave first (creates/updates the worker record)
-    onSave(dataToSave);
-
-    // If editing an existing worker, sync the WorkerRole join table
-    if (worker?.id) {
-      try {
-        await assignRolesToWorker(worker.id, roleIds);
-      } catch (err) {
-        console.error("Failed to assign roles:", err);
-      }
-    }
-    // For new workers, the workers page handleSaveWorker creates the record and
-    // can call assignRolesToWorker after receiving the new worker ID. We pass
-    // roleIds along via formData extension so the parent can access it.
-    // The parent already handles the create path without roleIds — the join
-    // table will be populated on next edit or via the signup flow.
+    // Pass roleIds to parent so it can handle full synchronization
+    await onSave(dataToSave, roleIds);
   };
 
   const fields = (
@@ -342,52 +321,71 @@ export function WorkerForm({
       </div>
     </div>
   );
-
   return (
-    <>
-      <SheetHeader className="pb-2">
-        <SheetTitle className="font-headline">{worker ? "Edit Worker" : "Add New Worker"}</SheetTitle>
-        <SheetDescription>{worker ? "Update the details for this worker." : "Fill in the details for the new worker."}</SheetDescription>
-      </SheetHeader>
+    <div className="space-y-6">
+      <div className="pb-2 underline-offset-4">
+        <h2 className="text-2xl font-headline font-semibold">
+          {worker ? "Edit Worker" : "Add New Worker"}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {worker 
+            ? `Update the details for ${worker.firstName} ${worker.lastName}.` 
+            : "Fill in the details for the new worker."}
+        </p>
+      </div>
 
       {worker ? (
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="activity">Activity Log</TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="mt-0 space-y-4">
+          <TabsContent value="details" className="mt-0 space-y-6">
             {fields}
-            <SheetFooter className="flex-col sm:flex-row gap-2 pt-4">
+            <div className="flex flex-col sm:flex-row gap-2 pt-6 border-t mt-6">
               {worker && onResetPassword && (
-                <Button type="button" variant="outline" onClick={() => onResetPassword(worker as Worker)} className="mr-auto">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => onResetPassword(worker as Worker)} 
+                  className="sm:mr-auto"
+                >
                   <Mail className="mr-2 h-4 w-4" /> Send Reset Link
                 </Button>
               )}
-              <div className="flex gap-2">
-                <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-                <Button onClick={handleSave} disabled={roleIds.length === 0}>Save changes</Button>
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="secondary" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={roleIds.length === 0}>
+                  Save changes
+                </Button>
               </div>
-            </SheetFooter>
+            </div>
           </TabsContent>
           <TabsContent value="activity">
             <WorkerActivityLog workerId={worker.id!} />
-            <div className="mt-6 pt-4 border-t text-center">
-              <SheetClose asChild><Button variant="secondary" className="w-full">Close</Button></SheetClose>
+            <div className="mt-8 pt-4 border-t text-right">
+              <Button variant="secondary" onClick={onClose}>
+                Close
+              </Button>
             </div>
           </TabsContent>
         </Tabs>
       ) : (
-        <>
-          <div className="grid gap-4 py-4">{fields}</div>
-          <SheetFooter className="flex-col sm:flex-row gap-2">
-            <div className="flex gap-2 ml-auto">
-              <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-              <Button onClick={handleSave} disabled={roleIds.length === 0}>Save changes</Button>
-            </div>
-          </SheetFooter>
-        </>
+        <div className="space-y-6">
+          {fields}
+          <div className="flex gap-2 justify-end pt-6 border-t">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={roleIds.length === 0}>
+              Save changes
+            </Button>
+          </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }
+
