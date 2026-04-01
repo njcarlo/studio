@@ -51,7 +51,7 @@ export default function ScheduleDetailPage() {
 
     // Group assignments by ministry
     const byMinistry = useMemo(() => {
-        if (!schedule) return {} as Record<string, typeof schedule.assignments>;
+        if (!schedule) return {} as Record<string, NonNullable<typeof schedule>['assignments']>;
         return schedule.assignments.reduce<Record<string, typeof schedule.assignments>>((acc: Record<string, typeof schedule.assignments>, a: (typeof schedule.assignments)[0]) => {
             if (!acc[a.ministryId]) acc[a.ministryId] = [];
             acc[a.ministryId].push(a);
