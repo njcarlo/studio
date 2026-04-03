@@ -54,19 +54,22 @@ model Item {
 model InventoryLog {
   id        String   @id @default(cuid())
   itemId    String
-  workerId  String?
+  workerId  String? // Physical borrower/receiver
+  userId    String? // System User who processed it
   action    String // "Stock In", "Stock Out", "Checkout", "Return", "Adjustment"
   quantity  Int
   balance   Int      @default(0)
   notes     String?
   timestamp DateTime @default(now())
 
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
 }
 
 model InventoryBorrowing {
   id            String    @id @default(cuid())
   itemId        String
+  quantity      Int       @default(1)
   borrowerId    String // Worker ID (string reference)
   borrowerName  String // Denormalized name
   borrowerEmail String?
@@ -84,10 +87,26 @@ model InventoryBorrowing {
   returnChecklist String? // JSON string
   returnPhotos    String? // JSON array string
 
-  item Item @relation(fields: [itemId], references: [id])
+  userId String? // System admin/manager who approved the checkout
+
+  item Item  @relation(fields: [itemId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 }
 
 model Setting {
   id   String @id
   data String // JSON string
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String // Hashed
+  role      String   @default("VIEWER") // "ADMIN", "MANAGER", "VIEWER"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  logs       InventoryLog[]
+  borrowings InventoryBorrowing[]
 }

@@ -49,6 +49,7 @@ model Item {
   location    Location?         @relation(fields: [locationId], references: [id])
   logs        InventoryLog[]
   borrowings  InventoryBorrowing[]
+  audits      ItemAudit[]
 }
 
 model InventoryLog {
@@ -91,4 +92,25 @@ model InventoryBorrowing {
 model Setting {
   id   String @id
   data String // JSON string
+}
+
+model User {
+  id       String @id @default(cuid())
+  email    String @unique
+  name     String
+  role     String @default("READ_ONLY") // ADMIN, MANAGER, READ_ONLY
+  password String // Hashed
+}
+
+model ItemAudit {
+  id        String   @id @default(cuid())
+  itemId    String?
+  itemName  String
+  userId    String?  // Reference to User
+  userName  String?  // Denormalized name just in case user is deleted
+  action    String   // "CREATED", "UPDATED", "DELETED"
+  changes   String?  // JSON string
+  timestamp DateTime @default(now())
+
+  item      Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
 }

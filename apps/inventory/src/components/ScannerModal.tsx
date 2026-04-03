@@ -33,6 +33,7 @@ export function ScannerModal({ onClose, onScan }: { onClose: () => void, onScan:
         });
         if (code && code.data) {
           stopCamera();
+          if (navigator.vibrate) navigator.vibrate(200);
           onScan(code.data);
           return;
         }
@@ -66,6 +67,7 @@ export function ScannerModal({ onClose, onScan }: { onClose: () => void, onScan:
       if (camera === 'granted' || camera === 'prompt') {
         const { barcodes } = await BarcodeScanner.scan();
         if (barcodes && barcodes.length > 0) {
+          if (navigator.vibrate) navigator.vibrate(200);
           onScan(barcodes[0].rawValue);
         } else {
           onClose(); // cancelled

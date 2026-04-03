@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useInventory } from '../hooks/useInventory';
-import { X } from 'lucide-react';
+import { X, Upload, Image as ImageIcon } from 'lucide-react';
+import { uploadItemPhoto } from '../utils/firebase';
 
 interface ItemModalProps {
   isOpen: boolean;
@@ -32,7 +33,10 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
     status: 'In Stock',
     locationId: '',
     inventoryCode: '',
+    imageUrl: '',
   });
+
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,6 +57,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
         status: item.status || 'In Stock',
         locationId: item.locationId || '',
         inventoryCode: item.inventoryCode || '',
+        imageUrl: item.imageUrl || '',
       });
     } else {
       setFormData({
@@ -63,6 +68,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
         status: 'In Stock',
         locationId: '',
         inventoryCode: '',
+        imageUrl: '',
       });
     }
   }, [item, isOpen]);
@@ -85,6 +91,22 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    setUploadingImage(true);
+    try {
+      const url = await uploadItemPhoto(file);
+      setFormData(prev => ({ ...prev, imageUrl: url }));
+    } catch (error) {
+      console.error('Upload failed', error);
+      alert('Failed to upload image to Firebase');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -99,6 +121,26 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="modal-body">
+
+            {/* Photo Upload Area */}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.25rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px dashed #d1d5db' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#e5e7eb', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {formData.imageUrl ? (
+                  <img src={formData.imageUrl} alt="Item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <ImageIcon size={32} color="#9ca3af" />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Item Photo</div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>Upload an image to easily identify this item.</div>
+                <label className="btn btn-outline" style={{ display: 'inline-flex', padding: '0.3rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', gap: '0.35rem' }}>
+                  <Upload size={12} />
+                  {uploadingImage ? 'Uploading...' : 'Choose File'}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} disabled={uploadingImage} />
+                </label>
+              </div>
+            </div>
 
             <div className="form-row-2col">
               <Field label="Item Name">

@@ -191,6 +191,25 @@ exports.Prisma.SettingScalarFieldEnum = {
   data: 'data'
 };
 
+exports.Prisma.UserScalarFieldEnum = {
+  id: 'id',
+  email: 'email',
+  name: 'name',
+  role: 'role',
+  password: 'password'
+};
+
+exports.Prisma.ItemAuditScalarFieldEnum = {
+  id: 'id',
+  itemId: 'itemId',
+  itemName: 'itemName',
+  userId: 'userId',
+  userName: 'userName',
+  action: 'action',
+  changes: 'changes',
+  timestamp: 'timestamp'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -208,7 +227,9 @@ exports.Prisma.ModelName = {
   Item: 'Item',
   InventoryLog: 'InventoryLog',
   InventoryBorrowing: 'InventoryBorrowing',
-  Setting: 'Setting'
+  Setting: 'Setting',
+  User: 'User',
+  ItemAudit: 'ItemAudit'
 };
 
 /**

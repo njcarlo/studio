@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, RefreshCw, QrCode, ArrowDownCircle, ArrowUpCircle, AlertTriangle } from 'lucide-react';
+import { X, RefreshCw, QrCode, ArrowDownCircle, ArrowUpCircle, AlertTriangle, Package } from 'lucide-react';
 import { ScannerModal } from './ScannerModal';
 
 export function StockScanModal({ onClose }: { onClose: () => void }) {
@@ -33,6 +33,7 @@ export function StockScanModal({ onClose }: { onClose: () => void }) {
 
   const handleStockUpdate = async (action: 'Stock In' | 'Stock Out') => {
     if (!scanResult) return;
+    if (navigator.vibrate) navigator.vibrate(50);
     setScanning(true);
     setError('');
     try {
@@ -117,11 +118,16 @@ export function StockScanModal({ onClose }: { onClose: () => void }) {
 
           {scanResult && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
-              <div style={{ padding: '1rem', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#1a1a2e' }}>{scanResult.item.name}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '0.2rem' }}>
-                    {scanResult.item.inventoryCode || scanResult.item.id.slice(0, 8)} · {scanResult.item.category?.name}
+              <div style={{ padding: '1rem', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#e5e7eb', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {scanResult.item.imageUrl ? <img src={scanResult.item.imageUrl} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <Package size={20} color="#9ca3af" />}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#1a1a2e' }}>{scanResult.item.name}</div>
+                    <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '0.2rem' }}>
+                      {scanResult.item.inventoryCode || scanResult.item.id.slice(0, 8)} · {scanResult.item.category?.name}
+                    </div>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>

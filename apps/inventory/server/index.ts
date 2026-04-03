@@ -67,6 +67,99 @@ app.get('/api/inventory/logs', async (req, res) => {
   }
 });
 
+// ─── 2.5 Detailed Audit Trail ──────────────────────────────────────────────────
+app.get('/api/inventory/audit', async (req, res) => {
+  try {
+    const take = Number(req.query.take) || 50;
+    const skip = Number(req.query.skip) || 0;
+    
+    // We fetch a bit more from both and merge/sort safely
+    const [rawLogs, rawAudits] = await Promise.all([
+      prisma.inventoryLog.findMany({
+        take: take + skip,
+        orderBy: { timestamp: 'desc' },
+        include: { item: { select: { name: true, inventoryCode: true } } }
+      }),
+      prisma.itemAudit.findMany({
+        take: take + skip,
+        orderBy: { timestamp: 'desc' }
+      })
+    ]);
+
+    const logs = rawLogs.map(l => ({ type: 'LOG', timestamp: l.timestamp, data: l }));
+    const audits = rawAudits.map(a => ({ type: 'AUDIT', timestamp: a.timestamp, data: a }));
+
+    const combined = [...logs, ...audits]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(skip, skip + take);
+      
+    res.json(combined);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch audit trail' });
+  }
+});
+
+// ─── 2.8 Consumable Analytics & Reports ───────────────────────────────────────
+app.get('/api/inventory/analytics', async (req, res) => {
+  try {
+    const totalItems = await prisma.item.count();
+    
+    // Category Distribution
+    const categories = await prisma.category.findMany({
+      include: { _count: { select: { items: true } } }
+    });
+    const stockByCategory = categories.map(c => ({
+      name: c.name,
+      count: c._count.items
+    }));
+
+    // Find Low Stock / Out of Stock Items (Default Safety Threshold is 5)
+    let allItems = await prisma.item.findMany({
+      select: { id: true, name: true, inventoryCode: true, stock: true, minStock: true, status: true }
+    });
+    
+    // Automatically apply 5 as safety baseline if they didn't manually set a minStock
+    allItems = allItems.map(i => ({
+      ...i,
+      minStock: i.minStock > 0 ? i.minStock : 5
+    }));
+
+    const lowStockItems = allItems.filter(i => 
+      i.stock <= i.minStock || 
+      i.stock === 0 || 
+      i.status === 'Low Stock' || 
+      i.status === 'Out of Stock'
+    );
+
+    // Find Heavily Used Equipment (Top 5 Checkouts)
+    const checkouts = await prisma.inventoryLog.groupBy({
+      by: ['itemId'],
+      where: { action: 'Checkout' },
+      _count: { action: true },
+      orderBy: { _count: { action: 'desc' } },
+      take: 5
+    });
+
+    const mostUsed = await Promise.all(
+      checkouts.map(async (c) => {
+         const item = await prisma.item.findUnique({ where: { id: c.itemId }, select: { name: true, inventoryCode: true } });
+         return { item, count: c._count.action };
+      })
+    );
+
+    res.json({
+      totalItems,
+      stockByCategory,
+      lowStockItems,
+      mostUsed
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
 // ─── 3. List Inventory Items ──────────────────────────────────────────────────
 app.get('/api/inventory/items', async (req, res) => {
   try {
@@ -79,7 +172,7 @@ app.get('/api/inventory/items', async (req, res) => {
     if (search) where.name = { contains: search };
     if (category) where.category = { name: category };
     if (type) where.type = type;
-    
+
     // Map intuitive status to stock amounts instead of DB strings
     if (status) {
       if (status === 'In Stock') {
@@ -137,7 +230,7 @@ app.get('/api/inventory/items/:id', async (req, res) => {
 app.post('/api/inventory/items', async (req, res) => {
   try {
     const { categoryId, locationId, name, type, stock, minStock, unit, status, statusDetails, imageUrl, inventoryCode, aisle, shelf, bin, isApprovalRequired } = req.body;
-    
+
     let finalCode = inventoryCode;
     if (!finalCode && categoryId) {
       const category = await prisma.category.findUnique({ where: { id: categoryId } });
@@ -158,7 +251,7 @@ app.post('/api/inventory/items', async (req, res) => {
         'Vmount Battery': 'VBAT',
         'Wireless Video Transmitter': 'WVT'
       };
-      
+
       const prefix = category ? (prefixes[category.name] || 'ITM') : 'ITM';
       const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
       finalCode = `${prefix}-${suffix}`;
@@ -184,6 +277,17 @@ app.post('/api/inventory/items', async (req, res) => {
       },
       include: { category: true, location: true }
     });
+
+    await prisma.itemAudit.create({
+      data: {
+        itemId: item.id,
+        itemName: item.name,
+        action: 'CREATED',
+        userName: 'System User', // Placeholder until auth is fully hooked
+        changes: JSON.stringify(item)
+      }
+    });
+
     res.json(item);
   } catch (error) {
     console.error('Failed to create item:', error);
@@ -196,6 +300,10 @@ app.put('/api/inventory/items/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body;
+    
+    const oldItem = await prisma.item.findUnique({ where: { id } });
+    if (!oldItem) return res.status(404).json({ error: 'Item not found' });
+
     const data: any = {};
     const fields = ['categoryId', 'locationId', 'name', 'type', 'stock', 'minStock', 'unit', 'status', 'statusDetails', 'imageUrl', 'inventoryCode', 'aisle', 'shelf', 'bin', 'isApprovalRequired', 'assignedTo'];
     for (const f of fields) {
@@ -211,6 +319,27 @@ app.put('/api/inventory/items/:id', async (req, res) => {
       data,
       include: { category: true, location: true }
     });
+
+    // Create a precise diff payload showing before -> after
+    const diff: any = {};
+    for (const key of Object.keys(data)) {
+      const oldVal = oldItem[key as keyof typeof oldItem];
+      const newVal = data[key];
+      if (oldVal !== newVal) {
+        diff[key] = { from: oldVal, to: newVal };
+      }
+    }
+
+    await prisma.itemAudit.create({
+      data: {
+        itemId: item.id,
+        itemName: item.name,
+        action: 'UPDATED',
+        userName: 'System User',
+        changes: JSON.stringify(Object.keys(diff).length > 0 ? diff : data)
+      }
+    });
+
     res.json(item);
   } catch (error) {
     console.error(error);
@@ -222,7 +351,20 @@ app.put('/api/inventory/items/:id', async (req, res) => {
 app.delete('/api/inventory/items/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    // Delete borrowings and logs manually as schema may not have onDelete: Cascade enforced in sqlite
+    const item = await prisma.item.findUnique({ where: { id } });
+
+    if (item) {
+      await prisma.itemAudit.create({
+        data: {
+          itemId: null, // set to null since we are deleting the item
+          itemName: item.name,
+          action: 'DELETED',
+          userName: 'System User',
+          changes: JSON.stringify(item)
+        }
+      });
+    }
+
     await prisma.$transaction([
       prisma.inventoryBorrowing.deleteMany({ where: { itemId: id } }),
       prisma.inventoryLog.deleteMany({ where: { itemId: id } }),
@@ -308,6 +450,85 @@ app.post('/api/inventory/items/bulk-delete', async (req, res) => {
   } catch (error) {
     console.error('Bulk delete error:', error);
     res.status(500).json({ error: 'Failed to bulk delete items' });
+  }
+});
+
+// ─── 9.6 Bulk Import ──────────────────────────────────────────────────────────
+app.post('/api/inventory/items/bulk-import', async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'No items provided' });
+
+    let importedCount = 0;
+
+    for (const row of items) {
+      if (!row.name) continue;
+
+      // Ensure Category exists
+      const catName = row.category || 'Uncategorized';
+      let category = await prisma.category.findUnique({ where: { name: catName } });
+      if (!category) {
+        category = await prisma.category.create({ data: { name: catName } });
+      }
+
+      // Ensure Location exists
+      let locationId = null;
+      const locStr = row.location ? String(row.location).trim() : null;
+      
+      if (locStr) {
+        let location = await prisma.location.findUnique({ where: { name: locStr } });
+        if (!location) {
+          location = await prisma.location.create({ data: { name: locStr } });
+        }
+        locationId = location.id;
+      }
+
+      const prefixes: Record<string, string> = {
+        'Battery': 'BAT', 'Camera': 'CAM', 'Lens': 'LENS', 'Monitors': 'MON', 'Tripod': 'TRI'
+      };
+      const prefix = prefixes[category.name] || 'ITM';
+      const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const inventoryCode = row.inventoryCode || `${prefix}-${suffix}`;
+
+      // Search if item exists to prevent Unique Constraint crashes
+      const existingItem = await prisma.item.findUnique({ where: { inventoryCode } });
+
+      if (existingItem) {
+        await prisma.item.update({
+          where: { id: existingItem.id },
+          data: {
+            name: row.name,
+            categoryId: category.id,
+            locationId: locStr ? locationId : existingItem.locationId,
+            type: row.type || existingItem.type,
+            stock: row.stock !== undefined ? Number(row.stock) : existingItem.stock,
+            minStock: row.minStock !== undefined ? Number(row.minStock) : existingItem.minStock,
+            unit: row.unit || existingItem.unit,
+            status: row.status || existingItem.status
+          }
+        });
+      } else {
+        await prisma.item.create({
+          data: {
+            name: row.name,
+            categoryId: category.id,
+            locationId,
+            type: row.type || 'Equipment',
+            stock: Number(row.stock) || 0,
+            minStock: Number(row.minStock) || 0,
+            unit: row.unit || 'pcs',
+            status: row.status || 'Good Condition',
+            inventoryCode
+          }
+        });
+      }
+      importedCount++;
+    }
+
+    res.json({ success: true, count: importedCount });
+  } catch (error) {
+    console.error('Bulk import error:', error);
+    res.status(500).json({ error: 'Failed to bulk import items' });
   }
 });
 
@@ -435,7 +656,7 @@ app.post('/api/scan', async (req, res) => {
     const item = await prisma.item.findFirst({
       where: {
         OR: [
-          { id: searchId }, 
+          { id: searchId },
           { inventoryCode: searchId },
           { id: { startsWith: lowerSearchId } }
         ]
@@ -478,7 +699,7 @@ app.get('/api/borrowings', async (req, res) => {
         skip: Number(skip),
         take: Number(take),
         orderBy: { borrowedAt: 'desc' },
-        include: { item: { select: { id: true, name: true, inventoryCode: true, status: true } } }
+        include: { item: { select: { id: true, name: true, inventoryCode: true, status: true, imageUrl: true } } }
       }),
       prisma.inventoryBorrowing.count({ where })
     ]);
@@ -568,12 +789,12 @@ app.post('/api/borrowings', async (req, res) => {
           checkoutCondition: checkoutCondition || null,
           checkoutChecklist: checkoutChecklist ? JSON.stringify(checkoutChecklist) : null
         },
-        include: { item: { select: { id: true, name: true, inventoryCode: true } } }
+        include: { item: { select: { id: true, name: true, inventoryCode: true, imageUrl: true } } }
       });
       const newStock = item.stock - numQty;
       await tx.item.update({
         where: { id: itemId },
-        data: { 
+        data: {
           stock: newStock,
           status: newStock === 0 && item.status !== 'Borrowed' && item.type === 'Equipment' ? 'Borrowed' : item.status
         }
@@ -624,9 +845,9 @@ app.patch('/api/borrowings/:id/return', async (req, res) => {
           returnChecklist: returnChecklist ? JSON.stringify(returnChecklist) : null,
           returnPhotos: returnPhotos ? JSON.stringify(returnPhotos) : null
         },
-        include: { item: { select: { id: true, name: true, inventoryCode: true } } }
+        include: { item: { select: { id: true, name: true, inventoryCode: true, imageUrl: true } } }
       });
-      
+
       const item2 = await tx.item.findUnique({ where: { id: borrowing.itemId } });
       const currentStock = item2?.stock || 0;
       const returnedQty = (borrowing as any).quantity || 1;
@@ -634,12 +855,12 @@ app.patch('/api/borrowings/:id/return', async (req, res) => {
 
       await tx.item.update({
         where: { id: borrowing.itemId },
-        data: { 
+        data: {
           stock: newStock,
           status: damaged ? 'Damaged' : (newStock > 0 && item2?.status === 'Borrowed' ? 'Good Condition' : undefined)
         }
       });
-      
+
       await tx.inventoryLog.create({
         data: {
           itemId: borrowing.itemId,

@@ -25,7 +25,7 @@ interface Borrowing {
   returnCondition?: string;
   returnChecklist?: any;
   returnPhotos?: string[];
-  item: { id: string; name: string; inventoryCode?: string; status: string };
+  item: { id: string; name: string; inventoryCode?: string; status: string; imageUrl?: string };
 }
 
 interface ChecklistTemplate {
@@ -234,8 +234,8 @@ export function BorrowingsPage() {
                   <tr key={b.id} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: isOverdue ? '#fff9f9' : 'transparent' }}>
                     <td style={{ padding: '0.7rem 0.875rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: '30px', height: '30px', borderRadius: '7px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Package size={14} color="#3b5bdb" />
+                        <div style={{ width: '32px', height: '32px', borderRadius: '7px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                          {b.item.imageUrl ? <img src={b.item.imageUrl} alt={b.item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={14} color="#3b5bdb" />}
                         </div>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#1a1a2e' }}>{b.item.name}</div>
@@ -498,12 +498,17 @@ function CheckoutModal({ templates, preselectedItem, onClose, onSuccess }: {
                       <button
                         key={item.id}
                         onClick={() => { setSelectedItem(item); setItemSearch(''); setItems([]); }}
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', padding: '0.5rem 0.75rem', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.5rem 0.75rem', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
                         onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1a1a2e' }}>{item.name}</span>
-                        <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{item.status} · {item.category?.name || ''}</span>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '4px', backgroundColor: '#e5e7eb', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                           {item.imageUrl ? <img src={item.imageUrl} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <Package size={16} color="#9ca3af" />}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1a1a2e' }}>{item.name}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{item.status} · {item.category?.name || ''}</span>
+                        </div>
                       </button>
                     ))}
                   </div>

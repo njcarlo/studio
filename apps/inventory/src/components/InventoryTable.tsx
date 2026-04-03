@@ -3,15 +3,20 @@ import type { CSSProperties } from 'react';
 import {
   Filter, Search,
   Plus, ChevronLeft, ChevronRight,
-  CheckSquare, Square, X, RefreshCw, QrCode, Trash2,
+  CheckSquare, Square, X, RefreshCw, QrCode, Trash2, Image as ImageIcon,
   LayoutList, LayoutGrid, MoreHorizontal, ArrowDownToLine, ArrowUpFromLine
 } from 'lucide-react';
 import { useInventory } from '../hooks/useInventory';
 import { QRModal } from './QRModal';
 import { ItemModal } from './ItemModal';
+import * as XLSX from 'xlsx';
 
 export function InventoryTable() {
-  const { items, totalItems, loading, categories, locations, fetchItems, fetchLocations, updateStock, deleteItem, fetchCategories, bulkUpdateItems, bulkDeleteItems } = useInventory();
+  const { 
+    items, totalItems, loading, categories, locations, 
+    fetchItems, fetchLocations, updateStock, deleteItem, 
+    fetchCategories, bulkUpdateItems, bulkDeleteItems, bulkImportItems 
+  } = useInventory();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
@@ -115,18 +120,27 @@ export function InventoryTable() {
   const handleExportCSV = () => {
     const selected = items.filter(i => selectedIds.has(i.id));
     if (!selected.length) return;
-    const headers = ['ID', 'Name', 'Category', 'Type', 'Stock', 'Status', 'Location'];
+    
     const rows = selected.map(i => {
-      const computedStatus = i.stock === 0 ? 'Out of Stock' : i.stock < 10 ? 'Low Stock' : 'In Stock';
-      return [i.id, `"${i.name}"`, `"${i.category?.name || ''}"`, i.type, i.stock, computedStatus, `"${i.location?.name || ''}"`];
+      const computedStatus = i.stock === 0 ? 'Out of Stock' : i.stock <= (i.minStock || 5) ? 'Low Stock' : i.status || 'In Stock';
+      return {
+        'ID': i.id,
+        'Inventory Code': i.inventoryCode || '',
+        'Name': i.name,
+        'Category': i.category?.name || '',
+        'Type': i.type,
+        'Stock': i.stock,
+        'Min Stock': i.minStock,
+        'Unit': i.unit,
+        'Status': computedStatus,
+        'Location': i.location?.name || ''
+      };
     });
-    const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const link = document.createElement('a');
-    link.setAttribute('href', encodeURI(csv));
-    link.setAttribute('download', 'inventory_export.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory');
+    XLSX.writeFile(workbook, 'inventory_export.xlsx');
     setSelectedIds(new Set());
   };
 
@@ -150,10 +164,12 @@ export function InventoryTable() {
   };
 
   const handleStockIn = async (id: string) => {
+    if (navigator.vibrate) navigator.vibrate(50);
     await updateStock(id, 'Stock In', 1);
   };
 
   const handleStockOut = async (id: string) => {
+    if (navigator.vibrate) navigator.vibrate(50);
     await updateStock(id, 'Stock Out', 1);
   };
 
@@ -294,7 +310,47 @@ export function InventoryTable() {
             <ArrowUpFromLine size={14} /> Import
             <input type="file" accept=".xlsx, .xls, .csv" style={{ display: 'none' }} onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
-                alert(`Selected file: ${e.target.files[0].name}. Import functionality is pending backend integration.`);
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                  try {
+                    const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const rawJson: any[] = XLSX.utils.sheet_to_json(sheet);
+                    
+                    const formatted = rawJson.map(row => ({
+                      name: row['Name'] || row['name'],
+                      inventoryCode: row['Inventory Code'] || row['inventoryCode'],
+                      category: row['Category'] || row['category'],
+                      type: row['Type'] || row['type'],
+                      stock: row['Stock'] || row['stock'],
+                      minStock: row['Min Stock'] || row['minStock'],
+                      unit: row['Unit'] || row['unit'],
+                      status: row['Status'] || row['status'],
+                      location: row['Location'] || row['location']
+                    })).filter(r => r.name);
+
+                    if (formatted.length === 0) {
+                      alert('No valid items found in the file. Make sure there is a "Name" column.');
+                      return;
+                    }
+
+                    try {
+                      await bulkImportItems(formatted);
+                      alert(`Successfully imported/updated ${formatted.length} items!`);
+                    } catch (importErr) {
+                      console.error('Backend import error:', importErr);
+                      alert('Import failed on the server. There might be duplicates or invalid data.');
+                    }
+
+                  } catch (error) {
+                    console.error('XLSX parse error:', error);
+                    alert('Failed to parse Excel file. The file might be corrupted.');
+                  }
+                };
+                reader.readAsArrayBuffer(file);
                 e.target.value = '';
               }
             }} />
@@ -404,7 +460,7 @@ export function InventoryTable() {
                     Print Labels
                   </button>
                   <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', backgroundColor: '#fff', gap: '0.3rem' }} onClick={handleExportCSV}>
-                    <ArrowDownToLine size={13} /> Export CSV
+                    <ArrowDownToLine size={13} /> Export Excel
                   </button>
                   <button className="btn btn-outline" style={{ height: '30px', fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger)', backgroundColor: '#fff', gap: '0.3rem' }} onClick={() => setBulkDeleteConfirm(true)}>
                     <Trash2 size={13} /> Delete
@@ -459,7 +515,7 @@ export function InventoryTable() {
                 ) : items.map((item) => {
                   const isSelected = selectedIds.has(item.id);
                   const isMoreOpen = moreMenuId === item.id;
-                  const computedStatus = item.stock === 0 ? 'Out of Stock' : item.stock < 10 ? 'Low Stock' : 'In Stock';
+                  const computedStatus = item.stock === 0 ? 'Out of Stock' : item.stock <= (item.minStock || 5) ? 'Low Stock' : item.status || 'In Stock';
 
                   return (
                     <tr
@@ -476,9 +532,20 @@ export function InventoryTable() {
                         </button>
                       </td>
                       <td style={{ padding: '0.625rem 0.875rem' }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#1a1a2e' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', marginTop: '0.05rem', fontFamily: 'monospace' }}>
-                          {item.inventoryCode || 'No Code'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '6px', backgroundColor: '#f3f4f6', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {item.imageUrl ? (
+                              <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <ImageIcon size={16} color="#9ca3af" />
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#1a1a2e' }}>{item.name}</div>
+                            <div style={{ fontSize: '0.68rem', color: '#9ca3af', marginTop: '0.05rem', fontFamily: 'monospace' }}>
+                              {item.inventoryCode || 'No Code'}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td style={{ padding: '0.625rem 0.875rem' }}>
@@ -504,6 +571,7 @@ export function InventoryTable() {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
                           {/* + In */}
                           <button
+                            className="touch-action-btn"
                             onClick={() => handleStockIn(item.id)}
                             title="Stock In"
                             style={{
@@ -522,6 +590,7 @@ export function InventoryTable() {
                           </button>
                           {/* – Out */}
                           <button
+                            className="touch-action-btn"
                             onClick={() => handleStockOut(item.id)}
                             title="Stock Out"
                             style={{
@@ -540,6 +609,7 @@ export function InventoryTable() {
                           </button>
                           {/* QR Label */}
                           <button
+                            className="touch-action-btn"
                             onClick={() => { setQrItems([{ id: item.id, name: item.name }]); setQrModalOpen(true); }}
                             title="QR Label"
                             style={{
@@ -557,7 +627,7 @@ export function InventoryTable() {
                           {/* ··· More */}
                           <div style={{ position: 'relative' }}>
                             <button
-                              className="more-btn"
+                              className="more-btn touch-action-btn"
                               onClick={(e) => {
                                 if (isMoreOpen) setMoreMenuId(null);
                                 else {
@@ -630,8 +700,19 @@ export function InventoryTable() {
                   backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
                   padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'
                 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1a1a2e' }}>{item.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '-0.35rem', fontFamily: 'monospace' }}>{item.inventoryCode || 'No Code'}</div>
+                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '8px', backgroundColor: '#f3f4f6', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <ImageIcon size={18} color="#9ca3af" />
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1a1a2e' }}>{item.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.1rem', fontFamily: 'monospace' }}>{item.inventoryCode || 'No Code'}</div>
+                    </div>
+                  </div>
                   <span style={getCategoryPillStyle()}>{item.category?.name || '—'}</span>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '1.25rem', fontWeight: 800, color: item.stock === 0 ? '#ef4444' : '#1a1a2e' }}>{item.stock}</span>
@@ -642,9 +723,9 @@ export function InventoryTable() {
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{item.location?.name || '—'}</div>
                   <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.25rem' }}>
-                    <button onClick={() => handleStockIn(item.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#374151' }}>+ In</button>
-                    <button onClick={() => handleStockOut(item.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#374151' }}>– Out</button>
-                    <button onClick={() => { setModalItem(item); setIsItemModalOpen(true); }} style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#6b7280' }}>
+                    <button className="touch-action-btn" onClick={() => handleStockIn(item.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#374151' }}>+ In</button>
+                    <button className="touch-action-btn" onClick={() => handleStockOut(item.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#374151' }}>– Out</button>
+                    <button className="touch-action-btn" onClick={() => { setModalItem(item); setIsItemModalOpen(true); }} style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff', cursor: 'pointer', color: '#6b7280' }}>
                       <MoreHorizontal size={13} />
                     </button>
                   </div>

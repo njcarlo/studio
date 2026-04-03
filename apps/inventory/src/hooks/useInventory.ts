@@ -161,6 +161,28 @@ export function useInventory() {
     }
   };
 
+  const bulkImportItems = async (items: any[]) => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/inventory/items/bulk-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      });
+      if (!res.ok) throw new Error('Failed to import items');
+      fetchItems();
+      fetchStats();
+      fetchCategories();
+      fetchLocations();
+      return await res.json();
+    } catch (error) {
+      console.error('Failed to bulk import', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     stats,
     logs,
@@ -179,6 +201,7 @@ export function useInventory() {
     updateItem,
     deleteItem,
     bulkUpdateItems,
-    bulkDeleteItems
+    bulkDeleteItems,
+    bulkImportItems
   };
 }
