@@ -574,10 +574,9 @@ export async function getWorkerDiffPage(
 // ─── IMPORT NEW WORKERS ───────────────────────────────────────────────────────
 
 /**
- * Imports NEW workers from ORS into the new app.
- * Re-fetches each worker from the ORS API server-side to get the password hash.
- * Creates Supabase Auth users with a temp password + passwordChangeRequired flag.
- * Legacy MD5/SHA1/SHA256 hashes are not migrated — workers must reset on first login.
+ * Imports NEW workers from ORS into the new app — DB only, no Supabase Auth.
+ * Workers log in via Worker ID on the login page, which creates their
+ * Supabase Auth account on first login using the legacy password flow.
  */
 export async function importOrsNewWorkers(
     orsWorkerIds: number[],
@@ -588,11 +587,9 @@ export async function importOrsNewWorkers(
     }
 ): Promise<ImportResult> {
     const { defaultRoleId, ministryIdMap, migratePasswordHash } = options;
-    const supabaseAdmin = getSupabaseAdminClient();
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
     // Re-fetch workers from ORS server-side (includes password hash)
-    // Chunk into batches of 10 concurrent requests
     const CHUNK = 10;
     const allWorkers: any[] = [];
     for (let i = 0; i < orsWorkerIds.length; i += CHUNK) {
@@ -603,101 +600,66 @@ export async function importOrsNewWorkers(
         allWorkers.push(...fetched.filter(Boolean));
     }
 
-    // Supabase Auth does not support importing pre-hashed passwords.
-    // All workers are created with a temp password and passwordChangeRequired = true.
-    type WorkerWithHash = { worker: any };
-    const toImport: WorkerWithHash[] = [];
-
     for (const w of allWorkers) {
-        if (!w.email) {
-            result.skipped++;
-            result.errors.push(`Worker #${w.id} (${w.first_name} ${w.last_name}): no email, skipped`);
-            continue;
-        }
-
-        const existingWorker = await prisma.worker.findFirst({
-            where: { OR: [{ workerId: String(w.id) }, { email: w.email }] },
-        });
-        if (existingWorker) {
-            result.skipped++;
-            continue;
-        }
-
-        toImport.push({ worker: w });
-    }
-
-    // Helper: create DB worker record after Supabase auth user is established
-    const createDbWorker = async (w: any, uid: string, passwordChangeRequired: boolean) => {
-        const majorMinistryId = w.ministry_id ? (ministryIdMap[String(w.ministry_id)] || '') : '';
-        const minorMinistryId = w.sec_ministry_id ? (ministryIdMap[String(w.sec_ministry_id)] || '') : '';
-        const legacyPasswordHash = migratePasswordHash ? normalizeLegacyPasswordHash(w.password) : null;
-        await prisma.worker.create({
-            data: {
-                id: uid,
-                workerId: String(w.id),
-                legacyPasswordHash,
-                firstName: w.first_name || '',
-                lastName: w.last_name || '',
-                email: w.email,
-                phone: w.mobile || '',
-                roleId: defaultRoleId,
-                status: mapStatus(w.status),
-                avatarUrl: `https://picsum.photos/seed/${w.id}/100/100`,
-                majorMinistryId,
-                minorMinistryId,
-                employmentType: mapEmploymentType(w.worker_type),
-                birthDate: w.birthdate || null,
-                address: w.address || null,
-                startMonth: w.start_month || null,
-                startYear: w.start_year || null,
-                remarks: w.remarks || null,
-                biometricsId: w.biometrics_id ?? null,
-                passwordChangeRequired,
-                qrToken: w.qrdata || null,
-            },
-        });
-    };
-
-    // Create a Supabase auth account, then mirror the user in Prisma
-    for (const { worker: w } of toImport) {
         try {
-            const tempPw = `ORS_${w.id}_${Math.random().toString(36).slice(2, 10)}`;
-            let uid: string;
-
-            const { data, error } = await supabaseAdmin.auth.admin.createUser({
-                email: w.email!,
-                password: tempPw,
-                email_confirm: true,
+            // Skip workers already in the DB
+            const existingWorker = await prisma.worker.findFirst({
+                where: { OR: [{ workerId: String(w.id) }, ...(w.email ? [{ email: w.email }] : [])] },
             });
-
-            if (error) {
-                if (error.message.toLowerCase().includes('already registered')) {
-                    // Worker already has a Supabase Auth account — find them in DB
-                    const existingWorker = await prisma.worker.findFirst({
-                        where: { email: w.email },
-                        select: { id: true },
-                    });
-                    if (!existingWorker) {
-                        result.failed++;
-                        result.errors.push(`Worker #${w.id}: auth user exists but no DB record found`);
-                        continue;
-                    }
-                    uid = existingWorker.id;
-                } else {
-                    throw new Error(error.message);
-                }
-            } else {
-                uid = data.user.id;
+            if (existingWorker) {
+                result.skipped++;
+                continue;
             }
 
-            await createDbWorker(w, uid, true);
+            const majorMinistryId = w.ministry_id ? (ministryIdMap[String(w.ministry_id)] || '') : '';
+            const minorMinistryId = w.sec_ministry_id ? (ministryIdMap[String(w.sec_ministry_id)] || '') : '';
+            const legacyPasswordHash = migratePasswordHash ? normalizeLegacyPasswordHash(w.password) : null;
+
+            // Generate a UUID for the worker — Supabase Auth account created on first login
+            const uid = crypto.randomUUID();
+
+            await prisma.worker.create({
+                data: {
+                    id: uid,
+                    workerId: String(w.id),
+                    legacyPasswordHash,
+                    firstName: w.first_name || '',
+                    lastName: w.last_name || '',
+                    email: w.email || `worker_${w.id}@noemail.local`,
+                    phone: w.mobile || '',
+                    roleId: defaultRoleId,
+                    status: mapStatus(w.status),
+                    avatarUrl: `https://picsum.photos/seed/${w.id}/100/100`,
+                    majorMinistryId,
+                    minorMinistryId,
+                    employmentType: mapEmploymentType(w.worker_type),
+                    birthDate: w.birthdate || null,
+                    address: w.address || null,
+                    startMonth: w.start_month || null,
+                    startYear: w.start_year || null,
+                    remarks: w.remarks || null,
+                    biometricsId: w.biometrics_id ?? null,
+                    passwordChangeRequired: true,
+                    qrToken: w.qrdata || null,
+                },
+            });
+
             result.success++;
             await logOrsSyncEvent(
                 'worker_imported',
-                `Imported worker #${w.id} (${w.first_name} ${w.last_name}) from ORS`,
+                `Imported worker #${w.id} (${w.first_name} ${w.last_name}) from ORS (DB only)`,
                 String(w.id),
                 `${w.first_name} ${w.last_name}`
             );
+        } catch (err: any) {
+            result.failed++;
+            result.errors.push(`Worker #${w.id}: ${err.message}`);
+        }
+    }
+
+    if (result.success > 0) revalidatePath('/workers');
+    return result;
+}
         } catch (err: any) {
             result.failed++;
             result.errors.push(`Worker #${w.id}: ${err.message}`);
