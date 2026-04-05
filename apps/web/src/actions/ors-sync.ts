@@ -660,15 +660,6 @@ export async function importOrsNewWorkers(
     if (result.success > 0) revalidatePath('/workers');
     return result;
 }
-        } catch (err: any) {
-            result.failed++;
-            result.errors.push(`Worker #${w.id}: ${err.message}`);
-        }
-    }
-
-    if (result.success > 0) revalidatePath('/workers');
-    return result;
-}
 
 // ─── SYNC UPDATED WORKERS ────────────────────────────────────────────────────
 
