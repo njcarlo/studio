@@ -278,10 +278,9 @@ export function Nav({
 
     // Settings: show only if user has access to at least one sub-item
     if (item.href === "/settings") {
-      const hasNoRole = workerProfile && !workerProfile.roleId;
-      if (needsSeeding || hasNoRole) return true;
+      if (needsSeeding) return true; // Only show for seeding, not for missing role
       if (item.subItems && item.subItems.length > 0) {
-        return item.subItems.some((sub) => hasAccess(sub.permissionKey));
+        return item.subItems.some((sub) => hasAccess(sub.permissionKey, sub.anyPermissionKeys));
       }
       return false;
     }
