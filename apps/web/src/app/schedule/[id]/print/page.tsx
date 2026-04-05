@@ -3,9 +3,10 @@ import { getServiceSchedule } from "@/actions/schedule";
 import { getMinistries } from "@/actions/db";
 import { notFound } from "next/navigation";
 
-export default async function PrintSchedulePage({ params }: { params: { id: string } }) {
+export default async function PrintSchedulePage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
     const [schedule, ministries] = await Promise.all([
-        getServiceSchedule(params.id),
+        getServiceSchedule(id),
         getMinistries(),
     ]);
 
