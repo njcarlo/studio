@@ -76,11 +76,31 @@ export default function ScheduleDetailPage() {
     const getMinistryName = (id: string) =>
         ministries.find(m => m.id === id)?.name || id;
 
-    const filteredWorkers = useMemo(() =>
-        workers.filter((w: any) =>
-            w.status === "Active" &&
-            `${w.firstName} ${w.lastName}`.toLowerCase().includes(workerSearch.toLowerCase())
-        ), [workers, workerSearch]);
+    const filteredWorkers = useMemo(() => {
+        const targetMinistryId = assignDialog?.ministryId;
+        const targetMinistry = targetMinistryId ? ministries.find((m: any) => m.id === targetMinistryId) : null;
+        const targetDept = targetMinistry?.department || targetMinistry?.departmentCode;
+
+        return workers.filter((w: any) => {
+            if (w.status !== "Active") return false;
+            if (workerSearch && !`${w.firstName} ${w.lastName}`.toLowerCase().includes(workerSearch.toLowerCase())) return false;
+
+            // Must be in the same ministry (major or minor) OR same department
+            if (targetMinistryId) {
+                const sameMinistry = w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId;
+                if (sameMinistry) return true;
+
+                // Also allow workers from the same department
+                if (targetDept) {
+                    const workerMajorMinistry = ministries.find((m: any) => m.id === w.majorMinistryId);
+                    const workerDept = workerMajorMinistry?.department || workerMajorMinistry?.departmentCode;
+                    if (workerDept && workerDept === targetDept) return true;
+                }
+                return false;
+            }
+            return true;
+        });
+    }, [workers, workerSearch, assignDialog?.ministryId, ministries]);
 
     const handleAssign = async (workerId: string | null) => {
         if (!assignDialog) return;
@@ -430,6 +450,9 @@ export default function ScheduleDetailPage() {
                                     onChange={e => setWorkerSearch(e.target.value)}
                                     autoFocus
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                    Showing workers from <strong>{assignDialog ? getMinistryName(assignDialog.ministryId) : ""}</strong> and same department.
+                                </p>
                                 <div className="max-h-64 overflow-y-auto space-y-1">
                                     <button
                                         className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-sm text-muted-foreground"
@@ -475,20 +498,33 @@ export default function ScheduleDetailPage() {
                                 {workerIdResult === 'not_found' && (
                                     <p className="text-sm text-destructive">No worker found with that ID.</p>
                                 )}
-                                {workerIdResult && workerIdResult !== 'not_found' && (
-                                    <button
-                                        className="w-full flex items-center gap-3 px-3 py-3 rounded-md border hover:bg-muted text-left"
-                                        onClick={() => handleAssign(workerIdResult.id)}
-                                    >
-                                        <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-                                        <div>
-                                            <p className="text-sm font-medium">{workerIdResult.firstName} {workerIdResult.lastName}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {ministries.find((m: any) => m.id === workerIdResult.majorMinistryId)?.name || "—"} · {workerIdResult.status}
-                                            </p>
+                                {workerIdResult && workerIdResult !== 'not_found' && (() => {
+                                    const workerMinistryId = workerIdResult.majorMinistryId;
+                                    const targetMinistryId = assignDialog?.ministryId;
+                                    const isSameMinistry = workerMinistryId === targetMinistryId || workerIdResult.minorMinistryId === targetMinistryId;
+                                    const workerMinistryName = ministries.find((m: any) => m.id === workerMinistryId)?.name || "—";
+                                    return (
+                                        <div className="space-y-2">
+                                            <button
+                                                className="w-full flex items-center gap-3 px-3 py-3 rounded-md border hover:bg-muted text-left"
+                                                onClick={() => handleAssign(workerIdResult.id)}
+                                            >
+                                                <CheckCircle2 className={`h-5 w-5 shrink-0 ${isSameMinistry ? "text-green-500" : "text-amber-500"}`} />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium">{workerIdResult.firstName} {workerIdResult.lastName}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {workerMinistryName} · {workerIdResult.status}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                            {!isSameMinistry && (
+                                                <p className="text-xs text-amber-600 flex items-center gap-1">
+                                                    ⚠ This worker is from <strong>{workerMinistryName}</strong>, not the assigned ministry. You can still assign them.
+                                                </p>
+                                            )}
                                         </div>
-                                    </button>
-                                )}
+                                    );
+                                })()}
                             </div>
                         </TabsContent>
                     </Tabs>
