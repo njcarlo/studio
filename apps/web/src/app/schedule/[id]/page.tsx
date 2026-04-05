@@ -16,15 +16,17 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";
 import {
     ArrowLeft, LoaderCircle, UserPlus, X, LayoutTemplate,
     CheckCircle2, Circle, ChevronDown, ChevronUp, Plus, Trash2,
-    Send, ShieldCheck,
+    Send, ShieldCheck, AlertTriangle, Globe, GlobeLock, Printer, History,
 } from "lucide-react";
-import { useServiceSchedule, useServiceTemplates } from "@/hooks/use-schedule";
+import { useServiceSchedule, useServiceTemplates, useScheduleHistory } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useWorkers } from "@/hooks/use-workers";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { findWorkerByWorkerId } from "@/actions/schedule";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
 export default function ScheduleDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -33,10 +35,11 @@ export default function ScheduleDetailPage() {
     const { user } = useAuthStore();
     const { canManageSchedule, canConfirmSchedule, workerProfile } = useUserRole();
 
-    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus } = useServiceSchedule(id);
+    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, conflicts, togglePublic } = useServiceSchedule(id);
     const { ministries } = useMinistries();
     const { workers } = useWorkers({ limit: 500 });
     const { templates } = useServiceTemplates();
+    const { data: history } = useScheduleHistory();
 
     const [expandedMinistries, setExpandedMinistries] = useState<Set<string>>(new Set());
     const [assignDialog, setAssignDialog] = useState<{ assignmentId: string; ministryId: string; roleName: string } | null>(null);
@@ -105,6 +108,23 @@ export default function ScheduleDetailPage() {
     const handleAssign = async (workerId: string | null) => {
         if (!assignDialog) return;
         const worker = workerId ? workers.find((w: any) => w.id === workerId) : null;
+
+        // Conflict check — warn if worker already assigned to another ministry
+        if (workerId && schedule) {
+            const existingSlot = schedule.assignments.find(
+                (a: any) => a.workerId === workerId && a.ministryId !== assignDialog.ministryId
+            );
+            if (existingSlot) {
+                const conflictMinistry = getMinistryName(existingSlot.ministryId);
+                toast({
+                    variant: "destructive",
+                    title: "Conflict detected",
+                    description: `${worker ? `${(worker as any).firstName} ${(worker as any).lastName}` : "This worker"} is already assigned as ${existingSlot.roleName} in ${conflictMinistry} for this service.`,
+                });
+                // Still allow — just warn
+            }
+        }
+
         try {
             await upsertAssignment({
                 scheduleId: id,
@@ -183,6 +203,22 @@ export default function ScheduleDetailPage() {
         }
     };
 
+    const handleTogglePublic = async () => {
+        try {
+            const updated = await togglePublic({ isPublic: !(schedule as any)?.isPublic });
+            toast({
+                title: (updated as any).isPublic ? "Schedule is now public" : "Schedule is now private",
+                description: (updated as any).isPublic
+                    ? `Public link: ${APP_URL}/public/schedule/${(updated as any).publicToken}`
+                    : undefined,
+            });
+        } catch {
+            toast({ variant: "destructive", title: "Failed to update visibility" });
+        }
+    };
+
+    const handlePrint = () => window.open(`/schedule/${id}/print`, '_blank');
+
     if (isLoading) {
         return (
             <AppLayout>
@@ -224,6 +260,29 @@ export default function ScheduleDetailPage() {
                         {schedule.status}
                     </Badge>
                     <span className="text-sm text-muted-foreground">{filledSlots}/{totalSlots} filled</span>
+                    {conflicts.length > 0 && (
+                        <Badge variant="destructive" className="gap-1">
+                            <AlertTriangle className="h-3 w-3" /> {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''}
+                        </Badge>
+                    )}
+                    {canManageSchedule && (
+                        <Button size="sm" variant="outline" onClick={handlePrint}>
+                            <Printer className="mr-1 h-4 w-4" /> Print
+                        </Button>
+                    )}
+                    {canManageSchedule && schedule.status === "Published" && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleTogglePublic}
+                            className={(schedule as any).isPublic ? "text-green-600 border-green-300" : ""}
+                        >
+                            {(schedule as any).isPublic
+                                ? <><Globe className="mr-1 h-4 w-4" /> Public</>
+                                : <><GlobeLock className="mr-1 h-4 w-4" /> Private</>
+                            }
+                        </Button>
+                    )}
                     {schedule.status === "Draft" && canManageSchedule && (
                         <Button size="sm" onClick={handlePublish} disabled={isPublishing}>
                             {isPublishing && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
@@ -233,7 +292,40 @@ export default function ScheduleDetailPage() {
                 </div>
             </div>
 
-            {/* Tabs: Assignments | Confirmation Status */}
+            {/* Public link banner */}
+            {(schedule as any).isPublic && (schedule as any).publicToken && (
+                <div className="mt-4 flex items-center gap-3 px-4 py-3 rounded-lg border border-green-200 bg-green-50 text-sm">
+                    <Globe className="h-4 w-4 text-green-600 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                        <span className="font-medium text-green-800">Public link: </span>
+                        <a
+                            href={`${APP_URL}/public/schedule/${(schedule as any).publicToken}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-green-700 underline truncate"
+                        >
+                            {APP_URL}/public/schedule/{(schedule as any).publicToken}
+                        </a>
+                    </div>
+                </div>
+            )}
+
+            {/* Conflict warnings */}
+            {conflicts.length > 0 && (
+                <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-2">
+                    <p className="text-sm font-semibold text-destructive flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" /> Scheduling Conflicts
+                    </p>
+                    {conflicts.map((c: any) => (
+                        <p key={c.workerId} className="text-xs text-destructive">
+                            <strong>{c.workerName}</strong> is assigned to multiple ministries:{" "}
+                            {c.slots.map((s: any) => `${s.roleName} (${getMinistryName(s.ministryId)})`).join(", ")}
+                        </p>
+                    ))}
+                </div>
+            )}
+
+            {/* Tabs */}
             <Tabs defaultValue="assignments" className="mt-6">
                 <TabsList>
                     <TabsTrigger value="assignments">Assignments</TabsTrigger>
@@ -247,6 +339,7 @@ export default function ScheduleDetailPage() {
                             )}
                         </TabsTrigger>
                     )}
+                    <TabsTrigger value="history"><History className="mr-1 h-3.5 w-3.5" />History</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="assignments">
@@ -429,6 +522,37 @@ export default function ScheduleDetailPage() {
                     </div>
                 </TabsContent>
                 )}
+
+                <TabsContent value="history">
+                    <div className="mt-4 space-y-3">
+                        {!history || history.length === 0 ? (
+                            <Card>
+                                <CardContent className="py-10 text-center text-muted-foreground">
+                                    No past schedules yet.
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            history.map((h: any) => (
+                                <Card key={h.id} className="cursor-pointer hover:bg-muted/30" onClick={() => router.push(`/schedule/${h.id}`)}>
+                                    <CardHeader className="py-3 px-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="font-semibold text-sm">{h.title}</p>
+                                                <p className="text-xs text-muted-foreground">{format(new Date(h.date), "EEEE, MMMM d, yyyy")}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">
+                                                    {h.assignments.filter((a: any) => a.workerId).length}/{h.assignments.length} filled
+                                                </span>
+                                                <Badge variant="outline" className="text-xs">{h.status}</Badge>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                </Card>
+                            ))
+                        )}
+                    </div>
+                </TabsContent>
             </Tabs>
 
             {/* Assign Worker Dialog */}

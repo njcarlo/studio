@@ -322,3 +322,62 @@ export async function findWorkerByWorkerId(workerId: string) {
         select: { id: true, firstName: true, lastName: true, majorMinistryId: true, status: true },
     });
 }
+
+// ── Conflict Detection ────────────────────────────────────────────────────────
+
+export async function getWorkerConflicts(scheduleId: string) {
+    const assignments = await prisma.scheduleAssignment.findMany({
+        where: { scheduleId, workerId: { not: null } },
+        select: { id: true, workerId: true, workerName: true, ministryId: true, roleName: true },
+    });
+
+    // Find workers assigned to more than one ministry in this schedule
+    const byWorker: Record<string, typeof assignments> = {};
+    for (const a of assignments) {
+        if (!a.workerId) continue;
+        if (!byWorker[a.workerId]) byWorker[a.workerId] = [];
+        byWorker[a.workerId].push(a);
+    }
+
+    return Object.entries(byWorker)
+        .filter(([, slots]) => {
+            const ministries = new Set(slots.map(s => s.ministryId));
+            return ministries.size > 1;
+        })
+        .map(([workerId, slots]) => ({ workerId, workerName: slots[0].workerName, slots }));
+}
+
+// ── Public Schedule ───────────────────────────────────────────────────────────
+
+export async function togglePublicSchedule(id: string, isPublic: boolean) {
+    const token = isPublic ? crypto.randomUUID() : null;
+    const schedule = await (prisma.serviceSchedule as any).update({
+        where: { id },
+        data: { isPublic, publicToken: token },
+    });
+    revalidatePath(`/schedule/${id}`);
+    return schedule;
+}
+
+export async function getPublicSchedule(token: string) {
+    return (prisma.serviceSchedule as any).findUnique({
+        where: { publicToken: token, isPublic: true },
+        include: {
+            assignments: {
+                orderBy: [{ ministryId: 'asc' }, { order: 'asc' }],
+            },
+        },
+    });
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+
+export async function getScheduleHistory() {
+    const now = new Date();
+    return prisma.serviceSchedule.findMany({
+        where: { date: { lt: now } },
+        orderBy: { date: 'desc' },
+        include: { assignments: true },
+        take: 20,
+    });
+}

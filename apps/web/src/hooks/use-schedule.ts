@@ -7,6 +7,7 @@ import {
     upsertAssignment, deleteAssignment, applyTemplateToSchedule,
     getServiceTemplates, createServiceTemplate, updateServiceTemplate, deleteServiceTemplate,
     publishScheduleAndNotify, confirmAssignment, getScheduleConfirmationStatus, findWorkerByWorkerId,
+    getWorkerConflicts, togglePublicSchedule, getScheduleHistory,
 } from '@/actions/schedule';
 
 export function useServiceSchedules() {
@@ -87,9 +88,24 @@ export function useServiceSchedule(id: string) {
         enabled: !!id,
     });
 
+    const { data: conflictsData } = useQuery({
+        queryKey: ['schedule-conflicts', id],
+        queryFn: () => getWorkerConflicts(id),
+        enabled: !!id,
+    });
+
+    const togglePublicMutation = useMutation({
+        mutationFn: ({ isPublic }: { isPublic: boolean }) => togglePublicSchedule(id, isPublic),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['service-schedule', id] });
+            qc.invalidateQueries({ queryKey: ['service-schedules'] });
+        },
+    });
+
     return {
         schedule: data,
         isLoading,
+        conflicts: conflictsData || [],
         confirmationStatus: confirmationStatus || [],
         upsertAssignment: upsertMutation.mutateAsync,
         deleteAssignment: deleteMutation.mutateAsync,
@@ -98,6 +114,7 @@ export function useServiceSchedule(id: string) {
         publishSchedule: publishMutation.mutateAsync,
         isPublishing: publishMutation.isPending,
         confirmAssignment: confirmMutation.mutateAsync,
+        togglePublic: togglePublicMutation.mutateAsync,
     };
 }
 
@@ -131,4 +148,11 @@ export function useServiceTemplates(ministryId?: string) {
         updateTemplate: updateMutation.mutateAsync,
         deleteTemplate: deleteMutation.mutateAsync,
     };
+}
+
+export function useScheduleHistory() {
+    return useQuery({
+        queryKey: ['schedule-history'],
+        queryFn: () => getScheduleHistory(),
+    });
 }

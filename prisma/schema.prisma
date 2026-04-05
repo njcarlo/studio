@@ -484,10 +484,12 @@ model InAppNotification {
 
 model ServiceSchedule {
   id          String               @id @default(uuid())
-  date        DateTime             // The Sunday date
+  date        DateTime
   title       String               @default("Sunday Service")
   notes       String?
   status      String               @default("Draft") // Draft | Published | Completed
+  isPublic    Boolean              @default(false)
+  publicToken String?              @unique
   createdBy   String
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
