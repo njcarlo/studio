@@ -365,10 +365,12 @@ export async function completeFirstLoginPasswordChange(
     await prisma.$executeRawUnsafe(`
       UPDATE "Worker" 
       SET "passwordChangeRequired" = false,
-          "email" = $1
+          "email" = $1,
+          "legacyMigratedAt" = NOW(),
+          "legacyMigratedFrom" = $3
       ${legacyColumn ? `, "${legacyColumn}" = NULL` : ""}
       WHERE "id" = $2
-    `, finalEmail, workerRecord.id);
+    `, finalEmail, workerRecord.id, mode === 'worker' ? 'Worker ID Login' : 'Email Login');
 
     await logLegacyAuthEvent(
       "legacy_login",

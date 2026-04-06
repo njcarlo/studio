@@ -7,7 +7,7 @@ import {
     upsertAssignment, deleteAssignment, applyTemplateToSchedule,
     getServiceTemplates, createServiceTemplate, updateServiceTemplate, deleteServiceTemplate,
     publishScheduleAndNotify, confirmAssignment, getScheduleConfirmationStatus, findWorkerByWorkerId,
-    getWorkerConflicts, togglePublicSchedule, getScheduleHistory,
+    getWorkerConflicts, togglePublicSchedule, getScheduleHistory, setAttendanceStatus,
 } from '@/actions/schedule';
 
 export function useServiceSchedules() {
@@ -82,6 +82,15 @@ export function useServiceSchedule(id: string) {
         onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
     });
 
+    const setStatusMutation = useMutation({
+        mutationFn: ({ assignmentId, status, updatedBy }: { assignmentId: string; status: 'Confirmed' | 'Pending' | 'Not Attending'; updatedBy: string }) =>
+            setAttendanceStatus(assignmentId, status, updatedBy),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['service-schedule', id] });
+            qc.invalidateQueries({ queryKey: ['schedule-confirmation', id] });
+        },
+    });
+
     const { data: confirmationStatus } = useQuery({
         queryKey: ['schedule-confirmation', id],
         queryFn: () => getScheduleConfirmationStatus(id),
@@ -114,6 +123,7 @@ export function useServiceSchedule(id: string) {
         publishSchedule: publishMutation.mutateAsync,
         isPublishing: publishMutation.isPending,
         confirmAssignment: confirmMutation.mutateAsync,
+        setAttendanceStatus: setStatusMutation.mutateAsync,
         togglePublic: togglePublicMutation.mutateAsync,
     };
 }

@@ -73,6 +73,8 @@ model Worker {
   startMonth             String?
   startYear              String?
   remarks                String?
+  legacyMigratedAt       DateTime?
+  legacyMigratedFrom     String?
   createdAt              DateTime             @default(now())
   roles                  WorkerRole[]
   approvals              ApprovalRequest[]
@@ -518,18 +520,19 @@ model TemplateRole {
 }
 
 model ScheduleAssignment {
-  id             String          @id @default(uuid())
-  scheduleId     String
-  schedule       ServiceSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  ministryId     String
-  roleName       String
-  workerId       String?
-  workerName     String?
-  notes          String?
-  order          Int             @default(0)
-  acknowledgedAt DateTime?
-  acknowledgedBy String?
-  createdAt      DateTime        @default(now())
+  id               String          @id @default(uuid())
+  scheduleId       String
+  schedule         ServiceSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  ministryId       String
+  roleName         String
+  workerId         String?
+  workerName       String?
+  notes            String?
+  order            Int             @default(0)
+  acknowledgedAt   DateTime?
+  acknowledgedBy   String?
+  attendanceStatus String          @default("Pending") // Pending | Confirmed | Not Attending
+  createdAt        DateTime        @default(now())
 
   @@index([scheduleId])
   @@index([ministryId])

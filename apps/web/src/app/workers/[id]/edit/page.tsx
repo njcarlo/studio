@@ -8,7 +8,8 @@ import { useRoles } from "@/hooks/use-roles";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle } from "lucide-react";
+import { format } from "date-fns";
+import { CheckCircle2, Clock, LoaderCircle } from "lucide-react";
 import { getWorkerById, updateWorker as updateWorkerSql, createApproval as createApprovalSql, assignRolesToWorker } from "@/actions/db";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { supabase } from "@studio/database";
@@ -178,6 +179,26 @@ export default function EditWorkerPage() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto py-8 px-4">
+        {/* Legacy migration note */}
+        {(worker as any)?.legacyMigratedAt ? (
+          <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-lg border border-green-200 bg-green-50 text-sm">
+            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+            <div>
+              <span className="font-medium text-green-800">Legacy access migrated</span>
+              <span className="text-green-700 ml-2">
+                via {(worker as any).legacyMigratedFrom || "login"} on {format(new Date((worker as any).legacyMigratedAt), "MMM d, yyyy 'at' h:mm a")}
+              </span>
+            </div>
+          </div>
+        ) : (worker as any)?.passwordChangeRequired ? (
+          <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-sm">
+            <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+            <div>
+              <span className="font-medium text-amber-800">Pending first login</span>
+              <span className="text-amber-700 ml-2">Worker has not yet set their password.</span>
+            </div>
+          </div>
+        ) : null}
         <WorkerForm
           worker={worker}
           roles={roles}

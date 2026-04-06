@@ -291,11 +291,25 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
 // ── Confirm Assignment ────────────────────────────────────────────────────────
 
 export async function confirmAssignment(assignmentId: string, confirmedBy: string) {
-    const assignment = await prisma.scheduleAssignment.update({
+    const assignment = await (prisma.scheduleAssignment as any).update({
         where: { id: assignmentId },
         data: {
             acknowledgedAt: new Date(),
             acknowledgedBy: confirmedBy,
+            attendanceStatus: 'Confirmed',
+        },
+    });
+    revalidatePath(`/schedule/${assignment.scheduleId}`);
+    return assignment;
+}
+
+export async function setAttendanceStatus(assignmentId: string, status: 'Confirmed' | 'Pending' | 'Not Attending', updatedBy: string) {
+    const assignment = await (prisma.scheduleAssignment as any).update({
+        where: { id: assignmentId },
+        data: {
+            attendanceStatus: status,
+            acknowledgedAt: status !== 'Pending' ? new Date() : null,
+            acknowledgedBy: status !== 'Pending' ? updatedBy : null,
         },
     });
     revalidatePath(`/schedule/${assignment.scheduleId}`);

@@ -35,7 +35,7 @@ export default function ScheduleDetailPage() {
     const { user } = useAuthStore();
     const { canManageSchedule, canConfirmSchedule, workerProfile } = useUserRole();
 
-    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, conflicts, togglePublic } = useServiceSchedule(id);
+    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, conflicts, togglePublic, setAttendanceStatus } = useServiceSchedule(id);
     const { ministries } = useMinistries();
     const { workers } = useWorkers({ limit: 500 });
     const { templates } = useServiceTemplates();
@@ -424,11 +424,18 @@ export default function ScheduleDetailPage() {
                                                     {roleName}
                                                 </p>
                                                 <div className="space-y-1.5">
-                                                    {(slots as any[]).map((slot: any) => (
+                                                    {(slots as any[]).map((slot: any) => {
+                                                        const status = slot.attendanceStatus || 'Pending';
+                                                        const statusDot = status === 'Confirmed'
+                                                            ? 'bg-green-500'
+                                                            : status === 'Not Attending'
+                                                            ? 'bg-red-500'
+                                                            : 'bg-yellow-400';
+                                                        return (
                                                         <div key={slot.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
                                                             {slot.workerId ? (
                                                                 <>
-                                                                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                                                                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDot}`} title={status} />
                                                                     <Avatar className="h-6 w-6">
                                                                         <AvatarImage src={workers.find((w: any) => w.id === slot.workerId)?.avatarUrl} />
                                                                         <AvatarFallback className="text-[10px]">
@@ -436,6 +443,24 @@ export default function ScheduleDetailPage() {
                                                                         </AvatarFallback>
                                                                     </Avatar>
                                                                     <span className="text-sm flex-1">{slot.workerName}</span>
+                                                                    {canConfirmSchedule && (
+                                                                        <Select
+                                                                            value={status}
+                                                                            onValueChange={(v: any) => setAttendanceStatus({ assignmentId: slot.id, status: v, updatedBy: workerProfile?.id || user?.uid || 'system' })}
+                                                                        >
+                                                                            <SelectTrigger className="h-6 w-32 text-xs border-0 bg-transparent p-0 focus:ring-0">
+                                                                                <SelectValue />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="Pending">⏳ Pending</SelectItem>
+                                                                                <SelectItem value="Confirmed">✅ Confirmed</SelectItem>
+                                                                                <SelectItem value="Not Attending">❌ Not Attending</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    )}
+                                                                    {!canConfirmSchedule && (
+                                                                        <span className="text-xs text-muted-foreground">{status}</span>
+                                                                    )}
                                                                     <Button variant="ghost" size="icon" className="h-6 w-6"
                                                                         onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
                                                                         <UserPlus className="h-3.5 w-3.5" />
@@ -460,7 +485,8 @@ export default function ScheduleDetailPage() {
                                                                 </>
                                                             )}
                                                         </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         ))}
@@ -494,26 +520,33 @@ export default function ScheduleDetailPage() {
                                                     {getMinistryName(a.ministryId)} · {a.roleName}
                                                 </p>
                                             </div>
-                                            {a.acknowledgedAt ? (
-                                                <div className="flex items-center gap-1.5 text-green-600">
-                                                    <CheckCircle2 className="h-4 w-4" />
-                                                    <span className="text-xs">
-                                                        Confirmed {format(new Date(a.acknowledgedAt), "MMM d, h:mm a")}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-muted-foreground">Pending</span>
-                                                    {canConfirmSchedule && (
-                                                        <Button
-                                                            size="sm" variant="outline" className="h-7 text-xs"
-                                                            onClick={() => handleConfirmAssignment(a.id)}
-                                                        >
-                                                            <ShieldCheck className="mr-1 h-3 w-3" /> Mark Confirmed
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                const st = a.attendanceStatus || (a.acknowledgedAt ? 'Confirmed' : 'Pending');
+                                                if (st === 'Confirmed') return (
+                                                    <div className="flex items-center gap-1.5 text-green-600">
+                                                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                                                        <span className="text-xs">Confirmed {a.acknowledgedAt ? format(new Date(a.acknowledgedAt), "MMM d, h:mm a") : ""}</span>
+                                                    </div>
+                                                );
+                                                if (st === 'Not Attending') return (
+                                                    <div className="flex items-center gap-1.5 text-red-600">
+                                                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                                                        <span className="text-xs">Not Attending</span>
+                                                    </div>
+                                                );
+                                                return (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                                                        <span className="text-xs text-muted-foreground">Pending</span>
+                                                        {canConfirmSchedule && (
+                                                            <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                                onClick={() => setAttendanceStatus({ assignmentId: a.id, status: 'Confirmed', updatedBy: workerProfile?.id || user?.uid || 'system' })}>
+                                                                <ShieldCheck className="mr-1 h-3 w-3" /> Confirm
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     ))}
                                 </div>
