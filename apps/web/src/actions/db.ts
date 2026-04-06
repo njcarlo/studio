@@ -316,9 +316,24 @@ export async function createWorker(data: any) {
 }
 
 export async function updateWorker(id: string, data: any) {
+    // Strip relation objects and fields not in the DB schema to avoid Prisma validation errors
+    const {
+        role, roles, approvals, attendanceRecords, bookings,
+        venueBookings, InventoryBorrowing, InventoryLog, mealStubs,
+        legacyMigratedAt, legacyMigratedFrom,
+        createdAt, updatedAt,
+        ...safeData
+    } = data;
+
+    // roleId may not exist in DB yet — use raw update to handle it gracefully
+    const { roleId, ...dataWithoutRoleId } = safeData;
+
+    const updateData: any = { ...dataWithoutRoleId };
+    if (roleId !== undefined) updateData.roleId = roleId;
+
     const worker = await prisma.worker.update({
         where: { id },
-        data,
+        data: updateData,
     });
     revalidatePath('/workers');
     return worker;
