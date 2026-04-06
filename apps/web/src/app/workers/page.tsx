@@ -151,11 +151,12 @@ export default function WorkersPage() {
   const departmentDataList = allDepartments;
 
   const isLoading =
-    workersLoading ||
     rolesLoading ||
     ministriesLoading ||
     isRoleLoading ||
     departmentsLoading;
+
+  const isWorkersLoading = workersLoading;
 
   // Detect Department Head by role name OR explicit assignment
   const explicitlyAssignedDepartment = useMemo(() => {
