@@ -106,9 +106,19 @@ export default function WorkersPage() {
   const { logAction } = useAuditLog();
   const { isMealStubAssigner, canManageAllMealStubs } = useUserRole();
 
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+
+  // Debounce search — only fire query after user stops typing for 400ms
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const {
     workers: allWorkers,
@@ -1029,20 +1039,18 @@ export default function WorkersPage() {
             <Input
               id="worker-search"
               placeholder="Search by name, email or ID..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9"
             />
             <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            {searchQuery && (
+            {searchInput && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                 onClick={() => {
+                  setSearchInput("");
                   setSearchQuery("");
                   setCurrentPage(1);
                 }}
