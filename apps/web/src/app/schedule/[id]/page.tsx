@@ -65,12 +65,14 @@ export default function ScheduleDetailPage() {
     const ministryIds = Object.keys(byMinistry);
     const allMinistryIds = useMemo(() => {
         const fromAssignments = new Set(ministryIds);
+        let ids = [...fromAssignments];
         // Ministry Schedulers (no canAssignSchedulers) only see their own ministry
         if (canManageSchedule && !canAssignSchedulers && workerProfile?.majorMinistryId) {
-            return [...fromAssignments].filter(id => id === workerProfile.majorMinistryId || id === workerProfile.minorMinistryId);
+            ids = ids.filter(id => id === workerProfile.majorMinistryId || id === workerProfile.minorMinistryId);
         }
-        return [...fromAssignments];
-    }, [ministryIds, canManageSchedule, canAssignSchedulers, workerProfile]);
+        // Sort alphabetically by ministry name (strip dept prefix)
+        return ids.sort((a, b) => getMinistryName(a).localeCompare(getMinistryName(b)));
+    }, [ministryIds, canManageSchedule, canAssignSchedulers, workerProfile, ministries]);
 
     const toggleMinistry = (id: string) => {
         setExpandedMinistries(prev => {
@@ -419,6 +421,12 @@ export default function ScheduleDetailPage() {
                                         <Button variant="outline" size="sm" className="h-7 text-xs"
                                             onClick={() => { setAddRoleDialog(ministryId); setNewRoleName(""); }}>
                                             <Plus className="mr-1 h-3 w-3" /> Add Role
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                                            onClick={() => {
+                                                assignments.forEach((a: any) => deleteAssignment(a.id));
+                                            }}>
+                                            <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
                                 </div>
