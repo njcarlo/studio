@@ -25,6 +25,8 @@ export function useWorkers(params: {
             search: params.search,
             ministryIds: params.ministryIds
         }),
+        staleTime: 30_000,        // keep data fresh for 30s — no refetch on tab focus
+        placeholderData: (prev) => prev, // show previous page data while loading next
     });
 
     const createMutation = useMutation({
@@ -80,5 +82,6 @@ export function useWorkerStats(ministryIds?: string[]) {
     return useQuery({
         queryKey: ['worker-stats', ministryIds],
         queryFn: () => getWorkerStats(ministryIds),
+        staleTime: 60_000, // stats can be slightly stale
     });
 }

@@ -187,22 +187,39 @@ export async function getPaginatedWorkers(
         ];
     }
     if (filters.search) {
-        where.AND = [
-            {
-                OR: [
-                    { firstName: { contains: filters.search, mode: 'insensitive' } },
-                    { lastName: { contains: filters.search, mode: 'insensitive' } },
-                    { email: { contains: filters.search, mode: 'insensitive' } },
-                    { workerId: { contains: filters.search, mode: 'insensitive' } },
-                ]
-            }
-        ];
+        const q = filters.search.trim();
+        where.AND = [{
+            OR: [
+                { firstName: { contains: q, mode: 'insensitive' } },
+                { lastName: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+                { workerId: { contains: q, mode: 'insensitive' } },
+            ]
+        }];
     }
+
+    // Select only the columns needed for the list view — no JOINs
     const [total, workers] = await prisma.$transaction([
         prisma.worker.count({ where }),
         prisma.worker.findMany({
             where,
-            include: { role: true },
+            select: {
+                id: true,
+                workerId: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                roleId: true,
+                status: true,
+                avatarUrl: true,
+                majorMinistryId: true,
+                minorMinistryId: true,
+                employmentType: true,
+                passwordChangeRequired: true,
+                qrToken: true,
+                createdAt: true,
+            },
             orderBy: { createdAt: 'desc' },
             skip: (page - 1) * limit,
             take: limit,
@@ -220,34 +237,30 @@ export async function getWorkerStats(ministryIds?: string[]) {
         ];
     }
 
-    const [total, active, inactive, secondary] = await prisma.$transaction([
-        prisma.worker.count({ where }),
-        prisma.worker.count({ where: { ...where, status: 'Active' } }),
-        prisma.worker.count({ where: { ...where, status: 'Inactive' } }),
-        prisma.worker.count({ where: { ...where, roleId: { contains: 'secondary' } } })
-    ]);
+    // Single query — group by status in JS instead of 4 DB round trips
+    const workers = await prisma.worker.findMany({
+        where,
+        select: { status: true, roleId: true, majorMinistryId: true, minorMinistryId: true },
+    });
+
+    const total = workers.length;
+    const active = workers.filter((w: any) => w.status === 'Active').length;
+    const inactive = workers.filter((w: any) => w.status === 'Inactive').length;
+    const secondary = workers.filter((w: any) => w.roleId?.includes('secondary')).length;
 
     let ministryStats: { ministryId: string; total: number; active: number; inactive: number; secondary: number }[] = [];
 
     if (ministryIds?.length) {
-        // Single query per status instead of N queries per ministry
-        const [allWorkers, activeWorkers, inactiveWorkers, secondaryWorkers] = await prisma.$transaction([
-            prisma.worker.findMany({ where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }] }, select: { majorMinistryId: true, minorMinistryId: true } }),
-            prisma.worker.findMany({ where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }], status: 'Active' }, select: { majorMinistryId: true, minorMinistryId: true } }),
-            prisma.worker.findMany({ where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }], status: 'Inactive' }, select: { majorMinistryId: true, minorMinistryId: true } }),
-            prisma.worker.findMany({ where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }], roleId: { contains: 'secondary' } }, select: { majorMinistryId: true, minorMinistryId: true } }),
-        ]);
-
-        const countByMinistry = (workers: { majorMinistryId: string | null; minorMinistryId: string | null }[], id: string) =>
-            workers.filter(w => w.majorMinistryId === id || w.minorMinistryId === id).length;
-
-        ministryStats = ministryIds.map(id => ({
-            ministryId: id,
-            total: countByMinistry(allWorkers, id),
-            active: countByMinistry(activeWorkers, id),
-            inactive: countByMinistry(inactiveWorkers, id),
-            secondary: countByMinistry(secondaryWorkers, id),
-        }));
+        ministryStats = ministryIds.map(id => {
+            const mw = workers.filter((w: any) => w.majorMinistryId === id || w.minorMinistryId === id);
+            return {
+                ministryId: id,
+                total: mw.length,
+                active: mw.filter((w: any) => w.status === 'Active').length,
+                inactive: mw.filter((w: any) => w.status === 'Inactive').length,
+                secondary: mw.filter((w: any) => w.roleId?.includes('secondary')).length,
+            };
+        });
     }
 
     return { total, active, inactive, secondary, ministryStats };
