@@ -108,8 +108,11 @@ export default function WorkersPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchMode, setSearchMode] = useState<'workerId' | 'name'>('workerId');
+  const [sortField, setSortField] = useState("workerId");
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50;
+  const itemsPerPage = 25;
 
   // Debounce search — only fire query after user stops typing for 400ms
   React.useEffect(() => {
@@ -119,6 +122,23 @@ export default function WorkersPage() {
     }, 400);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const formatWorkerId = (id: string | null | undefined) => {
+    if (!id) return '—';
+    const num = parseInt(id, 10);
+    if (isNaN(num)) return id;
+    return String(num).padStart(6, '0');
+  };
 
   const {
     workers: allWorkers,
@@ -133,6 +153,9 @@ export default function WorkersPage() {
     page: currentPage,
     limit: itemsPerPage,
     search: searchQuery,
+    searchMode,
+    sortField,
+    sortDir,
   });
 
   const { ministries: ministries, isLoading: ministriesLoading } =
@@ -1036,29 +1059,47 @@ export default function WorkersPage() {
           <Label htmlFor="worker-search" className="mb-2 block">
             Search Workers
           </Label>
-          <div className="relative">
-            <Input
-              id="worker-search"
-              placeholder="Search by name, email or ID..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-9"
-            />
-            <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            {searchInput && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                onClick={() => {
-                  setSearchInput("");
-                  setSearchQuery("");
-                  setCurrentPage(1);
-                }}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
+          <div className="relative flex gap-2">
+            <div className="relative flex-1">
+              <Input
+                id="worker-search"
+                placeholder={searchMode === 'workerId' ? "Search by Worker ID..." : "Search by first or last name..."}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-9"
+              />
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {searchInput && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearchQuery("");
+                    setCurrentPage(1);
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+            <Button
+              variant={searchMode === 'workerId' ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setSearchMode('workerId'); setSearchInput(""); setSearchQuery(""); }}
+              className="shrink-0"
+            >
+              ID
+            </Button>
+            <Button
+              variant={searchMode === 'name' ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setSearchMode('name'); setSearchInput(""); setSearchQuery(""); }}
+              className="shrink-0"
+            >
+              Name
+            </Button>
           </div>
         </div>
       </div>
@@ -1079,11 +1120,17 @@ export default function WorkersPage() {
                     />
                   </TableHead>
                 )}
-                <TableHead>Name</TableHead>
-                <TableHead>Worker ID</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('name')}>
+                  <span className="flex items-center gap-1">Name {sortField === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</span>
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('workerId')}>
+                  <span className="flex items-center gap-1">Worker ID {sortField === 'workerId' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</span>
+                </TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Permissions</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('status')}>
+                  <span className="flex items-center gap-1">Status {sortField === 'status' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</span>
+                </TableHead>
                 <TableHead>Contact</TableHead>
                 {canManageWorkers && (
                   <TableHead>
@@ -1146,7 +1193,7 @@ export default function WorkersPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs">
-                      {worker.workerId}
+                      {formatWorkerId(worker.workerId)}
                     </TableCell>
                     <TableCell>
                       {(worker as any).roles?.length > 0
@@ -1255,7 +1302,7 @@ export default function WorkersPage() {
         </div>
 
         {/* Pagination Controls */}
-        {pagination && pagination.totalPages > 1 && (
+        {pagination && pagination.total > 0 && (
           <div className="flex items-center justify-between px-2 py-4 border-t bg-muted/20 rounded-b-lg">
             <p className="text-sm text-muted-foreground">
               Showing{" "}
@@ -1266,7 +1313,7 @@ export default function WorkersPage() {
               <span className="font-medium">
                 {Math.min(currentPage * itemsPerPage, pagination.total)}
               </span>{" "}
-              of <span className="font-medium">{pagination.total}</span> workers
+              of <span className="font-medium">{pagination.total.toLocaleString()}</span> workers
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -1282,23 +1329,17 @@ export default function WorkersPage() {
                   { length: Math.min(5, pagination.totalPages) },
                   (_, i) => {
                     let pageNum = i + 1;
-                    // Simple sliding window for pagination
                     if (pagination.totalPages > 5 && currentPage > 3) {
                       pageNum = currentPage - 3 + i;
                       if (pageNum + (5 - i) > pagination.totalPages) {
                         pageNum = pagination.totalPages - 4 + i;
                       }
                     }
-
-                    if (pageNum <= 0 || pageNum > pagination.totalPages)
-                      return null;
-
+                    if (pageNum <= 0 || pageNum > pagination.totalPages) return null;
                     return (
                       <Button
                         key={pageNum}
-                        variant={
-                          currentPage === pageNum ? "default" : "outline"
-                        }
+                        variant={currentPage === pageNum ? "default" : "outline"}
                         size="sm"
                         className="w-8 h-8 p-0"
                         onClick={() => setCurrentPage(pageNum)}
@@ -1312,9 +1353,7 @@ export default function WorkersPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))
-                }
+                onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={currentPage === pagination.totalPages}
               >
                 Next

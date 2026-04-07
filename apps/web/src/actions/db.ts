@@ -173,10 +173,13 @@ export async function getWorkers() {
 
 export async function getPaginatedWorkers(
     page: number = 1,
-    limit: number = 50,
+    limit: number = 25,
     filters: {
         search?: string;
+        searchMode?: 'workerId' | 'name';
         ministryIds?: string[];
+        sortField?: string;
+        sortDir?: 'asc' | 'desc';
     } = {}
 ) {
     const where: any = {};
@@ -188,17 +191,35 @@ export async function getPaginatedWorkers(
     }
     if (filters.search) {
         const q = filters.search.trim();
+        const mode = filters.searchMode || 'workerId';
         where.AND = [{
-            OR: [
-                { firstName: { contains: q, mode: 'insensitive' } },
-                { lastName: { contains: q, mode: 'insensitive' } },
-                { email: { contains: q, mode: 'insensitive' } },
-                { workerId: { contains: q, mode: 'insensitive' } },
-            ]
+            OR: mode === 'workerId'
+                ? [{ workerId: { contains: q, mode: 'insensitive' } }]
+                : [
+                    { firstName: { contains: q, mode: 'insensitive' } },
+                    { lastName: { contains: q, mode: 'insensitive' } },
+                ]
         }];
     }
 
-    // Select only the columns needed for the list view — no JOINs
+    // Sort: workerId numeric (cast) so 1 → 000001 ordering works correctly
+    const sortField = filters.sortField || 'workerId';
+    const sortDir = filters.sortDir || 'asc';
+
+    let orderBy: any;
+    if (sortField === 'workerId') {
+        // Cast workerId to integer for correct numeric sort (1 before 2 before 10)
+        orderBy = undefined; // handled via raw below
+    } else if (sortField === 'name') {
+        orderBy = [{ firstName: sortDir }, { lastName: sortDir }];
+    } else if (sortField === 'status') {
+        orderBy = { status: sortDir };
+    } else if (sortField === 'createdAt') {
+        orderBy = { createdAt: sortDir };
+    } else {
+        orderBy = { createdAt: 'desc' };
+    }
+
     const [total, workers] = await prisma.$transaction([
         prisma.worker.count({ where }),
         prisma.worker.findMany({
@@ -220,11 +241,21 @@ export async function getPaginatedWorkers(
                 qrToken: true,
                 createdAt: true,
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: orderBy || { createdAt: 'desc' },
             skip: (page - 1) * limit,
             take: limit,
         })
     ]);
+
+    // If sorting by workerId, sort numerically in JS (handles mixed string/int IDs)
+    if (sortField === 'workerId') {
+        workers.sort((a: any, b: any) => {
+            const na = parseInt(a.workerId || '0', 10) || 0;
+            const nb = parseInt(b.workerId || '0', 10) || 0;
+            return sortDir === 'asc' ? na - nb : nb - na;
+        });
+    }
+
     return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
 }
 

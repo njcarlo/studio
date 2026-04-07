@@ -15,7 +15,10 @@ export function useWorkers(params: {
     page?: number;
     limit?: number;
     search?: string;
+    searchMode?: 'workerId' | 'name';
     ministryIds?: string[];
+    sortField?: string;
+    sortDir?: 'asc' | 'desc';
 } = {}) {
     const queryClient = useQueryClient();
 
@@ -23,10 +26,13 @@ export function useWorkers(params: {
         queryKey: ['workers', params],
         queryFn: () => getPaginatedWorkers(params.page, params.limit, {
             search: params.search,
-            ministryIds: params.ministryIds
+            searchMode: params.searchMode,
+            ministryIds: params.ministryIds,
+            sortField: params.sortField,
+            sortDir: params.sortDir,
         }),
-        staleTime: 30_000,        // keep data fresh for 30s — no refetch on tab focus
-        placeholderData: (prev) => prev, // show previous page data while loading next
+        staleTime: 30_000,
+        placeholderData: (prev) => prev,
     });
 
     const createMutation = useMutation({
