@@ -1,0 +1,186 @@
+"use client";
+
+import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { AppLayout } from "@/components/layout/app-layout";
+import { Button } from "@studio/ui";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@studio/ui";
+import { Input } from "@studio/ui";
+import { Badge } from "@studio/ui";
+import { ArrowLeft, LoaderCircle, UserPlus, X, Users } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMinistries } from "@/hooks/use-ministries";
+import { useWorkers } from "@/hooks/use-workers";
+import { useUserRole } from "@/hooks/use-user-role";
+import { useToast } from "@/hooks/use-toast";
+import { assignMinistryScheduler, getMinistrySchedulers } from "@/actions/schedule";
+
+export default function SchedulersPage() {
+    const router = useRouter();
+    const { toast } = useToast();
+    const qc = useQueryClient();
+    const { canAssignSchedulers, isSuperAdmin, workerProfile } = useUserRole();
+
+    const { ministries, isLoading: ministriesLoading } = useMinistries();
+    const { workers } = useWorkers({ limit: 500 });
+
+    const { data: schedulerData, isLoading: schedulersLoading } = useQuery({
+        queryKey: ['ministry-schedulers'],
+        queryFn: getMinistrySchedulers,
+    });
+
+    const assignMutation = useMutation({
+        mutationFn: ({ ministryId, workerId }: { ministryId: string; workerId: string | null }) =>
+            assignMinistryScheduler(ministryId, workerId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['ministry-schedulers'] });
+            toast({ title: "Scheduler updated" });
+        },
+        onError: () => toast({ variant: "destructive", title: "Failed to update scheduler" }),
+    });
+
+    const [assignDialog, setAssignDialog] = useState<{ ministryId: string; ministryName: string } | null>(null);
+    const [workerSearch, setWorkerSearch] = useState("");
+
+    // Department Schedulers can only manage ministries in their department
+    const visibleMinistries = useMemo(() => {
+        if (isSuperAdmin || !workerProfile?.majorMinistryId) return ministries;
+        const userMinistry = ministries.find((m: any) => m.id === workerProfile.majorMinistryId);
+        const userDept = (userMinistry as any)?.department || (userMinistry as any)?.departmentCode;
+        if (!userDept) return ministries;
+        return ministries.filter((m: any) => m.department === userDept || m.departmentCode === userDept);
+    }, [ministries, isSuperAdmin, workerProfile]);
+
+    const filteredWorkers = useMemo(() =>
+        workers.filter((w: any) =>
+            w.status === "Active" &&
+            `${w.firstName} ${w.lastName}`.toLowerCase().includes(workerSearch.toLowerCase())
+        ), [workers, workerSearch]);
+
+    const getScheduler = (ministryId: string) => {
+        const schedulerId = schedulerData?.find(s => s.id === ministryId)?.schedulerId;
+        return schedulerId ? workers.find((w: any) => w.id === schedulerId) : null;
+    };
+
+    const isLoading = ministriesLoading || schedulersLoading;
+
+    if (!canAssignSchedulers && !isSuperAdmin) {
+        return (
+            <AppLayout>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Access Denied</CardTitle>
+                        <CardDescription>Only Department Schedulers can manage ministry schedulers.</CardDescription>
+                    </CardHeader>
+                </Card>
+            </AppLayout>
+        );
+    }
+
+    return (
+        <AppLayout>
+            <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" onClick={() => router.push("/schedule")}>
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                    <h1 className="text-2xl font-headline font-bold">Ministry Schedulers</h1>
+                    <p className="text-sm text-muted-foreground">Assign a Ministry Scheduler to each ministry.</p>
+                </div>
+            </div>
+
+            {isLoading ? (
+                <div className="flex justify-center py-10">
+                    <LoaderCircle className="h-8 w-8 animate-spin" />
+                </div>
+            ) : (
+                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {visibleMinistries.map((ministry: any) => {
+                        const scheduler = getScheduler(ministry.id);
+                        return (
+                            <Card key={ministry.id}>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm font-semibold">{ministry.name}</CardTitle>
+                                    <CardDescription className="text-xs">{ministry.department || ministry.departmentCode}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                    {scheduler ? (
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={(scheduler as any).avatarUrl} />
+                                                <AvatarFallback className="text-xs">
+                                                    {(scheduler as any).firstName[0]}{(scheduler as any).lastName[0]}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">
+                                                    {(scheduler as any).firstName} {(scheduler as any).lastName}
+                                                </p>
+                                                <Badge variant="secondary" className="text-xs">Ministry Scheduler</Badge>
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0"
+                                                onClick={() => assignMutation.mutate({ ministryId: ministry.id, workerId: null })}>
+                                                <X className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Users className="h-4 w-4" />
+                                            <span className="text-sm flex-1">No scheduler assigned</span>
+                                            <Button variant="outline" size="sm" className="h-7 text-xs"
+                                                onClick={() => { setAssignDialog({ ministryId: ministry.id, ministryName: ministry.name }); setWorkerSearch(""); }}>
+                                                <UserPlus className="mr-1 h-3 w-3" /> Assign
+                                            </Button>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Assign Dialog */}
+            <Dialog open={!!assignDialog} onOpenChange={() => setAssignDialog(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Assign Scheduler — {assignDialog?.ministryName}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <Input
+                            placeholder="Search workers..."
+                            value={workerSearch}
+                            onChange={e => setWorkerSearch(e.target.value)}
+                            autoFocus
+                        />
+                        <div className="max-h-72 overflow-y-auto space-y-1">
+                            {filteredWorkers.map((w: any) => (
+                                <button
+                                    key={w.id}
+                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-left"
+                                    onClick={() => {
+                                        assignMutation.mutate({ ministryId: assignDialog!.ministryId, workerId: w.id });
+                                        setAssignDialog(null);
+                                    }}
+                                >
+                                    <Avatar className="h-7 w-7">
+                                        <AvatarImage src={w.avatarUrl} />
+                                        <AvatarFallback className="text-[10px]">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="text-sm font-medium">{w.firstName} {w.lastName}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {ministries.find((m: any) => m.id === w.majorMinistryId)?.name || "—"}
+                                        </p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </AppLayout>
+    );
+}

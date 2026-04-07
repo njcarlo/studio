@@ -95,6 +95,7 @@ model Ministry {
   leaderId            String
   headId              String?
   approverId          String?
+  schedulerId         String?
   mealStubAssignerId  String?
   mealStubWeeklyLimit Int?
   weight              Int?

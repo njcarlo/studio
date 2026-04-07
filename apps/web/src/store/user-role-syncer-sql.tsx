@@ -224,6 +224,8 @@ export function UserRoleSyncerSQL() {
         sa || hasPerm('schedule:manage'),
       canConfirmSchedule:
         sa || hasPerm('schedule:confirm') || hasPerm('schedule:manage'),
+      canAssignSchedulers:
+        sa || hasPerm('schedule:assign_schedulers'),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [

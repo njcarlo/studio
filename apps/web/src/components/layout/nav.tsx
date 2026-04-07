@@ -80,6 +80,7 @@ const allNavItems: NavItem[] = [
     subItems: [
       { href: "/schedule", label: "Schedules" },
       { href: "/schedule/templates", label: "Templates" },
+      { href: "/schedule/schedulers", label: "Manage Schedulers", permissionKey: "canAssignSchedulers" },
     ],
   },
   {

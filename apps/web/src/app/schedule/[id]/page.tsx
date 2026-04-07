@@ -33,7 +33,7 @@ export default function ScheduleDetailPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { user } = useAuthStore();
-    const { canManageSchedule, canConfirmSchedule, workerProfile } = useUserRole();
+    const { canManageSchedule, canConfirmSchedule, canAssignSchedulers, workerProfile } = useUserRole();
 
     const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, conflicts, togglePublic, setAttendanceStatus } = useServiceSchedule(id);
     const { ministries } = useMinistries();
@@ -65,8 +65,12 @@ export default function ScheduleDetailPage() {
     const ministryIds = Object.keys(byMinistry);
     const allMinistryIds = useMemo(() => {
         const fromAssignments = new Set(ministryIds);
+        // Ministry Schedulers (no canAssignSchedulers) only see their own ministry
+        if (canManageSchedule && !canAssignSchedulers && workerProfile?.majorMinistryId) {
+            return [...fromAssignments].filter(id => id === workerProfile.majorMinistryId || id === workerProfile.minorMinistryId);
+        }
         return [...fromAssignments];
-    }, [ministryIds]);
+    }, [ministryIds, canManageSchedule, canAssignSchedulers, workerProfile]);
 
     const toggleMinistry = (id: string) => {
         setExpandedMinistries(prev => {

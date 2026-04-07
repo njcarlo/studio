@@ -56,8 +56,9 @@ export const PERMISSIONS = {
     manage_own_ministry: 'venue_assistance:manage_own_ministry',
   },
   schedule: {
-    manage:  'schedule:manage',
-    confirm: 'schedule:confirm',
+    manage:           'schedule:manage',
+    confirm:          'schedule:confirm',
+    assign_schedulers: 'schedule:assign_schedulers',
   },
 } as const;
 
@@ -93,6 +94,7 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'venue_assistance', action: 'manage_own_ministry', description: 'Manage own ministry assistance requests' },
   { module: 'schedule',         action: 'manage',              description: 'Create and manage Sunday service schedules' },
   { module: 'schedule',         action: 'confirm',             description: 'Confirm worker acknowledgement of schedule assignments' },
+  { module: 'schedule',         action: 'assign_schedulers',   description: 'Assign Ministry Scheduler role to workers' },
 ];
 
 /**

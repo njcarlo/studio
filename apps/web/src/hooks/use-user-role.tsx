@@ -61,6 +61,7 @@ export function useUserRole(): UserRoleContextType {
       canManageOwnMinistryAssistance: s.canManageOwnMinistryAssistance,
       canManageSchedule: s.canManageSchedule,
       canConfirmSchedule: s.canConfirmSchedule,
+      canAssignSchedulers: s.canAssignSchedulers,
     })),
   );
 }

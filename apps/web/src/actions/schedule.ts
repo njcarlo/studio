@@ -395,3 +395,20 @@ export async function getScheduleHistory() {
         take: 20,
     });
 }
+
+// ── Scheduler Assignment ──────────────────────────────────────────────────────
+
+export async function assignMinistryScheduler(ministryId: string, workerId: string | null) {
+    await (prisma.ministry as any).update({
+        where: { id: ministryId },
+        data: { schedulerId: workerId },
+    });
+    revalidatePath('/schedule');
+}
+
+export async function getMinistrySchedulers() {
+    const ministries = await (prisma.ministry as any).findMany({
+        select: { id: true, name: true, schedulerId: true },
+    });
+    return ministries as { id: string; name: string; schedulerId: string | null }[];
+}
