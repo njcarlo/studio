@@ -86,27 +86,29 @@ export default function ScheduleDetailPage() {
     const filteredWorkers = useMemo(() => {
         const targetMinistryId = assignDialog?.ministryId;
         const targetMinistry = targetMinistryId ? ministries.find((m: any) => m.id === targetMinistryId) : null;
-        const targetDept = targetMinistry?.department || targetMinistry?.departmentCode;
+        const targetDept = targetMinistry?.department || (targetMinistry as any)?.departmentCode;
 
-        return workers.filter((w: any) => {
+        // First: scope to ministry/department
+        const scoped = workers.filter((w: any) => {
             if (w.status !== "Active") return false;
-            if (workerSearch && !`${w.firstName} ${w.lastName}`.toLowerCase().includes(workerSearch.toLowerCase())) return false;
-
-            // Must be in the same ministry (major or minor) OR same department
-            if (targetMinistryId) {
-                const sameMinistry = w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId;
-                if (sameMinistry) return true;
-
-                // Also allow workers from the same department
-                if (targetDept) {
-                    const workerMajorMinistry = ministries.find((m: any) => m.id === w.majorMinistryId);
-                    const workerDept = workerMajorMinistry?.department || workerMajorMinistry?.departmentCode;
-                    if (workerDept && workerDept === targetDept) return true;
-                }
-                return false;
+            if (!targetMinistryId) return true;
+            const sameMinistry = w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId;
+            if (sameMinistry) return true;
+            if (targetDept) {
+                const workerMajorMinistry = ministries.find((m: any) => m.id === w.majorMinistryId);
+                const workerDept = workerMajorMinistry?.department || (workerMajorMinistry as any)?.departmentCode;
+                if (workerDept && workerDept === targetDept) return true;
             }
-            return true;
+            return false;
         });
+
+        // Then: apply name search within scoped list
+        if (!workerSearch.trim()) return scoped;
+        const q = workerSearch.toLowerCase();
+        return scoped.filter((w: any) =>
+            `${w.firstName} ${w.lastName}`.toLowerCase().includes(q) ||
+            (w.workerId || '').includes(q)
+        );
     }, [workers, workerSearch, assignDialog?.ministryId, ministries]);
 
     const handleAssign = async (workerId: string | null) => {

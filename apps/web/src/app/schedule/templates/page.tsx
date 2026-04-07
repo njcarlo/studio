@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
@@ -11,11 +11,37 @@ import { Input } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
 import { Checkbox } from "@studio/ui";
-import { ArrowLeft, PlusCircle, Trash2, LoaderCircle, Plus, X, GripVertical } from "lucide-react";
+import { ArrowLeft, PlusCircle, Trash2, LoaderCircle, Plus, X } from "lucide-react";
 import { useServiceTemplates } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useAuthStore } from "@studio/store";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+
+const DEPT_CODE_TO_NAME: Record<string, string> = {
+    W: 'Worship',
+    O: 'Outreach',
+    R: 'Relationship',
+    D: 'Discipleship',
+    A: 'Administration',
+};
+
+const DEPT_NAME_TO_CODE: Record<string, string> = {
+    Worship: 'W',
+    Outreach: 'O',
+    Relationship: 'R',
+    Discipleship: 'D',
+    Administration: 'A',
+};
+
+function getDeptCode(ministry: any): string {
+    return ministry?.departmentCode || DEPT_NAME_TO_CODE[ministry?.department] || '';
+}
+
+function getDeptName(ministry: any): string {
+    const code = getDeptCode(ministry);
+    return DEPT_CODE_TO_NAME[code] || ministry?.department || code || '—';
+}
 
 type RoleRow = { roleName: string; count: number; notes: string };
 
@@ -23,7 +49,8 @@ export default function TemplatesPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { user } = useAuthStore();
-    const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useServiceTemplates();
+    const { canAssignSchedulers, isSuperAdmin, workerProfile } = useUserRole();
+    const { templates, isLoading, createTemplate, deleteTemplate } = useServiceTemplates();
     const { ministries } = useMinistries();
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -32,6 +59,18 @@ export default function TemplatesPage() {
     const [isDefault, setIsDefault] = useState(false);
     const [roles, setRoles] = useState<RoleRow[]>([{ roleName: "", count: 1, notes: "" }]);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Scope ministries to the scheduler's department
+    const visibleMinistries = useMemo(() => {
+        if (isSuperAdmin || canAssignSchedulers) return ministries;
+        // Ministry Scheduler — only their own ministry
+        if (workerProfile?.majorMinistryId) {
+            return ministries.filter((m: any) =>
+                m.id === workerProfile.majorMinistryId || m.id === workerProfile.minorMinistryId
+            );
+        }
+        return ministries;
+    }, [ministries, isSuperAdmin, canAssignSchedulers, workerProfile]);
 
     const addRole = () => setRoles(r => [...r, { roleName: "", count: 1, notes: "" }]);
     const removeRole = (i: number) => setRoles(r => r.filter((_, idx) => idx !== i));
@@ -71,12 +110,28 @@ export default function TemplatesPage() {
         }
     };
 
-    // Group templates by ministry
-    const byMinistry = templates.reduce<Record<string, typeof templates>>((acc: Record<string, typeof templates>, t: any) => {
-        if (!acc[t.ministryId]) acc[t.ministryId] = [];
-        acc[t.ministryId].push(t);
+    // Group visible templates by department → ministry
+    const visibleMinistryIds = new Set(visibleMinistries.map((m: any) => m.id));
+    const filteredTemplates = templates.filter((t: any) => visibleMinistryIds.has(t.ministryId));
+
+    const byDept = filteredTemplates.reduce<Record<string, Record<string, typeof filteredTemplates>>>((acc, t: any) => {
+        const ministry = ministries.find((m: any) => m.id === t.ministryId);
+        const deptCode = getDeptCode(ministry);
+        const deptName = getDeptName(ministry) || 'Other';
+        const mName = ministry?.name || t.ministryId;
+        if (!acc[deptName]) acc[deptName] = {};
+        if (!acc[deptName][mName]) acc[deptName][mName] = [];
+        acc[deptName][mName].push(t);
         return acc;
     }, {});
+
+    // Sort departments in WORDA order
+    const DEPT_ORDER = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
+    const sortedDepts = Object.keys(byDept).sort((a, b) => {
+        const ai = DEPT_ORDER.indexOf(a);
+        const bi = DEPT_ORDER.indexOf(b);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
 
     return (
         <AppLayout>
@@ -96,56 +151,71 @@ export default function TemplatesPage() {
                 Define reusable role templates per ministry. Apply them when building a Sunday service schedule.
             </p>
 
-            <div className="mt-6 space-y-6">
+            <div className="mt-6 space-y-8">
                 {isLoading ? (
                     <div className="flex justify-center py-10">
                         <LoaderCircle className="h-8 w-8 animate-spin" />
                     </div>
-                ) : Object.keys(byMinistry).length === 0 ? (
+                ) : sortedDepts.length === 0 ? (
                     <Card>
                         <CardContent className="py-12 text-center text-muted-foreground">
                             No templates yet. Create one to get started.
                         </CardContent>
                     </Card>
                 ) : (
-                    Object.entries(byMinistry).map(([mId, mTemplates]) => (
-                        <div key={mId}>
-                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                                {ministries.find(m => m.id === mId)?.name || mId}
-                            </h2>
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                {(mTemplates as any[]).map((t: any) => (
-                                    <Card key={t.id}>
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-start justify-between">
-                                                <div>
-                                                    <CardTitle className="text-base">{t.name}</CardTitle>
-                                                    {t.isDefault && <Badge variant="secondary" className="mt-1 text-xs">Default</Badge>}
-                                                </div>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                                                    onClick={() => handleDelete(t.id)}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="pt-0">
-                                            <div className="space-y-1">
-                                                {t.roles.map((r: any) => (
-                                                    <div key={r.id} className="flex items-center justify-between text-sm">
-                                                        <span>{r.roleName}</span>
-                                                        <Badge variant="outline" className="text-xs">×{r.count}</Badge>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <p className="text-xs text-muted-foreground mt-2">
-                                                {t.roles.reduce((s: number, r: any) => s + r.count, 0)} total slots
-                                            </p>
-                                        </CardContent>
-                                    </Card>
+                    sortedDepts.map(deptName => {
+                        const deptCode = DEPT_NAME_TO_CODE[deptName] || '';
+                        return (
+                            <div key={deptName}>
+                                {/* Department header */}
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold shrink-0">
+                                        {deptCode}
+                                    </div>
+                                    <h2 className="text-base font-bold">{deptName}</h2>
+                                </div>
+
+                                {Object.entries(byDept[deptName]).map(([ministryName, mTemplates]) => (
+                                    <div key={ministryName} className="mb-6 ml-11">
+                                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                                            {ministryName}
+                                        </h3>
+                                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                            {(mTemplates as any[]).map((t: any) => (
+                                                <Card key={t.id}>
+                                                    <CardHeader className="pb-2">
+                                                        <div className="flex items-start justify-between">
+                                                            <div>
+                                                                <CardTitle className="text-base">{t.name}</CardTitle>
+                                                                {t.isDefault && <Badge variant="secondary" className="mt-1 text-xs">Default</Badge>}
+                                                            </div>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                                                                onClick={() => handleDelete(t.id)}>
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent className="pt-0">
+                                                        <div className="space-y-1">
+                                                            {t.roles.map((r: any) => (
+                                                                <div key={r.id} className="flex items-center justify-between text-sm">
+                                                                    <span>{r.roleName}</span>
+                                                                    <Badge variant="outline" className="text-xs">×{r.count}</Badge>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mt-2">
+                                                            {t.roles.reduce((s: number, r: any) => s + r.count, 0)} total slots
+                                                        </p>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
 
@@ -163,8 +233,11 @@ export default function TemplatesPage() {
                                     <SelectValue placeholder="Select ministry" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {ministries.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                    {visibleMinistries.map((m: any) => (
+                                        <SelectItem key={m.id} value={m.id}>
+                                            <span className="text-xs text-muted-foreground mr-2">{getDeptCode(m)}</span>
+                                            {m.name}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -177,7 +250,6 @@ export default function TemplatesPage() {
                             <Checkbox id="isDefault" checked={isDefault} onCheckedChange={v => setIsDefault(!!v)} />
                             <Label htmlFor="isDefault" className="font-normal cursor-pointer">Set as default template for this ministry</Label>
                         </div>
-
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label>Roles</Label>
@@ -188,18 +260,10 @@ export default function TemplatesPage() {
                             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                                 {roles.map((role, i) => (
                                     <div key={i} className="flex items-center gap-2">
-                                        <Input
-                                            className="flex-1"
-                                            placeholder="Role name"
-                                            value={role.roleName}
-                                            onChange={e => updateRole(i, "roleName", e.target.value)}
-                                        />
-                                        <Input
-                                            type="number" min={1} max={20}
-                                            className="w-16 text-center"
-                                            value={role.count}
-                                            onChange={e => updateRole(i, "count", parseInt(e.target.value) || 1)}
-                                        />
+                                        <Input className="flex-1" placeholder="Role name" value={role.roleName}
+                                            onChange={e => updateRole(i, "roleName", e.target.value)} />
+                                        <Input type="number" min={1} max={20} className="w-16 text-center" value={role.count}
+                                            onChange={e => updateRole(i, "count", parseInt(e.target.value) || 1)} />
                                         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive"
                                             onClick={() => removeRole(i)} disabled={roles.length === 1}>
                                             <X className="h-3.5 w-3.5" />
