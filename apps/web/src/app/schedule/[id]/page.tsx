@@ -90,21 +90,22 @@ export default function ScheduleDetailPage() {
         const targetMinistry = targetMinistryId ? ministries.find((m: any) => m.id === targetMinistryId) : null;
         const targetDept = targetMinistry?.department || (targetMinistry as any)?.departmentCode;
 
-        // First: scope to ministry/department
-        const scoped = workers.filter((w: any) => {
+        // First: workers directly in the target ministry
+        const inMinistry = workers.filter((w: any) => {
             if (w.status !== "Active") return false;
-            if (!targetMinistryId) return true;
-            const sameMinistry = w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId;
-            if (sameMinistry) return true;
-            if (targetDept) {
-                const workerMajorMinistry = ministries.find((m: any) => m.id === w.majorMinistryId);
-                const workerDept = workerMajorMinistry?.department || (workerMajorMinistry as any)?.departmentCode;
-                if (workerDept && workerDept === targetDept) return true;
-            }
-            return false;
+            return w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId;
         });
 
-        // Then: apply name search within scoped list
+        // Use ministry-scoped list; only fall back to dept if ministry has zero workers
+        const scoped = inMinistry.length > 0 ? inMinistry : workers.filter((w: any) => {
+            if (w.status !== "Active") return false;
+            if (!targetDept) return false;
+            const workerMinistry = ministries.find((m: any) => m.id === w.majorMinistryId);
+            const workerDept = workerMinistry?.department || (workerMinistry as any)?.departmentCode;
+            return workerDept === targetDept;
+        });
+
+        // Apply name search within scoped list
         if (!workerSearch.trim()) return scoped;
         const q = workerSearch.toLowerCase();
         return scoped.filter((w: any) =>
@@ -622,7 +623,7 @@ export default function ScheduleDetailPage() {
                                     autoFocus
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Showing workers from <strong>{assignDialog ? getMinistryName(assignDialog.ministryId) : ""}</strong> and same department.
+                                    Showing workers from <strong>{assignDialog ? getMinistryName(assignDialog.ministryId) : ""}</strong>. Search by name or Worker ID.
                                 </p>
                                 <div className="max-h-64 overflow-y-auto space-y-1">
                                     <button
