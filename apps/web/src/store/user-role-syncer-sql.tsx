@@ -163,7 +163,7 @@ export function UserRoleSyncerSQL() {
       workerProfile: workerProfile ?? null,
       allRoles: (allRoles as any) ?? [],
       myMinistryIds,
-      isSuperAdmin,
+      isSuperAdmin: effectiveIsSuperAdmin, // use effective — false during impersonation
       isMinistryHead: sa || isMinistryHead,
       isMinistryApprover: sa || isMinistryApprover,
       isMealStubAssigner: sa || isMealStubAssigner,
