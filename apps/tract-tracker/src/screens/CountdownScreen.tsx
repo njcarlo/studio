@@ -7,11 +7,12 @@ const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf
 const EVENT_DATE = new Date('2026-06-12T00:00:00+08:00'); // June 12, Philippine time
 
 const REMINDERS = [
-    'Bring enough tracts for your barangay.',
-    'Wear your COG Philippines shirt.',
-    'Coordinate with your team leader.',
-    'Log every tract you give using the app.',
-    'Pray before you head out!',
+    'Small Bag',
+    'Water bottle',
+    'Snacks',
+    'Umbrella or cap',
+    'Face towel / wipes',
+    'Tracts',
 ];
 
 function getTimeLeft() {
@@ -58,7 +59,7 @@ export default function CountdownScreen() {
 
                     {/* Reminders */}
                     <View style={styles.remindersBox}>
-                        <Text style={styles.remindersTitle}>Things to remember:</Text>
+                        <Text style={styles.remindersTitle}>Things to bring:</Text>
                         {REMINDERS.map((r, i) => (
                             <Text key={i} style={styles.reminderItem}>• {r}</Text>
                         ))}
