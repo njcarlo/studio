@@ -62,15 +62,18 @@ export default function ScheduleDetailPage() {
         }, {});
     }, [schedule]);
 
+    const getMinistryName = (id: string) => {
+        const name = ministries.find(m => m.id === id)?.name || id;
+        return name.replace(/^[WORDA]-/i, '');
+    };
+
     const ministryIds = Object.keys(byMinistry);
     const allMinistryIds = useMemo(() => {
         const fromAssignments = new Set(ministryIds);
         let ids = [...fromAssignments];
-        // Ministry Schedulers (no canAssignSchedulers) only see their own ministry
         if (canManageSchedule && !canAssignSchedulers && workerProfile?.majorMinistryId) {
             ids = ids.filter(id => id === workerProfile.majorMinistryId || id === workerProfile.minorMinistryId);
         }
-        // Sort alphabetically by ministry name (strip dept prefix)
         return ids.sort((a, b) => getMinistryName(a).localeCompare(getMinistryName(b)));
     }, [ministryIds, canManageSchedule, canAssignSchedulers, workerProfile, ministries]);
 
@@ -80,12 +83,6 @@ export default function ScheduleDetailPage() {
             next.has(id) ? next.delete(id) : next.add(id);
             return next;
         });
-    };
-
-    const getMinistryName = (id: string) => {
-        const name = ministries.find(m => m.id === id)?.name || id;
-        // Strip department prefix like "W-", "O-", "R-", "D-", "A-"
-        return name.replace(/^[WORDA]-/i, '');
     };
 
     const filteredWorkers = useMemo(() => {
