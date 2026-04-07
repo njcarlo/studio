@@ -80,8 +80,11 @@ export default function ScheduleDetailPage() {
         });
     };
 
-    const getMinistryName = (id: string) =>
-        ministries.find(m => m.id === id)?.name || id;
+    const getMinistryName = (id: string) => {
+        const name = ministries.find(m => m.id === id)?.name || id;
+        // Strip department prefix like "W-", "O-", "R-", "D-", "A-"
+        return name.replace(/^[WORDA]-/i, '');
+    };
 
     const filteredWorkers = useMemo(() => {
         const targetMinistryId = assignDialog?.ministryId;

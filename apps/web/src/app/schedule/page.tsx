@@ -14,8 +14,11 @@ import { Label } from "@studio/ui";
 import { Textarea } from "@studio/ui";
 import { PlusCircle, CalendarDays, ChevronRight, Trash2, LoaderCircle, LayoutTemplate } from "lucide-react";
 import { useServiceSchedules } from "@/hooks/use-schedule";
+import { useMinistries } from "@/hooks/use-ministries";
 import { useAuthStore } from "@studio/store";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+import { upsertAssignment } from "@/actions/schedule";
 
 const STATUS_COLORS: Record<string, string> = {
     Draft: "secondary",
@@ -28,6 +31,8 @@ export default function SchedulePage() {
     const { toast } = useToast();
     const { user } = useAuthStore();
     const { schedules, isLoading, createSchedule, deleteSchedule } = useServiceSchedules();
+    const { ministries } = useMinistries();
+    const { canAssignSchedulers, isSuperAdmin, workerProfile } = useUserRole();
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newDate, setNewDate] = useState(() => {
@@ -49,6 +54,27 @@ export default function SchedulePage() {
                 notes: newNotes || undefined,
                 createdBy: user?.uid || "system",
             });
+
+            // Department Schedulers: auto-add all ministries in their department alphabetically
+            if ((canAssignSchedulers || isSuperAdmin) && workerProfile?.majorMinistryId) {
+                const userMinistry = ministries.find((m: any) => m.id === workerProfile.majorMinistryId);
+                const userDept = (userMinistry as any)?.department || (userMinistry as any)?.departmentCode;
+                if (userDept) {
+                    const deptMinistries = ministries
+                        .filter((m: any) => m.department === userDept || m.departmentCode === userDept)
+                        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+                    for (const ministry of deptMinistries) {
+                        await upsertAssignment({
+                            scheduleId: schedule.id,
+                            ministryId: ministry.id,
+                            roleName: 'Role',
+                            order: 0,
+                        });
+                    }
+                }
+            }
+
             toast({ title: "Schedule created" });
             setIsCreateOpen(false);
             router.push(`/schedule/${schedule.id}`);
