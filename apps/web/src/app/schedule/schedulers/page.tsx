@@ -44,20 +44,35 @@ export default function SchedulersPage() {
     const [assignDialog, setAssignDialog] = useState<{ ministryId: string; ministryName: string } | null>(null);
     const [workerSearch, setWorkerSearch] = useState("");
 
-    // Department Schedulers can only manage ministries in their department
+    // Department Schedulers can only manage ministries in their department, sorted alpha
     const visibleMinistries = useMemo(() => {
-        if (isSuperAdmin || !workerProfile?.majorMinistryId) return ministries;
-        const userMinistry = ministries.find((m: any) => m.id === workerProfile.majorMinistryId);
+        // Super admins see everything
+        if (isSuperAdmin) {
+            return [...ministries].sort((a: any, b: any) => stripPrefix(a.name).localeCompare(stripPrefix(b.name)));
+        }
+        // Department Schedulers: scope to their department
+        const userMinistry = ministries.find((m: any) =>
+            m.id === workerProfile?.majorMinistryId || m.id === workerProfile?.minorMinistryId
+        );
         const userDept = (userMinistry as any)?.department || (userMinistry as any)?.departmentCode;
-        if (!userDept) return ministries;
-        return ministries.filter((m: any) => m.department === userDept || m.departmentCode === userDept);
+        if (!userDept) return []; // no ministry set — show nothing
+        return ministries
+            .filter((m: any) => m.department === userDept || m.departmentCode === userDept)
+            .sort((a: any, b: any) => stripPrefix(a.name).localeCompare(stripPrefix(b.name)));
     }, [ministries, isSuperAdmin, workerProfile]);
 
-    const filteredWorkers = useMemo(() =>
-        workers.filter((w: any) =>
-            w.status === "Active" &&
-            `${w.firstName} ${w.lastName}`.toLowerCase().includes(workerSearch.toLowerCase())
-        ), [workers, workerSearch]);
+    const stripPrefix = (name: string) => name.replace(/^[WORDA]-/i, '');
+
+    // Filter workers to only those in the target ministry (major or minor)
+    const filteredWorkers = useMemo(() => {
+        const targetMinistryId = assignDialog?.ministryId;
+        return workers.filter((w: any) => {
+            if (w.status !== "Active") return false;
+            if (workerSearch && !`${w.firstName} ${w.lastName}`.toLowerCase().includes(workerSearch.toLowerCase())) return false;
+            if (!targetMinistryId) return true;
+            return w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId;
+        });
+    }, [workers, workerSearch, assignDialog?.ministryId]);
 
     const getScheduler = (ministryId: string) => {
         const schedulerId = schedulerData?.find(s => s.id === ministryId)?.schedulerId;
@@ -102,7 +117,7 @@ export default function SchedulersPage() {
                         return (
                             <Card key={ministry.id}>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-semibold">{ministry.name}</CardTitle>
+                                    <CardTitle className="text-sm font-semibold">{stripPrefix(ministry.name)}</CardTitle>
                                     <CardDescription className="text-xs">{ministry.department || ministry.departmentCode}</CardDescription>
                                 </CardHeader>
                                 <CardContent className="pt-0">
@@ -130,7 +145,7 @@ export default function SchedulersPage() {
                                             <Users className="h-4 w-4" />
                                             <span className="text-sm flex-1">No scheduler assigned</span>
                                             <Button variant="outline" size="sm" className="h-7 text-xs"
-                                                onClick={() => { setAssignDialog({ ministryId: ministry.id, ministryName: ministry.name }); setWorkerSearch(""); }}>
+                                                onClick={() => { setAssignDialog({ ministryId: ministry.id, ministryName: stripPrefix(ministry.name) }); setWorkerSearch(""); }}>
                                                 <UserPlus className="mr-1 h-3 w-3" /> Assign
                                             </Button>
                                         </div>
