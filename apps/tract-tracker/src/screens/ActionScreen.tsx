@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
-    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput,
+    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -220,11 +220,29 @@ export default function ActionScreen() {
         if (setupDone) loadCounts();
     }, [setupDone, loadCounts]);
 
+    // Refresh counts when app comes back to foreground
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', state => {
+            if (state === 'active' && setupDone) loadCounts();
+        });
+        return () => sub.remove();
+    }, [setupDone, loadCounts]);
+
     const handleIncrement = async () => {
         if (!user || isIncrementing) return;
         setIsIncrementing(true);
         try {
-            const newCount = personalCount + 1;
+            // Always fetch the latest count from DB to avoid stale local state
+            const { data: fresh, error: fetchError } = await supabaseAdmin
+                .from('tract_users')
+                .select('tracts_given')
+                .eq('id', user.id)
+                .single();
+            if (fetchError) throw fetchError;
+
+            const currentCount = fresh?.tracts_given ?? personalCount;
+            const newCount = currentCount + 1;
+
             const { data, error } = await supabaseAdmin
                 .from('tract_users')
                 .update({ tracts_given: newCount })
@@ -236,7 +254,7 @@ export default function ActionScreen() {
                 return;
             }
             setPersonalCount(newCount);
-            setRegionalCount(prev => prev + 1);
+            setRegionalCount(prev => prev + (newCount - currentCount));
         } catch (e: any) {
             Alert.alert('Error', e.message || 'Could not update count');
         } finally {
