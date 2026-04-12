@@ -398,6 +398,69 @@ export async function getScheduleHistory() {
 
 // ── Scheduler Assignment ──────────────────────────────────────────────────────
 
+// ── Worship Slots ─────────────────────────────────────────────────────────────
+
+export async function getWorshipSlots(scheduleId: string) {
+    return prisma.worshipSlot.findMany({
+        where: { scheduleId },
+        include: { workers: { orderBy: { createdAt: 'asc' } } },
+        orderBy: { order: 'asc' },
+    });
+}
+
+export async function createWorshipSlot(data: {
+    scheduleId: string;
+    slotName: string;
+    notes?: string;
+    order?: number;
+}) {
+    const isTws = data.slotName.toUpperCase() === 'TWS';
+    const slot = await prisma.worshipSlot.create({
+        data: {
+            scheduleId: data.scheduleId,
+            slotName: data.slotName,
+            isTws,
+            notes: data.notes ?? null,
+            order: data.order ?? 0,
+        },
+        include: { workers: true },
+    });
+    revalidatePath(`/schedule/${data.scheduleId}`);
+    return slot;
+}
+
+export async function updateWorshipSlot(id: string, data: { slotName?: string; notes?: string; order?: number }) {
+    const updateData: any = { ...data };
+    if (data.slotName !== undefined) {
+        updateData.isTws = data.slotName.toUpperCase() === 'TWS';
+    }
+    const slot = await prisma.worshipSlot.update({ where: { id }, data: updateData, include: { workers: true } });
+    revalidatePath(`/schedule/${slot.scheduleId}`);
+    return slot;
+}
+
+export async function deleteWorshipSlot(id: string) {
+    const slot = await prisma.worshipSlot.delete({ where: { id } });
+    revalidatePath(`/schedule/${slot.scheduleId}`);
+}
+
+export async function addWorkerToWorshipSlot(slotId: string, workerId: string, workerName: string, role?: string) {
+    const entry = await prisma.worshipSlotWorker.create({
+        data: { slotId, workerId, workerName, role: role ?? null },
+    });
+    const slot = await prisma.worshipSlot.findUnique({ where: { id: slotId } });
+    if (slot) revalidatePath(`/schedule/${slot.scheduleId}`);
+    return entry;
+}
+
+export async function removeWorkerFromWorshipSlot(id: string) {
+    const entry = await prisma.worshipSlotWorker.delete({ where: { id } });
+    const slot = await prisma.worshipSlot.findUnique({ where: { id: entry.slotId } });
+    if (slot) revalidatePath(`/schedule/${slot.scheduleId}`);
+}
+
+// ── Scheduler Assignment ──────────────────────────────────────────────────────
+
 export async function assignMinistryScheduler(ministryId: string, workerId: string | null) {
     await (prisma.ministry as any).update({
         where: { id: ministryId },

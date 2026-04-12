@@ -483,6 +483,34 @@ model InAppNotification {
   createdAt DateTime @default(now())
 }
 
+// ── Worship Slots ─────────────────────────────────────────────────────────────
+
+model WorshipSlot {
+  id         String              @id @default(uuid())
+  scheduleId String
+  schedule   ServiceSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  slotName   String              // e.g. "TWS", "Pre-service", "Offering"
+  isTws      Boolean             @default(false) // true when slotName = "TWS"
+  order      Int                 @default(0)
+  notes      String?
+  createdAt  DateTime            @default(now())
+  workers    WorshipSlotWorker[]
+
+  @@index([scheduleId])
+}
+
+model WorshipSlotWorker {
+  id         String      @id @default(uuid())
+  slotId     String
+  slot       WorshipSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  workerId   String
+  workerName String
+  role       String?     // optional role label within the slot
+  createdAt  DateTime    @default(now())
+
+  @@index([slotId])
+}
+
 // ── Sunday Service Scheduling ─────────────────────────────────────────────────
 
 model ServiceSchedule {
@@ -496,7 +524,8 @@ model ServiceSchedule {
   createdBy   String
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
-  assignments ScheduleAssignment[]
+  assignments  ScheduleAssignment[]
+  worshipSlots WorshipSlot[]
 }
 
 model ServiceTemplate {

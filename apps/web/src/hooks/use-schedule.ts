@@ -8,6 +8,8 @@ import {
     getServiceTemplates, createServiceTemplate, updateServiceTemplate, deleteServiceTemplate,
     publishScheduleAndNotify, confirmAssignment, getScheduleConfirmationStatus, findWorkerByWorkerId,
     getWorkerConflicts, togglePublicSchedule, getScheduleHistory, setAttendanceStatus,
+    getWorshipSlots, createWorshipSlot, updateWorshipSlot, deleteWorshipSlot,
+    addWorkerToWorshipSlot, removeWorkerFromWorshipSlot,
 } from '@/actions/schedule';
 
 export function useServiceSchedules() {
@@ -165,4 +167,53 @@ export function useScheduleHistory() {
         queryKey: ['schedule-history'],
         queryFn: () => getScheduleHistory(),
     });
+}
+
+export function useWorshipSlots(scheduleId: string) {
+    const qc = useQueryClient();
+    const key = ['worship-slots', scheduleId];
+
+    const { data, isLoading } = useQuery({
+        queryKey: key,
+        queryFn: () => getWorshipSlots(scheduleId),
+        enabled: !!scheduleId,
+    });
+
+    const createMutation = useMutation({
+        mutationFn: (d: { slotName: string; notes?: string; order?: number }) =>
+            createWorshipSlot({ scheduleId, ...d }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: { slotName?: string; notes?: string } }) =>
+            updateWorshipSlot(id, data),
+        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: deleteWorshipSlot,
+        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    });
+
+    const addWorkerMutation = useMutation({
+        mutationFn: ({ slotId, workerId, workerName, role }: { slotId: string; workerId: string; workerName: string; role?: string }) =>
+            addWorkerToWorshipSlot(slotId, workerId, workerName, role),
+        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    });
+
+    const removeWorkerMutation = useMutation({
+        mutationFn: removeWorkerFromWorshipSlot,
+        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    });
+
+    return {
+        slots: data || [],
+        isLoading,
+        createSlot: createMutation.mutateAsync,
+        updateSlot: updateMutation.mutateAsync,
+        deleteSlot: deleteMutation.mutateAsync,
+        addWorker: addWorkerMutation.mutateAsync,
+        removeWorker: removeWorkerMutation.mutateAsync,
+    };
 }
