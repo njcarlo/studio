@@ -228,6 +228,39 @@ export default function ActionScreen() {
         return () => sub.remove();
     }, [setupDone, loadCounts]);
 
+    // Realtime subscription — update regional count live as others tap +1
+    useEffect(() => {
+        if (!setupDone) return;
+
+        const channel = supabaseAdmin
+            .channel('tract_users_realtime')
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'tract_users' },
+                (payload) => {
+                    const updated = payload.new as any;
+                    const old = payload.old as any;
+                    const diff = (updated.tracts_given ?? 0) - (old.tracts_given ?? 0);
+                    if (diff === 0) return;
+
+                    // Update personal count if it's our own row
+                    if (updated.id === user?.id) {
+                        setPersonalCount(updated.tracts_given ?? 0);
+                    }
+
+                    // Update regional count if same region
+                    if (!authState.region || updated.region === authState.region) {
+                        setRegionalCount(prev => prev + diff);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabaseAdmin.removeChannel(channel);
+        };
+    }, [setupDone, user?.id, authState.region]);
+
     const handleIncrement = async () => {
         if (!user || isIncrementing) return;
         setIsIncrementing(true);

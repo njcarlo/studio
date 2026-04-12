@@ -83,7 +83,21 @@ export default function LiveBoardScreen() {
     useEffect(() => {
         fetchData();
         const interval = setInterval(fetchData, REFRESH_INTERVAL);
-        return () => clearInterval(interval);
+
+        // Realtime subscription — refetch on any tract_users update
+        const channel = supabaseAdmin
+            .channel('liveboard_realtime')
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'tract_users' },
+                () => fetchData()
+            )
+            .subscribe();
+
+        return () => {
+            clearInterval(interval);
+            supabaseAdmin.removeChannel(channel);
+        };
     }, [fetchData]);
 
     const rows = tab === 'region' ? regionRows : barangayRows;
