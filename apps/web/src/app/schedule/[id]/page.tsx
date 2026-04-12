@@ -370,9 +370,6 @@ export default function ScheduleDetailPage() {
             <Tabs defaultValue="assignments" className="mt-6">
                 <TabsList>
                     <TabsTrigger value="assignments">Assignments</TabsTrigger>
-                    {hasWorshipMinistries && (
-                        <TabsTrigger value="worship-slots">Worship Slots</TabsTrigger>
-                    )}
                     {(canConfirmSchedule || schedule.status === "Published") && (
                         <TabsTrigger value="confirmation">
                             Confirmation Status
@@ -548,89 +545,87 @@ export default function ScheduleDetailPage() {
                 })}
             </div>
 
-                </TabsContent>
-
-                {/* Worship Slots Tab */}
-                {hasWorshipMinistries && (
-                <TabsContent value="worship-slots">
-                    <div className="mt-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Worship Slots</h2>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Named time blocks within the service (e.g. TWS, Pre-service, Offering). Other Worship ministries are still assigned separately above.
-                                </p>
-                            </div>
-                            {canManageSchedule && (
-                                <Button size="sm" onClick={() => { setNewSlotName(""); setAddSlotOpen(true); }}>
-                                    <Plus className="mr-1 h-4 w-4" /> Add Slot
-                                </Button>
-                            )}
+            {/* Worship Slots — shown inline under ministry cards when Worship dept is present */}
+            {hasWorshipMinistries && (
+                <div className="mt-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Worship Slots</h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Named service slots (e.g. TWS, Pre-service, Offering). Worship ministries above are still assigned separately.
+                            </p>
                         </div>
-
-                        {worshipSlots.length === 0 && (
-                            <Card>
-                                <CardContent className="py-10 text-center text-muted-foreground text-sm">
-                                    No worship slots yet. Add a slot like "TWS", "Pre-service", or "Offering".
-                                </CardContent>
-                            </Card>
+                        {canManageSchedule && (
+                            <Button size="sm" onClick={() => { setNewSlotName(""); setAddSlotOpen(true); }}>
+                                <Plus className="mr-1 h-4 w-4" /> Add Slot
+                            </Button>
                         )}
-
-                        {worshipSlots.map((slot: any) => (
-                            <Card key={slot.id}>
-                                <CardHeader className="py-3 px-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <CardTitle className="text-base">{slot.slotName}</CardTitle>
-                                            {slot.isTws && (
-                                                <Badge variant="secondary" className="text-xs">Main Service</Badge>
-                                            )}
-                                            <span className="text-xs text-muted-foreground">{slot.workers.length} worker{slot.workers.length !== 1 ? 's' : ''}</span>
-                                        </div>
-                                        {canManageSchedule && (
-                                            <div className="flex items-center gap-1">
-                                                <Button size="sm" variant="outline" className="h-7 text-xs"
-                                                    onClick={() => { setSlotWorkerDialog(slot.id); setSlotWorkerSearch(""); setSlotWorkerRole(""); }}>
-                                                    <UserPlus className="mr-1 h-3 w-3" /> Assign
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                                                    onClick={() => deleteSlot(slot.id)}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    {slot.notes && <p className="text-xs text-muted-foreground mt-1">{slot.notes}</p>}
-                                </CardHeader>
-                                {slot.workers.length > 0 && (
-                                    <CardContent className="pt-0 pb-3 px-4">
-                                        <div className="space-y-1.5">
-                                            {slot.workers.map((sw: any) => (
-                                                <div key={sw.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
-                                                    <Avatar className="h-6 w-6">
-                                                        <AvatarImage src={workers.find((w: any) => w.id === sw.workerId)?.avatarUrl} />
-                                                        <AvatarFallback className="text-[10px]">
-                                                            {sw.workerName.split(" ").map((n: string) => n[0]).join("")}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="text-sm flex-1">{sw.workerName}</span>
-                                                    {sw.role && <span className="text-xs text-muted-foreground">{sw.role}</span>}
-                                                    {canManageSchedule && (
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                                                            onClick={() => removeWorshipWorker(sw.id)}>
-                                                            <X className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                )}
-                            </Card>
-                        ))}
                     </div>
+
+                    {worshipSlots.length === 0 && (
+                        <Card>
+                            <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                                No worship slots yet. Add a slot like "TWS", "Pre-service", or "Offering".
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {worshipSlots.map((slot: any) => (
+                        <Card key={slot.id}>
+                            <CardHeader className="py-3 px-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-base">{slot.slotName}</CardTitle>
+                                        {slot.isTws && (
+                                            <Badge variant="secondary" className="text-xs">Tuesday Worship Service</Badge>
+                                        )}
+                                        <span className="text-xs text-muted-foreground">{slot.workers.length} worker{slot.workers.length !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    {canManageSchedule && (
+                                        <div className="flex items-center gap-1">
+                                            <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                onClick={() => { setSlotWorkerDialog(slot.id); setSlotWorkerSearch(""); setSlotWorkerRole(""); }}>
+                                                <UserPlus className="mr-1 h-3 w-3" /> Assign
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                                                onClick={() => deleteSlot(slot.id)}>
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                                {slot.notes && <p className="text-xs text-muted-foreground mt-1">{slot.notes}</p>}
+                            </CardHeader>
+                            {slot.workers.length > 0 && (
+                                <CardContent className="pt-0 pb-3 px-4">
+                                    <div className="space-y-1.5">
+                                        {slot.workers.map((sw: any) => (
+                                            <div key={sw.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={workers.find((w: any) => w.id === sw.workerId)?.avatarUrl} />
+                                                    <AvatarFallback className="text-[10px]">
+                                                        {sw.workerName.split(" ").map((n: string) => n[0]).join("")}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-sm flex-1">{sw.workerName}</span>
+                                                {sw.role && <span className="text-xs text-muted-foreground">{sw.role}</span>}
+                                                {canManageSchedule && (
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                                                        onClick={() => removeWorshipWorker(sw.id)}>
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+                    ))}
+                </div>
+            )}
+
                 </TabsContent>
-                )}
 
                 {(canConfirmSchedule || schedule.status === "Published") && (
                 <TabsContent value="confirmation">
@@ -895,7 +890,7 @@ export default function ScheduleDetailPage() {
                                 autoFocus
                             />
                             {newSlotName.toUpperCase() === 'TWS' && (
-                                <p className="text-xs text-muted-foreground">TWS = The Worship Service (main service slot)</p>
+                                <p className="text-xs text-muted-foreground">TWS = Tuesday Worship Service</p>
                             )}
                         </div>
                     </div>
