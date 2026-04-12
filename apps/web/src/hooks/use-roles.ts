@@ -9,6 +9,7 @@ export function useRoles() {
     const { data, isLoading, error } = useQuery({
         queryKey: ['roles'],
         queryFn: () => getRoles(),
+        staleTime: 5 * 60_000, // roles rarely change — cache for 5 min
     });
 
     const createMutation = useMutation({

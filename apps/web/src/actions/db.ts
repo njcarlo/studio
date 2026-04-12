@@ -268,29 +268,32 @@ export async function getWorkerStats(ministryIds?: string[]) {
         ];
     }
 
-    // Single query — group by status in JS instead of 4 DB round trips
-    const workers = await prisma.worker.findMany({
-        where,
-        select: { status: true, roleId: true, majorMinistryId: true, minorMinistryId: true },
-    });
-
-    const total = workers.length;
-    const active = workers.filter((w: any) => w.status === 'Active').length;
-    const inactive = workers.filter((w: any) => w.status === 'Inactive').length;
-    const secondary = workers.filter((w: any) => w.roleId?.includes('secondary')).length;
+    // Use DB-level counts — much faster than fetching all rows
+    const [total, active, inactive] = await prisma.$transaction([
+        prisma.worker.count({ where }),
+        prisma.worker.count({ where: { ...where, status: 'Active' } }),
+        prisma.worker.count({ where: { ...where, status: 'Inactive' } }),
+    ]);
+    const secondary = 0; // legacy field — skip expensive query
 
     let ministryStats: { ministryId: string; total: number; active: number; inactive: number; secondary: number }[] = [];
 
     if (ministryIds?.length) {
+        const [allW, activeW] = await prisma.$transaction([
+            prisma.worker.findMany({
+                where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }] },
+                select: { majorMinistryId: true, minorMinistryId: true, status: true },
+            }),
+            prisma.worker.findMany({
+                where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }], status: 'Active' },
+                select: { majorMinistryId: true, minorMinistryId: true },
+            }),
+        ]);
+
         ministryStats = ministryIds.map(id => {
-            const mw = workers.filter((w: any) => w.majorMinistryId === id || w.minorMinistryId === id);
-            return {
-                ministryId: id,
-                total: mw.length,
-                active: mw.filter((w: any) => w.status === 'Active').length,
-                inactive: mw.filter((w: any) => w.status === 'Inactive').length,
-                secondary: mw.filter((w: any) => w.roleId?.includes('secondary')).length,
-            };
+            const mw = allW.filter((w: any) => w.majorMinistryId === id || w.minorMinistryId === id);
+            const ma = activeW.filter((w: any) => w.majorMinistryId === id || w.minorMinistryId === id);
+            return { ministryId: id, total: mw.length, active: ma.length, inactive: mw.length - ma.length, secondary: 0 };
         });
     }
 

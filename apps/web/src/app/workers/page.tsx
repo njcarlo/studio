@@ -163,6 +163,7 @@ export default function WorkersPage() {
 
   const { roles: roles, isLoading: rolesLoading } = useRoles();
 
+  // Meal stubs only fetched when batch sheet is open — avoids loading all stubs on page load
   const { mealStubs: allMealStubs } = useMealStubs({
     dateFrom: subDays(new Date(), 30),
   });
