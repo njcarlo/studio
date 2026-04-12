@@ -2,12 +2,10 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import { Input } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Badge } from "@studio/ui";
-import { Card, CardContent } from "@studio/ui";
 import { ArrowLeft, Plus, X, CheckCircle2, LoaderCircle, Trash2 } from "lucide-react";
 import { useWorshipSlots } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
@@ -25,7 +23,6 @@ export default function SlotRolesPage() {
 
     const slot = slots.find((s: any) => s.id === slotId);
 
-    // Draft state — roles with assigned workers
     const [draftRoles, setDraftRoles] = useState<{ roleName: string; workers: { id: string; name: string }[] }[]>([]);
     const [roleInput, setRoleInput] = useState("");
     const [activeRoleIdx, setActiveRoleIdx] = useState<number | null>(null);
@@ -33,7 +30,6 @@ export default function SlotRolesPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [initialized, setInitialized] = useState(false);
 
-    // Init draft from existing slot data once loaded
     useEffect(() => {
         if (!slot || initialized) return;
         const existing: Record<string, { id: string; name: string }[]> = {};
@@ -48,7 +44,6 @@ export default function SlotRolesPage() {
         setInitialized(true);
     }, [slot, initialized]);
 
-    // Worship workers scoped + filtered
     const worshipWorkers = useMemo(() => {
         const base = workers.filter((w: any) => {
             if (w.status !== "Active") return false;
@@ -97,9 +92,7 @@ export default function SlotRolesPage() {
         if (!slot) return;
         setIsSaving(true);
         try {
-            // Remove all existing
             for (const sw of slot.workers) await removeWorker(sw.id);
-            // Re-add from draft
             for (const dr of draftRoles) {
                 for (const w of dr.workers) {
                     await addWorker({
@@ -123,34 +116,32 @@ export default function SlotRolesPage() {
 
     if (isLoading) {
         return (
-            <AppLayout>
-                <div className="flex justify-center py-20">
-                    <LoaderCircle className="h-8 w-8 animate-spin" />
-                </div>
-            </AppLayout>
+            <div className="fixed inset-0 flex items-center justify-center bg-background">
+                <LoaderCircle className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
         );
     }
 
     if (!slot) {
         return (
-            <AppLayout>
+            <div className="fixed inset-0 flex items-center justify-center bg-background">
                 <p className="text-muted-foreground">Slot not found.</p>
-            </AppLayout>
+            </div>
         );
     }
 
     return (
-        <AppLayout>
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="fixed inset-0 flex flex-col bg-background overflow-hidden">
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-6 py-3 border-b bg-card shrink-0">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" onClick={() => router.push(`/schedule/${scheduleId}`)}>
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <div>
-                        <h1 className="text-2xl font-headline font-bold">{slot.slotName}</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Manage roles &amp; assign Worship workers · {totalAssigned} worker{totalAssigned !== 1 ? "s" : ""} assigned
+                        <h1 className="text-lg font-semibold leading-tight">{slot.slotName} — Manage Roles</h1>
+                        <p className="text-xs text-muted-foreground">
+                            {draftRoles.length} role{draftRoles.length !== 1 ? "s" : ""} · {totalAssigned} worker{totalAssigned !== 1 ? "s" : ""} assigned
                         </p>
                     </div>
                 </div>
@@ -165,22 +156,23 @@ export default function SlotRolesPage() {
                 </div>
             </div>
 
-            {/* Split layout */}
-            <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-4 h-[calc(100vh-200px)]">
+            {/* Body — two columns */}
+            <div className="flex flex-1 overflow-hidden">
 
-                {/* Left — Roles */}
-                <div className="flex flex-col border rounded-lg overflow-hidden bg-card">
-                    <div className="p-3 border-b bg-muted/30">
+                {/* Left — Roles panel */}
+                <div className="w-72 border-r flex flex-col shrink-0 bg-card">
+                    <div className="px-4 py-3 border-b">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Roles</p>
                         <div className="flex gap-2">
                             <Input
                                 value={roleInput}
                                 onChange={e => setRoleInput(e.target.value)}
                                 placeholder="e.g. Worship Leader"
-                                className="h-8 text-sm"
+                                className="h-9 text-sm"
                                 onKeyDown={e => e.key === "Enter" && addRole()}
+                                autoFocus
                             />
-                            <Button size="sm" className="h-8 px-2 shrink-0" onClick={addRole} disabled={!roleInput.trim()}>
+                            <Button size="sm" className="h-9 px-3 shrink-0" onClick={addRole} disabled={!roleInput.trim()}>
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </div>
@@ -188,8 +180,8 @@ export default function SlotRolesPage() {
 
                     <div className="flex-1 overflow-y-auto">
                         {draftRoles.length === 0 && (
-                            <p className="text-xs text-muted-foreground text-center py-8 px-4">
-                                Add a role above to get started
+                            <p className="text-xs text-muted-foreground text-center py-10 px-4">
+                                Type a role name above and press Enter or +
                             </p>
                         )}
                         {draftRoles.map((dr, idx) => (
@@ -216,23 +208,23 @@ export default function SlotRolesPage() {
                 </div>
 
                 {/* Right — Worker picker */}
-                <div className="flex flex-col border rounded-lg overflow-hidden bg-card">
+                <div className="flex-1 flex flex-col overflow-hidden">
                     {activeRoleIdx === null ? (
-                        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-                            Select a role on the left to assign workers
+                        <div className="flex-1 flex items-center justify-center">
+                            <p className="text-sm text-muted-foreground">Select a role on the left to assign workers</p>
                         </div>
                     ) : (
                         <>
-                            <div className="p-3 border-b bg-muted/30">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                                    Assigning to: <span className="text-foreground">{draftRoles[activeRoleIdx]?.roleName}</span>
+                            {/* Role header + chips + search */}
+                            <div className="px-6 py-3 border-b bg-card shrink-0">
+                                <p className="text-sm font-semibold mb-2">
+                                    Assigning to: <span className="text-primary">{draftRoles[activeRoleIdx]?.roleName}</span>
                                 </p>
 
-                                {/* Assigned chips */}
                                 {draftRoles[activeRoleIdx]?.workers.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5 mb-2">
+                                    <div className="flex flex-wrap gap-1.5 mb-3">
                                         {draftRoles[activeRoleIdx].workers.map(w => (
-                                            <span key={w.id} className="flex items-center gap-1 bg-background border rounded-full px-2.5 py-0.5 text-xs">
+                                            <span key={w.id} className="flex items-center gap-1 bg-muted border rounded-full px-2.5 py-0.5 text-xs">
                                                 {w.name}
                                                 <button onClick={() => toggleWorker(w.id, w.name)}>
                                                     <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
@@ -245,41 +237,44 @@ export default function SlotRolesPage() {
                                 <Input
                                     value={workerSearch}
                                     onChange={e => setWorkerSearch(e.target.value)}
-                                    placeholder="Search Worship workers..."
-                                    className="h-8 text-sm"
+                                    placeholder="Search Worship workers by name or ID..."
+                                    className="h-9 text-sm max-w-md"
                                 />
                             </div>
 
+                            {/* Worker list */}
                             <div className="flex-1 overflow-y-auto">
                                 {worshipWorkers.length === 0 && (
-                                    <p className="text-sm text-muted-foreground text-center py-10">No Worship workers found.</p>
+                                    <p className="text-sm text-muted-foreground text-center py-16">No Worship workers found.</p>
                                 )}
-                                {worshipWorkers.map((w: any) => {
-                                    const isAssigned = draftRoles[activeRoleIdx]?.workers.some(x => x.id === w.id);
-                                    const ministryName = ministries.find((m: any) => m.id === w.majorMinistryId)?.name?.replace(/^[WORDA]-/i, "") || "—";
-                                    return (
-                                        <button
-                                            key={w.id}
-                                            className={`w-full flex items-center gap-3 px-4 py-3 border-b text-left transition-colors hover:bg-muted/50 ${isAssigned ? "bg-primary/5" : ""}`}
-                                            onClick={() => toggleWorker(w.id, `${w.firstName} ${w.lastName}`)}
-                                        >
-                                            <Avatar className="h-8 w-8 shrink-0">
-                                                <AvatarImage src={w.avatarUrl} />
-                                                <AvatarFallback className="text-xs">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium truncate">{w.firstName} {w.lastName}</p>
-                                                <p className="text-xs text-muted-foreground">{ministryName}</p>
-                                            </div>
-                                            {isAssigned && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
-                                        </button>
-                                    );
-                                })}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-0">
+                                    {worshipWorkers.map((w: any) => {
+                                        const isAssigned = draftRoles[activeRoleIdx]?.workers.some(x => x.id === w.id);
+                                        const ministryName = ministries.find((m: any) => m.id === w.majorMinistryId)?.name?.replace(/^[WORDA]-/i, "") || "—";
+                                        return (
+                                            <button
+                                                key={w.id}
+                                                className={`flex items-center gap-3 px-4 py-3 border-b border-r text-left transition-colors hover:bg-muted/50 ${isAssigned ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
+                                                onClick={() => toggleWorker(w.id, `${w.firstName} ${w.lastName}`)}
+                                            >
+                                                <Avatar className="h-9 w-9 shrink-0">
+                                                    <AvatarImage src={w.avatarUrl} />
+                                                    <AvatarFallback className="text-xs">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium truncate">{w.firstName} {w.lastName}</p>
+                                                    <p className="text-xs text-muted-foreground truncate">{ministryName}</p>
+                                                </div>
+                                                {isAssigned && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </>
                     )}
                 </div>
             </div>
-        </AppLayout>
+        </div>
     );
 }
