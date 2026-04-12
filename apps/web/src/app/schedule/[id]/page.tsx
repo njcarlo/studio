@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@studio/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";
 import {
     ArrowLeft, LoaderCircle, UserPlus, X, LayoutTemplate,
@@ -56,10 +57,13 @@ export default function ScheduleDetailPage() {
     // Worship slot state
     const [newSlotName, setNewSlotName] = useState("");
     const [addSlotOpen, setAddSlotOpen] = useState(false);
-    const [slotWorkerDialog, setSlotWorkerDialog] = useState<{ slotId: string; role: string } | null>(null);
+    // Bulk slot editor sheet
+    const [slotEditorId, setSlotEditorId] = useState<string | null>(null); // slotId being edited
+    // draftRoles: { roleName, workers: [{id, name}][] }[]
+    const [draftRoles, setDraftRoles] = useState<{ roleName: string; workers: { id: string; name: string }[] }[]>([]);
+    const [draftRoleInput, setDraftRoleInput] = useState("");
     const [slotWorkerSearch, setSlotWorkerSearch] = useState("");
-    const [addSlotRoleDialog, setAddSlotRoleDialog] = useState<string | null>(null); // slotId
-    const [newSlotRoleName, setNewSlotRoleName] = useState("");
+    const [activeRoleIdx, setActiveRoleIdx] = useState<number | null>(null); // which role is being assigned workers
 
     // Group assignments by ministry
     const byMinistry = useMemo(() => {
@@ -593,8 +597,21 @@ export default function ScheduleDetailPage() {
                                     {canManageSchedule && (
                                         <div className="flex items-center gap-1">
                                             <Button size="sm" variant="outline" className="h-7 text-xs"
-                                                onClick={() => { setAddSlotRoleDialog(slot.id); setNewSlotRoleName(""); }}>
-                                                <Plus className="mr-1 h-3 w-3" /> Add Role
+                                                onClick={() => {
+                                                    // Pre-populate draft from existing slot workers
+                                                    const existing: Record<string, { id: string; name: string }[]> = {};
+                                                    for (const sw of slot.workers) {
+                                                        const key = sw.role || '(No Role)';
+                                                        if (!existing[key]) existing[key] = [];
+                                                        existing[key].push({ id: sw.id, name: sw.workerName });
+                                                    }
+                                                    setDraftRoles(Object.entries(existing).map(([roleName, workers]) => ({ roleName, workers })));
+                                                    setDraftRoleInput("");
+                                                    setSlotWorkerSearch("");
+                                                    setActiveRoleIdx(null);
+                                                    setSlotEditorId(slot.id);
+                                                }}>
+                                                <Plus className="mr-1 h-3 w-3" /> Manage Roles
                                             </Button>
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
                                                 onClick={() => deleteSlot(slot.id)}>
@@ -614,7 +631,21 @@ export default function ScheduleDetailPage() {
                                                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{roleName}</p>
                                                     {canManageSchedule && (
                                                         <Button variant="ghost" size="sm" className="h-6 text-xs"
-                                                            onClick={() => { setSlotWorkerDialog({ slotId: slot.id, role: roleName === '(No Role)' ? '' : roleName }); setSlotWorkerSearch(""); }}>
+                                                            onClick={() => {
+                                                                const existing: Record<string, { id: string; name: string }[]> = {};
+                                                                for (const sw of slot.workers) {
+                                                                    const key = sw.role || '(No Role)';
+                                                                    if (!existing[key]) existing[key] = [];
+                                                                    existing[key].push({ id: sw.id, name: sw.workerName });
+                                                                }
+                                                                const roles = Object.entries(existing).map(([rn, ws]) => ({ roleName: rn, workers: ws }));
+                                                                setDraftRoles(roles);
+                                                                setDraftRoleInput("");
+                                                                setSlotWorkerSearch("");
+                                                                const idx = roles.findIndex(r => r.roleName === roleName);
+                                                                setActiveRoleIdx(idx >= 0 ? idx : null);
+                                                                setSlotEditorId(slot.id);
+                                                            }}>
                                                             <UserPlus className="mr-1 h-3 w-3" /> Assign
                                                         </Button>
                                                     )}
@@ -937,108 +968,189 @@ export default function ScheduleDetailPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Add Service Slot Role Dialog */}
-            <Dialog open={!!addSlotRoleDialog} onOpenChange={() => setAddSlotRoleDialog(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add Role — {worshipSlots.find((s: any) => s.id === addSlotRoleDialog)?.slotName}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <Label>Role Name</Label>
-                            <Input
-                                value={newSlotRoleName}
-                                onChange={e => setNewSlotRoleName(e.target.value)}
-                                placeholder="e.g. Worship Leader, Vocalist, Musician"
-                                autoFocus
-                                onKeyDown={async e => {
-                                    if (e.key === 'Enter' && newSlotRoleName.trim() && addSlotRoleDialog) {
-                                        await addWorshipWorker({ slotId: addSlotRoleDialog, workerId: '__role_placeholder__', workerName: '', role: newSlotRoleName.trim() });
-                                        setAddSlotRoleDialog(null);
-                                        setNewSlotRoleName("");
-                                    }
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setAddSlotRoleDialog(null)}>Cancel</Button>
-                        <Button
-                            disabled={!newSlotRoleName.trim()}
-                            onClick={() => {
-                                if (!addSlotRoleDialog) return;
-                                setSlotWorkerDialog({ slotId: addSlotRoleDialog, role: newSlotRoleName.trim() });
-                                setSlotWorkerSearch("");
-                                setAddSlotRoleDialog(null);
-                                setNewSlotRoleName("");
-                            }}
-                        >
-                            Next: Assign Worker
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Bulk Slot Role Editor Sheet */}
+            {(() => {
+                const editingSlot = worshipSlots.find((s: any) => s.id === slotEditorId);
+                const filteredSlotWorkers = worshipWorkers.filter((w: any) => {
+                    if (!slotWorkerSearch.trim()) return true;
+                    const q = slotWorkerSearch.toLowerCase();
+                    return `${w.firstName} ${w.lastName}`.toLowerCase().includes(q) || (w.workerId || '').includes(q);
+                });
 
-            {/* Assign Worker to Slot Role Dialog */}
-            <Dialog open={!!slotWorkerDialog} onOpenChange={() => { setSlotWorkerDialog(null); setSlotWorkerSearch(""); }}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            Assign Worker — {slotWorkerDialog?.role || 'Role'} · {worshipSlots.find((s: any) => s.id === slotWorkerDialog?.slotId)?.slotName}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                        <Input
-                            placeholder="Search Worship workers..."
-                            value={slotWorkerSearch}
-                            onChange={e => setSlotWorkerSearch(e.target.value)}
-                            autoFocus
-                        />
-                        <div className="max-h-64 overflow-y-auto space-y-1">
-                            {worshipWorkers.map((w: any) => {
-                                const alreadyIn = slotWorkerDialog
-                                    ? worshipSlots.find((s: any) => s.id === slotWorkerDialog.slotId)?.workers.some((sw: any) => sw.workerId === w.id && sw.role === (slotWorkerDialog.role || null))
-                                    : false;
-                                return (
-                                    <button
-                                        key={w.id}
-                                        disabled={alreadyIn}
-                                        className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-left disabled:opacity-40"
-                                        onClick={async () => {
-                                            if (!slotWorkerDialog) return;
-                                            await addWorshipWorker({
-                                                slotId: slotWorkerDialog.slotId,
-                                                workerId: w.id,
-                                                workerName: `${w.firstName} ${w.lastName}`,
-                                                role: slotWorkerDialog.role || undefined,
-                                            });
-                                            setSlotWorkerSearch("");
-                                        }}
-                                    >
-                                        <Avatar className="h-7 w-7">
-                                            <AvatarImage src={w.avatarUrl} />
-                                            <AvatarFallback className="text-[10px]">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-medium">{w.firstName} {w.lastName}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {ministries.find((m: any) => m.id === w.majorMinistryId)?.name?.replace(/^[WORDA]-/i, '') || "—"}
-                                            </p>
+                const handleSave = async () => {
+                    if (!slotEditorId) return;
+                    // Remove all existing workers from this slot
+                    const slot = worshipSlots.find((s: any) => s.id === slotEditorId);
+                    if (slot) {
+                        for (const sw of slot.workers) await removeWorshipWorker(sw.id);
+                    }
+                    // Re-add from draft
+                    for (const dr of draftRoles) {
+                        for (const w of dr.workers) {
+                            await addWorshipWorker({ slotId: slotEditorId, workerId: w.id, workerName: w.name, role: dr.roleName });
+                        }
+                    }
+                    setSlotEditorId(null);
+                };
+
+                return (
+                    <Sheet open={!!slotEditorId} onOpenChange={open => { if (!open) setSlotEditorId(null); }}>
+                        <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col gap-0 p-0">
+                            <SheetHeader className="px-6 py-4 border-b">
+                                <SheetTitle>Manage Roles — {editingSlot?.slotName}</SheetTitle>
+                                <p className="text-xs text-muted-foreground">Add roles and assign Worship workers to each role.</p>
+                            </SheetHeader>
+
+                            <div className="flex flex-1 overflow-hidden">
+                                {/* Left: Roles list */}
+                                <div className="w-64 border-r flex flex-col shrink-0">
+                                    <div className="p-3 border-b">
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={draftRoleInput}
+                                                onChange={e => setDraftRoleInput(e.target.value)}
+                                                placeholder="Role name..."
+                                                className="h-8 text-sm"
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter' && draftRoleInput.trim()) {
+                                                        const exists = draftRoles.some(r => r.roleName.toLowerCase() === draftRoleInput.trim().toLowerCase());
+                                                        if (!exists) {
+                                                            const newRoles = [...draftRoles, { roleName: draftRoleInput.trim(), workers: [] }];
+                                                            setDraftRoles(newRoles);
+                                                            setActiveRoleIdx(newRoles.length - 1);
+                                                        }
+                                                        setDraftRoleInput("");
+                                                    }
+                                                }}
+                                            />
+                                            <Button size="sm" className="h-8 px-2 shrink-0"
+                                                disabled={!draftRoleInput.trim()}
+                                                onClick={() => {
+                                                    const exists = draftRoles.some(r => r.roleName.toLowerCase() === draftRoleInput.trim().toLowerCase());
+                                                    if (!exists) {
+                                                        const newRoles = [...draftRoles, { roleName: draftRoleInput.trim(), workers: [] }];
+                                                        setDraftRoles(newRoles);
+                                                        setActiveRoleIdx(newRoles.length - 1);
+                                                    }
+                                                    setDraftRoleInput("");
+                                                }}>
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
                                         </div>
-                                        {alreadyIn && <span className="text-xs text-muted-foreground">Added</span>}
-                                    </button>
-                                );
-                            })}
-                            {worshipWorkers.length === 0 && (
-                                <p className="text-sm text-muted-foreground text-center py-4">No Worship workers found.</p>
-                            )}
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setSlotWorkerDialog(null)}>Done</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto">
+                                        {draftRoles.length === 0 && (
+                                            <p className="text-xs text-muted-foreground text-center py-6 px-3">Type a role name above and press Enter or +</p>
+                                        )}
+                                        {draftRoles.map((dr, idx) => (
+                                            <button
+                                                key={idx}
+                                                className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm border-b hover:bg-muted transition-colors ${activeRoleIdx === idx ? 'bg-muted font-medium' : ''}`}
+                                                onClick={() => { setActiveRoleIdx(idx); setSlotWorkerSearch(""); }}
+                                            >
+                                                <span className="truncate">{dr.roleName}</span>
+                                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                                    <span className="text-xs text-muted-foreground">{dr.workers.length}</span>
+                                                    <button className="text-destructive hover:text-destructive/80 p-0.5"
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            const next = draftRoles.filter((_, i) => i !== idx);
+                                                            setDraftRoles(next);
+                                                            if (activeRoleIdx === idx) setActiveRoleIdx(null);
+                                                            else if (activeRoleIdx !== null && activeRoleIdx > idx) setActiveRoleIdx(activeRoleIdx - 1);
+                                                        }}>
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Right: Worker assignment for selected role */}
+                                <div className="flex-1 flex flex-col overflow-hidden">
+                                    {activeRoleIdx === null ? (
+                                        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+                                            Select a role on the left to assign workers
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="p-3 border-b">
+                                                <p className="text-sm font-semibold mb-2">{draftRoles[activeRoleIdx]?.roleName}</p>
+                                                <Input
+                                                    value={slotWorkerSearch}
+                                                    onChange={e => setSlotWorkerSearch(e.target.value)}
+                                                    placeholder="Search Worship workers..."
+                                                    className="h-8 text-sm"
+                                                />
+                                            </div>
+                                            {/* Assigned workers for this role */}
+                                            {draftRoles[activeRoleIdx]?.workers.length > 0 && (
+                                                <div className="px-3 py-2 border-b bg-muted/30">
+                                                    <p className="text-xs text-muted-foreground mb-1.5">Assigned</p>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {draftRoles[activeRoleIdx].workers.map(w => (
+                                                            <span key={w.id} className="flex items-center gap-1 bg-background border rounded-full px-2 py-0.5 text-xs">
+                                                                {w.name}
+                                                                <button onClick={() => {
+                                                                    const updated = [...draftRoles];
+                                                                    updated[activeRoleIdx] = { ...updated[activeRoleIdx], workers: updated[activeRoleIdx].workers.filter(x => x.id !== w.id) };
+                                                                    setDraftRoles(updated);
+                                                                }}><X className="h-2.5 w-2.5 text-muted-foreground" /></button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="flex-1 overflow-y-auto">
+                                                {filteredSlotWorkers.map((w: any) => {
+                                                    const isAssigned = draftRoles[activeRoleIdx]?.workers.some(x => x.id === w.id);
+                                                    return (
+                                                        <button
+                                                            key={w.id}
+                                                            className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted text-left border-b transition-colors ${isAssigned ? 'bg-primary/5' : ''}`}
+                                                            onClick={() => {
+                                                                const updated = [...draftRoles];
+                                                                const role = updated[activeRoleIdx!];
+                                                                if (isAssigned) {
+                                                                    role.workers = role.workers.filter(x => x.id !== w.id);
+                                                                } else {
+                                                                    role.workers = [...role.workers, { id: w.id, name: `${w.firstName} ${w.lastName}` }];
+                                                                }
+                                                                setDraftRoles(updated);
+                                                            }}
+                                                        >
+                                                            <Avatar className="h-7 w-7 shrink-0">
+                                                                <AvatarImage src={w.avatarUrl} />
+                                                                <AvatarFallback className="text-[10px]">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium truncate">{w.firstName} {w.lastName}</p>
+                                                                <p className="text-xs text-muted-foreground truncate">
+                                                                    {ministries.find((m: any) => m.id === w.majorMinistryId)?.name?.replace(/^[WORDA]-/i, '') || "—"}
+                                                                </p>
+                                                            </div>
+                                                            {isAssigned && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+                                                        </button>
+                                                    );
+                                                })}
+                                                {filteredSlotWorkers.length === 0 && (
+                                                    <p className="text-sm text-muted-foreground text-center py-8">No Worship workers found.</p>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            <SheetFooter className="px-6 py-4 border-t">
+                                <Button variant="outline" onClick={() => setSlotEditorId(null)}>Cancel</Button>
+                                <Button onClick={handleSave}>Save</Button>
+                            </SheetFooter>
+                        </SheetContent>
+                    </Sheet>
+                );
+            })()}
         </AppLayout>
     );
 }
