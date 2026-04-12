@@ -550,9 +550,9 @@ export default function ScheduleDetailPage() {
                 <div className="mt-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Worship Slots</h2>
+                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Service Slots</h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Named service slots (e.g. TWS, Pre-service, Offering). Worship ministries above are still assigned separately.
+                                The service type for this Sunday (e.g. TWS, Mid Slot, Empowered Night). Assign Worship workers per slot.
                             </p>
                         </div>
                         {canManageSchedule && (
@@ -565,7 +565,7 @@ export default function ScheduleDetailPage() {
                     {worshipSlots.length === 0 && (
                         <Card>
                             <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                                No worship slots yet. Add a slot like "TWS", "Pre-service", or "Offering".
+                                No slots yet. Add a slot like "TWS", "Mid Slot", or "Empowered Night".
                             </CardContent>
                         </Card>
                     )}
@@ -576,9 +576,6 @@ export default function ScheduleDetailPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <CardTitle className="text-base">{slot.slotName}</CardTitle>
-                                        {slot.isTws && (
-                                            <Badge variant="secondary" className="text-xs">Tuesday Worship Service</Badge>
-                                        )}
                                         <span className="text-xs text-muted-foreground">{slot.workers.length} worker{slot.workers.length !== 1 ? 's' : ''}</span>
                                     </div>
                                     {canManageSchedule && (
@@ -878,7 +875,7 @@ export default function ScheduleDetailPage() {
             <Dialog open={addSlotOpen} onOpenChange={setAddSlotOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Add Worship Slot</DialogTitle>
+                        <DialogTitle>Add Service Slot</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
@@ -886,12 +883,10 @@ export default function ScheduleDetailPage() {
                             <Input
                                 value={newSlotName}
                                 onChange={e => setNewSlotName(e.target.value)}
-                                placeholder="e.g. TWS, Pre-service, Offering"
+                                placeholder="e.g. TWS, Mid Slot, Empowered Night"
                                 autoFocus
                             />
-                            {newSlotName.toUpperCase() === 'TWS' && (
-                                <p className="text-xs text-muted-foreground">TWS = Tuesday Worship Service</p>
-                            )}
+                            <p className="text-xs text-muted-foreground">Enter any name — TWS, Mid Slot, Empowered Night, or a custom name.</p>
                         </div>
                     </div>
                     <DialogFooter>
