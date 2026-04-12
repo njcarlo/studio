@@ -2,9 +2,6 @@
 
 import { prisma } from '@studio/database/prisma';
 import { revalidatePath } from 'next/cache';
-import { EmailService } from '@/services/email-service';
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
 // ── Service Schedules ─────────────────────────────────────────────────────────
 
@@ -222,6 +219,8 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
         include: { assignments: true },
     });
 
+    void publishedBy; // reserved for audit log
+
     // Get unique worker IDs that are assigned
     const workerIds = [...new Set(
         schedule.assignments
@@ -229,63 +228,10 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
             .map(a => a.workerId as string)
     )];
 
-    if (workerIds.length === 0) {
-        revalidatePath(`/schedule/${scheduleId}`);
-        return { schedule, notified: 0 };
-    }
-
-    // Fetch worker emails
-    const workers = await prisma.worker.findMany({
-        where: { id: { in: workerIds } },
-        select: { id: true, firstName: true, lastName: true, email: true },
-    });
-
-    const scheduleDate = new Date(schedule.date).toLocaleDateString('en-PH', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-    });
-
-    // Send individual emails with their specific assignments
-    let notified = 0;
-    for (const worker of workers) {
-        if (!worker.email) continue;
-
-        const myAssignments = schedule.assignments.filter(a => a.workerId === worker.id);
-        const rolesList = myAssignments.map(a => `<li><strong>${a.roleName}</strong></li>`).join('');
-
-        await EmailService.sendEmail({
-            to: worker.email,
-            subject: `You're scheduled for ${schedule.title} — ${scheduleDate}`,
-            html: `
-                <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px;">
-                    <h2 style="color: #2563eb;">Service Schedule Notification</h2>
-                    <p>Hi <strong>${worker.firstName}</strong>,</p>
-                    <p>You have been assigned to serve in the upcoming <strong>${schedule.title}</strong>.</p>
-
-                    <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0 0 8px;"><strong>Date:</strong> ${scheduleDate}</p>
-                        <p style="margin: 0 0 8px;"><strong>Your Role(s):</strong></p>
-                        <ul style="margin: 0; padding-left: 20px;">${rolesList}</ul>
-                    </div>
-
-                    <p>Please confirm your availability by clicking the button below:</p>
-
-                    <a href="${APP_URL}/schedule/${scheduleId}/confirm?workerId=${worker.id}"
-                       style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 16px 0;">
-                        Confirm My Schedule
-                    </a>
-
-                    <p style="font-size: 0.8rem; color: #6b7280; margin-top: 24px;">
-                        If you have any concerns, please contact your ministry scheduler directly.
-                    </p>
-                </div>
-            `,
-        });
-        notified++;
-    }
-
+    // Email notifications disabled — return count of workers who would be notified
     revalidatePath(`/schedule/${scheduleId}`);
     revalidatePath('/schedule');
-    return { schedule, notified };
+    return { schedule, notified: workerIds.length };
 }
 
 // ── Confirm Assignment ────────────────────────────────────────────────────────
@@ -323,6 +269,7 @@ export async function getScheduleConfirmationStatus(scheduleId: string) {
             id: true, workerId: true, workerName: true,
             roleName: true, ministryId: true,
             acknowledgedAt: true, acknowledgedBy: true,
+            attendanceStatus: true,
         },
     });
     return assignments;
