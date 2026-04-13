@@ -23,8 +23,9 @@ interface AuthContextType {
     signOut: () => Promise<void>;
 }
 
-// In dev builds (__DEV__ = true), auto-login as a demo admin so Admin and
-// LiveBoard screens are accessible without a network connection.
+// In dev builds (__DEV__ = true), signIn/signUp bypass Supabase so the
+// frontend dev can work on all screens without needing credentials or network.
+// The auth screens still render normally for UI editing.
 const DEV_USER = {
     id: 'dev',
     name: 'Dev Admin',
@@ -32,7 +33,7 @@ const DEV_USER = {
     region: 'MMR',
     sub_region: 'Dasmarinas',
     barangay: 'Burol I',
-    tracts_given: 0,
+    tracts_given: 42,
     is_tester: true,
     is_admin: true,
 };
@@ -41,16 +42,16 @@ const initialState: AuthState = { region: '', subRegion: '', barangay: '', name:
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [authState, setAuthStateInternal] = useState<AuthState>(
-        __DEV__
-            ? { region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', name: 'Dev Admin' }
-            : initialState
-    );
-    const [user, setUser] = useState<any | null>(__DEV__ ? DEV_USER : null);
-    const [isLoading, setIsLoading] = useState(!__DEV__); // skip loading in dev
+    const [authState, setAuthStateInternal] = useState<AuthState>(initialState);
+    const [user, setUser] = useState<any | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (__DEV__) return; // already set above
+        if (__DEV__) {
+            // Start unauthenticated so auth screens are visible for UI dev work
+            setIsLoading(false);
+            return;
+        }
 
         const loadSession = async () => {
             try {
@@ -88,6 +89,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signIn = async (email: string, password: string) => {
+        if (__DEV__) {
+            setUser(DEV_USER);
+            setAuthStateInternal({ region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', name: 'Dev Admin' });
+            return { error: null };
+        }
         const { data, error } = await supabaseAdmin
             .from('tract_users')
             .select('*')
@@ -109,6 +115,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signUp = async (email: string, password: string, metadata: Partial<AuthState>) => {
+        if (__DEV__) {
+            setUser({ ...DEV_USER, email, name: metadata.name || 'Dev User', region: metadata.region || 'MMR', sub_region: metadata.subRegion || '', barangay: metadata.barangay || '' });
+            setAuthStateInternal({ region: metadata.region || 'MMR', subRegion: metadata.subRegion || '', barangay: metadata.barangay || '', name: metadata.name || 'Dev User' });
+            return { error: null };
+        }
         const { data: existing } = await supabaseAdmin
             .from('tract_users')
             .select('id')
@@ -142,12 +153,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const signOut = async () => {
         await AsyncStorage.removeItem('tract_user_id');
-        setUser(__DEV__ ? DEV_USER : null);
-        setAuthStateInternal(
-            __DEV__
-                ? { region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', name: 'Dev Admin' }
-                : initialState
-        );
+        setUser(null);
+        setAuthStateInternal(initialState);
     };
 
     const isDasmarinas =

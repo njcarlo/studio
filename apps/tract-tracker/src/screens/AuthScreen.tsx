@@ -63,11 +63,7 @@ export default function AuthScreen() {
     );
 
     const handleAuth = async () => {
-        if (__DEV__) {
-            // In dev, skip network — just proceed immediately
-            return;
-        }
-        if (!email || !password) {
+        if (!__DEV__ && (!email || !password)) {
             Alert.alert('Missing fields', 'Please enter your email and password.');
             return;
         }
@@ -86,12 +82,6 @@ export default function AuthScreen() {
         }
         setIsSubmitting(false);
     };
-
-    // In dev, the session is already set — auth screen won't normally show.
-    // But if it does (e.g. manual nav), skip straight through on landing.
-    if (__DEV__ && screen === 'landing') {
-        return null; // AppNavigator will redirect to Main automatically
-    }
 
     // ── Landing screen ──────────────────────────────────────────────
     if (screen === 'landing') {
