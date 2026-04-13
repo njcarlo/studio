@@ -109,7 +109,7 @@ export default function AuthScreen() {
                 <View style={styles.overlay} />
                 <SafeAreaView style={styles.landingSafe}>
                     <View style={styles.landingContent}>
-                        <Text style={styles.landingEyebrow}>Ready to step out{'\n'}andspread the{'\n'}good news?</Text>
+                        <Text style={styles.landingEyebrow}>Ready to step out{'\n'}and spread the{'\n'}good news?</Text>
                         <Image source={Ntgd} style={styles.ntgd} />
                         <Image source={Obpng} style={styles.bo} />
                     </View>
