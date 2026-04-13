@@ -20,6 +20,16 @@ const REGION_LABELS: Record<string, string> = {
     MIN: 'Mindanao',
 };
 
+const MOCK_DATA = [
+    { region: 'MMR', barangay: 'Burol I', tracts_given: 154 },
+    { region: 'MMR', barangay: 'Salawag', tracts_given: 89 },
+    { region: 'NLR', barangay: '', tracts_given: 320 },
+    { region: 'SLR', barangay: '', tracts_given: 45 },
+    { region: 'MMR', barangay: 'Sampaloc I', tracts_given: 210 },
+    { region: 'VIS', barangay: '', tracts_given: 175 },
+    { region: 'MIN', barangay: '', tracts_given: 98 },
+];
+
 const ROW_COLORS = [
     '#8B0000', // 1st — deep red
     '#1a3a6b', // 2nd — deep blue
@@ -36,37 +46,36 @@ export default function LiveBoardScreen() {
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState('');
 
+    const processData = (data: typeof MOCK_DATA) => {
+        const byRegion: Record<string, number> = {};
+        const byBarangay: Record<string, number> = {};
+        let grand = 0;
+        data.forEach(u => {
+            const t = u.tracts_given || 0;
+            grand += t;
+            if (u.region) byRegion[u.region] = (byRegion[u.region] || 0) + t;
+            if (u.barangay) byBarangay[u.barangay] = (byBarangay[u.barangay] || 0) + t;
+        });
+        setRegionRows(Object.entries(byRegion).sort((a, b) => b[1] - a[1]).map(([name, count], i) => ({ rank: i + 1, name: REGION_LABELS[name] || name, count })));
+        setBarangayRows(Object.entries(byBarangay).sort((a, b) => b[1] - a[1]).map(([name, count], i) => ({ rank: i + 1, name, count })));
+        setTotal(grand);
+    };
+
     const fetchData = useCallback(async () => {
+        // In dev, skip network and use mock data immediately
+        if (__DEV__) {
+            processData(MOCK_DATA);
+            setLastUpdated('Demo data');
+            setLoading(false);
+            return;
+        }
         try {
             const { data } = await supabaseAdmin
                 .from('tract_users')
                 .select('region, barangay, tracts_given');
 
-            if (!data) return;
-
-            const byRegion: Record<string, number> = {};
-            const byBarangay: Record<string, number> = {};
-            let grand = 0;
-
-            data.forEach(u => {
-                const t = u.tracts_given || 0;
-                grand += t;
-                if (u.region) byRegion[u.region] = (byRegion[u.region] || 0) + t;
-                if (u.barangay) byBarangay[u.barangay] = (byBarangay[u.barangay] || 0) + t;
-            });
-
-            setRegionRows(
-                Object.entries(byRegion)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([name, count], i) => ({ rank: i + 1, name: REGION_LABELS[name] || name, count }))
-            );
-            setBarangayRows(
-                Object.entries(byBarangay)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([name, count], i) => ({ rank: i + 1, name, count }))
-            );
-            setTotal(grand);
-
+            if (!data) throw new Error('No data');
+            processData(data);
             const now = new Date();
             setLastUpdated(
                 now.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) +

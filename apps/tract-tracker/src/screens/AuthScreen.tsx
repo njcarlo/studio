@@ -63,6 +63,10 @@ export default function AuthScreen() {
     );
 
     const handleAuth = async () => {
+        if (__DEV__) {
+            // In dev, skip network — just proceed immediately
+            return;
+        }
         if (!email || !password) {
             Alert.alert('Missing fields', 'Please enter your email and password.');
             return;
@@ -82,6 +86,12 @@ export default function AuthScreen() {
         }
         setIsSubmitting(false);
     };
+
+    // In dev, the session is already set — auth screen won't normally show.
+    // But if it does (e.g. manual nav), skip straight through on landing.
+    if (__DEV__ && screen === 'landing') {
+        return null; // AppNavigator will redirect to Main automatically
+    }
 
     // ── Landing screen ──────────────────────────────────────────────
     if (screen === 'landing') {
@@ -304,6 +314,15 @@ const styles = StyleSheet.create({
     loginBtnText: { color: '#1a1a2e', fontSize: 18, fontFamily: 'Anton_400Regular' },
     signupPrompt: { color: '#ccc', fontSize: 14, textAlign: 'center' },
     signupLink: { color: '#C9A84C', textDecorationLine: 'underline' },
+    demoBtn: {
+        marginTop: 16,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.25)',
+        borderRadius: 10,
+    },
+    demoBtnText: { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
 
     // ── Form ──
     formSafe: { flex: 1 },
