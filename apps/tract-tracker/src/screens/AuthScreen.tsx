@@ -95,8 +95,8 @@ export default function AuthScreen() {
         } else {
             const { error } = await signUp(email, password, {
                 name,
-                region: region || 'Unknown',
-                subRegion: subRegion || 'Unknown',
+                region: region || '',
+                subRegion: subRegion || '',
                 barangay,
             });
             if (error) { Alert.alert('Sign Up Failed', error); setIsSubmitting(false); return; }

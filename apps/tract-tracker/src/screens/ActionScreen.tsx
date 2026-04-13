@@ -301,9 +301,9 @@ export default function ActionScreen() {
 
     const locationLabel = authState.barangay
         ? `Brgy. ${authState.barangay}`
-        : authState.subRegion
-        ? `COG ${authState.subRegion}`
-        : authState.region || 'My Region';
+        : authState.region
+        ? `COG ${authState.region}`
+        : 'My Region';
 
     const now = new Date();
     const timeLabel = `as of ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric' })}, ${now.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}`;

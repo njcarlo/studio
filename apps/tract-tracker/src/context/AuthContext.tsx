@@ -132,8 +132,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             email,
             password,
             name: metadata.name || email.split('@')[0],
-            region: metadata.region,
-            sub_region: metadata.subRegion,
+            region: metadata.region || '',
+            sub_region: metadata.subRegion || '',
             barangay: metadata.barangay,
             tracts_given: 0,
         }).select().single();
