@@ -21,7 +21,7 @@ const Obpng =  require("../../assets/obpng.png");
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
-const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN'];
+const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN', 'COG Dasmarinas'];
 const CHURCHES = ['Dasmarinas', 'Others'];
 const BARANGAYS = [
     'Burol', 'Burol I', 'Burol II', 'Burol III', 'Datu Esmael',
@@ -202,7 +202,7 @@ export default function AuthScreen() {
                                         </>
                                     )}
 
-                                    {region === 'MMR' && subRegion === 'Dasmarinas' && (
+                                    {region === 'COG Dasmarinas' && (
                                         <>
                                             <Text style={styles.label}>Barangay</Text>
                                             <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowBarangayModal(true)}>
