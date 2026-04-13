@@ -64,6 +64,8 @@ export default function AuthScreen() {
     const [subRegion, setSubRegion] = useState('');
     const [barangay, setBarangay] = useState('');
     const [showBarangayModal, setShowBarangayModal] = useState(false);
+    const [showRegionModal, setShowRegionModal] = useState(false);
+    const [showChurchModal, setShowChurchModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -181,32 +183,22 @@ export default function AuthScreen() {
                             {screen === 'signup' && (
                                 <>
                                     <Text style={styles.label}>Region</Text>
-                                    <View style={styles.rowWrap}>
-                                        {REGIONS.map(r => (
-                                            <TouchableOpacity
-                                                key={r}
-                                                onPress={() => { setRegion(r); setSubRegion(''); setBarangay(''); }}
-                                                style={[styles.chip, region === r && styles.chipActive]}
-                                            >
-                                                <Text style={[styles.chipText, region === r && styles.chipTextActive]}>{r}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
+                                    <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowRegionModal(true)}>
+                                        <Text style={[styles.dropdownText, !region && styles.placeholderText]}>
+                                            {region || 'Select Region'}
+                                        </Text>
+                                        <Ionicons name="chevron-down" size={18} color="#666" />
+                                    </TouchableOpacity>
 
                                     {region === 'MMR' && (
                                         <>
                                             <Text style={styles.label}>Church</Text>
-                                            <View style={styles.rowWrap}>
-                                                {CHURCHES.map(sr => (
-                                                    <TouchableOpacity
-                                                        key={sr}
-                                                        onPress={() => { setSubRegion(sr); setBarangay(''); }}
-                                                        style={[styles.chip, subRegion === sr && styles.chipActive]}
-                                                    >
-                                                        <Text style={[styles.chipText, subRegion === sr && styles.chipTextActive]}>{sr}</Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </View>
+                                            <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowChurchModal(true)}>
+                                                <Text style={[styles.dropdownText, !subRegion && styles.placeholderText]}>
+                                                    {subRegion || 'Select Church'}
+                                                </Text>
+                                                <Ionicons name="chevron-down" size={18} color="#666" />
+                                            </TouchableOpacity>
                                         </>
                                     )}
 
@@ -244,6 +236,54 @@ export default function AuthScreen() {
                     </ScrollView>
                 </KeyboardAvoidingView>
             </SafeAreaView>
+
+            {/* Region modal */}
+            <Modal visible={showRegionModal} animationType="slide" transparent>
+                <SafeAreaView style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Region</Text>
+                            <TouchableOpacity onPress={() => setShowRegionModal(false)}>
+                                <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                        </View>
+                        {REGIONS.map(r => (
+                            <TouchableOpacity
+                                key={r}
+                                style={styles.barangayItem}
+                                onPress={() => { setRegion(r); setSubRegion(''); setBarangay(''); setShowRegionModal(false); }}
+                            >
+                                <Text style={[styles.barangayItemText, region === r && styles.selectedItemText]}>{r}</Text>
+                                {region === r && <Ionicons name="checkmark" size={18} color="#C9A84C" />}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </SafeAreaView>
+            </Modal>
+
+            {/* Church modal */}
+            <Modal visible={showChurchModal} animationType="slide" transparent>
+                <SafeAreaView style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Church</Text>
+                            <TouchableOpacity onPress={() => setShowChurchModal(false)}>
+                                <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                        </View>
+                        {CHURCHES.map(c => (
+                            <TouchableOpacity
+                                key={c}
+                                style={styles.barangayItem}
+                                onPress={() => { setSubRegion(c); setBarangay(''); setShowChurchModal(false); }}
+                            >
+                                <Text style={[styles.barangayItemText, subRegion === c && styles.selectedItemText]}>{c}</Text>
+                                {subRegion === c && <Ionicons name="checkmark" size={18} color="#C9A84C" />}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </SafeAreaView>
+            </Modal>
 
             {/* Barangay modal */}
             <Modal visible={showBarangayModal} animationType="slide" transparent>
@@ -361,11 +401,6 @@ const styles = StyleSheet.create({
         color: '#1a1a2e',
     },
     label: { fontSize: 13, color: '#444', marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
-    rowWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-    chip: { borderWidth: 1.5, borderColor: '#C9A84C', borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, marginRight: 8, marginBottom: 8 },
-    chipActive: { backgroundColor: '#C9A84C' },
-    chipText: { color: '#C9A84C', fontSize: 13 },
-    chipTextActive: { color: '#1a1a2e' },
     dropdownTrigger: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         backgroundColor: '#f5f5f5', borderRadius: 10, padding: 14, marginBottom: 14,
