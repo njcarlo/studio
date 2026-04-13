@@ -4,6 +4,7 @@ import {
     ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabaseAdmin } from '../supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -11,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../AppNavigator';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
+const CACHE_KEY = 'admin_users_cache';
 
 type Tab = 'overview' | 'region' | 'barangay';
 
@@ -24,8 +26,17 @@ interface UserData {
     tractsGiven: number;
 }
 
+const MOCK_USERS = [
+    { id: '1', name: 'Juan Dela Cruz', email: 'juan@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', tractsGiven: 154 },
+    { id: '2', name: 'Maria Clara', email: 'maria@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Salawag', tractsGiven: 89 },
+    { id: '3', name: 'Jose Rizal', email: 'jose@example.com', region: 'NLR', subRegion: 'Others', barangay: '', tractsGiven: 320 },
+    { id: '4', name: 'Andres Bonifacio', email: 'andres@example.com', region: 'SLR', subRegion: 'Others', barangay: '', tractsGiven: 45 },
+    { id: '5', name: 'Emilio Aguinaldo', email: 'emilio@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Sampaloc I', tractsGiven: 210 },
+];
+
 export default function AdminDashboardScreen() {
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();    const [tab, setTab] = useState<Tab>('overview');
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [tab, setTab] = useState<Tab>('overview');
     const [users, setUsers] = useState<UserData[]>([]);
     const [loading, setLoading] = useState(true);
     const [resetting, setResetting] = useState(false);
@@ -51,13 +62,7 @@ export default function AdminDashboardScreen() {
             usingMock.current = false;
         } catch {
             usingMock.current = true;
-            setUsers([
-                { id: '1', name: 'Juan Dela Cruz', email: 'juan@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', tractsGiven: 154 },
-                { id: '2', name: 'Maria Clara', email: 'maria@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Salawag', tractsGiven: 89 },
-                { id: '3', name: 'Jose Rizal', email: 'jose@example.com', region: 'NLR', subRegion: 'Others', barangay: '', tractsGiven: 320 },
-                { id: '4', name: 'Andres Bonifacio', email: 'andres@example.com', region: 'SLR', subRegion: 'Others', barangay: '', tractsGiven: 45 },
-                { id: '5', name: 'Emilio Aguinaldo', email: 'emilio@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Sampaloc I', tractsGiven: 210 },
-            ]);
+            setUsers(MOCK_USERS);
         } finally {
             setLoading(false);
         }
@@ -130,7 +135,7 @@ export default function AdminDashboardScreen() {
                         <Ionicons name="arrow-back" size={22} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>
-                        Admin Dashboard{usingMock.current ? '  DEMO' : ''}
+                        Admin Dashboard{usingMock.current ? '  · DEMO' : ''}
                     </Text>
                     <TouchableOpacity onPress={() => navigation.navigate('LiveBoard')} style={styles.resetBtn}>
                         <Ionicons name="tv-outline" size={24} color="#C9A84C" />

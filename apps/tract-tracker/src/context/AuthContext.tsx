@@ -23,6 +23,21 @@ interface AuthContextType {
     signOut: () => Promise<void>;
 }
 
+// In dev builds (__DEV__ = true), signIn/signUp bypass Supabase so the
+// frontend dev can work on all screens without needing credentials or network.
+// The auth screens still render normally for UI editing.
+const DEV_USER = {
+    id: 'dev',
+    name: 'Dev Admin',
+    email: 'dev@local',
+    region: 'MMR',
+    sub_region: 'Dasmarinas',
+    barangay: 'Burol I',
+    tracts_given: 42,
+    is_tester: true,
+    is_admin: true,
+};
+
 const initialState: AuthState = { region: '', subRegion: '', barangay: '', name: '' };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -32,6 +47,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        if (__DEV__) {
+            // Start unauthenticated so auth screens are visible for UI dev work
+            setIsLoading(false);
+            return;
+        }
+
         const loadSession = async () => {
             try {
                 const storedUserId = await AsyncStorage.getItem('tract_user_id');
@@ -41,7 +62,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         .select('*')
                         .eq('id', storedUserId)
                         .single();
-                        
+
                     if (data && !error) {
                         setUser(data);
                         setAuthStateInternal({
@@ -55,7 +76,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     }
                 }
             } catch (e) {
-                console.error("Failed to load session", e);
+                console.error('Failed to load session', e);
             } finally {
                 setIsLoading(false);
             }
@@ -68,17 +89,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signIn = async (email: string, password: string) => {
+        if (__DEV__) {
+            setUser(DEV_USER);
+            setAuthStateInternal({ region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', name: 'Dev Admin' });
+            return { error: null };
+        }
         const { data, error } = await supabaseAdmin
             .from('tract_users')
             .select('*')
             .eq('email', email)
             .eq('password', password)
             .single();
-            
-        if (error || !data) {
-            return { error: 'Invalid email or password.' };
-        }
-        
+
+        if (error || !data) return { error: 'Invalid email or password.' };
+
         await AsyncStorage.setItem('tract_user_id', data.id);
         setUser(data);
         setAuthStateInternal({
@@ -87,21 +111,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             barangay: data.barangay || '',
             name: data.name || '',
         });
-        
         return { error: null };
     };
 
     const signUp = async (email: string, password: string, metadata: Partial<AuthState>) => {
+        if (__DEV__) {
+            setUser({ ...DEV_USER, email, name: metadata.name || 'Dev User', region: metadata.region || 'MMR', sub_region: metadata.subRegion || '', barangay: metadata.barangay || '' });
+            setAuthStateInternal({ region: metadata.region || 'MMR', subRegion: metadata.subRegion || '', barangay: metadata.barangay || '', name: metadata.name || 'Dev User' });
+            return { error: null };
+        }
         const { data: existing } = await supabaseAdmin
             .from('tract_users')
             .select('id')
             .eq('email', email)
             .single();
-            
-        if (existing) {
-            return { error: 'Email already registered.' };
-        }
-    
+
+        if (existing) return { error: 'Email already registered.' };
+
         const { data, error } = await supabaseAdmin.from('tract_users').insert({
             email,
             password,
@@ -111,10 +137,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             barangay: metadata.barangay,
             tracts_given: 0,
         }).select().single();
-        
-        if (error || !data) {
-            return { error: error?.message || 'Failed to create account.' };
-        }
+
+        if (error || !data) return { error: error?.message || 'Failed to create account.' };
 
         await AsyncStorage.setItem('tract_user_id', data.id);
         setUser(data);
@@ -124,7 +148,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             barangay: data.barangay || '',
             name: data.name || '',
         });
-        
         return { error: null };
     };
 
@@ -143,7 +166,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const session = user ? { user } : null;
 
     return (
-        <AuthContext.Provider value={{ authState, setAuthState, isDasmarinas, isTester, isAdmin, session, user, isLoading, signIn, signUp, signOut }}>
+        <AuthContext.Provider value={{
+            authState, setAuthState, isDasmarinas, isTester, isAdmin,
+            session, user, isLoading, signIn, signUp, signOut,
+        }}>
             {children}
         </AuthContext.Provider>
     );

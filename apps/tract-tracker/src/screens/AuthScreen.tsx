@@ -82,7 +82,7 @@ export default function AuthScreen() {
     if (!fontsLoaded) return null;
 
     const handleAuth = async () => {
-        if (!email || !password) {
+        if (!__DEV__ && (!email || !password)) {
             Alert.alert('Missing fields', 'Please enter your email and password.');
             return;
         }
