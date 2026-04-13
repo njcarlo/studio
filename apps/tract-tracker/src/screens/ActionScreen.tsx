@@ -15,6 +15,15 @@ const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf
 
 const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN'];
 const CHURCHES = ['Dasmarinas', 'Others'];
+
+const REGION_LABELS: Record<string, string> = {
+    NLR: 'North Luzon Region',
+    SLR: 'South Luzon Region',
+    MMR: 'Metro Manila Region',
+    VIS: 'Visayas Region',
+    MIN: 'Mindanao Region',
+    'COG Dasmarinas': 'COG Dasmarinas',
+};
 const BARANGAYS = [
     'Burol', 'Burol I', 'Burol II', 'Burol III', 'Datu Esmael',
     'Emmanuel Bergado I', 'Emmanuel Bergado II',
@@ -301,9 +310,7 @@ export default function ActionScreen() {
 
     const locationLabel = authState.barangay
         ? `Brgy. ${authState.barangay}`
-        : authState.region
-        ? `COG ${authState.region}`
-        : 'My Region';
+        : REGION_LABELS[authState.region] || authState.region || 'My Region';
 
     const now = new Date();
     const timeLabel = `as of ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric' })}, ${now.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}`;
