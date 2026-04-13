@@ -25,7 +25,7 @@
     "eslint": "^9.39.3",
     "eslint-config-expo": "~55.0.0",
     "expo": "~55.0.5",
-    "expo-font": "~55.0.4",
+    "expo-font": "~55.0.6",
     "expo-location": "^55.1.2",
     "expo-status-bar": "~55.0.4",
     "react": "19.2.0",

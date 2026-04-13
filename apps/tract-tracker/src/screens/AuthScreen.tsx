@@ -2,11 +2,22 @@ import React, { useState } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     ScrollView, Modal, FlatList, ImageBackground, Alert,
-    ActivityIndicator, KeyboardAvoidingView, Platform, Linking,
+    ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+
+// adding fonts
+import {
+  Inter_400Regular,
+  Inter_700Bold
+} from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
+
+// image import
+const Ntgd = require("../../assets/ntgd.png");
+const Obpng =  require("../../assets/obpng.png");
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
@@ -62,6 +73,14 @@ export default function AuthScreen() {
         b.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // font loading
+    const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_700Bold,
+    });
+
+    if (!fontsLoaded) return null;
+
     const handleAuth = async () => {
         if (!__DEV__ && (!email || !password)) {
             Alert.alert('Missing fields', 'Please enter your email and password.');
@@ -90,9 +109,9 @@ export default function AuthScreen() {
                 <View style={styles.overlay} />
                 <SafeAreaView style={styles.landingSafe}>
                     <View style={styles.landingContent}>
-                        <Text style={styles.landingEyebrow}>Ready to step out and{'\n'}spread the good news?</Text>
-                        <Text style={styles.landingTitle}>National Tracts{'\n'}Giving Day</Text>
-                        <Text style={styles.landingScript}>Outside is Beautiful</Text>
+                        <Text style={styles.landingEyebrow}>Ready to step out{'\n'}and spread the{'\n'}good news?</Text>
+                        <Image source={Ntgd} style={styles.ntgd} />
+                        <Image source={Obpng} style={styles.bo} />
                     </View>
 
                     <View style={styles.landingBottom}>
@@ -123,8 +142,10 @@ export default function AuthScreen() {
                         </TouchableOpacity>
 
                         {/* Header */}
+                        <Image style={styles.ntgd} source={Ntgd} />
+                        <Image style={styles.bo} source={Obpng} />
                         <Text style={styles.formTitle}>{screen === 'login' ? 'Welcome back' : 'Create account'}</Text>
-                        <Text style={styles.formSub}>National Tracts Giving Day</Text>
+                        
 
                         {/* Card */}
                         <View style={styles.card}>
@@ -269,10 +290,20 @@ const styles = StyleSheet.create({
     bg: { flex: 1 },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,60,0.75)' },
 
+    // Image of national tract distribution and logo
+    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -10 },
+    bo: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -20 },
+
     // ── Landing ──
     landingSafe: { flex: 1, justifyContent: 'space-between' },
     landingContent: { flex: 1, justifyContent: 'center', paddingHorizontal: 32, paddingTop: 60 },
-    landingEyebrow: { color: '#fff', fontSize: 18, lineHeight: 26, marginBottom: 20 },
+    landingEyebrow: { 
+        color: '#fff', 
+        fontSize: 28, 
+        lineHeight: 34, 
+        marginBottom: -10,
+        fontFamily: 'Inter_700Bold'
+    },
     landingTitle: {
         color: '#C9A84C',
         fontSize: 52,
@@ -304,22 +335,13 @@ const styles = StyleSheet.create({
     loginBtnText: { color: '#1a1a2e', fontSize: 18, fontFamily: 'Anton_400Regular' },
     signupPrompt: { color: '#ccc', fontSize: 14, textAlign: 'center' },
     signupLink: { color: '#C9A84C', textDecorationLine: 'underline' },
-    demoBtn: {
-        marginTop: 16,
-        paddingVertical: 10,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.25)',
-        borderRadius: 10,
-    },
-    demoBtnText: { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
 
     // ── Form ──
     formSafe: { flex: 1 },
     formScroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
     backBtn: { marginTop: 12, marginBottom: 24, alignSelf: 'flex-start', padding: 4 },
-    formTitle: { color: '#fff', fontSize: 32, marginBottom: 4, fontFamily: 'Anton_400Regular' },
-    formSub: { color: '#C9A84C', fontSize: 14, marginBottom: 28, letterSpacing: 1, fontFamily: 'Anton_400Regular' },
+    formTitle: { color: '#fff', fontSize: 32, marginBottom: 64, marginTop: -40, fontFamily: 'Inter_700Bold' },
+    formSub: { color: '#C9A84C', fontSize: 14, marginBottom: 28, letterSpacing: 1, fontFamily: 'Inter_700Bold',  },
     card: {
         backgroundColor: 'rgba(255,255,255,0.97)',
         borderRadius: 20,
