@@ -30,7 +30,6 @@ const REGION_LABELS: Record<string, string> = {
     MIN: 'Mindanao Region',
     'COG Dasmarinas': 'COG Dasmarinas',
 };
-const CHURCHES = ['Dasmarinas', 'Others'];
 const BARANGAYS = [
     'Burol', 'Burol I', 'Burol II', 'Burol III', 'Datu Esmael',
     'Emmanuel Bergado I', 'Emmanuel Bergado II',
@@ -73,7 +72,6 @@ export default function AuthScreen() {
     const [barangay, setBarangay] = useState('');
     const [showBarangayModal, setShowBarangayModal] = useState(false);
     const [showRegionModal, setShowRegionModal] = useState(false);
-    const [showChurchModal, setShowChurchModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 

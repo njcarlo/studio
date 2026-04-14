@@ -26,7 +26,20 @@ interface UserData {
     tractsGiven: number;
 }
 
-const MOCK_USERS = [
+const REGION_LABELS: Record<string, string> = {
+    NLR: 'North Luzon Region',
+    SLR: 'South Luzon Region',
+    MMR: 'Metro Manila Region',
+    VIS: 'Visayas Region',
+    MIN: 'Mindanao Region',
+    'COG Dasmarinas': 'COG Dasmarinas',
+};
+
+function getLocationLabel(u: UserData): string {
+    const regionLabel = REGION_LABELS[u.region || ''] || u.region || '—';
+    if (u.barangay) return `${regionLabel} · ${u.barangay}`;
+    return regionLabel;
+}
     { id: '1', name: 'Juan Dela Cruz', email: 'juan@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', tractsGiven: 154 },
     { id: '2', name: 'Maria Clara', email: 'maria@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Salawag', tractsGiven: 89 },
     { id: '3', name: 'Jose Rizal', email: 'jose@example.com', region: 'NLR', subRegion: 'Others', barangay: '', tractsGiven: 320 },
@@ -173,7 +186,7 @@ export default function AdminDashboardScreen() {
                                         <Text style={styles.rowSub}>{u.email || '—'}</Text>
                                     </View>
                                     <View style={{ flex: 2 }}>
-                                        <Text style={styles.rowSub}>{[u.region, u.barangay].filter(Boolean).join(' · ')}</Text>
+                                        <Text style={styles.rowSub}>{getLocationLabel(u)}</Text>
                                     </View>
                                     <View style={{ flex: 1, alignItems: 'flex-end' }}>
                                         <View style={[styles.badge, u.tractsGiven === 0 && styles.badgeZero]}>
@@ -198,7 +211,7 @@ export default function AdminDashboardScreen() {
                                 return (
                                     <View key={region} style={[styles.row, i === regionRows.length - 1 && styles.lastRow]}>
                                         <View style={{ flex: 2 }}>
-                                            <Text style={styles.rowName}>{region}</Text>
+                                            <Text style={styles.rowName}>{REGION_LABELS[region] || region}</Text>
                                             <View style={styles.barBg}>
                                                 <View style={[styles.barFill, { width: `${pct}%` as any }]} />
                                             </View>
