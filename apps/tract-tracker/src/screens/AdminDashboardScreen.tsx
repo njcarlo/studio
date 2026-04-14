@@ -40,11 +40,13 @@ function getLocationLabel(u: UserData): string {
     if (u.barangay) return `${regionLabel} · ${u.barangay}`;
     return regionLabel;
 }
-    { id: '1', name: 'Juan Dela Cruz', email: 'juan@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', tractsGiven: 154 },
-    { id: '2', name: 'Maria Clara', email: 'maria@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Salawag', tractsGiven: 89 },
-    { id: '3', name: 'Jose Rizal', email: 'jose@example.com', region: 'NLR', subRegion: 'Others', barangay: '', tractsGiven: 320 },
-    { id: '4', name: 'Andres Bonifacio', email: 'andres@example.com', region: 'SLR', subRegion: 'Others', barangay: '', tractsGiven: 45 },
-    { id: '5', name: 'Emilio Aguinaldo', email: 'emilio@example.com', region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Sampaloc I', tractsGiven: 210 },
+
+const MOCK_USERS = [
+    { id: '1', name: 'Juan Dela Cruz', email: 'juan@example.com', region: 'COG Dasmarinas', barangay: 'Burol I', tractsGiven: 154 },
+    { id: '2', name: 'Maria Clara', email: 'maria@example.com', region: 'COG Dasmarinas', barangay: 'Salawag', tractsGiven: 89 },
+    { id: '3', name: 'Jose Rizal', email: 'jose@example.com', region: 'NLR', barangay: '', tractsGiven: 320 },
+    { id: '4', name: 'Andres Bonifacio', email: 'andres@example.com', region: 'SLR', barangay: '', tractsGiven: 45 },
+    { id: '5', name: 'Emilio Aguinaldo', email: 'emilio@example.com', region: 'COG Dasmarinas', barangay: 'Sampaloc I', tractsGiven: 210 },
 ];
 
 export default function AdminDashboardScreen() {
