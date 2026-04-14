@@ -80,10 +80,10 @@ export default function AdminDashboardScreen() {
     }, {});
     const regionRows = Object.entries(byRegion).sort((a, b) => b[1] - a[1]);
 
-    // Group by barangay
+    // Group by barangay — only include users who have a barangay set
     const byBarangay = users.reduce<Record<string, number>>((acc, u) => {
-        const key = u.barangay || 'No Barangay';
-        acc[key] = (acc[key] || 0) + u.tractsGiven;
+        if (!u.barangay) return acc;
+        acc[u.barangay] = (acc[u.barangay] || 0) + u.tractsGiven;
         return acc;
     }, {});
     const barangayRows = Object.entries(byBarangay).sort((a, b) => b[1] - a[1]);
