@@ -48,7 +48,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         if (__DEV__) {
-            // Start unauthenticated so auth screens are visible for UI dev work
             setIsLoading(false);
             return;
         }
@@ -91,7 +90,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const signIn = async (email: string, password: string) => {
         if (__DEV__) {
             setUser(DEV_USER);
-            setAuthStateInternal({ region: 'MMR', subRegion: 'Dasmarinas', barangay: 'Burol I', name: 'Dev Admin' });
+            setAuthStateInternal({
+                region: 'COG Dasmarinas',
+                subRegion: 'Dasmarinas',
+                barangay: 'Burol I',
+                name: 'Dev Admin',
+            });
             return { error: null };
         }
         const { data, error } = await supabaseAdmin
@@ -116,8 +120,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const signUp = async (email: string, password: string, metadata: Partial<AuthState>) => {
         if (__DEV__) {
-            setUser({ ...DEV_USER, email, name: metadata.name || 'Dev User', region: metadata.region || 'MMR', sub_region: metadata.subRegion || '', barangay: metadata.barangay || '' });
-            setAuthStateInternal({ region: metadata.region || 'MMR', subRegion: metadata.subRegion || '', barangay: metadata.barangay || '', name: metadata.name || 'Dev User' });
+            setUser({ ...DEV_USER, email, name: metadata.name || 'Dev User' });
+            setAuthStateInternal({
+                region: metadata.region || 'COG Dasmarinas',
+                subRegion: metadata.subRegion || 'Dasmarinas',
+                barangay: metadata.barangay || 'Burol I',
+                name: metadata.name || 'Dev User',
+            });
             return { error: null };
         }
         const { data: existing } = await supabaseAdmin
