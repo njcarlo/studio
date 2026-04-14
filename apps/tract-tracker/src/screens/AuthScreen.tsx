@@ -22,6 +22,14 @@ const Obpng =  require("../../assets/obpng.png");
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
 const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN', 'COG Dasmarinas'];
+const REGION_LABELS: Record<string, string> = {
+    NLR: 'North Luzon Region',
+    SLR: 'South Luzon Region',
+    MMR: 'Metro Manila Region',
+    VIS: 'Visayas Region',
+    MIN: 'Mindanao Region',
+    'COG Dasmarinas': 'COG Dasmarinas',
+};
 const CHURCHES = ['Dasmarinas', 'Others'];
 const BARANGAYS = [
     'Burol', 'Burol I', 'Burol II', 'Burol III', 'Datu Esmael',
@@ -185,7 +193,7 @@ export default function AuthScreen() {
                                     <Text style={styles.label}>Region</Text>
                                     <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowRegionModal(true)}>
                                         <Text style={[styles.dropdownText, !region && styles.placeholderText]}>
-                                            {region || 'Select Region'}
+                                            {region ? REGION_LABELS[region] : 'Select Region'}
                                         </Text>
                                         <Ionicons name="chevron-down" size={18} color="#666" />
                                     </TouchableOpacity>
@@ -253,7 +261,7 @@ export default function AuthScreen() {
                                 style={styles.barangayItem}
                                 onPress={() => { setRegion(r); setSubRegion(''); setBarangay(''); setShowRegionModal(false); }}
                             >
-                                <Text style={[styles.barangayItemText, region === r && styles.selectedItemText]}>{r}</Text>
+                                <Text style={[styles.barangayItemText, region === r && styles.selectedItemText]}>{REGION_LABELS[r]}</Text>
                                 {region === r && <Ionicons name="checkmark" size={18} color="#C9A84C" />}
                             </TouchableOpacity>
                         ))}

@@ -145,6 +145,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             sub_region: metadata.subRegion || '',
             barangay: metadata.barangay,
             tracts_given: 0,
+            is_tester: true,  // demo: bypass countdown
+            is_admin: true,   // demo: show admin + liveboard
         }).select().single();
 
         if (error || !data) return { error: error?.message || 'Failed to create account.' };
