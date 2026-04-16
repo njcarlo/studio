@@ -6,7 +6,7 @@ import {
     getBorrowings, createBorrowing, returnBorrowing,
 } from '../lib/inventory-api';
 
-export function useInventory() {
+export function useInventory(ministryId?: string | null) {
     const [stats, setStats] = useState<any>(null);
     const [logs, setLogs] = useState<any[]>([]);
     const [items, setItems] = useState<any[]>([]);
@@ -17,27 +17,30 @@ export function useInventory() {
     const [locations, setLocations] = useState<any[]>([]);
 
     const fetchStats = useCallback(async () => {
+        if (!ministryId) return;
         try {
-            const data = await getDashboardStats();
+            const data = await getDashboardStats(ministryId);
             setStats(data);
         } catch (e) {
             console.error('Failed to fetch stats', e);
         }
-    }, []);
+    }, [ministryId]);
 
     const fetchLogs = useCallback(async (itemId?: string) => {
+        if (!ministryId) return;
         try {
-            const data = await getLogs({ itemId, limit: 100 });
+            const data = await getLogs(ministryId, { itemId, limit: 100 });
             setLogs(data);
         } catch (e) {
             console.error('Failed to fetch logs', e);
         }
-    }, []);
+    }, [ministryId]);
 
     const fetchItems = useCallback(async (params: any = {}) => {
+        if (!ministryId) return;
         setLoading(true);
         try {
-            const data = await getItems(params);
+            const data = await getItems(ministryId, params);
             setItems(data.items);
             setTotalItems(data.total);
         } catch (e) {
@@ -45,7 +48,7 @@ export function useInventory() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [ministryId]);
 
     const fetchCategories = useCallback(async () => {
         try {
@@ -57,13 +60,29 @@ export function useInventory() {
     }, []);
 
     const fetchBorrowings = useCallback(async (params: any = {}) => {
+        if (!ministryId) return;
         try {
-            const data = await getBorrowings(params);
+            const data = await getBorrowings(ministryId, params);
             setBorrowings(data);
         } catch (e) {
             console.error('Failed to fetch borrowings', e);
         }
-    }, []);
+    }, [ministryId]);
+
+    const fetchLocations = useCallback(async () => {
+        if (!ministryId) return;
+        try {
+            const { data } = await supabase
+                .from('InventoryItem')
+                .select('location')
+                .eq('group', ministryId)
+                .not('location', 'is', null);
+            const unique = [...new Set((data ?? []).map((d: any) => d.location).filter(Boolean))];
+            setLocations(unique.map((name: string) => ({ id: name, name })));
+        } catch (e) {
+            console.error('Failed to fetch locations', e);
+        }
+    }, [ministryId]);
 
     const updateStock = async (id: string, action: 'Stock In' | 'Stock Out', quantity: number, notes?: string) => {
         try {
@@ -77,7 +96,8 @@ export function useInventory() {
     };
 
     const addItem = async (payload: any): Promise<any> => {
-        const item = await apiCreateItem(payload);
+        if (!ministryId) throw new Error('No ministry context');
+        const item = await apiCreateItem(ministryId, payload);
         fetchItems();
         fetchStats();
         return item;
@@ -109,19 +129,6 @@ export function useInventory() {
         return b;
     };
 
-    const fetchLocations = useCallback(async () => {
-        try {
-            const { data } = await supabase
-                .from('InventoryItem')
-                .select('location')
-                .not('location', 'is', null);
-            const unique = [...new Set((data ?? []).map((d: any) => d.location).filter(Boolean))];
-            setLocations(unique.map((name: string) => ({ id: name, name })));
-        } catch (e) {
-            console.error('Failed to fetch locations', e);
-        }
-    }, []);
-
     const bulkUpdateItems = async (ids: string[], payload: any) => {
         await supabase.from('InventoryItem').update(payload).in('id', ids);
         fetchItems();
@@ -134,7 +141,8 @@ export function useInventory() {
     };
 
     const bulkImportItems = async (rows: any[]) => {
-        await supabase.from('InventoryItem').insert(rows);
+        const tagged = rows.map(r => ({ ...r, group: ministryId }));
+        await supabase.from('InventoryItem').insert(tagged);
         fetchItems();
         fetchStats();
     };

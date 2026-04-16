@@ -10,7 +10,9 @@ import {
   Menu,
   X,
   Briefcase,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '../lib/auth-context';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard', path: '/dashboard' },
@@ -23,6 +25,7 @@ const navItems = [
 
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { profile, signOut } = useAuth();
 
   const navContent = (
     <>
@@ -70,29 +73,45 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* User Avatar at bottom */}
+      {/* User + Ministry + Sign Out */}
       <div style={{
         marginTop: 'auto',
         paddingTop: '1rem',
         borderTop: '1px solid #e2e5ea',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.625rem',
-        paddingLeft: '0.25rem'
       }}>
-        <div style={{
-          width: '34px', height: '34px',
-          borderRadius: '50%',
-          backgroundColor: '#d1d5db',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 700, fontSize: '0.8125rem', color: '#374151',
-          flexShrink: 0
-        }}>
-          JD
-        </div>
-        <div>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1a1a2e' }}>John Doe</div>
-          <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Admin</div>
+        {profile?.ministryName && (
+          <div style={{
+            fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)',
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+            paddingLeft: '0.25rem', marginBottom: '0.5rem',
+          }}>
+            {profile.ministryName}
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', paddingLeft: '0.25rem' }}>
+          <div style={{
+            width: '34px', height: '34px', borderRadius: '50%',
+            backgroundColor: '#d1d5db',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 700, fontSize: '0.8125rem', color: '#374151', flexShrink: 0,
+          }}>
+            {profile ? `${profile.firstName[0]}${profile.lastName[0]}` : '?'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1a1a2e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {profile ? `${profile.firstName} ${profile.lastName}` : 'Loading…'}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+              {profile?.canManage ? 'Inventory Officer' : 'Viewer'}
+            </div>
+          </div>
+          <button
+            onClick={signOut}
+            title="Sign out"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px', borderRadius: '6px', flexShrink: 0 }}
+          >
+            <LogOut size={15} />
+          </button>
         </div>
       </div>
     </>

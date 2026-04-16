@@ -62,6 +62,7 @@ export const PERMISSIONS = {
   },
   inventory: {
     access: 'inventory:access',
+    manage: 'inventory:manage',
   },
 } as const;
 
@@ -99,6 +100,7 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'schedule',         action: 'confirm',             description: 'Confirm worker acknowledgement of schedule assignments' },
   { module: 'schedule',         action: 'assign_schedulers',   description: 'Assign Ministry Scheduler role to workers' },
   { module: 'inventory',        action: 'access',              description: 'Access the Inventory Management module' },
+  { module: 'inventory',        action: 'manage',              description: 'Inventory Officer — create, edit, delete items and manage stock' },
 ];
 
 /**

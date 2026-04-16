@@ -1,7 +1,6 @@
 /**
- * Inventory data layer — replaces the Express /api/ endpoints.
- * Uses Supabase directly against the shared Postgres DB.
- * Table names match the Prisma schema (PascalCase with quotes).
+ * Inventory data layer — multi-tenant, scoped by ministryId.
+ * Every query filters by `group` = ministryId on InventoryItem.
  */
 import { supabase } from './supabase';
 
@@ -46,9 +45,9 @@ export async function updateCategory(id: string, payload: Partial<{
     return data;
 }
 
-// ── Items ─────────────────────────────────────────────────────────────────────
+// ── Items (ministry-scoped) ───────────────────────────────────────────────────
 
-export async function getItems(params: {
+export async function getItems(ministryId: string, params: {
     search?: string;
     categoryId?: string;
     status?: string;
@@ -60,7 +59,8 @@ export async function getItems(params: {
     let query = supabase
         .from('InventoryItem')
         .select('*, category:InventoryCategory(id,name,color,icon)', { count: 'exact' })
-        .is('parentId', null) // top-level items only
+        .eq('group', ministryId)   // ← ministry scope
+        .is('parentId', null)
         .order('name');
 
     if (search) query = query.ilike('name', `%${search}%`);
@@ -86,7 +86,7 @@ export async function getItem(id: string) {
     return data;
 }
 
-export async function createItem(payload: {
+export async function createItem(ministryId: string, payload: {
     name: string;
     categoryId: string;
     type?: string;
@@ -101,11 +101,10 @@ export async function createItem(payload: {
     inventoryCode?: string;
     imageUrl?: string;
     isApprovalRequired?: boolean;
-    notes?: string;
 }) {
     const { data, error } = await supabase
         .from('InventoryItem')
-        .insert(payload)
+        .insert({ ...payload, group: ministryId })  // ← tag with ministry
         .select()
         .single();
     if (error) throw error;
@@ -137,7 +136,6 @@ export async function adjustStock(
     notes?: string,
     workerId?: string,
 ) {
-    // Fetch current quantity
     const { data: item, error: fetchErr } = await supabase
         .from('InventoryItem')
         .select('quantity')
@@ -149,13 +147,11 @@ export async function adjustStock(
     const delta = action === 'Stock Out' ? -quantity : quantity;
     const newQty = Math.max(0, current + delta);
 
-    // Update item quantity
     await supabase
         .from('InventoryItem')
         .update({ quantity: newQty, updatedAt: new Date().toISOString() })
         .eq('id', itemId);
 
-    // Log the transaction
     await supabase.from('InventoryLog').insert({
         itemId,
         workerId: workerId ?? null,
@@ -168,12 +164,13 @@ export async function adjustStock(
     return newQty;
 }
 
-// ── Logs ──────────────────────────────────────────────────────────────────────
+// ── Logs (ministry-scoped via item join) ──────────────────────────────────────
 
-export async function getLogs(params: { itemId?: string; limit?: number } = {}) {
+export async function getLogs(ministryId: string, params: { itemId?: string; limit?: number } = {}) {
     let query = supabase
         .from('InventoryLog')
-        .select('*, item:InventoryItem(id,name)')
+        .select('*, item:InventoryItem!inner(id,name,group)')
+        .eq('item.group', ministryId)   // ← ministry scope via join
         .order('timestamp', { ascending: false })
         .limit(params.limit ?? 100);
 
@@ -184,12 +181,13 @@ export async function getLogs(params: { itemId?: string; limit?: number } = {}) 
     return data ?? [];
 }
 
-// ── Borrowings ────────────────────────────────────────────────────────────────
+// ── Borrowings (ministry-scoped via item join) ────────────────────────────────
 
-export async function getBorrowings(params: { status?: string; borrowerId?: string } = {}) {
+export async function getBorrowings(ministryId: string, params: { status?: string; borrowerId?: string } = {}) {
     let query = supabase
         .from('InventoryBorrowing')
-        .select('*, item:InventoryItem(id,name,imageUrl), borrower:Worker(id,firstName,lastName,email)')
+        .select('*, item:InventoryItem!inner(id,name,imageUrl,group), borrower:Worker(id,firstName,lastName,email)')
+        .eq('item.group', ministryId)   // ← ministry scope
         .order('borrowedAt', { ascending: false });
 
     if (params.status) query = query.eq('status', params.status);
@@ -230,12 +228,19 @@ export async function returnBorrowing(id: string, payload: {
     return data;
 }
 
-// ── Dashboard stats ───────────────────────────────────────────────────────────
+// ── Dashboard stats (ministry-scoped) ────────────────────────────────────────
 
-export async function getDashboardStats() {
+export async function getDashboardStats(ministryId: string) {
     const [itemsRes, borrowingsRes] = await Promise.all([
-        supabase.from('InventoryItem').select('id, quantity, minQuantity, status, type', { count: 'exact' }),
-        supabase.from('InventoryBorrowing').select('id', { count: 'exact' }).eq('status', 'BORROWED'),
+        supabase
+            .from('InventoryItem')
+            .select('id, quantity, minQuantity, status, type', { count: 'exact' })
+            .eq('group', ministryId),
+        supabase
+            .from('InventoryBorrowing')
+            .select('id, item:InventoryItem!inner(group)', { count: 'exact' })
+            .eq('status', 'BORROWED')
+            .eq('item.group', ministryId),
     ]);
 
     const items = itemsRes.data ?? [];
