@@ -54,6 +54,7 @@ import {
   Save,
   ShieldCheck,
   Edit,
+  RefreshCw,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +67,7 @@ import {
   updateRole,
   deleteRole,
 } from "@/actions/db";
+import { seedPermissions } from "@/actions/seed-permissions";
 import { ALL_PERMISSIONS } from "@/lib/permissions/registry";
 
 // Group permissions by module for the accordion UI
@@ -264,6 +266,27 @@ export default function RoleManagementPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<any | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<any | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Auto-sync permissions on mount — ensures new permissions (e.g. inventory:manage)
+  // are inserted into the Permission table without requiring manual action.
+  useEffect(() => {
+    if (!canManageRoles) return;
+    seedPermissions().catch(console.error);
+  }, [canManageRoles]);
+
+  const handleSyncPermissions = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await seedPermissions();
+      toast({ title: `Permissions synced — ${result.permissions} entries, ${result.roles} roles migrated` });
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+    } catch {
+      toast({ variant: "destructive", title: "Sync failed" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const saveMutation = useMutation({
     mutationFn: async ({
@@ -371,14 +394,20 @@ export default function RoleManagementPage() {
             Define roles and their granular access permissions.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setSelectedRole(null);
-            setSheetOpen(true);
-          }}
-        >
-          <PlusCircle className="h-4 w-4 mr-2" /> Add New Role
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSyncPermissions} disabled={isSyncing}>
+            {isSyncing ? <LoaderCircle className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Sync Permissions
+          </Button>
+          <Button
+            onClick={() => {
+              setSelectedRole(null);
+              setSheetOpen(true);
+            }}
+          >
+            <PlusCircle className="h-4 w-4 mr-2" /> Add New Role
+          </Button>
+        </div>
       </div>
 
       <Card className="mt-6">
