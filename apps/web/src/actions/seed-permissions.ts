@@ -29,6 +29,18 @@ export async function seedPermissions() {
     );
 
     for (const role of roles) {
+        // Super admin roles get ALL permissions
+        if (role.isSuperAdmin) {
+            for (const perm of allPermissions) {
+                await prisma.rolePermission.upsert({
+                    where: { roleId_permissionId: { roleId: role.id, permissionId: perm.id } },
+                    update: {},
+                    create: { roleId: role.id, permissionId: perm.id },
+                });
+            }
+            continue;
+        }
+
         const newKeys = new Set<string>();
 
         for (const legacy of role.permissions) {
