@@ -370,6 +370,9 @@ export default function ActionScreen() {
         ? `Brgy. ${authState.barangay}`
         : REGION_LABELS[authState.region] || authState.region || 'My Region';
 
+    // Primary count shown at top — barangay if set, else region
+    const primaryCount = authState.barangay ? barangayCount : regionalCount;
+
     const now = new Date();
     const timeLabel = `as of ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric' })}, ${now.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}`;
 
@@ -392,6 +395,17 @@ export default function ActionScreen() {
                 <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
                     {/* Title */}
                     <Text style={styles.title}>National Tracts Giving Day</Text>
+
+                    {/* Regional/Barangay block — big count at top */}
+                    <View style={styles.regionalBlock}>
+                        <Text style={styles.locationLabel}>{locationLabel}</Text>
+                        {isLoading
+                            ? <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} />
+                            : <Text style={styles.regionalCount}>{primaryCount.toLocaleString()}</Text>
+                        }
+                        <Text style={styles.regionalSub}>Total Tracts Given</Text>
+                        <Text style={styles.regionalSub}>{timeLabel}</Text>
+                    </View>
 
                     {/* Personal card */}
                     <View style={styles.card}>
@@ -422,22 +436,6 @@ export default function ActionScreen() {
                                 <Text style={styles.statValue}>{nationalCount.toLocaleString()}</Text>
                             </View>
 
-                            {/* Regional */}
-                            {authState.region ? (
-                                <View style={styles.statRow}>
-                                    <Text style={styles.statLabel}>{REGION_LABELS[authState.region] || authState.region}</Text>
-                                    <Text style={styles.statValue}>{regionalCount.toLocaleString()}</Text>
-                                </View>
-                            ) : null}
-
-                            {/* Barangay */}
-                            {authState.barangay ? (
-                                <View style={styles.statRow}>
-                                    <Text style={styles.statLabel}>{`Brgy. ${authState.barangay}`}</Text>
-                                    <Text style={styles.statValue}>{barangayCount.toLocaleString()}</Text>
-                                </View>
-                            ) : null}
-
                             {/* Top Regions */}
                             {topRegions.length > 0 && (
                                 <View style={styles.leaderboard}>
@@ -465,8 +463,6 @@ export default function ActionScreen() {
                                     ))}
                                 </View>
                             )}
-
-                            <Text style={styles.timeLabel}>{timeLabel}</Text>
                         </View>
                     )}
                 </ScrollView>
@@ -513,7 +509,12 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
     headerBtn: { padding: 8 },
     headerBtnText: { color: '#C9A84C', fontSize: 14 },
-    title: { color: '#C9A84C', fontSize: 28, textAlign: 'center', marginTop: 8, marginBottom: 16, paddingHorizontal: 20, fontFamily: 'Anton_400Regular' },
+    title: { color: '#C9A84C', fontSize: 28, textAlign: 'center', marginTop: 8, marginBottom: 8, paddingHorizontal: 20, fontFamily: 'Anton_400Regular' },
+
+    regionalBlock: { alignItems: 'center', marginBottom: 20, paddingHorizontal: 20 },
+    locationLabel: { color: '#fff', fontSize: 18, marginBottom: 4, fontFamily: 'Anton_400Regular' },
+    regionalCount: { color: '#fff', fontSize: 64, letterSpacing: -2, fontFamily: 'Anton_400Regular' },
+    regionalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
 
     card: {
         marginHorizontal: 24,
@@ -561,8 +562,6 @@ const styles = StyleSheet.create({
     leaderboardName: { color: '#fff', fontSize: 13, flex: 1 },
     leaderboardCount: { color: '#C9A84C', fontSize: 14, fontFamily: 'Anton_400Regular' },
     timeLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 8 },
-
-    // ── Shared ──
     setupTitle: { color: '#C9A84C', fontSize: 40, lineHeight: 46, marginBottom: 10, fontFamily: 'Anton_400Regular' },
     script: { color: '#fff', fontSize: 22, fontStyle: 'italic', marginBottom: 28, opacity: 0.9, fontFamily: 'Inter_400Regular_Italic' },
 });
