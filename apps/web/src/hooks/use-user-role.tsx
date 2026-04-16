@@ -62,6 +62,7 @@ export function useUserRole(): UserRoleContextType {
       canManageSchedule: s.canManageSchedule,
       canConfirmSchedule: s.canConfirmSchedule,
       canAssignSchedulers: s.canAssignSchedulers,
+      canAccessInventory: s.canAccessInventory,
     })),
   );
 }

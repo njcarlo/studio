@@ -14,6 +14,8 @@ import {
   BarChart3,
   UtensilsCrossed,
   Building2,
+  Package,
+  ExternalLink,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -176,6 +178,12 @@ const allNavItems: NavItem[] = [
     ],
   },
   {
+    href: "https://cog-inventory.vercel.app/dashboard",
+    icon: Package,
+    label: "Inventory",
+    permissionKey: "canAccessInventory",
+  },
+  {
     href: "/settings",
     icon: Settings,
     label: "Settings",
@@ -313,17 +321,26 @@ export function Nav({
 
           // No sub-items: simple link
           if (!item.subItems || visibleSubItems.length === 0) {
+            const isExternal = item.href.startsWith('http');
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
-                  isActive={isActiveHref(item.href)}
+                  isActive={!isExternal && isActiveHref(item.href)}
                   tooltip={{ children: item.label }}
                 >
-                  <Link href={item.href}>
-                    <item.icon className="size-4" />
-                    <span>{item.label}</span>
-                  </Link>
+                  {isExternal ? (
+                    <a href={item.href} target="_blank" rel="noopener noreferrer">
+                      <item.icon className="size-4" />
+                      <span>{item.label}</span>
+                      <ExternalLink className="size-3 ml-auto opacity-50" />
+                    </a>
+                  ) : (
+                    <Link href={item.href}>
+                      <item.icon className="size-4" />
+                      <span>{item.label}</span>
+                    </Link>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );

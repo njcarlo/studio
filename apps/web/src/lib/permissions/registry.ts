@@ -60,6 +60,9 @@ export const PERMISSIONS = {
     confirm:          'schedule:confirm',
     assign_schedulers: 'schedule:assign_schedulers',
   },
+  inventory: {
+    access: 'inventory:access',
+  },
 } as const;
 
 /** Flat list of all permission strings for iteration/seeding. */
@@ -95,6 +98,7 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'schedule',         action: 'manage',              description: 'Create and manage Sunday service schedules' },
   { module: 'schedule',         action: 'confirm',             description: 'Confirm worker acknowledgement of schedule assignments' },
   { module: 'schedule',         action: 'assign_schedulers',   description: 'Assign Ministry Scheduler role to workers' },
+  { module: 'inventory',        action: 'access',              description: 'Access the Inventory Management module' },
 ];
 
 /**
