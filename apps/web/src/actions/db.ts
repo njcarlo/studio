@@ -86,10 +86,32 @@ export async function setRolePermissions(roleId: string, permissionIds: string[]
 
 /** Set permissions using "module:action" strings instead of UUIDs. */
 export async function setRolePermissionsByKeys(roleId: string, permKeys: string[]) {
-    const permissions = await prisma.permission.findMany();
-    const ids = permissions
-        .filter(p => permKeys.includes(`${p.module}:${p.action}`))
-        .map(p => p.id);
+    if (permKeys.length === 0) {
+        // Just clear all permissions for this role
+        await prisma.rolePermission.deleteMany({ where: { roleId } });
+        revalidatePath('/settings/roles');
+        return;
+    }
+
+    // Fetch all permissions from DB
+    const allPerms = await prisma.permission.findMany();
+    const permMap = new Map(allPerms.map(p => [`${p.module}:${p.action}`, p.id]));
+
+    // Upsert any permissions that don't exist yet (e.g. newly added inventory:manage)
+    const missing = permKeys.filter(k => !permMap.has(k));
+    for (const key of missing) {
+        const [module, ...actionParts] = key.split(':');
+        const action = actionParts.join(':');
+        if (!module || !action) continue;
+        const created = await prisma.permission.upsert({
+            where: { module_action: { module, action } },
+            update: {},
+            create: { module, action },
+        });
+        permMap.set(key, created.id);
+    }
+
+    const ids = permKeys.map(k => permMap.get(k)).filter(Boolean) as string[];
     return await setRolePermissions(roleId, ids);
 }
 

@@ -309,7 +309,8 @@ export default function RoleManagementPage() {
       }
     },
     onSuccess: async (result, { role }) => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      await queryClient.invalidateQueries({ queryKey: ["roles"] });
+      await queryClient.refetchQueries({ queryKey: ["roles"] });
       await logAction(
         role?.id ? "Updated Role" : "Created Role",
         "Roles",
