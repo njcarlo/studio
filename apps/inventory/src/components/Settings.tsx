@@ -60,17 +60,25 @@ export function Settings() {
                     </div>
                     <div>
                         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.2rem' }}>Role</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                             <Shield size={13} color={profile?.canManage ? 'var(--primary)' : 'var(--text-muted)'} />
-                            <span style={{ fontSize: '0.875rem', color: 'var(--text-main)' }}>
-                                {profile?.isSuperAdmin ? 'Super Admin' : profile?.canManage ? 'Inventory Officer' : 'Viewer'}
-                            </span>
+                            {profile?.roleNames && profile.roleNames.length > 0
+                                ? profile.roleNames.map((r, i) => (
+                                    <span key={i} style={{
+                                        display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '999px',
+                                        fontSize: '0.75rem', fontWeight: 600,
+                                        backgroundColor: profile.isSuperAdmin ? '#e8eeff' : 'var(--border)',
+                                        color: profile.isSuperAdmin ? 'var(--primary)' : 'var(--text-main)',
+                                    }}>{r}</span>
+                                ))
+                                : <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No roles assigned</span>
+                            }
                         </div>
                     </div>
                     <div>
                         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.2rem' }}>Access</div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-main)' }}>
-                            {profile?.canManage ? 'Full CRUD' : 'Read-only'}
+                            {profile?.isSuperAdmin ? '🔑 Full access (all ministries)' : profile?.canManage ? '✏️ Inventory Officer (CRUD)' : '👁 Read-only'}
                         </div>
                     </div>
                 </div>

@@ -12,9 +12,10 @@ interface WorkerProfile {
     majorMinistryId: string;
     minorMinistryId: string;
     ministryName?: string;
-    canManage: boolean;   // has inventory:manage
-    canAccess: boolean;   // has inventory:access (read-only)
+    canManage: boolean;
+    canAccess: boolean;
     isSuperAdmin: boolean;
+    roleNames: string[];  // all role names for display
 }
 
 interface AuthContextType {
@@ -72,6 +73,9 @@ function aggregatePermissions(worker: any): Set<string> {
     return perms;
 }
 
+// Emails that are always treated as super admin regardless of DB roles
+const SUPER_ADMIN_EMAILS = new Set(['admin@system.com', 'pacleb@gmail.com']);
+
 async function loadWorkerProfile(userId: string, userEmail?: string): Promise<WorkerProfile | null> {
     // Try by Supabase auth UID first, then fall back to email
     // The Worker.id in Prisma is a UUID that matches the Supabase auth user id
@@ -120,12 +124,31 @@ async function loadWorkerProfile(userId: string, userEmail?: string): Promise<Wo
 
     if (!worker) return null;
 
+    // Check email whitelist first — always super admin
+    const emailLower = (worker.email ?? userEmail ?? '').toLowerCase().trim();
+    const isEmailSuperAdmin = SUPER_ADMIN_EMAILS.has(emailLower);
+
     // Aggregate all permissions across all roles (union, deduped)
-    const perms = aggregatePermissions(worker);
-    const isSuperAdmin = perms.has('__superadmin__');
+    const perms = isEmailSuperAdmin
+        ? new Set(['__superadmin__'])
+        : aggregatePermissions(worker);
+    const isSuperAdmin = isEmailSuperAdmin || perms.has('__superadmin__');
 
     const canManage = isSuperAdmin || perms.has('inventory:manage');
     const canAccess = isSuperAdmin || canManage || perms.has('inventory:access');
+
+    // Collect all role names for display
+    const roleNames: string[] = [];
+    if (isSuperAdmin && isEmailSuperAdmin) roleNames.push('Super Admin');
+    for (const wr of (worker.roles as any[]) ?? []) {
+        if (wr.role?.name && !roleNames.includes(wr.role.name)) {
+            roleNames.push(wr.role.name);
+        }
+    }
+    if (worker.role?.name && !roleNames.includes(worker.role.name)) {
+        roleNames.push(worker.role.name);
+    }
+    if (roleNames.length === 0) roleNames.push('No Role Assigned');
 
     // Get ministry name
     let ministryName: string | undefined;
@@ -149,6 +172,7 @@ async function loadWorkerProfile(userId: string, userEmail?: string): Promise<Wo
         canManage,
         canAccess,
         isSuperAdmin,
+        roleNames,
     };
 }
 
