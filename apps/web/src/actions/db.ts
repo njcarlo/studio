@@ -653,7 +653,14 @@ export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
 }
 
 export async function createBooking(data: any) {
-    const booking = await prisma.booking.create({ data });
+    // Strip any undefined/null FK fields that would cause constraint violations
+    const { workerProfileId, roomId, ...rest } = data;
+    if (!workerProfileId) throw new Error('workerProfileId is required to create a booking');
+    if (!roomId) throw new Error('roomId is required to create a booking');
+
+    const booking = await prisma.booking.create({
+        data: { ...rest, workerProfileId, roomId },
+    });
     revalidatePath('/reservations');
     revalidatePath('/dashboard');
     return booking;

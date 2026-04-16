@@ -204,22 +204,33 @@ export default function NewReservationPage() {
             const requesterEmail = workerProfile?.email || user?.email || "admin@system.com";
             const requesterMinistryId = workerProfile?.majorMinistryId || "";
 
+            // workerProfileId must be a valid Worker UUID — if no profile, abort
+            if (!workerProfile?.id) {
+                toast({
+                    variant: "destructive",
+                    title: "Profile Not Found",
+                    description: "Your worker profile could not be found. Please contact an administrator.",
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
             const bookingData = {
                 requestId,
                 roomId,
-                title: purpose, // Using purpose as title for compatibility
+                title: purpose,
                 purpose,
                 status: 'Pending Ministry Approval',
-                workerProfileId: workerProfile?.id || "system-admin",
+                workerProfileId: workerProfile.id,
                 name: requesterName,
                 ministryId: requesterMinistryId,
                 email: requesterEmail,
+                requesterEmail,
                 dateRequested: new Date(),
                 pax: paxNum || 0,
                 numTables: parseInt(numTables) || 0,
                 numChairs: parseInt(numChairs) || 0,
                 requestedElements,
-                // Kept for legacy typing compatibility if needed
                 equipment_TV: false,
                 equipment_Mic: false,
                 equipment_Speakers: false,
@@ -237,7 +248,7 @@ export default function NewReservationPage() {
                     status: 'Pending Ministry Approval',
                     roomId,
                     reservationId: newBooking.id,
-                    workerId: workerProfile?.id || "system-admin",
+                    workerId: workerProfile.id,
                     requestId
                 });
 
