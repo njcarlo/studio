@@ -42,16 +42,16 @@ export function StockScanModal({ onClose }: { onClose: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, quantity: 1, notes: 'Scanned via Mobile Action' })
       });
-      
+
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed to update stock'); return; }
-      
+
       // Update local state to reflect changes and let user scan again or close
       setScanResult((prev: any) => ({
         ...prev,
         item: { ...prev.item, stock: data.updatedItem.stock, status: data.updatedItem.status }
       }));
-      
+
     } catch {
       setError('Update failed. Check network connection.');
     } finally {
@@ -62,19 +62,19 @@ export function StockScanModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal-overlay" style={{ zIndex: 400 }}>
       {isCameraOpen && (
-        <ScannerModal 
-          onClose={() => setIsCameraOpen(false)} 
+        <ScannerModal
+          onClose={() => setIsCameraOpen(false)}
           onScan={(data) => {
             setQrInput(data);
             handleScanAPI(data);
-          }} 
+          }}
         />
       )}
       <div className="modal-content" style={{ maxWidth: '440px' }}>
         <div className="modal-header">
           <div>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Scan to Action</h3>
-            <p style={{ margin: '0.1rem 0 0', fontSize: '0.78rem', color: '#9ca3af' }}>Look up an item to update its stock</p>
+            <p style={{ margin: '0.1rem 0 0', fontSize: '0.78rem', color: '#9ca3af' }}>Search an item to update its stock</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}><X size={20} /></button>
         </div>
@@ -105,7 +105,7 @@ export function StockScanModal({ onClose }: { onClose: () => void }) {
                 onClick={() => handleScanAPI(qrInput)}
                 disabled={scanning || !qrInput.trim()}
               >
-                {scanning ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Look Up'}
+                {scanning ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Search'}
               </button>
             </div>
           </div>
@@ -121,7 +121,7 @@ export function StockScanModal({ onClose }: { onClose: () => void }) {
               <div style={{ padding: '1rem', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#e5e7eb', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {scanResult.item.imageUrl ? <img src={scanResult.item.imageUrl} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <Package size={20} color="#9ca3af" />}
+                    {scanResult.item.imageUrl ? <img src={scanResult.item.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={20} color="#9ca3af" />}
                   </div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#1a1a2e' }}>{scanResult.item.name}</div>
@@ -139,22 +139,22 @@ export function StockScanModal({ onClose }: { onClose: () => void }) {
               </div>
 
               <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '0.5rem' }}>
-                 <button
-                    className="btn btn-outline"
-                    style={{ flex: 1, borderColor: '#10b981', color: '#10b981' }}
-                    onClick={() => handleStockUpdate('Stock In')}
-                    disabled={scanning}
-                  >
-                    <ArrowUpCircle size={14} /> Stock IN (+1)
-                  </button>
-                  <button
-                    className="btn btn-outline"
-                    style={{ flex: 1, borderColor: '#d97706', color: '#d97706' }}
-                    onClick={() => handleStockUpdate('Stock Out')}
-                    disabled={scanning || scanResult.item.stock <= 0}
-                  >
-                    <ArrowDownCircle size={14} /> Stock OUT (-1)
-                  </button>
+                <button
+                  className="btn btn-outline"
+                  style={{ flex: 1, borderColor: '#10b981', color: '#10b981' }}
+                  onClick={() => handleStockUpdate('Stock In')}
+                  disabled={scanning}
+                >
+                  <ArrowUpCircle size={14} /> Stock IN (+1)
+                </button>
+                <button
+                  className="btn btn-outline"
+                  style={{ flex: 1, borderColor: '#d97706', color: '#d97706' }}
+                  onClick={() => handleStockUpdate('Stock Out')}
+                  disabled={scanning || scanResult.item.stock <= 0}
+                >
+                  <ArrowDownCircle size={14} /> Stock OUT (-1)
+                </button>
               </div>
             </div>
           )}
