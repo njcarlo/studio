@@ -7,10 +7,16 @@ import { ALL_PERMISSIONS, LEGACY_PERMISSION_MAP } from '@/lib/permissions/regist
  * Seeds the Permission table with all module:action entries, then
  * migrates each Role's legacy `permissions String[]` into proper
  * RolePermission rows. Also backfills WorkerRole from Worker.roleId.
+ * Also ensures the 'admin' role has isSuperAdmin = true.
  *
  * Safe to run multiple times (idempotent via upsert).
  */
 export async function seedPermissions() {
+    // 0. Ensure the 'admin' role has isSuperAdmin = true
+    await prisma.role.updateMany({
+        where: { id: 'admin' },
+        data: { isSuperAdmin: true },
+    });
     // 1. Upsert all permissions
     for (const { module, action, description } of ALL_PERMISSIONS) {
         await prisma.permission.upsert({

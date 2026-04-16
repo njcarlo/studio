@@ -245,7 +245,7 @@ export function Nav({
   className?: string;
 }) {
   const userRole = useUserRole();
-  const { isLoading, needsSeeding, workerProfile } = userRole;
+  const { isLoading, needsSeeding, workerProfile, isSuperAdmin } = userRole;
   const searchParams = useSearchParams();
 
   // Build the full current URL (path + query) for accurate active matching
@@ -275,6 +275,7 @@ export function Nav({
       "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
     >>,
   ) => {
+    if (isSuperAdmin) return true; // super admin sees everything
     if (anyKeys && anyKeys.length > 0) {
       return anyKeys.some((k) => userRole[k] === true);
     }
@@ -284,6 +285,7 @@ export function Nav({
 
   const navItems = allNavItems.filter((item) => {
     if (isLoading) return false;
+    if (isSuperAdmin) return true; // super admin sees all nav items
 
     // Settings: show only if user has access to at least one sub-item
     if (item.href === "/settings") {
