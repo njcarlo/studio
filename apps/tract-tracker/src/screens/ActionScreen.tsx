@@ -207,8 +207,8 @@ export default function ActionScreen() {
         if (!user) return;
         // In dev mode, use mock counts — DEV_USER id 'dev' doesn't exist in Supabase
         if (__DEV__) {
-            setPersonalCount(42);
-            setRegionalCount(191);
+            setPersonalCount(0);
+            setRegionalCount(0);
             setIsLoading(false);
             return;
         }

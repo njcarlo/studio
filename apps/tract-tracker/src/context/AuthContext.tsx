@@ -33,7 +33,7 @@ const DEV_USER = {
     region: 'MMR',
     sub_region: 'Dasmarinas',
     barangay: 'Burol I',
-    tracts_given: 42,
+    tracts_given: 0,
     is_tester: true,
     is_admin: true,
 };
