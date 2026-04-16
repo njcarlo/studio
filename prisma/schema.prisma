@@ -76,6 +76,11 @@ model Worker {
   legacyMigratedAt       DateTime?
   legacyMigratedFrom     String?
   createdAt              DateTime             @default(now())
+
+  @@index([workerId])
+  @@index([majorMinistryId])
+  @@index([minorMinistryId])
+  @@index([status])
   roles                  WorkerRole[]
   approvals              ApprovalRequest[]
   attendanceRecords      AttendanceRecord[]

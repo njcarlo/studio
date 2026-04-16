@@ -202,60 +202,69 @@ export async function getPaginatedWorkers(
         }];
     }
 
-    // Sort: workerId numeric (cast) so 1 → 000001 ordering works correctly
     const sortField = filters.sortField || 'workerId';
     const sortDir = filters.sortDir || 'asc';
+    const offset = (page - 1) * limit;
 
-    let orderBy: any;
+    // Build ORDER BY — workerId sorts numerically via CAST to avoid "10 < 2" string ordering
+    let orderByClause: string;
     if (sortField === 'workerId') {
-        // Cast workerId to integer for correct numeric sort (1 before 2 before 10)
-        orderBy = undefined; // handled via raw below
+        orderByClause = `NULLIF(regexp_replace("workerId", '[^0-9]', '', 'g'), '')::bigint ${sortDir.toUpperCase()} NULLS LAST`;
     } else if (sortField === 'name') {
-        orderBy = [{ firstName: sortDir }, { lastName: sortDir }];
+        orderByClause = `"firstName" ${sortDir.toUpperCase()}, "lastName" ${sortDir.toUpperCase()}`;
     } else if (sortField === 'status') {
-        orderBy = { status: sortDir };
-    } else if (sortField === 'createdAt') {
-        orderBy = { createdAt: sortDir };
+        orderByClause = `"status" ${sortDir.toUpperCase()}`;
     } else {
-        orderBy = { createdAt: 'desc' };
+        orderByClause = `"createdAt" DESC`;
     }
 
-    const [total, workers] = await prisma.$transaction([
-        prisma.worker.count({ where }),
-        prisma.worker.findMany({
-            where,
-            select: {
-                id: true,
-                workerId: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true,
-                roleId: true,
-                status: true,
-                avatarUrl: true,
-                majorMinistryId: true,
-                minorMinistryId: true,
-                employmentType: true,
-                passwordChangeRequired: true,
-                qrToken: true,
-                createdAt: true,
-            },
-            orderBy: orderBy || { createdAt: 'desc' },
-            skip: (page - 1) * limit,
-            take: limit,
-        })
+    // Build WHERE conditions for raw query
+    const conditions: string[] = [];
+    const queryParams: any[] = [];
+    let paramIdx = 1;
+
+    if (filters.ministryIds && filters.ministryIds.length > 0) {
+        const ids = filters.ministryIds;
+        const majorPlaceholders = ids.map(() => `$${paramIdx++}`).join(', ');
+        const minorPlaceholders = ids.map(() => `$${paramIdx++}`).join(', ');
+        conditions.push(`("majorMinistryId" IN (${majorPlaceholders}) OR "minorMinistryId" IN (${minorPlaceholders}))`);
+        queryParams.push(...ids, ...ids);
+    }
+
+    if (filters.search) {
+        const q = `%${filters.search.trim()}%`;
+        if (filters.searchMode === 'name') {
+            conditions.push(`("firstName" ILIKE $${paramIdx} OR "lastName" ILIKE $${paramIdx})`);
+            queryParams.push(q);
+            paramIdx++;
+        } else {
+            conditions.push(`"workerId" ILIKE $${paramIdx}`);
+            queryParams.push(q);
+            paramIdx++;
+        }
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Run count + paginated fetch in parallel
+    const [countResult, workers] = await Promise.all([
+        prisma.$queryRawUnsafe<[{ count: bigint }]>(
+            `SELECT COUNT(*) as count FROM "Worker" ${whereClause}`,
+            ...queryParams
+        ),
+        prisma.$queryRawUnsafe<any[]>(
+            `SELECT id, "workerId", "firstName", "lastName", email, phone, "roleId", status,
+                    "avatarUrl", "majorMinistryId", "minorMinistryId", "employmentType",
+                    "passwordChangeRequired", "qrToken", "createdAt"
+             FROM "Worker"
+             ${whereClause}
+             ORDER BY ${orderByClause}
+             LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+            ...queryParams, limit, offset
+        ),
     ]);
 
-    // If sorting by workerId, sort numerically in JS (handles mixed string/int IDs)
-    if (sortField === 'workerId') {
-        workers.sort((a: any, b: any) => {
-            const na = parseInt(a.workerId || '0', 10) || 0;
-            const nb = parseInt(b.workerId || '0', 10) || 0;
-            return sortDir === 'asc' ? na - nb : nb - na;
-        });
-    }
-
+    const total = Number(countResult[0]?.count ?? 0);
     return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
