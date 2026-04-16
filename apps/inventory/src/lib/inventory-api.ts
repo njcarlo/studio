@@ -47,7 +47,7 @@ export async function updateCategory(id: string, payload: Partial<{
 
 // ── Items (ministry-scoped) ───────────────────────────────────────────────────
 
-export async function getItems(ministryId: string, params: {
+export async function getItems(ministryId: string | null, params: {
     search?: string;
     categoryId?: string;
     status?: string;
@@ -59,9 +59,10 @@ export async function getItems(ministryId: string, params: {
     let query = supabase
         .from('InventoryItem')
         .select('*, category:InventoryCategory(id,name,color,icon)', { count: 'exact' })
-        .eq('group', ministryId)   // ← ministry scope
         .is('parentId', null)
         .order('name');
+
+    if (ministryId) query = query.eq('group', ministryId);   // null = super admin sees all
 
     if (search) query = query.ilike('name', `%${search}%`);
     if (categoryId) query = query.eq('categoryId', categoryId);
@@ -86,7 +87,7 @@ export async function getItem(id: string) {
     return data;
 }
 
-export async function createItem(ministryId: string, payload: {
+export async function createItem(ministryId: string | null, payload: {
     name: string;
     categoryId: string;
     type?: string;
@@ -166,14 +167,14 @@ export async function adjustStock(
 
 // ── Logs (ministry-scoped via item join) ──────────────────────────────────────
 
-export async function getLogs(ministryId: string, params: { itemId?: string; limit?: number } = {}) {
+export async function getLogs(ministryId: string | null, params: { itemId?: string; limit?: number } = {}) {
     let query = supabase
         .from('InventoryLog')
         .select('*, item:InventoryItem!inner(id,name,group)')
-        .eq('item.group', ministryId)   // ← ministry scope via join
         .order('timestamp', { ascending: false })
         .limit(params.limit ?? 100);
 
+    if (ministryId) query = query.eq('item.group', ministryId);
     if (params.itemId) query = query.eq('itemId', params.itemId);
 
     const { data, error } = await query;
@@ -183,12 +184,13 @@ export async function getLogs(ministryId: string, params: { itemId?: string; lim
 
 // ── Borrowings (ministry-scoped via item join) ────────────────────────────────
 
-export async function getBorrowings(ministryId: string, params: { status?: string; borrowerId?: string } = {}) {
+export async function getBorrowings(ministryId: string | null, params: { status?: string; borrowerId?: string } = {}) {
     let query = supabase
         .from('InventoryBorrowing')
         .select('*, item:InventoryItem!inner(id,name,imageUrl,group), borrower:Worker(id,firstName,lastName,email)')
-        .eq('item.group', ministryId)   // ← ministry scope
         .order('borrowedAt', { ascending: false });
+
+    if (ministryId) query = query.eq('item.group', ministryId);
 
     if (params.status) query = query.eq('status', params.status);
     if (params.borrowerId) query = query.eq('borrowerId', params.borrowerId);
@@ -230,18 +232,18 @@ export async function returnBorrowing(id: string, payload: {
 
 // ── Dashboard stats (ministry-scoped) ────────────────────────────────────────
 
-export async function getDashboardStats(ministryId: string) {
-    const [itemsRes, borrowingsRes] = await Promise.all([
-        supabase
-            .from('InventoryItem')
-            .select('id, quantity, minQuantity, status, type', { count: 'exact' })
-            .eq('group', ministryId),
-        supabase
-            .from('InventoryBorrowing')
-            .select('id, item:InventoryItem!inner(group)', { count: 'exact' })
-            .eq('status', 'BORROWED')
-            .eq('item.group', ministryId),
-    ]);
+export async function getDashboardStats(ministryId: string | null) {
+    const itemQuery = supabase
+        .from('InventoryItem')
+        .select('id, quantity, minQuantity, status, type', { count: 'exact' });
+    if (ministryId) itemQuery.eq('group', ministryId);
+
+    const borrowQuery = supabase
+        .from('InventoryBorrowing')
+        .select('id', { count: 'exact' })
+        .eq('status', 'BORROWED');
+
+    const [itemsRes, borrowingsRes] = await Promise.all([itemQuery, borrowQuery]);
 
     const items = itemsRes.data ?? [];
     const totalItems = itemsRes.count ?? 0;

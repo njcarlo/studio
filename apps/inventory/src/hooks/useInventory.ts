@@ -6,8 +6,7 @@ import {
     getBorrowings, createBorrowing, returnBorrowing,
 } from '../lib/inventory-api';
 
-export function useInventory(ministryId?: string | null) {
-    const [stats, setStats] = useState<any>(null);
+export function useInventory(ministryId?: string | null) {    const [stats, setStats] = useState<any>(null);
     const [logs, setLogs] = useState<any[]>([]);
     const [items, setItems] = useState<any[]>([]);
     const [totalItems, setTotalItems] = useState(0);

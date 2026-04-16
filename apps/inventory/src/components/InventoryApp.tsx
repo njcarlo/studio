@@ -16,7 +16,7 @@ import { Package } from 'lucide-react';
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-    const { user, profile, isLoading } = useAuth();
+    const { user, profile, isLoading, signOut } = useAuth();
 
     if (isLoading) {
         return (
@@ -39,8 +39,8 @@ function AppRoutes() {
 
     if (!user) return <LoginScreen />;
 
-    // Worker exists but has no inventory permission
-    if (profile && !profile.canManage && !profile.majorMinistryId) {
+    // Worker exists but has no inventory permission at all
+    if (profile && !profile.canAccess && !profile.canManage) {
         return (
             <div style={{
                 minHeight: '100vh', display: 'flex', alignItems: 'center',
@@ -53,7 +53,7 @@ function AppRoutes() {
                     You don't have permission to access the Inventory module.
                     Contact your administrator to request the <strong>Inventory Officer</strong> role.
                 </p>
-                <button className="btn btn-outline" onClick={() => useAuth().signOut()}>Sign Out</button>
+                <button className="btn btn-outline" onClick={signOut}>Sign Out</button>
             </div>
         );
     }
