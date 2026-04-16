@@ -98,6 +98,8 @@ const PERMISSION_CATEGORIES = (() => {
     reports: "Reports",
     system: "System",
     venue_assistance: "Venue Assistance",
+    schedule: "Service Schedule",
+    inventory: "Inventory",
   };
   return Object.entries(grouped).map(([module, permissions]) => ({
     module,

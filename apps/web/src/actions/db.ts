@@ -90,7 +90,7 @@ export async function setRolePermissionsByKeys(roleId: string, permKeys: string[
     const ids = permissions
         .filter(p => permKeys.includes(`${p.module}:${p.action}`))
         .map(p => p.id);
-    return setRolePermissions(roleId, ids);
+    return await setRolePermissions(roleId, ids);
 }
 
 // --- WorkerRole ---
