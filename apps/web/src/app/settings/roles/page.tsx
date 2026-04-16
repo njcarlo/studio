@@ -327,14 +327,19 @@ export default function RoleManagementPage() {
       name: string;
       permKeys: string[];
     }) => {
-      if (role?.id) {
-        await updateRole(role.id, { name });
-        await setRolePermissionsByKeys(role.id, permKeys);
-        return { id: role.id, name };
-      } else {
-        const created = await createRole({ name, permissions: [] });
-        await setRolePermissionsByKeys(created.id, permKeys);
-        return created;
+      try {
+        if (role?.id) {
+          await updateRole(role.id, { name });
+          await setRolePermissionsByKeys(role.id, permKeys);
+          return { id: role.id, name };
+        } else {
+          const created = await createRole({ name, permissions: [] });
+          await setRolePermissionsByKeys(created.id, permKeys);
+          return created;
+        }
+      } catch (err) {
+        console.error('[RoleManagement] mutationFn error:', err);
+        throw err;
       }
     },
     onSuccess: async (result, { role }) => {
@@ -348,11 +353,12 @@ export default function RoleManagementPage() {
       toast({ title: role?.id ? "Role Updated" : "Role Created" });
       setSheetOpen(false);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('[RoleManagement] Save failed:', error);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save the role.",
+        description: error instanceof Error ? error.message : "Could not save the role.",
       });
     },
   });
@@ -383,6 +389,7 @@ export default function RoleManagementPage() {
       toast({ variant: "destructive", title: "Role name is required." });
       return;
     }
+    console.log('[RoleManagement] Saving role:', { role: selectedRole?.id, name, permKeys });
     saveMutation.mutate({ role: selectedRole, name, permKeys });
   };
 
