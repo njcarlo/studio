@@ -25,7 +25,6 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
-  SheetClose,
 } from "@studio/ui";
 import {
   AlertDialog,
@@ -116,12 +115,14 @@ const RolePermissionSheet = ({
   onOpenChange,
   onSave,
   onDelete,
+  isSaving,
 }: {
   role: any | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (name: string, permKeys: string[]) => void;
   onDelete: (roleId: string) => void;
+  isSaving?: boolean;
 }) => {
   const [name, setName] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -129,7 +130,6 @@ const RolePermissionSheet = ({
   useEffect(() => {
     if (isOpen) {
       setName(role?.name || "New Role");
-      // Derive checked keys from rolePermissions join table
       const keys = (role?.rolePermissions || []).map(
         (rp: any) => `${rp.permission.module}:${rp.permission.action}`,
       );
@@ -145,9 +145,22 @@ const RolePermissionSheet = ({
     );
   };
 
+  const toggleModule = (moduleKeys: string[], checked: boolean) => {
+    setSelectedKeys((curr) => {
+      if (checked) {
+        // Add all keys for this module that aren't already selected
+        const next = new Set(curr);
+        moduleKeys.forEach(k => next.add(k));
+        return [...next];
+      } else {
+        return curr.filter(k => !moduleKeys.includes(k));
+      }
+    });
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-xl overflow-y-auto">
+      <SheetContent className="sm:max-w-xl flex flex-col">
         <SheetHeader>
           <SheetTitle className="font-headline">
             {role?.id ? "Edit Role" : "Add New Role"}
@@ -159,7 +172,7 @@ const RolePermissionSheet = ({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto py-4 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="role-name">Role Name</Label>
             <Input
@@ -179,61 +192,68 @@ const RolePermissionSheet = ({
                 className="w-full border rounded-lg"
                 defaultValue={PERMISSION_CATEGORIES.map((c) => c.module)}
               >
-                {PERMISSION_CATEGORIES.map(
-                  ({ module, category, permissions }) => (
+                {PERMISSION_CATEGORIES.map(({ module, category, permissions }) => {
+                  const moduleKeys = permissions.map(p => p.key);
+                  const selectedCount = moduleKeys.filter(k => selectedKeys.includes(k)).length;
+                  const allSelected = selectedCount === moduleKeys.length;
+                  const someSelected = selectedCount > 0 && !allSelected;
+
+                  return (
                     <AccordionItem value={module} key={module} className="px-4">
-                      <AccordionTrigger className="text-base font-semibold py-3">
-                        {category}
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          {
-                            permissions.filter((p) =>
-                              selectedKeys.includes(p.key),
-                            ).length
-                          }
-                          /{permissions.length}
-                        </Badge>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-2 pl-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="flex items-center gap-2 py-1">
+                        {/* Select-all checkbox for this module */}
+                        <Checkbox
+                          id={`module-all-${module}`}
+                          checked={allSelected}
+                          data-state={someSelected ? "indeterminate" : allSelected ? "checked" : "unchecked"}
+                          onCheckedChange={(checked) => toggleModule(moduleKeys, !!checked)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0"
+                        />
+                        <AccordionTrigger className="flex-1 text-base font-semibold py-2 hover:no-underline">
+                          <span className="flex items-center gap-2">
+                            {category}
+                            <Badge variant={selectedCount > 0 ? "default" : "outline"} className="text-xs">
+                              {selectedCount}/{moduleKeys.length}
+                            </Badge>
+                          </span>
+                        </AccordionTrigger>
+                      </div>
+                      <AccordionContent className="pt-1 pb-3 pl-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                           {permissions.map((permission) => (
-                            <div
-                              className="flex items-start space-x-2"
-                              key={permission.key}
-                            >
+                            <div className="flex items-start space-x-2" key={permission.key}>
                               <Checkbox
                                 id={`${role?.id || "new"}-${permission.key}`}
                                 checked={selectedKeys.includes(permission.key)}
-                                onCheckedChange={(checked) =>
-                                  toggle(permission.key, !!checked)
-                                }
+                                onCheckedChange={(checked) => toggle(permission.key, !!checked)}
                               />
-                              <div className="grid gap-1.5 leading-none">
+                              <div className="grid gap-1 leading-none">
                                 <Label
                                   htmlFor={`${role?.id || "new"}-${permission.key}`}
                                   className="font-medium cursor-pointer text-xs font-mono text-muted-foreground"
                                 >
                                   {permission.key}
                                 </Label>
-                                <p className="text-xs text-muted-foreground">
-                                  {permission.description}
-                                </p>
+                                <p className="text-xs text-muted-foreground">{permission.description}</p>
                               </div>
                             </div>
                           ))}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
-                  ),
-                )}
+                  );
+                })}
               </Accordion>
             </div>
           )}
         </div>
 
         {!isAdminRole && (
-          <SheetFooter className="pt-4">
+          <SheetFooter className="pt-4 border-t shrink-0">
             {role?.id && (
               <Button
+                type="button"
                 variant="ghost"
                 className="text-destructive hover:text-destructive mr-auto"
                 onClick={() => onDelete(role.id)}
@@ -241,13 +261,22 @@ const RolePermissionSheet = ({
                 <Trash2 className="h-4 w-4 mr-2" /> Delete Role
               </Button>
             )}
-            <SheetClose asChild>
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </SheetClose>
-            <Button onClick={() => onSave(name, selectedKeys)}>
-              <Save className="h-4 w-4 mr-2" /> Save Role
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isSaving}
+              onClick={() => onSave(name, selectedKeys)}
+            >
+              {isSaving
+                ? <><LoaderCircle className="h-4 w-4 mr-2 animate-spin" /> Saving…</>
+                : <><Save className="h-4 w-4 mr-2" /> Save Role</>
+              }
             </Button>
           </SheetFooter>
         )}
@@ -473,6 +502,7 @@ export default function RoleManagementPage() {
         onOpenChange={setSheetOpen}
         role={selectedRole}
         onSave={handleSaveRole}
+        isSaving={saveMutation.isPending}
         onDelete={(roleId) => {
           const role = sortedRoles.find((r: any) => r.id === roleId);
           if (role) {
