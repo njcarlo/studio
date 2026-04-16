@@ -205,6 +205,13 @@ export default function ActionScreen() {
 
     const loadCounts = useCallback(async () => {
         if (!user) return;
+        // In dev mode, use mock counts — DEV_USER id 'dev' doesn't exist in Supabase
+        if (__DEV__) {
+            setPersonalCount(42);
+            setRegionalCount(191);
+            setIsLoading(false);
+            return;
+        }
         try {
             const { data: userData } = await supabaseAdmin
                 .from('tract_users')
@@ -275,6 +282,13 @@ export default function ActionScreen() {
         if (!user || isIncrementing) return;
         setIsIncrementing(true);
         try {
+            // In dev mode, just increment local state — DEV_USER doesn't exist in Supabase
+            if (__DEV__) {
+                await new Promise(r => setTimeout(r, 300)); // simulate network
+                setPersonalCount(prev => prev + 1);
+                setRegionalCount(prev => prev + 1);
+                return;
+            }
             // Always fetch the latest count from DB to avoid stale local state
             const { data: fresh, error: fetchError } = await supabaseAdmin
                 .from('tract_users')
