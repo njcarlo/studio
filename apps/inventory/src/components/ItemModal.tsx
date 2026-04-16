@@ -34,7 +34,16 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
     locationId: '',
     inventoryCode: '',
     imageUrl: '',
+    isKit: false,
+    isApprovalRequired: false,
+    nextMaintenanceDate: '',
+    aisle: '',
+    shelf: '',
+    bin: '',
+    parentId: '',
   });
+
+  const [kits, setKits] = useState<any[]>([]);
 
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -58,6 +67,13 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
         locationId: item.locationId || '',
         inventoryCode: item.inventoryCode || '',
         imageUrl: item.imageUrl || '',
+        isKit: item.isKit || false,
+        isApprovalRequired: item.isApprovalRequired || false,
+        nextMaintenanceDate: item.nextMaintenanceDate ? new Date(item.nextMaintenanceDate).toISOString().split('T')[0] : '',
+        aisle: item.aisle || '',
+        shelf: item.shelf || '',
+        bin: item.bin || '',
+        parentId: item.parentId || '',
       });
     } else {
       setFormData({
@@ -69,7 +85,18 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
         locationId: '',
         inventoryCode: '',
         imageUrl: '',
+        isKit: false,
+        isApprovalRequired: false,
+        nextMaintenanceDate: '',
+        aisle: '',
+        shelf: '',
+        bin: '',
+        parentId: '',
       });
+    }
+
+    if (isOpen) {
+      fetch('/api/inventory/items?isKit=true&take=100').then(r => r.json()).then(data => setKits((data.items || []).filter((k: any) => k.id !== item?.id))).catch(() => {});
     }
   }, [item, isOpen]);
 
@@ -109,7 +136,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
+      <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
         <div className="modal-header">
           <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>
             {item ? 'Edit Item' : 'Add New Item'}
@@ -119,8 +146,8 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="modal-body">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div className="modal-body" style={{ overflowY: 'auto', paddingRight: '0.5rem' }}>
 
             {/* Photo Upload Area */}
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.25rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px dashed #d1d5db' }}>
@@ -215,6 +242,84 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                   ))}
                 </select>
               </Field>
+            </div>
+
+            {/* Granular Location */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <Field label="Aisle">
+                <input
+                  className="form-control"
+                  placeholder="e.g. A1"
+                  value={formData.aisle}
+                  onChange={e => setFormData(prev => ({ ...prev, aisle: e.target.value }))}
+                />
+              </Field>
+              <Field label="Shelf">
+                <input
+                  className="form-control"
+                  placeholder="e.g. S2"
+                  value={formData.shelf}
+                  onChange={e => setFormData(prev => ({ ...prev, shelf: e.target.value }))}
+                />
+              </Field>
+              <Field label="Bin">
+                <input
+                  className="form-control"
+                  placeholder="e.g. B3"
+                  value={formData.bin}
+                  onChange={e => setFormData(prev => ({ ...prev, bin: e.target.value }))}
+                />
+              </Field>
+            </div>
+
+            <div className="form-row-2col">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isApprovalRequired}
+                    onChange={e => setFormData(prev => ({ ...prev, isApprovalRequired: e.target.checked }))}
+                  />
+                  <span>High Value (Requires Approval)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isKit}
+                    onChange={e => setFormData(prev => ({ ...prev, isKit: e.target.checked }))}
+                  />
+                  <span>Is Kit/Bundle</span>
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Parent Kit Assignment */}
+                {!formData.isKit && (
+                  <Field label="Assign to Parent Kit (Optional)">
+                    <select
+                      className="form-control"
+                      value={formData.parentId}
+                      onChange={e => setFormData(prev => ({ ...prev, parentId: e.target.value }))}
+                    >
+                      <option value="">No Parent Kit</option>
+                      {kits.map((k: any) => (
+                        <option key={k.id} value={k.id}>{k.name} ({k.inventoryCode || k.id.slice(0, 8)})</option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+
+                {formData.type === 'Equipment' && (
+                  <Field label="Next Maintenance Date (PMS)">
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={formData.nextMaintenanceDate}
+                      onChange={e => setFormData(prev => ({ ...prev, nextMaintenanceDate: e.target.value }))}
+                    />
+                  </Field>
+                )}
+              </div>
             </div>
 
           </div>

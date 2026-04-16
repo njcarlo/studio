@@ -42,11 +42,16 @@ model Item {
   assignedTo          String?
   imageUrl            String?
   isApprovalRequired  Boolean   @default(false)
+  isKit               Boolean   @default(false)
+  nextMaintenanceDate DateTime?
+  parentId            String?
   lastUpdated         DateTime  @default(now()) @updatedAt
   createdAt           DateTime  @default(now())
 
   category    Category          @relation(fields: [categoryId], references: [id])
   location    Location?         @relation(fields: [locationId], references: [id])
+  parent      Item?             @relation("KitItems", fields: [parentId], references: [id])
+  children    Item[]            @relation("KitItems")
   logs        InventoryLog[]
   borrowings  InventoryBorrowing[]
   audits      ItemAudit[]

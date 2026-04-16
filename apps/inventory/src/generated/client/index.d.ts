@@ -1507,12 +1507,14 @@ export namespace Prisma {
    */
 
   export type ItemCountOutputType = {
+    children: number
     logs: number
     borrowings: number
     audits: number
   }
 
   export type ItemCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    children?: boolean | ItemCountOutputTypeCountChildrenArgs
     logs?: boolean | ItemCountOutputTypeCountLogsArgs
     borrowings?: boolean | ItemCountOutputTypeCountBorrowingsArgs
     audits?: boolean | ItemCountOutputTypeCountAuditsArgs
@@ -1527,6 +1529,13 @@ export namespace Prisma {
      * Select specific fields to fetch from the ItemCountOutputType
      */
     select?: ItemCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * ItemCountOutputType without action
+   */
+  export type ItemCountOutputTypeCountChildrenArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ItemWhereInput
   }
 
   /**
@@ -3463,6 +3472,9 @@ export namespace Prisma {
     assignedTo: string | null
     imageUrl: string | null
     isApprovalRequired: boolean | null
+    isKit: boolean | null
+    nextMaintenanceDate: Date | null
+    parentId: string | null
     lastUpdated: Date | null
     createdAt: Date | null
   }
@@ -3485,6 +3497,9 @@ export namespace Prisma {
     assignedTo: string | null
     imageUrl: string | null
     isApprovalRequired: boolean | null
+    isKit: boolean | null
+    nextMaintenanceDate: Date | null
+    parentId: string | null
     lastUpdated: Date | null
     createdAt: Date | null
   }
@@ -3507,6 +3522,9 @@ export namespace Prisma {
     assignedTo: number
     imageUrl: number
     isApprovalRequired: number
+    isKit: number
+    nextMaintenanceDate: number
+    parentId: number
     lastUpdated: number
     createdAt: number
     _all: number
@@ -3541,6 +3559,9 @@ export namespace Prisma {
     assignedTo?: true
     imageUrl?: true
     isApprovalRequired?: true
+    isKit?: true
+    nextMaintenanceDate?: true
+    parentId?: true
     lastUpdated?: true
     createdAt?: true
   }
@@ -3563,6 +3584,9 @@ export namespace Prisma {
     assignedTo?: true
     imageUrl?: true
     isApprovalRequired?: true
+    isKit?: true
+    nextMaintenanceDate?: true
+    parentId?: true
     lastUpdated?: true
     createdAt?: true
   }
@@ -3585,6 +3609,9 @@ export namespace Prisma {
     assignedTo?: true
     imageUrl?: true
     isApprovalRequired?: true
+    isKit?: true
+    nextMaintenanceDate?: true
+    parentId?: true
     lastUpdated?: true
     createdAt?: true
     _all?: true
@@ -3694,6 +3721,9 @@ export namespace Prisma {
     assignedTo: string | null
     imageUrl: string | null
     isApprovalRequired: boolean
+    isKit: boolean
+    nextMaintenanceDate: Date | null
+    parentId: string | null
     lastUpdated: Date
     createdAt: Date
     _count: ItemCountAggregateOutputType | null
@@ -3735,10 +3765,15 @@ export namespace Prisma {
     assignedTo?: boolean
     imageUrl?: boolean
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: boolean
+    parentId?: boolean
     lastUpdated?: boolean
     createdAt?: boolean
     category?: boolean | CategoryDefaultArgs<ExtArgs>
     location?: boolean | Item$locationArgs<ExtArgs>
+    parent?: boolean | Item$parentArgs<ExtArgs>
+    children?: boolean | Item$childrenArgs<ExtArgs>
     logs?: boolean | Item$logsArgs<ExtArgs>
     borrowings?: boolean | Item$borrowingsArgs<ExtArgs>
     audits?: boolean | Item$auditsArgs<ExtArgs>
@@ -3763,10 +3798,14 @@ export namespace Prisma {
     assignedTo?: boolean
     imageUrl?: boolean
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: boolean
+    parentId?: boolean
     lastUpdated?: boolean
     createdAt?: boolean
     category?: boolean | CategoryDefaultArgs<ExtArgs>
     location?: boolean | Item$locationArgs<ExtArgs>
+    parent?: boolean | Item$parentArgs<ExtArgs>
   }, ExtArgs["result"]["item"]>
 
   export type ItemSelectScalar = {
@@ -3787,6 +3826,9 @@ export namespace Prisma {
     assignedTo?: boolean
     imageUrl?: boolean
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: boolean
+    parentId?: boolean
     lastUpdated?: boolean
     createdAt?: boolean
   }
@@ -3794,6 +3836,8 @@ export namespace Prisma {
   export type ItemInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     category?: boolean | CategoryDefaultArgs<ExtArgs>
     location?: boolean | Item$locationArgs<ExtArgs>
+    parent?: boolean | Item$parentArgs<ExtArgs>
+    children?: boolean | Item$childrenArgs<ExtArgs>
     logs?: boolean | Item$logsArgs<ExtArgs>
     borrowings?: boolean | Item$borrowingsArgs<ExtArgs>
     audits?: boolean | Item$auditsArgs<ExtArgs>
@@ -3802,6 +3846,7 @@ export namespace Prisma {
   export type ItemIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     category?: boolean | CategoryDefaultArgs<ExtArgs>
     location?: boolean | Item$locationArgs<ExtArgs>
+    parent?: boolean | Item$parentArgs<ExtArgs>
   }
 
   export type $ItemPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -3809,6 +3854,8 @@ export namespace Prisma {
     objects: {
       category: Prisma.$CategoryPayload<ExtArgs>
       location: Prisma.$LocationPayload<ExtArgs> | null
+      parent: Prisma.$ItemPayload<ExtArgs> | null
+      children: Prisma.$ItemPayload<ExtArgs>[]
       logs: Prisma.$InventoryLogPayload<ExtArgs>[]
       borrowings: Prisma.$InventoryBorrowingPayload<ExtArgs>[]
       audits: Prisma.$ItemAuditPayload<ExtArgs>[]
@@ -3831,6 +3878,9 @@ export namespace Prisma {
       assignedTo: string | null
       imageUrl: string | null
       isApprovalRequired: boolean
+      isKit: boolean
+      nextMaintenanceDate: Date | null
+      parentId: string | null
       lastUpdated: Date
       createdAt: Date
     }, ExtArgs["result"]["item"]>
@@ -4199,6 +4249,8 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     category<T extends CategoryDefaultArgs<ExtArgs> = {}>(args?: Subset<T, CategoryDefaultArgs<ExtArgs>>): Prisma__CategoryClient<$Result.GetResult<Prisma.$CategoryPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
     location<T extends Item$locationArgs<ExtArgs> = {}>(args?: Subset<T, Item$locationArgs<ExtArgs>>): Prisma__LocationClient<$Result.GetResult<Prisma.$LocationPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
+    parent<T extends Item$parentArgs<ExtArgs> = {}>(args?: Subset<T, Item$parentArgs<ExtArgs>>): Prisma__ItemClient<$Result.GetResult<Prisma.$ItemPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
+    children<T extends Item$childrenArgs<ExtArgs> = {}>(args?: Subset<T, Item$childrenArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ItemPayload<ExtArgs>, T, "findMany"> | Null>
     logs<T extends Item$logsArgs<ExtArgs> = {}>(args?: Subset<T, Item$logsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InventoryLogPayload<ExtArgs>, T, "findMany"> | Null>
     borrowings<T extends Item$borrowingsArgs<ExtArgs> = {}>(args?: Subset<T, Item$borrowingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InventoryBorrowingPayload<ExtArgs>, T, "findMany"> | Null>
     audits<T extends Item$auditsArgs<ExtArgs> = {}>(args?: Subset<T, Item$auditsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ItemAuditPayload<ExtArgs>, T, "findMany"> | Null>
@@ -4248,6 +4300,9 @@ export namespace Prisma {
     readonly assignedTo: FieldRef<"Item", 'String'>
     readonly imageUrl: FieldRef<"Item", 'String'>
     readonly isApprovalRequired: FieldRef<"Item", 'Boolean'>
+    readonly isKit: FieldRef<"Item", 'Boolean'>
+    readonly nextMaintenanceDate: FieldRef<"Item", 'DateTime'>
+    readonly parentId: FieldRef<"Item", 'String'>
     readonly lastUpdated: FieldRef<"Item", 'DateTime'>
     readonly createdAt: FieldRef<"Item", 'DateTime'>
   }
@@ -4578,6 +4633,41 @@ export namespace Prisma {
      */
     include?: LocationInclude<ExtArgs> | null
     where?: LocationWhereInput
+  }
+
+  /**
+   * Item.parent
+   */
+  export type Item$parentArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Item
+     */
+    select?: ItemSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ItemInclude<ExtArgs> | null
+    where?: ItemWhereInput
+  }
+
+  /**
+   * Item.children
+   */
+  export type Item$childrenArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Item
+     */
+    select?: ItemSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ItemInclude<ExtArgs> | null
+    where?: ItemWhereInput
+    orderBy?: ItemOrderByWithRelationInput | ItemOrderByWithRelationInput[]
+    cursor?: ItemWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ItemScalarFieldEnum | ItemScalarFieldEnum[]
   }
 
   /**
@@ -9516,6 +9606,9 @@ export namespace Prisma {
     assignedTo: 'assignedTo',
     imageUrl: 'imageUrl',
     isApprovalRequired: 'isApprovalRequired',
+    isKit: 'isKit',
+    nextMaintenanceDate: 'nextMaintenanceDate',
+    parentId: 'parentId',
     lastUpdated: 'lastUpdated',
     createdAt: 'createdAt'
   };
@@ -9773,10 +9866,15 @@ export namespace Prisma {
     assignedTo?: StringNullableFilter<"Item"> | string | null
     imageUrl?: StringNullableFilter<"Item"> | string | null
     isApprovalRequired?: BoolFilter<"Item"> | boolean
+    isKit?: BoolFilter<"Item"> | boolean
+    nextMaintenanceDate?: DateTimeNullableFilter<"Item"> | Date | string | null
+    parentId?: StringNullableFilter<"Item"> | string | null
     lastUpdated?: DateTimeFilter<"Item"> | Date | string
     createdAt?: DateTimeFilter<"Item"> | Date | string
     category?: XOR<CategoryRelationFilter, CategoryWhereInput>
     location?: XOR<LocationNullableRelationFilter, LocationWhereInput> | null
+    parent?: XOR<ItemNullableRelationFilter, ItemWhereInput> | null
+    children?: ItemListRelationFilter
     logs?: InventoryLogListRelationFilter
     borrowings?: InventoryBorrowingListRelationFilter
     audits?: ItemAuditListRelationFilter
@@ -9800,10 +9898,15 @@ export namespace Prisma {
     assignedTo?: SortOrderInput | SortOrder
     imageUrl?: SortOrderInput | SortOrder
     isApprovalRequired?: SortOrder
+    isKit?: SortOrder
+    nextMaintenanceDate?: SortOrderInput | SortOrder
+    parentId?: SortOrderInput | SortOrder
     lastUpdated?: SortOrder
     createdAt?: SortOrder
     category?: CategoryOrderByWithRelationInput
     location?: LocationOrderByWithRelationInput
+    parent?: ItemOrderByWithRelationInput
+    children?: ItemOrderByRelationAggregateInput
     logs?: InventoryLogOrderByRelationAggregateInput
     borrowings?: InventoryBorrowingOrderByRelationAggregateInput
     audits?: ItemAuditOrderByRelationAggregateInput
@@ -9830,10 +9933,15 @@ export namespace Prisma {
     assignedTo?: StringNullableFilter<"Item"> | string | null
     imageUrl?: StringNullableFilter<"Item"> | string | null
     isApprovalRequired?: BoolFilter<"Item"> | boolean
+    isKit?: BoolFilter<"Item"> | boolean
+    nextMaintenanceDate?: DateTimeNullableFilter<"Item"> | Date | string | null
+    parentId?: StringNullableFilter<"Item"> | string | null
     lastUpdated?: DateTimeFilter<"Item"> | Date | string
     createdAt?: DateTimeFilter<"Item"> | Date | string
     category?: XOR<CategoryRelationFilter, CategoryWhereInput>
     location?: XOR<LocationNullableRelationFilter, LocationWhereInput> | null
+    parent?: XOR<ItemNullableRelationFilter, ItemWhereInput> | null
+    children?: ItemListRelationFilter
     logs?: InventoryLogListRelationFilter
     borrowings?: InventoryBorrowingListRelationFilter
     audits?: ItemAuditListRelationFilter
@@ -9857,6 +9965,9 @@ export namespace Prisma {
     assignedTo?: SortOrderInput | SortOrder
     imageUrl?: SortOrderInput | SortOrder
     isApprovalRequired?: SortOrder
+    isKit?: SortOrder
+    nextMaintenanceDate?: SortOrderInput | SortOrder
+    parentId?: SortOrderInput | SortOrder
     lastUpdated?: SortOrder
     createdAt?: SortOrder
     _count?: ItemCountOrderByAggregateInput
@@ -9887,6 +9998,9 @@ export namespace Prisma {
     assignedTo?: StringNullableWithAggregatesFilter<"Item"> | string | null
     imageUrl?: StringNullableWithAggregatesFilter<"Item"> | string | null
     isApprovalRequired?: BoolWithAggregatesFilter<"Item"> | boolean
+    isKit?: BoolWithAggregatesFilter<"Item"> | boolean
+    nextMaintenanceDate?: DateTimeNullableWithAggregatesFilter<"Item"> | Date | string | null
+    parentId?: StringNullableWithAggregatesFilter<"Item"> | string | null
     lastUpdated?: DateTimeWithAggregatesFilter<"Item"> | Date | string
     createdAt?: DateTimeWithAggregatesFilter<"Item"> | Date | string
   }
@@ -10361,10 +10475,14 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
     category: CategoryCreateNestedOneWithoutItemsInput
     location?: LocationCreateNestedOneWithoutItemsInput
+    parent?: ItemCreateNestedOneWithoutChildrenInput
+    children?: ItemCreateNestedManyWithoutParentInput
     logs?: InventoryLogCreateNestedManyWithoutItemInput
     borrowings?: InventoryBorrowingCreateNestedManyWithoutItemInput
     audits?: ItemAuditCreateNestedManyWithoutItemInput
@@ -10388,8 +10506,12 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
+    children?: ItemUncheckedCreateNestedManyWithoutParentInput
     logs?: InventoryLogUncheckedCreateNestedManyWithoutItemInput
     borrowings?: InventoryBorrowingUncheckedCreateNestedManyWithoutItemInput
     audits?: ItemAuditUncheckedCreateNestedManyWithoutItemInput
@@ -10411,10 +10533,14 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneRequiredWithoutItemsNestedInput
     location?: LocationUpdateOneWithoutItemsNestedInput
+    parent?: ItemUpdateOneWithoutChildrenNestedInput
+    children?: ItemUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUpdateManyWithoutItemNestedInput
     borrowings?: InventoryBorrowingUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUpdateManyWithoutItemNestedInput
@@ -10438,8 +10564,12 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: ItemUncheckedUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUncheckedUpdateManyWithoutItemNestedInput
     borrowings?: InventoryBorrowingUncheckedUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUncheckedUpdateManyWithoutItemNestedInput
@@ -10463,6 +10593,9 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
   }
@@ -10483,6 +10616,8 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -10505,6 +10640,9 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -11034,6 +11172,17 @@ export namespace Prisma {
     not?: NestedIntFilter<$PrismaModel> | number
   }
 
+  export type DateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | null
+    notIn?: Date[] | string[] | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
   export type DateTimeFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     in?: Date[] | string[]
@@ -11053,6 +11202,11 @@ export namespace Prisma {
   export type LocationNullableRelationFilter = {
     is?: LocationWhereInput | null
     isNot?: LocationWhereInput | null
+  }
+
+  export type ItemNullableRelationFilter = {
+    is?: ItemWhereInput | null
+    isNot?: ItemWhereInput | null
   }
 
   export type InventoryLogListRelationFilter = {
@@ -11103,6 +11257,9 @@ export namespace Prisma {
     assignedTo?: SortOrder
     imageUrl?: SortOrder
     isApprovalRequired?: SortOrder
+    isKit?: SortOrder
+    nextMaintenanceDate?: SortOrder
+    parentId?: SortOrder
     lastUpdated?: SortOrder
     createdAt?: SortOrder
   }
@@ -11130,6 +11287,9 @@ export namespace Prisma {
     assignedTo?: SortOrder
     imageUrl?: SortOrder
     isApprovalRequired?: SortOrder
+    isKit?: SortOrder
+    nextMaintenanceDate?: SortOrder
+    parentId?: SortOrder
     lastUpdated?: SortOrder
     createdAt?: SortOrder
   }
@@ -11152,6 +11312,9 @@ export namespace Prisma {
     assignedTo?: SortOrder
     imageUrl?: SortOrder
     isApprovalRequired?: SortOrder
+    isKit?: SortOrder
+    nextMaintenanceDate?: SortOrder
+    parentId?: SortOrder
     lastUpdated?: SortOrder
     createdAt?: SortOrder
   }
@@ -11175,6 +11338,20 @@ export namespace Prisma {
     _sum?: NestedIntFilter<$PrismaModel>
     _min?: NestedIntFilter<$PrismaModel>
     _max?: NestedIntFilter<$PrismaModel>
+  }
+
+  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | null
+    notIn?: Date[] | string[] | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedDateTimeNullableFilter<$PrismaModel>
+    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
   export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
@@ -11237,17 +11414,6 @@ export namespace Prisma {
   export type InventoryLogSumOrderByAggregateInput = {
     quantity?: SortOrder
     balance?: SortOrder
-  }
-
-  export type DateTimeNullableFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | null
-    notIn?: Date[] | string[] | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
   export type InventoryBorrowingCountOrderByAggregateInput = {
@@ -11318,20 +11484,6 @@ export namespace Prisma {
     quantity?: SortOrder
   }
 
-  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | null
-    notIn?: Date[] | string[] | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedDateTimeNullableFilter<$PrismaModel>
-    _max?: NestedDateTimeNullableFilter<$PrismaModel>
-  }
-
   export type SettingCountOrderByAggregateInput = {
     id?: SortOrder
     data?: SortOrder
@@ -11369,11 +11521,6 @@ export namespace Prisma {
     name?: SortOrder
     role?: SortOrder
     password?: SortOrder
-  }
-
-  export type ItemNullableRelationFilter = {
-    is?: ItemWhereInput | null
-    isNot?: ItemWhereInput | null
   }
 
   export type ItemAuditCountOrderByAggregateInput = {
@@ -11517,6 +11664,19 @@ export namespace Prisma {
     connect?: LocationWhereUniqueInput
   }
 
+  export type ItemCreateNestedOneWithoutChildrenInput = {
+    create?: XOR<ItemCreateWithoutChildrenInput, ItemUncheckedCreateWithoutChildrenInput>
+    connectOrCreate?: ItemCreateOrConnectWithoutChildrenInput
+    connect?: ItemWhereUniqueInput
+  }
+
+  export type ItemCreateNestedManyWithoutParentInput = {
+    create?: XOR<ItemCreateWithoutParentInput, ItemUncheckedCreateWithoutParentInput> | ItemCreateWithoutParentInput[] | ItemUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: ItemCreateOrConnectWithoutParentInput | ItemCreateOrConnectWithoutParentInput[]
+    createMany?: ItemCreateManyParentInputEnvelope
+    connect?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+  }
+
   export type InventoryLogCreateNestedManyWithoutItemInput = {
     create?: XOR<InventoryLogCreateWithoutItemInput, InventoryLogUncheckedCreateWithoutItemInput> | InventoryLogCreateWithoutItemInput[] | InventoryLogUncheckedCreateWithoutItemInput[]
     connectOrCreate?: InventoryLogCreateOrConnectWithoutItemInput | InventoryLogCreateOrConnectWithoutItemInput[]
@@ -11536,6 +11696,13 @@ export namespace Prisma {
     connectOrCreate?: ItemAuditCreateOrConnectWithoutItemInput | ItemAuditCreateOrConnectWithoutItemInput[]
     createMany?: ItemAuditCreateManyItemInputEnvelope
     connect?: ItemAuditWhereUniqueInput | ItemAuditWhereUniqueInput[]
+  }
+
+  export type ItemUncheckedCreateNestedManyWithoutParentInput = {
+    create?: XOR<ItemCreateWithoutParentInput, ItemUncheckedCreateWithoutParentInput> | ItemCreateWithoutParentInput[] | ItemUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: ItemCreateOrConnectWithoutParentInput | ItemCreateOrConnectWithoutParentInput[]
+    createMany?: ItemCreateManyParentInputEnvelope
+    connect?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
   }
 
   export type InventoryLogUncheckedCreateNestedManyWithoutItemInput = {
@@ -11567,6 +11734,10 @@ export namespace Prisma {
     divide?: number
   }
 
+  export type NullableDateTimeFieldUpdateOperationsInput = {
+    set?: Date | string | null
+  }
+
   export type DateTimeFieldUpdateOperationsInput = {
     set?: Date | string
   }
@@ -11587,6 +11758,30 @@ export namespace Prisma {
     delete?: LocationWhereInput | boolean
     connect?: LocationWhereUniqueInput
     update?: XOR<XOR<LocationUpdateToOneWithWhereWithoutItemsInput, LocationUpdateWithoutItemsInput>, LocationUncheckedUpdateWithoutItemsInput>
+  }
+
+  export type ItemUpdateOneWithoutChildrenNestedInput = {
+    create?: XOR<ItemCreateWithoutChildrenInput, ItemUncheckedCreateWithoutChildrenInput>
+    connectOrCreate?: ItemCreateOrConnectWithoutChildrenInput
+    upsert?: ItemUpsertWithoutChildrenInput
+    disconnect?: ItemWhereInput | boolean
+    delete?: ItemWhereInput | boolean
+    connect?: ItemWhereUniqueInput
+    update?: XOR<XOR<ItemUpdateToOneWithWhereWithoutChildrenInput, ItemUpdateWithoutChildrenInput>, ItemUncheckedUpdateWithoutChildrenInput>
+  }
+
+  export type ItemUpdateManyWithoutParentNestedInput = {
+    create?: XOR<ItemCreateWithoutParentInput, ItemUncheckedCreateWithoutParentInput> | ItemCreateWithoutParentInput[] | ItemUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: ItemCreateOrConnectWithoutParentInput | ItemCreateOrConnectWithoutParentInput[]
+    upsert?: ItemUpsertWithWhereUniqueWithoutParentInput | ItemUpsertWithWhereUniqueWithoutParentInput[]
+    createMany?: ItemCreateManyParentInputEnvelope
+    set?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+    disconnect?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+    delete?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+    connect?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+    update?: ItemUpdateWithWhereUniqueWithoutParentInput | ItemUpdateWithWhereUniqueWithoutParentInput[]
+    updateMany?: ItemUpdateManyWithWhereWithoutParentInput | ItemUpdateManyWithWhereWithoutParentInput[]
+    deleteMany?: ItemScalarWhereInput | ItemScalarWhereInput[]
   }
 
   export type InventoryLogUpdateManyWithoutItemNestedInput = {
@@ -11629,6 +11824,20 @@ export namespace Prisma {
     update?: ItemAuditUpdateWithWhereUniqueWithoutItemInput | ItemAuditUpdateWithWhereUniqueWithoutItemInput[]
     updateMany?: ItemAuditUpdateManyWithWhereWithoutItemInput | ItemAuditUpdateManyWithWhereWithoutItemInput[]
     deleteMany?: ItemAuditScalarWhereInput | ItemAuditScalarWhereInput[]
+  }
+
+  export type ItemUncheckedUpdateManyWithoutParentNestedInput = {
+    create?: XOR<ItemCreateWithoutParentInput, ItemUncheckedCreateWithoutParentInput> | ItemCreateWithoutParentInput[] | ItemUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: ItemCreateOrConnectWithoutParentInput | ItemCreateOrConnectWithoutParentInput[]
+    upsert?: ItemUpsertWithWhereUniqueWithoutParentInput | ItemUpsertWithWhereUniqueWithoutParentInput[]
+    createMany?: ItemCreateManyParentInputEnvelope
+    set?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+    disconnect?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+    delete?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+    connect?: ItemWhereUniqueInput | ItemWhereUniqueInput[]
+    update?: ItemUpdateWithWhereUniqueWithoutParentInput | ItemUpdateWithWhereUniqueWithoutParentInput[]
+    updateMany?: ItemUpdateManyWithWhereWithoutParentInput | ItemUpdateManyWithWhereWithoutParentInput[]
+    deleteMany?: ItemScalarWhereInput | ItemScalarWhereInput[]
   }
 
   export type InventoryLogUncheckedUpdateManyWithoutItemNestedInput = {
@@ -11691,10 +11900,6 @@ export namespace Prisma {
     create?: XOR<ItemCreateWithoutBorrowingsInput, ItemUncheckedCreateWithoutBorrowingsInput>
     connectOrCreate?: ItemCreateOrConnectWithoutBorrowingsInput
     connect?: ItemWhereUniqueInput
-  }
-
-  export type NullableDateTimeFieldUpdateOperationsInput = {
-    set?: Date | string | null
   }
 
   export type ItemUpdateOneRequiredWithoutBorrowingsNestedInput = {
@@ -11818,6 +12023,17 @@ export namespace Prisma {
     _max?: NestedBoolFilter<$PrismaModel>
   }
 
+  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | null
+    notIn?: Date[] | string[] | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
   export type NestedDateTimeFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     in?: Date[] | string[]
@@ -11856,31 +12072,6 @@ export namespace Prisma {
     not?: NestedFloatFilter<$PrismaModel> | number
   }
 
-  export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[]
-    notIn?: Date[] | string[]
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedDateTimeFilter<$PrismaModel>
-    _max?: NestedDateTimeFilter<$PrismaModel>
-  }
-
-  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | null
-    notIn?: Date[] | string[] | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
-  }
-
   export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | null
@@ -11893,6 +12084,20 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[]
+    notIn?: Date[] | string[]
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedDateTimeFilter<$PrismaModel>
+    _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
   export type ItemCreateWithoutCategoryInput = {
@@ -11911,9 +12116,13 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
     location?: LocationCreateNestedOneWithoutItemsInput
+    parent?: ItemCreateNestedOneWithoutChildrenInput
+    children?: ItemCreateNestedManyWithoutParentInput
     logs?: InventoryLogCreateNestedManyWithoutItemInput
     borrowings?: InventoryBorrowingCreateNestedManyWithoutItemInput
     audits?: ItemAuditCreateNestedManyWithoutItemInput
@@ -11936,8 +12145,12 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
+    children?: ItemUncheckedCreateNestedManyWithoutParentInput
     logs?: InventoryLogUncheckedCreateNestedManyWithoutItemInput
     borrowings?: InventoryBorrowingUncheckedCreateNestedManyWithoutItemInput
     audits?: ItemAuditUncheckedCreateNestedManyWithoutItemInput
@@ -11989,6 +12202,9 @@ export namespace Prisma {
     assignedTo?: StringNullableFilter<"Item"> | string | null
     imageUrl?: StringNullableFilter<"Item"> | string | null
     isApprovalRequired?: BoolFilter<"Item"> | boolean
+    isKit?: BoolFilter<"Item"> | boolean
+    nextMaintenanceDate?: DateTimeNullableFilter<"Item"> | Date | string | null
+    parentId?: StringNullableFilter<"Item"> | string | null
     lastUpdated?: DateTimeFilter<"Item"> | Date | string
     createdAt?: DateTimeFilter<"Item"> | Date | string
   }
@@ -12009,9 +12225,13 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
     category: CategoryCreateNestedOneWithoutItemsInput
+    parent?: ItemCreateNestedOneWithoutChildrenInput
+    children?: ItemCreateNestedManyWithoutParentInput
     logs?: InventoryLogCreateNestedManyWithoutItemInput
     borrowings?: InventoryBorrowingCreateNestedManyWithoutItemInput
     audits?: ItemAuditCreateNestedManyWithoutItemInput
@@ -12034,8 +12254,12 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
+    children?: ItemUncheckedCreateNestedManyWithoutParentInput
     logs?: InventoryLogUncheckedCreateNestedManyWithoutItemInput
     borrowings?: InventoryBorrowingUncheckedCreateNestedManyWithoutItemInput
     audits?: ItemAuditUncheckedCreateNestedManyWithoutItemInput
@@ -12102,6 +12326,132 @@ export namespace Prisma {
   export type LocationCreateOrConnectWithoutItemsInput = {
     where: LocationWhereUniqueInput
     create: XOR<LocationCreateWithoutItemsInput, LocationUncheckedCreateWithoutItemsInput>
+  }
+
+  export type ItemCreateWithoutChildrenInput = {
+    id?: string
+    name: string
+    inventoryCode?: string | null
+    type?: string
+    stock?: number
+    minStock?: number
+    unit?: string
+    status?: string
+    statusDetails?: string | null
+    aisle?: string | null
+    shelf?: string | null
+    bin?: string | null
+    assignedTo?: string | null
+    imageUrl?: string | null
+    isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    lastUpdated?: Date | string
+    createdAt?: Date | string
+    category: CategoryCreateNestedOneWithoutItemsInput
+    location?: LocationCreateNestedOneWithoutItemsInput
+    parent?: ItemCreateNestedOneWithoutChildrenInput
+    logs?: InventoryLogCreateNestedManyWithoutItemInput
+    borrowings?: InventoryBorrowingCreateNestedManyWithoutItemInput
+    audits?: ItemAuditCreateNestedManyWithoutItemInput
+  }
+
+  export type ItemUncheckedCreateWithoutChildrenInput = {
+    id?: string
+    name: string
+    inventoryCode?: string | null
+    categoryId: string
+    type?: string
+    stock?: number
+    minStock?: number
+    unit?: string
+    status?: string
+    statusDetails?: string | null
+    locationId?: string | null
+    aisle?: string | null
+    shelf?: string | null
+    bin?: string | null
+    assignedTo?: string | null
+    imageUrl?: string | null
+    isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
+    lastUpdated?: Date | string
+    createdAt?: Date | string
+    logs?: InventoryLogUncheckedCreateNestedManyWithoutItemInput
+    borrowings?: InventoryBorrowingUncheckedCreateNestedManyWithoutItemInput
+    audits?: ItemAuditUncheckedCreateNestedManyWithoutItemInput
+  }
+
+  export type ItemCreateOrConnectWithoutChildrenInput = {
+    where: ItemWhereUniqueInput
+    create: XOR<ItemCreateWithoutChildrenInput, ItemUncheckedCreateWithoutChildrenInput>
+  }
+
+  export type ItemCreateWithoutParentInput = {
+    id?: string
+    name: string
+    inventoryCode?: string | null
+    type?: string
+    stock?: number
+    minStock?: number
+    unit?: string
+    status?: string
+    statusDetails?: string | null
+    aisle?: string | null
+    shelf?: string | null
+    bin?: string | null
+    assignedTo?: string | null
+    imageUrl?: string | null
+    isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    lastUpdated?: Date | string
+    createdAt?: Date | string
+    category: CategoryCreateNestedOneWithoutItemsInput
+    location?: LocationCreateNestedOneWithoutItemsInput
+    children?: ItemCreateNestedManyWithoutParentInput
+    logs?: InventoryLogCreateNestedManyWithoutItemInput
+    borrowings?: InventoryBorrowingCreateNestedManyWithoutItemInput
+    audits?: ItemAuditCreateNestedManyWithoutItemInput
+  }
+
+  export type ItemUncheckedCreateWithoutParentInput = {
+    id?: string
+    name: string
+    inventoryCode?: string | null
+    categoryId: string
+    type?: string
+    stock?: number
+    minStock?: number
+    unit?: string
+    status?: string
+    statusDetails?: string | null
+    locationId?: string | null
+    aisle?: string | null
+    shelf?: string | null
+    bin?: string | null
+    assignedTo?: string | null
+    imageUrl?: string | null
+    isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    lastUpdated?: Date | string
+    createdAt?: Date | string
+    children?: ItemUncheckedCreateNestedManyWithoutParentInput
+    logs?: InventoryLogUncheckedCreateNestedManyWithoutItemInput
+    borrowings?: InventoryBorrowingUncheckedCreateNestedManyWithoutItemInput
+    audits?: ItemAuditUncheckedCreateNestedManyWithoutItemInput
+  }
+
+  export type ItemCreateOrConnectWithoutParentInput = {
+    where: ItemWhereUniqueInput
+    create: XOR<ItemCreateWithoutParentInput, ItemUncheckedCreateWithoutParentInput>
+  }
+
+  export type ItemCreateManyParentInputEnvelope = {
+    data: ItemCreateManyParentInput | ItemCreateManyParentInput[]
   }
 
   export type InventoryLogCreateWithoutItemInput = {
@@ -12259,6 +12609,89 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
   }
 
+  export type ItemUpsertWithoutChildrenInput = {
+    update: XOR<ItemUpdateWithoutChildrenInput, ItemUncheckedUpdateWithoutChildrenInput>
+    create: XOR<ItemCreateWithoutChildrenInput, ItemUncheckedCreateWithoutChildrenInput>
+    where?: ItemWhereInput
+  }
+
+  export type ItemUpdateToOneWithWhereWithoutChildrenInput = {
+    where?: ItemWhereInput
+    data: XOR<ItemUpdateWithoutChildrenInput, ItemUncheckedUpdateWithoutChildrenInput>
+  }
+
+  export type ItemUpdateWithoutChildrenInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inventoryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    stock?: IntFieldUpdateOperationsInput | number
+    minStock?: IntFieldUpdateOperationsInput | number
+    unit?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    statusDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    aisle?: NullableStringFieldUpdateOperationsInput | string | null
+    shelf?: NullableStringFieldUpdateOperationsInput | string | null
+    bin?: NullableStringFieldUpdateOperationsInput | string | null
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    category?: CategoryUpdateOneRequiredWithoutItemsNestedInput
+    location?: LocationUpdateOneWithoutItemsNestedInput
+    parent?: ItemUpdateOneWithoutChildrenNestedInput
+    logs?: InventoryLogUpdateManyWithoutItemNestedInput
+    borrowings?: InventoryBorrowingUpdateManyWithoutItemNestedInput
+    audits?: ItemAuditUpdateManyWithoutItemNestedInput
+  }
+
+  export type ItemUncheckedUpdateWithoutChildrenInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inventoryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    categoryId?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    stock?: IntFieldUpdateOperationsInput | number
+    minStock?: IntFieldUpdateOperationsInput | number
+    unit?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    statusDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    locationId?: NullableStringFieldUpdateOperationsInput | string | null
+    aisle?: NullableStringFieldUpdateOperationsInput | string | null
+    shelf?: NullableStringFieldUpdateOperationsInput | string | null
+    bin?: NullableStringFieldUpdateOperationsInput | string | null
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    logs?: InventoryLogUncheckedUpdateManyWithoutItemNestedInput
+    borrowings?: InventoryBorrowingUncheckedUpdateManyWithoutItemNestedInput
+    audits?: ItemAuditUncheckedUpdateManyWithoutItemNestedInput
+  }
+
+  export type ItemUpsertWithWhereUniqueWithoutParentInput = {
+    where: ItemWhereUniqueInput
+    update: XOR<ItemUpdateWithoutParentInput, ItemUncheckedUpdateWithoutParentInput>
+    create: XOR<ItemCreateWithoutParentInput, ItemUncheckedCreateWithoutParentInput>
+  }
+
+  export type ItemUpdateWithWhereUniqueWithoutParentInput = {
+    where: ItemWhereUniqueInput
+    data: XOR<ItemUpdateWithoutParentInput, ItemUncheckedUpdateWithoutParentInput>
+  }
+
+  export type ItemUpdateManyWithWhereWithoutParentInput = {
+    where: ItemScalarWhereInput
+    data: XOR<ItemUpdateManyMutationInput, ItemUncheckedUpdateManyWithoutParentInput>
+  }
+
   export type InventoryLogUpsertWithWhereUniqueWithoutItemInput = {
     where: InventoryLogWhereUniqueInput
     update: XOR<InventoryLogUpdateWithoutItemInput, InventoryLogUncheckedUpdateWithoutItemInput>
@@ -12374,10 +12807,14 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
     category: CategoryCreateNestedOneWithoutItemsInput
     location?: LocationCreateNestedOneWithoutItemsInput
+    parent?: ItemCreateNestedOneWithoutChildrenInput
+    children?: ItemCreateNestedManyWithoutParentInput
     borrowings?: InventoryBorrowingCreateNestedManyWithoutItemInput
     audits?: ItemAuditCreateNestedManyWithoutItemInput
   }
@@ -12400,8 +12837,12 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
+    children?: ItemUncheckedCreateNestedManyWithoutParentInput
     borrowings?: InventoryBorrowingUncheckedCreateNestedManyWithoutItemInput
     audits?: ItemAuditUncheckedCreateNestedManyWithoutItemInput
   }
@@ -12438,10 +12879,14 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneRequiredWithoutItemsNestedInput
     location?: LocationUpdateOneWithoutItemsNestedInput
+    parent?: ItemUpdateOneWithoutChildrenNestedInput
+    children?: ItemUpdateManyWithoutParentNestedInput
     borrowings?: InventoryBorrowingUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUpdateManyWithoutItemNestedInput
   }
@@ -12464,8 +12909,12 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: ItemUncheckedUpdateManyWithoutParentNestedInput
     borrowings?: InventoryBorrowingUncheckedUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUncheckedUpdateManyWithoutItemNestedInput
   }
@@ -12486,10 +12935,14 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
     category: CategoryCreateNestedOneWithoutItemsInput
     location?: LocationCreateNestedOneWithoutItemsInput
+    parent?: ItemCreateNestedOneWithoutChildrenInput
+    children?: ItemCreateNestedManyWithoutParentInput
     logs?: InventoryLogCreateNestedManyWithoutItemInput
     audits?: ItemAuditCreateNestedManyWithoutItemInput
   }
@@ -12512,8 +12965,12 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
+    children?: ItemUncheckedCreateNestedManyWithoutParentInput
     logs?: InventoryLogUncheckedCreateNestedManyWithoutItemInput
     audits?: ItemAuditUncheckedCreateNestedManyWithoutItemInput
   }
@@ -12550,10 +13007,14 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneRequiredWithoutItemsNestedInput
     location?: LocationUpdateOneWithoutItemsNestedInput
+    parent?: ItemUpdateOneWithoutChildrenNestedInput
+    children?: ItemUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUpdateManyWithoutItemNestedInput
   }
@@ -12576,8 +13037,12 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: ItemUncheckedUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUncheckedUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUncheckedUpdateManyWithoutItemNestedInput
   }
@@ -12598,10 +13063,14 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
     category: CategoryCreateNestedOneWithoutItemsInput
     location?: LocationCreateNestedOneWithoutItemsInput
+    parent?: ItemCreateNestedOneWithoutChildrenInput
+    children?: ItemCreateNestedManyWithoutParentInput
     logs?: InventoryLogCreateNestedManyWithoutItemInput
     borrowings?: InventoryBorrowingCreateNestedManyWithoutItemInput
   }
@@ -12624,8 +13093,12 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
+    children?: ItemUncheckedCreateNestedManyWithoutParentInput
     logs?: InventoryLogUncheckedCreateNestedManyWithoutItemInput
     borrowings?: InventoryBorrowingUncheckedCreateNestedManyWithoutItemInput
   }
@@ -12662,10 +13135,14 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneRequiredWithoutItemsNestedInput
     location?: LocationUpdateOneWithoutItemsNestedInput
+    parent?: ItemUpdateOneWithoutChildrenNestedInput
+    children?: ItemUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUpdateManyWithoutItemNestedInput
     borrowings?: InventoryBorrowingUpdateManyWithoutItemNestedInput
   }
@@ -12688,8 +13165,12 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: ItemUncheckedUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUncheckedUpdateManyWithoutItemNestedInput
     borrowings?: InventoryBorrowingUncheckedUpdateManyWithoutItemNestedInput
   }
@@ -12711,6 +13192,9 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
   }
@@ -12731,9 +13215,13 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: LocationUpdateOneWithoutItemsNestedInput
+    parent?: ItemUpdateOneWithoutChildrenNestedInput
+    children?: ItemUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUpdateManyWithoutItemNestedInput
     borrowings?: InventoryBorrowingUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUpdateManyWithoutItemNestedInput
@@ -12756,8 +13244,12 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: ItemUncheckedUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUncheckedUpdateManyWithoutItemNestedInput
     borrowings?: InventoryBorrowingUncheckedUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUncheckedUpdateManyWithoutItemNestedInput
@@ -12780,6 +13272,9 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -12801,6 +13296,9 @@ export namespace Prisma {
     assignedTo?: string | null
     imageUrl?: string | null
     isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    parentId?: string | null
     lastUpdated?: Date | string
     createdAt?: Date | string
   }
@@ -12821,9 +13319,13 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneRequiredWithoutItemsNestedInput
+    parent?: ItemUpdateOneWithoutChildrenNestedInput
+    children?: ItemUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUpdateManyWithoutItemNestedInput
     borrowings?: InventoryBorrowingUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUpdateManyWithoutItemNestedInput
@@ -12846,8 +13348,12 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: ItemUncheckedUpdateManyWithoutParentNestedInput
     logs?: InventoryLogUncheckedUpdateManyWithoutItemNestedInput
     borrowings?: InventoryBorrowingUncheckedUpdateManyWithoutItemNestedInput
     audits?: ItemAuditUncheckedUpdateManyWithoutItemNestedInput
@@ -12870,8 +13376,35 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
     lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ItemCreateManyParentInput = {
+    id?: string
+    name: string
+    inventoryCode?: string | null
+    categoryId: string
+    type?: string
+    stock?: number
+    minStock?: number
+    unit?: string
+    status?: string
+    statusDetails?: string | null
+    locationId?: string | null
+    aisle?: string | null
+    shelf?: string | null
+    bin?: string | null
+    assignedTo?: string | null
+    imageUrl?: string | null
+    isApprovalRequired?: boolean
+    isKit?: boolean
+    nextMaintenanceDate?: Date | string | null
+    lastUpdated?: Date | string
+    createdAt?: Date | string
   }
 
   export type InventoryLogCreateManyItemInput = {
@@ -12911,6 +13444,86 @@ export namespace Prisma {
     action: string
     changes?: string | null
     timestamp?: Date | string
+  }
+
+  export type ItemUpdateWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inventoryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    stock?: IntFieldUpdateOperationsInput | number
+    minStock?: IntFieldUpdateOperationsInput | number
+    unit?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    statusDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    aisle?: NullableStringFieldUpdateOperationsInput | string | null
+    shelf?: NullableStringFieldUpdateOperationsInput | string | null
+    bin?: NullableStringFieldUpdateOperationsInput | string | null
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    category?: CategoryUpdateOneRequiredWithoutItemsNestedInput
+    location?: LocationUpdateOneWithoutItemsNestedInput
+    children?: ItemUpdateManyWithoutParentNestedInput
+    logs?: InventoryLogUpdateManyWithoutItemNestedInput
+    borrowings?: InventoryBorrowingUpdateManyWithoutItemNestedInput
+    audits?: ItemAuditUpdateManyWithoutItemNestedInput
+  }
+
+  export type ItemUncheckedUpdateWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inventoryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    categoryId?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    stock?: IntFieldUpdateOperationsInput | number
+    minStock?: IntFieldUpdateOperationsInput | number
+    unit?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    statusDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    locationId?: NullableStringFieldUpdateOperationsInput | string | null
+    aisle?: NullableStringFieldUpdateOperationsInput | string | null
+    shelf?: NullableStringFieldUpdateOperationsInput | string | null
+    bin?: NullableStringFieldUpdateOperationsInput | string | null
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: ItemUncheckedUpdateManyWithoutParentNestedInput
+    logs?: InventoryLogUncheckedUpdateManyWithoutItemNestedInput
+    borrowings?: InventoryBorrowingUncheckedUpdateManyWithoutItemNestedInput
+    audits?: ItemAuditUncheckedUpdateManyWithoutItemNestedInput
+  }
+
+  export type ItemUncheckedUpdateManyWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    inventoryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    categoryId?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    stock?: IntFieldUpdateOperationsInput | number
+    minStock?: IntFieldUpdateOperationsInput | number
+    unit?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    statusDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    locationId?: NullableStringFieldUpdateOperationsInput | string | null
+    aisle?: NullableStringFieldUpdateOperationsInput | string | null
+    shelf?: NullableStringFieldUpdateOperationsInput | string | null
+    bin?: NullableStringFieldUpdateOperationsInput | string | null
+    assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    isApprovalRequired?: BoolFieldUpdateOperationsInput | boolean
+    isKit?: BoolFieldUpdateOperationsInput | boolean
+    nextMaintenanceDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastUpdated?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type InventoryLogUpdateWithoutItemInput = {

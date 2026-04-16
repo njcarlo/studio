@@ -26,14 +26,18 @@ function jsonParse(val: string | null | undefined, fallback: any = null) {
 // ─── 1. Dashboard Stats ───────────────────────────────────────────────────────
 app.get('/api/dashboard/stats', async (_req, res) => {
   try {
-    const [totalItems, borrowedCount, overdueCount, lowStockAlerts, outOfStock] = await Promise.all([
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const [totalItems, borrowedCount, overdueCount, lowStockAlerts, outOfStock, pmsAlerts] = await Promise.all([
       prisma.item.count(),
       prisma.inventoryBorrowing.count({ where: { status: 'BORROWED' } }),
       prisma.inventoryBorrowing.count({
         where: { status: 'BORROWED', dueDate: { lt: new Date() } }
       }),
       prisma.item.count({ where: { stock: { gt: 0 }, minStock: { gt: 0 }, AND: [{ stock: { lte: prisma.item.fields.minStock } }] } }).catch(() => 0),
-      prisma.item.count({ where: { stock: 0 } })
+      prisma.item.count({ where: { stock: 0 } }),
+      prisma.item.count({ where: { nextMaintenanceDate: { lte: thirtyDaysFromNow } } }).catch(() => 0)
     ]);
 
     res.json({
@@ -42,13 +46,14 @@ app.get('/api/dashboard/stats', async (_req, res) => {
       overdueCount,
       lowStockAlerts,
       outOfStock,
+      pmsAlerts,
       totalInventoryValue: `${totalItems} SKUs`
     });
   } catch (error) {
     console.error(error);
     // Fallback stats
     const totalItems = await prisma.item.count().catch(() => 0);
-    res.json({ totalItems, borrowedCount: 0, overdueCount: 0, lowStockAlerts: 0, outOfStock: 0, totalInventoryValue: `${totalItems} SKUs` });
+    res.json({ totalItems, borrowedCount: 0, overdueCount: 0, lowStockAlerts: 0, outOfStock: 0, pmsAlerts: 0, totalInventoryValue: `${totalItems} SKUs` });
   }
 });
 
@@ -229,7 +234,7 @@ app.get('/api/inventory/items/:id', async (req, res) => {
 // ─── 5. Create Item ───────────────────────────────────────────────────────────
 app.post('/api/inventory/items', async (req, res) => {
   try {
-    const { categoryId, locationId, name, type, stock, minStock, unit, status, statusDetails, imageUrl, inventoryCode, aisle, shelf, bin, isApprovalRequired } = req.body;
+    const { categoryId, locationId, name, type, stock, minStock, unit, status, statusDetails, imageUrl, inventoryCode, aisle, shelf, bin, isApprovalRequired, isKit, parentId, nextMaintenanceDate } = req.body;
 
     let finalCode = inventoryCode;
     if (!finalCode && categoryId) {
@@ -273,7 +278,10 @@ app.post('/api/inventory/items', async (req, res) => {
         aisle: aisle || null,
         shelf: shelf || null,
         bin: bin || null,
-        isApprovalRequired: Boolean(isApprovalRequired)
+        isApprovalRequired: Boolean(isApprovalRequired),
+        isKit: Boolean(isKit),
+        parentId: parentId || null,
+        nextMaintenanceDate: nextMaintenanceDate ? new Date(nextMaintenanceDate) : null
       },
       include: { category: true, location: true }
     });
@@ -305,11 +313,12 @@ app.put('/api/inventory/items/:id', async (req, res) => {
     if (!oldItem) return res.status(404).json({ error: 'Item not found' });
 
     const data: any = {};
-    const fields = ['categoryId', 'locationId', 'name', 'type', 'stock', 'minStock', 'unit', 'status', 'statusDetails', 'imageUrl', 'inventoryCode', 'aisle', 'shelf', 'bin', 'isApprovalRequired', 'assignedTo'];
+    const fields = ['categoryId', 'locationId', 'name', 'type', 'stock', 'minStock', 'unit', 'status', 'statusDetails', 'imageUrl', 'inventoryCode', 'aisle', 'shelf', 'bin', 'isApprovalRequired', 'assignedTo', 'isKit', 'parentId', 'nextMaintenanceDate'];
     for (const f of fields) {
       if (body[f] !== undefined) {
         if (f === 'stock' || f === 'minStock') data[f] = Number(body[f]);
-        else if (f === 'isApprovalRequired') data[f] = Boolean(body[f]);
+        else if (f === 'isApprovalRequired' || f === 'isKit') data[f] = Boolean(body[f]);
+        else if (f === 'nextMaintenanceDate') data[f] = body[f] ? new Date(body[f]) : null;
         else data[f] = body[f];
       }
     }
@@ -766,50 +775,70 @@ app.post('/api/borrowings', async (req, res) => {
       return res.status(400).json({ error: 'itemId, borrowerId and borrowerName are required' });
     }
 
-    const item = await prisma.item.findUnique({ where: { id: itemId } });
+    const item = await prisma.item.findUnique({ 
+      where: { id: itemId },
+      include: { children: true }
+    });
     if (!item) return res.status(404).json({ error: 'Item not found' });
-    if (item.status === 'Damaged') return res.status(400).json({ error: 'Item is damaged and cannot be borrowed' });
+    
+    const itemsToCheckout: any[] = [item];
+    if (item.isKit && item.children && item.children.length > 0) {
+      itemsToCheckout.push(...item.children);
+    }
 
     const numQty = Number(quantity) || 1;
-    if (item.stock < numQty) {
-      return res.status(400).json({ error: `Not enough stock (Only ${item.stock} left)` });
+
+    for (const it of itemsToCheckout) {
+      if (it.status === 'Damaged') return res.status(400).json({ error: `${it.name} is damaged and cannot be borrowed.` });
+      if (it.stock < numQty) return res.status(400).json({ error: `Not enough stock for ${it.name} (Only ${it.stock} left).` });
     }
 
     const borrowing = await prisma.$transaction(async (tx) => {
-      const b = await tx.inventoryBorrowing.create({
-        data: {
-          itemId,
-          borrowerId,
-          borrowerName,
-          borrowerEmail: borrowerEmail || null,
-          dueDate: dueDate ? new Date(dueDate) : null,
-          status: 'BORROWED',
-          quantity: numQty,
-          checkoutNotes: checkoutNotes || null,
-          checkoutCondition: checkoutCondition || null,
-          checkoutChecklist: checkoutChecklist ? JSON.stringify(checkoutChecklist) : null
-        },
-        include: { item: { select: { id: true, name: true, inventoryCode: true, imageUrl: true } } }
-      });
-      const newStock = item.stock - numQty;
-      await tx.item.update({
-        where: { id: itemId },
-        data: {
-          stock: newStock,
-          status: newStock === 0 && item.status !== 'Borrowed' && item.type === 'Equipment' ? 'Borrowed' : item.status
+      let mainBorrowing = null;
+
+      for (const it of itemsToCheckout) {
+        const b = await tx.inventoryBorrowing.create({
+          data: {
+            itemId: it.id,
+            borrowerId,
+            borrowerName,
+            borrowerEmail: borrowerEmail || null,
+            dueDate: dueDate ? new Date(dueDate) : null,
+            status: 'BORROWED',
+            quantity: numQty,
+            checkoutNotes: checkoutNotes || null,
+            checkoutCondition: checkoutCondition || null,
+            checkoutChecklist: checkoutChecklist ? JSON.stringify(checkoutChecklist) : null
+          },
+          include: { item: { select: { id: true, name: true, inventoryCode: true, imageUrl: true } } }
+        });
+
+        if (it.id === item.id) {
+          mainBorrowing = b;
         }
-      });
-      await tx.inventoryLog.create({
-        data: {
-          itemId,
-          workerId: borrowerId,
-          action: 'Stock Out',
-          quantity: numQty,
-          balance: newStock,
-          notes: `Checked out to ${borrowerName}${checkoutNotes ? '. ' + checkoutNotes : ''}`
-        }
-      });
-      return b;
+
+        const newStock = it.stock - numQty;
+        await tx.item.update({
+          where: { id: it.id },
+          data: {
+            stock: newStock,
+            status: newStock === 0 && it.status !== 'Borrowed' && it.type === 'Equipment' ? 'Borrowed' : it.status
+          }
+        });
+
+        await tx.inventoryLog.create({
+          data: {
+            itemId: it.id,
+            workerId: borrowerId,
+            action: 'Stock Out',
+            quantity: numQty,
+            balance: newStock,
+            notes: `Checked out to ${borrowerName} ${it.id !== item.id ? '(Bundle Child)' : ''} ${checkoutNotes ? ' - ' + checkoutNotes : ''}`
+          }
+        });
+      }
+
+      return mainBorrowing;
     });
 
     res.json({

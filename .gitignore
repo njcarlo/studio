@@ -55,3 +55,4 @@ android/app/google-services.json
 
 /generated/prisma
 service-account.json
+*.db

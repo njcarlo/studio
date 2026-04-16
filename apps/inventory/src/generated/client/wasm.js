@@ -151,6 +151,9 @@ exports.Prisma.ItemScalarFieldEnum = {
   assignedTo: 'assignedTo',
   imageUrl: 'imageUrl',
   isApprovalRequired: 'isApprovalRequired',
+  isKit: 'isKit',
+  nextMaintenanceDate: 'nextMaintenanceDate',
+  parentId: 'parentId',
   lastUpdated: 'lastUpdated',
   createdAt: 'createdAt'
 };

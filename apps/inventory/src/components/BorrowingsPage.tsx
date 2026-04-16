@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ClipboardList, Search, RefreshCw, Plus, X, CheckCircle,
   AlertTriangle, Clock, ChevronLeft, ChevronRight, Package,
-  User, Calendar, ArrowUpCircle, ArrowDownCircle, QrCode
+  User, Calendar, ArrowUpCircle, ArrowDownCircle, QrCode,
+  Upload, Image as ImageIcon, ShieldAlert
 } from 'lucide-react';
 import { QRModal } from './QRModal';
 import { ScannerModal } from './ScannerModal';
+import { uploadItemPhoto } from '../utils/firebase';
 
 interface Borrowing {
   id: string;
@@ -402,6 +404,7 @@ function CheckoutModal({ templates, preselectedItem, onClose, onSuccess }: {
   const [notes, setNotes] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [supervisorName, setSupervisorName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -431,6 +434,10 @@ function CheckoutModal({ templates, preselectedItem, onClose, onSuccess }: {
       setError('Please complete all required checklist items.');
       return;
     }
+    if (selectedItem?.isApprovalRequired && !supervisorName.trim()) {
+      setError('Ministry Head approval is required for this high-value item.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -444,7 +451,7 @@ function CheckoutModal({ templates, preselectedItem, onClose, onSuccess }: {
           borrowerEmail: borrowerEmail.trim() || undefined,
           dueDate: dueDate || undefined,
           checkoutCondition: condition,
-          checkoutNotes: notes,
+          checkoutNotes: selectedItem?.isApprovalRequired ? `Approved by: ${supervisorName.trim()}${notes ? ' - ' + notes : ''}` : notes,
           checkoutChecklist: checklist,
           quantity
         })
@@ -516,6 +523,15 @@ function CheckoutModal({ templates, preselectedItem, onClose, onSuccess }: {
               </div>
             )}
           </div>
+
+          {selectedItem?.isApprovalRequired && (
+            <div style={{ padding: '0.75rem', borderRadius: '8px', backgroundColor: '#fdf2f8', border: '1px solid #fbcfe8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#be185d', fontWeight: 600, fontSize: '0.8125rem' }}>
+                <ShieldAlert size={14} /> High-Value Item: Ministry Head Approval Required
+              </div>
+              <input type="text" className="form-control" placeholder="Name of Approving Ministry Head" value={supervisorName} onChange={e => setSupervisorName(e.target.value)} />
+            </div>
+          )}
 
           <div className="form-row-2col">
             <div>
@@ -607,6 +623,8 @@ function ReturnModal({ borrowingId, templates, onClose, onSuccess }: {
   const [damaged, setDamaged] = useState(false);
   const [damageNotes, setDamageNotes] = useState('');
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -635,6 +653,7 @@ function ReturnModal({ borrowingId, templates, onClose, onSuccess }: {
           returnCondition: condition,
           returnNotes: damaged ? damageNotes : notes,
           returnChecklist: checklist,
+          returnPhotos: photos,
           damaged
         })
       });
@@ -712,6 +731,31 @@ function ReturnModal({ borrowingId, templates, onClose, onSuccess }: {
               <option>Poor</option>
               <option>Damaged</option>
             </select>
+          </div>
+
+          {/* Visual Damage Proof / Photo Upload */}
+          <div>
+            <label className="form-label" style={{ marginBottom: '0.5rem' }}>Damage Proof / Return Photos (optional)</label>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {photos.map((url, idx) => (
+                <div key={idx} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <img src={url} alt="Return Proof" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button onClick={() => setPhotos(p => p.filter((_, i) => i !== idx))} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={12} /></button>
+                </div>
+              ))}
+              <label className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '60px', height: '60px', padding: 0, borderRadius: '8px', cursor: 'pointer', margin: 0, backgroundColor: '#f9fafb' }}>
+                {uploadingImage ? <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={18} color="#9ca3af" />}
+                <input type="file" accept="image/*" style={{ display: 'none' }} disabled={uploadingImage} onChange={async e => {
+                   if (!e.target.files?.length) return;
+                   setUploadingImage(true);
+                   try {
+                     const url = await uploadItemPhoto(e.target.files[0]);
+                     setPhotos(p => [...p, url]);
+                   } catch { alert('Upload failed'); }
+                   finally { setUploadingImage(false); }
+                }} />
+              </label>
+            </div>
           </div>
 
           {/* Damage Flag */}

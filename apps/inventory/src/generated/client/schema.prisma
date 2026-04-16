@@ -25,45 +25,49 @@ model Location {
 }
 
 model Item {
-  id                 String   @id @default(cuid())
-  name               String
-  inventoryCode      String?  @unique
-  categoryId         String
-  type               String   @default("Equipment")
-  stock              Int      @default(0)
-  minStock           Int      @default(0)
-  unit               String   @default("pcs")
-  status             String   @default("Good Condition")
-  statusDetails      String?
-  locationId         String?
-  aisle              String?
-  shelf              String?
-  bin                String?
-  assignedTo         String?
-  imageUrl           String?
-  isApprovalRequired Boolean  @default(false)
-  lastUpdated        DateTime @default(now()) @updatedAt
-  createdAt          DateTime @default(now())
+  id                  String    @id @default(cuid())
+  name                String
+  inventoryCode       String?   @unique
+  categoryId          String
+  type                String    @default("Equipment")
+  stock               Int       @default(0)
+  minStock            Int       @default(0)
+  unit                String    @default("pcs")
+  status              String    @default("Good Condition")
+  statusDetails       String?
+  locationId          String?
+  aisle               String?
+  shelf               String?
+  bin                 String?
+  assignedTo          String?
+  imageUrl            String?
+  isApprovalRequired  Boolean   @default(false)
+  isKit               Boolean   @default(false)
+  nextMaintenanceDate DateTime?
+  parentId            String?
+  lastUpdated         DateTime  @default(now()) @updatedAt
+  createdAt           DateTime  @default(now())
 
   category   Category             @relation(fields: [categoryId], references: [id])
   location   Location?            @relation(fields: [locationId], references: [id])
+  parent     Item?                @relation("KitItems", fields: [parentId], references: [id])
+  children   Item[]               @relation("KitItems")
   logs       InventoryLog[]
   borrowings InventoryBorrowing[]
+  audits     ItemAudit[]
 }
 
 model InventoryLog {
   id        String   @id @default(cuid())
   itemId    String
-  workerId  String? // Physical borrower/receiver
-  userId    String? // System User who processed it
+  workerId  String?
   action    String // "Stock In", "Stock Out", "Checkout", "Return", "Adjustment"
   quantity  Int
   balance   Int      @default(0)
   notes     String?
   timestamp DateTime @default(now())
 
-  item Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id])
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model InventoryBorrowing {
@@ -87,10 +91,7 @@ model InventoryBorrowing {
   returnChecklist String? // JSON string
   returnPhotos    String? // JSON array string
 
-  userId String? // System admin/manager who approved the checkout
-
-  item Item  @relation(fields: [itemId], references: [id])
-  user User? @relation(fields: [userId], references: [id])
+  item Item @relation(fields: [itemId], references: [id])
 }
 
 model Setting {
@@ -99,14 +100,22 @@ model Setting {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String // Hashed
-  role      String   @default("VIEWER") // "ADMIN", "MANAGER", "VIEWER"
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id       String @id @default(cuid())
+  email    String @unique
+  name     String
+  role     String @default("READ_ONLY") // ADMIN, MANAGER, READ_ONLY
+  password String // Hashed
+}
 
-  logs       InventoryLog[]
-  borrowings InventoryBorrowing[]
+model ItemAudit {
+  id        String   @id @default(cuid())
+  itemId    String?
+  itemName  String
+  userId    String? // Reference to User
+  userName  String? // Denormalized name just in case user is deleted
+  action    String // "CREATED", "UPDATED", "DELETED"
+  changes   String? // JSON string
+  timestamp DateTime @default(now())
+
+  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
 }

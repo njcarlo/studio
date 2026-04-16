@@ -36,9 +36,9 @@ export function Dashboard() {
             subtitle="Requires action"
           />
           <StatCard
-            title="TOTAL VALUE"
-            value={stats?.totalInventoryValue ?? '—'}
-            subtitle="All tracked records"
+            title="PMS ALERTS"
+            value={stats?.pmsAlerts ?? '—'}
+            subtitle="Due soon or overdue"
           />
         </div>
 
