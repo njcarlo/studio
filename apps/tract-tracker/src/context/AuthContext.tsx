@@ -145,8 +145,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             sub_region: metadata.subRegion || '',
             barangay: metadata.barangay,
             tracts_given: 0,
-            is_tester: true,  // demo: bypass countdown
-            is_admin: true,   // demo: show admin + liveboard
+            is_tester: false,
+            is_admin: false,
         }).select().single();
 
         if (error || !data) return { error: error?.message || 'Failed to create account.' };
@@ -169,6 +169,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const isDasmarinas =
+        authState.region === 'COG Dasmarinas' ||
         authState.subRegion.toLowerCase() === 'dasmarinas' ||
         authState.subRegion.toLowerCase() === 'dasmariñas';
 

@@ -13,8 +13,7 @@ import { supabaseAdmin } from '../supabase';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
-const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN'];
-const CHURCHES = ['Dasmarinas', 'Others'];
+const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN', 'COG Dasmarinas'];
 
 const REGION_LABELS: Record<string, string> = {
     NLR: 'North Luzon Region',
@@ -61,6 +60,7 @@ function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
     const [subRegion, setSubRegion] = useState(authState.subRegion || '');
     const [barangay, setBarangay] = useState(authState.barangay || '');
     const [showBarangayModal, setShowBarangayModal] = useState(false);
+    const [showRegionModal, setShowRegionModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [saving, setSaving] = useState(false);
 
@@ -95,36 +95,14 @@ function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
                     <Text style={styles.greeting}>Hello, {firstName}!</Text>
 
                     <Text style={styles.fieldLabel}>Please select your Region</Text>
-                    <View style={styles.rowWrap}>
-                        {REGIONS.map(r => (
-                            <TouchableOpacity
-                                key={r}
-                                onPress={() => { setRegion(r); setSubRegion(''); setBarangay(''); }}
-                                style={[styles.chip, region === r && styles.chipActive]}
-                            >
-                                <Text style={[styles.chipText, region === r && styles.chipTextActive]}>{r}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowRegionModal(true)}>
+                        <Text style={[styles.dropdownText, !region && { color: 'rgba(255,255,255,0.5)' }]}>
+                            {region ? REGION_LABELS[region] : 'Select Region'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={18} color="#fff" />
+                    </TouchableOpacity>
 
-                    {region === 'MMR' && (
-                        <>
-                            <Text style={styles.fieldLabel}>Church</Text>
-                            <View style={styles.rowWrap}>
-                                {CHURCHES.map(sr => (
-                                    <TouchableOpacity
-                                        key={sr}
-                                        onPress={() => { setSubRegion(sr); setBarangay(''); }}
-                                        style={[styles.chip, subRegion === sr && styles.chipActive]}
-                                    >
-                                        <Text style={[styles.chipText, subRegion === sr && styles.chipTextActive]}>{sr}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </>
-                    )}
-
-                    {region === 'MMR' && subRegion === 'Dasmarinas' && (
+                    {region === 'COG Dasmarinas' && (
                         <>
                             <Text style={styles.fieldLabel}>Please select your Barangay</Text>
                             <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowBarangayModal(true)}>
@@ -145,6 +123,29 @@ function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
+
+            <Modal visible={showRegionModal} animationType="slide" transparent>
+                <SafeAreaView style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Region</Text>
+                            <TouchableOpacity onPress={() => setShowRegionModal(false)}>
+                                <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                        </View>
+                        {REGIONS.map(r => (
+                            <TouchableOpacity
+                                key={r}
+                                style={styles.barangayItem}
+                                onPress={() => { setRegion(r); setSubRegion(''); setBarangay(''); setShowRegionModal(false); }}
+                            >
+                                <Text style={[styles.barangayItemText, region === r && styles.selectedItemText]}>{REGION_LABELS[r]}</Text>
+                                {region === r && <Ionicons name="checkmark" size={18} color="#C9A84C" />}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </SafeAreaView>
+            </Modal>
 
             <Modal visible={showBarangayModal} animationType="slide" transparent>
                 <SafeAreaView style={styles.modalOverlay}>
@@ -375,11 +376,6 @@ const styles = StyleSheet.create({
     setupContent: { flex: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 32 },
     greeting: { color: '#fff', fontSize: 26, marginBottom: 24 },
     fieldLabel: { color: '#fff', fontSize: 13, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-    rowWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
-    chip: { borderWidth: 1.5, borderColor: '#C9A84C', borderRadius: 20, paddingVertical: 7, paddingHorizontal: 16, marginRight: 8, marginBottom: 8 },
-    chipActive: { backgroundColor: '#C9A84C' },
-    chipText: { color: '#C9A84C', fontSize: 13 },
-    chipTextActive: { color: '#1a1a2e' },
     dropdownTrigger: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10,
