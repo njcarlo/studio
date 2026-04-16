@@ -13,7 +13,7 @@ import LiveBoardScreen from './screens/LiveBoardScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from './context/AuthContext';
 
-const EVENT_DATE = new Date('2026-06-12T00:00:00+08:00');
+const EVENT_DATE = new Date('2026-06-12T06:00:00+08:00'); // June 12, 6am PHT
 const isEventLive = () => new Date() >= EVENT_DATE;
 
 export type RootStackParamList = {
