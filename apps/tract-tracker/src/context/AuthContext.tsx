@@ -173,8 +173,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         authState.subRegion.toLowerCase() === 'dasmarinas' ||
         authState.subRegion.toLowerCase() === 'dasmariñas';
 
-    const isTester = user?.is_tester === true;
-    const isAdmin = user?.is_admin === true;
+// Emails that always bypass the countdown (testers/admins)
+const TESTER_EMAILS = new Set(['njcarlo@gmail.com', 'pacleb@gmail.com']);
+
+    const isTester = user?.is_tester === true || TESTER_EMAILS.has(user?.email?.toLowerCase() ?? '');
+    const isAdmin = user?.is_admin === true || TESTER_EMAILS.has(user?.email?.toLowerCase() ?? '');
     const session = user ? { user } : null;
 
     return (
