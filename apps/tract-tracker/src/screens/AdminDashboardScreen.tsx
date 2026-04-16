@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Alert, ImageBackground, Modal, Platform,
     ScrollView, StyleSheet, Text, TouchableOpacity, View,
@@ -41,14 +41,6 @@ function getLocationLabel(u: UserData): string {
     return regionLabel;
 }
 
-const MOCK_USERS = [
-    { id: '1', name: 'Juan Dela Cruz', email: 'juan@example.com', region: 'COG Dasmarinas', barangay: 'Burol I', tractsGiven: 154 },
-    { id: '2', name: 'Maria Clara', email: 'maria@example.com', region: 'COG Dasmarinas', barangay: 'Salawag', tractsGiven: 89 },
-    { id: '3', name: 'Jose Rizal', email: 'jose@example.com', region: 'NLR', barangay: '', tractsGiven: 320 },
-    { id: '4', name: 'Andres Bonifacio', email: 'andres@example.com', region: 'SLR', barangay: '', tractsGiven: 45 },
-    { id: '5', name: 'Emilio Aguinaldo', email: 'emilio@example.com', region: 'COG Dasmarinas', barangay: 'Sampaloc I', tractsGiven: 210 },
-];
-
 export default function AdminDashboardScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [tab, setTab] = useState<Tab>('overview');
@@ -56,7 +48,6 @@ export default function AdminDashboardScreen() {
     const [loading, setLoading] = useState(true);
     const [resetting, setResetting] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
-    const usingMock = useRef(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -64,8 +55,8 @@ export default function AdminDashboardScreen() {
             const { data, error } = await supabaseAdmin
                 .from('tract_users')
                 .select('id, name, email, region, sub_region, barangay, tracts_given');
-            if (error || !data || data.length === 0) throw new Error('No data');
-            setUsers(data.map(d => ({
+            if (error) throw error;
+            setUsers((data ?? []).map(d => ({
                 id: d.id,
                 name: d.name,
                 email: d.email,
@@ -74,10 +65,9 @@ export default function AdminDashboardScreen() {
                 barangay: d.barangay,
                 tractsGiven: d.tracts_given ?? 0,
             })));
-            usingMock.current = false;
-        } catch {
-            usingMock.current = true;
-            setUsers(MOCK_USERS);
+        } catch (e) {
+            console.error('fetchData error', e);
+            setUsers([]);
         } finally {
             setLoading(false);
         }
@@ -87,7 +77,6 @@ export default function AdminDashboardScreen() {
 
     const totalTracts = users.reduce((s, u) => s + u.tractsGiven, 0);
 
-    // Group by region
     const byRegion = users.reduce<Record<string, number>>((acc, u) => {
         const key = u.region || 'Unknown';
         acc[key] = (acc[key] || 0) + u.tractsGiven;
@@ -95,7 +84,6 @@ export default function AdminDashboardScreen() {
     }, {});
     const regionRows = Object.entries(byRegion).sort((a, b) => b[1] - a[1]);
 
-    // Group by barangay — only include users who have a barangay set
     const byBarangay = users.reduce<Record<string, number>>((acc, u) => {
         if (!u.barangay) return acc;
         acc[u.barangay] = (acc[u.barangay] || 0) + u.tractsGiven;
@@ -107,17 +95,12 @@ export default function AdminDashboardScreen() {
         setShowResetConfirm(false);
         setResetting(true);
         try {
-            if (usingMock.current) {
-                await new Promise(r => setTimeout(r, 800));
-                setUsers(prev => prev.map(u => ({ ...u, tractsGiven: 0 })));
-            } else {
-                const { error } = await supabaseAdmin
-                    .from('tract_users')
-                    .update({ tracts_given: 0 })
-                    .in('id', users.map(u => u.id));
-                if (error) throw error;
-                await fetchData();
-            }
+            const { error } = await supabaseAdmin
+                .from('tract_users')
+                .update({ tracts_given: 0 })
+                .in('id', users.map(u => u.id));
+            if (error) throw error;
+            await fetchData();
         } catch (err) {
             if (Platform.OS !== 'web') Alert.alert('Error', 'Failed to reset.');
             else console.error('Reset failed:', err);
@@ -149,9 +132,7 @@ export default function AdminDashboardScreen() {
                     <TouchableOpacity onPress={goBack} style={styles.backBtn}>
                         <Ionicons name="arrow-back" size={22} color="#fff" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>
-                        Admin Dashboard{usingMock.current ? '  · DEMO' : ''}
-                    </Text>
+                    <Text style={styles.headerTitle}>Admin Dashboard</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('LiveBoard')} style={styles.resetBtn}>
                         <Ionicons name="tv-outline" size={24} color="#C9A84C" />
                     </TouchableOpacity>                </View>

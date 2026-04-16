@@ -14,8 +14,10 @@ interface WorkerProfile {
     ministryName?: string;
     canManage: boolean;
     canAccess: boolean;
+    canAssignRoles: boolean;  // can assign inventory roles to others
     isSuperAdmin: boolean;
-    roleNames: string[];  // all role names for display
+    roleNames: string[];
+    allPermissions: string[]; // flat list of all permission keys
 }
 
 interface AuthContextType {
@@ -136,6 +138,7 @@ async function loadWorkerProfile(userId: string, userEmail?: string): Promise<Wo
 
     const canManage = isSuperAdmin || perms.has('inventory:manage');
     const canAccess = isSuperAdmin || canManage || perms.has('inventory:access');
+    const canAssignRoles = isSuperAdmin; // only super admin can assign inventory roles
 
     // Collect all role names for display
     const roleNames: string[] = [];
@@ -171,8 +174,10 @@ async function loadWorkerProfile(userId: string, userEmail?: string): Promise<Wo
         ministryName,
         canManage,
         canAccess,
+        canAssignRoles,
         isSuperAdmin,
         roleNames,
+        allPermissions: [...perms].filter(p => p !== '__superadmin__'),
     };
 }
 

@@ -20,23 +20,15 @@ const REGION_LABELS: Record<string, string> = {
     MIN: 'Mindanao',
 };
 
-const MOCK_DATA = [
-    { region: 'MMR', barangay: 'Burol I', tracts_given: 154 },
-    { region: 'MMR', barangay: 'Salawag', tracts_given: 89 },
-    { region: 'NLR', barangay: '', tracts_given: 320 },
-    { region: 'SLR', barangay: '', tracts_given: 45 },
-    { region: 'MMR', barangay: 'Sampaloc I', tracts_given: 210 },
-    { region: 'VIS', barangay: '', tracts_given: 175 },
-    { region: 'MIN', barangay: '', tracts_given: 98 },
+const ROW_COLORS = [
+    '#8B0000',
+    '#1a3a6b',
+    '#1a3a6b',
+    '#1a3a6b',
+    '#1a3a6b',
 ];
 
-const ROW_COLORS = [
-    '#8B0000', // 1st — deep red
-    '#1a3a6b', // 2nd — deep blue
-    '#1a3a6b',
-    '#1a3a6b',
-    '#1a3a6b',
-];
+type LiveData = { region: string; barangay: string; tracts_given: number };
 
 export default function LiveBoardScreen() {
     const [tab, setTab] = useState<Tab>('region');
@@ -46,7 +38,7 @@ export default function LiveBoardScreen() {
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState('');
 
-    const processData = (data: typeof MOCK_DATA) => {
+    const processData = (data: LiveData[]) => {
         const byRegion: Record<string, number> = {};
         const byBarangay: Record<string, number> = {};
         let grand = 0;
@@ -62,19 +54,12 @@ export default function LiveBoardScreen() {
     };
 
     const fetchData = useCallback(async () => {
-        // In dev, skip network and use mock data immediately
-        if (__DEV__) {
-            processData(MOCK_DATA);
-            setLastUpdated('Demo data');
-            setLoading(false);
-            return;
-        }
         try {
             const { data } = await supabaseAdmin
                 .from('tract_users')
                 .select('region, barangay, tracts_given');
 
-            if (!data) throw new Error('No data');
+            if (!data) return;
             processData(data);
             const now = new Date();
             setLastUpdated(
