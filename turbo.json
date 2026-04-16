@@ -11,7 +11,9 @@
                 "SUPABASE_SERVICE_ROLE_KEY",
                 "RESEND_API_KEY",
                 "NEXT_PUBLIC_APP_URL",
-                "GOOGLE_APPLICATION_CREDENTIALS"
+                "GOOGLE_APPLICATION_CREDENTIALS",
+                "VITE_SUPABASE_URL",
+                "VITE_SUPABASE_ANON_KEY"
             ],
             "outputs": [".next/**", "!.next/cache/**", "dist/**"]
         },
