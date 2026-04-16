@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
     ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState, ScrollView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -187,6 +188,16 @@ function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
     );
 }
 
+// ── Offline queue helpers ─────────────────────────────────────────────────────
+const PENDING_KEY = 'tract_pending_count';
+async function getPending(): Promise<number> {
+    const v = await AsyncStorage.getItem(PENDING_KEY);
+    return v ? parseInt(v, 10) : 0;
+}
+async function savePending(n: number) {
+    await AsyncStorage.setItem(PENDING_KEY, String(n));
+}
+
 // ── Main Action Screen ────────────────────────────────────────────────────────
 export default function ActionScreen() {
     const { user, authState, signOut, isAdmin } = useAuth();
@@ -197,6 +208,9 @@ export default function ActionScreen() {
     const [nationalCount, setNationalCount] = useState(0);
     const [regionalCount, setRegionalCount] = useState(0);
     const [barangayCount, setBarangayCount] = useState(0);
+    const [pendingCount, setPendingCount] = useState(0);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const isSyncingRef = useRef(false);
     const [topRegions, setTopRegions] = useState<{ region: string; count: number }[]>([]);
     const [topBarangays, setTopBarangays] = useState<{ barangay: string; count: number }[]>([]);
     const [isIncrementing, setIsIncrementing] = useState(false);
@@ -206,157 +220,130 @@ export default function ActionScreen() {
         if (authState.region) setSetupDone(true);
     }, [authState.region]);
 
+    // Load pending from storage on mount
+    useEffect(() => { getPending().then(setPendingCount); }, []);
+
     const loadCounts = useCallback(async () => {
         if (!user) return;
         try {
-            // Fetch all users at once — single query
             const { data: allUsers } = await supabaseAdmin
                 .from('tract_users')
                 .select('id, tracts_given, region, barangay');
 
             if (!allUsers) return;
 
-            // Personal
+            const pending = await getPending();
             const me = allUsers.find(u => u.id === user.id);
-            setPersonalCount(me?.tracts_given ?? 0);
+            // Personal = DB value + any unsynced offline increments
+            setPersonalCount((me?.tracts_given ?? 0) + pending);
 
-            // National total
             const national = allUsers.reduce((s, u) => s + (u.tracts_given ?? 0), 0);
-            setNationalCount(national);
+            setNationalCount(national + pending);
 
-            // Regional total (same region as user)
             const regional = allUsers
                 .filter(u => u.region === authState.region)
                 .reduce((s, u) => s + (u.tracts_given ?? 0), 0);
-            setRegionalCount(regional);
+            setRegionalCount(regional + pending);
 
-            // Barangay total (same barangay as user)
             if (authState.barangay) {
                 const brgy = allUsers
                     .filter(u => u.barangay === authState.barangay)
                     .reduce((s, u) => s + (u.tracts_given ?? 0), 0);
-                setBarangayCount(brgy);
+                setBarangayCount(brgy + pending);
             }
 
-            // Top regions
             const byRegion: Record<string, number> = {};
             allUsers.forEach(u => {
                 if (u.region) byRegion[u.region] = (byRegion[u.region] || 0) + (u.tracts_given ?? 0);
             });
-            setTopRegions(
-                Object.entries(byRegion)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 5)
-                    .map(([region, count]) => ({ region, count }))
-            );
+            if (authState.region && pending > 0) byRegion[authState.region] = (byRegion[authState.region] || 0) + pending;
+            setTopRegions(Object.entries(byRegion).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([region, count]) => ({ region, count })));
 
-            // Top barangays
             const byBarangay: Record<string, number> = {};
             allUsers.forEach(u => {
                 if (u.barangay) byBarangay[u.barangay] = (byBarangay[u.barangay] || 0) + (u.tracts_given ?? 0);
             });
-            setTopBarangays(
-                Object.entries(byBarangay)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 5)
-                    .map(([barangay, count]) => ({ barangay, count }))
-            );
+            if (authState.barangay && pending > 0) byBarangay[authState.barangay] = (byBarangay[authState.barangay] || 0) + pending;
+            setTopBarangays(Object.entries(byBarangay).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([barangay, count]) => ({ barangay, count })));
         } catch (e) {
             console.error('loadCounts error', e);
         } finally {
             setIsLoading(false);
         }
-    }, [user, authState.region]);
+    }, [user, authState.region, authState.barangay]);
 
     useEffect(() => {
         if (setupDone) loadCounts();
     }, [setupDone, loadCounts]);
 
-    // Refresh counts when app comes back to foreground
+    // ── Sync pending offline increments ──────────────────────────────────────
+    const syncPending = useCallback(async () => {
+        if (!user || isSyncingRef.current) return;
+        const pending = await getPending();
+        if (pending === 0) return;
+        isSyncingRef.current = true;
+        setIsSyncing(true);
+        try {
+            const { data: fresh } = await supabaseAdmin.from('tract_users').select('tracts_given').eq('id', user.id).single();
+            const newCount = (fresh?.tracts_given ?? 0) + pending;
+            const { error } = await supabaseAdmin.from('tract_users').update({ tracts_given: newCount }).eq('id', user.id);
+            if (!error) {
+                await savePending(0);
+                setPendingCount(0);
+                await loadCounts();
+            }
+        } catch (e) { console.error('syncPending error', e); }
+        finally { isSyncingRef.current = false; setIsSyncing(false); }
+    }, [user, loadCounts]);
+
+    // Sync + reload when app comes to foreground
     useEffect(() => {
         const sub = AppState.addEventListener('change', state => {
-            if (state === 'active' && setupDone) loadCounts();
+            if (state === 'active' && setupDone) syncPending().then(() => loadCounts());
         });
         return () => sub.remove();
-    }, [setupDone, loadCounts]);
+    }, [setupDone, syncPending, loadCounts]);
 
-    // Realtime subscription — update regional count live as others tap +1
+    // Realtime — reload full counts for accuracy (not incremental diff)
     useEffect(() => {
         if (!setupDone) return;
-
         const channel = supabaseAdmin
             .channel('tract_users_realtime')
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'tract_users' },
-                (payload) => {
-                    const updated = payload.new as any;
-                    const old = payload.old as any;
-                    const diff = (updated.tracts_given ?? 0) - (old.tracts_given ?? 0);
-                    if (diff === 0) return;
-
-                    // Update personal count if it's our own row
-                    if (updated.id === user?.id) {
-                        setPersonalCount(updated.tracts_given ?? 0);
-                    }
-
-                    // Update regional count if same region
-                    if (!authState.region || updated.region === authState.region) {
-                        setRegionalCount(prev => prev + diff);
-                    }
-                    // Always update national
-                    setNationalCount(prev => prev + diff);
-                    // Update barangay if same
-                    if (authState.barangay && updated.barangay === authState.barangay) {
-                        setBarangayCount(prev => prev + diff);
-                    }
-                }
-            )
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tract_users' }, () => loadCounts())
             .subscribe();
+        return () => { supabaseAdmin.removeChannel(channel); };
+    }, [setupDone, loadCounts]);
 
-        return () => {
-            supabaseAdmin.removeChannel(channel);
-        };
-    }, [setupDone, user?.id, authState.region]);
-
+    // ── +1 handler — optimistic + offline queue ───────────────────────────────
     const handleIncrement = async () => {
         if (!user || isIncrementing) return;
         setIsIncrementing(true);
+
+        // Optimistic update — instant UI
+        setPersonalCount(prev => prev + 1);
+        setRegionalCount(prev => prev + 1);
+        setNationalCount(prev => prev + 1);
+        if (authState.barangay) setBarangayCount(prev => prev + 1);
+
         try {
-            // In dev mode, just increment local state — DEV_USER doesn't exist in Supabase
-            if (__DEV__) {
-                await new Promise(r => setTimeout(r, 300)); // simulate network
-                setPersonalCount(prev => prev + 1);
-                setRegionalCount(prev => prev + 1);
-                return;
-            }
-            // Always fetch the latest count from DB to avoid stale local state
-            const { data: fresh, error: fetchError } = await supabaseAdmin
-                .from('tract_users')
-                .select('tracts_given')
-                .eq('id', user.id)
-                .single();
-            if (fetchError) throw fetchError;
+            const pending = await getPending();
+            const { data: fresh, error: fetchErr } = await supabaseAdmin.from('tract_users').select('tracts_given').eq('id', user.id).single();
+            if (fetchErr) throw fetchErr;
 
-            const currentCount = fresh?.tracts_given ?? personalCount;
-            const newCount = currentCount + 1;
-
-            const { data, error } = await supabaseAdmin
-                .from('tract_users')
-                .update({ tracts_given: newCount })
-                .eq('id', user.id)
-                .select();
+            const newCount = (fresh?.tracts_given ?? 0) + pending + 1;
+            const { error } = await supabaseAdmin.from('tract_users').update({ tracts_given: newCount }).eq('id', user.id);
             if (error) throw error;
-            if (!data || data.length === 0) {
-                Alert.alert('Warning', 'No rows updated. Check your account.');
-                return;
-            }
-            setPersonalCount(newCount);
-            setRegionalCount(prev => prev + (newCount - currentCount));
-            setNationalCount(prev => prev + (newCount - currentCount));
-            if (authState.barangay) setBarangayCount(prev => prev + (newCount - currentCount));
-        } catch (e: any) {
-            Alert.alert('Error', e.message || 'Could not update count');
+
+            // Sync succeeded — clear pending, reload for accuracy
+            await savePending(0);
+            setPendingCount(0);
+            await loadCounts();
+        } catch {
+            // Offline — queue the increment
+            const pending = await getPending();
+            const newPending = pending + 1;
+            await savePending(newPending);
+            setPendingCount(newPending);
         } finally {
             setIsIncrementing(false);
         }
@@ -414,6 +401,11 @@ export default function ActionScreen() {
                             ? <ActivityIndicator color="#1a1a2e" style={{ marginVertical: 16 }} />
                             : <Text style={styles.cardCount}>{personalCount}</Text>
                         }
+                        {pendingCount > 0 && (
+                            <Text style={{ fontSize: 11, color: '#e67700', marginBottom: 8 }}>
+                                {isSyncing ? `Syncing ${pendingCount} offline tap${pendingCount > 1 ? 's' : ''}…` : `${pendingCount} tap${pendingCount > 1 ? 's' : ''} pending sync`}
+                            </Text>
+                        )}
                         <TouchableOpacity
                             style={[styles.plusBtn, isIncrementing && styles.plusBtnDisabled]}
                             onPress={handleIncrement}
