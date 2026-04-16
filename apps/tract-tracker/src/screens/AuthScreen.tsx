@@ -91,10 +91,8 @@ export default function AuthScreen() {
 
     const handleAuth = async () => {
         if (!email || !password) {
-            if (!__DEV__) {
-                Alert.alert('Missing fields', 'Please enter your email and password.');
-            }
-            // In dev with empty fields, fall through to bypass
+            Alert.alert('Missing fields', 'Please enter your email and password.');
+            return;
         }
         setIsSubmitting(true);
         if (screen === 'login') {

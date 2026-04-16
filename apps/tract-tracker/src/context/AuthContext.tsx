@@ -23,20 +23,8 @@ interface AuthContextType {
     signOut: () => Promise<void>;
 }
 
-// In dev builds (__DEV__ = true), signIn/signUp bypass Supabase so the
-// frontend dev can work on all screens without needing credentials or network.
-// The auth screens still render normally for UI editing.
-const DEV_USER = {
-    id: 'dev',
-    name: 'Dev Admin',
-    email: 'dev@local',
-    region: 'MMR',
-    sub_region: 'Dasmarinas',
-    barangay: 'Burol I',
-    tracts_given: 0,
-    is_tester: true,
-    is_admin: true,
-};
+// Emails that always bypass the countdown (testers/admins)
+const TESTER_EMAILS = new Set(['njcarlo@gmail.com', 'pacleb@gmail.com']);
 
 const initialState: AuthState = { region: '', subRegion: '', barangay: '', name: '' };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,11 +35,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (__DEV__) {
-            setIsLoading(false);
-            return;
-        }
-
         const loadSession = async () => {
             try {
                 const storedUserId = await AsyncStorage.getItem('tract_user_id');
@@ -88,23 +71,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signIn = async (email: string, password: string) => {
-        // __DEV__ bypass only applies when no credentials are entered
-        // If real credentials are provided, always hit Supabase
-        if (__DEV__ && !email && !password) {
-            setUser(DEV_USER);
-            setAuthStateInternal({
-                region: 'COG Dasmarinas',
-                subRegion: 'Dasmarinas',
-                barangay: 'Burol I',
-                name: 'Dev Admin',
-            });
-            return { error: null };
-        }
         if (!email || !password) return { error: 'Please enter your email and password.' };
+
         const { data, error } = await supabaseAdmin
             .from('tract_users')
             .select('*')
-            .eq('email', email)
+            .eq('email', email.trim().toLowerCase())
             .eq('password', password)
             .single();
 
@@ -122,27 +94,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signUp = async (email: string, password: string, metadata: Partial<AuthState>) => {
-        if (__DEV__ && !email && !password) {
-            setUser({ ...DEV_USER, email: 'dev@local', name: metadata.name || 'Dev User' });
-            setAuthStateInternal({
-                region: metadata.region || 'COG Dasmarinas',
-                subRegion: metadata.subRegion || 'Dasmarinas',
-                barangay: metadata.barangay || 'Burol I',
-                name: metadata.name || 'Dev User',
-            });
-            return { error: null };
-        }
         if (!email || !password) return { error: 'Please enter your email and password.' };
+
         const { data: existing } = await supabaseAdmin
             .from('tract_users')
             .select('id')
-            .eq('email', email)
+            .eq('email', email.trim().toLowerCase())
             .single();
 
         if (existing) return { error: 'Email already registered.' };
 
         const { data, error } = await supabaseAdmin.from('tract_users').insert({
-            email,
+            email: email.trim().toLowerCase(),
             password,
             name: metadata.name || email.split('@')[0],
             region: metadata.region || '',
@@ -176,9 +139,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         authState.region === 'COG Dasmarinas' ||
         authState.subRegion.toLowerCase() === 'dasmarinas' ||
         authState.subRegion.toLowerCase() === 'dasmariñas';
-
-// Emails that always bypass the countdown (testers/admins)
-const TESTER_EMAILS = new Set(['njcarlo@gmail.com', 'pacleb@gmail.com']);
 
     const isTester = user?.is_tester === true || TESTER_EMAILS.has(user?.email?.toLowerCase() ?? '');
     const isAdmin = user?.is_admin === true || TESTER_EMAILS.has(user?.email?.toLowerCase() ?? '');
