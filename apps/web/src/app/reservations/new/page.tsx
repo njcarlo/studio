@@ -220,13 +220,13 @@ export default function NewReservationPage() {
                 roomId,
                 title: purpose,
                 purpose,
+                start,
+                end,
                 status: 'Pending Ministry Approval',
                 workerProfileId: workerProfile.id,
                 name: requesterName,
                 ministryId: requesterMinistryId,
                 email: requesterEmail,
-                requesterEmail,
-                dateRequested: new Date(),
                 pax: paxNum || 0,
                 numTables: parseInt(numTables) || 0,
                 numChairs: parseInt(numChairs) || 0,
@@ -237,7 +237,7 @@ export default function NewReservationPage() {
                 guidelinesAccepted: true,
             };
 
-            const newBooking = await createBooking({ ...bookingData, start, end });
+            const newBooking = await createBooking(bookingData);
 
             if (newBooking?.id) {
                 await createApproval({

@@ -653,17 +653,27 @@ export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
 }
 
 export async function createBooking(data: any) {
-    // Strip any undefined/null FK fields that would cause constraint violations
     const { workerProfileId, roomId, ...rest } = data;
     if (!workerProfileId) throw new Error('workerProfileId is required to create a booking');
     if (!roomId) throw new Error('roomId is required to create a booking');
 
-    const booking = await prisma.booking.create({
-        data: { ...rest, workerProfileId, roomId },
-    });
-    revalidatePath('/reservations');
-    revalidatePath('/dashboard');
-    return booking;
+    // Strip fields not in the Booking schema to avoid Prisma validation errors
+    const {
+        requesterEmail: _re, dateRequested: _dr,
+        ...cleanRest
+    } = rest;
+
+    try {
+        const booking = await prisma.booking.create({
+            data: { ...cleanRest, workerProfileId, roomId },
+        });
+        revalidatePath('/reservations');
+        revalidatePath('/dashboard');
+        return booking;
+    } catch (err: any) {
+        console.error('[createBooking] Prisma error:', err);
+        throw new Error(`Failed to create booking: ${err.message || 'Unknown error'}`);
+    }
 }
 
 export async function updateBooking(id: string, data: any) {
