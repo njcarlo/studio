@@ -197,15 +197,7 @@ export default function AuthScreen() {
                                     </TouchableOpacity>
 
                                     {region === 'MMR' && (
-                                        <>
-                                            <Text style={styles.label}>Church</Text>
-                                            <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowChurchModal(true)}>
-                                                <Text style={[styles.dropdownText, !subRegion && styles.placeholderText]}>
-                                                    {subRegion || 'Select Church'}
-                                                </Text>
-                                                <Ionicons name="chevron-down" size={18} color="#666" />
-                                            </TouchableOpacity>
-                                        </>
+                                        <></>
                                     )}
 
                                     {region === 'COG Dasmarinas' && (
@@ -261,30 +253,6 @@ export default function AuthScreen() {
                             >
                                 <Text style={[styles.barangayItemText, region === r && styles.selectedItemText]}>{REGION_LABELS[r]}</Text>
                                 {region === r && <Ionicons name="checkmark" size={18} color="#C9A84C" />}
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </SafeAreaView>
-            </Modal>
-
-            {/* Church modal */}
-            <Modal visible={showChurchModal} animationType="slide" transparent>
-                <SafeAreaView style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Select Church</Text>
-                            <TouchableOpacity onPress={() => setShowChurchModal(false)}>
-                                <Ionicons name="close" size={24} color="#333" />
-                            </TouchableOpacity>
-                        </View>
-                        {CHURCHES.map(c => (
-                            <TouchableOpacity
-                                key={c}
-                                style={styles.barangayItem}
-                                onPress={() => { setSubRegion(c); setBarangay(''); setShowChurchModal(false); }}
-                            >
-                                <Text style={[styles.barangayItemText, subRegion === c && styles.selectedItemText]}>{c}</Text>
-                                {subRegion === c && <Ionicons name="checkmark" size={18} color="#C9A84C" />}
                             </TouchableOpacity>
                         ))}
                     </View>
