@@ -88,7 +88,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signIn = async (email: string, password: string) => {
-        if (__DEV__) {
+        // __DEV__ bypass only applies when no credentials are entered
+        // If real credentials are provided, always hit Supabase
+        if (__DEV__ && !email && !password) {
             setUser(DEV_USER);
             setAuthStateInternal({
                 region: 'COG Dasmarinas',
@@ -98,6 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             return { error: null };
         }
+        if (!email || !password) return { error: 'Please enter your email and password.' };
         const { data, error } = await supabaseAdmin
             .from('tract_users')
             .select('*')
@@ -119,8 +122,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signUp = async (email: string, password: string, metadata: Partial<AuthState>) => {
-        if (__DEV__) {
-            setUser({ ...DEV_USER, email, name: metadata.name || 'Dev User' });
+        if (__DEV__ && !email && !password) {
+            setUser({ ...DEV_USER, email: 'dev@local', name: metadata.name || 'Dev User' });
             setAuthStateInternal({
                 region: metadata.region || 'COG Dasmarinas',
                 subRegion: metadata.subRegion || 'Dasmarinas',
@@ -129,6 +132,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
             return { error: null };
         }
+        if (!email || !password) return { error: 'Please enter your email and password.' };
         const { data: existing } = await supabaseAdmin
             .from('tract_users')
             .select('id')
