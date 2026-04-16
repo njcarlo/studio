@@ -10,6 +10,7 @@ import { Categories } from './Categories';
 import { StockLogs } from './StockLogs';
 import { Reports } from './Reports';
 import { Settings } from './Settings';
+import { ImportPage } from './ImportPage';
 import { LoginScreen } from './LoginScreen';
 import { Package } from 'lucide-react';
 
@@ -68,6 +69,7 @@ function AppRoutes() {
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/logs" element={<StockLogs />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/import" element={<ImportPage />} />
                 <Route path="/settings" element={<Settings />} />
             </Routes>
         </Layout>

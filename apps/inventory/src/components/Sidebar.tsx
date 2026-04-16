@@ -11,6 +11,7 @@ import {
   X,
   Briefcase,
   LogOut,
+  Upload,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
 
@@ -20,6 +21,7 @@ const navItems = [
   { icon: Tags, label: 'Categories', id: 'categories', path: '/categories' },
   { icon: History, label: 'Stock Logs', id: 'logs', path: '/logs' },
   { icon: FileText, label: 'Reports', id: 'reports', path: '/reports' },
+  { icon: Upload, label: 'Import', id: 'import', path: '/import' },
   { icon: Settings, label: 'Settings', id: 'settings', path: '/settings' },
 ];
 
