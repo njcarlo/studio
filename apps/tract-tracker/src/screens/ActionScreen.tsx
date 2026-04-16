@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
-    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState,
+    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -193,39 +193,74 @@ export default function ActionScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     const [setupDone, setSetupDone] = useState(!!authState.region);
-    const [regionalCount, setRegionalCount] = useState(0);
     const [personalCount, setPersonalCount] = useState(0);
+    const [nationalCount, setNationalCount] = useState(0);
+    const [regionalCount, setRegionalCount] = useState(0);
+    const [barangayCount, setBarangayCount] = useState(0);
+    const [topRegions, setTopRegions] = useState<{ region: string; count: number }[]>([]);
+    const [topBarangays, setTopBarangays] = useState<{ barangay: string; count: number }[]>([]);
     const [isIncrementing, setIsIncrementing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Re-check setup when authState changes
     useEffect(() => {
         if (authState.region) setSetupDone(true);
     }, [authState.region]);
 
     const loadCounts = useCallback(async () => {
         if (!user) return;
-        // In dev mode, use mock counts — DEV_USER id 'dev' doesn't exist in Supabase
-        if (__DEV__) {
-            setPersonalCount(0);
-            setRegionalCount(0);
-            setIsLoading(false);
-            return;
-        }
         try {
-            const { data: userData } = await supabaseAdmin
+            // Fetch all users at once — single query
+            const { data: allUsers } = await supabaseAdmin
                 .from('tract_users')
-                .select('tracts_given')
-                .eq('id', user.id)
-                .single();
-            if (userData) setPersonalCount(userData.tracts_given ?? 0);
+                .select('id, tracts_given, region, barangay');
 
-            let regionQuery = supabaseAdmin.from('tract_users').select('tracts_given');
-            if (authState.region) regionQuery = regionQuery.eq('region', authState.region);
-            const { data: regionData } = await regionQuery;
-            if (regionData) {
-                setRegionalCount(regionData.reduce((sum, r) => sum + (r.tracts_given ?? 0), 0));
+            if (!allUsers) return;
+
+            // Personal
+            const me = allUsers.find(u => u.id === user.id);
+            setPersonalCount(me?.tracts_given ?? 0);
+
+            // National total
+            const national = allUsers.reduce((s, u) => s + (u.tracts_given ?? 0), 0);
+            setNationalCount(national);
+
+            // Regional total (same region as user)
+            const regional = allUsers
+                .filter(u => u.region === authState.region)
+                .reduce((s, u) => s + (u.tracts_given ?? 0), 0);
+            setRegionalCount(regional);
+
+            // Barangay total (same barangay as user)
+            if (authState.barangay) {
+                const brgy = allUsers
+                    .filter(u => u.barangay === authState.barangay)
+                    .reduce((s, u) => s + (u.tracts_given ?? 0), 0);
+                setBarangayCount(brgy);
             }
+
+            // Top regions
+            const byRegion: Record<string, number> = {};
+            allUsers.forEach(u => {
+                if (u.region) byRegion[u.region] = (byRegion[u.region] || 0) + (u.tracts_given ?? 0);
+            });
+            setTopRegions(
+                Object.entries(byRegion)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([region, count]) => ({ region, count }))
+            );
+
+            // Top barangays
+            const byBarangay: Record<string, number> = {};
+            allUsers.forEach(u => {
+                if (u.barangay) byBarangay[u.barangay] = (byBarangay[u.barangay] || 0) + (u.tracts_given ?? 0);
+            });
+            setTopBarangays(
+                Object.entries(byBarangay)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([barangay, count]) => ({ barangay, count }))
+            );
         } catch (e) {
             console.error('loadCounts error', e);
         } finally {
@@ -268,6 +303,12 @@ export default function ActionScreen() {
                     // Update regional count if same region
                     if (!authState.region || updated.region === authState.region) {
                         setRegionalCount(prev => prev + diff);
+                    }
+                    // Always update national
+                    setNationalCount(prev => prev + diff);
+                    // Update barangay if same
+                    if (authState.barangay && updated.barangay === authState.barangay) {
+                        setBarangayCount(prev => prev + diff);
                     }
                 }
             )
@@ -312,6 +353,8 @@ export default function ActionScreen() {
             }
             setPersonalCount(newCount);
             setRegionalCount(prev => prev + (newCount - currentCount));
+            setNationalCount(prev => prev + (newCount - currentCount));
+            if (authState.barangay) setBarangayCount(prev => prev + (newCount - currentCount));
         } catch (e: any) {
             Alert.alert('Error', e.message || 'Could not update count');
         } finally {
@@ -336,46 +379,97 @@ export default function ActionScreen() {
             <SafeAreaView style={styles.safe}>
                 {/* Header row */}
                 <View style={styles.header}>
-                    {isAdmin && (
+                    {isAdmin ? (
                         <TouchableOpacity onPress={() => navigation.navigate('AdminDashboard')} style={styles.headerBtn}>
                             <Text style={styles.headerBtnText}>Admin</Text>
                         </TouchableOpacity>
-                    )}
+                    ) : <View />}
                     <TouchableOpacity onPress={signOut} style={styles.headerBtn}>
                         <Text style={styles.headerBtnText}>Sign Out</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Title */}
-                <Text style={styles.title}>National Tracts Giving Day</Text>
+                <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+                    {/* Title */}
+                    <Text style={styles.title}>National Tracts Giving Day</Text>
 
-                {/* Regional block */}
-                <View style={styles.regionalBlock}>
-                    <Text style={styles.locationLabel}>{locationLabel}</Text>
-                    {isLoading
-                        ? <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} />
-                        : <Text style={styles.regionalCount}>{regionalCount.toLocaleString()}</Text>
-                    }
-                    <Text style={styles.regionalSub}>Total Tracts Given</Text>
-                    <Text style={styles.regionalSub}>{timeLabel}</Text>
-                </View>
-
-                {/* Personal card */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>My Tract Counter</Text>
-                    <Text style={styles.cardCount}>{personalCount}</Text>
-                    <TouchableOpacity
-                        style={[styles.plusBtn, isIncrementing && styles.plusBtnDisabled]}
-                        onPress={handleIncrement}
-                        disabled={isIncrementing}
-                        activeOpacity={0.8}
-                    >
-                        {isIncrementing
-                            ? <ActivityIndicator color="#1a1a2e" />
-                            : <Text style={styles.plusBtnText}>+1</Text>
+                    {/* Personal card */}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>My Tract Counter</Text>
+                        {isLoading
+                            ? <ActivityIndicator color="#1a1a2e" style={{ marginVertical: 16 }} />
+                            : <Text style={styles.cardCount}>{personalCount}</Text>
                         }
-                    </TouchableOpacity>
-                </View>
+                        <TouchableOpacity
+                            style={[styles.plusBtn, isIncrementing && styles.plusBtnDisabled]}
+                            onPress={handleIncrement}
+                            disabled={isIncrementing}
+                            activeOpacity={0.8}
+                        >
+                            {isIncrementing
+                                ? <ActivityIndicator color="#1a1a2e" />
+                                : <Text style={styles.plusBtnText}>+1</Text>
+                            }
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Stats section */}
+                    {!isLoading && (
+                        <View style={styles.statsSection}>
+                            {/* National */}
+                            <View style={styles.statRow}>
+                                <Text style={styles.statLabel}>Nationwide Total</Text>
+                                <Text style={styles.statValue}>{nationalCount.toLocaleString()}</Text>
+                            </View>
+
+                            {/* Regional */}
+                            {authState.region ? (
+                                <View style={styles.statRow}>
+                                    <Text style={styles.statLabel}>{REGION_LABELS[authState.region] || authState.region}</Text>
+                                    <Text style={styles.statValue}>{regionalCount.toLocaleString()}</Text>
+                                </View>
+                            ) : null}
+
+                            {/* Barangay */}
+                            {authState.barangay ? (
+                                <View style={styles.statRow}>
+                                    <Text style={styles.statLabel}>{`Brgy. ${authState.barangay}`}</Text>
+                                    <Text style={styles.statValue}>{barangayCount.toLocaleString()}</Text>
+                                </View>
+                            ) : null}
+
+                            {/* Top Regions */}
+                            {topRegions.length > 0 && (
+                                <View style={styles.leaderboard}>
+                                    <Text style={styles.leaderboardTitle}>Top Regions</Text>
+                                    {topRegions.map((r, i) => (
+                                        <View key={r.region} style={styles.leaderboardRow}>
+                                            <Text style={styles.leaderboardRank}>{i + 1}</Text>
+                                            <Text style={styles.leaderboardName}>{REGION_LABELS[r.region] || r.region}</Text>
+                                            <Text style={styles.leaderboardCount}>{r.count.toLocaleString()}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Top Barangays */}
+                            {topBarangays.length > 0 && (
+                                <View style={styles.leaderboard}>
+                                    <Text style={styles.leaderboardTitle}>Top Barangays</Text>
+                                    {topBarangays.map((b, i) => (
+                                        <View key={b.barangay} style={styles.leaderboardRow}>
+                                            <Text style={styles.leaderboardRank}>{i + 1}</Text>
+                                            <Text style={styles.leaderboardName}>{b.barangay}</Text>
+                                            <Text style={styles.leaderboardCount}>{b.count.toLocaleString()}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            <Text style={styles.timeLabel}>{timeLabel}</Text>
+                        </View>
+                    )}
+                </ScrollView>
             </SafeAreaView>
         </ImageBackground>
     );
@@ -419,17 +513,13 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
     headerBtn: { padding: 8 },
     headerBtnText: { color: '#C9A84C', fontSize: 14 },
-    title: { color: '#C9A84C', fontSize: 28, textAlign: 'center', marginTop: 16, marginBottom: 20, paddingHorizontal: 20, fontFamily: 'Anton_400Regular' },
-    regionalBlock: { alignItems: 'center', marginBottom: 28, paddingHorizontal: 20 },
-    locationLabel: { color: '#fff', fontSize: 18, marginBottom: 4, fontFamily: 'Anton_400Regular' },
-    regionalCount: { color: '#fff', fontSize: 64, letterSpacing: -2, fontFamily: 'Anton_400Regular' },
-    regionalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
+    title: { color: '#C9A84C', fontSize: 28, textAlign: 'center', marginTop: 8, marginBottom: 16, paddingHorizontal: 20, fontFamily: 'Anton_400Regular' },
 
     card: {
         marginHorizontal: 24,
         backgroundColor: '#fff',
         borderRadius: 24,
-        paddingVertical: 32,
+        paddingVertical: 28,
         paddingHorizontal: 24,
         alignItems: 'center',
         shadowColor: '#000',
@@ -438,22 +528,39 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 10,
     },
-    cardTitle: { fontSize: 16, color: '#1a1a2e', marginBottom: 12, fontFamily: 'Anton_400Regular' },
-    cardCount: { fontSize: 96, color: '#1a1a2e', lineHeight: 110, marginBottom: 20, fontFamily: 'Anton_400Regular' },
+    cardTitle: { fontSize: 14, color: '#1a1a2e', marginBottom: 8, fontFamily: 'Anton_400Regular' },
+    cardCount: { fontSize: 88, color: '#1a1a2e', lineHeight: 100, marginBottom: 16, fontFamily: 'Anton_400Regular' },
     plusBtn: {
-        backgroundColor: '#C9A84C',
-        borderRadius: 12,
-        paddingVertical: 16,
-        width: '100%',
-        alignItems: 'center',
-        shadowColor: '#C9A84C',
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 5,
+        backgroundColor: '#C9A84C', borderRadius: 12, paddingVertical: 14,
+        width: '100%', alignItems: 'center',
+        shadowColor: '#C9A84C', shadowOpacity: 0.4, shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 }, elevation: 5,
     },
     plusBtnDisabled: { opacity: 0.6 },
     plusBtnText: { fontSize: 22, color: '#1a1a2e', fontFamily: 'Anton_400Regular' },
+
+    // ── Stats ──
+    statsSection: { marginHorizontal: 24, marginTop: 20, gap: 0 },
+    statRow: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingVertical: 12, paddingHorizontal: 16,
+        backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, marginBottom: 8,
+    },
+    statLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
+    statValue: { color: '#C9A84C', fontSize: 20, fontFamily: 'Anton_400Regular' },
+    leaderboard: {
+        backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14,
+        padding: 16, marginBottom: 12,
+    },
+    leaderboardTitle: {
+        color: '#C9A84C', fontSize: 11, fontFamily: 'Anton_400Regular',
+        letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10,
+    },
+    leaderboardRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+    leaderboardRank: { color: '#C9A84C', fontSize: 13, fontFamily: 'Anton_400Regular', width: 24 },
+    leaderboardName: { color: '#fff', fontSize: 13, flex: 1 },
+    leaderboardCount: { color: '#C9A84C', fontSize: 14, fontFamily: 'Anton_400Regular' },
+    timeLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 8 },
 
     // ── Shared ──
     setupTitle: { color: '#C9A84C', fontSize: 40, lineHeight: 46, marginBottom: 10, fontFamily: 'Anton_400Regular' },
