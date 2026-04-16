@@ -319,34 +319,51 @@ export default function ActionScreen() {
         if (!user || isIncrementing) return;
         setIsIncrementing(true);
 
-        // Optimistic update — instant UI
+        // Optimistic update — instant UI feedback regardless of network
         setPersonalCount(prev => prev + 1);
         setRegionalCount(prev => prev + 1);
         setNationalCount(prev => prev + 1);
         if (authState.barangay) setBarangayCount(prev => prev + 1);
 
+        let online = false;
         try {
-            const pending = await getPending();
-            const { data: fresh, error: fetchErr } = await supabaseAdmin.from('tract_users').select('tracts_given').eq('id', user.id).single();
-            if (fetchErr) throw fetchErr;
+            // Fetch current DB value
+            const { data: fresh, error: fetchErr } = await supabaseAdmin
+                .from('tract_users')
+                .select('tracts_given')
+                .eq('id', user.id)
+                .single();
 
-            const newCount = (fresh?.tracts_given ?? 0) + pending + 1;
-            const { error } = await supabaseAdmin.from('tract_users').update({ tracts_given: newCount }).eq('id', user.id);
-            if (error) throw error;
+            if (!fetchErr && fresh !== null) {
+                // Online — write DB value + any queued pending + this tap
+                const queued = await getPending();
+                const newCount = (fresh.tracts_given ?? 0) + queued + 1;
 
-            // Sync succeeded — clear pending, reload for accuracy
-            await savePending(0);
-            setPendingCount(0);
-            await loadCounts();
+                const { error: updateErr } = await supabaseAdmin
+                    .from('tract_users')
+                    .update({ tracts_given: newCount })
+                    .eq('id', user.id);
+
+                if (!updateErr) {
+                    online = true;
+                    await savePending(0);
+                    setPendingCount(0);
+                    // Reload to get accurate regional/national counts
+                    loadCounts(); // fire and forget — don't await so UI stays responsive
+                }
+            }
         } catch {
-            // Offline — queue the increment
-            const pending = await getPending();
-            const newPending = pending + 1;
-            await savePending(newPending);
-            setPendingCount(newPending);
-        } finally {
-            setIsIncrementing(false);
+            // Network error — fall through to offline queue
         }
+
+        if (!online) {
+            // Offline — queue this tap
+            const queued = await getPending();
+            await savePending(queued + 1);
+            setPendingCount(queued + 1);
+        }
+
+        setIsIncrementing(false);
     };
 
     if (!setupDone) {
