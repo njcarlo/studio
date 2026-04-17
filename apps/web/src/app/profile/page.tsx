@@ -57,8 +57,9 @@ export default function ProfilePage() {
   if (!workerProfile) {
     return (
       <AppLayout>
-        <div className="max-w-xl mx-auto py-12 text-center text-muted-foreground">
-          No worker profile linked to your account.
+        <div className="max-w-xl mx-auto py-12 text-center space-y-4">
+          <p className="text-muted-foreground">No worker profile is linked to your account.</p>
+          <Button onClick={() => window.location.href = '/workers/new'}>Create Worker Profile</Button>
         </div>
       </AppLayout>
     );

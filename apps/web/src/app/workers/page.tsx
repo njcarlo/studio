@@ -76,7 +76,6 @@ import { useRoles } from "@/hooks/use-roles";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useDepartments } from "@/hooks/use-departments";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
-import { useAttendance } from "@/hooks/use-attendance";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
@@ -177,15 +176,8 @@ export default function WorkersPage() {
 
   const { roles: roles, isLoading: rolesLoading } = useRoles();
 
-  // Meal stubs only fetched when batch sheet is open — avoids loading all stubs on page load
-  const { mealStubs: allMealStubs } = useMealStubs({
-    dateFrom: subDays(new Date(), 30),
-  });
-  const { createApproval: createApprovalSql } = useApprovals();
-
   const { departments: allDepartments, isLoading: departmentsLoading } =
     useDepartments();
-
   const departmentDataList = allDepartments;
 
   const isLoading =
@@ -254,6 +246,13 @@ export default function WorkersPage() {
   const [isBatchMealStubSheetOpen, setIsBatchMealStubSheetOpen] =
     useState(false);
   const [isAssigningStubs, setIsAssigningStubs] = useState(false);
+
+  // Lazy hooks — only fetch when sheets are open
+  const { mealStubs: allMealStubs } = useMealStubs({
+    dateFrom: subDays(new Date(), 30),
+    enabled: isBatchMealStubSheetOpen,
+  });
+  const { createApproval: createApprovalSql } = useApprovals({ enabled: false });
 
   // Form state for Add Worker sheet
   const [firstName, setFirstName] = useState("");

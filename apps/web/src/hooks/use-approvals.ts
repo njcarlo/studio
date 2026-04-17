@@ -2,12 +2,14 @@ import { ApprovalRequest } from '@studio/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getApprovals, createApproval, updateApproval } from '@/actions/db';
 
-export function useApprovals() {
+export function useApprovals(options: { enabled?: boolean } = {}) {
     const queryClient = useQueryClient();
+    const { enabled = true } = options;
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['approvals'],
         queryFn: () => getApprovals(),
+        enabled,
     });
 
     const createMutation = useMutation({
