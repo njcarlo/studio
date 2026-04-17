@@ -402,6 +402,7 @@ export async function createWorker(data: any) {
         return worker;
     } catch (err: any) {
         console.error('[createWorker] Prisma error:', err?.message, err?.code, JSON.stringify(safeData, null, 2));
+        if (err?.code === 'P2002') throw new Error('A worker with this email already exists.');
         throw new Error(err?.message ?? 'Failed to create worker');
     }
 }
