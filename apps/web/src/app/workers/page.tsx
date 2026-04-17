@@ -289,21 +289,39 @@ export default function WorkersPage() {
   };
 
   const handleWorkerFormSubmit = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "First name and last name are required." });
+      return;
+    }
+    if (!email.trim()) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "Email is required." });
+      return;
+    }
+    if (!majorMinistryId) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "Please select a Major Ministry." });
+      return;
+    }
+    if (!minorMinistryId) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "Please select a Minor Ministry." });
+      return;
+    }
+
     try {
       const newWorkerId =
         workerId ||
         String(100000 + (allWorkers?.length || 0)).slice(-6);
 
+      const firstRole = roles?.[0]?.id;
       await createWorkerSql({
-        firstName,
-        lastName,
-        email,
-        phone,
-        roleId: roleId || "viewer",
-        status,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim() || "N/A",
+        roleId: roleId || firstRole || null,
+        status: status || "Pending Approval",
         majorMinistryId,
         minorMinistryId,
-        employmentType,
+        employmentType: employmentType || "Volunteer",
         workerId: newWorkerId,
         avatarUrl: `https://picsum.photos/seed/${newWorkerId}/100/100`,
       });

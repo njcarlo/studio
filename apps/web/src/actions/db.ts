@@ -383,14 +383,27 @@ export async function getWorkerByEmail(email: string) {
 }
 
 export async function createWorker(data: any) {
-    const worker = await prisma.worker.create({
-        data: {
-            ...data,
-            createdAt: new Date(),
-        },
-    });
-    revalidatePath('/workers');
-    return worker;
+    // Strip relation objects and non-schema fields to avoid Prisma validation errors
+    const {
+        role, roles, approvals, attendanceRecords, bookings,
+        venueBookings, InventoryBorrowing, InventoryLog, mealStubs,
+        legacyMigratedAt, legacyMigratedFrom, updatedAt,
+        ...safeData
+    } = data;
+
+    try {
+        const worker = await prisma.worker.create({
+            data: {
+                ...safeData,
+                createdAt: new Date(),
+            },
+        });
+        revalidatePath('/workers');
+        return worker;
+    } catch (err: any) {
+        console.error('[createWorker] Prisma error:', err?.message, err?.code, JSON.stringify(safeData, null, 2));
+        throw new Error(err?.message ?? 'Failed to create worker');
+    }
 }
 
 export async function updateWorker(id: string, data: any) {
