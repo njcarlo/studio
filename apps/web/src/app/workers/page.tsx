@@ -301,10 +301,6 @@ export default function WorkersPage() {
       toast({ variant: "destructive", title: "Missing Fields", description: "Please select a Major Ministry." });
       return;
     }
-    if (!minorMinistryId) {
-      toast({ variant: "destructive", title: "Missing Fields", description: "Please select a Minor Ministry." });
-      return;
-    }
 
     try {
       const newWorkerId =
@@ -320,7 +316,7 @@ export default function WorkersPage() {
         roleId: roleId || firstRole || null,
         status: status || "Pending Approval",
         majorMinistryId,
-        minorMinistryId,
+        minorMinistryId: minorMinistryId || majorMinistryId,
         employmentType: employmentType || "Volunteer",
         workerId: newWorkerId,
         avatarUrl: `https://picsum.photos/seed/${newWorkerId}/100/100`,
