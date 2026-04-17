@@ -330,6 +330,31 @@ export default function NewReservationPage() {
         );
     }
 
+    if (!workerProfile && isSuperAdmin) {
+        return (
+            <AppLayout>
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center space-y-4 max-w-md mx-auto p-6 bg-card rounded-xl border shadow-sm">
+                        <XCircle className="h-12 w-12 text-amber-500 mx-auto" />
+                        <h2 className="text-xl font-bold font-headline">No Worker Profile Linked</h2>
+                        <p className="text-muted-foreground">
+                            Your admin account (<span className="font-semibold">{user?.email}</span>) doesn't have a worker profile.
+                            To make room reservations, create a worker profile for yourself first.
+                        </p>
+                        <div className="flex gap-2 justify-center">
+                            <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
+                                Return to Dashboard
+                            </Button>
+                            <Button onClick={() => window.location.href = '/workers/new'}>
+                                Create Worker Profile
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
+
     return (
         <AppLayout>
             <div className="max-w-3xl mx-auto space-y-6">

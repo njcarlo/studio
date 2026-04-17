@@ -1,13 +1,13 @@
 {
   "enabled": true,
   "name": "Auto Commit & Push",
-  "description": "Automatically stages all changes, commits with a timestamp message, and pushes to origin after Kiro finishes working",
+  "description": "Stages all changes, generates a meaningful commit message based on what changed, then pushes to origin after Kiro finishes working",
   "version": "1",
   "when": {
     "type": "agentStop"
   },
   "then": {
-    "type": "runCommand",
-    "command": "git add -A && git diff --cached --quiet || git commit -m \"kiro: auto-commit $(date +%Y-%m-%d\\ %H:%M:%S)\" && git push"
+    "type": "askAgent",
+    "prompt": "Run `git add -A` to stage all changes, then run `git diff --cached --name-only` to see what files changed. Based on the changed files, write a short conventional commit message (e.g. 'fix: ...', 'feat: ...', 'chore: ...'). Then run `git diff --cached --quiet || git commit -m \"<your message>\" && git push`. Do not explain anything, just run the commands."
   }
 }
