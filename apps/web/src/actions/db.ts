@@ -231,7 +231,7 @@ export async function getPaginatedWorkers(
     // Build ORDER BY — workerId sorts numerically via CAST to avoid "10 < 2" string ordering
     let orderByClause: string;
     if (sortField === 'workerId') {
-        orderByClause = `NULLIF(regexp_replace("workerId", '[^0-9]', '', 'g'), '')::bigint ${sortDir.toUpperCase()} NULLS LAST`;
+        orderByClause = `CAST(NULLIF("workerId", '') AS INTEGER) ${sortDir.toUpperCase()} NULLS LAST`;
     } else if (sortField === 'name') {
         orderByClause = `"firstName" ${sortDir.toUpperCase()}, "lastName" ${sortDir.toUpperCase()}`;
     } else if (sortField === 'status') {
@@ -310,22 +310,13 @@ export async function getWorkerStats(ministryIds?: string[]) {
     let ministryStats: { ministryId: string; total: number; active: number; inactive: number; secondary: number }[] = [];
 
     if (ministryIds?.length) {
-        const [allW, activeW] = await prisma.$transaction([
-            prisma.worker.findMany({
-                where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }] },
-                select: { majorMinistryId: true, minorMinistryId: true, status: true },
-            }),
-            prisma.worker.findMany({
-                where: { OR: [{ majorMinistryId: { in: ministryIds } }, { minorMinistryId: { in: ministryIds } }], status: 'Active' },
-                select: { majorMinistryId: true, minorMinistryId: true },
-            }),
-        ]);
-
-        ministryStats = ministryIds.map(id => {
-            const mw = allW.filter((w: any) => w.majorMinistryId === id || w.minorMinistryId === id);
-            const ma = activeW.filter((w: any) => w.majorMinistryId === id || w.minorMinistryId === id);
-            return { ministryId: id, total: mw.length, active: ma.length, inactive: mw.length - ma.length, secondary: 0 };
-        });
+        ministryStats = await Promise.all(ministryIds.map(async (id) => {
+            const [total, active] = await prisma.$transaction([
+                prisma.worker.count({ where: { OR: [{ majorMinistryId: id }, { minorMinistryId: id }] } }),
+                prisma.worker.count({ where: { OR: [{ majorMinistryId: id }, { minorMinistryId: id }], status: 'Active' } }),
+            ]);
+            return { ministryId: id, total, active, inactive: total - active, secondary: 0 };
+        }));
     }
 
     return { total, active, inactive, secondary, ministryStats };

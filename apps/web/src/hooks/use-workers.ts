@@ -31,7 +31,7 @@ export function useWorkers(params: {
             sortField: params.sortField,
             sortDir: params.sortDir,
         }),
-        staleTime: 30_000,
+        staleTime: 60_000,
         placeholderData: (prev) => prev,
     });
 
