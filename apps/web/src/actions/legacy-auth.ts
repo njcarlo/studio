@@ -268,12 +268,14 @@ export async function getWorkerAuthStatus(identifier: string) {
           email: true,
           passwordChangeRequired: true,
           firstName: true,
+          legacyPasswordHash: true,
         }
       });
 
       return {
         exists: !!worker,
         passwordChangeRequired: worker?.passwordChangeRequired ?? false,
+        hasLegacyPassword: !!(worker?.legacyPasswordHash),
         email: worker?.email,
         firstName: worker?.firstName,
       };

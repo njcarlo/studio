@@ -78,13 +78,13 @@ export default function LoginPage() {
       const status = await getWorkerAuthStatus(identifier);
       
       if (!status.exists) {
-        // If it doesn't exist in our DB, it might still be a direct Supabase user 
-        // OR it's a completely new user. We proceed to password step to let Supabase handle it.
         setLoginStep("password");
-      } else if (status.passwordChangeRequired) {
+      } else if (status.passwordChangeRequired && status.hasLegacyPassword) {
+        // Legacy migration flow — has old password hash to verify against
         setEmail(status.email || "");
         setLoginStep("migration");
       } else {
+        // New worker or already migrated — just sign in normally
         setLoginStep("password");
       }
     } catch (error: any) {

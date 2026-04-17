@@ -59,7 +59,7 @@ export default function ProfilePage() {
       <AppLayout>
         <div className="max-w-xl mx-auto py-12 text-center space-y-4">
           <p className="text-muted-foreground">No worker profile is linked to your account.</p>
-          <Button onClick={() => window.location.href = '/workers/new'}>Create Worker Profile</Button>
+          <Button onClick={() => window.location.href = '/workers'}>Go to Workers</Button>
         </div>
       </AppLayout>
     );

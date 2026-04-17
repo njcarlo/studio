@@ -321,7 +321,10 @@ export default function WorkersPage() {
         avatarUrl: `https://picsum.photos/seed/${newWorkerId}/100/100`,
       });
 
-      toast({ title: "Worker Created", description: `${firstName} ${lastName} has been added.` });
+      toast({ 
+        title: "Worker Created", 
+        description: `${firstName} ${lastName} added. Temporary password: password1234` 
+      });
       setIsSheetOpen(false);
       setSelectedWorker(null);
     } catch (error: any) {

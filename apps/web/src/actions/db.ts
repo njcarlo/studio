@@ -374,7 +374,6 @@ export async function getWorkerByEmail(email: string) {
 }
 
 export async function createWorker(data: any) {
-    // Strip relation objects and non-schema fields to avoid Prisma validation errors
     const {
         role, roles, approvals, attendanceRecords, bookings,
         venueBookings, InventoryBorrowing, InventoryLog, mealStubs,
@@ -383,18 +382,6 @@ export async function createWorker(data: any) {
     } = data;
 
     try {
-        // 1. Create Supabase auth user with default password
-        const { supabaseAdmin } = await import('@/lib/supabase-admin');
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: safeData.email,
-            password: 'password1234',
-            email_confirm: true,
-        });
-        if (authError && authError.message !== 'User already registered') {
-            throw new Error(`Auth error: ${authError.message}`);
-        }
-
-        // 2. Create worker record with passwordChangeRequired = true
         const worker = await prisma.worker.create({
             data: {
                 ...safeData,
