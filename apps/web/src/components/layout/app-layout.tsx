@@ -27,6 +27,7 @@ import { useImpersonation } from "@/hooks/use-impersonation";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@studio/ui";
 import { useSidebar } from "@studio/ui";
+import { PasswordChangeDialog } from "@/components/auth/password-change-dialog";
 
 const MobileSidebarTrigger = () => {
   const { setOpenMobile } = useSidebar();
@@ -143,6 +144,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
           {children}
         </main>
+        <PasswordChangeDialog />
       </SidebarInset>
 
       {/* Mobile Bottom Navigation Bar */}

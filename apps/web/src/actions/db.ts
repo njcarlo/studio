@@ -383,16 +383,29 @@ export async function createWorker(data: any) {
     } = data;
 
     try {
+        // 1. Create Supabase auth user with default password
+        const { supabaseAdmin } = await import('@/lib/supabase-admin');
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: safeData.email,
+            password: 'password1234',
+            email_confirm: true,
+        });
+        if (authError && authError.message !== 'User already registered') {
+            throw new Error(`Auth error: ${authError.message}`);
+        }
+
+        // 2. Create worker record with passwordChangeRequired = true
         const worker = await prisma.worker.create({
             data: {
                 ...safeData,
+                passwordChangeRequired: true,
                 createdAt: new Date(),
             },
         });
         revalidatePath('/workers');
         return worker;
     } catch (err: any) {
-        console.error('[createWorker] Prisma error:', err?.message, err?.code, JSON.stringify(safeData, null, 2));
+        console.error('[createWorker] error:', err?.message, err?.code);
         if (err?.code === 'P2002') throw new Error('A worker with this email already exists.');
         throw new Error(err?.message ?? 'Failed to create worker');
     }
