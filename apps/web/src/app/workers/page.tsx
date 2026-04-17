@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -13,7 +13,21 @@ import {
   TableBody,
   TableCell,
 } from "@studio/ui";
-import { Sheet, SheetContent } from "@studio/ui";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@studio/ui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@studio/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -241,9 +255,69 @@ export default function WorkersPage() {
     useState(false);
   const [isAssigningStubs, setIsAssigningStubs] = useState(false);
 
+  // Form state for Add Worker sheet
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [workerId, setWorkerId] = useState("");
+  const [roleId, setRoleId] = useState("");
+  const [status, setStatus] = useState("Pending Approval");
+  const [majorMinistryId, setMajorMinistryId] = useState("");
+  const [minorMinistryId, setMinorMinistryId] = useState("");
+  const [employmentType, setEmploymentType] = useState("Volunteer");
+
+  // Reset form when selectedWorker changes
+  useEffect(() => {
+    if (!selectedWorker) {
+      setFirstName("");
+      setLastName("");
+      setEmail("");
+      setPhone("");
+      setWorkerId("");
+      setRoleId("");
+      setStatus("Pending Approval");
+      setMajorMinistryId("");
+      setMinorMinistryId("");
+      setEmploymentType("Volunteer");
+    }
+  }, [selectedWorker]);
+
   const handleAddNew = () => {
     setSelectedWorker(null);
     setIsSheetOpen(true);
+  };
+
+  const handleWorkerFormSubmit = async () => {
+    try {
+      const newWorkerId =
+        workerId ||
+        String(100000 + (allWorkers?.length || 0)).slice(-6);
+
+      await createWorkerSql({
+        firstName,
+        lastName,
+        email,
+        phone,
+        roleId: roleId || "viewer",
+        status,
+        majorMinistryId,
+        minorMinistryId,
+        employmentType,
+        workerId: newWorkerId,
+        avatarUrl: `https://picsum.photos/seed/${newWorkerId}/100/100`,
+      });
+
+      toast({ title: "Worker Created", description: `${firstName} ${lastName} has been added.` });
+      setIsSheetOpen(false);
+      setSelectedWorker(null);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Create Worker",
+        description: error.message || "An unexpected error occurred.",
+      });
+    }
   };
 
   const handleOpenImport = () => {
@@ -1478,6 +1552,159 @@ export default function WorkersPage() {
             onSave={handleBatchMealStub}
             onClose={() => setIsBatchMealStubSheetOpen(false)}
           />
+        </SheetContent>
+      </Sheet>
+
+      {/* Add Worker Sheet */}
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="font-headline">
+              {selectedWorker ? "Edit Worker" : "Add Worker"}
+            </SheetTitle>
+            <SheetDescription>
+              Fill in the details below to add a new worker.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="add-firstName">First Name</Label>
+                <Input
+                  id="add-firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="First name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add-lastName">Last Name</Label>
+                <Input
+                  id="add-lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Last name"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-email">Email</Label>
+              <Input
+                id="add-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-phone">Phone</Label>
+              <Input
+                id="add-phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+1 (555) 000-0000"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-workerId">Worker ID</Label>
+              <Input
+                id="add-workerId"
+                value={workerId}
+                onChange={(e) => setWorkerId(e.target.value)}
+                placeholder="Auto-generated if blank"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-role">Role</Label>
+              <Select value={roleId} onValueChange={setRoleId}>
+                <SelectTrigger id="add-role">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-status">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger id="add-status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-majorMinistry">Major Ministry</Label>
+              <Select value={majorMinistryId} onValueChange={setMajorMinistryId}>
+                <SelectTrigger id="add-majorMinistry">
+                  <SelectValue placeholder="Select major ministry" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ministries.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-minorMinistry">Minor Ministry</Label>
+              <Select value={minorMinistryId} onValueChange={setMinorMinistryId}>
+                <SelectTrigger id="add-minorMinistry">
+                  <SelectValue placeholder="Select minor ministry" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ministries.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-employmentType">Employment Type</Label>
+              <Select value={employmentType} onValueChange={setEmploymentType}>
+                <SelectTrigger id="add-employmentType">
+                  <SelectValue placeholder="Select employment type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Volunteer">Volunteer</SelectItem>
+                  <SelectItem value="Full-time">Full-time</SelectItem>
+                  <SelectItem value="Part-time">Part-time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <SheetFooter>
+            <Button variant="secondary" onClick={() => setIsSheetOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleWorkerFormSubmit}>
+              Add Worker
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
     </AppLayout>
