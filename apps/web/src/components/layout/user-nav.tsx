@@ -21,7 +21,7 @@ import { LogOut } from "lucide-react";
 
 export function UserNav() {
   const { user } = useAuthStore();
-  const { workerProfile } = useUserRole();
+  const { workerProfile, allRoles } = useUserRole();
   const { toast } = useToast();
   const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
 
@@ -62,6 +62,10 @@ export function UserNav() {
     .charAt(0)
     .toUpperCase();
 
+  const roleName = workerProfile?.roleId
+    ? (allRoles?.find((r: any) => r.id === workerProfile.roleId)?.name ?? workerProfile.roleId)
+    : "N/A";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -77,7 +81,7 @@ export function UserNav() {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{displayName}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              Role: {workerProfile?.roleId || "N/A"}
+              Role: {roleName}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -89,7 +93,9 @@ export function UserNav() {
               <span>Exit Impersonation</span>
             </DropdownMenuItem>
           ) : (
-            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/profile">Profile</Link>
+            </DropdownMenuItem>
           )}
           <DropdownMenuItem asChild>
             <Link href="/workers/my-qr">My QR Code</Link>
