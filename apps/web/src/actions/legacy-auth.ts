@@ -2,7 +2,7 @@
 
 import crypto from "crypto";
 import { prisma } from "@studio/database/prisma";
-import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type LegacyLoginResult = {
   success: boolean;
@@ -184,8 +184,6 @@ export async function legacyWorkerIdLogin(
       return { success: false, error: genericError };
     }
 
-    const supabaseAdmin = getSupabaseAdminClient();
-
     // Look up Supabase auth user by email to get the real UUID
     const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
     const authUser = authList?.users?.find(u => u.email === worker.email);
@@ -331,7 +329,6 @@ export async function completeFirstLoginPasswordChange(
     const finalEmail = updatedEmail || workerRecord.email;
 
     // 3. Update Supabase User (Email & Password)
-    const supabaseAdmin = getSupabaseAdminClient();
 
     // Look up the Supabase auth user by email to get the real UUID
     const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
