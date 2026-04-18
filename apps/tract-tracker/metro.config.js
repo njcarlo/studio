@@ -15,6 +15,9 @@ config.resolver.nodeModulesPaths = [
     path.resolve(monorepoRoot, 'node_modules'),
 ];
 
+// Ensure Metro uses the app's package.json as the project root, not the monorepo root
+config.projectRoot = projectRoot;
+
 // Replace native-only modules with web stubs when bundling for web
 const webStubs = {
     'react-native-maps': path.resolve(projectRoot, 'src/mocks/react-native-maps.web.js'),
