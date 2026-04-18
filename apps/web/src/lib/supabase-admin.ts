@@ -7,3 +7,6 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
+
+// Alias for backward compatibility
+export const getSupabaseAdminClient = () => supabaseAdmin;

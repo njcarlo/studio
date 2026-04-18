@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from '@studio/database/prisma';
-import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { revalidatePath } from 'next/cache';
 
 const ORS_BASE = 'https://cogdasma.com/ors-reader/public';
