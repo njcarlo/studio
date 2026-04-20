@@ -58,7 +58,7 @@ function generateToken() {
 // ------------------------------------------------------------
 function MealsPageContent() {
   const { user } = useAuthStore();
-  const { canViewMealStubs, canManageAllMealStubs, isMealStubAssigner, workerProfile, isLoading: isRoleLoading } = useUserRole();
+  const { canViewMealStubs, canManageAllMealStubs, isMealStubAssigner, workerProfile, isLoading: isRoleLoading, isMinistryHead, myMinistryIds } = useUserRole();
   const { toast } = useToast();
   const { playSuccess, playError } = useMealAudio();
   const searchParams = useSearchParams();
@@ -72,11 +72,11 @@ function MealsPageContent() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab === 'assign' && (isMealStubAssigner || canManageAllMealStubs)) {
+    if (tab === 'assign' && (isMealStubAssigner || canManageAllMealStubs || isMinistryHead)) {
       setActiveTab('assign');
     } else if (tab === 'view') {
       setActiveTab('view');
-    } else if (tab === 'reports' && (isMealStubAssigner || canManageAllMealStubs)) {
+    } else if (tab === 'reports' && (isMealStubAssigner || canManageAllMealStubs || isMinistryHead)) {
       setActiveTab('reports');
     }
   }, [searchParams, isMealStubAssigner, canManageAllMealStubs]);
@@ -86,22 +86,31 @@ function MealsPageContent() {
     router.push(`/meals?tab=${value}`);
   };
 
-  const { workers: allWorkers, isLoading: workersLoading, updateWorker } = useWorkers();
+  const { workers: allWorkers, isLoading: workersLoading, updateWorker } = useWorkers({
+    enabled: isMealStubAssigner || canManageAllMealStubs || isMinistryHead,
+    limit: 999999,
+  });
   const { ministries, isLoading: ministriesLoading } = useMinistries();
   const { settings: globalSettings } = useSettings('mealstubs');
 
-  const thirtyDaysAgo = subDays(new Date(), 30);
+  const thirtyDaysAgo = useMemo(() => subDays(new Date(), 30), []);
   const {
     mealStubs,
     isLoading: mealStubsLoading,
     createMealStub,
     deleteMealStub
-  } = useMealStubs(canManageAllMealStubs ? { dateFrom: thirtyDaysAgo } : { workerId: workerProfile?.id });
+  } = useMealStubs(canManageAllMealStubs 
+    ? { dateFrom: thirtyDaysAgo } 
+    : { workerId: user?.id, dateFrom: thirtyDaysAgo, enabled: !!user?.id }
+  );
 
-  const { mealStubs: allMealStubsInRange } = useMealStubs({ dateFrom: thirtyDaysAgo });
+  const { mealStubs: allMealStubsInRange } = useMealStubs({ 
+    dateFrom: thirtyDaysAgo, 
+    enabled: isMealStubAssigner || canManageAllMealStubs 
+  });
 
   // Live worker profile (for QR token)
-  const liveWorkerProfile = useMemo(() => allWorkers.find(w => w.id === (workerProfile?.id || user?.uid)), [allWorkers, workerProfile, user]);
+  const liveWorkerProfile = useMemo(() => allWorkers.find(w => w.id === (workerProfile?.id || user?.id)), [allWorkers, workerProfile, user]);
 
   // QR Token
   const [localSeed, setLocalSeed] = useState<string | null>(null);
@@ -132,21 +141,14 @@ function MealsPageContent() {
 
   const assignerMinistries = useMemo(() => {
     if (!workerProfile || !ministries) return [];
-    return ministries.filter(m => m.mealStubAssignerId === workerProfile.id);
+    return ministries.filter(m => m.mealStubAssignerId === workerProfile.id || m.headId === workerProfile.id);
   }, [workerProfile, ministries]);
   const isAssigner = assignerMinistries.length > 0;
 
   const ministryWorkers = useMemo(() => {
-    if (canManageAllMealStubs && allWorkers) {
-      return allWorkers.filter(w => w.status === 'Active');
-    }
-    if (!isAssigner || !allWorkers) return [];
-    const ministryIds = assignerMinistries.map(m => m.id);
-    return allWorkers.filter(w =>
-      (ministryIds.includes(w.majorMinistryId) || ministryIds.includes(w.minorMinistryId)) &&
-      w.status === 'Active'
-    );
-  }, [isAssigner, canManageAllMealStubs, allWorkers, assignerMinistries]);
+    if (!allWorkers) return [];
+    return allWorkers.filter(w => w.status === 'Active');
+  }, [allWorkers]);
 
   const filteredAssignerWorkers = useMemo(() => {
     if (!ministryWorkers) return [];
@@ -260,6 +262,28 @@ function MealsPageContent() {
 
   const handleQuickAssign = (w: any, count: number = 1) => issueStub(w.id, count);
 
+  const handleCancelStub = async (workerId: string) => {
+    setIsAssigning(true);
+    try {
+      const stubsToCancel = allMealStubsInRange?.filter((s: any) => {
+        if (!s.date) return false;
+        const d = s.date instanceof Date ? s.date : new Date(s.date as string);
+        return s.workerId === workerId && format(d, 'yyyy-MM-dd') === format(assignDateObj, 'yyyy-MM-dd');
+      });
+      if (stubsToCancel && stubsToCancel.length > 0) {
+        for (const s of stubsToCancel) {
+          await deleteMealStub(s.id);
+        }
+        toast({ title: "Stubs Cancelled", description: `Revoked ${stubsToCancel.length} meal stub(s) for the selected date.` });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Error", description: "Failed to cancel stubs." });
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
   // ---- Ministry Pool Data ----
   const ministryPoolData = useMemo(() => {
     if (!ministries || !allWorkers || !allMealStubsInRange) return [];
@@ -346,7 +370,7 @@ function MealsPageContent() {
   };
   const toggleSelectWorker = (id: string) => setSelectedWorkerIds(prev => prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id]);
 
-  const isLoading = mealStubsLoading || workersLoading || isRoleLoading;
+  const isLoading = mealStubsLoading || isRoleLoading || ((isMealStubAssigner || canManageAllMealStubs || isMinistryHead) && workersLoading);
 
   if (isLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
   if (!canViewMealStubs) return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle></CardHeader></Card></AppLayout>;
@@ -362,7 +386,7 @@ function MealsPageContent() {
           <p className="text-sm text-muted-foreground">One meal stub per worker per day.</p>
         </div>
         <div className="flex items-center gap-2">
-          {(isMealStubAssigner || canManageAllMealStubs) && (
+          {(isMealStubAssigner || canManageAllMealStubs || isMinistryHead) && (
             <Button variant="outline" onClick={() => setIsAssignOpen(true)}>
               <ClipboardList className="mr-2 h-4 w-4" /> Assign Stub
             </Button>
@@ -373,7 +397,7 @@ function MealsPageContent() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList>
           <TabsTrigger value="view">View Meal Stub</TabsTrigger>
-          {(isMealStubAssigner || canManageAllMealStubs) && (
+          {(isMealStubAssigner || canManageAllMealStubs || isMinistryHead) && (
             <>
               <TabsTrigger value="assign">Assign Meal Stub</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -541,9 +565,17 @@ function MealsPageContent() {
                                 >
                                   2
                                 </Button>
+                                {dayCount > 0 && (
+                                  <Button size="sm" variant="destructive" className="h-7 px-2 text-[10px]" onClick={() => handleCancelStub(w.id)}>Cancel</Button>
+                                )}
                               </div>
                             ) : (
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => handleQuickAssign(w)} disabled={hasToday}>Issue</Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => handleQuickAssign(w)} disabled={hasToday}>Issue</Button>
+                                {hasToday && (
+                                  <Button size="sm" variant="destructive" className="h-7 px-2 text-[10px]" onClick={() => handleCancelStub(w.id)}>Cancel</Button>
+                                )}
+                              </div>
                             )}
                           </TableCell>
                         </TableRow>

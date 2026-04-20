@@ -22,8 +22,16 @@ if (!hasSupabaseConfig) {
     console.warn('Supabase URL or Anon Key is missing. Database features may not work.');
 }
 
+const isServer = typeof window === 'undefined';
+
 export const supabase: SupabaseClient = hasSupabaseConfig
-    ? createClient(supabaseUrl, supabaseAnonKey)
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+            persistSession: !isServer,
+            autoRefreshToken: !isServer,
+            detectSessionInUrl: !isServer,
+        }
+    })
     : createMissingSupabaseClient();
 
 export const isSupabaseConfigured = hasSupabaseConfig;

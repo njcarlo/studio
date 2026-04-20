@@ -163,9 +163,10 @@ export default function WorkersPage() {
 
   const { roles: roles, isLoading: rolesLoading } = useRoles();
 
+  const thirtyDaysAgo = useMemo(() => subDays(new Date(), 30), []);
   // Meal stubs only fetched when batch sheet is open — avoids loading all stubs on page load
   const { mealStubs: allMealStubs } = useMealStubs({
-    dateFrom: subDays(new Date(), 30),
+    dateFrom: thirtyDaysAgo,
   });
   const { createApproval: createApprovalSql } = useApprovals();
 
@@ -242,8 +243,7 @@ export default function WorkersPage() {
   const [isAssigningStubs, setIsAssigningStubs] = useState(false);
 
   const handleAddNew = () => {
-    setSelectedWorker(null);
-    setIsSheetOpen(true);
+    router.push("/workers/new");
   };
 
   const handleOpenImport = () => {
@@ -1363,7 +1363,6 @@ export default function WorkersPage() {
           </div>
         )}
       </div>
-
 
       <Sheet open={isImportSheetOpen} onOpenChange={setIsImportSheetOpen}>
         <SheetContent className="sm:max-w-lg">

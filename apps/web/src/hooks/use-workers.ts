@@ -8,7 +8,8 @@ import {
     deleteWorker, 
     deleteWorkers,
     getPaginatedWorkers,
-    getWorkerStats
+    getWorkerStats,
+    createWorkerWithAuth
 } from '@/actions/db';
 
 export function useWorkers(params: {
@@ -19,24 +20,35 @@ export function useWorkers(params: {
     ministryIds?: string[];
     sortField?: string;
     sortDir?: 'asc' | 'desc';
+    enabled?: boolean;
 } = {}) {
     const queryClient = useQueryClient();
+    const { enabled = true, ...queryParams } = params;
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ['workers', params],
-        queryFn: () => getPaginatedWorkers(params.page, params.limit, {
-            search: params.search,
-            searchMode: params.searchMode,
-            ministryIds: params.ministryIds,
-            sortField: params.sortField,
-            sortDir: params.sortDir,
+        queryKey: ['workers', queryParams],
+        queryFn: () => getPaginatedWorkers(queryParams.page, queryParams.limit, {
+            search: queryParams.search,
+            searchMode: queryParams.searchMode,
+            ministryIds: queryParams.ministryIds,
+            sortField: queryParams.sortField,
+            sortDir: queryParams.sortDir,
         }),
+        enabled: enabled,
         staleTime: 30_000,
         placeholderData: (prev) => prev,
     });
 
     const createMutation = useMutation({
         mutationFn: createWorker,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['workers'] });
+            queryClient.invalidateQueries({ queryKey: ['worker-stats'] });
+        },
+    });
+
+    const createWithAuthMutation = useMutation({
+        mutationFn: ({ data, roleIds, assignedBy }: { data: any; roleIds: string[]; assignedBy?: string }) => createWorkerWithAuth(data, roleIds, assignedBy),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['workers'] });
             queryClient.invalidateQueries({ queryKey: ['worker-stats'] });
@@ -78,6 +90,7 @@ export function useWorkers(params: {
         isLoading,
         error,
         createWorker: createMutation.mutateAsync,
+        createWorkerWithAuth: createWithAuthMutation.mutateAsync,
         updateWorker: updateMutation.mutateAsync,
         deleteWorker: deleteMutation.mutateAsync,
         deleteWorkers: deleteBatchMutation.mutateAsync,

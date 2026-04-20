@@ -3,6 +3,8 @@
 import { prisma } from '@studio/database/prisma';
 import { revalidatePath } from 'next/cache';
 import { NotificationService } from '@/services/notification-service';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { EmailService } from '@/services/email-service';
 
 const DEPARTMENT_NAME_TO_CODE: Record<string, string> = {
     Worship: 'W',
@@ -393,6 +395,52 @@ export async function createWorker(data: any) {
     return worker;
 }
 
+export async function createWorkerWithAuth(data: any, roleIds: string[], assignedBy?: string) {
+    const supabaseAdmin = getSupabaseAdminClient();
+    
+    // Create auth user
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: "StudioUser2026!",
+      email_confirm: true,
+      user_metadata: {
+        firstName: data.firstName,
+        lastName: data.lastName
+      }
+    });
+
+    if (authError) {
+      if (authError.message.includes('already registered')) {
+        throw new Error('Email is already registered. Please use another email.');
+      }
+      throw new Error(`Failed to create Auth user: ${authError.message}`);
+    }
+
+    // Now create in DB
+    const { roleId, role, roles, approvals, attendanceRecords, bookings, venueBookings, InventoryBorrowing, InventoryLog, mealStubs, legacyMigratedAt, legacyMigratedFrom, createdAt, updatedAt, ...dbData } = data;
+    
+    const workerData = {
+        ...dbData,
+        id: authData.user.id,
+        createdAt: new Date(),
+    };
+    if (roleIds && roleIds.length > 0) {
+        workerData.roleId = roleIds[0];
+    }
+
+    const worker = await prisma.worker.create({
+        data: workerData,
+    });
+
+    // Assign roles
+    if (roleIds && roleIds.length > 0) {
+        await assignRolesToWorker(worker.id, roleIds, assignedBy);
+    }
+    
+    revalidatePath('/workers');
+    return worker;
+}
+
 export async function updateWorker(id: string, data: any) {
     // Strip relation objects and fields not in the DB schema to avoid Prisma validation errors
     const {
@@ -418,6 +466,13 @@ export async function updateWorker(id: string, data: any) {
 }
 
 export async function deleteWorker(id: string) {
+    const supabaseAdmin = getSupabaseAdminClient();
+    try {
+        await supabaseAdmin.auth.admin.deleteUser(id);
+    } catch (e) {
+        console.error('Failed to delete auth user:', e);
+    }
+
     await prisma.worker.delete({
         where: { id },
     });
@@ -425,6 +480,15 @@ export async function deleteWorker(id: string) {
 }
 
 export async function deleteWorkers(ids: string[]) {
+    const supabaseAdmin = getSupabaseAdminClient();
+    for (const id of ids) {
+        try {
+            await supabaseAdmin.auth.admin.deleteUser(id);
+        } catch (e) {
+            console.error('Failed to delete auth user:', e);
+        }
+    }
+
     await prisma.worker.deleteMany({
         where: { id: { in: ids } },
     });
@@ -773,7 +837,41 @@ export async function createAttendanceRecord(data: { workerProfileId: string; ty
             time: new Date(),
         },
     });
+
+    if (data.type === 'Clock In') {
+        const worker = await prisma.worker.findUnique({ where: { id: data.workerProfileId } });
+        if (worker) {
+            const today = new Date();
+            const startOfDay = new Date(today);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(today);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const existingStub = await prisma.mealStub.findFirst({
+                where: {
+                    workerId: worker.id,
+                    date: { gte: startOfDay, lte: endOfDay }
+                }
+            });
+
+            if (!existingStub) {
+                await prisma.mealStub.create({
+                    data: {
+                        workerId: worker.id,
+                        workerName: `${worker.firstName} ${worker.lastName}`,
+                        status: 'Issued',
+                        stubType: 'daily',
+                        assignedBy: 'system',
+                        assignedByName: 'Auto-Assigned (Clock In)',
+                        date: new Date()
+                    }
+                });
+            }
+        }
+    }
+
     revalidatePath('/attendance');
+    revalidatePath('/meals');
     return record;
 }
 
@@ -1134,4 +1232,70 @@ export async function getWorkerLogs(workerId: string) {
         },
         take: 50,
     });
+}
+
+export async function adminForcePasswordReset(workerId: string) {
+    const supabaseAdmin = getSupabaseAdminClient();
+    
+    const worker = await prisma.worker.findUnique({ where: { id: workerId } });
+    if (!worker) throw new Error("Worker not found");
+
+    const defaultPassword = "StudioUser2026!";
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+      workerId,
+      { password: defaultPassword }
+    );
+
+    if (error) {
+       throw new Error(`Failed to forcibly reset password: ${error.message}`);
+    }
+
+    // Force sign out the user from all sessions so they have to login again
+    await supabaseAdmin.auth.admin.signOut(workerId);
+
+    return defaultPassword;
+}
+
+export async function adminSendPasswordResetEmail(workerId: string, appUrl: string) {
+    const supabaseAdmin = getSupabaseAdminClient();
+    
+    // Get worker to find their email
+    const worker = await prisma.worker.findUnique({ where: { id: workerId } });
+    if (!worker || !worker.email) {
+        throw new Error("Worker does not have an email address set");
+    }
+
+    // Generate the recovery link
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: worker.email,
+        options: {
+            redirectTo: `${appUrl}/auth/update-password`
+        }
+    });
+
+    if (linkError) {
+        throw new Error(`Failed to generate reset link: ${linkError.message}`);
+    }
+    
+    // Send email using Resend
+    const link = linkData.properties.action_link;
+    await EmailService.sendEmail({
+        to: worker.email,
+        subject: 'Password Reset Request',
+        html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+                <h2 style="font-size: 24px; margin-bottom: 24px;">Reset your password</h2>
+                <p>Hello ${worker.firstName},</p>
+                <p>We received a request to reset your password. You can reset it by clicking the button below:</p>
+                <div style="margin: 32px 0;">
+                    <a href="${link}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block;">Reset Password</a>
+                </div>
+                <p style="color: #666; font-size: 14px;">If you didn't request a password reset, you can safely ignore this email.</p>
+            </div>
+        `,
+        text: `You have requested to reset your password. Reset it here: ${link}`
+    });
+    
+    return true;
 }

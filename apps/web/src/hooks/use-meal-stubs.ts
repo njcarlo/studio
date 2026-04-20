@@ -3,13 +3,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMealStubs, createMealStub, updateMealStub, deleteMealStub } from '@/actions/db';
 
-export function useMealStubs(filters: { workerId?: string; dateFrom?: Date } = {}) {
+export function useMealStubs(filters: { workerId?: string; dateFrom?: Date; enabled?: boolean } = {}) {
     const queryClient = useQueryClient();
+    const { enabled = true, ...queryFilters } = filters;
 
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['meal-stubs', filters],
-        queryFn: () => getMealStubs(filters),
+    const { data, isPending, isFetching, error } = useQuery({
+        queryKey: ['meal-stubs', queryFilters],
+        queryFn: () => getMealStubs(queryFilters),
+        enabled: enabled,
     });
+
+    // When enabled=false, isPending is true but we shouldn't show a loader
+    const isLoading = enabled && isPending;
 
     const createMutation = useMutation({
         mutationFn: createMealStub,

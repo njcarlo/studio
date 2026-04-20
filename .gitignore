@@ -52,3 +52,5 @@ service-account.json
 /tmp/
 .env*.local
 package-lock.json
+package.json
+apps/web/.turbo/turbo-build.log

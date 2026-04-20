@@ -10,9 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useWorkers } from "@/hooks/use-workers";
 import { LoaderCircle } from "lucide-react";
 import { 
-  createWorker as createWorkerSql, 
-  createApproval as createApprovalSql,
-  assignRolesToWorker
+  createWorkerWithAuth, 
+  createApproval as createApprovalSql
 } from "@/actions/db";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import type { Worker } from "@studio/types";
@@ -46,12 +45,7 @@ export default function NewWorkerPage() {
         workerId: workerData.workerId || workerId,
       };
 
-      const newWorker = await createWorkerSql(dataToSave);
-      
-      // Assign multi-roles immediately after creation
-      if (newWorker?.id) {
-        await assignRolesToWorker(newWorker.id, roleIds);
-      }
+      const newWorker = await createWorkerWithAuth(dataToSave, roleIds, workerProfile?.id);
 
       await logAction(
         "Created Worker",

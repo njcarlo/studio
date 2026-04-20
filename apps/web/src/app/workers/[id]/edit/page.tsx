@@ -10,7 +10,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { CheckCircle2, Clock, LoaderCircle } from "lucide-react";
-import { getWorkerById, updateWorker as updateWorkerSql, createApproval as createApprovalSql, assignRolesToWorker } from "@/actions/db";
+import { getWorkerById, updateWorker as updateWorkerSql, createApproval as createApprovalSql, assignRolesToWorker, adminSendPasswordResetEmail } from "@/actions/db";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { supabase } from "@studio/database";
 import type { Worker } from "@studio/types";
@@ -126,29 +126,24 @@ export default function EditWorkerPage() {
   };
 
   const handleResetPassword = async (w: Worker) => {
-    if (!w.email) {
-      toast({
-        variant: "destructive",
-        title: "No email found",
-        description: "This worker does not have an email address set.",
-      });
-      return;
-    }
-
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(w.email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
-      });
-      if (error) throw error;
+      await adminSendPasswordResetEmail(id, window.location.origin);
       toast({
-        title: "Reset link sent",
-        description: `A password reset link has been sent to ${w.email}.`,
+        title: "Reset Link Sent",
+        description: `A password reset link has been successfully emailed to ${w.email}.`,
       });
+      await logAction(
+        "Requested Password Reset",
+        "Workers",
+        `Admin sent password reset email to ${w.firstName} ${w.lastName}`,
+        id,
+        `${w.firstName} ${w.lastName}`,
+      );
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to send reset link.",
+        title: "Email Failed",
+        description: error.message || "Failed to force send reset email.",
       });
     }
   };
