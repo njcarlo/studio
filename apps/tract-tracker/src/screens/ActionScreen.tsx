@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
         elevation: 10,
     },
     cardTitle: { fontSize: 14, color: '#1a1a2e', marginBottom: 8, fontFamily: 'Anton_400Regular' },
-    cardCount: { fontSize: 88, color: '#1a1a2e', lineHeight: 100, marginBottom: 16, fontFamily: 'Anton_400Regular' },
+    cardCount: { fontSize: 64, color: '#1a1a2e', lineHeight: 72, marginBottom: 16, fontFamily: 'Anton_400Regular' },
     plusBtn: {
         backgroundColor: '#C9A84C', borderRadius: 12, paddingVertical: 14,
         width: '100%', alignItems: 'center',
