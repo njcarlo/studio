@@ -1,10 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 const EVENT_DATE = new Date('2026-06-12T00:00:00+08:00'); // June 12, Philippine time
+
+// adding fonts
+import {
+  Inter_400Regular,
+  Inter_700Bold
+} from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
+
+// font loading
+const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_700Bold,
+});
+
+// image import
+const Ntgd = require("../../assets/ntgd.png");
+const Obpng =  require("../../assets/obpng.png");
 
 const REMINDERS = [
     'Small Bag',
@@ -42,8 +59,8 @@ export default function CountdownScreen() {
             <SafeAreaView style={styles.safe}>
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                     {/* Title */}
-                    <Text style={styles.title}>National Tracts{'\n'}Giving Day</Text>
-                    <Text style={styles.script}>Outside is Beautiful</Text>
+                    <Image style={styles.title} source={Ntgd}/>
+                    <Image style={styles.ob} source={Obpng}/>
 
                     {/* Greeting */}
                     <Text style={styles.greeting}>Hello, {firstName}!</Text>
@@ -90,6 +107,10 @@ const styles = StyleSheet.create({
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,60,0.78)' },
     safe: { flex: 1 },
     scroll: { paddingHorizontal: 28, paddingTop: 48, paddingBottom: 40 },
+    
+    // Image of national tract distribution and logo
+    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -10 },
+    ob: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -20 },
 
     title: { color: '#C9A84C', fontSize: 48, lineHeight: 54, marginBottom: 10, fontFamily: 'Anton_400Regular' },
     script: { color: '#fff', fontSize: 22, fontStyle: 'italic', marginBottom: 36, opacity: 0.9, fontFamily: 'Inter_400Regular_Italic' },

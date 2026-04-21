@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
-    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState,
+    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +10,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
 import { supabaseAdmin } from '../supabase';
+
+// image import
+const Ntgd = require("../../assets/ntgd.png");
+const Obpng =  require("../../assets/obpng.png");
+
+// adding fonts
+import {
+  Inter_400Regular,
+  Inter_700Bold
+} from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
+
+const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_700Bold,
+});
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
@@ -89,7 +105,7 @@ function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
             <View style={styles.overlay} />
             <SafeAreaView style={styles.safe}>
                 <View style={styles.setupContent}>
-                    <Text style={styles.setupTitle}>National Tracts{'\n'}Giving Day</Text>
+                    <Image style={styles.ntgd} source={Ntgd}/>
                     <Text style={styles.script}>Outside is Beautiful</Text>
 
                     <Text style={styles.greeting}>Hello, {firstName}!</Text>
@@ -332,7 +348,7 @@ export default function ActionScreen() {
                 </View>
 
                 {/* Title */}
-                <Text style={styles.title}>National Tracts Giving Day</Text>
+                <Image style={styles.ntgd} source={Ntgd}/>
 
                 {/* Regional block */}
                 <View style={styles.regionalBlock}>
@@ -370,6 +386,10 @@ const styles = StyleSheet.create({
     bg: { flex: 1 },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,60,0.78)' },
     safe: { flex: 1 },
+
+    // Image of national tract distribution and logo
+    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -10 },
+    bo: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -20 },
 
     // ── Setup ──
     setupContent: { flex: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 32 },

@@ -16,6 +16,22 @@ const CACHE_KEY = 'admin_users_cache';
 
 type Tab = 'overview' | 'region' | 'barangay';
 
+// image import
+const Ntgd = require("../../assets/ntgd.png");
+const Obpng =  require("../../assets/obpng.png");
+
+// adding fonts
+import {
+  Inter_400Regular,
+  Inter_700Bold
+} from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
+
+const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_700Bold,
+});
+
 interface UserData {
     id: string;
     name?: string;
@@ -275,6 +291,10 @@ const styles = StyleSheet.create({
     safe: { flex: 1 },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { color: '#fff', marginTop: 12, fontSize: 15 },
+
+    // Image of national tract distribution and logo
+    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -10 },
+    bo: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -20 },
 
     header: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

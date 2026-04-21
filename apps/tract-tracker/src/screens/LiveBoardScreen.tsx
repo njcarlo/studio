@@ -1,10 +1,27 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ImageBackground, ScrollView,
-    TouchableOpacity, ActivityIndicator,
+    TouchableOpacity, ActivityIndicator, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabaseAdmin } from '../supabase';
+
+// adding fonts
+import {
+  Inter_400Regular,
+  Inter_700Bold
+} from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
+
+// font loading
+const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_700Bold,
+});
+
+// image import
+const Ntgd = require("../../assets/ntgd.png");
+const Obpng =  require("../../assets/obpng.png");
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 const REFRESH_INTERVAL = 30_000;
@@ -119,7 +136,7 @@ export default function LiveBoardScreen() {
                 {/* Top bar */}
                 <View style={styles.topBar}>
                     <View style={styles.topBarLeft}>
-                        <Text style={styles.topBarTitle}>National Tracts Giving Day</Text>
+                        <Image style={styles.ntgd} source={Ntgd}/>
                         <View style={styles.topBarMeta}>
                             <Text style={styles.topBarMetaText}>Live Results</Text>
                             <Text style={styles.topBarMetaDivider}> · </Text>
@@ -210,6 +227,10 @@ const styles = StyleSheet.create({
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,10,40,0.88)' },
     safe: { flex: 1 },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    // Image of national tract distribution and logo
+    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -10 },
+    ob: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -20 },
 
     // Top bar
     topBar: {
