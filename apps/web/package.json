@@ -17,7 +17,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@apollo/server": "5.4.0",
+    "@apollo/server": "^5.5.0",
     "@as-integrations/next": "4.1.0",
     "@capacitor/android": "^8.1.0",
     "@capacitor/cli": "^8.1.0",

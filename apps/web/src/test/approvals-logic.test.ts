@@ -65,8 +65,18 @@ function checkCanManage(
     }
   }
 
-  if (request.type === "Room Booking" && request.status === "Pending Admin Approval") {
-    return canApproveRoomReservation && (canApproveAllRequests || isSuperAdmin);
+  // Room Booking workflow:
+  // 1. Ministry Head gives initial approval (room not yet reserved)
+  // 2. Admin gives final approval (room officially reserved)
+  if (request.type === "Room Booking") {
+    if (request.status === "Pending Ministry Approval") {
+      // Ministry Head/Approver can give initial approval
+      return isApprover;
+    }
+    if (request.status === "Pending Admin Approval") {
+      // Only Admin can give final approval
+      return canApproveRoomReservation && (canApproveAllRequests || isSuperAdmin);
+    }
   }
 
   return isApprover;
@@ -208,6 +218,30 @@ describe("checkCanManage", () => {
     const request = makeApproval({ type: "Room Booking", status: "Pending Admin Approval" });
     // canApproveRoomReservation=true but canApproveAllRequests=false and isSuperAdmin=false
     expect(checkCanManage(request, profile, workers, ministries, false, true, false)).toBe(false);
+  });
+
+  it("Room Booking Pending Ministry Approval — returns true for ministry head/approver", () => {
+    const profile = makeWorker({ id: "approver-1" });
+    const targetWorker = makeWorker({ id: "worker-1", majorMinistryId: "ministry-1" });
+    const ministry = makeMinistry({ id: "ministry-1", headId: "approver-1" });
+    const request = makeApproval({ 
+      type: "Room Booking", 
+      status: "Pending Ministry Approval",
+      workerId: "worker-1"
+    });
+    expect(checkCanManage(request, profile, [targetWorker], [ministry], false, false, false)).toBe(true);
+  });
+
+  it("Room Booking Pending Ministry Approval — returns false for non-ministry-head", () => {
+    const profile = makeWorker({ id: "random-person" });
+    const targetWorker = makeWorker({ id: "worker-1", majorMinistryId: "ministry-1" });
+    const ministry = makeMinistry({ id: "ministry-1", headId: "approver-1" });
+    const request = makeApproval({ 
+      type: "Room Booking", 
+      status: "Pending Ministry Approval",
+      workerId: "worker-1"
+    });
+    expect(checkCanManage(request, profile, [targetWorker], [ministry], false, false, false)).toBe(false);
   });
 
   it("falls back to isApprover for standard requests", () => {

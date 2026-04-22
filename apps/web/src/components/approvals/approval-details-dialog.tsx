@@ -4,8 +4,8 @@ import React from "react";
 import { Button } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Badge } from "@studio/ui";
-import { Dialog, DialogContent, DialogFooter } from "@studio/ui";
-import { Info, UserPlus, Calendar, UserCog, ArrowRightLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@studio/ui";
+import { Info, UserPlus, Calendar, UserCog, ArrowRightLeft, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { ApprovalRequest, Worker } from "@studio/types";
@@ -32,6 +32,22 @@ function getStatusBadge(status: ApprovalRequest["status"]) {
   }
 }
 
+function getStatusDescription(type: ApprovalRequest["type"], status: ApprovalRequest["status"]) {
+  if (type === "Room Booking") {
+    switch (status) {
+      case "Pending Ministry Approval":
+        return "Awaiting initial approval from Ministry Head. Room is not yet reserved.";
+      case "Pending Admin Approval":
+        return "Ministry Head approved. Awaiting final approval from Admin to officially reserve the room.";
+      case "Approved":
+        return "Room reservation is officially approved and confirmed.";
+      case "Rejected":
+        return "Room reservation request was rejected.";
+    }
+  }
+  return null;
+}
+
 interface ApprovalDetailsDialogProps {
   request: ApprovalRequest | null;
   open: boolean;
@@ -50,6 +66,7 @@ export function ApprovalDetailsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogTitle className="sr-only">{request.type} Request Details</DialogTitle>
         <div className={cn("h-24 flex items-end p-6", request.status === "Approved" ? "bg-green-600" : request.status === "Rejected" ? "bg-red-600" : "bg-primary")}>
           <div className="flex items-center gap-4 text-white">
             <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl">{getIconForType(request.type)}</div>
@@ -75,6 +92,38 @@ export function ApprovalDetailsDialog({
             </div>
             <div className="ml-auto">{getStatusBadge(request.status)}</div>
           </div>
+
+          {getStatusDescription(request.type, request.status) && (
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30">
+              <p className="text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2">
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>{getStatusDescription(request.type, request.status)}</span>
+              </p>
+            </div>
+          )}
+
+          {request.type === "Room Booking" && request.status === "Pending Admin Approval" && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wider">Approval Progress</p>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 p-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                  <div>
+                    <p className="text-[11px] font-bold text-green-800 dark:text-green-300">Ministry Head</p>
+                    <p className="text-[10px] text-green-600 dark:text-green-500">Approved</p>
+                  </div>
+                </div>
+                <div className="h-px w-4 bg-border shrink-0" />
+                <div className="flex items-center gap-2 flex-1 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                  <Clock className="h-4 w-4 text-orange-500 shrink-0" />
+                  <div>
+                    <p className="text-[11px] font-bold text-orange-800 dark:text-orange-300">Admin</p>
+                    <p className="text-[10px] text-orange-600 dark:text-orange-500">Awaiting Final Approval</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80">

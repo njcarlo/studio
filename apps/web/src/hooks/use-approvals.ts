@@ -8,6 +8,9 @@ export function useApprovals() {
     const { data, isLoading, error } = useQuery({
         queryKey: ['approvals'],
         queryFn: () => getApprovals(),
+        refetchInterval: 3000, // Auto-refresh every 3 seconds for real-time updates
+        refetchOnWindowFocus: true, // Refresh when user returns to tab
+        staleTime: 0, // Always consider data stale to ensure fresh data
     });
 
     const createMutation = useMutation({

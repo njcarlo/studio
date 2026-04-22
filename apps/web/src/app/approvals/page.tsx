@@ -43,6 +43,46 @@ export default function ApprovalsPage() {
     const filteredRequests = useMemo(() => {
         let results = [...(requests || [])] as ApprovalRequest[];
 
+        // Role-based visibility for Room Booking requests
+        const myMinistryIds = ministries
+            ?.filter(m => m.headId === workerProfile?.id || m.approverId === workerProfile?.id)
+            .map(m => m.id) ?? [];
+        const isMinistryHead = myMinistryIds.length > 0;
+        const isAdmin = isSuperAdmin || canApproveAllRequests;
+
+        results = results.filter(r => {
+            if (r.type === 'Room Booking') {
+                if (r.status === 'Pending Ministry Approval') {
+                    // Ministry Head sees their ministry's requests with buttons
+                    if (isMinistryHead) {
+                        const targetWorker = workers?.find(w => w.id === r.workerId);
+                        if (targetWorker && (
+                            myMinistryIds.includes(targetWorker.majorMinistryId) ||
+                            myMinistryIds.includes(targetWorker.minorMinistryId)
+                        )) return true;
+                    }
+                    // Admin also sees it (read-only, no buttons)
+                    if (isAdmin) return true;
+                    return false;
+                }
+                if (r.status === 'Pending Admin Approval') {
+                    // Admin sees this with buttons
+                    // Ministry Head also sees it but WITHOUT buttons (read-only)
+                    if (isAdmin) return true;
+                    if (isMinistryHead) {
+                        const targetWorker = workers?.find(w => w.id === r.workerId);
+                        if (targetWorker && (
+                            myMinistryIds.includes(targetWorker.majorMinistryId) ||
+                            myMinistryIds.includes(targetWorker.minorMinistryId)
+                        )) return true;
+                    }
+                    return false;
+                }
+            }
+            // All other requests visible to everyone with page access
+            return true;
+        });
+
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
             results = results.filter(r =>
@@ -56,7 +96,7 @@ export default function ApprovalsPage() {
         }
 
         return results.sort((a, b) => new Date(b.date as any).getTime() - new Date(a.date as any).getTime());
-    }, [requests, searchTerm, filterType]);
+    }, [requests, searchTerm, filterType, ministries, workerProfile, workers, isSuperAdmin, canApproveAllRequests]);
 
     const checkIsApprover = (request: ApprovalRequest) => {
         if (!workerProfile) return false;
@@ -96,8 +136,23 @@ export default function ApprovalsPage() {
             }
         }
 
-        if (request.type === 'Room Booking' && request.status === 'Pending Admin Approval') {
-            return canApproveRoomReservation && (canApproveAllRequests || isSuperAdmin);
+        // Room Booking: Ministry Head can only manage "Pending Ministry Approval"
+        // Admin can manage "Pending Admin Approval"
+        if (request.type === 'Room Booking') {
+            if (request.status === 'Pending Admin Approval') {
+                // Only Admin can manage this stage, Ministry Head cannot
+                return canApproveAllRequests || isSuperAdmin;
+            }
+            if (request.status === 'Pending Ministry Approval') {
+                // Ministry Head can manage this stage (but not if they're also Admin)
+                const myMinistryIds = ministries
+                    ?.filter(m => m.headId === workerProfile?.id || m.approverId === workerProfile?.id)
+                    .map(m => m.id) ?? [];
+                const isMinistryHead = myMinistryIds.length > 0;
+                return isMinistryHead || canApproveAllRequests || isSuperAdmin;
+            }
+            // For any other Room Booking status, use default isApprover check
+            return isApprover;
         }
 
         return isApprover;

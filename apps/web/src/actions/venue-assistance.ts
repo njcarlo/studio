@@ -208,7 +208,14 @@ async function assertConfigPermission(actorId: string, ministryId: string) {
 // Booking actions
 // ---------------------------------------------------------------------------
 
-/** Create a one-time venue booking and generate assistance requests. */
+/** 
+ * Create a one-time venue booking and generate assistance requests.
+ * 
+ * Room Reservation Approval Workflow:
+ * 1. Worker submits request → Status: 'Pending Ministry Approval'
+ * 2. Ministry Head gives initial approval → Status: 'Pending Admin Approval' (room NOT yet reserved)
+ * 3. Admin gives final approval → Status: 'Approved' (room officially reserved)
+ */
 export async function createVenueBooking(data: CreateVenueBookingData) {
     const booking = await prisma.venueBooking.create({
         data: {

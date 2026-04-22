@@ -67,6 +67,18 @@ export function KanbanCard({
         <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mt-1 italic">
           "{request.details}"
         </p>
+        {request.type === "Room Booking" && request.status === "Pending Ministry Approval" && !canManage && (
+          <div className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md px-2 py-1">
+            <Clock className="h-3 w-3 shrink-0" />
+            Waiting for Ministry Head Approval
+          </div>
+        )}
+        {request.type === "Room Booking" && request.status === "Pending Admin Approval" && (
+          <div className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md px-2 py-1">
+            <CheckCircle2 className="h-3 w-3 shrink-0" />
+            Ministry Head Approved
+          </div>
+        )}
       </CardContent>
 
       {canManage && request.status.startsWith("Pending") && (
