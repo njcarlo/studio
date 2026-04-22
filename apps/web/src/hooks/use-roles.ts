@@ -9,7 +9,7 @@ export function useRoles() {
     const { data, isLoading, error } = useQuery({
         queryKey: ['roles'],
         queryFn: () => getRoles(),
-        staleTime: 0, // always re-fetch after invalidation so edits show immediately
+        staleTime: 5 * 60_000, // cache for 5 minutes, edits invalidate this safely
     });
 
     const createMutation = useMutation({

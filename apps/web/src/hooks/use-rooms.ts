@@ -14,16 +14,19 @@ export function useRooms() {
     const roomsQuery = useQuery({
         queryKey: ['rooms'],
         queryFn: () => getRooms(),
+        staleTime: 5 * 60_000,
     });
 
     const areasQuery = useQuery({
         queryKey: ['areas'],
         queryFn: () => getAreas(),
+        staleTime: 5 * 60_000,
     });
 
     const branchesQuery = useQuery({
         queryKey: ['branches'],
         queryFn: () => getBranches(),
+        staleTime: 5 * 60_000,
     });
 
     const createMutation = useMutation({

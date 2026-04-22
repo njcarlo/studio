@@ -9,6 +9,7 @@ export function useSettings(id: string) {
     const { data, isLoading, error } = useQuery({
         queryKey: ['settings', id],
         queryFn: () => getSetting(id),
+        staleTime: 5 * 60_000,
     });
 
     const updateMutation = useMutation({

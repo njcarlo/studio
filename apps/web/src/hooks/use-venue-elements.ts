@@ -9,6 +9,7 @@ export function useVenueElements() {
     const { data, isLoading, error } = useQuery({
         queryKey: ['venueElements'],
         queryFn: () => getVenueElements(),
+        staleTime: 5 * 60_000,
     });
 
     const createMutation = useMutation({
