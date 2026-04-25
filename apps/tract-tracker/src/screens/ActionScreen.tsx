@@ -304,6 +304,15 @@ export default function ActionScreen() {
         return () => sub.remove();
     }, [setupDone, syncPending, loadCounts]);
 
+    // Poll every 10s while there are pending taps — catches intermittent connectivity
+    useEffect(() => {
+        if (pendingCount === 0) return;
+        const interval = setInterval(() => {
+            syncPending();
+        }, 10_000);
+        return () => clearInterval(interval);
+    }, [pendingCount, syncPending]);
+
     // Realtime — reload full counts for accuracy (not incremental diff)
     useEffect(() => {
         if (!setupDone) return;
@@ -325,9 +334,11 @@ export default function ActionScreen() {
         setNationalCount(prev => prev + 1);
         if (authState.barangay) setBarangayCount(prev => prev + 1);
 
+        // Read queued count once upfront to avoid race between try/catch branches
+        const queued = await getPending();
         let online = false;
+
         try {
-            // Fetch current DB value
             const { data: fresh, error: fetchErr } = await supabaseAdmin
                 .from('tract_users')
                 .select('tracts_given')
@@ -336,7 +347,6 @@ export default function ActionScreen() {
 
             if (!fetchErr && fresh !== null) {
                 // Online — write DB value + any queued pending + this tap
-                const queued = await getPending();
                 const newCount = (fresh.tracts_given ?? 0) + queued + 1;
 
                 const { error: updateErr } = await supabaseAdmin
@@ -348,7 +358,6 @@ export default function ActionScreen() {
                     online = true;
                     await savePending(0);
                     setPendingCount(0);
-                    // Reload to get accurate regional/national counts
                     loadCounts(); // fire and forget — don't await so UI stays responsive
                 }
             }
@@ -358,7 +367,6 @@ export default function ActionScreen() {
 
         if (!online) {
             // Offline — queue this tap
-            const queued = await getPending();
             await savePending(queued + 1);
             setPendingCount(queued + 1);
         }

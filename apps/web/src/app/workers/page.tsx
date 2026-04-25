@@ -153,6 +153,11 @@ export default function WorkersPage() {
     return String(num).padStart(6, '0');
   };
 
+  const workerMinistryIds = useMemo(() => {
+    if (isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId)) return undefined;
+    return [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(Boolean) as string[];
+  }, [isSuperAdmin, canManageWorkers, workerProfile]);
+
   const {
     workers: allWorkers,
     pagination,
@@ -169,6 +174,7 @@ export default function WorkersPage() {
     searchMode,
     sortField,
     sortDir,
+    ministryIds: workerMinistryIds,
   });
 
   const { ministries: ministries, isLoading: ministriesLoading } =
@@ -780,6 +786,21 @@ export default function WorkersPage() {
             <CardTitle>Access Denied</CardTitle>
             <CardDescription>
               You do not have permission to view this page.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </AppLayout>
+    );
+  }
+
+  if (workersError) {
+    return (
+      <AppLayout>
+        <Card>
+          <CardHeader>
+            <CardTitle>Failed to load workers</CardTitle>
+            <CardDescription>
+              {(workersError as any)?.message || "An unexpected error occurred. Please refresh the page."}
             </CardDescription>
           </CardHeader>
         </Card>

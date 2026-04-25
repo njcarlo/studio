@@ -83,7 +83,7 @@ function AnimatedDigit({ digit, fontSize, color }: AnimatedDigitProps) {
     }, [digit]);
 
     const charWidth = fontSize * 0.62;
-    const charHeight = fontSize * 1.3;
+    const charHeight = fontSize * 1.5;
 
     return (
         <View style={[styles.digitContainer, { width: charWidth, height: charHeight }]}>
@@ -103,6 +103,7 @@ const styles = StyleSheet.create({
     row: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginVertical: 4,
     },
     digitContainer: {
         overflow: 'hidden',

@@ -60,6 +60,7 @@ const linking: LinkingOptions<RootStackParamList> = {
     config: {
         screens: {
             Auth: 'auth',
+            Countdown: 'countdown',
             Main: {
                 screens: {
                     Action: 'action',
@@ -67,6 +68,7 @@ const linking: LinkingOptions<RootStackParamList> = {
                 }
             },
             AdminDashboard: 'admin-dashboard',
+            LiveBoard: 'live-board',
         },
     },
 };

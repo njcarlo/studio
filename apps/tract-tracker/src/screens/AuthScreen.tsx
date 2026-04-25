@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     ScrollView, Modal, FlatList, ImageBackground, Alert,
-    ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Image,
+    ActivityIndicator, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { supabaseAdmin } from '../supabase';
 
 // adding fonts
 import {
@@ -74,6 +75,8 @@ export default function AuthScreen() {
     const [showRegionModal, setShowRegionModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [isForgotLoading, setIsForgotLoading] = useState(false);
 
     const { signIn, signUp } = useAuth();
 
@@ -88,6 +91,41 @@ export default function AuthScreen() {
     });
 
     if (!fontsLoaded) return null;
+
+    const handleForgotPassword = async () => {
+        if (!email.trim()) {
+            Alert.alert('Enter your email', 'Please type your email address above first, then tap Forgot Password.');
+            return;
+        }
+        setIsForgotLoading(true);
+        try {
+            const { data: existing } = await supabaseAdmin
+                .from('tract_users')
+                .select('id')
+                .eq('email', email.trim().toLowerCase())
+                .single();
+
+            if (!existing) {
+                Alert.alert('Not found', 'No account found with that email address.');
+                return;
+            }
+            // Generate a simple temp password
+            const tempPassword = Math.random().toString(36).slice(-8);
+            await supabaseAdmin
+                .from('tract_users')
+                .update({ password: tempPassword })
+                .eq('email', email.trim().toLowerCase());
+
+            Alert.alert(
+                'Temporary Password Set',
+                `Your temporary password is:\n\n${tempPassword}\n\nPlease log in and change it immediately.`,
+            );
+        } catch (e: any) {
+            Alert.alert('Error', e.message || 'Something went wrong. Please try again.');
+        } finally {
+            setIsForgotLoading(false);
+        }
+    };
 
     const handleAuth = async () => {
         if (!email || !password) {
@@ -177,14 +215,39 @@ export default function AuthScreen() {
                                 autoCapitalize="none"
                             />
 
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Password"
-                                placeholderTextColor="#999"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
+                            <View style={styles.passwordRow}>
+                                <TextInput
+                                    style={styles.passwordInput}
+                                    placeholder="Password"
+                                    placeholderTextColor="#999"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry={!showPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeBtn}
+                                    onPress={() => setShowPassword(v => !v)}
+                                >
+                                    <Ionicons
+                                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                                        size={20}
+                                        color="#999"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            {screen === 'login' && (
+                                <TouchableOpacity
+                                    style={styles.forgotBtn}
+                                    onPress={handleForgotPassword}
+                                    disabled={isForgotLoading}
+                                >
+                                    {isForgotLoading
+                                        ? <ActivityIndicator size="small" color="#C9A84C" />
+                                        : <Text style={styles.forgotText}>Forgot your password?</Text>
+                                    }
+                                </TouchableOpacity>
+                            )}
 
                             {screen === 'signup' && (
                                 <>
@@ -373,6 +436,33 @@ const styles = StyleSheet.create({
         fontSize: 15,
         marginBottom: 14,
         color: '#1a1a2e',
+    },
+    passwordRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 10,
+        marginBottom: 8,
+    },
+    passwordInput: {
+        flex: 1,
+        padding: 14,
+        fontSize: 15,
+        color: '#1a1a2e',
+    },
+    eyeBtn: {
+        paddingHorizontal: 14,
+        paddingVertical: 14,
+    },
+    forgotBtn: {
+        alignSelf: 'flex-end',
+        marginBottom: 14,
+        paddingVertical: 2,
+    },
+    forgotText: {
+        color: '#C9A84C',
+        fontSize: 13,
+        textDecorationLine: 'underline',
     },
     label: { fontSize: 13, color: '#444', marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
     dropdownTrigger: {
