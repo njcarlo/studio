@@ -6,19 +6,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabaseAdmin } from '../supabase';
 
-// adding fonts
-import {
-  Inter_400Regular,
-  Inter_700Bold
-} from '@expo-google-fonts/inter';
-import { useFonts } from 'expo-font';
-
-// font loading
-const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_700Bold,
-});
-
 // image import
 const Ntgd = require("../../assets/ntgd.png");
 const Obpng =  require("../../assets/obpng.png");
@@ -229,8 +216,8 @@ const styles = StyleSheet.create({
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     // Image of national tract distribution and logo
-    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -10 },
-    ob: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -20 },
+    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -20 },
+    ob: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -30 },
 
     // Top bar
     topBar: {

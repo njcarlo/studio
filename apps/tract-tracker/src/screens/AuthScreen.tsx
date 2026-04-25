@@ -331,8 +331,8 @@ const styles = StyleSheet.create({
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,60,0.75)' },
 
     // Image of national tract distribution and logo
-    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -10 },
-    bo: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -20 },
+    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -20 },
+    bo: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -30 },
 
     // ── Landing ──
     landingSafe: { flex: 1, justifyContent: 'space-between' },

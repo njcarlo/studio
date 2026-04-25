@@ -15,17 +15,7 @@ import { supabaseAdmin } from '../supabase';
 const Ntgd = require("../../assets/ntgd.png");
 const Obpng =  require("../../assets/obpng.png");
 
-// adding fonts
-import {
-  Inter_400Regular,
-  Inter_700Bold
-} from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
-
-const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_700Bold,
-});
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
@@ -72,6 +62,7 @@ const BARANGAYS = [
 
 // ── Setup Screen ─────────────────────────────────────────────────────────────
 function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
+
     const { user, authState, setAuthState } = useAuth();
     const [region, setRegion] = useState(authState.region || '');
     const [subRegion, setSubRegion] = useState(authState.subRegion || '');
