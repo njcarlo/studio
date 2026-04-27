@@ -529,9 +529,9 @@ const styles = StyleSheet.create({
     title: { color: '#C9A84C', fontSize: 28, textAlign: 'center', marginTop: 8, marginBottom: 8, paddingHorizontal: 20, fontFamily: 'Anton_400Regular' },
 
     regionalBlock: { alignItems: 'center', marginBottom: 20, paddingHorizontal: 20 },
-    locationLabel: { color: '#fff', fontSize: 18, marginBottom: 4, fontFamily: 'Anton_400Regular' },
-    regionalCount: { color: '#fff', fontSize: 64, letterSpacing: -2, fontFamily: 'Anton_400Regular' },
-    regionalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
+    locationLabel: { color: '#fff', fontSize: 18, marginBottom: 12, fontFamily: 'Anton_400Regular' },
+    regionalCount: { color: '#fff', fontSize: 64, lineHeight: 76, letterSpacing: -2, fontFamily: 'Anton_400Regular' },
+    regionalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
 
     card: {
         marginHorizontal: 24,
