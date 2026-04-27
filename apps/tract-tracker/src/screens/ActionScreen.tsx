@@ -529,9 +529,9 @@ const styles = StyleSheet.create({
     title: { color: '#C9A84C', fontSize: 28, textAlign: 'center', marginTop: 8, marginBottom: 8, paddingHorizontal: 20, fontFamily: 'Anton_400Regular' },
 
     regionalBlock: { alignItems: 'center', marginBottom: 20, paddingHorizontal: 20 },
-    locationLabel: { color: '#fff', fontSize: 18, marginBottom: 12, fontFamily: 'Anton_400Regular' },
-    regionalCount: { color: '#fff', fontSize: 64, lineHeight: 76, letterSpacing: -2, fontFamily: 'Anton_400Regular' },
-    regionalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
+    locationLabel: { color: '#fff', fontSize: 18, marginBottom: 16, fontFamily: 'Anton_400Regular' },
+    regionalCount: { color: '#fff', fontSize: 64, lineHeight: 80, letterSpacing: -2, fontFamily: 'Anton_400Regular', includeFontPadding: false },
+    regionalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 6 },
 
     card: {
         marginHorizontal: 24,
@@ -546,8 +546,8 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 10,
     },
-    cardTitle: { fontSize: 14, color: '#1a1a2e', marginBottom: 8, fontFamily: 'Anton_400Regular' },
-    cardCount: { fontSize: 64, color: '#1a1a2e', lineHeight: 72, marginBottom: 16, fontFamily: 'Anton_400Regular' },
+    cardTitle: { fontSize: 14, color: '#1a1a2e', marginBottom: 12, fontFamily: 'Anton_400Regular' },
+    cardCount: { fontSize: 64, color: '#1a1a2e', lineHeight: 80, marginBottom: 16, fontFamily: 'Anton_400Regular', includeFontPadding: false },
     plusBtn: {
         backgroundColor: '#C9A84C', borderRadius: 12, paddingVertical: 14,
         width: '100%', alignItems: 'center',
