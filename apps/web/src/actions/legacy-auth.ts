@@ -381,3 +381,29 @@ export async function completeFirstLoginPasswordChange(
     return { success: true, email: finalEmail };
   });
 }
+
+/**
+ * Simple Worker ID → email lookup for the login page.
+ * No legacy password logic — just resolves the email so Supabase can sign in.
+ */
+export async function getWorkerEmail(workerId: string): Promise<{ success: boolean; email?: string; error?: string }> {
+  try {
+    const worker = await prisma.worker.findFirst({
+      where: { workerId },
+      select: { email: true, status: true },
+    });
+
+    if (!worker) {
+      return { success: false, error: "Worker ID not found." };
+    }
+
+    if (worker.status !== "Active") {
+      return { success: false, error: "Your account is inactive. Please contact your administrator." };
+    }
+
+    return { success: true, email: worker.email };
+  } catch (error: any) {
+    console.error("getWorkerEmail error:", error);
+    return { success: false, error: "Could not look up Worker ID. Please try again." };
+  }
+}
