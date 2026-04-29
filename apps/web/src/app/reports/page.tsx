@@ -1318,15 +1318,9 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="summary" className="space-y-6">
+        <Tabs defaultValue="attendance" className="space-y-6">
           <div className="w-full overflow-x-auto pb-1 scrollbar-hide">
             <TabsList className="inline-flex w-auto min-w-full sm:min-w-0 justify-start h-11 bg-muted/50 p-1">
-              <TabsTrigger
-                value="summary"
-                className="px-4 py-2 text-xs sm:text-sm"
-              >
-                Summary
-              </TabsTrigger>
               <TabsTrigger
                 value="attendance"
                 className="px-4 py-2 text-xs sm:text-sm"
@@ -1353,10 +1347,6 @@ export default function ReportsPage() {
               </TabsTrigger>
             </TabsList>
           </div>
-
-          <TabsContent value="summary">
-            <SummaryDashboard />
-          </TabsContent>
 
           <TabsContent value="attendance" className="space-y-6">
             <DateRangeToolbar {...dr} onExport={() => {}} />

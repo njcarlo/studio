@@ -326,80 +326,85 @@ const WeekView = ({
     rooms?.find((r) => r.id === roomId)?.name || "Unknown Room";
 
   return (
-    <Card>
-      <CardContent className="p-0 overflow-x-auto">
-        <div className="grid grid-cols-7 divide-x border rounded-lg overflow-hidden min-w-[700px]">
-          {weekDates.map((day) => {
-            const dayBookings = weekBookings
-              .filter((b) => b.start && isSameDay(toJsDate(b.start), day))
-              .sort(
-                (a, b) =>
-                  toJsDate(a.start).getTime() - toJsDate(b.start).getTime(),
-              );
+    <div className="rounded-xl border bg-card shadow-sm overflow-hidden min-w-[700px]">
+      <div className="grid grid-cols-7 divide-x">
+        {weekDates.map((day) => {
+          const dayBookings = weekBookings
+            .filter((b) => b.start && isSameDay(toJsDate(b.start), day))
+            .sort((a, b) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime());
 
-            return (
-              <div key={day.toString()} className="flex flex-col min-h-64">
-                <div
+          return (
+            <div key={day.toString()} className="flex flex-col">
+              {/* Day header */}
+              <button
+                onClick={() => onDateSelect(day)}
+                className={cn(
+                  "py-3 text-center border-b transition-colors hover:bg-accent/30",
+                  isToday(day) && "bg-primary/5",
+                )}
+              >
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {format(day, "EEE")}
+                </p>
+                <p
                   className={cn(
-                    "text-center p-2 border-b font-semibold",
-                    isToday(day) && "bg-primary/10 text-primary",
+                    "text-2xl font-bold mt-0.5 mx-auto h-10 w-10 flex items-center justify-center rounded-full transition-colors",
+                    isToday(day) && "bg-primary text-primary-foreground",
+                    !isToday(day) && "text-foreground",
                   )}
                 >
-                  <button onClick={() => onDateSelect(day)}>
-                    <p className="text-sm">{format(day, "EEE")}</p>
-                    <p className="text-2xl">{format(day, "d")}</p>
-                  </button>
-                </div>
-                <div className="p-2 space-y-2 flex-grow">
-                  {dayBookings.map((booking) => {
-                    const statusColor =
-                      booking.status === "Approved"
-                        ? "bg-green-100 border-green-300"
-                        : booking.status.startsWith("Pending")
-                          ? "bg-yellow-100 border-yellow-300"
-                          : "bg-red-100 border-red-300";
-                    return (
-                      <TooltipProvider key={booking.id}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              onClick={() => onBookingClick(booking)}
-                              className={cn(
-                                "p-1.5 rounded-md border cursor-pointer hover:opacity-80 transition-opacity",
-                                statusColor,
-                              )}
-                            >
-                              <p className="text-xs font-bold truncate">
-                                {booking.title}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground truncate">
-                                {getRoomName(booking.roomId)}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground truncate">
-                                {format(toJsDate(booking.start), "p")}
-                              </p>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="font-bold">{booking.title}</p>
-                            <p>Room: {getRoomName(booking.roomId)}</p>
-                            <p>
-                              {format(toJsDate(booking.start), "p")} -{" "}
-                              {format(toJsDate(booking.end), "p")}
+                  {format(day, "d")}
+                </p>
+              </button>
+
+              {/* Bookings */}
+              <div className="p-2 space-y-1.5 flex-grow min-h-[200px]">
+                {dayBookings.map((booking) => {
+                  const pill =
+                    booking.status === "Approved"
+                      ? "bg-green-100 text-green-800 border-green-200"
+                      : booking.status.startsWith("Pending")
+                        ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                        : "bg-red-100 text-red-800 border-red-200";
+                  return (
+                    <TooltipProvider key={booking.id}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            onClick={() => onBookingClick(booking)}
+                            className={cn(
+                              "p-2 rounded-lg border cursor-pointer hover:opacity-80 transition-opacity",
+                              pill,
+                            )}
+                          >
+                            <p className="text-xs font-semibold truncate">{booking.title}</p>
+                            <p className="text-[10px] opacity-70 truncate mt-0.5">
+                              {getRoomName(booking.roomId)}
                             </p>
-                            <p>Status: {booking.status}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    );
-                  })}
-                </div>
+                            <p className="text-[10px] opacity-70 truncate">
+                              {format(toJsDate(booking.start), "p")}
+                            </p>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-bold">{booking.title}</p>
+                          <p>Room: {getRoomName(booking.roomId)}</p>
+                          <p>
+                            {format(toJsDate(booking.start), "p")} –{" "}
+                            {format(toJsDate(booking.end), "p")}
+                          </p>
+                          <p>Status: {booking.status}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
@@ -422,87 +427,97 @@ const MonthView = ({
   const monthDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  return (
-    <Card>
-      <CardContent className="p-0 overflow-x-auto">
-        <div className="min-w-[700px]">
-          <div className="grid grid-cols-7 text-center text-sm font-semibold text-muted-foreground border-b">
-            {weekDays.map((day) => (
-              <div key={day} className="py-2 border-r last:border-r-0">
-                {day}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7">
-            {monthDays.map((day, index) => {
-              const dayBookings = bookings
-                .filter((b) => b.start && isSameDay(toJsDate(b.start), day))
-                .sort(
-                  (a, b) =>
-                    toJsDate(a.start).getTime() - toJsDate(b.start).getTime(),
-                );
+  // Cycle through a palette of distinct colors for bookings
+  const colorPalette = [
+    "bg-blue-400 hover:bg-blue-500 text-white",
+    "bg-emerald-400 hover:bg-emerald-500 text-white",
+    "bg-orange-400 hover:bg-orange-500 text-white",
+    "bg-violet-400 hover:bg-violet-500 text-white",
+    "bg-rose-400 hover:bg-rose-500 text-white",
+    "bg-cyan-400 hover:bg-cyan-500 text-white",
+    "bg-amber-400 hover:bg-amber-500 text-white",
+  ];
 
-              return (
-                <div
-                  key={day.toString()}
-                  className={cn(
-                    "h-36 p-1.5 flex flex-col border-t border-r",
-                    index % 7 === 0 && "border-l",
-                    !isSameMonth(day, selectedDate) &&
-                      "bg-muted/50 text-muted-foreground",
-                    "cursor-pointer hover:bg-accent/50",
-                  )}
-                  onClick={() => onDateSelect(day)}
-                >
-                  <span
-                    className={cn(
-                      "self-end font-medium",
-                      isToday(day) &&
-                        "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center",
-                    )}
-                  >
-                    {format(day, "d")}
-                  </span>
-                  <div className="flex-grow space-y-1 mt-1 overflow-hidden">
-                    {dayBookings.slice(0, 3).map((booking) => {
-                      const statusColor =
-                        booking.status === "Approved"
-                          ? "bg-green-500"
-                          : booking.status.startsWith("Pending")
-                            ? "bg-yellow-500"
-                            : "bg-red-500";
-                      return (
-                        <div
-                          key={booking.id}
-                          className="flex items-center gap-1.5 w-full hover:bg-black/5 cursor-pointer rounded px-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onBookingClick(booking);
-                          }}
-                        >
-                          <div
-                            className={cn(
-                              "h-1.5 w-1.5 rounded-full flex-shrink-0",
-                              statusColor,
-                            )}
-                          />
-                          <p className="text-xs truncate">{booking.title}</p>
-                        </div>
-                      );
-                    })}
-                    {dayBookings.length > 3 && (
-                      <p className="text-xs text-muted-foreground">
-                        +{dayBookings.length - 3} more
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+  // Assign a stable color per booking id
+  const getColor = (id: string) => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    return colorPalette[Math.abs(hash) % colorPalette.length];
+  };
+
+  return (
+    <div className="rounded-xl border bg-card shadow-sm overflow-hidden min-w-[700px]">
+      {/* Day-of-week header */}
+      <div className="grid grid-cols-7 border-b bg-background">
+        {weekDays.map((day) => (
+          <div
+            key={day}
+            className="py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground border-r last:border-r-0"
+          >
+            {day}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div className="grid grid-cols-7 divide-x divide-y">
+        {monthDays.map((day) => {
+          const dayBookings = bookings
+            .filter((b) => b.start && isSameDay(toJsDate(b.start), day))
+            .sort((a, b) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime());
+
+          const isCurrentMonth = isSameMonth(day, selectedDate);
+
+          return (
+            <div
+              key={day.toString()}
+              onClick={() => onDateSelect(day)}
+              className={cn(
+                "min-h-[110px] p-1.5 flex flex-col cursor-pointer transition-colors",
+                !isCurrentMonth && "bg-muted/30",
+                isCurrentMonth && "hover:bg-accent/20",
+              )}
+            >
+              {/* Date number */}
+              <div className="flex justify-end px-1 mb-1">
+                <span
+                  className={cn(
+                    "text-sm font-medium h-6 w-6 flex items-center justify-center rounded-full",
+                    !isCurrentMonth && "text-muted-foreground/40",
+                    isCurrentMonth && !isToday(day) && "text-foreground",
+                    isToday(day) && "bg-primary text-primary-foreground font-bold text-xs",
+                  )}
+                >
+                  {format(day, "d")}
+                </span>
+              </div>
+
+              {/* Event bars */}
+              <div className="flex-grow space-y-0.5 overflow-hidden">
+                {dayBookings.slice(0, 4).map((booking) => (
+                  <div
+                    key={booking.id}
+                    onClick={(e) => { e.stopPropagation(); onBookingClick(booking); }}
+                    className={cn(
+                      "w-full text-[11px] font-medium px-2 py-0.5 rounded truncate cursor-pointer transition-colors",
+                      getColor(booking.id),
+                    )}
+                    title={booking.title}
+                  >
+                    {booking.title}
+                  </div>
+                ))}
+                {dayBookings.length > 4 && (
+                  <p className="text-[10px] text-muted-foreground font-medium px-1">
+                    +{dayBookings.length - 4} more
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
@@ -628,37 +643,43 @@ export default function ReservationCalendarPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+        {/* Left: Today + Book */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrev}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" onClick={handleToday}>
+          <Button variant="outline" onClick={handleToday} className="h-9 px-4 text-sm font-medium">
             Today
           </Button>
-          <Button variant="outline" size="icon" onClick={handleNext}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <h2 className="text-xl font-semibold whitespace-nowrap">
-            {dateRangeDisplay}
-          </h2>
+          {canCreateRoomReservation && (
+            <Button onClick={() => router.push("/reservations/new")} className="h-9 gap-2">
+              <PlusCircle className="h-4 w-4" /> Book a Room
+            </Button>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Right: month/year + nav + view switcher */}
+        <div className="flex items-center gap-3">
           <Tabs
             value={view}
             onValueChange={(v) => setView(v as "month" | "week" | "day")}
           >
-            <TabsList>
-              <TabsTrigger value="month">Month</TabsTrigger>
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="day">Day</TabsTrigger>
+            <TabsList className="h-9">
+              <TabsTrigger value="month" className="text-sm px-4">Month</TabsTrigger>
+              <TabsTrigger value="week" className="text-sm px-4">Week</TabsTrigger>
+              <TabsTrigger value="day" className="text-sm px-4">Day</TabsTrigger>
             </TabsList>
           </Tabs>
-          {canCreateRoomReservation && (
-            <Button onClick={() => router.push("/reservations/new")}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Book a Room
+          <div className="flex items-center gap-1">
+            <h2 className="text-base font-semibold tracking-tight whitespace-nowrap mr-1">
+              {dateRangeDisplay}
+            </h2>
+            <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-          )}
+            <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -703,7 +724,7 @@ export default function ReservationCalendarPage() {
         </div>
       )}
 
-      <div className="mt-4">
+      <div className="mt-2 overflow-x-auto">
         {isLoading ? (
           <div className="flex justify-center py-10">
             <LoaderCircle className="h-8 w-8 animate-spin" />

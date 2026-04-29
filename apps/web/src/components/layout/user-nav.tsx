@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
+import { Avatar, AvatarFallback } from "@studio/ui";
 import { Button } from "@studio/ui";
 import {
   DropdownMenu,
@@ -17,11 +17,11 @@ import { supabase } from "@studio/database";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useImpersonation } from "@/hooks/use-impersonation";
-import { LogOut } from "lucide-react";
+import { LogOut, UserCircle } from "lucide-react";
 
 export function UserNav() {
   const { user } = useAuthStore();
-  const { workerProfile } = useUserRole();
+  const { workerProfile, allRoles, isSuperAdmin, isMinistryHead } = useUserRole();
   const { toast } = useToast();
   const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
 
@@ -58,17 +58,19 @@ export function UserNav() {
       ? `${workerProfile.firstName} ${workerProfile.lastName}`
       : user?.email?.split("@")[0] || "User";
 
-  const fallbackChar = (workerProfile?.firstName || user?.email || "U")
-    .charAt(0)
-    .toUpperCase();
+  // Resolve role name from ID
+  const roleName = isSuperAdmin
+    ? "Super Admin"
+    : allRoles?.find((r: any) => r.id === workerProfile?.roleId)?.name || "Worker";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={workerProfile?.avatarUrl} alt={displayName} />
-            <AvatarFallback>{fallbackChar}</AvatarFallback>
+            <AvatarFallback>
+              <UserCircle className="h-6 w-6 text-muted-foreground" />
+            </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
@@ -77,7 +79,7 @@ export function UserNav() {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{displayName}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              Role: {workerProfile?.roleId || "N/A"}
+              {roleName}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -89,7 +91,9 @@ export function UserNav() {
               <span>Exit Impersonation</span>
             </DropdownMenuItem>
           ) : (
-            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/profile">Profile</Link>
+            </DropdownMenuItem>
           )}
           <DropdownMenuItem asChild>
             <Link href="/workers/my-qr">My QR Code</Link>

@@ -13,7 +13,6 @@ import {
   HeartHandshake,
   BarChart3,
   UtensilsCrossed,
-  Building2,
   Package,
   ExternalLink,
 } from "lucide-react";
@@ -74,17 +73,6 @@ type NavItem = {
 
 const allNavItems: NavItem[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  {
-    href: "/schedule",
-    icon: CalendarDays,
-    label: "Service Schedule",
-    permissionKey: "canManageSchedule",
-    subItems: [
-      { href: "/schedule", label: "Schedules" },
-      { href: "/schedule/templates", label: "Templates" },
-      { href: "/schedule/schedulers", label: "Manage Schedulers", permissionKey: "canAssignSchedulers" },
-    ],
-  },
   {
     href: "/reservations",
     icon: CalendarDays,
@@ -166,19 +154,7 @@ const allNavItems: NavItem[] = [
     permissionKey: "canViewReports",
   },
   {
-    href: "/venue",
-    icon: Building2,
-    label: "Venue",
-    subItems: [
-      {
-        href: "/venue/command-center",
-        label: "Command Center",
-        permissionKey: "canManageVenueAssistance",
-      },
-    ],
-  },
-  {
-    href: "https://cog-inventory.vercel.app/dashboard",
+    href: "/inventory",
     icon: Package,
     label: "Inventory",
     permissionKey: "canAccessInventory",
@@ -214,11 +190,6 @@ const allNavItems: NavItem[] = [
         permissionKey: "canManageFacilities",
       },
       {
-        href: "/settings/venue-elements",
-        label: "Venue Elements",
-        permissionKey: "canManageFacilities",
-      },
-      {
         href: "/settings/transaction-logs",
         label: "Transaction Logs",
         permissionKey: "canViewTransactionLogs",
@@ -227,11 +198,6 @@ const allNavItems: NavItem[] = [
         href: "/settings/ors-sync",
         label: "ORS Legacy Sync",
         permissionKey: "canManageOrsSync",
-      },
-      {
-        href: "/settings/venue-assistance",
-        label: "Venue Assistance",
-        anyPermissionKeys: ["canManageVenueAssistance", "canManageOwnMinistryAssistance"],
       },
     ],
   },
@@ -245,7 +211,7 @@ export function Nav({
   className?: string;
 }) {
   const userRole = useUserRole();
-  const { isLoading, needsSeeding, workerProfile, isSuperAdmin } = userRole;
+  const { isLoading, needsSeeding, workerProfile, isSuperAdmin, isMinistryHead } = userRole;
   const searchParams = useSearchParams();
 
   // Build the full current URL (path + query) for accurate active matching
@@ -290,6 +256,8 @@ export function Nav({
     // Settings: show only if user has access to at least one sub-item
     if (item.href === "/settings") {
       if (needsSeeding) return true; // Only show for seeding, not for missing role
+      // Hide Settings for ministry heads (not super admin)
+      if (isMinistryHead && !isSuperAdmin) return false;
       if (item.subItems && item.subItems.length > 0) {
         return item.subItems.some((sub) => hasAccess(sub.permissionKey, sub.anyPermissionKeys));
       }

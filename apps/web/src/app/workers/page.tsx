@@ -929,10 +929,6 @@ export default function WorkersPage() {
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-3">
                                 <Avatar>
-                                  <AvatarImage
-                                    src={worker.avatarUrl}
-                                    alt={`${worker.firstName} ${worker.lastName}`}
-                                  />
                                   <AvatarFallback>
                                     {worker.firstName?.charAt(0)}
                                   </AvatarFallback>
@@ -1182,10 +1178,6 @@ export default function WorkersPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarImage
-                            src={worker.avatarUrl}
-                            alt={`${worker.firstName} ${worker.lastName}`}
-                          />
                           <AvatarFallback>
                             {worker.firstName?.charAt(0)}
                           </AvatarFallback>
