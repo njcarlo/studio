@@ -19,7 +19,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.475.0",
-    "next": "^15.5.12",
+    "next": "^9.3.3",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-router-dom": "^7.1.1",
