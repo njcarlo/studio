@@ -52,6 +52,7 @@ export function WorkerForm({
     minorMinistryId: "",
     birthDate: "",
     isSeniorPastor: false,
+    isPastor: false,
     address: "",
     startMonth: "",
     startYear: "",
@@ -74,6 +75,7 @@ export function WorkerForm({
         minorMinistryId: worker.minorMinistryId || "",
         birthDate: worker.birthDate || "",
         isSeniorPastor: worker.isSeniorPastor ?? false,
+        isPastor: (worker as any).isPastor ?? false,
         address: worker.address || "",
         startMonth: worker.startMonth || "",
         startYear: worker.startYear || "",
@@ -101,6 +103,7 @@ export function WorkerForm({
         minorMinistryId: "",
         birthDate: "",
         isSeniorPastor: false,
+        isPastor: false,
         address: "",
         startMonth: "",
         startYear: "",
@@ -267,12 +270,28 @@ export function WorkerForm({
                 id="isSeniorPastor"
                 checked={formData.isSeniorPastor ?? false}
                 onCheckedChange={(checked) =>
-                  setFormData({ ...formData, isSeniorPastor: checked === true })
+                  setFormData({ ...formData, isSeniorPastor: checked === true, isPastor: checked === true ? false : (formData as any).isPastor } as any)
                 }
                 disabled={!canManage}
               />
               <Label htmlFor="isSeniorPastor" className="font-normal cursor-pointer">
                 This worker is a Senior Pastor
+              </Label>
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Pastor</Label>
+            <div className="col-span-3 flex items-center gap-2">
+              <Checkbox
+                id="isPastor"
+                checked={(formData as any).isPastor ?? false}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isPastor: checked === true, isSeniorPastor: checked === true ? false : formData.isSeniorPastor } as any)
+                }
+                disabled={!canManage}
+              />
+              <Label htmlFor="isPastor" className="font-normal cursor-pointer">
+                This worker is a Pastor
               </Label>
             </div>
           </div>

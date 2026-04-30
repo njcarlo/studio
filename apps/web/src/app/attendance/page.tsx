@@ -178,7 +178,7 @@ export default function AttendancePage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="font-headline">This Week's Personal Log</CardTitle>
-                        <CardDescription>Your clock-in and clock-out records for this week.</CardDescription>
+                        <CardDescription>Your time-in and time-out records for this week.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isLoading && <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />}
@@ -198,7 +198,7 @@ export default function AttendancePage() {
                                             {log.type === 'Clock In' ? <LogIn className="h-5 w-5" /> : <LogOut className="h-5 w-5" />}
                                         </div>
                                         <div>
-                                            <p className="font-semibold">{log.type}</p>
+                                            <p className="font-semibold">{log.type === 'Clock In' ? 'Time In' : 'Time Out'}</p>
                                             <p className="text-sm text-muted-foreground">{logTime ? format(logTime, 'EEE, p') : 'Just now'}</p>
                                         </div>
                                     </div>
@@ -214,7 +214,7 @@ export default function AttendancePage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-lg">Manual Attendance</CardTitle>
-                                <CardDescription>Manually clock in or clock out workers.</CardDescription>
+                                <CardDescription>Manually time in or time out workers.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="relative mb-6 max-w-sm">
@@ -241,7 +241,7 @@ export default function AttendancePage() {
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end gap-2">
                                                             <Button size="sm" variant="outline" onClick={async () => {
-                                                                await createAttendanceRecord({ workerProfileId: w.id, type: 'Clock In' });
+                                                                await createAttendanceRecord({ workerProfileId: w.id, type: 'Clock In' }); // stored as 'Clock In'
                                                                 
                                                                 const hasStub = assignedStubs?.some((s: any) => {
                                                                     const sd = s.date instanceof Date ? s.date : new Date(s.date);
@@ -258,18 +258,18 @@ export default function AttendancePage() {
                                                                             assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || 'System'),
                                                                             stubType: 'daily'
                                                                         });
-                                                                        toast({ title: 'Clocked In', description: `Clocked in ${w.firstName} ${w.lastName} and auto-issued 1 meal stub.` });
+                                                                        toast({ title: 'Timed In', description: `Timed in ${w.firstName} ${w.lastName} and auto-issued 1 meal stub.` });
                                                                     } catch (e) {
-                                                                        toast({ title: 'Clocked In', description: `Clocked in ${w.firstName} ${w.lastName}, but failed to auto-issue meal stub.` });
+                                                                        toast({ title: 'Timed In', description: `Timed in ${w.firstName} ${w.lastName}, but failed to auto-issue meal stub.` });
                                                                     }
                                                                 } else {
-                                                                    toast({ title: 'Clocked In', description: `Clocked in ${w.firstName} ${w.lastName} (meal stub already issued today).` });
+                                                                    toast({ title: 'Timed In', description: `Timed in ${w.firstName} ${w.lastName} (meal stub already issued today).` });
                                                                 }
-                                                            }}>Clock In</Button>
+                                                            }}>Time In</Button>
                                                             <Button size="sm" variant="destructive" onClick={async () => {
                                                                 await createAttendanceRecord({ workerProfileId: w.id, type: 'Clock Out' });
-                                                                toast({ title: 'Clocked Out', description: `Clocked out ${w.firstName} ${w.lastName}.` });
-                                                            }}>Clock Out</Button>
+                                                                toast({ title: 'Timed Out', description: `Timed out ${w.firstName} ${w.lastName}.` });
+                                                            }}>Time Out</Button>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>

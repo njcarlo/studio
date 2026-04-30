@@ -68,6 +68,7 @@ model Worker {
   passwordChangeRequired Boolean              @default(false)
   qrToken                String?
   isSeniorPastor         Boolean              @default(false)
+  isPastor               Boolean              @default(false)
   address                String?
   biometricsId           Int?
   startMonth             String?

@@ -15,6 +15,7 @@ import {
   UtensilsCrossed,
   Package,
   ExternalLink,
+  QrCode,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -73,6 +74,7 @@ type NavItem = {
 
 const allNavItems: NavItem[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/workers/my-qr", icon: QrCode, label: "My QR Code" },
   {
     href: "/reservations",
     icon: CalendarDays,
@@ -134,10 +136,6 @@ const allNavItems: NavItem[] = [
         href: "/workers",
         label: "Worker Management",
         permissionKey: "canManageWorkers",
-      },
-      {
-        href: "/workers/my-qr",
-        label: "My QR Code",
       },
     ],
   },
@@ -264,11 +262,9 @@ export function Nav({
       return false;
     }
 
-    // Workers: show if user can manage workers OR has no permissionKey sub-items (e.g. my-qr)
+    // Workers: show if user can manage workers
     if (item.href === "/workers") {
-      if (hasAccess("canManageWorkers")) return true;
-      // Still show if there are sub-items with no permission requirement (my-qr)
-      return item.subItems?.some((sub) => !sub.permissionKey) ?? false;
+      return hasAccess("canManageWorkers");
     }
 
     return hasAccess(item.permissionKey);

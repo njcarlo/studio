@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@studio/ui";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
-import { LoaderCircle, Clock, Utensils, QrCode, Calendar, Users, AlertCircle } from "lucide-react";
+import { LoaderCircle, Clock, Utensils, Calendar, Users, AlertCircle } from "lucide-react";
 import { useWorkers } from "@/hooks/use-workers";
 import { useAttendance } from "@/hooks/use-attendance";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
@@ -15,9 +15,6 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import { format, subDays } from "date-fns";
-import Link from "next/link";
-import { Button } from "@studio/ui";
-import Image from "next/image";
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -214,15 +211,8 @@ function WorkerDashboard() {
         const d = a.time instanceof Date ? a.time : new Date(a.time?.seconds * 1000);
         return a.type === "Clock In" && format(d, "yyyy-MM-dd") === dateStr;
       }).length ?? 0;
-    return { date: format(date, "EEE, MMM d"), count };
+    return { date: format(date, "d"), month: format(date, "MMM"), count };
   });
-
-  // QR code
-  const [qrSeed, setQrSeed] = React.useState(Date.now());
-  const qrData = activeUserId ? `COG_USER:${activeUserId}:${qrSeed}` : "";
-  const qrUrl = qrData
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`
-    : "";
 
   if (isLoading) {
     return <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>;
@@ -237,7 +227,7 @@ function WorkerDashboard() {
         <StatCard icon={Calendar} label="Total Attendance"   value={(attendanceRecords as any[])?.length ?? 0} subtitle="all time records" iconClass="bg-blue-100 text-blue-600" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* My Clock-Ins Chart */}
         <Card>
           <CardHeader>
@@ -246,32 +236,28 @@ function WorkerDashboard() {
           </CardHeader>
           <CardContent className="h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={last14Days} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <BarChart data={last14Days} margin={{ top: 4, right: 4, left: -20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                <XAxis dataKey="date" fontSize={9} tickLine={false} axisLine={false} interval={1} />
+                <XAxis
+                  dataKey="date"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  label={{ value: last14Days[0]?.month === last14Days[13]?.month ? last14Days[0]?.month : `${last14Days[0]?.month} – ${last14Days[13]?.month}`, position: "insideBottom", offset: -10, fontSize: 11, fill: "#6b7280" }}
+                />
                 <YAxis fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: "12px" }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: "12px" }}
+                  labelFormatter={(label, payload) => {
+                    const item = (payload as any)?.[0]?.payload;
+                    return item ? `${item.month} ${item.date}` : label;
+                  }}
+                />
                 <Bar dataKey="count" name="Clock Ins" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
-        </Card>
-
-        {/* QR Code */}
-        <Card className="flex flex-col items-center justify-center text-center p-6">
-          <QrCode className="h-6 w-6 text-primary mb-2" />
-          <CardTitle className="text-base mb-1">Your QR Code</CardTitle>
-          <CardDescription className="mb-4">Scan at any COG station for attendance or meal stub.</CardDescription>
-          {qrUrl ? (
-            <div className="bg-white p-3 rounded-xl shadow-inner border inline-block">
-              <Image src={qrUrl} alt="QR Code" width={180} height={180} className="rounded-lg" />
-            </div>
-          ) : (
-            <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-          )}
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => setQrSeed(Date.now())}>
-            Refresh QR Code
-          </Button>
         </Card>
       </div>
     </div>

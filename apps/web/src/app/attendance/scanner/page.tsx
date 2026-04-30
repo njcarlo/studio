@@ -239,7 +239,7 @@ export default function QRScannerPage() {
                 type,
             });
 
-            const details = `${type === 'Clock In' ? 'Clocked in' : 'Clocked out'} ${scannedWorker.firstName} ${scannedWorker.lastName}.`;
+            const details = `${type === 'Clock In' ? 'Timed in' : 'Timed out'} ${scannedWorker.firstName} ${scannedWorker.lastName}.`;
             toast({ title: "Success", description: details });
 
             logScanEvent({
@@ -399,8 +399,8 @@ export default function QRScannerPage() {
                                 <div className="w-full border-t pt-4 mt-2">
                                     <p className="text-center text-sm font-medium mb-4">Select attendance action:</p>
                                     <div className="flex justify-center gap-4">
-                                        <Button onClick={() => handleRecordAttendance('Clock In')} size="lg">Clock In</Button>
-                                        <Button variant="destructive" onClick={() => handleRecordAttendance('Clock Out')} size="lg">Clock Out</Button>
+                                        <Button onClick={() => handleRecordAttendance('Clock In')} size="lg">Time In</Button>
+                                        <Button variant="destructive" onClick={() => handleRecordAttendance('Clock Out')} size="lg">Time Out</Button>
                                     </div>
                                 </div>
                                 <Button variant="link" onClick={resetScanner} className="mt-2">Scan another code</Button>

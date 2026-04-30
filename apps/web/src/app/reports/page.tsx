@@ -651,7 +651,7 @@ function AttendanceReport({ dateRange }: { dateRange: DateRange }) {
                               : "border-blue-500 text-blue-700 bg-blue-50",
                           )}
                         >
-                          {log.type}
+                          {log.type === "Clock In" ? "Time In" : "Time Out"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">

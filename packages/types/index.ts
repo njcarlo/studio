@@ -31,6 +31,7 @@ export type Worker = {
     remarks?: string | null;
     biometricsId?: number | null;
     isSeniorPastor?: boolean | null;
+    isPastor?: boolean | null;
     legacyPasswordHash?: string | null;
     passwordChangeRequired?: boolean | null;
     qrToken?: string | null;

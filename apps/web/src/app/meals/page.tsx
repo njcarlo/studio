@@ -571,7 +571,7 @@ function MealsPageContent() {
                               </div>
                             ) : (
                               <div className="flex items-center justify-end gap-1">
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => handleQuickAssign(w)} disabled={hasToday}>Issue</Button>
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => handleQuickAssign(w)} disabled={hasToday}>Assign</Button>
                                 {hasToday && (
                                   <Button size="sm" variant="destructive" className="h-7 px-2 text-[10px]" onClick={() => handleCancelStub(w.id)}>Cancel</Button>
                                 )}

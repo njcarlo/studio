@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Church } from "lucide-react";
+import Image from "next/image";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@studio/database";
@@ -74,7 +74,7 @@ export default function SignUpPage() {
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center items-center">
-            <Church className="h-8 w-8 text-primary" />
+            <Image src="/church-logo.png" alt="COG Logo" width={64} height={64} className="rounded-sm" />
           </div>
           <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
           <CardDescription>Enter your details below to sign up</CardDescription>
