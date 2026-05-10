@@ -9,13 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { supabaseAdmin } from '../supabase';
 
-// adding fonts
-import {
-  Inter_400Regular,
-  Inter_700Bold
-} from '@expo-google-fonts/inter';
-import { useFonts } from 'expo-font';
-
 // image import
 const Ntgd = require("../../assets/ntgd.png");
 const Obpng =  require("../../assets/obpng.png");
@@ -84,14 +77,6 @@ export default function AuthScreen() {
         b.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // font loading
-    const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_700Bold,
-    });
-
-    if (!fontsLoaded) return null;
-
     const handleForgotPassword = async () => {
         if (!email.trim()) {
             Alert.alert('Enter your email', 'Please type your email address above first, then tap Forgot Password.');
@@ -126,6 +111,7 @@ export default function AuthScreen() {
             setIsForgotLoading(false);
         }
     };
+
 
     const handleAuth = async () => {
         if (!email || !password) {

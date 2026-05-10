@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
-    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState, ScrollView,
+    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState, ScrollView, Dimensions, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
 import { supabaseAdmin } from '../supabase';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isSmallDevice = SCREEN_WIDTH < 375 || SCREEN_HEIGHT < 667;
+const isMediumDevice = SCREEN_WIDTH >= 375 && SCREEN_WIDTH < 414;
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
@@ -494,9 +498,24 @@ const styles = StyleSheet.create({
     safe: { flex: 1 },
 
     // ── Setup ──
-    setupContent: { flex: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 32 },
-    greeting: { color: '#fff', fontSize: 26, marginBottom: 24 },
-    fieldLabel: { color: '#fff', fontSize: 13, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+    setupContent: { 
+        flex: 1, 
+        paddingHorizontal: isSmallDevice ? 20 : 28, 
+        paddingTop: isSmallDevice ? 24 : 40, 
+        paddingBottom: 32 
+    },
+    greeting: { 
+        color: '#fff', 
+        fontSize: isSmallDevice ? 22 : 26, 
+        marginBottom: isSmallDevice ? 16 : 24 
+    },
+    fieldLabel: { 
+        color: '#fff', 
+        fontSize: isSmallDevice ? 11 : 13, 
+        marginBottom: 10, 
+        textTransform: 'uppercase', 
+        letterSpacing: 0.5 
+    },
     dropdownTrigger: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10,
@@ -526,19 +545,42 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
     headerBtn: { padding: 8 },
     headerBtnText: { color: '#C9A84C', fontSize: 14 },
-    title: { color: '#C9A84C', fontSize: 28, textAlign: 'center', marginTop: 8, marginBottom: 8, paddingHorizontal: 20, fontFamily: 'Anton_400Regular' },
+    title: { 
+        color: '#C9A84C', 
+        fontSize: isSmallDevice ? 22 : isMediumDevice ? 24 : 28, 
+        textAlign: 'center', 
+        marginTop: 8, 
+        marginBottom: 8, 
+        paddingHorizontal: 20, 
+        fontFamily: 'Anton_400Regular',
+        lineHeight: isSmallDevice ? 26 : isMediumDevice ? 28 : 32,
+    },
 
-    regionalBlock: { alignItems: 'center', marginBottom: 20, paddingHorizontal: 20 },
-    locationLabel: { color: '#fff', fontSize: 18, marginBottom: 16, fontFamily: 'Anton_400Regular' },
-    regionalCount: { color: '#fff', fontSize: 64, lineHeight: 80, letterSpacing: -2, fontFamily: 'Anton_400Regular', includeFontPadding: false },
-    regionalSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 6 },
+    regionalBlock: { alignItems: 'center', marginBottom: isSmallDevice ? 12 : 20, paddingHorizontal: 20 },
+    locationLabel: { 
+        color: '#fff', 
+        fontSize: isSmallDevice ? 15 : isMediumDevice ? 16 : 18, 
+        marginBottom: 4, 
+        fontFamily: 'Anton_400Regular' 
+    },
+    regionalCount: { 
+        color: '#fff', 
+        fontSize: isSmallDevice ? 48 : isMediumDevice ? 56 : 64, 
+        letterSpacing: -2, 
+        fontFamily: 'Anton_400Regular',
+        lineHeight: isSmallDevice ? 56 : isMediumDevice ? 64 : 72,
+    },
+    regionalSub: { 
+        color: 'rgba(255,255,255,0.7)', 
+        fontSize: isSmallDevice ? 11 : 13 
+    },
 
     card: {
-        marginHorizontal: 24,
+        marginHorizontal: isSmallDevice ? 16 : 24,
         backgroundColor: '#fff',
-        borderRadius: 24,
-        paddingVertical: 28,
-        paddingHorizontal: 24,
+        borderRadius: isSmallDevice ? 20 : 24,
+        paddingVertical: isSmallDevice ? 20 : 28,
+        paddingHorizontal: isSmallDevice ? 16 : 24,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
@@ -546,26 +588,64 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 10,
     },
-    cardTitle: { fontSize: 14, color: '#1a1a2e', marginBottom: 12, fontFamily: 'Anton_400Regular' },
-    cardCount: { fontSize: 64, color: '#1a1a2e', lineHeight: 80, marginBottom: 16, fontFamily: 'Anton_400Regular', includeFontPadding: false },
+    cardTitle: { 
+        fontSize: isSmallDevice ? 12 : 14, 
+        color: '#1a1a2e', 
+        marginBottom: 8, 
+        fontFamily: 'Anton_400Regular' 
+    },
+    cardCount: { 
+        fontSize: isSmallDevice ? 48 : isMediumDevice ? 56 : 64, 
+        color: '#1a1a2e', 
+        lineHeight: isSmallDevice ? 56 : isMediumDevice ? 64 : 72, 
+        marginBottom: isSmallDevice ? 12 : 16, 
+        fontFamily: 'Anton_400Regular' 
+    },
     plusBtn: {
-        backgroundColor: '#C9A84C', borderRadius: 12, paddingVertical: 14,
-        width: '100%', alignItems: 'center',
-        shadowColor: '#C9A84C', shadowOpacity: 0.4, shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 }, elevation: 5,
+        backgroundColor: '#C9A84C', 
+        borderRadius: 12, 
+        paddingVertical: isSmallDevice ? 12 : 14,
+        width: '100%', 
+        alignItems: 'center',
+        shadowColor: '#C9A84C', 
+        shadowOpacity: 0.4, 
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 }, 
+        elevation: 5,
     },
     plusBtnDisabled: { opacity: 0.6 },
-    plusBtnText: { fontSize: 22, color: '#1a1a2e', fontFamily: 'Anton_400Regular' },
+    plusBtnText: { 
+        fontSize: isSmallDevice ? 18 : 22, 
+        color: '#1a1a2e', 
+        fontFamily: 'Anton_400Regular' 
+    },
 
     // ── Stats ──
-    statsSection: { marginHorizontal: 24, marginTop: 20, gap: 0 },
-    statRow: {
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        paddingVertical: 12, paddingHorizontal: 16,
-        backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, marginBottom: 8,
+    statsSection: { 
+        marginHorizontal: isSmallDevice ? 16 : 24, 
+        marginTop: isSmallDevice ? 16 : 20, 
+        gap: 0 
     },
-    statLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
-    statValue: { color: '#C9A84C', fontSize: 20, fontFamily: 'Anton_400Regular' },
+    statRow: {
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        paddingVertical: isSmallDevice ? 10 : 12, 
+        paddingHorizontal: isSmallDevice ? 12 : 16,
+        backgroundColor: 'rgba(255,255,255,0.1)', 
+        borderRadius: 10, 
+        marginBottom: 8,
+    },
+    statLabel: { 
+        color: 'rgba(255,255,255,0.8)', 
+        fontSize: isSmallDevice ? 12 : 14,
+        flex: 1,
+    },
+    statValue: { 
+        color: '#C9A84C', 
+        fontSize: isSmallDevice ? 16 : 20, 
+        fontFamily: 'Anton_400Regular' 
+    },
     leaderboard: {
         backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14,
         padding: 16, marginBottom: 12,
@@ -579,6 +659,19 @@ const styles = StyleSheet.create({
     leaderboardName: { color: '#fff', fontSize: 13, flex: 1 },
     leaderboardCount: { color: '#C9A84C', fontSize: 14, fontFamily: 'Anton_400Regular' },
     timeLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 8 },
-    setupTitle: { color: '#C9A84C', fontSize: 40, lineHeight: 46, marginBottom: 10, fontFamily: 'Anton_400Regular' },
-    script: { color: '#fff', fontSize: 22, fontStyle: 'italic', marginBottom: 28, opacity: 0.9, fontFamily: 'Inter_400Regular_Italic' },
+    setupTitle: { 
+        color: '#C9A84C', 
+        fontSize: isSmallDevice ? 32 : isMediumDevice ? 36 : 40, 
+        lineHeight: isSmallDevice ? 38 : isMediumDevice ? 42 : 46, 
+        marginBottom: 10, 
+        fontFamily: 'Anton_400Regular' 
+    },
+    script: { 
+        color: '#fff', 
+        fontSize: isSmallDevice ? 18 : isMediumDevice ? 20 : 22, 
+        fontStyle: 'italic', 
+        marginBottom: isSmallDevice ? 20 : 28, 
+        opacity: 0.9, 
+        fontFamily: 'Inter_400Regular_Italic' 
+    },
 });

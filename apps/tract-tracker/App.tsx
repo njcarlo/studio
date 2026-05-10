@@ -2,12 +2,21 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
 import { useFonts, Anton_400Regular } from '@expo-google-fonts/anton';
-import { Inter_400Regular_Italic } from '@expo-google-fonts/inter';
+import {
+  Inter_400Regular,
+  Inter_400Regular_Italic,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
 import AppNavigator from './src/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({ Anton_400Regular, Inter_400Regular_Italic });
+  const [fontsLoaded] = useFonts({
+    Anton_400Regular,
+    Inter_400Regular,
+    Inter_400Regular_Italic,
+    Inter_700Bold,
+  });
 
   if (!fontsLoaded) {
     return (

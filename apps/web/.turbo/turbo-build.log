@@ -1,79 +1,89 @@
 
-
 > web@0.1.0 build
-> next build
+> cd ../.. && npx prisma generate && cd apps/web && next build
 
-[1G[0K   [1m[38;2;173;127;168m▲ Next.js 15.5.12[39m[22m
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
 
- [37m[1m [22m[39m Creating an optimized production build ...
- [32m[1m✓[22m[39m Compiled successfully in 6.3s
- [37m[1m [22m[39m Skipping validation of types
- [37m[1m [22m[39m Skipping linting
-[?25l [37m[1m [22m[39m Collecting page data  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting page data  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Collecting page data     [32m[1m✓[22m[39m Collecting page data 
-[?25l [37m[1m [22m[39m Generating static pages (0/37)  [36m[    ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/37)  [36m[=   ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/37)  [36m[==  ][39m[2K[1G [37m[1m [22m[39m Generating static pages (0/37)  [36m[=== ][39m[2K[1G[?25hSupabase URL or Anon Key is missing. Database features may not work.
-Automatic initialization failed. Falling back to firebase config object. Error [FirebaseError]: Firebase: Need to provide options, when not being deployed to hosting via source. (app/no-options).
-    at W (.next/server/chunks/2614.js:69:95600)
-    at <unknown> (.next/server/chunks/3661.js:1:12473)
-    at <unknown> (.next/server/chunks/3661.js:1:12624)
-    at s (.next/server/chunks/3661.js:1:12413) {
-  code: 'app/no-options',
-  customData: {}
-}
-Supabase URL or Anon Key is missing. Database features may not work.
-Automatic initialization failed. Falling back to firebase config object. Error [FirebaseError]: Firebase: Need to provide options, when not being deployed to hosting via source. (app/no-options).
-    at W (.next/server/chunks/2614.js:69:95600)
-    at <unknown> (.next/server/chunks/3661.js:1:12473)
-    at <unknown> (.next/server/chunks/3661.js:1:12624)
-    at s (.next/server/chunks/3661.js:1:12413) {
-  code: 'app/no-options',
-  customData: {}
-}
-[?25h [32m[1m✓[22m[39m Generating static pages (37/37)
-[?25l [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[?25l [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G [37m[1m [22m[39m Collecting build traces  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Collecting build traces     [32m[1m✓[22m[39m Collecting build traces 
-[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m..[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m...[39m[2K[1G [37m[1m [22m[39m Finalizing page optimization  [36m.[39m[2K[1G[?25h [37m[1m [22m[39m Finalizing page optimization     [32m[1m✓[22m[39m Finalizing page optimization 
+✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 299ms
 
-[4mRoute (app)[24m                                 [4mSize[24m  [4mFirst Load JS[24m  [4m[24m  [4m[24m
-┌ ○ /                                      138 B         [37m[1m102 kB[22m[39m
-├ ○ /_not-found                             1 kB         [37m[1m102 kB[22m[39m
-├ ƒ /api/debug-prisma                      138 B         [37m[1m102 kB[22m[39m
-├ ƒ /api/graphql                           138 B         [37m[1m102 kB[22m[39m
-├ ○ /approvals                           7.26 kB         [37m[1m453 kB[22m[39m
-├ ○ /attendance                             4 kB         [37m[1m449 kB[22m[39m
-├ ○ /attendance/scanner                  9.04 kB         [37m[1m271 kB[22m[39m
-├ ○ /c2s                                 6.15 kB         [37m[1m523 kB[22m[39m
-├ ○ /dashboard                           8.22 kB         [37m[1m453 kB[22m[39m
-├ ○ /login                               4.77 kB         [37m[1m423 kB[22m[39m
-├ ○ /meals                               9.32 kB         [37m[1m454 kB[22m[39m
-├ ○ /mealstub/scanner                    6.96 kB         [37m[1m429 kB[22m[39m
-├ ○ /ministries                            138 B         [37m[1m102 kB[22m[39m
-├ ○ /reports                             9.85 kB         [37m[1m533 kB[22m[39m
-├ ○ /reservations/all                    4.01 kB         [37m[1m445 kB[22m[39m
-├ ○ /reservations/calendar               5.93 kB         [37m[1m447 kB[22m[39m
-├ ○ /reservations/masterview                4 kB         [37m[1m445 kB[22m[39m
-├ ○ /reservations/masterview/daily       3.88 kB         [37m[1m445 kB[22m[39m
-├ ○ /reservations/my                     3.89 kB         [37m[1m445 kB[22m[39m
-├ ○ /reservations/new                    4.98 kB         [37m[1m446 kB[22m[39m
-├ ○ /rooms                               1.04 kB         [37m[1m102 kB[22m[39m
-├ ○ /rooms/display                       5.37 kB         [37m[1m432 kB[22m[39m
-├ ○ /scan                                4.16 kB         [37m[1m423 kB[22m[39m
-├ ○ /settings                            1.68 kB         [37m[1m437 kB[22m[39m
-├ ○ /settings/departments                4.68 kB         [37m[1m443 kB[22m[39m
-├ ○ /settings/meal-stubs                 6.07 kB         [37m[1m445 kB[22m[39m
-├ ○ /settings/ministries                 7.61 kB         [37m[1m454 kB[22m[39m
-├ ○ /settings/roles                      5.25 kB         [37m[1m444 kB[22m[39m
-├ ○ /settings/rooms                      6.43 kB         [37m[1m453 kB[22m[39m
-├ ○ /settings/transaction-logs           1.93 kB         [37m[1m443 kB[22m[39m
-├ ○ /settings/venue-elements             2.77 kB         [37m[1m438 kB[22m[39m
-├ ○ /signup                              4.37 kB         [37m[1m423 kB[22m[39m
-├ ○ /workers                             13.3 kB         [37m[1m466 kB[22m[39m
-└ ○ /workers/my-qr                       5.36 kB         [37m[1m440 kB[22m[39m
-+ First Load JS shared by all             [37m[1m101 kB[22m[39m
-  ├ chunks/1255-e409bd83d8d00fcc.js      45.2 kB
-  ├ chunks/4bd1b696-2fbb49a7b03e9cd6.js  54.2 kB
-  └ other shared chunks (total)             2 kB
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+   ▲ Next.js 15.5.15
+   - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 12.0s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/48) ...
+   Generating static pages (12/48) 
+   Generating static pages (24/48) 
+   Generating static pages (36/48) 
+ ✓ Generating static pages (48/48)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      149 B         102 kB
+├ ○ /_not-found                            995 B         103 kB
+├ ƒ /api/cron/venue-assistance             149 B         102 kB
+├ ƒ /api/graphql                           149 B         102 kB
+├ ƒ /api/workers                           149 B         102 kB
+├ ○ /approvals                           6.56 kB         362 kB
+├ ○ /attendance                          4.04 kB         357 kB
+├ ○ /attendance/scanner                  4.96 kB         272 kB
+├ ○ /c2s                                 7.55 kB         437 kB
+├ ○ /dashboard                            8.3 kB         362 kB
+├ ○ /login                               9.81 kB         335 kB
+├ ○ /meals                               9.39 kB         363 kB
+├ ○ /mealstub/scanner                    2.94 kB         270 kB
+├ ○ /ministries                            149 B         102 kB
+├ ○ /privacy                               149 B         102 kB
+├ ○ /profile                             2.68 kB         350 kB
+├ ƒ /public/schedule/[token]               149 B         102 kB
+├ ○ /reports                             10.2 kB         446 kB
+├ ○ /reservations/all                    4.13 kB         357 kB
+├ ○ /reservations/calendar               6.14 kB         359 kB
+├ ○ /reservations/masterview             4.32 kB         358 kB
+├ ○ /reservations/masterview/daily       4.15 kB         357 kB
+├ ○ /reservations/my                     4.01 kB         357 kB
+├ ○ /reservations/new                     5.5 kB         359 kB
+├ ○ /rooms                               1.04 kB         103 kB
+├ ○ /rooms/display                       5.92 kB         271 kB
+├ ○ /scan                                4.34 kB         253 kB
+├ ○ /schedule                             2.4 kB         359 kB
+├ ƒ /schedule/[id]                        8.1 kB         365 kB
+├ ƒ /schedule/[id]/print                   149 B         102 kB
+├ ƒ /schedule/[id]/slots/[slotId]        7.23 kB         264 kB
+├ ○ /schedule/schedulers                 4.09 kB         351 kB
+├ ○ /schedule/templates                  2.85 kB         353 kB
+├ ○ /settings                            1.65 kB         345 kB
+├ ○ /settings/departments                4.54 kB         352 kB
+├ ○ /settings/meal-stubs                 6.08 kB         353 kB
+├ ○ /settings/ministries                 7.62 kB         363 kB
+├ ○ /settings/ors-sync                   12.2 kB         359 kB
+├ ○ /settings/roles                       6.4 kB         354 kB
+├ ○ /settings/rooms                      6.56 kB         362 kB
+├ ○ /settings/transaction-logs           1.98 kB         355 kB
+├ ○ /settings/venue-assistance            4.6 kB         352 kB
+├ ○ /settings/venue-elements             3.72 kB         351 kB
+├ ○ /signup                              5.58 kB         330 kB
+├ ○ /venue                               4.59 kB         358 kB
+├ ƒ /venue/[bookingId]                   4.95 kB         358 kB
+├ ○ /venue/command-center                5.63 kB         359 kB
+├ ○ /venue/my                            1.79 kB         355 kB
+├ ○ /workers                             12.3 kB         368 kB
+├ ƒ /workers/[id]/edit                   6.93 kB         360 kB
+└ ○ /workers/my-qr                       5.13 kB         349 kB
++ First Load JS shared by all             102 kB
+  ├ chunks/18-edee31dfa59fae8b.js        45.8 kB
+  ├ chunks/87c73c54-dd8d81ac9604067c.js  54.2 kB
+  └ other shared chunks (total)          2.06 kB
 
 
 ○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand
 
-[?25h[1G[0K⠙[1G[0K
