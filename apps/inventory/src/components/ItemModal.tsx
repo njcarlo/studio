@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useInventory } from '../hooks/useInventory';
-import { X, Upload, Image as ImageIcon } from 'lucide-react';
+import { useAuth } from '../lib/auth-context';
+import { X, Upload, Image as ImageIcon, Lock } from 'lucide-react';
 import { uploadItemPhoto } from '../utils/upload';
 
 interface ItemModalProps {
@@ -24,6 +25,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
   const { categories, locations, fetchCategories, fetchLocations, createItem, updateItem } = useInventory();
+  const { profile } = useAuth();
+  const canSetCode = profile?.canSetCode ?? false;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -181,14 +184,25 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                 />
               </Field>
 
-              <Field label="Inventory Code">
-                <input
-                  className="form-control"
-                  placeholder="Auto-generated if empty"
-                  value={formData.inventoryCode}
-                  onChange={e => setFormData(prev => ({ ...prev, inventoryCode: e.target.value }))}
-                />
-              </Field>
+              {/* Inventory Code — only visible to users with inventory:set_code (or inventory:manage / super admin) */}
+              {(canSetCode || (item && item.inventoryCode)) && (
+                <Field label="Inventory Code">
+                  {canSetCode ? (
+                    <input
+                      className="form-control"
+                      placeholder="Auto-generated if empty"
+                      value={formData.inventoryCode}
+                      onChange={e => setFormData(prev => ({ ...prev, inventoryCode: e.target.value }))}
+                    />
+                  ) : (
+                    // Read-only view for users who can see but not edit
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', background: 'var(--surface-alt, #f3f4f6)', borderRadius: '6px', border: '1px solid var(--border, #e5e7eb)', fontSize: '0.85rem', fontFamily: 'monospace', color: 'var(--text-muted, #6b7280)' }}>
+                      <Lock size={13} />
+                      {item?.inventoryCode || '—'}
+                    </div>
+                  )}
+                </Field>
+              )}
             </div>
 
             <div className="form-row-2col">

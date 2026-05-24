@@ -14,6 +14,7 @@ interface WorkerProfile {
     ministryName?: string;
     canManage: boolean;
     canAccess: boolean;
+    canSetCode: boolean;       // can assign custom inventory codes to items
     canAssignRoles: boolean;  // can assign inventory roles to others
     isSuperAdmin: boolean;
     roleNames: string[];
@@ -138,6 +139,7 @@ async function loadWorkerProfile(userId: string, userEmail?: string): Promise<Wo
 
     const canManage = isSuperAdmin || perms.has('inventory:manage');
     const canAccess = isSuperAdmin || canManage || perms.has('inventory:access');
+    const canSetCode = isSuperAdmin || canManage || perms.has('inventory:set_code');
     const canAssignRoles = isSuperAdmin; // only super admin can assign inventory roles
 
     // Collect all role names for display
@@ -174,6 +176,7 @@ async function loadWorkerProfile(userId: string, userEmail?: string): Promise<Wo
         ministryName,
         canManage,
         canAccess,
+        canSetCode,
         canAssignRoles,
         isSuperAdmin,
         roleNames,

@@ -61,8 +61,9 @@ export const PERMISSIONS = {
     assign_schedulers: 'schedule:assign_schedulers',
   },
   inventory: {
-    access: 'inventory:access',
-    manage: 'inventory:manage',
+    access:   'inventory:access',
+    manage:   'inventory:manage',
+    set_code: 'inventory:set_code',
   },
 } as const;
 
@@ -101,6 +102,7 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'schedule',         action: 'assign_schedulers',   description: 'Assign Ministry Scheduler role to workers' },
   { module: 'inventory',        action: 'access',              description: 'Access the Inventory Management module' },
   { module: 'inventory',        action: 'manage',              description: 'Inventory Officer — create, edit, delete items and manage stock' },
+  { module: 'inventory',        action: 'set_code',            description: 'Set custom inventory codes on items' },
 ];
 
 /**

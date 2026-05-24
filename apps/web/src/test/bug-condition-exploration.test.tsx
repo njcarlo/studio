@@ -154,6 +154,7 @@ vi.mock('@studio/ui', async () => {
         ),
         SheetHeader: ({ children }: any) => <div data-testid="sheet-header">{children}</div>,
         SheetTitle: ({ children }: any) => <h2>{children}</h2>,
+        SheetDescription: ({ children }: any) => <div>{children}</div>,
         // Keep other UI primitives as simple pass-throughs
         Button: ({ children, onClick, disabled, variant, size, ...rest }: any) => (
             <button onClick={onClick} disabled={disabled} {...rest}>{children}</button>
