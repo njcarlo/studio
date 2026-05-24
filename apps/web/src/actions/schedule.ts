@@ -436,6 +436,20 @@ export async function getPublicSchedule(token: string) {
     });
 }
 
+export async function getPublicSchedules() {
+    return (prisma.serviceSchedule as any).findMany({
+        where: { isPublic: true },
+        orderBy: { date: 'desc' },
+        select: {
+            id: true,
+            title: true,
+            date: true,
+            publicToken: true,
+            status: true,
+        }
+    });
+}
+
 // ── History ───────────────────────────────────────────────────────────────────
 
 export async function getScheduleHistory() {
