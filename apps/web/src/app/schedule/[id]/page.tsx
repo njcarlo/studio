@@ -145,31 +145,56 @@ export default function ScheduleDetailPage() {
 
     const filteredWorkers = useMemo(() => {
         const targetMinistryId = assignDialog?.ministryId;
-        const targetMinistry = targetMinistryId ? ministries.find((m: any) => m.id === targetMinistryId) : null;
+        if (!targetMinistryId) return [];
+
+        const targetMinistry = ministries.find((m: any) => m.id === targetMinistryId);
         const targetDept = targetMinistry?.department || (targetMinistry as any)?.departmentCode;
 
-        // First: workers directly in the target ministry
-        const inMinistry = workers.filter((w: any) => {
-            if (w.status !== "Active") return false;
-            return w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId;
-        });
+        // Get all active workers
+        const activeWorkers = workers.filter((w: any) => w.status === "Active");
 
-        // Use ministry-scoped list; only fall back to dept if ministry has zero workers
-        const scoped = inMinistry.length > 0 ? inMinistry : workers.filter((w: any) => {
-            if (w.status !== "Active") return false;
-            if (!targetDept) return false;
-            const workerMinistry = ministries.find((m: any) => m.id === w.majorMinistryId);
-            const workerDept = workerMinistry?.department || (workerMinistry as any)?.departmentCode;
-            return workerDept === targetDept;
-        });
+        // Compute scores/priorities for sorting:
+        // 3: Workers directly in the target ministry (major or minor)
+        // 2: Workers in the same department
+        // 1: Other workers
+        const getPriorityScore = (w: any) => {
+            if (w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId) {
+                return 3;
+            }
+            if (targetDept) {
+                const workerMinistry = ministries.find((m: any) => m.id === w.majorMinistryId);
+                const workerDept = workerMinistry?.department || (workerMinistry as any)?.departmentCode;
+                if (workerDept === targetDept) {
+                    return 2;
+                }
+            }
+            return 1;
+        };
 
-        // Apply name search within scoped list
-        if (!workerSearch.trim()) return scoped;
-        const q = workerSearch.toLowerCase();
-        return scoped.filter((w: any) =>
-            `${w.firstName} ${w.lastName}`.toLowerCase().includes(q) ||
-            (w.workerId || '').includes(q)
-        );
+        const query = workerSearch.toLowerCase().trim();
+        const matchesQuery = (w: any) => {
+            if (!query) return true;
+            return `${w.firstName} ${w.lastName}`.toLowerCase().includes(query) ||
+                   (w.workerId || '').toLowerCase().includes(query);
+        };
+
+        // Show target ministry + department workers by default.
+        // If there's an active query, search all active workers globally but prioritize ministry/dept matches.
+        return activeWorkers
+            .filter((w: any) => {
+                if (!matchesQuery(w)) return false;
+                const score = getPriorityScore(w);
+                if (query) return true;
+                return score >= 2;
+            })
+            .sort((a: any, b: any) => {
+                const scoreA = getPriorityScore(a);
+                const scoreB = getPriorityScore(b);
+                if (scoreA !== scoreB) {
+                    return scoreB - scoreA;
+                }
+                return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+            });
     }, [workers, workerSearch, assignDialog?.ministryId, ministries]);
 
     const handleAssign = async (workerId: string | null) => {
@@ -844,7 +869,7 @@ export default function ScheduleDetailPage() {
             </Tabs>
 
             {/* Assign Worker Dialog */}
-            <Dialog open={!!assignDialog} onOpenChange={() => { setAssignDialog(null); setWorkerIdSearch(""); setWorkerIdResult(null); }}>
+            <Dialog open={!!assignDialog} onOpenChange={() => { setAssignDialog(null); setWorkerSearch(""); setWorkerIdSearch(""); setWorkerIdResult(null); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Assign Worker — {assignDialog?.roleName}</DialogTitle>
