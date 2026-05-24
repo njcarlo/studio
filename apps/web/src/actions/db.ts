@@ -228,10 +228,10 @@ export async function getPaginatedWorkers(
     const sortDir = filters.sortDir || 'asc';
     const offset = (page - 1) * limit;
 
-    // Build ORDER BY — workerId sorts numerically via CAST to avoid "10 < 2" string ordering
+    // Build ORDER BY
     let orderByClause: string;
     if (sortField === 'workerId') {
-        orderByClause = `CAST(NULLIF("workerId", '') AS INTEGER) ${sortDir.toUpperCase()} NULLS LAST`;
+        orderByClause = `"workerId" ${sortDir.toUpperCase()} NULLS LAST`;
     } else if (sortField === 'name') {
         orderByClause = `"firstName" ${sortDir.toUpperCase()}, "lastName" ${sortDir.toUpperCase()}`;
     } else if (sortField === 'status') {
@@ -277,7 +277,7 @@ export async function getPaginatedWorkers(
         prisma.$queryRawUnsafe<any[]>(
             `SELECT id, "workerId", "firstName", "lastName", email, phone, "roleId", status,
                     "avatarUrl", "majorMinistryId", "minorMinistryId", "employmentType",
-                    "passwordChangeRequired", "qrToken", "createdAt"
+                    "passwordChangeRequired", "qrToken", "createdAt", "capabilities"
              FROM "Worker"
              ${whereClause}
              ORDER BY ${orderByClause}
@@ -538,7 +538,7 @@ export async function createMinistry(data: any) {
             department: true,
         },
     });
-    revalidatePath('/settings/ministries');
+    revalidatePath('/ministries');
     return mapMinistryForClient(ministry);
 }
 
@@ -563,7 +563,7 @@ export async function updateMinistry(id: string, data: any) {
             department: true,
         },
     });
-    revalidatePath('/settings/ministries');
+    revalidatePath('/ministries');
     return mapMinistryForClient(ministry);
 }
 
@@ -597,13 +597,13 @@ export async function createMinistries(data: any[]) {
         createdCount++;
     }
 
-    revalidatePath('/settings/ministries');
+    revalidatePath('/ministries');
     return { count: createdCount };
 }
 
 export async function deleteMinistry(id: string) {
     await prisma.ministry.delete({ where: { id } });
-    revalidatePath('/settings/ministries');
+    revalidatePath('/ministries');
 }
 
 // --- Bookings ---

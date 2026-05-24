@@ -11,6 +11,8 @@ import { useWorshipSlots } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useWorkers } from "@/hooks/use-workers";
 import { useToast } from "@/hooks/use-toast";
+import { WorkloadCategorySelect } from "@/components/schedule/WorkloadCategorySelect";
+import { useWorkloadCategories } from "@/hooks/use-workload-categories";
 
 export default function SlotRolesPage() {
     const { id: scheduleId, slotId } = useParams<{ id: string; slotId: string }>();
@@ -20,6 +22,9 @@ export default function SlotRolesPage() {
     const { slots, isLoading, addWorker, removeWorker } = useWorshipSlots(scheduleId);
     const { ministries } = useMinistries();
     const { workers } = useWorkers({ limit: 500 });
+
+    const worshipMinistry = ministries?.find((m: any) => m.departmentCode === 'W' || m.department === 'Worship');
+    const { categories, createCategory } = useWorkloadCategories(worshipMinistry?.id || "");
 
     const slot = slots.find((s: any) => s.id === slotId);
 
@@ -44,23 +49,50 @@ export default function SlotRolesPage() {
         setInitialized(true);
     }, [slot, initialized]);
 
+    const activeRoleName = activeRoleIdx !== null ? draftRoles[activeRoleIdx]?.roleName : null;
+    const activeCategory = categories?.find(c => c.name === activeRoleName);
+
     const worshipWorkers = useMemo(() => {
         const base = workers.filter((w: any) => {
             if (w.status !== "Active") return false;
             const m = ministries.find((x: any) => x.id === w.majorMinistryId);
             return (m as any)?.departmentCode === "W";
         });
-        if (!workerSearch.trim()) return base;
-        const q = workerSearch.toLowerCase();
-        return base.filter((w: any) =>
-            `${w.firstName} ${w.lastName}`.toLowerCase().includes(q) ||
-            (w.workerId || "").includes(q)
-        );
-    }, [workers, ministries, workerSearch]);
+        let filtered = base;
+        if (workerSearch.trim()) {
+            const q = workerSearch.toLowerCase();
+            filtered = base.filter((w: any) =>
+                `${w.firstName} ${w.lastName}`.toLowerCase().includes(q) ||
+                (w.workerId || "").includes(q)
+            );
+        }
 
-    const addRole = () => {
+        if (activeCategory) {
+            filtered.sort((a: any, b: any) => {
+                const aRec = a.capabilities?.includes(activeCategory.id) ? 1 : 0;
+                const bRec = b.capabilities?.includes(activeCategory.id) ? 1 : 0;
+                if (aRec !== bRec) return bRec - aRec;
+                return a.firstName.localeCompare(b.firstName);
+            });
+        } else {
+            filtered.sort((a: any, b: any) => a.firstName.localeCompare(b.firstName));
+        }
+
+        return filtered;
+    }, [workers, ministries, workerSearch, activeCategory]);
+
+    const addRole = async () => {
         const name = roleInput.trim();
         if (!name) return;
+
+        if (worshipMinistry?.id && categories && !categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+            try {
+                await createCategory({ name }, { skipAuth: true });
+            } catch (e) {
+                console.error("Failed to auto-create category", e);
+            }
+        }
+
         if (draftRoles.some(r => r.roleName.toLowerCase() === name.toLowerCase())) return;
         const next = [...draftRoles, { roleName: name, workers: [] }];
         setDraftRoles(next);
@@ -164,13 +196,13 @@ export default function SlotRolesPage() {
                     <div className="px-4 py-3 border-b">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Roles</p>
                         <div className="flex gap-2">
-                            <Input
+                            <WorkloadCategorySelect
+                                ministryId={worshipMinistry?.id || ""}
                                 value={roleInput}
-                                onChange={e => setRoleInput(e.target.value)}
+                                onChange={setRoleInput}
                                 placeholder="e.g. Worship Leader"
                                 className="h-9 text-sm"
                                 onKeyDown={e => e.key === "Enter" && addRole()}
-                                autoFocus
                             />
                             <Button size="sm" className="h-9 px-3 shrink-0" onClick={addRole} disabled={!roleInput.trim()}>
                                 <Plus className="h-4 w-4" />
@@ -250,6 +282,7 @@ export default function SlotRolesPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-0">
                                     {worshipWorkers.map((w: any) => {
                                         const isAssigned = draftRoles[activeRoleIdx]?.workers.some(x => x.id === w.id);
+                                        const isRecommended = activeCategory && w.capabilities?.includes(activeCategory.id);
                                         const ministryName = ministries.find((m: any) => m.id === w.majorMinistryId)?.name?.replace(/^[WORDA]-/i, "") || "—";
                                         return (
                                             <button
@@ -262,7 +295,10 @@ export default function SlotRolesPage() {
                                                     <AvatarFallback className="text-xs">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium truncate">{w.firstName} {w.lastName}</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="text-sm font-medium truncate">{w.firstName} {w.lastName}</p>
+                                                        {isRecommended && <div className="bg-yellow-100 text-yellow-700 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-sm shrink-0">Recommended</div>}
+                                                    </div>
                                                     <p className="text-xs text-muted-foreground truncate">{ministryName}</p>
                                                 </div>
                                                 {isAssigned && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}

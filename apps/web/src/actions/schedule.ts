@@ -2,6 +2,27 @@
 
 import { prisma } from '@studio/database/prisma';
 import { revalidatePath } from 'next/cache';
+import { getWorkloadCategories, createWorkloadCategory } from './ministry-categories';
+import { EmailService } from '@/services/email-service';
+
+async function ensureWorkloadCategoriesExist(ministryId: string, roleNames: string[]) {
+    if (!roleNames.length) return;
+    const existing = await getWorkloadCategories(ministryId);
+    const existingNames = new Set(existing.map((c: any) => c.name.toLowerCase()));
+    
+    for (const roleName of roleNames) {
+        if (!roleName.trim()) continue;
+        if (!existingNames.has(roleName.trim().toLowerCase())) {
+            try {
+                // Use '999999' for automated internal system bypass
+                await createWorkloadCategory({ ministryId, name: roleName.trim() }, '999999', { skipAuth: true });
+                existingNames.add(roleName.trim().toLowerCase());
+            } catch (e) {
+                console.error("Failed to auto-create workload category", e);
+            }
+        }
+    }
+}
 
 // ── Service Schedules ─────────────────────────────────────────────────────────
 
@@ -71,6 +92,8 @@ export async function upsertAssignment(data: {
     workerId?: string | null;
     workerName?: string | null;
     notes?: string | null;
+    rehearsalDate?: Date | null;
+    rehearsalTime?: string | null;
     order?: number;
 }) {
     // Find existing slot for this schedule + ministry + role + order
@@ -90,6 +113,8 @@ export async function upsertAssignment(data: {
                 workerId: data.workerId ?? null,
                 workerName: data.workerName ?? null,
                 notes: data.notes ?? null,
+                rehearsalDate: data.rehearsalDate !== undefined ? data.rehearsalDate : undefined,
+                rehearsalTime: data.rehearsalTime !== undefined ? data.rehearsalTime : undefined,
             },
         });
     }
@@ -101,6 +126,8 @@ export async function upsertAssignment(data: {
         workerId: data.workerId ?? null,
         workerName: data.workerName ?? null,
         notes: data.notes ?? null,
+        rehearsalDate: data.rehearsalDate ?? null,
+        rehearsalTime: data.rehearsalTime ?? null,
         order: data.order ?? 0,
     }});
 }
@@ -115,6 +142,12 @@ export async function applyTemplateToSchedule(scheduleId: string, templateId: st
         include: { roles: { orderBy: { order: 'asc' } } },
     });
     if (!template) throw new Error('Template not found');
+
+    // Auto-create missing workload categories for these roles
+    await ensureWorkloadCategoriesExist(
+        template.ministryId, 
+        template.roles.map(r => r.roleName)
+    );
 
     // Remove existing assignments for this ministry on this schedule
     await prisma.scheduleAssignment.deleteMany({
@@ -154,6 +187,12 @@ export async function createServiceTemplate(data: {
     createdBy: string;
     roles: { roleName: string; count: number; notes?: string; order?: number }[];
 }) {
+    // Auto-create missing workload categories for these roles
+    await ensureWorkloadCategoriesExist(
+        data.ministryId, 
+        data.roles.map(r => r.roleName)
+    );
+
     const template = await prisma.serviceTemplate.create({
         data: {
             ministryId: data.ministryId,
@@ -181,6 +220,15 @@ export async function updateServiceTemplate(id: string, data: {
     roles?: { roleName: string; count: number; notes?: string; order?: number }[];
 }) {
     if (data.roles) {
+        // Fetch the template to get the ministryId
+        const template = await prisma.serviceTemplate.findUnique({ where: { id } });
+        if (template) {
+            await ensureWorkloadCategoriesExist(
+                template.ministryId, 
+                data.roles.map(r => r.roleName)
+            );
+        }
+
         await prisma.templateRole.deleteMany({ where: { templateId: id } });
         await prisma.templateRole.createMany({
             data: data.roles.map((r, i) => ({
@@ -228,10 +276,67 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
             .map(a => a.workerId as string)
     )];
 
-    // Email notifications disabled — return count of workers who would be notified
+    // Fetch workers to get emails
+    const workers = await prisma.worker.findMany({
+        where: { id: { in: workerIds } }
+    });
+
+    let notifiedCount = 0;
+    
+    for (const worker of workers) {
+        if (worker.email) {
+            try {
+                // Formatting the date nicely
+                const formattedDate = new Intl.DateTimeFormat('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }).format(new Date(schedule.date));
+                
+                await EmailService.sendEmail({
+                    to: worker.email,
+                    subject: `You have been scheduled for ${schedule.title} (${formattedDate})`,
+                    html: `
+                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden;">
+                            <div style="background-color: #3b82f6; padding: 24px; text-align: center; color: white;">
+                                <h2 style="margin: 0; font-size: 24px;">Schedule Assignment</h2>
+                            </div>
+                            <div style="padding: 24px; color: #333;">
+                                <p style="font-size: 16px;">Hello ${worker.firstName},</p>
+                                <p style="font-size: 16px;">You have been assigned to duties in the upcoming service:</p>
+                                
+                                <div style="background-color: #f3f4f6; border-radius: 6px; padding: 16px; margin: 20px 0;">
+                                    <h3 style="margin-top: 0; color: #1f2937;">${schedule.title}</h3>
+                                    <p style="margin: 8px 0; color: #4b5563;"><strong>Date:</strong> ${formattedDate}</p>
+                                </div>
+                                
+                                <p style="font-size: 16px;">Please log in to the COG App to view your specific roles, rehearsal times, and confirm your attendance.</p>
+                                
+                                <div style="text-align: center; margin-top: 32px;">
+                                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/schedule/${scheduleId}" 
+                                       style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
+                                        View Schedule
+                                    </a>
+                                </div>
+                            </div>
+                            <div style="background-color: #f9fafb; padding: 16px; text-align: center; color: #6b7280; font-size: 12px; border-top: 1px solid #eaeaea;">
+                                This is an automated message from the COG App. Please do not reply.
+                            </div>
+                        </div>
+                    `,
+                    text: `Hello ${worker.firstName},\n\nYou have been assigned to duties in the upcoming service: ${schedule.title} on ${formattedDate}.\n\nPlease log in to the COG App to view your specific roles and confirm your attendance.\n\nLink: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/schedule/${scheduleId}`
+                });
+                notifiedCount++;
+            } catch (err) {
+                console.error(`Failed to send email to ${worker.email}`, err);
+            }
+        }
+    }
+
     revalidatePath(`/schedule/${scheduleId}`);
     revalidatePath('/schedule');
-    return { schedule, notified: workerIds.length };
+    return { schedule, notified: notifiedCount };
 }
 
 // ── Confirm Assignment ────────────────────────────────────────────────────────
@@ -421,4 +526,42 @@ export async function getMinistrySchedulers() {
         select: { id: true, name: true, schedulerId: true },
     });
     return ministries as { id: string; name: string; schedulerId: string | null }[];
+}
+
+// ── Monthly Duty Caps ─────────────────────────────────────────────────────────
+
+export async function getMonthlyDutyCounts(scheduleId: string) {
+    // 1. Get the target schedule to find the month
+    const schedule = await prisma.serviceSchedule.findUnique({
+        where: { id: scheduleId },
+        select: { date: true }
+    });
+    if (!schedule) return {};
+
+    const targetDate = new Date(schedule.date);
+    const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+    const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // 2. Find all assignments in this month
+    const assignments = await prisma.scheduleAssignment.findMany({
+        where: {
+            workerId: { not: null },
+            schedule: {
+                date: {
+                    gte: startOfMonth,
+                    lte: endOfMonth,
+                }
+            }
+        },
+        select: { workerId: true }
+    });
+
+    // 3. Count
+    const counts: Record<string, number> = {};
+    for (const a of assignments) {
+        if (!a.workerId) continue;
+        counts[a.workerId] = (counts[a.workerId] || 0) + 1;
+    }
+
+    return counts;
 }

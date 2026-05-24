@@ -16,6 +16,7 @@ import {
   Building2,
   Package,
   ExternalLink,
+  Landmark,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -154,6 +155,12 @@ const allNavItems: NavItem[] = [
     ],
   },
   {
+    href: "/ministries",
+    icon: Landmark,
+    label: "Ministries",
+    permissionKey: "canManageMinistries",
+  },
+  {
     href: "/attendance",
     icon: UserCheck,
     label: "Attendance",
@@ -196,11 +203,6 @@ const allNavItems: NavItem[] = [
       {
         href: "/settings/departments",
         label: "Department Management",
-        permissionKey: "canManageMinistries",
-      },
-      {
-        href: "/settings/ministries",
-        label: "Ministry Management",
         permissionKey: "canManageMinistries",
       },
       {

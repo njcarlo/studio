@@ -1,7 +1,9 @@
+import React from "react";
 import { format } from "date-fns";
 import { getServiceSchedule, getWorshipSlots } from "@/actions/schedule";
 import { getMinistries } from "@/actions/db";
 import { notFound } from "next/navigation";
+import { PrintButton } from "@/components/schedule/print-button";
 
 export default async function PrintSchedulePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -35,37 +37,105 @@ export default async function PrintSchedulePage({ params }: { params: Promise<{ 
         }, {});
 
     const filled = schedule.assignments.filter(a => a.workerId).length;
-    const total = schedule.assignments.length;
-
     const css = `
+        :root {
+            --blue-bg: #0000ff; /* Exact blue from PDF */
+            --yellow-bg: #ffff00;
+            --border-color: #000;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Georgia, serif; color: #111; padding: 32px; max-width: 820px; margin: 0 auto; }
-        h1 { font-size: 22px; font-weight: bold; margin-bottom: 4px; }
-        .meta { font-size: 13px; color: #555; margin-bottom: 4px; }
-        .status-badge { display: inline-block; font-size: 11px; font-weight: bold;
-            padding: 2px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1; margin-bottom: 20px; }
-        .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase;
-            letter-spacing: 0.08em; color: #888; margin: 28px 0 12px;
-            border-bottom: 2px solid #111; padding-bottom: 4px; }
-        .ministry { margin-bottom: 20px; break-inside: avoid; }
-        .ministry-name { font-size: 13px; font-weight: bold; text-transform: uppercase;
-            letter-spacing: 0.05em; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 8px; }
-        .role-name { font-size: 11px; font-weight: bold; color: #555; margin: 8px 0 3px;
-            text-transform: uppercase; letter-spacing: 0.04em; }
-        .slot { display: flex; align-items: center; gap: 8px; padding: 3px 0;
-            border-bottom: 1px dotted #e5e5e5; font-size: 13px; }
-        .slot-name { flex: 1; }
-        .slot-empty { color: #bbb; font-style: italic; }
-        .confirmed { font-size: 11px; color: #16a34a; }
-        .not-attending { font-size: 11px; color: #dc2626; }
-        .pending { font-size: 11px; color: #d97706; }
-        .slot-card { border: 1px solid #ddd; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; break-inside: avoid; }
-        .slot-card-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; }
-        .print-btn { margin-bottom: 24px; padding: 8px 20px; cursor: pointer;
-            background: #2563eb; color: #fff; border: none; border-radius: 6px; font-size: 14px; }
+        body { 
+            font-family: Arial, Helvetica, sans-serif; 
+            color: #000; 
+            padding: 20px; 
+            font-size: 11px;
+            background: #fff;
+        }
+        @page { size: landscape; margin: 1cm; }
+        
+        .print-btn { 
+            margin-bottom: 20px; padding: 8px 16px; cursor: pointer; 
+            background: #2563eb; color: #fff; border: none; border-radius: 4px; 
+            font-size: 13px; font-weight: bold; 
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 4px 6px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 10px;
+        }
+        
+        .main-header {
+            background-color: var(--blue-bg);
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 8px;
+            text-transform: uppercase;
+        }
+        
+        .ministry-header-row th {
+            background-color: var(--yellow-bg);
+            font-weight: bold;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        
+        .date-header {
+            font-weight: bold;
+            background-color: #f3f4f6;
+        }
+        
+        .role-label {
+            font-weight: bold;
+            background-color: #f8fafc;
+            width: 120px;
+            text-align: right;
+            padding-right: 12px;
+        }
+        
+        .worker-cell {
+            text-align: center;
+        }
+        
+        .unassigned {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .notes-row td {
+            background-color: #fffbeb;
+            font-style: italic;
+            text-align: left;
+            padding: 8px;
+        }
+        
+        .footer-note {
+            background-color: var(--blue-bg);
+            color: #fff;
+            text-align: center;
+            padding: 6px;
+            font-size: 9px;
+            font-style: italic;
+            border: 1px solid var(--border-color);
+            margin-top: -30px; /* pull up to connect to last table if possible */
+        }
+        
         @media print {
-            body { padding: 16px; }
+            body { padding: 0; }
             .print-btn { display: none; }
+            .main-header, .ministry-header-row th, .date-header, .role-label, .notes-row td, .footer-note {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     `;
 
@@ -77,89 +147,123 @@ export default async function PrintSchedulePage({ params }: { params: Promise<{ 
                 <style dangerouslySetInnerHTML={{ __html: css }} />
             </head>
             <body>
-                <button className="print-btn" onClick={() => window.print()}>
-                    🖨 Print / Save as PDF
-                </button>
+                <PrintButton />
 
-                <h1>{schedule.title}</h1>
-                <div className="meta">{format(new Date(schedule.date), "EEEE, MMMM d, yyyy")}</div>
-                <div className="meta">{filled}/{total} slots filled</div>
-                <div className="status-badge">{schedule.status}</div>
-
-                {/* Ministry Assignments */}
-                <div className="section-title">Ministry Assignments</div>
-
-                {sortedMinistryIds.length === 0 && (
-                    <p style={{ fontSize: 13, color: '#888', fontStyle: 'italic' }}>No assignments yet.</p>
-                )}
-
-                {sortedMinistryIds.map(ministryId => {
-                    const assignments = byMinistry[ministryId];
-                    const byRole = groupByRole(assignments);
-                    return (
-                        <div key={ministryId} className="ministry">
-                            <div className="ministry-name">{getMinistryName(ministryId)}</div>
-                            {Object.entries(byRole).map(([roleName, slots]) => (
-                                <div key={roleName}>
-                                    <div className="role-name">{roleName}</div>
-                                    {slots.map(slot => (
-                                        <div key={slot.id} className="slot">
-                                            {slot.workerName ? (
-                                                <>
-                                                    <span className="slot-name">{slot.workerName}</span>
-                                                    {(slot as any).attendanceStatus === 'Confirmed' && <span className="confirmed">✓ Confirmed</span>}
-                                                    {(slot as any).attendanceStatus === 'Not Attending' && <span className="not-attending">✗ Not Attending</span>}
-                                                    {(slot as any).attendanceStatus === 'Pending' && <span className="pending">⏳ Pending</span>}
-                                                </>
-                                            ) : (
-                                                <span className="slot-empty">— Unassigned —</span>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
-                    );
-                })}
-
-                {/* Worship / Service Slots */}
-                {worshipSlots.length > 0 && (
-                    <>
-                        <div className="section-title">Service Slots</div>
-                        {worshipSlots.map((slot: any) => {
-                            const bySlotRole: Record<string, any[]> = {};
-                            for (const sw of slot.workers) {
-                                const key = sw.role || '(No Role)';
-                                if (!bySlotRole[key]) bySlotRole[key] = [];
-                                bySlotRole[key].push(sw);
-                            }
+                <table>
+                    <thead>
+                        <tr>
+                            <th colSpan={2} className="main-header">
+                                CHURCH OF GOD WORLD MISSIONS PHILIPPINES - DASMARIÑAS<br/>
+                                SCHEDULE FOR {format(new Date(schedule.date), "MMMM d, yyyy").toUpperCase()} - {schedule.title.toUpperCase()}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sortedMinistryIds.length === 0 && (
+                            <tr><td colSpan={2} style={{padding: '20px'}}>No assignments yet.</td></tr>
+                        )}
+                        
+                        {sortedMinistryIds.map(ministryId => {
+                            const assignments = byMinistry[ministryId];
+                            const byRole = groupByRole(assignments);
+                            
+                            // Get unique rehearsal string if any
+                            const rehearsals = [...new Set(assignments.filter(a => a.rehearsalDate).map(a => 
+                                `${format(new Date(a.rehearsalDate!), "EEEE, MMM d, yyyy")} ${a.rehearsalTime || ''}`
+                            ))];
+                            
                             return (
-                                <div key={slot.id} className="slot-card">
-                                    <div className="slot-card-title">{slot.slotName}</div>
-                                    {Object.entries(bySlotRole).map(([roleName, workers]) => (
-                                        <div key={roleName}>
-                                            <div className="role-name">{roleName}</div>
-                                            {(workers as any[]).map((sw: any) => (
-                                                <div key={sw.id} className="slot">
-                                                    <span className="slot-name">{sw.workerName}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))}
-                                    {slot.workers.length === 0 && (
-                                        <span className="slot-empty">No workers assigned</span>
+                                <React.Fragment key={ministryId}>
+                                    <tr className="ministry-header-row">
+                                        <th className="role-label" style={{textAlign: 'center', padding: '6px'}}>{getMinistryName(ministryId)}</th>
+                                        <th className="date-header">{format(new Date(schedule.date), "MMMM d, yyyy")}</th>
+                                    </tr>
+                                    
+                                    {Object.entries(byRole).map(([roleName, slots]) => {
+                                        // Group workers by role
+                                        const workerNames = slots.map(s => s.workerName ? s.workerName : '').filter(Boolean);
+                                        return (
+                                            <tr key={roleName}>
+                                                <td className="role-label">{roleName}</td>
+                                                <td className="worker-cell">
+                                                    {workerNames.length > 0 
+                                                        ? workerNames.join("  |  ") 
+                                                        : <span className="unassigned">—</span>}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    
+                                    {rehearsals.length > 0 && (
+                                        <tr>
+                                            <td className="role-label" style={{fontStyle: 'italic'}}>Rehearsal</td>
+                                            <td className="worker-cell" style={{fontStyle: 'italic'}}>
+                                                {rehearsals.join(" / ")}
+                                            </td>
+                                        </tr>
                                     )}
-                                </div>
+                                </React.Fragment>
                             );
                         })}
-                    </>
+                    </tbody>
+                </table>
+                
+                {worshipSlots.length > 0 && (
+                    <table>
+                        <thead>
+                            <tr>
+                                <th colSpan={2} className="main-header" style={{backgroundColor: '#333'}}>
+                                    ORDER OF SERVICE
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {worshipSlots.map((slot: any) => {
+                                const bySlotRole: Record<string, any[]> = {};
+                                for (const sw of slot.workers) {
+                                    const key = sw.role || '(No Role)';
+                                    if (!bySlotRole[key]) bySlotRole[key] = [];
+                                    bySlotRole[key].push(sw);
+                                }
+                                
+                                return (
+                                    <React.Fragment key={slot.id}>
+                                        <tr className="ministry-header-row">
+                                            <th className="role-label" style={{textAlign: 'center', backgroundColor: '#e5e7eb', color: '#000'}}>{slot.slotName}</th>
+                                            <th className="date-header" style={{backgroundColor: '#f9fafb'}}>{slot.durationMinutes ? `${slot.durationMinutes} min` : '—'}</th>
+                                        </tr>
+                                        {Object.entries(bySlotRole).map(([roleName, workers]) => {
+                                            const workerNames = workers.map((w: any) => w.workerName).filter(Boolean);
+                                            return (
+                                                <tr key={roleName}>
+                                                    <td className="role-label">{roleName}</td>
+                                                    <td className="worker-cell">
+                                                        {workerNames.length > 0 ? workerNames.join("  |  ") : <span className="unassigned">—</span>}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {slot.workers.length === 0 && (
+                                            <tr>
+                                                <td className="role-label">Roles</td>
+                                                <td className="unassigned">No workers assigned</td>
+                                            </tr>
+                                        )}
+                                        {slot.notes && (
+                                            <tr className="notes-row">
+                                                <td colSpan={2}>Note: {slot.notes}</td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 )}
 
-                {schedule.notes && (
-                    <div style={{ marginTop: 24, fontSize: 12, color: '#555', borderTop: '1px solid #ccc', paddingTop: 12 }}>
-                        <strong>Notes:</strong> {schedule.notes}
-                    </div>
-                )}
+                <div className="footer-note">
+                    *NOTE: Please coordinate the altar call song with the preacher and confirm your band and singers for their slots. If you are unable to make it to your slot, please inform the Worship Leader and the schedulers in advance. Thank you. :)
+                </div>
             </body>
         </html>
     );

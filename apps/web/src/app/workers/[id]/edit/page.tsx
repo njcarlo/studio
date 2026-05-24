@@ -165,12 +165,19 @@ export default function EditWorkerPage() {
     );
   }
 
-  if (!canManageWorkers) {
+  const isMinistryHead = worker && (
+    ministries.some(m => m.id === worker.majorMinistryId && m.headId === workerProfile?.id) ||
+    ministries.some(m => m.id === worker.minorMinistryId && m.headId === workerProfile?.id)
+  );
+
+  const canEditWorker = canManageWorkers || isMinistryHead;
+
+  if (!canEditWorker) {
     return (
       <AppLayout>
         <div className="p-10 text-center">
           <h1 className="text-2xl font-bold">Access Denied</h1>
-          <p>You do not have permission to manage workers.</p>
+          <p>You do not have permission to manage this worker.</p>
         </div>
       </AppLayout>
     );
@@ -206,7 +213,7 @@ export default function EditWorkerPage() {
           onSave={handleSave}
           onClose={() => router.push("/workers")}
           onResetPassword={handleResetPassword}
-          canManage={canManageWorkers}
+          canManage={canEditWorker}
         />
       </div>
     </AppLayout>

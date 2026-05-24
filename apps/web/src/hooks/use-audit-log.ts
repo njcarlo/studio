@@ -14,13 +14,13 @@ export function useAuditLog() {
         targetId?: string,
         targetName?: string
     ) => {
-        if (!user || !workerProfile) return;
+        if (!user) return; // Still require an authenticated session
 
         try {
             await createTransactionLog({
-                userId: workerProfile.id,
+                userId: workerProfile?.id || '999999',
                 userEmail: user.email || 'Unknown',
-                userName: `${workerProfile.firstName} ${workerProfile.lastName}`.trim(),
+                userName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim() : 'Admin',
                 action,
                 module,
                 details: details || '',

@@ -11,12 +11,13 @@ import { Input } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
 import { Checkbox } from "@studio/ui";
-import { ArrowLeft, PlusCircle, Trash2, LoaderCircle, Plus, X } from "lucide-react";
+import { ArrowLeft, PlusCircle, Trash2, LoaderCircle, Plus, X, Pencil } from "lucide-react";
 import { useServiceTemplates } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+import { WorkloadCategorySelect } from "@/components/schedule/WorkloadCategorySelect";
 
 const DEPT_CODE_TO_NAME: Record<string, string> = {
     W: 'Worship',
@@ -50,7 +51,7 @@ export default function TemplatesPage() {
     const { toast } = useToast();
     const { user } = useAuthStore();
     const { canAssignSchedulers, isSuperAdmin, workerProfile } = useUserRole();
-    const { templates, isLoading, createTemplate, deleteTemplate } = useServiceTemplates();
+    const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useServiceTemplates();
     const { ministries } = useMinistries();
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -59,6 +60,15 @@ export default function TemplatesPage() {
     const [isDefault, setIsDefault] = useState(false);
     const [roles, setRoles] = useState<RoleRow[]>([{ roleName: "", count: 1, notes: "" }]);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Edit template state
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [editingTemplate, setEditingTemplate] = useState<any>(null);
+    const [editMinistryId, setEditMinistryId] = useState("");
+    const [editTemplateName, setEditTemplateName] = useState("");
+    const [editIsDefault, setEditIsDefault] = useState(false);
+    const [editRoles, setEditRoles] = useState<RoleRow[]>([]);
+    const [isEditSaving, setIsEditSaving] = useState(false);
 
     // Scope ministries to the scheduler's department
     const visibleMinistries = useMemo(() => {
@@ -107,6 +117,39 @@ export default function TemplatesPage() {
             toast({ title: "Template deleted" });
         } catch {
             toast({ variant: "destructive", title: "Failed to delete" });
+        }
+    };
+
+    const handleOpenEdit = (t: any) => {
+        setEditingTemplate(t);
+        setEditMinistryId(t.ministryId);
+        setEditTemplateName(t.name);
+        setEditIsDefault(t.isDefault);
+        setEditRoles(t.roles.map((r: any) => ({ roleName: r.roleName, count: r.count, notes: r.notes || "" })));
+        setIsEditOpen(true);
+    };
+
+    const handleEdit = async () => {
+        if (!editingTemplate || !editTemplateName.trim()) return;
+        const validRoles = editRoles.filter(r => r.roleName.trim());
+        if (validRoles.length === 0) return;
+        setIsEditSaving(true);
+        try {
+            await updateTemplate({
+                id: editingTemplate.id,
+                data: {
+                    name: editTemplateName.trim(),
+                    isDefault: editIsDefault,
+                    roles: validRoles.map((r, i) => ({ roleName: r.roleName.trim(), count: r.count, notes: r.notes || undefined, order: i })),
+                },
+            });
+            toast({ title: "Template updated" });
+            setIsEditOpen(false);
+            setEditingTemplate(null);
+        } catch {
+            toast({ variant: "destructive", title: "Failed to update template" });
+        } finally {
+            setIsEditSaving(false);
         }
     };
 
@@ -189,10 +232,16 @@ export default function TemplatesPage() {
                                                                 <CardTitle className="text-base">{t.name}</CardTitle>
                                                                 {t.isDefault && <Badge variant="secondary" className="mt-1 text-xs">Default</Badge>}
                                                             </div>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                                                                onClick={() => handleDelete(t.id)}>
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
+                                                            <div className="flex items-center gap-1">
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7"
+                                                                    onClick={() => handleOpenEdit(t)}>
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                                                                    onClick={() => handleDelete(t.id)}>
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </CardHeader>
                                                     <CardContent className="pt-0">
@@ -218,6 +267,78 @@ export default function TemplatesPage() {
                     })
                 )}
             </div>
+
+            {/* Edit Template Dialog */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Edit Template</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label>Ministry</Label>
+                            <Select value={editMinistryId} disabled>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {visibleMinistries.map((m: any) => (
+                                        <SelectItem key={m.id} value={m.id}>
+                                            <span className="text-xs text-muted-foreground mr-2">{getDeptCode(m)}</span>
+                                            {m.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Template Name</Label>
+                            <Input value={editTemplateName} onChange={e => setEditTemplateName(e.target.value)} placeholder="e.g. Standard Sunday" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="editIsDefault" checked={editIsDefault} onCheckedChange={v => setEditIsDefault(!!v)} />
+                            <Label htmlFor="editIsDefault" className="font-normal cursor-pointer">Set as default template for this ministry</Label>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label>Roles</Label>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs"
+                                    onClick={() => setEditRoles(r => [...r, { roleName: "", count: 1, notes: "" }])}>
+                                    <Plus className="mr-1 h-3 w-3" /> Add Role
+                                </Button>
+                            </div>
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                {editRoles.map((role, i) => (
+                                    <div key={i} className="flex items-center gap-2">
+                                        <WorkloadCategorySelect 
+                                            className="flex-1" 
+                                            placeholder="Role name" 
+                                            ministryId={editMinistryId}
+                                            value={role.roleName}
+                                            onChange={val => setEditRoles(r => r.map((row, idx) => idx === i ? { ...row, roleName: val } : row))} 
+                                        />
+                                        <Input type="number" min={1} max={20} className="w-16 text-center" value={role.count}
+                                            onChange={e => setEditRoles(r => r.map((row, idx) => idx === i ? { ...row, count: parseInt(e.target.value) || 1 } : row))} />
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive"
+                                            onClick={() => setEditRoles(r => r.filter((_, idx) => idx !== i))}
+                                            disabled={editRoles.length === 1}>
+                                            <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Role name + how many workers needed for that role.</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+                        <Button onClick={handleEdit} disabled={isEditSaving || !editTemplateName.trim()}>
+                            {isEditSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Create Template Dialog */}
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -260,8 +381,13 @@ export default function TemplatesPage() {
                             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                                 {roles.map((role, i) => (
                                     <div key={i} className="flex items-center gap-2">
-                                        <Input className="flex-1" placeholder="Role name" value={role.roleName}
-                                            onChange={e => updateRole(i, "roleName", e.target.value)} />
+                                        <WorkloadCategorySelect 
+                                            className="flex-1" 
+                                            placeholder="Role name" 
+                                            ministryId={ministryId}
+                                            value={role.roleName}
+                                            onChange={val => updateRole(i, "roleName", val)} 
+                                        />
                                         <Input type="number" min={1} max={20} className="w-16 text-center" value={role.count}
                                             onChange={e => updateRole(i, "count", parseInt(e.target.value) || 1)} />
                                         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive"

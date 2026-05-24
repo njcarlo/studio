@@ -864,7 +864,7 @@ export async function importOrsMinistries(
         }
     }
 
-    if (result.success > 0) revalidatePath('/settings/ministries');
+    if (result.success > 0) revalidatePath('/ministries');
     return result;
 }
 

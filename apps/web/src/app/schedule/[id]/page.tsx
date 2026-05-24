@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import { Badge } from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@studio/ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@studio/ui";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@studio/ui";
 import { Input } from "@studio/ui";
 import { Label } from "@studio/ui";
@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";import {
     ArrowLeft, LoaderCircle, UserPlus, X, LayoutTemplate,
     CheckCircle2, Circle, ChevronDown, ChevronUp, Plus, Trash2,
-    Send, ShieldCheck, AlertTriangle, Globe, GlobeLock, Printer, History,
+    Send, ShieldCheck, AlertTriangle, Globe, GlobeLock, Printer, History, CalendarClock,
 } from "lucide-react";
 import { useServiceSchedule, useServiceTemplates, useScheduleHistory, useWorshipSlots } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
@@ -24,6 +24,8 @@ import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { findWorkerByWorkerId } from "@/actions/schedule";
+import { getWorkloadCategories, createWorkloadCategory } from "@/actions/ministry-categories";
+import { WorkloadCategorySelect } from "@/components/schedule/WorkloadCategorySelect";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
@@ -34,10 +36,10 @@ export default function ScheduleDetailPage() {
     const { user } = useAuthStore();
     const { canManageSchedule, canConfirmSchedule, canAssignSchedulers, workerProfile } = useUserRole();
 
-    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, conflicts, togglePublic, setAttendanceStatus } = useServiceSchedule(id);
+    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus } = useServiceSchedule(id);
     const { ministries } = useMinistries();
     const { workers } = useWorkers({ limit: 500 });
-    const { templates } = useServiceTemplates();
+    const { templates, isLoading: templatesLoading } = useServiceTemplates();
     const { data: history } = useScheduleHistory();
     const { slots: worshipSlots, createSlot, deleteSlot, addWorker: addWorshipWorker, removeWorker: removeWorshipWorker } = useWorshipSlots(id);
 
@@ -50,6 +52,8 @@ export default function ScheduleDetailPage() {
     const [applyTemplateDialog, setApplyTemplateDialog] = useState<string | null>(null); // ministryId
     const [addRoleDialog, setAddRoleDialog] = useState<string | null>(null); // ministryId
     const [newRoleName, setNewRoleName] = useState("");
+    const [newRoleWorkerId, setNewRoleWorkerId] = useState<string | null>(null);
+    const [rehearsalDialog, setRehearsalDialog] = useState<{ assignmentId: string, date: string, time: string } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
     // Worship slot state
@@ -80,6 +84,38 @@ export default function ScheduleDetailPage() {
         }
         return ids.sort((a, b) => getMinistryName(a).localeCompare(getMinistryName(b)));
     }, [ministryIds, canManageSchedule, canAssignSchedulers, workerProfile, ministries]);
+
+    const ministriesByDepartment = useMemo(() => {
+        const grouped: Record<string, string[]> = {};
+        allMinistryIds.forEach(id => {
+            const m = ministries.find((x: any) => x.id === id);
+            const deptName = (m as any)?.department || "Other";
+            if (!grouped[deptName]) grouped[deptName] = [];
+            grouped[deptName].push(id);
+        });
+        
+        // Sort keys to maintain a consistent order (Worship first maybe, or just alphabetical)
+        return Object.keys(grouped).sort().reduce((acc, key) => {
+            acc[key] = grouped[key];
+            return acc;
+        }, {} as Record<string, string[]>);
+    }, [allMinistryIds, ministries]);
+
+    const unselectedMinistriesByDept = useMemo(() => {
+        const grouped: Record<string, typeof ministries> = {};
+        ministries
+            .filter((m: any) => !allMinistryIds.includes(m.id))
+            .forEach((m: any) => {
+                const deptName = m.department || "Other";
+                if (!grouped[deptName]) grouped[deptName] = [];
+                grouped[deptName].push(m);
+            });
+            
+        return Object.keys(grouped).sort().reduce((acc, key) => {
+            acc[key] = grouped[key];
+            return acc;
+        }, {} as Record<string, typeof ministries>);
+    }, [allMinistryIds, ministries]);
 
     // Detect if schedule has any Worship (W) department ministries
     const hasWorshipMinistries = useMemo(() => {
@@ -178,15 +214,29 @@ export default function ScheduleDetailPage() {
         if (!addRoleDialog || !newRoleName.trim()) return;
         setIsSaving(true);
         try {
+            const roleNameStr = newRoleName.trim();
+            const callerId = workerProfile?.id || '';
+            const existingCategories = await getWorkloadCategories(addRoleDialog);
+            if (!existingCategories.some((c: any) => c.name.toLowerCase() === roleNameStr.toLowerCase())) {
+                try {
+                    await createWorkloadCategory({ ministryId: addRoleDialog, name: roleNameStr }, callerId, { skipAuth: true });
+                } catch (e) {
+                    console.error("Failed to auto-create category", e);
+                }
+            }
+
             await upsertAssignment({
                 scheduleId: id,
                 ministryId: addRoleDialog,
-                roleName: newRoleName.trim(),
+                roleName: roleNameStr,
+                workerId: newRoleWorkerId ?? null,
+                workerName: newRoleWorkerId ? workers.find((w: any) => w.id === newRoleWorkerId)?.firstName + ' ' + workers.find((w: any) => w.id === newRoleWorkerId)?.lastName : null,
                 order: (byMinistry[addRoleDialog]?.length ?? 0),
             });
             toast({ title: "Role slot added" });
             setAddRoleDialog(null);
             setNewRoleName("");
+            setNewRoleWorkerId(null);
         } catch {
             toast({ variant: "destructive", title: "Failed to add role" });
         } finally {
@@ -231,6 +281,33 @@ export default function ScheduleDetailPage() {
             toast({ title: "Assignment confirmed" });
         } catch {
             toast({ variant: "destructive", title: "Failed to confirm" });
+        }
+    };
+
+    const handleSaveRehearsal = async () => {
+        if (!rehearsalDialog) return;
+        setIsSaving(true);
+        try {
+            const assignment = schedule?.assignments.find((a: any) => a.id === rehearsalDialog.assignmentId);
+            if (assignment) {
+                await upsertAssignment({
+                    scheduleId: id,
+                    ministryId: assignment.ministryId,
+                    roleName: assignment.roleName,
+                    workerId: assignment.workerId,
+                    workerName: assignment.workerName,
+                    notes: assignment.notes,
+                    rehearsalDate: rehearsalDialog.date ? new Date(rehearsalDialog.date) : null,
+                    rehearsalTime: rehearsalDialog.time || null,
+                    order: assignment.order,
+                });
+                toast({ title: "Rehearsal schedule updated" });
+            }
+            setRehearsalDialog(null);
+        } catch {
+            toast({ variant: "destructive", title: "Failed to update rehearsal" });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -386,18 +463,21 @@ export default function ScheduleDetailPage() {
                         <SelectValue placeholder="+ Add Ministry" />
                     </SelectTrigger>
                     <SelectContent>
-                        {ministries
-                            .filter(m => !allMinistryIds.includes(m.id))
-                            .map(m => (
-                                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                            ))}
+                        {Object.entries(unselectedMinistriesByDept).map(([deptName, deptMinistries]) => (
+                            <SelectGroup key={deptName}>
+                                <SelectLabel className="text-xs font-semibold text-primary/70">{deptName}</SelectLabel>
+                                {deptMinistries.map((m: any) => (
+                                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                ))}
+                            </SelectGroup>
+                        ))}
                     </SelectContent>
                 </Select>
                 )}
             </div>
 
-            {/* Ministry Cards */}
-            <div className="mt-3 space-y-3">
+            {/* Ministry Cards Grouped by Department */}
+            <div className="mt-3 space-y-6">
                 {allMinistryIds.length === 0 && (
                     <Card>
                         <CardContent className="py-10 text-center text-muted-foreground">
@@ -406,133 +486,163 @@ export default function ScheduleDetailPage() {
                     </Card>
                 )}
 
-                {allMinistryIds.map(ministryId => {
-                    const assignments = (byMinistry[ministryId] || []) as NonNullable<typeof schedule>['assignments'];
-                    const filled = assignments.filter((a: any) => a.workerId).length;
-                    const isExpanded = expandedMinistries.has(ministryId);
-                    const ministryTemplates = templates.filter((t: any) => t.ministryId === ministryId);
+                {Object.entries(ministriesByDepartment).map(([deptName, deptMinistryIds]) => (
+                    <div key={deptName} className="space-y-3">
+                        <h3 className="text-sm font-semibold text-primary uppercase tracking-wider pl-1 border-b pb-1">
+                            {deptName} Department
+                        </h3>
+                        {deptMinistryIds.map(ministryId => {
+                            const assignments = (byMinistry[ministryId] || []) as NonNullable<typeof schedule>['assignments'];
+                            const filled = assignments.filter((a: any) => a.workerId).length;
+                            const isExpanded = expandedMinistries.has(ministryId);
+                            const ministryTemplates = templates.filter((t: any) => t.ministryId === ministryId);
 
-                    // Group by role name
-                    const byRole = assignments.reduce<Record<string, typeof assignments>>((acc: Record<string, typeof assignments>, a: any) => {
-                        if (!acc[a.roleName]) acc[a.roleName] = [];
-                        acc[a.roleName].push(a);
-                        return acc;
-                    }, {});
+                            // Group by role name
+                            const byRole = assignments.reduce<Record<string, typeof assignments>>((acc: Record<string, typeof assignments>, a: any) => {
+                                if (!acc[a.roleName]) acc[a.roleName] = [];
+                                acc[a.roleName].push(a);
+                                return acc;
+                            }, {});
 
-                    return (
-                        <Card key={ministryId}>
-                            <CardHeader
-                                className="cursor-pointer py-3 px-4"
-                                onClick={() => toggleMinistry(ministryId)}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                        <CardTitle className="text-base">{getMinistryName(ministryId)}</CardTitle>
-                                        <span className="text-xs text-muted-foreground">{filled}/{assignments.length} filled</span>
-                                    </div>
-                                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                        {ministryTemplates.length > 0 && (
-                                            <Button variant="outline" size="sm" className="h-7 text-xs"
-                                                onClick={() => setApplyTemplateDialog(ministryId)}>
-                                                <LayoutTemplate className="mr-1 h-3 w-3" /> Apply Template
-                                            </Button>
-                                        )}
-                                        <Button variant="outline" size="sm" className="h-7 text-xs"
-                                            onClick={() => { setAddRoleDialog(ministryId); setNewRoleName(""); }}>
-                                            <Plus className="mr-1 h-3 w-3" /> Add Role
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                                            onClick={() => {
-                                                assignments.forEach((a: any) => deleteAssignment(a.id));
-                                            }}>
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-
-                            {isExpanded && (
-                                <CardContent className="pt-0 pb-4 px-4">
-                                    <div className="space-y-4">
-                                        {Object.entries(byRole).map(([roleName, slots]) => (
-                                            <div key={roleName}>
-                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                                                    {roleName}
-                                                </p>
-                                                <div className="space-y-1.5">
-                                                    {(slots as any[]).map((slot: any) => {
-                                                        const status = slot.attendanceStatus || 'Pending';
-                                                        const statusDot = status === 'Confirmed'
-                                                            ? 'bg-green-500'
-                                                            : status === 'Not Attending'
-                                                            ? 'bg-red-500'
-                                                            : 'bg-yellow-400';
-                                                        return (
-                                                        <div key={slot.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
-                                                            {slot.workerId ? (
-                                                                <>
-                                                                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDot}`} title={status} />
-                                                                    <Avatar className="h-6 w-6">
-                                                                        <AvatarImage src={workers.find((w: any) => w.id === slot.workerId)?.avatarUrl} />
-                                                                        <AvatarFallback className="text-[10px]">
-                                                                            {slot.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}
-                                                                        </AvatarFallback>
-                                                                    </Avatar>
-                                                                    <span className="text-sm flex-1">{slot.workerName}</span>
-                                                                    {canConfirmSchedule && (
-                                                                        <Select
-                                                                            value={status}
-                                                                            onValueChange={(v: any) => setAttendanceStatus({ assignmentId: slot.id, status: v, updatedBy: workerProfile?.id || user?.uid || 'system' })}
-                                                                        >
-                                                                            <SelectTrigger className="h-6 w-32 text-xs border-0 bg-transparent p-0 focus:ring-0">
-                                                                                <SelectValue />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent>
-                                                                                <SelectItem value="Pending">⏳ Pending</SelectItem>
-                                                                                <SelectItem value="Confirmed">✅ Confirmed</SelectItem>
-                                                                                <SelectItem value="Not Attending">❌ Not Attending</SelectItem>
-                                                                            </SelectContent>
-                                                                        </Select>
-                                                                    )}
-                                                                    {!canConfirmSchedule && (
-                                                                        <span className="text-xs text-muted-foreground">{status}</span>
-                                                                    )}
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6"
-                                                                        onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
-                                                                        <UserPlus className="h-3.5 w-3.5" />
-                                                                    </Button>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                                                                        onClick={() => deleteAssignment(slot.id)}>
-                                                                        <X className="h-3.5 w-3.5" />
-                                                                    </Button>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                                    <span className="text-sm text-muted-foreground flex-1">Unassigned</span>
-                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs"
-                                                                        onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
-                                                                        <UserPlus className="mr-1 h-3 w-3" /> Assign
-                                                                    </Button>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                                                                        onClick={() => deleteAssignment(slot.id)}>
-                                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                                    </Button>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                        );
-                                                    })}
-                                                </div>
+                            return (
+                                <Card key={ministryId}>
+                                    <CardHeader
+                                        className="cursor-pointer py-3 px-4"
+                                        onClick={() => toggleMinistry(ministryId)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                <CardTitle className="text-base">{getMinistryName(ministryId)}</CardTitle>
+                                                <span className="text-xs text-muted-foreground">{filled}/{assignments.length} filled</span>
                                             </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            )}
-                        </Card>
-                    );
-                })}
+                                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                {(templatesLoading || ministryTemplates.length > 0) && (
+                                                    <Button variant="outline" size="sm" className="h-7 text-xs"
+                                                        disabled={templatesLoading}
+                                                        onClick={() => setApplyTemplateDialog(ministryId)}>
+                                                        {templatesLoading
+                                                            ? <LoaderCircle className="mr-1 h-3 w-3 animate-spin" />
+                                                            : <LayoutTemplate className="mr-1 h-3 w-3" />
+                                                        }
+                                                        Apply Template
+                                                    </Button>
+                                                )}
+                                                <Button variant="outline" size="sm" className="h-7 text-xs"
+                                                    onClick={() => { setAddRoleDialog(ministryId); setNewRoleName(""); }}>
+                                                    <Plus className="mr-1 h-3 w-3" /> Add Role
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                                                    onClick={() => {
+                                                        assignments.forEach((a: any) => deleteAssignment(a.id));
+                                                    }}>
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+
+                                    {isExpanded && (
+                                        <CardContent className="pt-0 pb-4 px-4">
+                                            <div className="space-y-4">
+                                                {Object.entries(byRole).map(([roleName, slots]) => (
+                                                    <div key={roleName}>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                                            {roleName}
+                                                        </p>
+                                                        <div className="space-y-1.5">
+                                                            {(slots as any[]).map((slot: any) => {
+                                                                const status = slot.attendanceStatus || 'Pending';
+                                                                const statusDot = status === 'Confirmed'
+                                                                    ? 'bg-green-500'
+                                                                    : status === 'Not Attending'
+                                                                    ? 'bg-red-500'
+                                                                    : 'bg-yellow-400';
+                                                                return (
+                                                                <React.Fragment key={slot.id}>
+                                                                <div className="flex items-center gap-3 rounded-md border px-3 py-2">
+                                                                    {slot.workerId ? (
+                                                                        <>
+                                                                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDot}`} title={status} />
+                                                                            <Avatar className="h-6 w-6">
+                                                                                <AvatarImage src={workers.find((w: any) => w.id === slot.workerId)?.avatarUrl} />
+                                                                                <AvatarFallback className="text-[10px]">
+                                                                                    {slot.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}
+                                                                                </AvatarFallback>
+                                                                            </Avatar>
+                                                                            <span className="text-sm flex-1">{slot.workerName}</span>
+                                                                            {canConfirmSchedule && (
+                                                                                <Select
+                                                                                    value={status}
+                                                                                    onValueChange={(v: any) => setAttendanceStatus({ assignmentId: slot.id, status: v, updatedBy: workerProfile?.id || user?.uid || 'system' })}
+                                                                                >
+                                                                                    <SelectTrigger className="h-6 w-32 text-xs border-0 bg-transparent p-0 focus:ring-0">
+                                                                                        <SelectValue />
+                                                                                    </SelectTrigger>
+                                                                                    <SelectContent>
+                                                                                        <SelectItem value="Pending">⏳ Pending</SelectItem>
+                                                                                        <SelectItem value="Confirmed">✅ Confirmed</SelectItem>
+                                                                                        <SelectItem value="Not Attending">❌ Not Attending</SelectItem>
+                                                                                    </SelectContent>
+                                                                                </Select>
+                                                                            )}
+                                                                            {!canConfirmSchedule && (
+                                                                                <span className="text-xs text-muted-foreground">{status}</span>
+                                                                            )}
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6"
+                                                                                title="Rehearsal Schedule"
+                                                                                onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
+                                                                                <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
+                                                                            </Button>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6"
+                                                                                onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
+                                                                                <UserPlus className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                                                                                onClick={() => deleteAssignment(slot.id)}>
+                                                                                <X className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                                            <span className="text-sm text-muted-foreground flex-1">Unassigned</span>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6"
+                                                                                title="Rehearsal Schedule"
+                                                                                onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
+                                                                                <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
+                                                                            </Button>
+                                                                            <Button variant="ghost" size="sm" className="h-7 text-xs"
+                                                                                onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
+                                                                                <UserPlus className="mr-1 h-3 w-3" /> Assign
+                                                                            </Button>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                                                                                onClick={() => deleteAssignment(slot.id)}>
+                                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                                {slot.rehearsalDate && (
+                                                                    <div className="ml-8 text-[10px] text-muted-foreground flex items-center gap-1.5 -mt-0.5 mb-1">
+                                                                        <CalendarClock className="h-3 w-3" />
+                                                                        Rehearsal: {format(new Date(slot.rehearsalDate), "MMM d, yyyy")} {slot.rehearsalTime ? `at ${slot.rehearsalTime}` : ""}
+                                                                    </div>
+                                                                )}
+                                                                </React.Fragment>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    )}
+                                </Card>
+                            );
+                        })}
+                    </div>
+                ))}
             </div>
 
             {/* Worship Slots — shown inline under ministry cards when Worship dept is present */}
@@ -762,24 +872,37 @@ export default function ScheduleDetailPage() {
                                     >
                                         <X className="h-4 w-4" /> Clear assignment
                                     </button>
-                                    {filteredWorkers.map((w: any) => (
+                                    {filteredWorkers.map((w: any) => {
+                                        const dutyCount = monthlyDuties[w.id] || 0;
+                                        return (
                                         <button
                                             key={w.id}
-                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-left"
+                                            className="w-full flex flex-col gap-1 px-3 py-2 rounded-md hover:bg-muted text-left border border-transparent focus:border-border mb-1"
                                             onClick={() => handleAssign(w.id)}
                                         >
-                                            <Avatar className="h-7 w-7">
-                                                <AvatarImage src={w.avatarUrl} />
-                                                <AvatarFallback className="text-[10px]">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <p className="text-sm font-medium">{w.firstName} {w.lastName}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {ministries.find((m: any) => m.id === w.majorMinistryId)?.name || "—"}
-                                                </p>
+                                            <div className="w-full flex items-center gap-3">
+                                                <Avatar className="h-7 w-7">
+                                                    <AvatarImage src={w.avatarUrl} />
+                                                    <AvatarFallback className="text-[10px]">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium">{w.firstName} {w.lastName}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {ministries.find((m: any) => m.id === w.majorMinistryId)?.name || "—"}
+                                                    </p>
+                                                </div>
+                                                <Badge variant={dutyCount >= 3 ? "destructive" : "secondary"} className="text-[10px] shrink-0">
+                                                    {dutyCount} duties
+                                                </Badge>
                                             </div>
+                                            {dutyCount >= 3 && (
+                                                <p className="text-[10px] text-amber-600 dark:text-amber-500 flex items-center gap-1 mt-0.5 font-medium">
+                                                    <AlertTriangle className="h-3 w-3" /> Exceeds 3 duties/month. You can still assign.
+                                                </p>
+                                            )}
                                         </button>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </TabsContent>
@@ -805,19 +928,30 @@ export default function ScheduleDetailPage() {
                                     const targetMinistryId = assignDialog?.ministryId;
                                     const isSameMinistry = workerMinistryId === targetMinistryId || workerIdResult.minorMinistryId === targetMinistryId;
                                     const workerMinistryName = ministries.find((m: any) => m.id === workerMinistryId)?.name || "—";
+                                    const dutyCount = monthlyDuties[workerIdResult.id] || 0;
                                     return (
                                         <div className="space-y-2">
                                             <button
-                                                className="w-full flex items-center gap-3 px-3 py-3 rounded-md border hover:bg-muted text-left"
+                                                className="w-full flex flex-col gap-1 px-3 py-3 rounded-md border hover:bg-muted text-left"
                                                 onClick={() => handleAssign(workerIdResult.id)}
                                             >
-                                                <CheckCircle2 className={`h-5 w-5 shrink-0 ${isSameMinistry ? "text-green-500" : "text-amber-500"}`} />
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-medium">{workerIdResult.firstName} {workerIdResult.lastName}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {workerMinistryName} · {workerIdResult.status}
-                                                    </p>
+                                                <div className="w-full flex items-center gap-3">
+                                                    <CheckCircle2 className={`h-5 w-5 shrink-0 ${isSameMinistry ? "text-green-500" : "text-amber-500"}`} />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-medium">{workerIdResult.firstName} {workerIdResult.lastName}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {workerMinistryName} · {workerIdResult.status}
+                                                        </p>
+                                                    </div>
+                                                    <Badge variant={dutyCount >= 3 ? "destructive" : "secondary"} className="text-[10px] shrink-0">
+                                                        {dutyCount} duties
+                                                    </Badge>
                                                 </div>
+                                                {dutyCount >= 3 && (
+                                                    <p className="text-[10px] text-amber-600 dark:text-amber-500 flex items-center gap-1 mt-1 font-medium ml-8">
+                                                        <AlertTriangle className="h-3 w-3" /> Exceeds 3 duties/month. You can still assign.
+                                                    </p>
+                                                )}
                                             </button>
                                             {!isSameMinistry && (
                                                 <p className="text-xs text-amber-600 flex items-center gap-1">
@@ -874,12 +1008,30 @@ export default function ScheduleDetailPage() {
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
                             <Label>Role Name</Label>
-                            <Input
+                            <WorkloadCategorySelect
+                                ministryId={addRoleDialog || ''}
                                 value={newRoleName}
-                                onChange={e => setNewRoleName(e.target.value)}
+                                onChange={setNewRoleName}
                                 placeholder="e.g. Worship Leader, Sound Engineer"
-                                autoFocus
                             />
+                        </div>
+                        <div className="space-y-1.5 mt-4 border-t pt-4">
+                            <Label>Assign Worker (Optional)</Label>
+                            <Select value={newRoleWorkerId || 'none'} onValueChange={v => setNewRoleWorkerId(v === 'none' ? null : v)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a worker" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">None (Leave empty)</SelectItem>
+                                    {workers
+                                        .filter((w: any) => w.status === 'Active' && (w.majorMinistryId === addRoleDialog || w.minorMinistryId === addRoleDialog))
+                                        .map((w: any) => (
+                                            <SelectItem key={w.id} value={w.id}>{w.firstName} {w.lastName}</SelectItem>
+                                        ))
+                                    }
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground mt-1">You can assign a worker right now, or leave it empty and assign later.</p>
                         </div>
                     </div>
                     <DialogFooter>
@@ -921,6 +1073,40 @@ export default function ScheduleDetailPage() {
                             }}
                         >
                             Add Slot
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Rehearsal Dialog */}
+            <Dialog open={!!rehearsalDialog} onOpenChange={() => setRehearsalDialog(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Set Rehearsal Schedule</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label>Rehearsal Date</Label>
+                            <Input 
+                                type="date" 
+                                value={rehearsalDialog?.date || ''} 
+                                onChange={e => setRehearsalDialog(d => d ? { ...d, date: e.target.value } : null)} 
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Rehearsal Time</Label>
+                            <Input 
+                                type="time" 
+                                value={rehearsalDialog?.time || ''} 
+                                onChange={e => setRehearsalDialog(d => d ? { ...d, time: e.target.value } : null)} 
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setRehearsalDialog(null)}>Cancel</Button>
+                        <Button onClick={handleSaveRehearsal} disabled={isSaving}>
+                            {isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                            Save
                         </Button>
                     </DialogFooter>
                 </DialogContent>

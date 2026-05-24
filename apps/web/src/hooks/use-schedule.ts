@@ -10,6 +10,7 @@ import {
     getWorkerConflicts, togglePublicSchedule, getScheduleHistory, setAttendanceStatus,
     getWorshipSlots, createWorshipSlot, updateWorshipSlot, deleteWorshipSlot,
     addWorkerToWorshipSlot, removeWorkerFromWorshipSlot,
+    getMonthlyDutyCounts,
 } from '@/actions/schedule';
 
 export function useServiceSchedules() {
@@ -66,7 +67,10 @@ export function useServiceSchedule(id: string) {
     const applyTemplateMutation = useMutation({
         mutationFn: ({ templateId }: { templateId: string }) =>
             applyTemplateToSchedule(id, templateId),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['service-schedule', id] });
+            qc.invalidateQueries({ queryKey: ['workload-categories'] });
+        },
     });
 
     const publishMutation = useMutation({
@@ -105,6 +109,12 @@ export function useServiceSchedule(id: string) {
         enabled: !!id,
     });
 
+    const { data: monthlyDutiesData } = useQuery({
+        queryKey: ['schedule-monthly-duties', id],
+        queryFn: () => getMonthlyDutyCounts(id),
+        enabled: !!id,
+    });
+
     const togglePublicMutation = useMutation({
         mutationFn: ({ isPublic }: { isPublic: boolean }) => togglePublicSchedule(id, isPublic),
         onSuccess: () => {
@@ -117,6 +127,7 @@ export function useServiceSchedule(id: string) {
         schedule: data,
         isLoading,
         conflicts: conflictsData || [],
+        monthlyDuties: monthlyDutiesData || {},
         confirmationStatus: confirmationStatus || [],
         upsertAssignment: upsertMutation.mutateAsync,
         deleteAssignment: deleteMutation.mutateAsync,
@@ -140,12 +151,18 @@ export function useServiceTemplates(ministryId?: string) {
 
     const createMutation = useMutation({
         mutationFn: createServiceTemplate,
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['service-templates'] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['service-templates'] });
+            qc.invalidateQueries({ queryKey: ['workload-categories'] });
+        },
     });
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => updateServiceTemplate(id, data),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['service-templates'] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['service-templates'] });
+            qc.invalidateQueries({ queryKey: ['workload-categories'] });
+        },
     });
 
     const deleteMutation = useMutation({

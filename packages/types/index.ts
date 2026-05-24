@@ -23,6 +23,7 @@ export type Worker = {
     avatarUrl: string;
     majorMinistryId: string;
     minorMinistryId: string;
+    capabilities?: string[];
     employmentType?: 'Full-Time' | 'On-Call' | 'Volunteer' | string | null;
     birthDate?: string | null;
     address?: string | null;
@@ -45,6 +46,7 @@ export type Ministry = {
     departmentCode?: DepartmentCode | string;
     leaderId: string;
     headId?: string | null;
+    managerId?: string | null;
     approverId?: string | null;
     mealStubAssignerId?: string | null;
     mealStubWeeklyLimit?: number | null; // Total stubs allowed per week for this ministry
@@ -188,4 +190,14 @@ export type C2SGroup = {
     mentorId: string;
     menteeIds: string[];
     createdAt: TimestampLike;
+};
+
+export type WorkloadCategory = {
+    id: string;
+    name: string;
+    description?: string | null;
+    ministryId: string;
+    sortOrder: number;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
 };

@@ -17,6 +17,8 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { assignMinistryScheduler, getMinistrySchedulers } from "@/actions/schedule";
 
+const stripPrefix = (name: string) => name.replace(/^[WORDA]-/i, '');
+
 export default function SchedulersPage() {
     const router = useRouter();
     const { toast } = useToast();
@@ -61,7 +63,6 @@ export default function SchedulersPage() {
             .sort((a: any, b: any) => stripPrefix(a.name).localeCompare(stripPrefix(b.name)));
     }, [ministries, isSuperAdmin, workerProfile]);
 
-    const stripPrefix = (name: string) => name.replace(/^[WORDA]-/i, '');
 
     // Filter workers to only those in the target ministry (major or minor)
     const filteredWorkers = useMemo(() => {
