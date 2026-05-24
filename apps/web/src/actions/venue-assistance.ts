@@ -281,6 +281,9 @@ export async function createRecurringBooking(data: CreateRecurringBookingData) {
 
         const end = new Date(date);
         end.setHours(endHour, endMin, 0, 0);
+        if (end < start) {
+            end.setDate(end.getDate() + 1);
+        }
 
         const booking = await prisma.venueBooking.create({
             data: {
@@ -668,6 +671,16 @@ export async function bulkRespondToRecurringRequests(
         include: { items: true },
     });
 
+    // Map item IDs to their names so we can match by name across occurrences
+    const itemIds = itemStatuses.map(u => u.itemId);
+    const sourceItems = await prisma.assistanceRequestItem.findMany({
+        where: { id: { in: itemIds } },
+        select: { id: true, name: true },
+    });
+    const itemIdToName = Object.fromEntries(
+        sourceItems.map(item => [item.id, item.name.toLowerCase()])
+    );
+
     const results = [];
     for (const req of pendingRequests) {
         // Map item statuses by name since each request has its own item IDs
@@ -677,11 +690,22 @@ export async function bulkRespondToRecurringRequests(
             if (directMatch) return directMatch;
 
             // For bulk responses, match by item name
+            const itemName = item.name.toLowerCase();
             const nameMatch = itemStatuses.find(u => {
-                // itemStatuses may reference items from a template request
-                return u.itemId === item.id;
+                const sourceName = itemIdToName[u.itemId];
+                return sourceName && sourceName === itemName;
             });
-            return nameMatch ?? { itemId: item.id, status: 'Approved' as const };
+
+            if (nameMatch) {
+                return {
+                    itemId: item.id,
+                    status: nameMatch.status,
+                    adjustedQty: nameMatch.adjustedQty,
+                    adjustedDesc: nameMatch.adjustedDesc,
+                };
+            }
+
+            return { itemId: item.id, status: 'Approved' as const };
         });
 
         const result = await respondToAssistanceRequest(
