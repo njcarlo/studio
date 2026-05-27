@@ -113,6 +113,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 width={32}
                 height={32}
                 className="w-8 h-8 rounded-sm"
+                priority
               />
               <span className="text-lg font-semibold font-headline">
                 COG App
@@ -135,6 +136,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               width={24}
               height={24}
               className="w-6 h-6 rounded-sm"
+              priority
             />
             <span className="text-sm font-semibold font-headline">COG App</span>
           </div>

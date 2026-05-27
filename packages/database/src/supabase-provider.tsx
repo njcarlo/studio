@@ -39,33 +39,44 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    // Initial check
+    let cancelled = false;
+
+    // Listen for changes first so we don't miss events that fire before getUser resolves
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!cancelled) {
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
+    });
+
+    // Initial check — only apply result if this effect instance is still mounted
     const checkUser = async () => {
       try {
         const {
           data: { user },
           error,
         } = await supabase.auth.getUser();
-        setUser(user);
-        setError(error);
+        if (!cancelled) {
+          setUser(user);
+          setError(error);
+        }
       } catch (e) {
-        setError(e);
+        if (!cancelled) {
+          setError(e);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     checkUser();
 
-    // Listen for changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
     };
   }, []);
