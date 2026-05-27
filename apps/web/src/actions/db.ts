@@ -401,7 +401,7 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
     // Create auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
-      password: "StudioUser2026!",
+      password: "Password123",
       email_confirm: true,
       user_metadata: {
         firstName: data.firstName,
