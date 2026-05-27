@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             .select('*')
             .eq('email', email.trim().toLowerCase())
             .eq('password', password)
-            .single();
+            .maybeSingle();
 
         if (error || !data) return { error: 'Invalid email or password.' };
 
@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             .from('tract_users')
             .select('id')
             .eq('email', email.trim().toLowerCase())
-            .single();
+            .maybeSingle();
 
         if (existing) return { error: 'Email already registered.' };
 

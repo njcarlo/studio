@@ -88,7 +88,7 @@ export default function AuthScreen() {
                 .from('tract_users')
                 .select('id')
                 .eq('email', email.trim().toLowerCase())
-                .single();
+                .maybeSingle();
 
             if (!existing) {
                 Alert.alert('Not found', 'No account found with that email address.');
