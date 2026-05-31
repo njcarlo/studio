@@ -452,56 +452,142 @@ export async function createApproval(data: any) {
     return approval;
 }
 
-export async function getApprovals() {
+export async function getApprovals(scope?: {
+    workerId?: string;
+    ministryIds?: string[];
+    isSuperAdmin?: boolean;
+}) {
+    const where = buildApprovalScope(scope);
     return await prisma.approvalRequest.findMany({
-        orderBy: {
-            date: 'desc',
+        where,
+        orderBy: { date: 'desc' },
+        include: {
+            worker: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    majorMinistryId: true,
+                    minorMinistryId: true,
+                },
+            },
         },
     });
 }
 
-export async function updateApproval(id: string, data: any) {
-    const approval = await prisma.approvalRequest.update({
-        where: { id },
-        data,
+function buildApprovalScope(scope?: {
+    workerId?: string;
+    ministryIds?: string[];
+    isSuperAdmin?: boolean;
+}) {
+    if (!scope || scope.isSuperAdmin || !scope.ministryIds?.length) return undefined;
+    const ids = scope.ministryIds;
+    return {
+        OR: [
+            { worker: { OR: [{ majorMinistryId: { in: ids } }, { minorMinistryId: { in: ids } }] } },
+            { type: 'Room Booking' },
+            { oldMajorId: { in: ids } },
+            { oldMinorId: { in: ids } },
+            { newMajorId: { in: ids } },
+            { newMinorId: { in: ids } },
+        ],
+    };
+}
+
+// Returns the next valid status for an approve/reject action, or null if the transition is invalid.
+function resolveNextApprovalStatus(
+    type: string,
+    currentStatus: string,
+    action: 'approve' | 'reject',
+): { nextStatus: string; outgoingApproved?: boolean } | null {
+    if (action === 'reject') {
+        const rejectableStatuses = [
+            'Pending', 'Pending Ministry Approval', 'Pending Admin Approval',
+            'Pending Outgoing Approval', 'Pending Incoming Approval',
+        ];
+        if (!rejectableStatuses.includes(currentStatus)) return null;
+        return { nextStatus: 'Rejected' };
+    }
+
+    if (type === 'Room Booking') {
+        if (currentStatus === 'Pending' || currentStatus === 'Pending Ministry Approval') {
+            return { nextStatus: 'Pending Admin Approval' };
+        }
+        if (currentStatus === 'Pending Admin Approval') return { nextStatus: 'Approved' };
+        return null;
+    }
+
+    if (type === 'Ministry Change') {
+        if (currentStatus === 'Pending Outgoing Approval') {
+            return { nextStatus: 'Pending Incoming Approval', outgoingApproved: true };
+        }
+        if (currentStatus === 'Pending Incoming Approval' || currentStatus === 'Pending') {
+            return { nextStatus: 'Approved' };
+        }
+        return null;
+    }
+
+    // New Worker, Profile Update, Events — single-stage
+    if (currentStatus === 'Pending') return { nextStatus: 'Approved' };
+    return null;
+}
+
+/**
+ * Intent-based approval action. Handles multi-stage state machines and
+ * executes all side-effects atomically in a Prisma transaction.
+ */
+export async function respondToApproval(
+    id: string,
+    action: 'approve' | 'reject',
+): Promise<{ approval: any; nextStatus: string }> {
+    const current = await prisma.approvalRequest.findUniqueOrThrow({ where: { id } });
+    const transition = resolveNextApprovalStatus(current.type, current.status, action);
+    if (!transition) {
+        throw new Error(
+            `Invalid transition: cannot ${action} a "${current.type}" request in status "${current.status}"`,
+        );
+    }
+
+    const { nextStatus, outgoingApproved } = transition;
+    const updateData: any = { status: nextStatus };
+    if (outgoingApproved !== undefined) updateData.outgoingApproved = outgoingApproved;
+
+    const approval = await prisma.$transaction(async (tx) => {
+        const updated = await tx.approvalRequest.update({ where: { id }, data: updateData });
+
+        if (nextStatus === 'Approved') {
+            if (updated.type === 'New Worker' && updated.workerId) {
+                await tx.worker.update({ where: { id: updated.workerId }, data: { status: 'Active' } });
+            }
+            if (updated.type === 'Ministry Change' && updated.workerId) {
+                await tx.worker.update({
+                    where: { id: updated.workerId },
+                    data: {
+                        majorMinistryId: updated.newMajorId || '',
+                        minorMinistryId: updated.newMinorId || '',
+                    },
+                });
+            }
+            if (updated.type === 'Room Booking' && updated.reservationId) {
+                await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Approved' } });
+            }
+        }
+
+        if (nextStatus === 'Rejected' && updated.type === 'Room Booking' && updated.reservationId) {
+            await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Rejected' } });
+        }
+
+        return updated;
     });
 
-    const status = data.status;
+    revalidatePath('/approvals');
+    revalidatePath('/dashboard');
+    return { approval, nextStatus };
+}
 
-    // Handle side-effects for Room Bookings
-    if (approval.type === 'Room Booking' && approval.reservationId) {
-        await prisma.booking.update({
-            where: { id: approval.reservationId },
-            data: { status },
-        }).catch(err => {
-            console.error('Failed to update booking status:', err);
-        });
-    }
-
-    // Handle final approval side-effects for workers
-    if (status === 'Approved') {
-        if (approval.type === 'New Worker' && approval.workerId) {
-            await prisma.worker.update({
-                where: { id: approval.workerId },
-                data: { status: 'Active' },
-            }).catch(err => {
-                console.error('Failed to activate worker status:', err);
-            });
-        }
-
-        if (approval.type === 'Ministry Change' && approval.workerId) {
-            await prisma.worker.update({
-                where: { id: approval.workerId },
-                data: {
-                    majorMinistryId: approval.newMajorId || '',
-                    minorMinistryId: approval.newMinorId || '',
-                },
-            }).catch(err => {
-                console.error('Failed to update worker ministry:', err);
-            });
-        }
-    }
-
+// Kept for raw status patches (admin overrides, migrations).
+export async function updateApproval(id: string, data: any) {
+    const approval = await prisma.approvalRequest.update({ where: { id }, data });
     revalidatePath('/approvals');
     revalidatePath('/dashboard');
     return approval;

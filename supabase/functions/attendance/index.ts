@@ -45,13 +45,21 @@ async function createAttendance(req:Request,{supabase}:any){
 }
 async function getStats(_:Request,{supabase}:any,_p:any,url:URL){
   const s=url.searchParams.get('startDate'),e=url.searchParams.get('endDate')
-  let q=supabase.from('AttendanceRecord').select('*,worker:Worker(majorMinistryId,minorMinistryId)')
-  if(s)q=q.gte('time',s); if(e)q=q.lte('time',e)
-  const {data,error}=await q; if(error)throw error
-  const totalCount=data?.length??0
-  const byDate:Record<string,number>={}
-  for(const r of(data??[])){const d=r.time?.split('T')[0]??'';byDate[d]=(byDate[d]||0)+1}
-  return jsonOk({totalCount,byDate:Object.entries(byDate).map(([date,count])=>({date,count}))})
+
+  // Aggregate count — no full table scan
+  let countQ=supabase.from('AttendanceRecord').select('*',{count:'exact',head:true})
+  if(s)countQ=countQ.gte('time',s); if(e)countQ=countQ.lte('time',e)
+  const {count,error:countErr}=await countQ; if(countErr)throw countErr
+
+  // Daily breakdown: fetch only the time column, aggregate in JS (lightweight vs full select *)
+  let timeQ=supabase.from('AttendanceRecord').select('time')
+  if(s)timeQ=timeQ.gte('time',s); if(e)timeQ=timeQ.lte('time',e)
+  const {data:rows,error:timeErr}=await timeQ; if(timeErr)throw timeErr
+  const agg:Record<string,number>={}
+  for(const r of(rows??[])){const d=(r.time as string)?.split('T')[0]??'';agg[d]=(agg[d]||0)+1}
+  const byDate=Object.entries(agg).map(([date,c])=>({date,count:c}))
+
+  return jsonOk({totalCount:count??0,byDate})
 }
 async function listScanLogs(_:Request,{supabase}:any,_p:any,url:URL){
   let q=supabase.from('ScanLog').select('*').order('timestamp',{ascending:false})

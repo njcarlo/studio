@@ -192,7 +192,11 @@ export function UserRoleSyncerSQL() {
         sa || hasPerm('approvals:manage') || hasPerm('manage_approvals') ||
         isMinistryApprover || isMinistryHead,
       canApproveAllRequests:
-        sa || hasPerm('approvals:manage') || hasPerm('manage_approvals'),
+        sa || hasPerm('approvals:approve_all'),
+      canApproveEvents:
+        sa || hasPerm('events:approve') || hasPerm('approvals:approve_events'),
+      canManageEvents:
+        sa || hasPerm('events:create') || hasPerm('events:update') || hasPerm('events:delete'),
       canOperateScanner:
         sa || hasPerm('attendance:scan') || hasPerm('operate_scanner'),
       canViewAttendance:

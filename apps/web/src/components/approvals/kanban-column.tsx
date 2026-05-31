@@ -5,16 +5,13 @@ import { Badge } from "@studio/ui";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KanbanCard } from "./kanban-card";
-import type { ApprovalRequest, Worker } from "@studio/types";
-
 interface KanbanColumnProps {
   title: string;
-  requests: ApprovalRequest[];
-  onUpdateStatus: (request: ApprovalRequest, status: "Approved" | "Rejected") => void;
-  checkCanManage: (request: ApprovalRequest) => boolean;
-  onCardClick: (request: ApprovalRequest) => void;
+  requests: any[];
+  onUpdateStatus: (request: any, status: "Approved" | "Rejected") => void;
+  checkCanManage: (request: any) => boolean;
+  onCardClick: (request: any) => void;
   icon?: React.ReactNode;
-  workers?: Worker[];
   isUpdating: boolean;
 }
 
@@ -25,7 +22,6 @@ export function KanbanColumn({
   checkCanManage,
   onCardClick,
   icon,
-  workers,
   isUpdating,
 }: KanbanColumnProps) {
   return (
@@ -51,7 +47,7 @@ export function KanbanColumn({
         {requests.length > 0 ? (
           requests.map((request) => {
             const canManage = checkCanManage(request);
-            const requesterWorker = workers?.find((w) => w.id === request.workerId);
+            const requesterWorker = request.worker;
             return (
               <KanbanCard
                 key={request.id}

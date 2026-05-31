@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -15,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";
 import { Plus, CalendarDays, MapPin, Users, Package, LoaderCircle, Trash2 } from "lucide-react";
 import { useEvents } from "@/hooks/use-events";
 import { createEvent } from "@/actions/events";
+import { getBranches } from "@/actions/db";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +39,7 @@ export default function EventsPage() {
     const [createOpen, setCreateOpen] = useState(false);
     const [form, setForm] = useState({ title: "", date: "", endDate: "", startTime: "", endTime: "", location: "", description: "" });
     const [saving, setSaving] = useState(false);
+    const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: getBranches, staleTime: 5 * 60_000 });
 
     const handleCreate = async () => {
         if (!form.title || !form.date) return;
@@ -168,8 +171,15 @@ export default function EventsPage() {
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label>Location</Label>
-                            <Input placeholder="Main hall, campus, etc." value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
+                            <Label>Location (Satellite)</Label>
+                            <Select value={form.location} onValueChange={v => setForm(f => ({ ...f, location: v }))}>
+                                <SelectTrigger><SelectValue placeholder="Select satellite" /></SelectTrigger>
+                                <SelectContent>
+                                    {(branches as any[]).map((b: any) => (
+                                        <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label>Description</Label>

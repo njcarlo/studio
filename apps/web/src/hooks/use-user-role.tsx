@@ -46,6 +46,8 @@ export function useUserRole(): UserRoleContextType {
       canApproveRoomReservation: s.canApproveRoomReservation,
       canManageApprovals: s.canManageApprovals,
       canApproveAllRequests: s.canApproveAllRequests,
+      canApproveEvents: s.canApproveEvents,
+      canManageEvents: s.canManageEvents,
       canOperateScanner: s.canOperateScanner,
       canViewAttendance: s.canViewAttendance,
       canViewMealStubs: s.canViewMealStubs,

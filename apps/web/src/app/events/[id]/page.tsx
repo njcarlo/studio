@@ -93,7 +93,7 @@ export default function EventDetailPage() {
             .slice(0, 60);
     }, [workers, workerSearch, assignDialog]);
 
-    const inventoryItems = useMemo(() => event?.equipment ?? [], [event]);
+    const eventEquipment = useMemo(() => event?.equipment ?? [], [event]);
 
     const handleAssign = async (workerId: string | null) => {
         if (!assignDialog) return;

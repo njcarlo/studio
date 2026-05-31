@@ -23,7 +23,8 @@ import { useWorkers } from "@/hooks/use-workers";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import { findWorkerByWorkerId } from "@/actions/schedule";
+import { findWorkerByWorkerId, getEligibleWorkers } from "@/actions/schedule";
+import { useQuery } from "@tanstack/react-query";
 import { getWorkloadCategories, createWorkloadCategory } from "@/actions/ministry-categories";
 import { WorkloadCategorySelect } from "@/components/schedule/WorkloadCategorySelect";
 import WorkerSearchDropdown from "@/components/WorkerSearchDropdown";
@@ -39,7 +40,7 @@ export default function ScheduleDetailPage() {
 
     const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus } = useServiceSchedule(id);
     const { ministries } = useMinistries();
-    const { workers } = useWorkers({ limit: 500 });
+    const { workers } = useWorkers({ limit: 100 }); // avatar lookups only — search uses getEligibleWorkers
     const { templates, isLoading: templatesLoading } = useServiceTemplates();
     const { data: history } = useScheduleHistory();
     const { slots: worshipSlots, createSlot, deleteSlot, addWorker: addWorshipWorker, removeWorker: removeWorshipWorker } = useWorshipSlots(id);
@@ -120,15 +121,6 @@ export default function ScheduleDetailPage() {
         }, {} as Record<string, typeof ministries>);
     }, [allMinistryIds, ministries]);
 
-    // Detect if schedule has any Worship (W) department ministries
-    const _unusedHasWorshipMinistries = useMemo(() => {
-        return allMinistryIds.some(mid => {
-            const m = ministries.find((x: any) => x.id === mid);
-            const code = (m as any)?.departmentCode || '';
-            return code === 'W';
-        });
-    }, [allMinistryIds, ministries]);
-
     // Workers scoped to Worship department for slot assignment (used in slot cards display only)
     const worshipWorkers = useMemo(() => {
         return workers.filter((w: any) => {
@@ -146,59 +138,14 @@ export default function ScheduleDetailPage() {
         });
     };
 
-    const filteredWorkers = useMemo(() => {
-        const targetMinistryId = assignDialog?.ministryId;
-        if (!targetMinistryId) return [];
-
-        const targetMinistry = ministries.find((m: any) => m.id === targetMinistryId);
-        const targetDept = targetMinistry?.department || (targetMinistry as any)?.departmentCode;
-
-        // Get all active workers
-        const activeWorkers = workers.filter((w: any) => w.status === "Active");
-
-        // Compute scores/priorities for sorting:
-        // 3: Workers directly in the target ministry (major or minor)
-        // 2: Workers in the same department
-        // 1: Other workers
-        const getPriorityScore = (w: any) => {
-            if (w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId) {
-                return 3;
-            }
-            if (targetDept) {
-                const workerMinistry = ministries.find((m: any) => m.id === w.majorMinistryId);
-                const workerDept = workerMinistry?.department || (workerMinistry as any)?.departmentCode;
-                if (workerDept === targetDept) {
-                    return 2;
-                }
-            }
-            return 1;
-        };
-
-        const query = workerSearch.toLowerCase().trim();
-        const matchesQuery = (w: any) => {
-            if (!query) return true;
-            return `${w.firstName} ${w.lastName}`.toLowerCase().includes(query) ||
-                   (w.workerId || '').toLowerCase().includes(query);
-        };
-
-        // Show target ministry + department workers by default.
-        // If there's an active query, search all active workers globally but prioritize ministry/dept matches.
-        return activeWorkers
-            .filter((w: any) => {
-                if (!matchesQuery(w)) return false;
-                const score = getPriorityScore(w);
-                if (query) return true;
-                return score >= 2;
-            })
-            .sort((a: any, b: any) => {
-                const scoreA = getPriorityScore(a);
-                const scoreB = getPriorityScore(b);
-                if (scoreA !== scoreB) {
-                    return scoreB - scoreA;
-                }
-                return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
-            });
-    }, [workers, workerSearch, assignDialog?.ministryId, ministries]);
+    // Server-side scored worker search — replaces client-side filteredWorkers scoring over 6000 rows.
+    const { data: filteredWorkers = [] } = useQuery({
+        queryKey: ['eligible-workers', assignDialog?.ministryId, workerSearch],
+        queryFn: () => getEligibleWorkers({ ministryId: assignDialog!.ministryId, query: workerSearch }),
+        enabled: !!assignDialog?.ministryId,
+        staleTime: 30_000,
+        placeholderData: (prev) => prev,
+    });
 
     const handleAssign = async (workerId: string | null) => {
         if (!assignDialog) return;

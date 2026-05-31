@@ -2,14 +2,11 @@
 
 import React, { useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
-import { Button } from "@studio/ui";
-import { UserPlus, Calendar, UserCog, LoaderCircle, GanttChartSquare, CheckCircle2, XCircle, Clock, Search, Filter, ChevronRight, ArrowRightLeft } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription } from "@studio/ui";
+import { LoaderCircle, GanttChartSquare, CheckCircle2, XCircle, Clock, Search, Filter } from "lucide-react";
 import { Input } from "@studio/ui";
 import { cn } from "@/lib/utils";
-import { ApprovalRequest, Worker, Ministry } from "@studio/types";
 import { useApprovals } from "@/hooks/use-approvals";
-import { useWorkers } from "@/hooks/use-workers";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useApprovalMutations } from "@/hooks/use-approval-mutations";
@@ -20,29 +17,31 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue
+    SelectValue,
 } from "@studio/ui";
 
 export default function ApprovalsPage() {
-    const { canManageApprovals, canApproveAllRequests, canApproveRoomReservation, workerProfile, isLoading: isRoleLoading, isSuperAdmin } = useUserRole();
-    const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
+    const {
+        canManageApprovals,
+        canApproveAllRequests,
+        canApproveRoomReservation,
+        workerProfile,
+        isLoading: isRoleLoading,
+        isSuperAdmin,
+    } = useUserRole();
 
-    // SQL Hooks
-    const { approvals: requests, isLoading: approvalsLoading } = useApprovals();
-    const { workers, isLoading: workersLoading } = useWorkers();
-    const { ministries, isLoading: ministriesLoading } = useMinistries();
-
-    // Mutations
-    const { updateStatus, isUpdating } = useApprovalMutations();
-
-    const isLoading = isRoleLoading || approvalsLoading || workersLoading || ministriesLoading;
-
+    const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterType, setFilterType] = useState<string>("all");
 
-    const filteredRequests = useMemo(() => {
-        let results = [...(requests || [])] as ApprovalRequest[];
+    const { approvals: requests, isLoading: approvalsLoading } = useApprovals();
+    const { ministries, isLoading: ministriesLoading } = useMinistries();
+    const { respond, isUpdating } = useApprovalMutations();
 
+    const isLoading = isRoleLoading || approvalsLoading || ministriesLoading;
+
+    const filteredRequests = useMemo(() => {
+        let results = [...(requests || [])];
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
             results = results.filter(r =>
@@ -50,93 +49,71 @@ export default function ApprovalsPage() {
                 r.details.toLowerCase().includes(lower)
             );
         }
-
-        if (filterType !== 'all') {
-            results = results.filter(r => r.type === filterType);
-        }
-
-        return results.sort((a, b) => new Date(b.date as any).getTime() - new Date(a.date as any).getTime());
+        if (filterType !== 'all') results = results.filter(r => r.type === filterType);
+        return results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [requests, searchTerm, filterType]);
 
-    const checkIsApprover = (request: ApprovalRequest) => {
+    // Uses worker joined into the approval record — no separate useWorkers fetch needed.
+    const checkIsApprover = (request: any) => {
         if (!workerProfile) return false;
-        if (!request.workerId) return false;
-
-        const targetWorker = workers?.find(w => w.id === request.workerId);
-        if (!targetWorker) return false;
-
-        const majorMinistry = ministries?.find(m => m.id === targetWorker.majorMinistryId);
-        const minorMinistry = ministries?.find(m => m.id === targetWorker.minorMinistryId);
-
-        return (majorMinistry?.approverId === workerProfile.id) ||
-            (majorMinistry?.headId === workerProfile.id) ||
-            (minorMinistry?.approverId === workerProfile.id) ||
-            (minorMinistry?.headId === workerProfile.id);
+        const w = request.worker;
+        if (!w) return false;
+        const majorMinistry = ministries?.find((m: any) => m.id === w.majorMinistryId);
+        const minorMinistry = ministries?.find((m: any) => m.id === w.minorMinistryId);
+        return (
+            majorMinistry?.approverId === workerProfile.id ||
+            majorMinistry?.headId === workerProfile.id ||
+            minorMinistry?.approverId === workerProfile.id ||
+            minorMinistry?.headId === workerProfile.id
+        );
     };
 
-    const checkCanManage = (request: ApprovalRequest) => {
-        const isApprover = checkIsApprover(request);
+    const checkCanManage = (request: any) => {
         if (canApproveAllRequests || isSuperAdmin) return true;
-
         if (request.type === 'Ministry Change') {
             if (!workerProfile) return false;
-
             if (request.status === 'Pending Outgoing Approval') {
-                const oldMajor = ministries.find(m => m.id === request.oldMajorId);
-                const oldMinor = ministries.find(m => m.id === request.oldMinorId);
-                return (oldMajor?.headId === workerProfile.id || oldMajor?.approverId === workerProfile.id ||
-                    oldMinor?.headId === workerProfile.id || oldMinor?.approverId === workerProfile.id);
+                const oldMajor = ministries.find((m: any) => m.id === request.oldMajorId);
+                const oldMinor = ministries.find((m: any) => m.id === request.oldMinorId);
+                return (
+                    oldMajor?.headId === workerProfile.id || oldMajor?.approverId === workerProfile.id ||
+                    oldMinor?.headId === workerProfile.id || oldMinor?.approverId === workerProfile.id
+                );
             }
-
             if (request.status === 'Pending Incoming Approval') {
-                const newMajor = ministries.find(m => m.id === request.newMajorId);
-                const newMinor = ministries.find(m => m.id === request.newMinorId);
-                return (newMajor?.headId === workerProfile.id || newMajor?.approverId === workerProfile.id ||
-                    newMinor?.headId === workerProfile.id || newMinor?.approverId === workerProfile.id);
+                const newMajor = ministries.find((m: any) => m.id === request.newMajorId);
+                const newMinor = ministries.find((m: any) => m.id === request.newMinorId);
+                return (
+                    newMajor?.headId === workerProfile.id || newMajor?.approverId === workerProfile.id ||
+                    newMinor?.headId === workerProfile.id || newMinor?.approverId === workerProfile.id
+                );
             }
         }
-
         if (request.type === 'Room Booking' && request.status === 'Pending Admin Approval') {
             return canApproveRoomReservation && (canApproveAllRequests || isSuperAdmin);
         }
-
-        return isApprover;
+        return checkIsApprover(request);
     };
 
-    const handleUpdateRequestStatus = (request: ApprovalRequest, status: 'Approved' | 'Rejected') => {
-        if (!request.id) return;
-        if (!checkCanManage(request)) return;
-
-        // Multi-stage Room Booking approval handling
-        if (request.type === 'Room Booking' && status === 'Approved') {
-            if (request.status === 'Pending Ministry Approval' || request.status === 'Pending') {
-                updateStatus({ request, status: 'Pending Admin Approval' });
-                return;
-            }
-        }
-
-        // Multi-stage Ministry Change approval handling
-        if (request.type === 'Ministry Change' && status === 'Approved') {
-            if (request.status === 'Pending Outgoing Approval') {
-                updateStatus({ request, status: 'Pending Incoming Approval', options: { outgoingApproved: true } });
-                return;
-            }
-        }
-
-        updateStatus({ request, status });
+    const handleUpdateRequestStatus = (request: any, action: 'Approved' | 'Rejected') => {
+        if (!request.id || !checkCanManage(request)) return;
+        respond({ id: request.id, action: action === 'Approved' ? 'approve' : 'reject' });
     };
 
     if (isLoading) {
         return (
             <AppLayout>
-                <div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
+                <div className="flex justify-center py-10">
+                    <LoaderCircle className="h-8 w-8 animate-spin" />
+                </div>
             </AppLayout>
         );
     }
 
-    const hasAnyApproverRole = ministries?.some(m => m.approverId === workerProfile?.id || m.headId === workerProfile?.id);
-    const canViewPage = canManageApprovals || canApproveRoomReservation || hasAnyApproverRole;
-    if (!canViewPage) {
+    const hasAnyApproverRole = ministries?.some(
+        (m: any) => m.approverId === workerProfile?.id || m.headId === workerProfile?.id
+    );
+    if (!canManageApprovals && !canApproveRoomReservation && !hasAnyApproverRole) {
         return (
             <AppLayout>
                 <Card>
@@ -149,14 +126,13 @@ export default function ApprovalsPage() {
         );
     }
 
-
-    const pendingRequests = filteredRequests.filter(r => r.status.startsWith('Pending'));
+    const pendingRequests  = filteredRequests.filter(r => r.status.startsWith('Pending'));
     const approvedRequests = filteredRequests.filter(r => r.status === 'Approved');
     const rejectedRequests = filteredRequests.filter(r => r.status === 'Rejected');
 
     const stats = {
-        total: requests?.length || 0,
-        pending: requests?.filter(r => r.status.startsWith('Pending')).length || 0,
+        total:    requests?.length || 0,
+        pending:  requests?.filter(r => r.status.startsWith('Pending')).length || 0,
         approved: requests?.filter(r => r.status === 'Approved').length || 0,
         rejected: requests?.filter(r => r.status === 'Rejected').length || 0,
     };
@@ -174,7 +150,6 @@ export default function ApprovalsPage() {
                             <p className="text-sm text-muted-foreground font-medium">Manage and review incoming requests.</p>
                         </div>
                     </div>
-
                     <div className="flex items-center gap-2">
                         <div className="relative group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
@@ -198,6 +173,7 @@ export default function ApprovalsPage() {
                                 <SelectItem value="Profile Update">Profile Update</SelectItem>
                                 <SelectItem value="Room Booking">Room Booking</SelectItem>
                                 <SelectItem value="Ministry Change">Ministry Change</SelectItem>
+                                <SelectItem value="Event">Event</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -205,10 +181,10 @@ export default function ApprovalsPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                        { label: 'Total Requests', value: stats.total, icon: GanttChartSquare, color: 'text-primary', bg: 'bg-primary/5', border: 'border-primary/20' },
-                        { label: 'Pending', value: stats.pending, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-                        { label: 'Approved', value: stats.approved, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-                        { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+                        { label: 'Total Requests', value: stats.total,    icon: GanttChartSquare, color: 'text-primary',    bg: 'bg-primary/5',  border: 'border-primary/20' },
+                        { label: 'Pending',         value: stats.pending,  icon: Clock,            color: 'text-amber-600', bg: 'bg-amber-50',   border: 'border-amber-200' },
+                        { label: 'Approved',        value: stats.approved, icon: CheckCircle2,     color: 'text-green-600', bg: 'bg-green-50',   border: 'border-green-200' },
+                        { label: 'Rejected',        value: stats.rejected, icon: XCircle,          color: 'text-red-600',   bg: 'bg-red-50',     border: 'border-red-200' },
                     ].map((stat, i) => (
                         <Card key={i} className={cn("border-none shadow-sm transition-transform hover:scale-[1.02]", stat.bg)}>
                             <div className="p-4 flex items-center justify-between">
@@ -233,7 +209,6 @@ export default function ApprovalsPage() {
                             onUpdateStatus={handleUpdateRequestStatus}
                             checkCanManage={checkCanManage}
                             onCardClick={setSelectedRequest}
-                            workers={workers}
                             isUpdating={isUpdating}
                         />
                         <KanbanColumn
@@ -243,7 +218,6 @@ export default function ApprovalsPage() {
                             onUpdateStatus={handleUpdateRequestStatus}
                             checkCanManage={checkCanManage}
                             onCardClick={setSelectedRequest}
-                            workers={workers}
                             isUpdating={isUpdating}
                         />
                         <KanbanColumn
@@ -253,7 +227,6 @@ export default function ApprovalsPage() {
                             onUpdateStatus={handleUpdateRequestStatus}
                             checkCanManage={checkCanManage}
                             onCardClick={setSelectedRequest}
-                            workers={workers}
                             isUpdating={isUpdating}
                         />
                     </div>
@@ -263,12 +236,8 @@ export default function ApprovalsPage() {
             <ApprovalDetailsDialog
                 request={selectedRequest}
                 open={!!selectedRequest}
-                requesterWorker={workers?.find(w => w.id === selectedRequest?.workerId)}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setSelectedRequest(null);
-                    }
-                }}
+                requesterWorker={selectedRequest?.worker}
+                onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}
             />
         </AppLayout>
     );

@@ -38,6 +38,8 @@ export interface PermissionsState {
     canApproveRoomReservation: boolean;
     canManageApprovals: boolean;
     canApproveAllRequests: boolean;
+    canApproveEvents: boolean;
+    canManageEvents: boolean;
     canOperateScanner: boolean;
     canViewAttendance: boolean;
     canViewMealStubs: boolean;
@@ -80,6 +82,8 @@ const DEFAULT_STATE: Omit<PermissionsState, '_setPermissions'> = {
     canApproveRoomReservation: false,
     canManageApprovals: false,
     canApproveAllRequests: false,
+    canApproveEvents: false,
+    canManageEvents: false,
     canOperateScanner: false,
     canViewAttendance: false,
     canViewMealStubs: false,

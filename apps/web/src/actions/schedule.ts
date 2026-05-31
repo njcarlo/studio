@@ -396,6 +396,84 @@ export async function getScheduleConfirmationStatus(scheduleId: string) {
     return assignments;
 }
 
+// ── Eligible Worker Search ────────────────────────────────────────────────────
+// Priority 3: worker belongs to the target ministry (major or minor)
+// Priority 2: worker is in the same department as the target ministry
+// Priority 1: all other active workers (only returned when query is non-empty)
+
+export async function getEligibleWorkers(params: {
+    ministryId: string;
+    query?: string;
+    limit?: number;
+}) {
+    const { ministryId, query = '', limit = 50 } = params;
+
+    const targetMinistry = await prisma.ministry.findUnique({
+        where: { id: ministryId },
+        select: { id: true, departmentCode: true },
+    });
+
+    const nameFilter = query
+        ? {
+              OR: [
+                  { firstName: { contains: query, mode: 'insensitive' as const } },
+                  { lastName:  { contains: query, mode: 'insensitive' as const } },
+                  { workerId:  { contains: query, mode: 'insensitive' as const } },
+              ],
+          }
+        : {};
+
+    const workerSelect = {
+        id: true, firstName: true, lastName: true, workerId: true,
+        majorMinistryId: true, minorMinistryId: true, status: true,
+    };
+
+    // Priority 3 — direct ministry members
+    const directMembers = await prisma.worker.findMany({
+        where: { status: 'Active', OR: [{ majorMinistryId: ministryId }, { minorMinistryId: ministryId }], ...nameFilter },
+        select: workerSelect,
+        take: limit,
+    });
+    const directIds = new Set(directMembers.map(w => w.id));
+
+    // Priority 2 — same department
+    let deptMembers: typeof directMembers = [];
+    if (targetMinistry?.departmentCode) {
+        const deptMinistryIds = (await prisma.ministry.findMany({
+            where: { departmentCode: targetMinistry.departmentCode },
+            select: { id: true },
+        })).map(m => m.id);
+
+        deptMembers = await prisma.worker.findMany({
+            where: {
+                status: 'Active',
+                OR: [{ majorMinistryId: { in: deptMinistryIds } }, { minorMinistryId: { in: deptMinistryIds } }],
+                id: { notIn: [...directIds] },
+                ...nameFilter,
+            },
+            select: workerSelect,
+            take: limit,
+        });
+    }
+    const knownIds = new Set([...directIds, ...deptMembers.map(w => w.id)]);
+
+    // Priority 1 — global (only when there is a search query)
+    let globalMembers: typeof directMembers = [];
+    if (query) {
+        globalMembers = await prisma.worker.findMany({
+            where: { status: 'Active', id: { notIn: [...knownIds] }, ...nameFilter },
+            select: workerSelect,
+            take: limit,
+        });
+    }
+
+    return [
+        ...directMembers.map(w => ({ ...w, priority: 3 as const })),
+        ...deptMembers.map(w =>   ({ ...w, priority: 2 as const })),
+        ...globalMembers.map(w => ({ ...w, priority: 1 as const })),
+    ];
+}
+
 // ── Worker ID lookup for assignment ──────────────────────────────────────────
 
 export async function findWorkerByWorkerId(workerId: string) {
