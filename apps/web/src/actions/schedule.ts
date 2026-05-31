@@ -4,6 +4,7 @@ import { prisma } from '@studio/database/prisma';
 import { revalidatePath } from 'next/cache';
 import { getWorkloadCategories, createWorkloadCategory } from './ministry-categories';
 import { EmailService } from '@/services/email-service';
+import { allocateMealstubs as allocateMealstubsService } from '@/services/mealstubService';
 
 async function ensureWorkloadCategoriesExist(ministryId: string, roleNames: string[]) {
     if (!roleNames.length) return;
@@ -86,6 +87,7 @@ export async function deleteServiceSchedule(id: string) {
 // ── Schedule Assignments ──────────────────────────────────────────────────────
 
 export async function upsertAssignment(data: {
+    id?: string;
     scheduleId: string;
     ministryId: string;
     roleName: string;
@@ -96,15 +98,22 @@ export async function upsertAssignment(data: {
     rehearsalTime?: string | null;
     order?: number;
 }) {
-    // Find existing slot for this schedule + ministry + role + order
-    const existing = await prisma.scheduleAssignment.findFirst({
-        where: {
-            scheduleId: data.scheduleId,
-            ministryId: data.ministryId,
-            roleName: data.roleName,
-            order: data.order ?? 0,
-        },
-    });
+    let existing;
+    if (data.id) {
+        existing = await prisma.scheduleAssignment.findUnique({ where: { id: data.id } });
+    }
+    
+    if (!existing) {
+        // Find existing slot for this schedule + ministry + role + order
+        existing = await prisma.scheduleAssignment.findFirst({
+            where: {
+                scheduleId: data.scheduleId,
+                ministryId: data.ministryId,
+                roleName: data.roleName,
+                order: data.order ?? 0,
+            },
+        });
+    }
 
     if (existing) {
         return prisma.scheduleAssignment.update({
@@ -266,6 +275,13 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
         data: { status: 'Published' },
         include: { assignments: true },
     });
+
+    // Allocate mealstubs for assigned workers
+    try {
+        await allocateMealstubsService(scheduleId, publishedBy);
+    } catch (err) {
+        console.error('Failed to allocate mealstubs during publish:', err);
+    }
 
     void publishedBy; // reserved for audit log
 
@@ -578,4 +594,10 @@ export async function getMonthlyDutyCounts(scheduleId: string) {
     }
 
     return counts;
+}
+
+// ── Mealstub Allocation Action ───────────────────────────────────────────────
+
+export async function allocateMealstubs(scheduleId: string, publishedBy: string = 'system') {
+    return await allocateMealstubsService(scheduleId, publishedBy);
 }

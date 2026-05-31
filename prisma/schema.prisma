@@ -187,13 +187,18 @@ model MealStub {
   id             String    @id @default(uuid())
   workerId       String
   workerName     String
+  scheduleId     String?
   date           DateTime
   status         String
   stubType       String?
   assignedBy     String?
   assignedByName String?
   claimedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
   worker         Worker    @relation(fields: [workerId], references: [id])
+
+  @@index([workerId, scheduleId])
 }
 
 model VenueElement {
