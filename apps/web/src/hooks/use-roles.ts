@@ -9,7 +9,7 @@ export function useRoles() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['roles'],
     queryFn: () => settingsClient.getRoles(),
-    staleTime: 0,
+    staleTime: 5 * 60_000,
   })
 
   const createMutation = useMutation({

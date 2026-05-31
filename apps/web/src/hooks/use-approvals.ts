@@ -9,6 +9,8 @@ export function useApprovals(options: { enabled?: boolean } = {}) {
     const { data, isLoading, error } = useQuery({
         queryKey: ['approvals'],
         queryFn: () => getApprovals(),
+        staleTime: 2 * 60_000,
+        enabled: options?.enabled !== false,
         enabled,
     });
 
