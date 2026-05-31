@@ -3,85 +3,85 @@
 > cd ../.. && npx prisma generate && cd apps/web && next build
 
 Environment variables loaded from .env
-Prisma schema loaded from prisma\schema.prisma
+Prisma schema loaded from prisma/schema.prisma
 
-✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 299ms
+✔ Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 339ms
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
-Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+Help us improve the Prisma ORM for everyone. Share your feedback in a short 2-min survey: https://pris.ly/orm/survey/release-5-22
 
    ▲ Next.js 15.5.15
    - Environments: .env
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 12.0s
+ ✓ Compiled successfully in 29.2s
    Linting and checking validity of types ...
    Collecting page data ...
-   Generating static pages (0/48) ...
-   Generating static pages (12/48) 
-   Generating static pages (24/48) 
-   Generating static pages (36/48) 
- ✓ Generating static pages (48/48)
+   Generating static pages (0/47) ...
+   Generating static pages (11/47) 
+   Generating static pages (23/47) 
+   Generating static pages (35/47) 
+ ✓ Generating static pages (47/47)
    Finalizing page optimization ...
    Collecting build traces ...
 
 Route (app)                                 Size  First Load JS
-┌ ○ /                                      149 B         102 kB
-├ ○ /_not-found                            995 B         103 kB
-├ ƒ /api/cron/venue-assistance             149 B         102 kB
-├ ƒ /api/graphql                           149 B         102 kB
-├ ƒ /api/workers                           149 B         102 kB
-├ ○ /approvals                           6.56 kB         362 kB
-├ ○ /attendance                          4.04 kB         357 kB
-├ ○ /attendance/scanner                  4.96 kB         272 kB
-├ ○ /c2s                                 7.55 kB         437 kB
-├ ○ /dashboard                            8.3 kB         362 kB
-├ ○ /login                               9.81 kB         335 kB
-├ ○ /meals                               9.39 kB         363 kB
-├ ○ /mealstub/scanner                    2.94 kB         270 kB
-├ ○ /ministries                            149 B         102 kB
-├ ○ /privacy                               149 B         102 kB
-├ ○ /profile                             2.68 kB         350 kB
-├ ƒ /public/schedule/[token]               149 B         102 kB
+┌ ○ /                                      141 B         103 kB
+├ ○ /_not-found                             1 kB         104 kB
+├ ƒ /api/cron/venue-assistance             141 B         103 kB
+├ ƒ /api/graphql                           141 B         103 kB
+├ ƒ /api/workers                           141 B         103 kB
+├ ○ /approvals                           6.64 kB         362 kB
+├ ○ /attendance                          4.03 kB         358 kB
+├ ○ /attendance/scanner                  4.94 kB         272 kB
+├ ○ /c2s                                 7.51 kB         437 kB
+├ ○ /dashboard                           8.29 kB         362 kB
+├ ○ /login                               9.64 kB         335 kB
+├ ○ /meals                               9.51 kB         363 kB
+├ ○ /mealstub/scanner                    2.93 kB         270 kB
+├ ○ /ministries                          5.88 kB         360 kB
+├ ƒ /ministries/[id]                     3.19 kB         357 kB
+├ ○ /privacy                               141 B         103 kB
+├ ○ /profile                             2.78 kB         350 kB
+├ ƒ /public/schedule/[token]             6.68 kB         118 kB
 ├ ○ /reports                             10.2 kB         446 kB
-├ ○ /reservations/all                    4.13 kB         357 kB
-├ ○ /reservations/calendar               6.14 kB         359 kB
-├ ○ /reservations/masterview             4.32 kB         358 kB
-├ ○ /reservations/masterview/daily       4.15 kB         357 kB
-├ ○ /reservations/my                     4.01 kB         357 kB
-├ ○ /reservations/new                     5.5 kB         359 kB
-├ ○ /rooms                               1.04 kB         103 kB
-├ ○ /rooms/display                       5.92 kB         271 kB
-├ ○ /scan                                4.34 kB         253 kB
-├ ○ /schedule                             2.4 kB         359 kB
-├ ƒ /schedule/[id]                        8.1 kB         365 kB
-├ ƒ /schedule/[id]/print                   149 B         102 kB
-├ ƒ /schedule/[id]/slots/[slotId]        7.23 kB         264 kB
-├ ○ /schedule/schedulers                 4.09 kB         351 kB
-├ ○ /schedule/templates                  2.85 kB         353 kB
-├ ○ /settings                            1.65 kB         345 kB
+├ ○ /reservations/all                    4.12 kB         358 kB
+├ ○ /reservations/calendar               6.12 kB         360 kB
+├ ○ /reservations/masterview             4.31 kB         358 kB
+├ ○ /reservations/masterview/daily       4.13 kB         358 kB
+├ ○ /reservations/my                     3.99 kB         357 kB
+├ ○ /reservations/new                    5.49 kB         359 kB
+├ ○ /rooms                               1.05 kB         104 kB
+├ ○ /rooms/display                       5.77 kB         272 kB
+├ ○ /scan                                4.19 kB         254 kB
+├ ○ /schedule                            3.33 kB         359 kB
+├ ƒ /schedule/[id]                       11.4 kB         367 kB
+├ ƒ /schedule/[id]/print                   307 B         103 kB
+├ ƒ /schedule/[id]/slots/[slotId]        13.3 kB         270 kB
+├ ○ /schedule/schedulers                 4.13 kB         352 kB
+├ ○ /schedule/templates                  5.48 kB         356 kB
+├ ○ /settings                            1.65 kB         346 kB
 ├ ○ /settings/departments                4.54 kB         352 kB
-├ ○ /settings/meal-stubs                 6.08 kB         353 kB
-├ ○ /settings/ministries                 7.62 kB         363 kB
-├ ○ /settings/ors-sync                   12.2 kB         359 kB
-├ ○ /settings/roles                       6.4 kB         354 kB
-├ ○ /settings/rooms                      6.56 kB         362 kB
-├ ○ /settings/transaction-logs           1.98 kB         355 kB
-├ ○ /settings/venue-assistance            4.6 kB         352 kB
-├ ○ /settings/venue-elements             3.72 kB         351 kB
-├ ○ /signup                              5.58 kB         330 kB
+├ ○ /settings/meal-stubs                 6.17 kB         354 kB
+├ ○ /settings/ors-sync                   12.1 kB         360 kB
+├ ○ /settings/roles                      6.41 kB         354 kB
+├ ○ /settings/rooms                      6.52 kB         362 kB
+├ ○ /settings/transaction-logs           1.97 kB         355 kB
+├ ○ /settings/venue-assistance           4.58 kB         352 kB
+├ ○ /settings/venue-elements             3.71 kB         351 kB
+├ ○ /signup                              5.41 kB         330 kB
 ├ ○ /venue                               4.59 kB         358 kB
-├ ƒ /venue/[bookingId]                   4.95 kB         358 kB
-├ ○ /venue/command-center                5.63 kB         359 kB
-├ ○ /venue/my                            1.79 kB         355 kB
-├ ○ /workers                             12.3 kB         368 kB
-├ ƒ /workers/[id]/edit                   6.93 kB         360 kB
-└ ○ /workers/my-qr                       5.13 kB         349 kB
-+ First Load JS shared by all             102 kB
-  ├ chunks/18-edee31dfa59fae8b.js        45.8 kB
-  ├ chunks/87c73c54-dd8d81ac9604067c.js  54.2 kB
-  └ other shared chunks (total)          2.06 kB
+├ ƒ /venue/[bookingId]                   4.96 kB         358 kB
+├ ○ /venue/command-center                5.62 kB         359 kB
+├ ○ /venue/my                             1.8 kB         355 kB
+├ ○ /workers                             12.7 kB         368 kB
+├ ƒ /workers/[id]/edit                    7.1 kB         361 kB
+└ ○ /workers/my-qr                       2.12 kB         349 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/18-bc479a03bdeb5748.js        46.4 kB
+  ├ chunks/87c73c54-09e1ba5c70e60a51.js  54.2 kB
+  └ other shared chunks (total)          1.99 kB
 
 
 ○  (Static)   prerendered as static content
