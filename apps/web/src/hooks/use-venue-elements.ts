@@ -1,46 +1,36 @@
-'use client';
-import { VenueElement } from '@studio/types';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getVenueElements, createVenueElement, updateVenueElement, deleteVenueElement } from '@/actions/db';
+'use client'
+
+import { VenueElement } from '@studio/types'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { settingsClient } from '@/lib/studio-client'
 
 export function useVenueElements() {
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['venueElements'],
-        queryFn: () => getVenueElements(),
-    });
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['venueElements'],
+    queryFn: () => settingsClient.getVenueElements(),
+  })
 
-    const createMutation = useMutation({
-        mutationFn: createVenueElement,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['venueElements'] });
-        },
-    });
+  const createMutation = useMutation({
+    mutationFn: (data: any) => settingsClient.createVenueElement(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['venueElements'] }),
+  })
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => settingsClient.updateVenueElement(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['venueElements'] }),
+  })
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => settingsClient.deleteVenueElement(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['venueElements'] }),
+  })
 
-    const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateVenueElement(id, data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['venueElements'] });
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: deleteVenueElement,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['venueElements'] });
-        },
-    });
-
-    return {
-        venueElements: (data?.map(e => ({
-            ...e,
-            category: e.category as any
-        })) as VenueElement[]) || [],
-        isLoading,
-        error,
-        createVenueElement: createMutation.mutateAsync,
-        updateVenueElement: updateMutation.mutateAsync,
-        deleteVenueElement: deleteMutation.mutateAsync,
-    };
+  return {
+    venueElements: ((data as any[]) || []) as VenueElement[],
+    isLoading,
+    error,
+    createVenueElement: createMutation.mutateAsync,
+    updateVenueElement: updateMutation.mutateAsync,
+    deleteVenueElement: deleteMutation.mutateAsync,
+  }
 }

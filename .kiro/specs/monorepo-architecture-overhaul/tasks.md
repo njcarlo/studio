@@ -24,338 +24,366 @@
     - Run `brew install supabase/tap/supabase` or install via npm
     - Run `npx supabase login` to authenticate
     - Run `npx supabase link --project-ref vpgykxfbrfnojmgmzriq` to link the project
-    - Verify link with `npx supabase status`
+    - Verify with `npx supabase status`
     - _Requirements: 1.2_
 
   - [ ] 1.2 Create shared Edge Function utilities
-    - Create `supabase/functions/_shared/cors.ts` — CORS headers and OPTIONS handler
-    - Create `supabase/functions/_shared/auth.ts` — JWT verification helper
-    - Create `supabase/functions/_shared/router.ts` — route matching with path parameter extraction
-    - Create `supabase/functions/_shared/response.ts` — `jsonResponse()` helper
-    - Create `supabase/functions/_shared/errors.ts` — typed error classes and error response helpers
+    - Create `supabase/functions/_shared/cors.ts` — `corsHeaders` constant and `handleCors()` returning `Response | null`
+    - Create `supabase/functions/_shared/auth.ts` — `verifyAuth()` returning `AuthContext | Response`; uses `supabase.auth.getUser(token)` (remote verification); exposes `userId` (from `user.id`) and `dbRole` (from `user.role`); note: `dbRole` is the Supabase database role (`authenticated`), NOT the application role — application roles are resolved by querying `WorkerRole → Role → RolePermission`
+    - Create `supabase/functions/_shared/router.ts` — `RouteMap` as an **ordered array** (not an object), `matchRoute()`, `matchPattern()` with `decodeURIComponent` on path params; array order is what prevents literal routes from being shadowed by parameterized routes
+    - Create `supabase/functions/_shared/response.ts` — `jsonOk()` and `jsonError()` helpers
+    - Create `supabase/functions/_shared/logger.ts` — `logError(module, method, route, error)` emitting `JSON.stringify({ level, module, method, route, message, stack, timestamp })` via `console.error`
     - _Requirements: 1.3, 1.5, 1.6, 1.7, 2.1, 2.2, 2.3, 2.4, 2.5, 17.1, 17.2_
 
   - [ ] 1.3 Scaffold @studio/client package
-    - Create `packages/client/package.json` with name `@studio/client`, dependencies on `zod`
+    - Create `packages/client/package.json` with name `@studio/client`, `zod` dependency
     - Create `packages/client/tsconfig.json` extending root tsconfig
-    - Create `packages/client/src/base-client.ts` — `BaseClient` class with `request<T>()` method and `ClientError` class
-    - Create `packages/client/src/index.ts` — main exports barrel
+    - Create `packages/client/src/base-client.ts` — `BaseClient` class accepting `(baseUrl: string, getToken: () => Promise<string | null>)` and `ClientError` class carrying `status`, `message`, `details`; `getToken` pattern makes the SDK platform-agnostic (works in both `NEXT_PUBLIC_*` and `EXPO_PUBLIC_*` environments)
+    - Create `packages/client/src/index.ts` — empty barrel until modules are added
     - Add `@studio/client` to `turbo.json` pipeline
-    - Add `@studio/client: "*"` to `apps/web/package.json` and `apps/inventory/package.json` dependencies
+    - Add `@studio/client: "*"` to `apps/web/package.json` and `apps/inventory/package.json`
     - _Requirements: 3.1, 3.3, 3.4, 3.5, 3.6, 3.7_
 
   - [ ] 1.4 Set up Supabase Edge Function secrets
-    - Run `npx supabase secrets set SUPABASE_URL=<value>` for the project URL
-    - Run `npx supabase secrets set SUPABASE_ANON_KEY=<value>` for the anon key
-    - Run `npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<value>` for the service role key
+    - Run `npx supabase secrets set SUPABASE_URL=<value>`
+    - Run `npx supabase secrets set SUPABASE_ANON_KEY=<value>`
+    - Run `npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<value>`
+    - Run `npx supabase secrets set SUPABASE_JWT_SECRET=<value>` — required for QR code JWT verification in the attendance module
     - Document required secrets in `supabase/functions/.env.example`
-    - _Requirements: 2.1_
+    - _Requirements: 2.1, 12.2_
+
+  - [ ] 1.5 Create schema sync CI check
+    - Create `supabase/functions/_shared/schemas/` directory
+    - Create `scripts/check-schema-sync.ts` that diffs each `packages/client/src/{module}/schemas.ts` against its mirror `supabase/functions/_shared/schemas/{module}.ts`; exits non-zero if any file is missing or content differs
+    - Add `check-schema-sync` script to `turbo.json` pipeline so it runs in CI on every PR
+    - This enforces Req 16.4 (shared Zod schemas) across the Deno/Node runtime boundary without publishing the package
+    - _Requirements: 16.1, 16.4_
+
+  - [ ] 1.6 Create atomic stock adjustment Postgres function
+    - Create `supabase/migrations/XXXX_atomic_stock_adjustment.sql` containing `adjust_item_stock(p_item_id UUID, p_delta INTEGER, p_adj_type TEXT, p_ministry_id UUID, p_notes TEXT)` using `SELECT ... FOR UPDATE`, `GREATEST(0, ...)` clamp, and inserts a `StockLog` row; returns `(new_quantity INTEGER, actual_delta INTEGER)`
+    - Apply migration: `npx supabase db push`
+    - This migration must be applied before the inventory Edge Function is deployed in Phase 10
+    - _Requirements: 13.2, 13.5_
 
 - [ ] 2. Phase 1 — Settings Module
   - [ ] 2.1 Create settings Edge Function
-    - Create `supabase/functions/settings/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listRoles`, `getRole`, `createRole`, `updateRole`, `deleteRole` (with worker assignment check)
-    - Implement handlers: `listRooms`, `createRoom`, `updateRoom`, `deleteRoom` (with active reservation check)
-    - Implement handlers: `listDepartments`, `createDepartment`, `updateDepartment`, `deleteDepartment`
-    - Implement handlers: `listVenueElements`, `createVenueElement`, `updateVenueElement`, `deleteVenueElement`
-    - Deploy with `npx supabase functions deploy settings`
-    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 18.1, 18.2, 18.3, 18.4, 18.5_
+    - Create `supabase/functions/settings/index.ts` using the shared shell from design.md
+    - Register all routes as ordered `RouteMap` array
+    - Implement: `listRoles`, `getRole`, `createRole`, `updateRole`, `deleteRole` — deletion 409 if any row in `WorkerRole` has this `roleId` (no date scope for role assignments)
+    - Implement: `getRolePermissions`, `setRolePermissions` (full replace — delete all then insert)
+    - Implement: `listRooms`, `getRoom`, `createRoom`, `updateRoom`, `deleteRoom` — deletion 409 if any `RoomReservation` has `roomId = id` AND `startTime >= CURRENT_TIMESTAMP`; past reservations do NOT block deletion
+    - Implement: `listDepartments`, `getDepartment`, `createDepartment`, `updateDepartment`, `deleteDepartment`
+    - Implement: `listVenueElements`, `createVenueElement`, `updateVenueElement`, `deleteVenueElement`
+    - Deploy: `npx supabase functions deploy settings`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 18.1–18.5_
 
   - [ ] 2.2 Add SettingsClient to @studio/client
-    - Create `packages/client/src/settings/types.ts` — Role, Room, Department, VenueElement types and Zod schemas
-    - Create `packages/client/src/settings/client.ts` — `SettingsClient` extending `BaseClient`
+    - Create `packages/client/src/settings/schemas.ts` — Zod schemas for Role, Room, Department, VenueElement, RolePermission request/response types
+    - Create `packages/client/src/settings/types.ts` — TypeScript types via `z.infer<>`
+    - Create `packages/client/src/settings/client.ts` — `SettingsClient extends BaseClient`
+    - Mirror schemas to `supabase/functions/_shared/schemas/settings.ts`
     - Export `SettingsClient` and all types from `packages/client/src/index.ts`
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 2.3 Migrate apps/web settings pages to SettingsClient
-    - Update `apps/web/src/hooks/use-roles.ts` to use `SettingsClient` instead of `getRoles`, `createRole`, `updateRole`, `deleteRole` from `db.ts`
-    - Update `apps/web/src/hooks/use-rooms.ts` to use `SettingsClient`
-    - Update `apps/web/src/hooks/use-departments.ts` to use `SettingsClient`
-    - Update `apps/web/src/hooks/use-venue-elements.ts` to use `SettingsClient`
-    - Verify `/settings/roles`, `/settings/rooms`, `/settings/departments`, `/settings/venue-elements` pages work correctly
+    - Create `useRolesV2`, `useRoomsV2`, `useDepartmentsV2`, `useVenueElementsV2` hooks calling `SettingsClient`
+    - Switch `/settings/roles`, `/settings/rooms`, `/settings/departments`, `/settings/venue-elements` pages to V2 hooks one at a time
+    - Verify all pages render correctly after each switch
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 2.4 Remove settings server actions from db.ts
-    - Delete `getRoles`, `getRoleById`, `createRole`, `updateRole`, `deleteRole` from `apps/web/src/actions/db.ts`
-    - Delete `getRooms`, `createRoom`, `updateRoom`, `deleteRoom`, `createRooms` from `apps/web/src/actions/db.ts`
-    - Delete `getAreas`, `createArea`, `updateArea`, `deleteArea`, `createAreas` from `apps/web/src/actions/db.ts`
-    - Delete `getBranches`, `createBranch`, `updateBranch`, `deleteBranch` from `apps/web/src/actions/db.ts`
-    - Delete `getVenueElements`, `createVenueElement`, `updateVenueElement`, `deleteVenueElement` from `apps/web/src/actions/db.ts`
+  - [ ] 2.4 Remove settings server actions and rename V2 hooks
+    - Delete roles, rooms, departments, venue elements functions from `apps/web/src/actions/db.ts`
+    - Rename `useRolesV2 → useRoles`, etc.
+    - Update migration status tracker: Settings ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 3. Phase 2 — Workers Module
   - [ ] 3.1 Create workers Edge Function
-    - Create `supabase/functions/workers/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listWorkers`, `getWorker`, `createWorker`, `updateWorker`, `deleteWorker` (soft delete with assignment check)
-    - Implement handlers: `getWorkerRoles`, `assignRole`, `removeRole`, `getWorkerPermissions`
-    - Deploy with `npx supabase functions deploy workers`
-    - _Requirements: 1.1, 1.2, 2.1, 6.1, 6.2, 6.3, 6.4, 6.5_
+    - Create `supabase/functions/workers/index.ts`
+    - **Register `GET /workers/lookup` before `GET /workers/:id`** in the RouteMap
+    - Implement: `listWorkers`, `createWorker` (required: `firstName`, `lastName`, `email`), `lookupWorker` (`?firebaseUid=` or `?email=`; 404 if no match), `getWorker`, `updateWorker`
+    - Implement: `deleteWorker` — soft delete (`status = 'inactive'`); before deletion, check for future assignments via `SELECT FROM ScheduleAssignment JOIN Schedule WHERE workerId = $1 AND Schedule.date >= CURRENT_DATE LIMIT 1`; return 409 if found
+    - Implement: `getWorkerRoles`, `assignRole` (409 on duplicate), `removeRole`, `getWorkerPermissions` (flattened deduplicated set from all roles)
+    - Deploy: `npx supabase functions deploy workers`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 6.1–6.5_
 
   - [ ] 3.2 Add WorkersClient to @studio/client
-    - Create `packages/client/src/workers/types.ts` — Worker, WorkerRole, Permission types and Zod schemas
-    - Create `packages/client/src/workers/client.ts` — `WorkersClient` extending `BaseClient`
+    - Create `packages/client/src/workers/schemas.ts`, `types.ts`, `client.ts`
+    - Mirror schemas to `supabase/functions/_shared/schemas/workers.ts`
     - Export from `packages/client/src/index.ts`
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 3.3 Migrate apps/web workers pages to WorkersClient
-    - Update `apps/web/src/hooks/use-workers.ts` to use `WorkersClient`
-    - Update `apps/web/src/hooks/use-worker-mutations.ts` to use `WorkersClient`
-    - Update `apps/web/src/hooks/use-worker-logs.ts` to use `WorkersClient`
-    - Verify `/workers`, `/workers/[id]`, `/workers/my-qr` pages work correctly
+    - Create `useWorkersV2`, `useWorkerMutationsV2`, `useWorkerLogsV2` hooks
+    - Switch `/workers`, `/workers/[id]`, `/workers/my-qr` pages to V2 hooks
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 3.4 Remove workers server actions from db.ts
-    - Delete `getWorkers`, `getPaginatedWorkers`, `getWorkerStats`, `getWorkerById`, `getWorkerByEmail` from `db.ts`
-    - Delete `createWorker`, `updateWorker`, `deleteWorker`, `deleteWorkers` from `db.ts`
-    - Delete `getWorkerRoles`, `assignRolesToWorker` from `db.ts`
-    - Delete `updateWorkersMinistries` from `db.ts`
+  - [ ] 3.4 Remove workers server actions and rename V2 hooks
+    - Delete `getWorkers`, `getPaginatedWorkers`, `getWorkerStats`, `getWorkerById`, `getWorkerByEmail`, `createWorker`, `updateWorker`, `deleteWorker`, `deleteWorkers`, `getWorkerRoles`, `assignRolesToWorker`, `updateWorkersMinistries` from `db.ts`
+    - Rename V2 hooks to canonical names
+    - Update migration status tracker: Workers ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 4. Phase 3 — Ministries Module
   - [ ] 4.1 Create ministries Edge Function
-    - Create `supabase/functions/ministries/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listMinistries`, `getMinistry`, `createMinistry`, `updateMinistry`, `deleteMinistry` (with worker assignment check)
-    - Implement handlers: `listWorkloadCategories`, `createWorkloadCategory`, `updateWorkloadCategory`, `deleteWorkloadCategory`
-    - Implement handlers: `assignManager`, `removeManager`
-    - Deploy with `npx supabase functions deploy ministries`
-    - _Requirements: 1.1, 1.2, 2.1, 8.1, 8.2, 8.3, 8.4, 8.5_
+    - Create `supabase/functions/ministries/index.ts`
+    - Implement: `listMinistries`, `createMinistry`, `getMinistry` — response includes `departmentCode` (from linked Department), `managers` (Worker profiles from MinistryManager), `activeMemberCount` (count of Workers where `status = 'active'` and `ministryId = id`), `updateMinistry`
+    - Implement: `deleteMinistry` — 409 if any Worker has `status = 'active'` AND `ministryId = id`
+    - Implement: workload category CRUD (`listWorkloadCategories`, `createWorkloadCategory`, `updateWorkloadCategory`, `deleteWorkloadCategory`) and manager CRUD (`listManagers`, `assignManager`, `removeManager`)
+    - Deploy: `npx supabase functions deploy ministries`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 8.1–8.5_
 
   - [ ] 4.2 Add MinistriesClient to @studio/client
-    - Create `packages/client/src/ministries/types.ts` — Ministry, WorkloadCategory, MinistryManager types and Zod schemas
-    - Create `packages/client/src/ministries/client.ts` — `MinistriesClient` extending `BaseClient`
-    - Export from `packages/client/src/index.ts`
+    - Create schemas, types, client for ministries module
+    - Mirror schemas to `supabase/functions/_shared/schemas/ministries.ts`
+    - Export from index
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 4.3 Migrate apps/web ministries pages to MinistriesClient
-    - Update `apps/web/src/hooks/use-ministries.ts` to use `MinistriesClient`
-    - Update `apps/web/src/hooks/use-workload-categories.ts` to use `MinistriesClient`
-    - Verify `/ministries`, `/settings/ministries` pages work correctly
+    - Switch `/ministries`, `/settings/ministries` pages to V2 hooks
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 4.4 Remove ministries server actions from db.ts
-    - Delete `getMinistries`, `createMinistry`, `updateMinistry`, `createMinistries`, `deleteMinistry` from `db.ts`
+  - [ ] 4.4 Remove ministries server actions and rename V2 hooks
+    - Delete ministry functions from `db.ts`
     - Delete workload category actions from `apps/web/src/actions/ministry-categories.ts`
+    - Rename V2 hooks
+    - Update migration status tracker: Ministries ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 5. Phase 4 — Schedule Module
   - [ ] 5.1 Create schedule Edge Function
-    - Create `supabase/functions/schedule/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listSchedules`, `getSchedule`, `createSchedule`, `createFromTemplate`, `updateSchedule`, `deleteSchedule`
-    - Implement handlers: `assignWorker` (with role validation), `removeAssignment`
-    - Implement handlers: `listTemplates`, `createTemplate`, `updateTemplate`, `deleteTemplate`
-    - Deploy with `npx supabase functions deploy schedule`
-    - _Requirements: 1.1, 1.2, 2.1, 7.1, 7.2, 7.3, 7.4, 7.5_
+    - Create `supabase/functions/schedule/index.ts`
+    - **Register `POST /schedules/from-template` before `POST /schedules/:id`** in the RouteMap
+    - Implement: `listSchedules`, `createSchedule` (required: `date`, `serviceType`), `createFromTemplate` (copies all TemplateSlots into new ScheduleSlots; does NOT copy worker assignments), `getSchedule`, `updateSchedule`, `deleteSchedule`
+    - Implement: `assignWorker` — 422 if worker lacks slot's required `roleId` OR lacks ministry membership when `Schedule.ministryId` is set; `removeAssignment`
+    - Implement: template CRUD (`listTemplates`, `createTemplate`, `getTemplate`, `updateTemplate`, `deleteTemplate`), template slot CRUD, worship slot CRUD
+    - Deploy: `npx supabase functions deploy schedule`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 7.1–7.5_
 
   - [ ] 5.2 Add ScheduleClient to @studio/client
-    - Create `packages/client/src/schedule/types.ts` — Schedule, ScheduleAssignment, ServiceTemplate, TemplateRole, WorshipSlot types and Zod schemas
-    - Create `packages/client/src/schedule/client.ts` — `ScheduleClient` extending `BaseClient`
-    - Export from `packages/client/src/index.ts`
+    - Create schemas, types, client for schedule module
+    - Mirror schemas to `supabase/functions/_shared/schemas/schedule.ts`
+    - Export from index
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 5.3 Migrate apps/web schedule pages to ScheduleClient
-    - Update `apps/web/src/hooks/use-schedule.ts` to use `ScheduleClient`
-    - Verify `/schedule`, `/schedule/[id]`, `/schedule/templates`, `/schedule/schedulers` pages work correctly
+    - Switch `/schedule`, `/schedule/[id]`, `/schedule/templates`, `/schedule/schedulers` pages to V2 hooks
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 5.4 Remove schedule server actions
+  - [ ] 5.4 Remove schedule server actions and rename V2 hooks
     - Delete all functions from `apps/web/src/actions/schedule.ts`
+    - Rename V2 hooks
+    - Update migration status tracker: Schedule ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 6. Phase 5 — Venue Module
   - [ ] 6.1 Create venue Edge Function
-    - Create `supabase/functions/venue/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listReservations`, `getReservation`, `createReservation` (with conflict check), `updateReservation`, `deleteReservation`, `checkConflict`
-    - Implement handlers: `listAssistanceRequests`, `createAssistanceRequest`, `updateAssistanceRequest`
-    - Implement handlers: `listRecurringBookings`, `createRecurringBooking`, `expandRecurringBooking`
-    - Deploy with `npx supabase functions deploy venue`
-    - _Requirements: 1.1, 1.2, 2.1, 9.1, 9.2, 9.3, 9.4, 9.5_
+    - Create `supabase/functions/venue/index.ts`
+    - Implement: `listReservations`, `createReservation` — conflict check: `A.startTime < B.endTime AND A.endTime > B.startTime` for same `roomId`; exclude `status = 'cancelled'` reservations; use parameterized Supabase query (no string interpolation of datetime values)
+    - Implement: `getReservation`, `updateReservation` (re-checks conflict excluding self by id), `deleteReservation`
+    - Implement: assistance request CRUD with status transitions `pending → assigned → completed`
+    - Implement: recurring booking CRUD and `expandRecurringBooking` — import `rrule` from `https://esm.sh/rrule@2`; default horizon 90 days; enforce max 365 days (return 400 if exceeded); skip conflicting instances; response: `{ created: N, skipped: N, instances: [...] }`
+    - Deploy: `npx supabase functions deploy venue`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 9.1–9.5_
 
   - [ ] 6.2 Add VenueClient to @studio/client
-    - Create `packages/client/src/venue/types.ts` — Reservation, AssistanceRequest, RecurringBooking types and Zod schemas
-    - Create `packages/client/src/venue/client.ts` — `VenueClient` extending `BaseClient`
-    - Export from `packages/client/src/index.ts`
+    - Create schemas, types, client for venue module
+    - Mirror schemas to `supabase/functions/_shared/schemas/venue.ts`
+    - Export from index
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 6.3 Migrate apps/web venue pages to VenueClient
-    - Update `apps/web/src/hooks/use-venue-bookings.ts` to use `VenueClient`
-    - Update `apps/web/src/hooks/use-bookings.ts` to use `VenueClient`
-    - Update `apps/web/src/hooks/use-assistance-requests.ts` to use `VenueClient`
-    - Verify `/venue`, `/reservations/*` pages work correctly
+    - Switch `/venue`, `/reservations/*` pages to V2 hooks
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 6.4 Remove venue server actions from db.ts
-    - Delete `getBookings`, `getBookingsForRoomOnDate`, `createBooking`, `updateBooking`, `deleteBooking` from `db.ts`
-    - Delete venue assistance actions from `apps/web/src/actions/venue-assistance.ts` and `venue-assistance-status.ts`
+  - [ ] 6.4 Remove venue server actions and rename V2 hooks
+    - Delete booking and venue assistance actions from `db.ts`, `venue-assistance.ts`, `venue-assistance-status.ts`
+    - Rename V2 hooks
+    - Update migration status tracker: Venue ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 7. Phase 6 — Approvals Module
   - [ ] 7.1 Create approvals Edge Function
-    - Create `supabase/functions/approvals/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listApprovals`, `getApproval`, `createApproval`
-    - Implement handlers: `approveRequest` (with permission check and pending-only guard), `rejectRequest` (same guards)
-    - Deploy with `npx supabase functions deploy approvals`
-    - _Requirements: 1.1, 1.2, 2.1, 10.1, 10.2, 10.3, 10.4, 10.5_
+    - Create `supabase/functions/approvals/index.ts`
+    - Implement: `listApprovals`, `createApproval` (status starts as `pending`), `getApproval`
+    - Implement: `approveRequest` and `rejectRequest` — both: (a) 409 if `status != 'pending'`; (b) resolve approver's Worker via `userId → Worker.firebaseUid → WorkerRole → Role → RolePermission`; (c) 403 if no role has `approve_requests` permission; (d) set `status`, `approverId`, `approvedAt`, `approverNotes`
+    - Deploy: `npx supabase functions deploy approvals`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 10.1–10.5_
 
   - [ ] 7.2 Add ApprovalsClient to @studio/client
-    - Create `packages/client/src/approvals/types.ts` — ApprovalRequest types and Zod schemas
-    - Create `packages/client/src/approvals/client.ts` — `ApprovalsClient` extending `BaseClient`
-    - Export from `packages/client/src/index.ts`
+    - Create schemas, types, client for approvals module
+    - Mirror schemas to `supabase/functions/_shared/schemas/approvals.ts`
+    - Export from index
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 7.3 Migrate apps/web approvals pages to ApprovalsClient
-    - Update `apps/web/src/hooks/use-approvals.ts` to use `ApprovalsClient`
-    - Update `apps/web/src/hooks/use-approval-mutations.ts` to use `ApprovalsClient`
-    - Verify `/approvals` page works correctly
+    - Switch `/approvals` page to V2 hooks
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 7.4 Remove approvals server actions from db.ts
+  - [ ] 7.4 Remove approvals server actions and rename V2 hooks
     - Delete `createApproval`, `getApprovals`, `updateApproval` from `db.ts`
+    - Rename V2 hooks
+    - Update migration status tracker: Approvals ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 8. Phase 7 — Meals Module
   - [ ] 8.1 Create meals Edge Function
-    - Create `supabase/functions/meals/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listMealStubs`, `getMealStub`, `createMealStub`, `updateMealStub`, `deleteMealStub`
-    - Implement handlers: `allocateMealStubs` (bulk create for worker list), `redeemMealStub` (with duplicate redemption check)
-    - Deploy with `npx supabase functions deploy meals`
-    - _Requirements: 1.1, 1.2, 2.1, 11.1, 11.2, 11.3, 11.4_
+    - Create `supabase/functions/meals/index.ts`
+    - **Register `POST /meal-stubs/allocate` before `POST /meal-stubs/:id`** in the RouteMap
+    - Implement: `listMealStubs`, `createMealStub`, `getMealStub`, `updateMealStub`, `deleteMealStub`
+    - Implement: `allocateMealStubs` — body: `{ workerIds: string[], serviceDate: string }`; idempotent (skip workers who already have a stub for that date); bulk insert
+    - Implement: `redeemMealStub` — set `redeemed = true`, `redeemedAt = now()`, `redeemedByWorkerId` from body; 409 if `redeemed` is already `true`
+    - Deploy: `npx supabase functions deploy meals`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 11.1–11.4_
 
   - [ ] 8.2 Add MealsClient to @studio/client
-    - Create `packages/client/src/meals/types.ts` — MealStub types and Zod schemas
-    - Create `packages/client/src/meals/client.ts` — `MealsClient` extending `BaseClient`
-    - Export from `packages/client/src/index.ts`
+    - Create schemas, types, client for meals module
+    - Mirror schemas to `supabase/functions/_shared/schemas/meals.ts`
+    - Export from index
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 8.3 Migrate apps/web meals pages to MealsClient
-    - Update `apps/web/src/hooks/use-meal-stubs.ts` to use `MealsClient`
-    - Update `apps/web/src/services/mealstubService.ts` to use `MealsClient`
-    - Verify `/meals`, `/mealstub/scanner` pages work correctly
+    - Switch `/meals`, `/mealstub/scanner` pages to V2 hooks
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 8.4 Remove meals server actions from db.ts
-    - Delete `getMealStubs`, `createMealStub`, `updateMealStub`, `deleteMealStub` from `db.ts`
+  - [ ] 8.4 Remove meals server actions and rename V2 hooks
+    - Delete meal stub actions from `db.ts`
     - Delete `apps/web/src/app/api/mealstubs/` API route
+    - Rename V2 hooks
+    - Update migration status tracker: Meals ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 9. Phase 8 — Attendance Module
   - [ ] 9.1 Create attendance Edge Function
-    - Create `supabase/functions/attendance/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listAttendance`, `getAttendance`, `createAttendance`
-    - Implement handlers: `scanQRCode` (validate active worker, duplicate check), `getAttendanceStats` (aggregate by date + ministry)
-    - Deploy with `npx supabase functions deploy attendance`
-    - _Requirements: 1.1, 1.2, 2.1, 12.1, 12.2, 12.3, 12.4, 12.5_
+    - Create `supabase/functions/attendance/index.ts`
+    - **Register `POST /attendance/scan` and `GET /attendance/stats` before `GET /attendance/:id`** in the RouteMap
+    - Implement: `listAttendance`, `createAttendance` (409 on duplicate `(workerId, serviceDate)`), `getAttendance`
+    - Implement: `scanQRCode` — (1) verify QR JWT using `SUPABASE_JWT_SECRET` (the QR payload is a JWT with claims `{ workerId: string, iat: number }`); (2) check `Worker.status = 'active'` for decoded `workerId`, return 404 if not found/inactive; (3) insert attendance for `(workerId, serviceDate)` where `serviceDate` defaults to today; (4) return 409 on duplicate
+    - Implement: `getAttendanceStats` — filter by `?startDate=&endDate=&ministryId=`; return `{ totalCount, byDate: [{date, count}], byMinistry: [{ministryId, ministryName, count}] }`
+    - Deploy: `npx supabase functions deploy attendance`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 12.1–12.5_
 
   - [ ] 9.2 Add AttendanceClient to @studio/client
-    - Create `packages/client/src/attendance/types.ts` — AttendanceRecord types and Zod schemas
-    - Create `packages/client/src/attendance/client.ts` — `AttendanceClient` extending `BaseClient`
-    - Export from `packages/client/src/index.ts`
+    - Create schemas, types, client for attendance module
+    - Mirror schemas to `supabase/functions/_shared/schemas/attendance.ts`
+    - Export from index
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 9.3 Migrate apps/web attendance pages to AttendanceClient
-    - Update `apps/web/src/hooks/use-attendance.ts` to use `AttendanceClient`
-    - Update `apps/web/src/hooks/use-scan-logs.ts` to use `AttendanceClient`
-    - Verify `/attendance`, `/attendance/scanner`, `/scan` pages work correctly
+    - Switch `/attendance`, `/attendance/scanner`, `/scan` pages to V2 hooks
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 9.4 Remove attendance server actions from db.ts
-    - Delete `getAttendanceRecords`, `createAttendanceRecord` from `db.ts`
-    - Delete `getScanLogs`, `createScanLog` from `db.ts`
+  - [ ] 9.4 Remove attendance server actions and rename V2 hooks
+    - Delete `getAttendanceRecords`, `createAttendanceRecord`, `getScanLogs`, `createScanLog` from `db.ts`
+    - Rename V2 hooks
+    - Update migration status tracker: Attendance ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 10. Phase 9 — C2S Module
   - [ ] 10.1 Create c2s Edge Function
-    - Create `supabase/functions/c2s/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listGroups` (with member count), `getGroup` (with leader profile + member count), `createGroup`, `updateGroup`, `deleteGroup`
-    - Implement handlers: `addMember` (validate worker exists), `removeMember`
-    - Deploy with `npx supabase functions deploy c2s`
-    - _Requirements: 1.1, 1.2, 2.1, 14.1, 14.2, 14.3_
+    - Create `supabase/functions/c2s/index.ts`
+    - Implement: `listGroups`, `createGroup`, `getGroup` (includes `leader` full Worker profile and `memberCount` integer), `updateGroup`, `deleteGroup`
+    - Implement: `listMembers`, `addMember` (validate worker exists; return 404 if not), `removeMember`
+    - Deploy: `npx supabase functions deploy c2s`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 14.1–14.3_
 
   - [ ] 10.2 Add C2SClient to @studio/client
-    - Create `packages/client/src/c2s/types.ts` — DiscipleshipGroup, GroupMember types and Zod schemas
-    - Create `packages/client/src/c2s/client.ts` — `C2SClient` extending `BaseClient`
-    - Export from `packages/client/src/index.ts`
+    - Create schemas, types, client for c2s module
+    - Mirror schemas to `supabase/functions/_shared/schemas/c2s.ts`
+    - Export from index
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
   - [ ] 10.3 Migrate apps/web c2s pages to C2SClient
-    - Update c2s data fetching in `apps/web/src/app/c2s/page.tsx` to use `C2SClient`
-    - Verify `/c2s` page works correctly
+    - Switch `/c2s` page to V2 hooks
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 15.1, 15.2_
 
-  - [ ] 10.4 Remove c2s server actions from db.ts
-    - Delete `getC2SGroups`, `getC2SMentees`, `createC2SGroup`, `updateC2SGroup`, `deleteC2SGroup` from `db.ts`
-    - Delete `createC2SMentee`, `updateC2SMentee`, `deleteC2SMentee` from `db.ts`
+  - [ ] 10.4 Remove c2s server actions and rename V2 hooks
+    - Delete c2s group and mentee actions from `db.ts`
+    - Rename V2 hooks
+    - Update migration status tracker: C2S ✅
     - _Requirements: 4.1, 15.4_
 
 - [ ] 11. Phase 10 — Inventory Module + apps/inventory overhaul
-  - [ ] 11.1 Create inventory Edge Function
-    - Create `supabase/functions/inventory/index.ts` using the complete implementation from the design doc
-    - Implement handlers: `listItems` (with ministryId scoping), `getItem`, `createItem`, `updateItem`, `deleteItem`
-    - Implement handlers: `listCategories`, `createCategory`, `updateCategory`, `deleteCategory`
-    - Implement handlers: `recordStockAdjustment` (atomic quantity update, clamp to zero on Stock Out), `listStockLogs`
-    - Implement handlers: `listBorrowings`, `createBorrowing` (check availability), `processReturn` (update quantity)
-    - Deploy with `npx supabase functions deploy inventory`
-    - _Requirements: 1.1, 1.2, 2.1, 13.1, 13.2, 13.3, 13.4, 13.5, 13.6_
+  - [ ] 11.1 Verify atomic stock migration is applied
+    - Confirm `adjust_item_stock` function exists: `SELECT proname FROM pg_proc WHERE proname = 'adjust_item_stock'`
+    - This was created in Phase 0 task 1.6 and is a hard prerequisite for the inventory Edge Function
+    - _Requirements: 13.2, 13.5_
 
-  - [ ] 11.2 Add InventoryClient to @studio/client
-    - Create `packages/client/src/inventory/types.ts` — InventoryItem, InventoryCategory, StockLog, Borrowing types and Zod schemas
-    - Create `packages/client/src/inventory/client.ts` — `InventoryClient` extending `BaseClient`
-    - Export from `packages/client/src/index.ts`
+  - [ ] 11.2 Create inventory Edge Function
+    - Create `supabase/functions/inventory/index.ts`
+    - Implement: `listItems` with `ministryId` scoping — when `ministryId` absent, check for `super_admin` permission; return 403 if lacking; `createItem`, `getItem`, `updateItem`, `deleteItem`
+    - Implement: `listCategories`, `createCategory`, `getCategory`, `updateCategory`, `deleteCategory`
+    - Implement: `listStockLogs` filtered by `?itemId=&ministryId=&startDate=&endDate=`
+    - Implement: `recordStockAdjustment` — calls `supabase.rpc('adjust_item_stock', { p_item_id, p_delta, p_adj_type, p_ministry_id, p_notes })`; response includes `new_quantity` and `actual_delta`
+    - Implement: `listBorrowings`, `createBorrowing`, `processReturn`
+    - Deploy: `npx supabase functions deploy inventory`
+    - _Requirements: 1.1–1.7, 2.1–2.5, 13.1–13.6_
+
+  - [ ] 11.3 Add InventoryClient to @studio/client
+    - Create schemas, types, client for inventory module
+    - Mirror schemas to `supabase/functions/_shared/schemas/inventory.ts`
+    - Export from index
     - _Requirements: 3.2, 3.8, 16.1, 16.3, 16.4_
 
-  - [ ] 11.3 Migrate apps/inventory to InventoryClient
-    - Replace all direct Supabase calls in `apps/inventory/src/lib/inventory-api.ts` with `InventoryClient` calls
+  - [ ] 11.4 Migrate apps/inventory to InventoryClient
+    - Replace all Supabase client calls in `apps/inventory/src/lib/inventory-api.ts` with `InventoryClient`
     - Update `apps/inventory/src/hooks/useInventory.ts` to use `InventoryClient`
-    - Verify all inventory features work: items, categories, borrowings, stock logs, dashboard stats
+    - Verify items, categories, borrowings, stock logs, and dashboard stats work end-to-end
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ] 11.4 Remove direct Supabase dependency from apps/inventory
+  - [ ] 11.5 Remove direct Supabase dependency from apps/inventory
     - Remove `@supabase/supabase-js` from `apps/inventory/package.json`
-    - Remove `apps/inventory/src/lib/supabase.ts` direct client file
+    - Remove `apps/inventory/src/lib/supabase.ts`
     - Verify `apps/inventory` builds without Supabase client dependency
+    - Update migration status tracker: Inventory ✅
     - _Requirements: 5.4_
 
 - [ ] 12. Phase 11 — Final Cleanup
-  - [ ] 12.1 Remove @studio/database from apps/web
-    - Verify all modules have been migrated (check migration status tracker above)
-    - Remove `@studio/database` from `apps/web/package.json` dependencies
-    - Remove `@prisma/client` from `apps/web/package.json` dependencies
-    - Remove `apps/web/src/firebase/index.ts` re-export if no longer needed
+  - [ ] 12.1 Remove @studio/database and @prisma/client from apps/web
+    - Verify migration status tracker shows all 10 modules complete
+    - Remove `@studio/database` from `apps/web/package.json`
+    - Remove `@prisma/client` from `apps/web/package.json`
     - _Requirements: 4.3, 4.4_
 
-  - [ ] 12.2 Remove remaining db.ts server actions
-    - Delete `getSetting`, `updateSetting` from `db.ts` (migrate to settings Edge Function if needed)
-    - Delete `getPermissions`, `setRolePermissions`, `setRolePermissionsByKeys` from `db.ts`
-    - Delete any remaining functions from `db.ts`
+  - [ ] 12.2 Delete remaining db.ts server actions and the file
+    - Migrate or delete `getSetting`, `updateSetting` to settings Edge Function if still needed
+    - Delete `getPermissions`, `setRolePermissions`, `setRolePermissionsByKeys`
+    - Delete any remaining functions
     - Delete `apps/web/src/actions/db.ts` entirely once empty
     - _Requirements: 4.1, 15.4_
 
-  - [ ] 12.3 Update turbo.json and package configs
+  - [ ] 12.3 Update turbo.json and verify build
     - Add `@studio/client` to all relevant `turbo.json` pipeline dependencies
-    - Verify monorepo builds cleanly with `turbo build`
+    - Run `turbo build` and confirm clean build
+    - Run schema sync check: `turbo run check-schema-sync` — confirm no drift
     - _Requirements: 3.1_
 
   - [ ] 12.4 Update CODEBASE_GUIDE.txt
-    - Update architecture section to reflect Edge Functions + @studio/client pattern
-    - Update KEY FILES section to reference new package locations
-    - Update HOOKS section to reflect new client-based hooks
+    - Update architecture section to reflect Edge Functions + `@studio/client` pattern
+    - Update KEY FILES to reference new package locations
     - Add Edge Functions deployment instructions
+    - Note: `apps/tract-tracker` uses Supabase Auth directly and is NOT part of this migration
     - _Requirements: 15.5_
 
   - [ ] 12.5 Final verification
     - Run full build: `turbo build`
-    - Verify all 10 Edge Functions are deployed: `npx supabase functions list`
+    - Verify all 10 Edge Functions deployed: `npx supabase functions list`
     - Smoke test each module via the web app
-    - Verify apps/inventory works end-to-end
-    - Confirm no direct Prisma or Supabase client calls remain in apps/web or apps/inventory
-    - Update migration status tracker to mark all modules complete
+    - Verify `apps/inventory` works end-to-end
+    - Confirm no direct Prisma or Supabase client calls remain in `apps/web` or `apps/inventory`
+    - Run schema sync check: no drift
+    - Update all migration status tracker rows to ✅
     - _Requirements: 4.2, 4.3, 4.4, 5.2, 5.4, 15.5_
+
+---
 
 ## Notes
 
-- Each phase is independently deployable — old server actions stay until the phase is fully verified
-- The migration status tracker at the top of this file should be updated as each module completes
-- Edge Functions are deployed to Supabase project `vpgykxfbrfnojmgmzriq`
-- The `supabase/functions/_shared/` utilities are shared across all Edge Functions via Deno import paths
-- All Edge Functions use the same JWT verification pattern — unauthenticated requests return 401 before any handler runs
-- The `@studio/client` package works in both browser (Next.js) and React Native (Expo) environments
-- apps/tract-tracker uses Supabase Auth directly and is NOT part of this migration
+- **Route ordering is critical.** In every Edge Function, literal path segments (e.g., `/schedules/from-template`, `/meal-stubs/allocate`, `/attendance/scan`, `/attendance/stats`, `/workers/lookup`) must appear before parameterized routes of the same depth in the `RouteMap` array. Iterating an object map has non-deterministic ordering; the `RouteMap` array guarantees evaluation order.
+- **`dbRole` ≠ application role.** `AuthContext.dbRole` is the Supabase database role (`authenticated`). Application-level authorization always requires querying `WorkerRole → Role → RolePermission`. Never use `dbRole` for business logic permission checks.
+- **Concurrent stock updates require the Postgres RPC.** A plain `UPDATE SET quantity = quantity - delta` allows two concurrent requests to read the same pre-update value. The `adjust_item_stock` RPC uses `SELECT ... FOR UPDATE` to serialize access.
+- **QR codes are signed JWTs** using `SUPABASE_JWT_SECRET`. The attendance Edge Function verifies the signature before trusting `workerId` in the payload.
+- **Zod schemas in `packages/client/src/` are the source of truth.** Their mirrors in `supabase/functions/_shared/schemas/` must be kept in sync; CI will reject divergence.
+- Each phase is independently deployable — old server actions remain until pages are fully switched and verified on the new client hooks.
+- `apps/tract-tracker` uses Supabase Auth directly and is NOT part of this migration.
+- Edge Functions are deployed to Supabase project `vpgykxfbrfnojmgmzriq`.

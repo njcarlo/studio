@@ -1,44 +1,36 @@
-'use client';
+'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getRoles, createRole, updateRole, deleteRole } from '@/actions/db';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { settingsClient } from '@/lib/studio-client'
 
 export function useRoles() {
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['roles'],
-        queryFn: () => getRoles(),
-        staleTime: 0, // always re-fetch after invalidation so edits show immediately
-    });
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['roles'],
+    queryFn: () => settingsClient.getRoles(),
+    staleTime: 0,
+  })
 
-    const createMutation = useMutation({
-        mutationFn: createRole,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['roles'] });
-        },
-    });
+  const createMutation = useMutation({
+    mutationFn: (data: any) => settingsClient.createRole(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
+  })
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => settingsClient.updateRole(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
+  })
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => settingsClient.deleteRole(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
+  })
 
-    const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateRole(id, data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['roles'] });
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: deleteRole,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['roles'] });
-        },
-    });
-
-    return {
-        roles: data || [],
-        isLoading,
-        error,
-        createRole: createMutation.mutateAsync,
-        updateRole: updateMutation.mutateAsync,
-        deleteRole: deleteMutation.mutateAsync,
-    };
+  return {
+    roles: (data as any[]) || [],
+    isLoading,
+    error,
+    createRole: createMutation.mutateAsync,
+    updateRole: updateMutation.mutateAsync,
+    deleteRole: deleteMutation.mutateAsync,
+  }
 }

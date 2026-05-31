@@ -28,7 +28,8 @@
     "tailwindcss-animate": "^1.0.7",
     "xlsx": "^0.18.5",
     "zod": "^3.24.2",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.11",
+    "@studio/client": "*"
   },
   "devDependencies": {
     "@types/node": "^20",

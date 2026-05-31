@@ -2,4700 +2,695 @@
 
 ## Overview
 
-This design describes the complete architectural transformation of the Studio monorepo from a monolithic server-actions architecture to a distributed Edge Functions + typed SDK architecture. The system will extract all business logic from `apps/web` and `apps/inventory` into 10 independent Supabase Edge Functions, introduce a unified `@studio/client` SDK package, and reduce the apps to thin presentation layers. The migration will be performed module-by-module to maintain system stability.
+This document describes the architectural transformation of the Studio monorepo from a monolithic server-actions architecture to a distributed Edge Functions + typed SDK architecture. All business logic is extracted from `apps/web` (`src/actions/db.ts` and related action files) and `apps/inventory` (`src/lib/inventory-api.ts`) into 10 independent Supabase Edge Functions. A unified `@studio/client` SDK package wraps all Edge Function HTTP calls with TypeScript types derived from shared Zod schemas. The apps become thin presentation layers. Migration is module-by-module.
 
-## Architecture Diagram
+---
+
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Client Applications                      │
-├──────────────────────┬──────────────────────────────────────┤
-│   apps/web           │   apps/inventory   │  Future Mobile  │
-│   (Next.js)          │   (Next.js)        │  (React Native) │
-└──────────┬───────────┴──────────┬─────────┴─────────┬───────┘
-           │                      │                   │
-           └──────────────────────┼───────────────────┘
-                                  │
-                    ┌─────────────▼─────────────┐
-                    │   @studio/client SDK      │
-                    │   (Typed HTTP Client)     │
-                    └─────────────┬─────────────┘
-                                  │
-           ┌──────────────────────┼──────────────────────┐
-           │                      │                      │
-    ┌──────▼──────┐        ┌─────▼──────┐       ┌──────▼──────┐
-    │  workers    │        │  schedule  │       │ ministries  │
-    │Edge Function│        │Edge Function│      │Edge Function│
-    └──────┬──────┘        └─────┬──────┘       └──────┬──────┘
-           │                     │                     │
-           └─────────────────────┼─────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                        Client Applications                        │
+├─────────────────────┬──────────────────────┬─────────────────────┤
+│  apps/web           │  apps/inventory       │  Future: Expo       │
+│  (Next.js)          │  (Next.js)            │  (React Native)     │
+│  Zustand stores     │                       │                     │
+└──────────┬──────────┴──────────┬────────────┴──────────┬──────────┘
+           │                     │                       │
+           └─────────────────────┼───────────────────────┘
                                  │
-                    ┌────────────▼────────────┐
-                    │  Supabase PostgreSQL    │
-                    │  (Shared Database)      │
-                    └─────────────────────────┘
+                   ┌─────────────▼──────────────┐
+                   │      @studio/client         │
+                   │  WorkersClient              │
+                   │  ScheduleClient             │
+                   │  MinistriesClient           │
+                   │  VenueClient                │
+                   │  ApprovalsClient            │
+                   │  MealsClient                │
+                   │  AttendanceClient           │
+                   │  InventoryClient            │
+                   │  C2SClient                  │
+                   │  SettingsClient             │
+                   └─────────────┬──────────────┘
+                                 │  HTTPS + JWT Bearer
+           ┌──────────┬──────────┼──────────┬──────────┐
+           │          │          │          │          │
+     ┌─────▼──┐ ┌─────▼──┐ ┌────▼───┐ ┌────▼───┐ ┌────▼───┐
+     │workers │ │schedule│ │ministr.│ │ venue  │ │approv. │
+     └────┬───┘ └────┬───┘ └────┬───┘ └────┬───┘ └────┬───┘
+          │          │          │          │          │
+     ┌────▼──┐ ┌─────▼──┐ ┌────▼───┐ ┌────▼───┐ ┌────▼───┐
+     │ meals │ │attend. │ │invent. │ │  c2s   │ │setting.│
+     └────┬──┘ └────┬───┘ └────┬───┘ └────┬───┘ └────┬───┘
+          └─────────┴──────────┼───────────┴──────────┘
+                               │
+                  ┌────────────▼────────────┐
+                  │   Supabase PostgreSQL    │
+                  │   (Shared Database)      │
+                  └──────────────────────────┘
 ```
 
-## System Components
+---
 
-### 1. Edge Functions Layer
+## Cross-Cutting Concerns
 
-**Purpose**: Centralized business logic execution in Deno runtime
+### Authentication
 
-**Structure**: Each module is deployed as `supabase/functions/{module}/index.ts`
+Every Edge Function verifies the caller's identity before running any handler. The function extracts the `Authorization: Bearer {token}` header and calls `supabase.auth.getUser(token)` — this performs remote verification against Supabase Auth, validating the JWT signature and expiry server-side.
 
-**Modules**:
-- `workers` - Worker profile management
-- `schedule` - Service scheduling and templates
-- `ministries` - Ministry and workload management
-- `venue` - Room reservations and bookings
-- `approvals` - Approval workflow management
-- `meals` - Meal stub allocation and redemption
-- `attendance` - Attendance tracking and QR scanning
-- `inventory` - Inventory items and stock management
-- `c2s` - Discipleship group management
-- `settings` - Roles, rooms, departments configuration
+**Important naming distinction:** The JWT `role` claim is the Supabase database role (`authenticated` or `service_role`), not the application-level role. Application roles (e.g., "worship leader") live in the `WorkerRole` table and are resolved per-request when authorization logic requires them. Handlers that check application permissions query `WorkerRole → Role → RolePermission`.
 
-**Common Edge Function Structure**:
 ```typescript
-// supabase/functions/{module}/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+// supabase/functions/_shared/auth.ts
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-serve(async (req) => {
-  // 1. CORS handling
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200,
-      headers: corsHeaders 
-    })
-  }
-
-  try {
-    // 2. JWT verification
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    // 3. Route dispatching
-    const url = new URL(req.url)
-    const path = url.pathname
-    const method = req.method
-
-    const route = `${method} ${path}`
-    const handler = routes[route]
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    // 4. Handler execution
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error(`[${module}] Error:`, error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+export interface AuthContext {
+  supabase: SupabaseClient
+  userId: string    // user.id from the JWT
+  dbRole: string    // user.role from the JWT ("authenticated")
 }
 
-function jsonResponse(data: any, status: number) {
+export async function verifyAuth(req: Request): Promise<AuthContext | Response> {
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return jsonError('Missing or malformed Authorization header', 401)
+  }
+  const token = authHeader.replace('Bearer ', '')
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  )
+  const { data: { user }, error } = await supabase.auth.getUser(token)
+  if (error || !user) return jsonError('Invalid or expired token', 401)
+  return { supabase, userId: user.id, dbRole: user.role ?? 'authenticated' }
+}
+```
+
+### CORS
+
+All Edge Functions handle `OPTIONS` preflight requests without JWT verification.
+
+```typescript
+// supabase/functions/_shared/cors.ts
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+}
+
+export function handleCors(req: Request): Response | null {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: corsHeaders })
+  }
+  return null
+}
+```
+
+### Router
+
+Each Edge Function uses a shared router that matches HTTP method + path pattern to a handler.
+
+**Critical rule:** Literal path segments must be registered before parameterized segments of the same depth. Without this, `POST /schedules/from-template` would be captured by `POST /schedules/:id` when iterating a flat map. The `RouteMap` is an ordered array, not an object, to guarantee evaluation order.
+
+```typescript
+// supabase/functions/_shared/router.ts
+export type Handler = (
+  req: Request,
+  ctx: AuthContext,
+  params: Record<string, string>
+) => Promise<Response>
+
+export type RouteMap = Array<{ method: string; pattern: string; handler: Handler }>
+
+export function matchRoute(
+  routes: RouteMap,
+  method: string,
+  pathname: string
+): { handler: Handler; params: Record<string, string> } | null {
+  for (const route of routes) {
+    if (route.method !== method) continue
+    const params = matchPattern(route.pattern, pathname)
+    if (params !== null) return { handler: route.handler, params }
+  }
+  return null
+}
+
+function matchPattern(pattern: string, path: string): Record<string, string> | null {
+  const pp = pattern.split('/').filter(Boolean)
+  const ap = path.split('/').filter(Boolean)
+  if (pp.length !== ap.length) return null
+  const params: Record<string, string> = {}
+  for (let i = 0; i < pp.length; i++) {
+    if (pp[i].startsWith(':')) {
+      params[pp[i].slice(1)] = decodeURIComponent(ap[i])
+    } else if (pp[i] !== ap[i]) {
+      return null
+    }
+  }
+  return params
+}
+```
+
+**Registration example:**
+```typescript
+const routes: RouteMap = [
+  // Literal routes first
+  { method: 'POST', pattern: '/schedules/from-template', handler: createFromTemplate },
+  { method: 'POST', pattern: '/meal-stubs/allocate',     handler: allocateMealStubs },
+  { method: 'POST', pattern: '/attendance/scan',         handler: scanQRCode },
+  { method: 'GET',  pattern: '/attendance/stats',        handler: getAttendanceStats },
+  // Parameterized routes after
+  { method: 'GET',    pattern: '/schedules/:id', handler: getSchedule },
+  { method: 'PUT',    pattern: '/schedules/:id', handler: updateSchedule },
+  { method: 'DELETE', pattern: '/schedules/:id', handler: deleteSchedule },
+]
+```
+
+### Structured Logging
+
+`console.error()` in Supabase Edge Functions outputs plain text. To satisfy Req 17.2, all error logging goes through a shared helper that emits JSON:
+
+```typescript
+// supabase/functions/_shared/logger.ts
+export function logError(module: string, method: string, route: string, error: unknown) {
+  console.error(JSON.stringify({
+    level: 'error',
+    module,
+    method,
+    route,
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+    timestamp: new Date().toISOString(),
+  }))
+}
+```
+
+### JSON Responses
+
+```typescript
+// supabase/functions/_shared/response.ts
+import { corsHeaders } from './cors.ts'
+
+export function jsonOk(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+export function jsonError(message: string, status: number, details?: unknown): Response {
+  return new Response(JSON.stringify({ error: message, details }), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 }
 ```
 
-### 2. @studio/client SDK Package
+### Zod Schema Sharing (Deno ↔ Node)
 
-**Purpose**: Typed HTTP client that wraps all Edge Function calls
+Zod schemas must be shared between Edge Functions (Deno runtime) and `@studio/client` (Node/browser).
 
-**Location**: `packages/client/`
+- **Source of truth:** `packages/client/src/{module}/schemas.ts` using npm `zod`
+- **During development:** Each Edge Function imports a mirrored copy from `supabase/functions/_shared/schemas/{module}.ts`. A CI script (`scripts/check-schema-sync.ts`) diffs the two locations and fails the build if they diverge.
+- **Long-term:** Publish `@studio/client` to npm and import via `https://esm.sh/@studio/client`.
 
-**Structure**:
+---
+
+## Edge Function Shell
+
+All 10 Edge Functions follow this pattern:
+
+```typescript
+// supabase/functions/{module}/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { handleCors } from '../_shared/cors.ts'
+import { verifyAuth } from '../_shared/auth.ts'
+import { matchRoute, RouteMap } from '../_shared/router.ts'
+import { jsonError } from '../_shared/response.ts'
+import { logError } from '../_shared/logger.ts'
+
+const MODULE = '{module}'
+
+const routes: RouteMap = [
+  // literal routes first, parameterized after
+]
+
+serve(async (req: Request) => {
+  const corsResponse = handleCors(req)
+  if (corsResponse) return corsResponse
+
+  const authCtx = await verifyAuth(req)
+  if (authCtx instanceof Response) return authCtx
+
+  const url = new URL(req.url)
+  const pathname = url.pathname.replace(`/${MODULE}`, '') || '/'
+
+  const match = matchRoute(routes, req.method, pathname)
+  if (!match) return jsonError('Route not found', 404)
+
+  try {
+    return await match.handler(req, authCtx, match.params)
+  } catch (err) {
+    logError(MODULE, req.method, pathname, err)
+    return jsonError('Internal server error', 500)
+  }
+})
+```
+
+---
+
+## Module API Contracts
+
+### Workers (`/workers`)
+
+| Method | Path | Handler | Notes |
+|--------|------|---------|-------|
+| GET | `/workers` | listWorkers | `?status=active&ministryId=` |
+| POST | `/workers` | createWorker | Required: `firstName`, `lastName`, `email` |
+| GET | `/workers/lookup` | lookupWorker | **Before `:id`** — `?firebaseUid=` or `?email=` |
+| GET | `/workers/:id` | getWorker | 404 if not found |
+| PUT | `/workers/:id` | updateWorker | |
+| DELETE | `/workers/:id` | deleteWorker | Soft delete; 409 if active future assignments |
+| GET | `/workers/:id/roles` | getWorkerRoles | |
+| POST | `/workers/:id/roles` | assignRole | 409 if duplicate |
+| DELETE | `/workers/:id/roles/:roleId` | removeRole | |
+| GET | `/workers/:id/permissions` | getWorkerPermissions | Derived from `WorkerRole → Role → RolePermission` |
+
+**"Active assignment" definition (Req 6.5):** Active = `Schedule.date >= CURRENT_DATE`. Past assignments do not block deletion.
+
+```sql
+SELECT sa.id FROM "ScheduleAssignment" sa
+JOIN "Schedule" s ON s.id = sa."scheduleId"
+WHERE sa."workerId" = $1 AND s.date >= CURRENT_DATE
+LIMIT 1
+```
+
+**Soft delete:** Sets `status = 'inactive'`; record is never removed.
+
+---
+
+### Schedule (`/schedule`)
+
+| Method | Path | Handler | Notes |
+|--------|------|---------|-------|
+| GET | `/schedules` | listSchedules | `?startDate=&endDate=&ministryId=` |
+| POST | `/schedules` | createSchedule | Required: `date`, `serviceType` |
+| POST | `/schedules/from-template` | createFromTemplate | **Before `/schedules/:id`** |
+| GET | `/schedules/:id` | getSchedule | |
+| PUT | `/schedules/:id` | updateSchedule | |
+| DELETE | `/schedules/:id` | deleteSchedule | |
+| POST | `/schedules/:id/assignments` | assignWorker | 422 if worker lacks role or ministry membership |
+| DELETE | `/schedules/:id/assignments/:assignmentId` | removeAssignment | |
+| GET | `/templates` | listTemplates | `?ministryId=` |
+| POST | `/templates` | createTemplate | |
+| GET | `/templates/:id` | getTemplate | |
+| PUT | `/templates/:id` | updateTemplate | |
+| DELETE | `/templates/:id` | deleteTemplate | |
+| GET | `/templates/:id/slots` | listTemplateSlots | |
+| POST | `/templates/:id/slots` | createTemplateSlot | |
+| PUT | `/templates/:id/slots/:slotId` | updateTemplateSlot | |
+| DELETE | `/templates/:id/slots/:slotId` | deleteTemplateSlot | |
+| GET | `/schedules/:id/worship-slots` | listWorshipSlots | |
+| POST | `/schedules/:id/worship-slots` | createWorshipSlot | |
+| PUT | `/schedules/:id/worship-slots/:slotId` | updateWorshipSlot | |
+| DELETE | `/schedules/:id/worship-slots/:slotId` | deleteWorshipSlot | |
+
+**Template copy (Req 7.4):** Copies all `TemplateSlot` rows into new `ScheduleSlot` rows. Worker assignments are NOT copied.
+
+**Assignment validation (Req 7.5):** Returns 422 when the worker lacks the slot's required `roleId`, OR lacks active membership in `Schedule.ministryId` (when set).
+
+---
+
+### Ministries (`/ministries`)
+
+| Method | Path | Handler |
+|--------|------|---------|
+| GET | `/ministries` | listMinistries |
+| POST | `/ministries` | createMinistry |
+| GET | `/ministries/:id` | getMinistry |
+| PUT | `/ministries/:id` | updateMinistry |
+| DELETE | `/ministries/:id` | deleteMinistry |
+| GET | `/ministries/:id/workload-categories` | listWorkloadCategories |
+| POST | `/ministries/:id/workload-categories` | createWorkloadCategory |
+| PUT | `/ministries/:id/workload-categories/:categoryId` | updateWorkloadCategory |
+| DELETE | `/ministries/:id/workload-categories/:categoryId` | deleteWorkloadCategory |
+| GET | `/ministries/:id/managers` | listManagers |
+| POST | `/ministries/:id/managers` | assignManager |
+| DELETE | `/ministries/:id/managers/:workerId` | removeManager |
+
+**Ministry fetch response (Req 8.4):** `GET /ministries/:id` includes `departmentCode` (from linked `Department`), `managers` (Worker profiles), and `activeMemberCount`.
+
+**Deletion guard (Req 8.5):** 409 if any Worker has `status = 'active'` and `ministryId = id`.
+
+---
+
+### Venue (`/venue`)
+
+| Method | Path | Handler | Notes |
+|--------|------|---------|-------|
+| GET | `/reservations` | listReservations | `?roomId=&startDate=&endDate=` |
+| POST | `/reservations` | createReservation | 409 on time conflict |
+| GET | `/reservations/:id` | getReservation | |
+| PUT | `/reservations/:id` | updateReservation | Re-checks conflicts excluding self |
+| DELETE | `/reservations/:id` | deleteReservation | |
+| GET | `/assistance-requests` | listAssistanceRequests | `?status=` |
+| POST | `/assistance-requests` | createAssistanceRequest | Starts as `pending` |
+| GET | `/assistance-requests/:id` | getAssistanceRequest | |
+| PUT | `/assistance-requests/:id` | updateAssistanceRequest | Transitions: `pending→assigned→completed` |
+| GET | `/recurring-bookings` | listRecurringBookings | |
+| POST | `/recurring-bookings` | createRecurringBooking | Required: `roomId`, `recurrenceRule`, `startTime`, `endTime` |
+| GET | `/recurring-bookings/:id` | getRecurringBooking | |
+| POST | `/recurring-bookings/:id/expand` | expandRecurringBooking | Body: `{ horizon?: number }` |
+
+**Conflict detection (Req 9.4):** `A.startTime < B.endTime AND A.endTime > B.startTime` for the same `roomId`. Only non-cancelled reservations (`status != 'cancelled'`) are checked. Use parameterized queries — never string-interpolate datetime values.
+
+**Recurring booking expansion (Req 9.5):**
+- `recurrenceRule` format: RRULE strings (RFC 5545), e.g., `FREQ=WEEKLY;BYDAY=SU`
+- Uses `https://esm.sh/rrule@2`
+- Default horizon: 90 days; maximum enforced: 365 days (return 400 if exceeded)
+- Response: `{ created: N, skipped: N, instances: [...] }` — skipped instances are those that would conflict
+
+---
+
+### Approvals (`/approvals`)
+
+| Method | Path | Handler | Notes |
+|--------|------|---------|-------|
+| GET | `/approvals` | listApprovals | `?status=&requesterId=` |
+| POST | `/approvals` | createApproval | Starts as `pending` |
+| GET | `/approvals/:id` | getApproval | |
+| POST | `/approvals/:id/approve` | approveRequest | 403 no authority; 409 not pending |
+| POST | `/approvals/:id/reject` | rejectRequest | 403 no authority; 409 not pending |
+
+**Approval authority (Req 10.4):** Worker has authority if any assigned role has `approve_requests` in `RolePermission`. Resolved via `userId → Worker.firebaseUid → WorkerRole → Role → RolePermission`.
+
+---
+
+### Meals (`/meals`)
+
+| Method | Path | Handler | Notes |
+|--------|------|---------|-------|
+| GET | `/meal-stubs` | listMealStubs | `?workerId=&serviceDate=&redeemed=` |
+| POST | `/meal-stubs` | createMealStub | |
+| POST | `/meal-stubs/allocate` | allocateMealStubs | **Before `/meal-stubs/:id`** |
+| GET | `/meal-stubs/:id` | getMealStub | |
+| PUT | `/meal-stubs/:id` | updateMealStub | |
+| DELETE | `/meal-stubs/:id` | deleteMealStub | |
+| POST | `/meal-stubs/:id/redeem` | redeemMealStub | 409 if already redeemed |
+
+**Allocation (Req 11.2):** `POST /meal-stubs/allocate` body: `{ workerIds: string[], serviceDate: string }`. Idempotent — skips workers who already have a stub for that date.
+
+**Redemption (Req 11.3):** Sets `redeemed = true`, `redeemedAt = now()`, `redeemedByWorkerId` from body. Returns 409 if `redeemed` is already `true`.
+
+---
+
+### Attendance (`/attendance`)
+
+| Method | Path | Handler | Notes |
+|--------|------|---------|-------|
+| GET | `/attendance` | listAttendance | `?workerId=&serviceDate=&ministryId=` |
+| POST | `/attendance` | createAttendance | 409 on duplicate |
+| POST | `/attendance/scan` | scanQRCode | **Before `/attendance/:id`** |
+| GET | `/attendance/stats` | getAttendanceStats | **Before `/attendance/:id`** |
+| GET | `/attendance/:id` | getAttendance | |
+
+**QR code payload schema (Req 12.2):** The QR code encodes a signed JWT with claims `{ workerId: string, iat: number }` signed with `SUPABASE_JWT_SECRET`. The `scanQRCode` handler:
+1. Verifies the QR JWT signature using `SUPABASE_JWT_SECRET`
+2. Validates `Worker.status = 'active'` for the decoded `workerId`; returns 404 if inactive/missing
+3. Inserts attendance for `(workerId, serviceDate)` — `serviceDate` defaults to today if not in the request body
+4. Returns 409 if a record already exists for `(workerId, serviceDate)`
+
+**Stats response shape (Req 12.5):**
+```json
+{
+  "totalCount": 120,
+  "byDate": [{ "date": "2025-01-05", "count": 40 }],
+  "byMinistry": [{ "ministryId": "...", "ministryName": "...", "count": 40 }]
+}
+```
+
+---
+
+### Inventory (`/inventory`)
+
+| Method | Path | Handler | Notes |
+|--------|------|---------|-------|
+| GET | `/items` | listItems | `?ministryId=&categoryId=` |
+| POST | `/items` | createItem | |
+| GET | `/items/:id` | getItem | |
+| PUT | `/items/:id` | updateItem | |
+| DELETE | `/items/:id` | deleteItem | |
+| GET | `/categories` | listCategories | `?ministryId=` |
+| POST | `/categories` | createCategory | |
+| GET | `/categories/:id` | getCategory | |
+| PUT | `/categories/:id` | updateCategory | |
+| DELETE | `/categories/:id` | deleteCategory | |
+| GET | `/stock-logs` | listStockLogs | `?itemId=&ministryId=&startDate=&endDate=` |
+| POST | `/stock-adjustments` | recordStockAdjustment | Atomic via RPC; clamps on Stock Out |
+| GET | `/borrowings` | listBorrowings | `?itemId=&status=` |
+| POST | `/borrowings` | createBorrowing | |
+| PUT | `/borrowings/:id/return` | processReturn | |
+
+**Atomic stock adjustment (Req 13.2):** Standard `UPDATE SET quantity = quantity - delta` is not safe under concurrent load because two simultaneous reads see the same pre-update value. Use a Postgres RPC with `FOR UPDATE` row lock:
+
+```sql
+-- supabase/migrations/XXXX_atomic_stock_adjustment.sql
+CREATE OR REPLACE FUNCTION adjust_item_stock(
+  p_item_id     UUID,
+  p_delta       INTEGER,    -- positive = add, negative = subtract
+  p_adj_type    TEXT,       -- 'Stock In' | 'Stock Out' | 'Adjustment'
+  p_ministry_id UUID,
+  p_notes       TEXT
+) RETURNS TABLE(new_quantity INTEGER, actual_delta INTEGER) AS $$
+DECLARE
+  v_old_qty INTEGER;
+  v_new_qty INTEGER;
+  v_actual  INTEGER;
+BEGIN
+  SELECT quantity INTO v_old_qty
+  FROM "InventoryItem" WHERE id = p_item_id FOR UPDATE;
+
+  v_new_qty := GREATEST(0, v_old_qty + p_delta);
+  v_actual  := v_new_qty - v_old_qty;
+
+  UPDATE "InventoryItem" SET quantity = v_new_qty WHERE id = p_item_id;
+
+  INSERT INTO "StockLog"
+    ("itemId", "adjustmentType", delta, "actualDelta", "ministryId", notes, "createdAt")
+  VALUES
+    (p_item_id, p_adj_type, p_delta, v_actual, p_ministry_id, p_notes, now());
+
+  RETURN QUERY SELECT v_new_qty, v_actual;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+The Edge Function calls `supabase.rpc('adjust_item_stock', { p_item_id, p_delta, p_adj_type, p_ministry_id, p_notes })`.
+
+**Ministry scoping (Req 13.6):** When `ministryId` is provided in query params, all queries filter by it. When absent, the request requires `super_admin` permission; otherwise return 403.
+
+---
+
+### C2S (`/c2s`)
+
+| Method | Path | Handler |
+|--------|------|---------|
+| GET | `/groups` | listGroups |
+| POST | `/groups` | createGroup |
+| GET | `/groups/:id` | getGroup |
+| PUT | `/groups/:id` | updateGroup |
+| DELETE | `/groups/:id` | deleteGroup |
+| GET | `/groups/:id/members` | listMembers |
+| POST | `/groups/:id/members` | addMember |
+| DELETE | `/groups/:id/members/:workerId` | removeMember |
+
+**Fetch response (Req 14.3):** `GET /groups/:id` includes `leader` (full Worker profile) and `memberCount` (integer count).
+
+---
+
+### Settings (`/settings`)
+
+| Method | Path | Handler | Notes |
+|--------|------|---------|-------|
+| GET | `/roles` | listRoles | |
+| POST | `/roles` | createRole | |
+| GET | `/roles/:id` | getRole | |
+| PUT | `/roles/:id` | updateRole | |
+| DELETE | `/roles/:id` | deleteRole | 409 if any Worker has this role |
+| GET | `/roles/:id/permissions` | getRolePermissions | |
+| PUT | `/roles/:id/permissions` | setRolePermissions | Full replace |
+| GET | `/rooms` | listRooms | |
+| POST | `/rooms` | createRoom | |
+| GET | `/rooms/:id` | getRoom | |
+| PUT | `/rooms/:id` | updateRoom | |
+| DELETE | `/rooms/:id` | deleteRoom | 409 if future reservations exist |
+| GET | `/departments` | listDepartments | |
+| POST | `/departments` | createDepartment | |
+| GET | `/departments/:id` | getDepartment | |
+| PUT | `/departments/:id` | updateDepartment | |
+| DELETE | `/departments/:id` | deleteDepartment | |
+| GET | `/venue-elements` | listVenueElements | |
+| POST | `/venue-elements` | createVenueElement | |
+| PUT | `/venue-elements/:id` | updateVenueElement | |
+| DELETE | `/venue-elements/:id` | deleteVenueElement | |
+
+**Role deletion guard (Req 18.4):** 409 if any `WorkerRole.roleId = id` exists.
+
+**Room deletion guard (Req 18.5):** 409 if any `RoomReservation` has `roomId = id` AND `startTime >= CURRENT_TIMESTAMP`. Past reservations do not block deletion.
+
+---
+
+## @studio/client SDK
+
+### Package Structure
+
 ```
 packages/client/
 ├── src/
-│   ├── index.ts                 # Main exports
-│   ├── base-client.ts           # Shared HTTP logic
+│   ├── index.ts                  # Re-exports all clients and types
+│   ├── base-client.ts            # BaseClient + ClientError
 │   ├── workers/
-│   │   ├── client.ts            # WorkersClient class
-│   │   └── types.ts             # Request/response types
+│   │   ├── schemas.ts            # Zod schemas (source of truth)
+│   │   ├── types.ts              # TypeScript types derived from schemas
+│   │   └── client.ts             # WorkersClient
 │   ├── schedule/
-│   │   ├── client.ts            # ScheduleClient class
-│   │   └── types.ts
 │   ├── ministries/
-│   │   ├── client.ts
-│   │   └── types.ts
 │   ├── venue/
-│   │   ├── client.ts
-│   │   └── types.ts
 │   ├── approvals/
-│   │   ├── client.ts
-│   │   └── types.ts
 │   ├── meals/
-│   │   ├── client.ts
-│   │   └── types.ts
 │   ├── attendance/
-│   │   ├── client.ts
-│   │   └── types.ts
 │   ├── inventory/
-│   │   ├── client.ts
-│   │   └── types.ts
 │   ├── c2s/
-│   │   ├── client.ts
-│   │   └── types.ts
 │   └── settings/
-│       ├── client.ts
-│       └── types.ts
 ├── package.json
 └── tsconfig.json
 ```
 
-**Base Client Pattern**:
+### BaseClient
+
 ```typescript
 // packages/client/src/base-client.ts
-export class BaseClient {
-  constructor(
-    private baseUrl: string,
-    private getToken: () => Promise<string | null>
-  ) {}
-
-  protected async request<T>(
-    method: string,
-    path: string,
-    body?: any
-  ): Promise<T> {
-    const token = await this.getToken()
-    if (!token) {
-      throw new Error('No authentication token available')
-    }
-
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new ClientError(response.status, error.error || error.message)
-    }
-
-    return response.json()
-  }
-}
-
 export class ClientError extends Error {
   constructor(
-    public status: number,
-    message: string
+    public readonly status: number,
+    message: string,
+    public readonly details?: unknown
   ) {
     super(message)
     this.name = 'ClientError'
   }
 }
-```
 
-**Module Client Pattern**:
-```typescript
-// packages/client/src/workers/client.ts
-import { BaseClient } from '../base-client'
-import type { Worker, CreateWorkerRequest, UpdateWorkerRequest } from './types'
+export class BaseClient {
+  constructor(
+    private readonly baseUrl: string,
+    private readonly getToken: () => Promise<string | null>
+  ) {}
 
-export class WorkersClient extends BaseClient {
-  async getWorker(id: string): Promise<Worker> {
-    return this.request('GET', `/workers/${id}`)
-  }
+  protected async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const token = await this.getToken()
+    if (!token) throw new ClientError(401, 'No authentication token available')
 
-  async createWorker(data: CreateWorkerRequest): Promise<Worker> {
-    return this.request('POST', '/workers', data)
-  }
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
 
-  async updateWorker(id: string, data: UpdateWorkerRequest): Promise<Worker> {
-    return this.request('PUT', `/workers/${id}`, data)
-  }
-
-  async deleteWorker(id: string): Promise<void> {
-    return this.request('DELETE', `/workers/${id}`)
-  }
-
-  async listWorkers(filters?: WorkerFilters): Promise<Worker[]> {
-    const params = new URLSearchParams(filters as any)
-    return this.request('GET', `/workers?${params}`)
+    const data = await res.json()
+    if (!res.ok) throw new ClientError(res.status, data.error ?? 'Request failed', data.details)
+    return data as T
   }
 }
 ```
 
-### 3. Presentation Layer Transformation
+### SDK Initialization (Platform-Agnostic)
 
-**apps/web Changes**:
-- Remove `src/actions/db.ts` server actions
-- Replace Prisma calls with `@studio/client` calls
-- Remove `@studio/database` and `@prisma/client` dependencies
-- Keep Zustand stores in `@studio/store` for client state
-- Preserve all existing routes and URL paths
-
-**apps/inventory Changes**:
-- Replace `src/lib/inventory-api.ts` Supabase calls with `InventoryClient` calls
-- Remove direct `@supabase/supabase-js` dependency
-- Preserve all existing features (items, categories, borrowings, stock logs)
-
-**Client SDK Usage Pattern**:
-```typescript
-// apps/web/src/app/workers/page.tsx
-'use client'
-
-import { useEffect, useState } from 'react'
-import { WorkersClient } from '@studio/client'
-import { useSupabase } from '@/lib/supabase-provider'
-
-export default function WorkersPage() {
-  const { session } = useSupabase()
-  const [workers, setWorkers] = useState([])
-
-  useEffect(() => {
-    const client = new WorkersClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      async () => session?.access_token || null
-    )
-
-    client.listWorkers().then(setWorkers)
-  }, [session])
-
-  return <div>{/* Render workers */}</div>
-}
-```
-
-## Module-Specific Designs
-
-### Workers Module
-
-**Edge Function Routes**:
-- `GET /workers` - List all workers with optional filters
-- `GET /workers/:id` - Get worker by ID
-- `POST /workers` - Create new worker
-- `PUT /workers/:id` - Update worker
-- `DELETE /workers/:id` - Delete worker (soft delete)
-- `GET /workers/:id/roles` - Get worker roles
-- `POST /workers/:id/roles` - Assign role to worker
-- `DELETE /workers/:id/roles/:roleId` - Remove role from worker
-- `GET /workers/:id/permissions` - Get derived permissions
-
-**Key Logic**:
-- Worker deletion checks for active schedule assignments
-- Role assignment validates role exists
-- Permissions are computed from all assigned roles
-
-**Complete Edge Function Implementation**:
+Clients accept `baseUrl` and `getToken` as constructor arguments — no platform-specific code in the package itself:
 
 ```typescript
-// supabase/functions/workers/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+// Next.js
+const workers = new WorkersClient(
+  process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL!,  // https://<ref>.supabase.co/functions/v1
+  async () => (await supabase.auth.getSession()).data.session?.access_token ?? null
+)
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /workers': listWorkers,
-  'GET /workers/:id': getWorker,
-  'POST /workers': createWorker,
-  'PUT /workers/:id': updateWorker,
-  'DELETE /workers/:id': deleteWorker,
-  'GET /workers/:id/roles': getWorkerRoles,
-  'POST /workers/:id/roles': assignRole,
-  'DELETE /workers/:id/roles/:roleId': removeRole,
-  'GET /workers/:id/permissions': getWorkerPermissions,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/workers', '')
-    const method = req.method
-
-    // Match route with parameters
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    // Attach params to request
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[workers] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-// Handler implementations
-async function listWorkers(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const ministryId = url.searchParams.get('ministryId')
-  const status = url.searchParams.get('status') || 'active'
-
-  let query = supabase
-    .from('Worker')
-    .select('*, roles:WorkerRole(role:Role(*))')
-    .eq('status', status)
-
-  if (ministryId) {
-    query = query.eq('ministryId', ministryId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list workers: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getWorker(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('Worker')
-    .select('*, roles:WorkerRole(role:Role(*)), ministry:Ministry(*)')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Worker not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get worker: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createWorker(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  // Validate required fields
-  if (!body.firstName || !body.lastName || !body.email) {
-    return { 
-      data: { error: 'Missing required fields: firstName, lastName, email' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('Worker')
-    .insert({
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: body.email,
-      phone: body.phone,
-      firebaseUid: body.firebaseUid,
-      ministryId: body.ministryId,
-      status: body.status || 'active',
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create worker: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateWorker(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('Worker')
-    .update({
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: body.email,
-      phone: body.phone,
-      ministryId: body.ministryId,
-      status: body.status,
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Worker not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update worker: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteWorker(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  // Check for active schedule assignments
-  const { data: assignments } = await supabase
-    .from('ScheduleAssignment')
-    .select('id')
-    .eq('workerId', id)
-    .limit(1)
-
-  if (assignments && assignments.length > 0) {
-    return { 
-      data: { error: 'Cannot delete worker with active schedule assignments' }, 
-      status: 409 
-    }
-  }
-
-  // Soft delete
-  const { data, error } = await supabase
-    .from('Worker')
-    .update({ status: 'inactive' })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Worker not found' }, status: 404 }
-    }
-    throw new Error(`Failed to delete worker: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getWorkerRoles(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('WorkerRole')
-    .select('*, role:Role(*)')
-    .eq('workerId', id)
-
-  if (error) {
-    throw new Error(`Failed to get worker roles: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function assignRole(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  if (!body.roleId) {
-    return { data: { error: 'Missing roleId' }, status: 400 }
-  }
-
-  // Verify role exists
-  const { data: role } = await supabase
-    .from('Role')
-    .select('id')
-    .eq('id', body.roleId)
-    .single()
-
-  if (!role) {
-    return { data: { error: 'Role not found' }, status: 404 }
-  }
-
-  const { data, error } = await supabase
-    .from('WorkerRole')
-    .insert({
-      workerId: id,
-      roleId: body.roleId,
-    })
-    .select('*, role:Role(*)')
-    .single()
-
-  if (error) {
-    if (error.code === '23505') {
-      return { data: { error: 'Worker already has this role' }, status: 409 }
-    }
-    throw new Error(`Failed to assign role: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function removeRole(req: Request, supabase: any, user: any) {
-  const { id, roleId } = (req as any).params
-
-  const { error } = await supabase
-    .from('WorkerRole')
-    .delete()
-    .eq('workerId', id)
-    .eq('roleId', roleId)
-
-  if (error) {
-    throw new Error(`Failed to remove role: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function getWorkerPermissions(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  // Get all roles for worker
-  const { data: workerRoles, error: rolesError } = await supabase
-    .from('WorkerRole')
-    .select('role:Role(permissions:RolePermission(permission:Permission(*)))')
-    .eq('workerId', id)
-
-  if (rolesError) {
-    throw new Error(`Failed to get worker permissions: ${rolesError.message}`)
-  }
-
-  // Flatten and deduplicate permissions
-  const permissions = new Set()
-  for (const wr of workerRoles) {
-    for (const rp of wr.role.permissions) {
-      permissions.add(rp.permission.name)
-    }
-  }
-
-  return { data: Array.from(permissions) }
-}
+// Expo / React Native
+const workers = new WorkersClient(
+  process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL!,
+  async () => (await supabase.auth.getSession()).data.session?.access_token ?? null
+)
 ```
 
-### Schedule Module
-
-**Edge Function Routes**:
-- `GET /schedules` - List schedules with filters
-- `GET /schedules/:id` - Get schedule details
-- `POST /schedules` - Create schedule
-- `POST /schedules/from-template` - Create from template
-- `PUT /schedules/:id` - Update schedule
-- `DELETE /schedules/:id` - Delete schedule
-- `POST /schedules/:id/assignments` - Assign worker to slot
-- `DELETE /schedules/:id/assignments/:assignmentId` - Remove assignment
-- `GET /templates` - List schedule templates
-- `POST /templates` - Create template
-- `PUT /templates/:id` - Update template
-- `DELETE /templates/:id` - Delete template
-
-**Key Logic**:
-- Template-to-schedule copying preserves slot structure
-- Assignment validation checks worker roles and ministry membership
-- Worship slot management within schedules
-
-**Complete Edge Function Implementation**:
+### Type Export Pattern
 
 ```typescript
-// supabase/functions/schedule/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /schedules': listSchedules,
-  'GET /schedules/:id': getSchedule,
-  'POST /schedules': createSchedule,
-  'POST /schedules/from-template': createFromTemplate,
-  'PUT /schedules/:id': updateSchedule,
-  'DELETE /schedules/:id': deleteSchedule,
-  'POST /schedules/:id/assignments': assignWorker,
-  'DELETE /schedules/:id/assignments/:assignmentId': removeAssignment,
-  'GET /templates': listTemplates,
-  'POST /templates': createTemplate,
-  'PUT /templates/:id': updateTemplate,
-  'DELETE /templates/:id': deleteTemplate,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/schedule', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[schedule] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-async function listSchedules(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const startDate = url.searchParams.get('startDate')
-  const endDate = url.searchParams.get('endDate')
-  const ministryId = url.searchParams.get('ministryId')
-
-  let query = supabase
-    .from('Schedule')
-    .select('*, slots:ScheduleSlot(*, assignments:ScheduleAssignment(worker:Worker(*)))')
-    .order('date', { ascending: true })
-
-  if (startDate) {
-    query = query.gte('date', startDate)
-  }
-  if (endDate) {
-    query = query.lte('date', endDate)
-  }
-  if (ministryId) {
-    query = query.eq('ministryId', ministryId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list schedules: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getSchedule(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('Schedule')
-    .select(`
-      *,
-      slots:ScheduleSlot(
-        *,
-        assignments:ScheduleAssignment(
-          *,
-          worker:Worker(*),
-          role:Role(*)
-        )
-      ),
-      worshipSlots:WorshipSlot(*)
-    `)
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Schedule not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get schedule: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createSchedule(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.date || !body.serviceType) {
-    return { 
-      data: { error: 'Missing required fields: date, serviceType' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('Schedule')
-    .insert({
-      date: body.date,
-      serviceType: body.serviceType,
-      ministryId: body.ministryId,
-      notes: body.notes,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create schedule: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function createFromTemplate(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.templateId || !body.date) {
-    return { 
-      data: { error: 'Missing required fields: templateId, date' }, 
-      status: 400 
-    }
-  }
-
-  // Get template with slots
-  const { data: template, error: templateError } = await supabase
-    .from('ScheduleTemplate')
-    .select('*, slots:TemplateSlot(*)')
-    .eq('id', body.templateId)
-    .single()
-
-  if (templateError || !template) {
-    return { data: { error: 'Template not found' }, status: 404 }
-  }
-
-  // Create schedule
-  const { data: schedule, error: scheduleError } = await supabase
-    .from('Schedule')
-    .insert({
-      date: body.date,
-      serviceType: template.serviceType,
-      ministryId: template.ministryId,
-      notes: body.notes,
-    })
-    .select()
-    .single()
-
-  if (scheduleError) {
-    throw new Error(`Failed to create schedule: ${scheduleError.message}`)
-  }
-
-  // Copy slots from template
-  const slots = template.slots.map((slot: any) => ({
-    scheduleId: schedule.id,
-    roleId: slot.roleId,
-    position: slot.position,
-    startTime: slot.startTime,
-    endTime: slot.endTime,
-    required: slot.required,
-  }))
-
-  const { error: slotsError } = await supabase
-    .from('ScheduleSlot')
-    .insert(slots)
-
-  if (slotsError) {
-    throw new Error(`Failed to create slots: ${slotsError.message}`)
-  }
-
-  // Fetch complete schedule
-  const { data: completeSchedule } = await supabase
-    .from('Schedule')
-    .select('*, slots:ScheduleSlot(*)')
-    .eq('id', schedule.id)
-    .single()
-
-  return { data: completeSchedule, status: 201 }
-}
-
-async function updateSchedule(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('Schedule')
-    .update({
-      date: body.date,
-      serviceType: body.serviceType,
-      notes: body.notes,
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Schedule not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update schedule: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteSchedule(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('Schedule')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete schedule: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function assignWorker(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  if (!body.slotId || !body.workerId) {
-    return { 
-      data: { error: 'Missing required fields: slotId, workerId' }, 
-      status: 400 
-    }
-  }
-
-  // Get slot with role requirements
-  const { data: slot, error: slotError } = await supabase
-    .from('ScheduleSlot')
-    .select('*, role:Role(*)')
-    .eq('id', body.slotId)
-    .single()
-
-  if (slotError || !slot) {
-    return { data: { error: 'Slot not found' }, status: 404 }
-  }
-
-  // Verify worker has required role
-  const { data: workerRoles } = await supabase
-    .from('WorkerRole')
-    .select('roleId')
-    .eq('workerId', body.workerId)
-
-  const hasRole = workerRoles?.some((wr: any) => wr.roleId === slot.roleId)
-  if (!hasRole) {
-    return { 
-      data: { error: 'Worker does not have required role for this slot' }, 
-      status: 422 
-    }
-  }
-
-  // Create assignment
-  const { data, error } = await supabase
-    .from('ScheduleAssignment')
-    .insert({
-      scheduleId: id,
-      slotId: body.slotId,
-      workerId: body.workerId,
-      roleId: slot.roleId,
-    })
-    .select('*, worker:Worker(*), role:Role(*)')
-    .single()
-
-  if (error) {
-    if (error.code === '23505') {
-      return { data: { error: 'Worker already assigned to this slot' }, status: 409 }
-    }
-    throw new Error(`Failed to assign worker: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function removeAssignment(req: Request, supabase: any, user: any) {
-  const { assignmentId } = (req as any).params
-
-  const { error } = await supabase
-    .from('ScheduleAssignment')
-    .delete()
-    .eq('id', assignmentId)
-
-  if (error) {
-    throw new Error(`Failed to remove assignment: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function listTemplates(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const ministryId = url.searchParams.get('ministryId')
-
-  let query = supabase
-    .from('ScheduleTemplate')
-    .select('*, slots:TemplateSlot(*, role:Role(*))')
-
-  if (ministryId) {
-    query = query.eq('ministryId', ministryId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list templates: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createTemplate(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name || !body.serviceType) {
-    return { 
-      data: { error: 'Missing required fields: name, serviceType' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('ScheduleTemplate')
-    .insert({
-      name: body.name,
-      serviceType: body.serviceType,
-      ministryId: body.ministryId,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create template: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateTemplate(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('ScheduleTemplate')
-    .update({
-      name: body.name,
-      serviceType: body.serviceType,
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Template not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update template: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteTemplate(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('ScheduleTemplate')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete template: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
+// packages/client/src/index.ts
+export { WorkersClient } from './workers/client'
+export type { Worker, CreateWorkerRequest, UpdateWorkerRequest } from './workers/types'
+export { ScheduleClient } from './schedule/client'
+export type { Schedule, ScheduleTemplate, ScheduleAssignment } from './schedule/types'
+// ... all other modules
 ```
 
-### Ministries Module
-
-**Edge Function Routes**:
-- `GET /ministries` - List ministries
-- `GET /ministries/:id` - Get ministry details
-- `POST /ministries` - Create ministry
-- `PUT /ministries/:id` - Update ministry
-- `DELETE /ministries/:id` - Delete ministry
-- `GET /ministries/:id/workload-categories` - List workload categories
-- `POST /ministries/:id/workload-categories` - Create workload category
-- `PUT /ministries/:id/workload-categories/:categoryId` - Update category
-- `DELETE /ministries/:id/workload-categories/:categoryId` - Delete category
-- `POST /ministries/:id/managers` - Assign manager
-- `DELETE /ministries/:id/managers/:workerId` - Remove manager
-
-**Key Logic**:
-- Ministry deletion checks for active worker assignments
-- Manager assignment validates worker exists
-- Response includes department code, managers, member count
-
-**Complete Edge Function Implementation**:
-
-```typescript
-// supabase/functions/ministries/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /ministries': listMinistries,
-  'GET /ministries/:id': getMinistry,
-  'POST /ministries': createMinistry,
-  'PUT /ministries/:id': updateMinistry,
-  'DELETE /ministries/:id': deleteMinistry,
-  'GET /ministries/:id/workload-categories': listWorkloadCategories,
-  'POST /ministries/:id/workload-categories': createWorkloadCategory,
-  'PUT /ministries/:id/workload-categories/:categoryId': updateWorkloadCategory,
-  'DELETE /ministries/:id/workload-categories/:categoryId': deleteWorkloadCategory,
-  'POST /ministries/:id/managers': assignManager,
-  'DELETE /ministries/:id/managers/:workerId': removeManager,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/ministries', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[ministries] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-async function listMinistries(req: Request, supabase: any, user: any) {
-  const { data, error } = await supabase
-    .from('Ministry')
-    .select(`
-      *,
-      department:Department(*),
-      managers:MinistryManager(worker:Worker(*)),
-      _count:Worker(count)
-    `)
-    .order('name')
-
-  if (error) {
-    throw new Error(`Failed to list ministries: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getMinistry(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('Ministry')
-    .select(`
-      *,
-      department:Department(*),
-      managers:MinistryManager(worker:Worker(*)),
-      workloadCategories:WorkloadCategory(*),
-      workers:Worker(*)
-    `)
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Ministry not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get ministry: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createMinistry(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name || !body.departmentId) {
-    return { 
-      data: { error: 'Missing required fields: name, departmentId' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('Ministry')
-    .insert({
-      name: body.name,
-      departmentId: body.departmentId,
-      description: body.description,
-    })
-    .select('*, department:Department(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create ministry: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateMinistry(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('Ministry')
-    .update({
-      name: body.name,
-      departmentId: body.departmentId,
-      description: body.description,
-    })
-    .eq('id', id)
-    .select('*, department:Department(*)')
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Ministry not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update ministry: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteMinistry(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  // Check for active worker assignments
-  const { data: workers } = await supabase
-    .from('Worker')
-    .select('id')
-    .eq('ministryId', id)
-    .eq('status', 'active')
-    .limit(1)
-
-  if (workers && workers.length > 0) {
-    return { 
-      data: { error: 'Cannot delete ministry with active worker assignments' }, 
-      status: 409 
-    }
-  }
-
-  const { error } = await supabase
-    .from('Ministry')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete ministry: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function listWorkloadCategories(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('WorkloadCategory')
-    .select('*')
-    .eq('ministryId', id)
-    .order('name')
-
-  if (error) {
-    throw new Error(`Failed to list workload categories: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createWorkloadCategory(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  if (!body.name) {
-    return { data: { error: 'Missing required field: name' }, status: 400 }
-  }
-
-  const { data, error } = await supabase
-    .from('WorkloadCategory')
-    .insert({
-      ministryId: id,
-      name: body.name,
-      description: body.description,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create workload category: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateWorkloadCategory(req: Request, supabase: any, user: any) {
-  const { categoryId } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('WorkloadCategory')
-    .update({
-      name: body.name,
-      description: body.description,
-    })
-    .eq('id', categoryId)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Workload category not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update workload category: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteWorkloadCategory(req: Request, supabase: any, user: any) {
-  const { categoryId } = (req as any).params
-
-  const { error } = await supabase
-    .from('WorkloadCategory')
-    .delete()
-    .eq('id', categoryId)
-
-  if (error) {
-    throw new Error(`Failed to delete workload category: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function assignManager(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  if (!body.workerId) {
-    return { data: { error: 'Missing required field: workerId' }, status: 400 }
-  }
-
-  // Verify worker exists
-  const { data: worker } = await supabase
-    .from('Worker')
-    .select('id')
-    .eq('id', body.workerId)
-    .single()
-
-  if (!worker) {
-    return { data: { error: 'Worker not found' }, status: 404 }
-  }
-
-  const { data, error } = await supabase
-    .from('MinistryManager')
-    .insert({
-      ministryId: id,
-      workerId: body.workerId,
-    })
-    .select('*, worker:Worker(*)')
-    .single()
-
-  if (error) {
-    if (error.code === '23505') {
-      return { data: { error: 'Worker is already a manager of this ministry' }, status: 409 }
-    }
-    throw new Error(`Failed to assign manager: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function removeManager(req: Request, supabase: any, user: any) {
-  const { id, workerId } = (req as any).params
-
-  const { error } = await supabase
-    .from('MinistryManager')
-    .delete()
-    .eq('ministryId', id)
-    .eq('workerId', workerId)
-
-  if (error) {
-    throw new Error(`Failed to remove manager: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-```
-
-### Venue Module
-
-**Edge Function Routes**:
-- `GET /reservations` - List reservations with filters
-- `GET /reservations/:id` - Get reservation details
-- `POST /reservations` - Create reservation
-- `PUT /reservations/:id` - Update reservation
-- `DELETE /reservations/:id` - Delete reservation
-- `POST /reservations/check-conflict` - Check for conflicts
-- `GET /assistance-requests` - List assistance requests
-- `POST /assistance-requests` - Create assistance request
-- `PUT /assistance-requests/:id` - Update status
-- `GET /recurring-bookings` - List recurring bookings
-- `POST /recurring-bookings` - Create recurring booking
-- `POST /recurring-bookings/:id/expand` - Generate instances
-
-**Key Logic**:
-- Conflict detection checks room + time window overlaps
-- Recurring booking expansion uses recurrence rules
-- Assistance request status transitions (pending → assigned → completed)
-
-**Complete Edge Function Implementation**:
-
-```typescript
-// supabase/functions/venue/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /reservations': listReservations,
-  'GET /reservations/:id': getReservation,
-  'POST /reservations': createReservation,
-  'PUT /reservations/:id': updateReservation,
-  'DELETE /reservations/:id': deleteReservation,
-  'POST /reservations/check-conflict': checkConflict,
-  'GET /assistance-requests': listAssistanceRequests,
-  'POST /assistance-requests': createAssistanceRequest,
-  'PUT /assistance-requests/:id': updateAssistanceRequest,
-  'GET /recurring-bookings': listRecurringBookings,
-  'POST /recurring-bookings': createRecurringBooking,
-  'POST /recurring-bookings/:id/expand': expandRecurringBooking,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/venue', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[venue] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-async function listReservations(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const roomId = url.searchParams.get('roomId')
-  const startDate = url.searchParams.get('startDate')
-  const endDate = url.searchParams.get('endDate')
-
-  let query = supabase
-    .from('RoomReservation')
-    .select('*, room:Room(*), requestedBy:Worker(*)')
-    .order('startTime', { ascending: true })
-
-  if (roomId) {
-    query = query.eq('roomId', roomId)
-  }
-  if (startDate) {
-    query = query.gte('startTime', startDate)
-  }
-  if (endDate) {
-    query = query.lte('endTime', endDate)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list reservations: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getReservation(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('RoomReservation')
-    .select('*, room:Room(*), requestedBy:Worker(*)')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Reservation not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get reservation: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createReservation(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.roomId || !body.startTime || !body.endTime) {
-    return { 
-      data: { error: 'Missing required fields: roomId, startTime, endTime' }, 
-      status: 400 
-    }
-  }
-
-  // Check for conflicts
-  const { data: conflicts } = await supabase
-    .from('RoomReservation')
-    .select('id')
-    .eq('roomId', body.roomId)
-    .or(`and(startTime.lte.${body.endTime},endTime.gte.${body.startTime})`)
-
-  if (conflicts && conflicts.length > 0) {
-    return { 
-      data: { error: 'Room is already reserved for this time period' }, 
-      status: 409 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('RoomReservation')
-    .insert({
-      roomId: body.roomId,
-      startTime: body.startTime,
-      endTime: body.endTime,
-      purpose: body.purpose,
-      requestedById: body.requestedById,
-      notes: body.notes,
-    })
-    .select('*, room:Room(*), requestedBy:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create reservation: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateReservation(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  // Check for conflicts (excluding current reservation)
-  if (body.roomId && body.startTime && body.endTime) {
-    const { data: conflicts } = await supabase
-      .from('RoomReservation')
-      .select('id')
-      .eq('roomId', body.roomId)
-      .neq('id', id)
-      .or(`and(startTime.lte.${body.endTime},endTime.gte.${body.startTime})`)
-
-    if (conflicts && conflicts.length > 0) {
-      return { 
-        data: { error: 'Room is already reserved for this time period' }, 
-        status: 409 
-      }
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('RoomReservation')
-    .update({
-      roomId: body.roomId,
-      startTime: body.startTime,
-      endTime: body.endTime,
-      purpose: body.purpose,
-      notes: body.notes,
-    })
-    .eq('id', id)
-    .select('*, room:Room(*), requestedBy:Worker(*)')
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Reservation not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update reservation: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteReservation(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('RoomReservation')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete reservation: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function checkConflict(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.roomId || !body.startTime || !body.endTime) {
-    return { 
-      data: { error: 'Missing required fields: roomId, startTime, endTime' }, 
-      status: 400 
-    }
-  }
-
-  const { data: conflicts } = await supabase
-    .from('RoomReservation')
-    .select('*, room:Room(*)')
-    .eq('roomId', body.roomId)
-    .or(`and(startTime.lte.${body.endTime},endTime.gte.${body.startTime})`)
-
-  return { data: { hasConflict: conflicts && conflicts.length > 0, conflicts } }
-}
-
-async function listAssistanceRequests(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const status = url.searchParams.get('status')
-
-  let query = supabase
-    .from('VenueAssistanceRequest')
-    .select('*, requestedBy:Worker(*), assignedTo:Worker(*)')
-    .order('createdAt', { ascending: false })
-
-  if (status) {
-    query = query.eq('status', status)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list assistance requests: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createAssistanceRequest(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.description) {
-    return { data: { error: 'Missing required field: description' }, status: 400 }
-  }
-
-  const { data, error } = await supabase
-    .from('VenueAssistanceRequest')
-    .insert({
-      description: body.description,
-      requestedById: body.requestedById,
-      priority: body.priority || 'normal',
-      status: 'pending',
-    })
-    .select('*, requestedBy:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create assistance request: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateAssistanceRequest(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('VenueAssistanceRequest')
-    .update({
-      status: body.status,
-      assignedToId: body.assignedToId,
-      notes: body.notes,
-    })
-    .eq('id', id)
-    .select('*, requestedBy:Worker(*), assignedTo:Worker(*)')
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Assistance request not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update assistance request: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function listRecurringBookings(req: Request, supabase: any, user: any) {
-  const { data, error } = await supabase
-    .from('RecurringBooking')
-    .select('*, room:Room(*), createdBy:Worker(*)')
-    .order('createdAt', { ascending: false })
-
-  if (error) {
-    throw new Error(`Failed to list recurring bookings: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createRecurringBooking(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.roomId || !body.recurrenceRule || !body.startTime || !body.endTime) {
-    return { 
-      data: { error: 'Missing required fields: roomId, recurrenceRule, startTime, endTime' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('RecurringBooking')
-    .insert({
-      roomId: body.roomId,
-      recurrenceRule: body.recurrenceRule,
-      startTime: body.startTime,
-      endTime: body.endTime,
-      purpose: body.purpose,
-      createdById: body.createdById,
-    })
-    .select('*, room:Room(*), createdBy:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create recurring booking: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function expandRecurringBooking(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const horizon = body.horizon || 90 // days
-
-  // Get recurring booking
-  const { data: booking, error: bookingError } = await supabase
-    .from('RecurringBooking')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (bookingError || !booking) {
-    return { data: { error: 'Recurring booking not found' }, status: 404 }
-  }
-
-  // Generate instances based on recurrence rule
-  // This is a simplified example - real implementation would use a library like rrule
-  const instances = []
-  const startDate = new Date(booking.startTime)
-  const endDate = new Date()
-  endDate.setDate(endDate.getDate() + horizon)
-
-  // Example: weekly recurrence
-  if (booking.recurrenceRule.includes('WEEKLY')) {
-    let currentDate = new Date(startDate)
-    while (currentDate <= endDate) {
-      instances.push({
-        roomId: booking.roomId,
-        startTime: currentDate.toISOString(),
-        endTime: new Date(currentDate.getTime() + (new Date(booking.endTime).getTime() - new Date(booking.startTime).getTime())).toISOString(),
-        purpose: booking.purpose,
-        requestedById: booking.createdById,
-        recurringBookingId: booking.id,
-      })
-      currentDate.setDate(currentDate.getDate() + 7)
-    }
-  }
-
-  // Insert instances
-  const { data, error } = await supabase
-    .from('RoomReservation')
-    .insert(instances)
-    .select()
-
-  if (error) {
-    throw new Error(`Failed to expand recurring booking: ${error.message}`)
-  }
-
-  return { data: { instances: data, count: data.length } }
-}
-```
-
-### Approvals Module
-
-**Edge Function Routes**:
-- `GET /approvals` - List approval requests
-- `GET /approvals/:id` - Get approval details
-- `POST /approvals` - Create approval request
-- `POST /approvals/:id/approve` - Approve request
-- `POST /approvals/:id/reject` - Reject request
-
-**Key Logic**:
-- Approval authority validation checks worker permissions
-- Status transitions only allowed from `pending`
-- Records approver ID and timestamp on decision
-
-**Complete Edge Function Implementation**:
-
-```typescript
-// supabase/functions/approvals/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /approvals': listApprovals,
-  'GET /approvals/:id': getApproval,
-  'POST /approvals': createApproval,
-  'POST /approvals/:id/approve': approveRequest,
-  'POST /approvals/:id/reject': rejectRequest,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/approvals', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[approvals] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-async function listApprovals(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const status = url.searchParams.get('status')
-  const requesterId = url.searchParams.get('requesterId')
-
-  let query = supabase
-    .from('ApprovalRequest')
-    .select('*, requester:Worker!requesterId(*), approver:Worker!approverId(*)')
-    .order('createdAt', { ascending: false })
-
-  if (status) {
-    query = query.eq('status', status)
-  }
-  if (requesterId) {
-    query = query.eq('requesterId', requesterId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list approvals: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getApproval(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('ApprovalRequest')
-    .select('*, requester:Worker!requesterId(*), approver:Worker!approverId(*)')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Approval request not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get approval: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createApproval(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.requestType || !body.requesterId) {
-    return { 
-      data: { error: 'Missing required fields: requestType, requesterId' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('ApprovalRequest')
-    .insert({
-      requestType: body.requestType,
-      requesterId: body.requesterId,
-      description: body.description,
-      metadata: body.metadata,
-      status: 'pending',
-    })
-    .select('*, requester:Worker!requesterId(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create approval request: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function approveRequest(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  if (!body.approverId) {
-    return { data: { error: 'Missing required field: approverId' }, status: 400 }
-  }
-
-  // Get current approval request
-  const { data: approval, error: getError } = await supabase
-    .from('ApprovalRequest')
-    .select('status')
-    .eq('id', id)
-    .single()
-
-  if (getError || !approval) {
-    return { data: { error: 'Approval request not found' }, status: 404 }
-  }
-
-  if (approval.status !== 'pending') {
-    return { 
-      data: { error: 'Can only approve pending requests' }, 
-      status: 409 
-    }
-  }
-
-  // Check approver has permission
-  const { data: permissions } = await supabase
-    .from('WorkerRole')
-    .select('role:Role(permissions:RolePermission(permission:Permission(*)))')
-    .eq('workerId', body.approverId)
-
-  const hasApprovalPermission = permissions?.some((wr: any) =>
-    wr.role.permissions.some((rp: any) => 
-      rp.permission.name === 'approve_requests'
-    )
-  )
-
-  if (!hasApprovalPermission) {
-    return { 
-      data: { error: 'Worker does not have approval authority' }, 
-      status: 403 
-    }
-  }
-
-  // Update approval
-  const { data, error } = await supabase
-    .from('ApprovalRequest')
-    .update({
-      status: 'approved',
-      approverId: body.approverId,
-      approvedAt: new Date().toISOString(),
-      approverNotes: body.notes,
-    })
-    .eq('id', id)
-    .select('*, requester:Worker!requesterId(*), approver:Worker!approverId(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to approve request: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function rejectRequest(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  if (!body.approverId) {
-    return { data: { error: 'Missing required field: approverId' }, status: 400 }
-  }
-
-  // Get current approval request
-  const { data: approval, error: getError } = await supabase
-    .from('ApprovalRequest')
-    .select('status')
-    .eq('id', id)
-    .single()
-
-  if (getError || !approval) {
-    return { data: { error: 'Approval request not found' }, status: 404 }
-  }
-
-  if (approval.status !== 'pending') {
-    return { 
-      data: { error: 'Can only reject pending requests' }, 
-      status: 409 
-    }
-  }
-
-  // Check approver has permission
-  const { data: permissions } = await supabase
-    .from('WorkerRole')
-    .select('role:Role(permissions:RolePermission(permission:Permission(*)))')
-    .eq('workerId', body.approverId)
-
-  const hasApprovalPermission = permissions?.some((wr: any) =>
-    wr.role.permissions.some((rp: any) => 
-      rp.permission.name === 'approve_requests'
-    )
-  )
-
-  if (!hasApprovalPermission) {
-    return { 
-      data: { error: 'Worker does not have approval authority' }, 
-      status: 403 
-    }
-  }
-
-  // Update approval
-  const { data, error } = await supabase
-    .from('ApprovalRequest')
-    .update({
-      status: 'rejected',
-      approverId: body.approverId,
-      approvedAt: new Date().toISOString(),
-      approverNotes: body.notes,
-    })
-    .eq('id', id)
-    .select('*, requester:Worker!requesterId(*), approver:Worker!approverId(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to reject request: ${error.message}`)
-  }
-
-  return { data }
-}
-```
-
-### Meals Module
-
-**Edge Function Routes**:
-- `GET /meal-stubs` - List meal stubs
-- `GET /meal-stubs/:id` - Get meal stub details
-- `POST /meal-stubs` - Create meal stub
-- `PUT /meal-stubs/:id` - Update meal stub
-- `DELETE /meal-stubs/:id` - Delete meal stub
-- `POST /meal-stubs/allocate` - Allocate stubs to workers
-- `POST /meal-stubs/:id/redeem` - Redeem meal stub
-
-**Key Logic**:
-- Redemption marks stub as used with timestamp and worker ID
-- Duplicate redemption returns 409 conflict
-- Allocation creates stub records for workers on service date
-
-**Complete Edge Function Implementation**:
-
-```typescript
-// supabase/functions/meals/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /meal-stubs': listMealStubs,
-  'GET /meal-stubs/:id': getMealStub,
-  'POST /meal-stubs': createMealStub,
-  'PUT /meal-stubs/:id': updateMealStub,
-  'DELETE /meal-stubs/:id': deleteMealStub,
-  'POST /meal-stubs/allocate': allocateMealStubs,
-  'POST /meal-stubs/:id/redeem': redeemMealStub,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/meals', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[meals] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-async function listMealStubs(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const workerId = url.searchParams.get('workerId')
-  const serviceDate = url.searchParams.get('serviceDate')
-  const redeemed = url.searchParams.get('redeemed')
-
-  let query = supabase
-    .from('MealStub')
-    .select('*, worker:Worker(*)')
-    .order('serviceDate', { ascending: false })
-
-  if (workerId) {
-    query = query.eq('workerId', workerId)
-  }
-  if (serviceDate) {
-    query = query.eq('serviceDate', serviceDate)
-  }
-  if (redeemed !== null) {
-    query = query.eq('redeemed', redeemed === 'true')
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list meal stubs: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getMealStub(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('MealStub')
-    .select('*, worker:Worker(*)')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Meal stub not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get meal stub: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createMealStub(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.workerId || !body.serviceDate) {
-    return { 
-      data: { error: 'Missing required fields: workerId, serviceDate' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('MealStub')
-    .insert({
-      workerId: body.workerId,
-      serviceDate: body.serviceDate,
-      mealType: body.mealType || 'lunch',
-      redeemed: false,
-    })
-    .select('*, worker:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create meal stub: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateMealStub(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('MealStub')
-    .update({
-      mealType: body.mealType,
-      serviceDate: body.serviceDate,
-    })
-    .eq('id', id)
-    .select('*, worker:Worker(*)')
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Meal stub not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update meal stub: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteMealStub(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('MealStub')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete meal stub: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function allocateMealStubs(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.workerIds || !Array.isArray(body.workerIds) || !body.serviceDate) {
-    return { 
-      data: { error: 'Missing required fields: workerIds (array), serviceDate' }, 
-      status: 400 
-    }
-  }
-
-  const stubs = body.workerIds.map((workerId: string) => ({
-    workerId,
-    serviceDate: body.serviceDate,
-    mealType: body.mealType || 'lunch',
-    redeemed: false,
-  }))
-
-  const { data, error } = await supabase
-    .from('MealStub')
-    .insert(stubs)
-    .select('*, worker:Worker(*)')
-
-  if (error) {
-    throw new Error(`Failed to allocate meal stubs: ${error.message}`)
-  }
-
-  return { data: { stubs: data, count: data.length }, status: 201 }
-}
-
-async function redeemMealStub(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  // Get current stub
-  const { data: stub, error: getError } = await supabase
-    .from('MealStub')
-    .select('redeemed')
-    .eq('id', id)
-    .single()
-
-  if (getError || !stub) {
-    return { data: { error: 'Meal stub not found' }, status: 404 }
-  }
-
-  if (stub.redeemed) {
-    return { 
-      data: { error: 'Meal stub has already been redeemed' }, 
-      status: 409 
-    }
-  }
-
-  // Redeem stub
-  const { data, error } = await supabase
-    .from('MealStub')
-    .update({
-      redeemed: true,
-      redeemedAt: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .select('*, worker:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to redeem meal stub: ${error.message}`)
-  }
-
-  return { data }
-}
-```
-
-### Attendance Module
-
-**Edge Function Routes**:
-- `GET /attendance` - List attendance records
-- `GET /attendance/:id` - Get attendance details
-- `POST /attendance` - Create attendance record
-- `POST /attendance/scan-qr` - Record attendance via QR code
-- `GET /attendance/stats` - Get aggregated statistics
-
-**Key Logic**:
-- QR code validation checks for active worker
-- Duplicate attendance for same worker + date returns 409
-- Statistics aggregation by date range and ministry
-
-**Complete Edge Function Implementation**:
-
-```typescript
-// supabase/functions/attendance/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /attendance': listAttendance,
-  'GET /attendance/:id': getAttendance,
-  'POST /attendance': createAttendance,
-  'POST /attendance/scan-qr': scanQRCode,
-  'GET /attendance/stats': getAttendanceStats,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/attendance', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[attendance] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-async function listAttendance(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const workerId = url.searchParams.get('workerId')
-  const serviceDate = url.searchParams.get('serviceDate')
-  const startDate = url.searchParams.get('startDate')
-  const endDate = url.searchParams.get('endDate')
-
-  let query = supabase
-    .from('Attendance')
-    .select('*, worker:Worker(*), schedule:Schedule(*)')
-    .order('checkInTime', { ascending: false })
-
-  if (workerId) {
-    query = query.eq('workerId', workerId)
-  }
-  if (serviceDate) {
-    query = query.eq('serviceDate', serviceDate)
-  }
-  if (startDate) {
-    query = query.gte('serviceDate', startDate)
-  }
-  if (endDate) {
-    query = query.lte('serviceDate', endDate)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list attendance: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getAttendance(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('Attendance')
-    .select('*, worker:Worker(*), schedule:Schedule(*)')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Attendance record not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get attendance: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createAttendance(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.workerId || !body.serviceDate) {
-    return { 
-      data: { error: 'Missing required fields: workerId, serviceDate' }, 
-      status: 400 
-    }
-  }
-
-  // Check for duplicate
-  const { data: existing } = await supabase
-    .from('Attendance')
-    .select('id')
-    .eq('workerId', body.workerId)
-    .eq('serviceDate', body.serviceDate)
-    .limit(1)
-
-  if (existing && existing.length > 0) {
-    return { 
-      data: { error: 'Attendance already recorded for this worker and date' }, 
-      status: 409 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('Attendance')
-    .insert({
-      workerId: body.workerId,
-      serviceDate: body.serviceDate,
-      scheduleId: body.scheduleId,
-      checkInTime: body.checkInTime || new Date().toISOString(),
-      notes: body.notes,
-    })
-    .select('*, worker:Worker(*), schedule:Schedule(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create attendance: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function scanQRCode(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.qrCode || !body.serviceDate) {
-    return { 
-      data: { error: 'Missing required fields: qrCode, serviceDate' }, 
-      status: 400 
-    }
-  }
-
-  // Decode QR code to get worker ID
-  // Assuming QR code format: "WORKER:{workerId}"
-  const match = body.qrCode.match(/^WORKER:(.+)$/)
-  if (!match) {
-    return { data: { error: 'Invalid QR code format' }, status: 400 }
-  }
-
-  const workerId = match[1]
-
-  // Verify worker exists and is active
-  const { data: worker, error: workerError } = await supabase
-    .from('Worker')
-    .select('id, status')
-    .eq('id', workerId)
-    .single()
-
-  if (workerError || !worker) {
-    return { data: { error: 'Worker not found' }, status: 404 }
-  }
-
-  if (worker.status !== 'active') {
-    return { data: { error: 'Worker is not active' }, status: 400 }
-  }
-
-  // Check for duplicate
-  const { data: existing } = await supabase
-    .from('Attendance')
-    .select('id')
-    .eq('workerId', workerId)
-    .eq('serviceDate', body.serviceDate)
-    .limit(1)
-
-  if (existing && existing.length > 0) {
-    return { 
-      data: { error: 'Attendance already recorded for this worker and date' }, 
-      status: 409 
-    }
-  }
-
-  // Create attendance record
-  const { data, error } = await supabase
-    .from('Attendance')
-    .insert({
-      workerId,
-      serviceDate: body.serviceDate,
-      scheduleId: body.scheduleId,
-      checkInTime: new Date().toISOString(),
-      scanMethod: 'qr',
-    })
-    .select('*, worker:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to record attendance: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function getAttendanceStats(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const startDate = url.searchParams.get('startDate')
-  const endDate = url.searchParams.get('endDate')
-  const ministryId = url.searchParams.get('ministryId')
-
-  if (!startDate || !endDate) {
-    return { 
-      data: { error: 'Missing required parameters: startDate, endDate' }, 
-      status: 400 
-    }
-  }
-
-  let query = supabase
-    .from('Attendance')
-    .select('serviceDate, worker:Worker(ministryId, ministry:Ministry(name))')
-    .gte('serviceDate', startDate)
-    .lte('serviceDate', endDate)
-
-  if (ministryId) {
-    query = query.eq('worker.ministryId', ministryId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to get attendance stats: ${error.message}`)
-  }
-
-  // Aggregate by date and ministry
-  const stats: Record<string, any> = {}
-  for (const record of data) {
-    const date = record.serviceDate
-    if (!stats[date]) {
-      stats[date] = { date, total: 0, byMinistry: {} }
-    }
-    stats[date].total++
-
-    const ministryName = record.worker?.ministry?.name || 'Unknown'
-    if (!stats[date].byMinistry[ministryName]) {
-      stats[date].byMinistry[ministryName] = 0
-    }
-    stats[date].byMinistry[ministryName]++
-  }
-
-  return { data: Object.values(stats) }
-}
-```
-
-### Inventory Module
-
-**Edge Function Routes**:
-- `GET /items` - List inventory items
-- `GET /items/:id` - Get item details
-- `POST /items` - Create item
-- `PUT /items/:id` - Update item
-- `DELETE /items/:id` - Delete item
-- `GET /categories` - List categories
-- `POST /categories` - Create category
-- `PUT /categories/:id` - Update category
-- `DELETE /categories/:id` - Delete category
-- `POST /stock-logs` - Record stock adjustment
-- `GET /stock-logs` - List stock logs with filters
-- `GET /borrowings` - List borrowings
-- `POST /borrowings` - Create borrowing
-- `PUT /borrowings/:id/return` - Process return
-
-**Key Logic**:
-- Stock adjustments update item quantity atomically
-- Stock Out clamped to zero if would go negative
-- Ministry scoping: filter by ministryId when provided, all records when absent
-- Borrowing return updates item quantity
-
-**Complete Edge Function Implementation**:
-
-```typescript
-// supabase/functions/inventory/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /items': listItems,
-  'GET /items/:id': getItem,
-  'POST /items': createItem,
-  'PUT /items/:id': updateItem,
-  'DELETE /items/:id': deleteItem,
-  'GET /categories': listCategories,
-  'POST /categories': createCategory,
-  'PUT /categories/:id': updateCategory,
-  'DELETE /categories/:id': deleteCategory,
-  'POST /stock-logs': recordStockAdjustment,
-  'GET /stock-logs': listStockLogs,
-  'GET /borrowings': listBorrowings,
-  'POST /borrowings': createBorrowing,
-  'PUT /borrowings/:id/return': processReturn,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/inventory', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[inventory] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-async function listItems(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const ministryId = url.searchParams.get('ministryId')
-  const categoryId = url.searchParams.get('categoryId')
-  const search = url.searchParams.get('search')
-
-  let query = supabase
-    .from('InventoryItem')
-    .select('*, category:Category(*), ministry:Ministry(*)')
-    .order('name')
-
-  if (ministryId) {
-    query = query.eq('ministryId', ministryId)
-  }
-  if (categoryId) {
-    query = query.eq('categoryId', categoryId)
-  }
-  if (search) {
-    query = query.ilike('name', `%${search}%`)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list items: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getItem(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('InventoryItem')
-    .select('*, category:Category(*), ministry:Ministry(*)')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Item not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get item: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createItem(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name || !body.categoryId) {
-    return { 
-      data: { error: 'Missing required fields: name, categoryId' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('InventoryItem')
-    .insert({
-      name: body.name,
-      description: body.description,
-      categoryId: body.categoryId,
-      ministryId: body.ministryId,
-      quantity: body.quantity || 0,
-      unit: body.unit,
-      location: body.location,
-      minQuantity: body.minQuantity,
-    })
-    .select('*, category:Category(*), ministry:Ministry(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create item: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateItem(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('InventoryItem')
-    .update({
-      name: body.name,
-      description: body.description,
-      categoryId: body.categoryId,
-      ministryId: body.ministryId,
-      unit: body.unit,
-      location: body.location,
-      minQuantity: body.minQuantity,
-    })
-    .eq('id', id)
-    .select('*, category:Category(*), ministry:Ministry(*)')
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Item not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update item: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteItem(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('InventoryItem')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete item: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function listCategories(req: Request, supabase: any, user: any) {
-  const { data, error } = await supabase
-    .from('Category')
-    .select('*')
-    .order('name')
-
-  if (error) {
-    throw new Error(`Failed to list categories: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createCategory(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name) {
-    return { data: { error: 'Missing required field: name' }, status: 400 }
-  }
-
-  const { data, error } = await supabase
-    .from('Category')
-    .insert({
-      name: body.name,
-      description: body.description,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create category: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateCategory(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('Category')
-    .update({
-      name: body.name,
-      description: body.description,
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Category not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update category: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteCategory(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('Category')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete category: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function recordStockAdjustment(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.itemId || !body.type || body.quantity === undefined) {
-    return { 
-      data: { error: 'Missing required fields: itemId, type, quantity' }, 
-      status: 400 
-    }
-  }
-
-  // Get current item
-  const { data: item, error: itemError } = await supabase
-    .from('InventoryItem')
-    .select('quantity')
-    .eq('id', body.itemId)
-    .single()
-
-  if (itemError || !item) {
-    return { data: { error: 'Item not found' }, status: 404 }
-  }
-
-  // Calculate new quantity
-  let newQuantity = item.quantity
-  let actualDelta = body.quantity
-
-  switch (body.type) {
-    case 'Stock In':
-      newQuantity += body.quantity
-      break
-    case 'Stock Out':
-      newQuantity -= body.quantity
-      if (newQuantity < 0) {
-        actualDelta = item.quantity // Clamp to zero
-        newQuantity = 0
-      }
-      break
-    case 'Adjustment':
-      newQuantity = body.quantity
-      actualDelta = body.quantity - item.quantity
-      break
-  }
-
-  // Update item quantity atomically
-  const { error: updateError } = await supabase
-    .from('InventoryItem')
-    .update({ quantity: newQuantity })
-    .eq('id', body.itemId)
-
-  if (updateError) {
-    throw new Error(`Failed to update item quantity: ${updateError.message}`)
-  }
-
-  // Create stock log
-  const { data, error } = await supabase
-    .from('StockLog')
-    .insert({
-      itemId: body.itemId,
-      type: body.type,
-      quantity: actualDelta,
-      previousQuantity: item.quantity,
-      newQuantity,
-      performedById: body.performedById,
-      notes: body.notes,
-    })
-    .select('*, item:InventoryItem(*), performedBy:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create stock log: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function listStockLogs(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const itemId = url.searchParams.get('itemId')
-  const ministryId = url.searchParams.get('ministryId')
-  const startDate = url.searchParams.get('startDate')
-  const endDate = url.searchParams.get('endDate')
-
-  let query = supabase
-    .from('StockLog')
-    .select('*, item:InventoryItem(*, ministry:Ministry(*)), performedBy:Worker(*)')
-    .order('createdAt', { ascending: false })
-
-  if (itemId) {
-    query = query.eq('itemId', itemId)
-  }
-  if (ministryId) {
-    query = query.eq('item.ministryId', ministryId)
-  }
-  if (startDate) {
-    query = query.gte('createdAt', startDate)
-  }
-  if (endDate) {
-    query = query.lte('createdAt', endDate)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list stock logs: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function listBorrowings(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const status = url.searchParams.get('status')
-  const borrowerId = url.searchParams.get('borrowerId')
-
-  let query = supabase
-    .from('Borrowing')
-    .select('*, item:InventoryItem(*), borrower:Worker(*)')
-    .order('borrowedAt', { ascending: false })
-
-  if (status) {
-    query = query.eq('status', status)
-  }
-  if (borrowerId) {
-    query = query.eq('borrowerId', borrowerId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list borrowings: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createBorrowing(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.itemId || !body.borrowerId || !body.quantity) {
-    return { 
-      data: { error: 'Missing required fields: itemId, borrowerId, quantity' }, 
-      status: 400 
-    }
-  }
-
-  // Check item availability
-  const { data: item, error: itemError } = await supabase
-    .from('InventoryItem')
-    .select('quantity')
-    .eq('id', body.itemId)
-    .single()
-
-  if (itemError || !item) {
-    return { data: { error: 'Item not found' }, status: 404 }
-  }
-
-  if (item.quantity < body.quantity) {
-    return { 
-      data: { error: 'Insufficient quantity available' }, 
-      status: 400 
-    }
-  }
-
-  // Create borrowing
-  const { data, error } = await supabase
-    .from('Borrowing')
-    .insert({
-      itemId: body.itemId,
-      borrowerId: body.borrowerId,
-      quantity: body.quantity,
-      borrowedAt: new Date().toISOString(),
-      dueDate: body.dueDate,
-      status: 'borrowed',
-      notes: body.notes,
-    })
-    .select('*, item:InventoryItem(*), borrower:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create borrowing: ${error.message}`)
-  }
-
-  // Update item quantity
-  await supabase
-    .from('InventoryItem')
-    .update({ quantity: item.quantity - body.quantity })
-    .eq('id', body.itemId)
-
-  return { data, status: 201 }
-}
-
-async function processReturn(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  // Get borrowing
-  const { data: borrowing, error: borrowingError } = await supabase
-    .from('Borrowing')
-    .select('*, item:InventoryItem(*)')
-    .eq('id', id)
-    .single()
-
-  if (borrowingError || !borrowing) {
-    return { data: { error: 'Borrowing not found' }, status: 404 }
-  }
-
-  if (borrowing.status !== 'borrowed') {
-    return { 
-      data: { error: 'Borrowing is not in borrowed status' }, 
-      status: 409 
-    }
-  }
-
-  // Update borrowing status
-  const { data, error } = await supabase
-    .from('Borrowing')
-    .update({
-      status: 'returned',
-      returnedAt: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .select('*, item:InventoryItem(*), borrower:Worker(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to process return: ${error.message}`)
-  }
-
-  // Update item quantity
-  await supabase
-    .from('InventoryItem')
-    .update({ quantity: borrowing.item.quantity + borrowing.quantity })
-    .eq('id', borrowing.itemId)
-
-  return { data }
-}
-```
-
-### C2S Module
-
-**Edge Function Routes**:
-- `GET /groups` - List discipleship groups
-- `GET /groups/:id` - Get group details
-- `POST /groups` - Create group
-- `PUT /groups/:id` - Update group
-- `DELETE /groups/:id` - Delete group
-- `POST /groups/:id/members` - Add member
-- `DELETE /groups/:id/members/:memberId` - Remove member
-
-**Key Logic**:
-- Group response includes leader profile and member count
-- Member management validates worker exists
-
-**Complete Edge Function Implementation**:
-
-```typescript
-// supabase/functions/c2s/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /groups': listGroups,
-  'GET /groups/:id': getGroup,
-  'POST /groups': createGroup,
-  'PUT /groups/:id': updateGroup,
-  'DELETE /groups/:id': deleteGroup,
-  'POST /groups/:id/members': addMember,
-  'DELETE /groups/:id/members/:memberId': removeMember,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/c2s', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[c2s] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-async function listGroups(req: Request, supabase: any, user: any) {
-  const url = new URL(req.url)
-  const leaderId = url.searchParams.get('leaderId')
-
-  let query = supabase
-    .from('DiscipleshipGroup')
-    .select('*, leader:Worker!leaderId(*), members:GroupMember(worker:Worker(*))')
-    .order('name')
-
-  if (leaderId) {
-    query = query.eq('leaderId', leaderId)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    throw new Error(`Failed to list groups: ${error.message}`)
-  }
-
-  // Add member count to each group
-  const groupsWithCount = data.map((group: any) => ({
-    ...group,
-    memberCount: group.members?.length || 0,
-  }))
-
-  return { data: groupsWithCount }
-}
-
-async function getGroup(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('DiscipleshipGroup')
-    .select('*, leader:Worker!leaderId(*), members:GroupMember(*, worker:Worker(*))')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Group not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get group: ${error.message}`)
-  }
-
-  // Add member count
-  const groupWithCount = {
-    ...data,
-    memberCount: data.members?.length || 0,
-  }
-
-  return { data: groupWithCount }
-}
-
-async function createGroup(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name || !body.leaderId) {
-    return { 
-      data: { error: 'Missing required fields: name, leaderId' }, 
-      status: 400 
-    }
-  }
-
-  // Verify leader exists
-  const { data: leader } = await supabase
-    .from('Worker')
-    .select('id')
-    .eq('id', body.leaderId)
-    .single()
-
-  if (!leader) {
-    return { data: { error: 'Leader not found' }, status: 404 }
-  }
-
-  const { data, error } = await supabase
-    .from('DiscipleshipGroup')
-    .insert({
-      name: body.name,
-      leaderId: body.leaderId,
-      description: body.description,
-      meetingSchedule: body.meetingSchedule,
-    })
-    .select('*, leader:Worker!leaderId(*)')
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create group: ${error.message}`)
-  }
-
-  return { data: { ...data, memberCount: 0 }, status: 201 }
-}
-
-async function updateGroup(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('DiscipleshipGroup')
-    .update({
-      name: body.name,
-      leaderId: body.leaderId,
-      description: body.description,
-      meetingSchedule: body.meetingSchedule,
-    })
-    .eq('id', id)
-    .select('*, leader:Worker!leaderId(*), members:GroupMember(*)')
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Group not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update group: ${error.message}`)
-  }
-
-  return { data: { ...data, memberCount: data.members?.length || 0 } }
-}
-
-async function deleteGroup(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('DiscipleshipGroup')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete group: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-async function addMember(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  if (!body.workerId) {
-    return { data: { error: 'Missing required field: workerId' }, status: 400 }
-  }
-
-  // Verify worker exists
-  const { data: worker } = await supabase
-    .from('Worker')
-    .select('id')
-    .eq('id', body.workerId)
-    .single()
-
-  if (!worker) {
-    return { data: { error: 'Worker not found' }, status: 404 }
-  }
-
-  const { data, error } = await supabase
-    .from('GroupMember')
-    .insert({
-      groupId: id,
-      workerId: body.workerId,
-      joinedAt: new Date().toISOString(),
-    })
-    .select('*, worker:Worker(*)')
-    .single()
-
-  if (error) {
-    if (error.code === '23505') {
-      return { data: { error: 'Worker is already a member of this group' }, status: 409 }
-    }
-    throw new Error(`Failed to add member: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function removeMember(req: Request, supabase: any, user: any) {
-  const { id, memberId } = (req as any).params
-
-  const { error } = await supabase
-    .from('GroupMember')
-    .delete()
-    .eq('id', memberId)
-    .eq('groupId', id)
-
-  if (error) {
-    throw new Error(`Failed to remove member: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-```
-
-### Settings Module
-
-**Edge Function Routes**:
-- `GET /roles` - List roles
-- `GET /roles/:id` - Get role details
-- `POST /roles` - Create role
-- `PUT /roles/:id` - Update role
-- `DELETE /roles/:id` - Delete role
-- `GET /rooms` - List rooms
-- `POST /rooms` - Create room
-- `PUT /rooms/:id` - Update room
-- `DELETE /rooms/:id` - Delete room
-- `GET /departments` - List departments
-- `POST /departments` - Create department
-- `PUT /departments/:id` - Update department
-- `DELETE /departments/:id` - Delete department
-- `GET /venue-elements` - List venue elements
-- `POST /venue-elements` - Create venue element
-- `PUT /venue-elements/:id` - Update venue element
-- `DELETE /venue-elements/:id` - Delete venue element
-
-**Key Logic**:
-- Role deletion checks for worker assignments
-- Room deletion checks for active reservations
-- Permission assignments managed per role
-
-**Complete Edge Function Implementation**:
-
-```typescript
-// supabase/functions/settings/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface RouteHandler {
-  (req: Request, supabase: any, user: any): Promise<{ data: any; status?: number }>
-}
-
-const routes: Record<string, RouteHandler> = {
-  'GET /roles': listRoles,
-  'GET /roles/:id': getRole,
-  'POST /roles': createRole,
-  'PUT /roles/:id': updateRole,
-  'DELETE /roles/:id': deleteRole,
-  'GET /rooms': listRooms,
-  'POST /rooms': createRoom,
-  'PUT /rooms/:id': updateRoom,
-  'DELETE /rooms/:id': deleteRoom,
-  'GET /departments': listDepartments,
-  'POST /departments': createDepartment,
-  'PUT /departments/:id': updateDepartment,
-  'DELETE /departments/:id': deleteDepartment,
-  'GET /venue-elements': listVenueElements,
-  'POST /venue-elements': createVenueElement,
-  'PUT /venue-elements/:id': updateVenueElement,
-  'DELETE /venue-elements/:id': deleteVenueElement,
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
-
-  try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !user) {
-      return jsonResponse({ error: 'Invalid token' }, 401)
-    }
-
-    const url = new URL(req.url)
-    const path = url.pathname.replace('/settings', '')
-    const method = req.method
-
-    let handler: RouteHandler | null = null
-    let params: Record<string, string> = {}
-
-    for (const [routePattern, routeHandler] of Object.entries(routes)) {
-      const [routeMethod, routePath] = routePattern.split(' ')
-      if (routeMethod !== method) continue
-
-      const match = matchRoute(routePath, path)
-      if (match) {
-        handler = routeHandler
-        params = match
-        break
-      }
-    }
-
-    if (!handler) {
-      return jsonResponse({ error: 'Route not found' }, 404)
-    }
-
-    ;(req as any).params = params
-    const result = await handler(req, supabase, user)
-    return jsonResponse(result.data, result.status || 200)
-
-  } catch (error) {
-    console.error('[settings] Error:', error)
-    return jsonResponse({ 
-      error: 'Internal server error',
-      message: error.message 
-    }, 500)
-  }
-})
-
-function matchRoute(pattern: string, path: string): Record<string, string> | null {
-  const patternParts = pattern.split('/').filter(Boolean)
-  const pathParts = path.split('/').filter(Boolean)
-
-  if (patternParts.length !== pathParts.length) return null
-
-  const params: Record<string, string> = {}
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = pathParts[i]
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null
-    }
-  }
-  return params
-}
-
-function jsonResponse(data: any, status: number) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-// Role handlers
-async function listRoles(req: Request, supabase: any, user: any) {
-  const { data, error } = await supabase
-    .from('Role')
-    .select('*, permissions:RolePermission(permission:Permission(*))')
-    .order('name')
-
-  if (error) {
-    throw new Error(`Failed to list roles: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function getRole(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { data, error } = await supabase
-    .from('Role')
-    .select('*, permissions:RolePermission(permission:Permission(*))')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Role not found' }, status: 404 }
-    }
-    throw new Error(`Failed to get role: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createRole(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name) {
-    return { data: { error: 'Missing required field: name' }, status: 400 }
-  }
-
-  const { data, error } = await supabase
-    .from('Role')
-    .insert({
-      name: body.name,
-      description: body.description,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create role: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateRole(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('Role')
-    .update({
-      name: body.name,
-      description: body.description,
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Role not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update role: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteRole(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  // Check for worker assignments
-  const { data: assignments } = await supabase
-    .from('WorkerRole')
-    .select('id')
-    .eq('roleId', id)
-    .limit(1)
-
-  if (assignments && assignments.length > 0) {
-    return { 
-      data: { error: 'Cannot delete role with active worker assignments' }, 
-      status: 409 
-    }
-  }
-
-  const { error } = await supabase
-    .from('Role')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete role: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-// Room handlers
-async function listRooms(req: Request, supabase: any, user: any) {
-  const { data, error } = await supabase
-    .from('Room')
-    .select('*')
-    .order('name')
-
-  if (error) {
-    throw new Error(`Failed to list rooms: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createRoom(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name) {
-    return { data: { error: 'Missing required field: name' }, status: 400 }
-  }
-
-  const { data, error } = await supabase
-    .from('Room')
-    .insert({
-      name: body.name,
-      capacity: body.capacity,
-      location: body.location,
-      amenities: body.amenities,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create room: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateRoom(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('Room')
-    .update({
-      name: body.name,
-      capacity: body.capacity,
-      location: body.location,
-      amenities: body.amenities,
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Room not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update room: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteRoom(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  // Check for active reservations
-  const { data: reservations } = await supabase
-    .from('RoomReservation')
-    .select('id')
-    .eq('roomId', id)
-    .gte('endTime', new Date().toISOString())
-    .limit(1)
-
-  if (reservations && reservations.length > 0) {
-    return { 
-      data: { error: 'Cannot delete room with active reservations' }, 
-      status: 409 
-    }
-  }
-
-  const { error } = await supabase
-    .from('Room')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete room: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-// Department handlers
-async function listDepartments(req: Request, supabase: any, user: any) {
-  const { data, error } = await supabase
-    .from('Department')
-    .select('*, ministries:Ministry(*)')
-    .order('name')
-
-  if (error) {
-    throw new Error(`Failed to list departments: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createDepartment(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name || !body.code) {
-    return { 
-      data: { error: 'Missing required fields: name, code' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('Department')
-    .insert({
-      name: body.name,
-      code: body.code,
-      description: body.description,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create department: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateDepartment(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('Department')
-    .update({
-      name: body.name,
-      code: body.code,
-      description: body.description,
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Department not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update department: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteDepartment(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('Department')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete department: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-
-// Venue element handlers
-async function listVenueElements(req: Request, supabase: any, user: any) {
-  const { data, error } = await supabase
-    .from('VenueElement')
-    .select('*')
-    .order('name')
-
-  if (error) {
-    throw new Error(`Failed to list venue elements: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function createVenueElement(req: Request, supabase: any, user: any) {
-  const body = await req.json()
-
-  if (!body.name || !body.type) {
-    return { 
-      data: { error: 'Missing required fields: name, type' }, 
-      status: 400 
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('VenueElement')
-    .insert({
-      name: body.name,
-      type: body.type,
-      description: body.description,
-      quantity: body.quantity || 1,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create venue element: ${error.message}`)
-  }
-
-  return { data, status: 201 }
-}
-
-async function updateVenueElement(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('VenueElement')
-    .update({
-      name: body.name,
-      type: body.type,
-      description: body.description,
-      quantity: body.quantity,
-    })
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return { data: { error: 'Venue element not found' }, status: 404 }
-    }
-    throw new Error(`Failed to update venue element: ${error.message}`)
-  }
-
-  return { data }
-}
-
-async function deleteVenueElement(req: Request, supabase: any, user: any) {
-  const { id } = (req as any).params
-
-  const { error } = await supabase
-    .from('VenueElement')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    throw new Error(`Failed to delete venue element: ${error.message}`)
-  }
-
-  return { data: { success: true } }
-}
-```
-
-## Migration Strategy
-
-### Phase-Based Approach
-
-**Phase 1: Foundation**
-1. Create `@studio/client` package structure
-2. Set up base client with HTTP utilities
-3. Create shared type definitions
-
-**Phase 2: Module Migration (Repeat for each module)**
-1. Create Edge Function for module
-2. Implement routes and handlers
-3. Add module client to `@studio/client`
-4. Update one page in `apps/web` to use client
-5. Test and verify functionality
-6. Migrate remaining pages for module
-7. Remove corresponding server actions
-
-**Phase 3: Inventory App Migration**
-1. Migrate inventory module (Phase 2 pattern)
-2. Update `apps/inventory` to use `InventoryClient`
-3. Remove direct Supabase calls
-
-**Phase 4: Cleanup**
-1. Remove `@studio/database` from `apps/web`
-2. Remove `@prisma/client` from `apps/web`
-3. Remove direct Supabase client from `apps/inventory`
-4. Update documentation
-
-### Migration Order (Recommended)
-
-1. **Settings** - Foundational data, low risk
-2. **Workers** - Core entity, many dependencies
-3. **Ministries** - Depends on workers
-4. **Schedule** - Depends on workers and ministries
-5. **Venue** - Independent, medium complexity
-6. **Approvals** - Depends on workers
-7. **Meals** - Depends on workers and schedule
-8. **Attendance** - Depends on workers and schedule
-9. **Inventory** - Independent, high complexity
-10. **C2S** - Depends on workers, low complexity
-
-### Rollback Strategy
-
-- Keep server actions until module fully migrated
-- Feature flags to toggle between old/new implementation
-- Database unchanged (both approaches use same schema)
-- Can revert individual modules without affecting others
-
-## Error Handling
-
-### Edge Function Error Responses
-
-```typescript
-// 400 Bad Request - Validation error
-{
-  "error": "Validation failed",
-  "details": [
-    { "field": "email", "message": "Invalid email format" }
-  ]
-}
-
-// 401 Unauthorized - Auth error
-{
-  "error": "Unauthorized",
-  "message": "Invalid or expired token"
-}
-
-// 403 Forbidden - Permission error
-{
-  "error": "Forbidden",
-  "message": "Insufficient permissions for this operation"
-}
-
-// 404 Not Found - Resource not found
-{
-  "error": "Not found",
-  "message": "Worker with ID 'abc123' not found"
-}
-
-// 409 Conflict - Business rule violation
-{
-  "error": "Conflict",
-  "message": "Cannot delete worker with active schedule assignments"
-}
-
-// 422 Unprocessable Entity - Business validation error
-{
-  "error": "Validation error",
-  "message": "Worker does not have required role for this slot"
-}
-
-// 500 Internal Server Error
-{
-  "error": "Internal server error",
-  "message": "Database connection failed"
-}
-```
-
-### Client SDK Error Handling
-
-```typescript
-try {
-  const worker = await workersClient.getWorker('123')
-} catch (error) {
-  if (error instanceof ClientError) {
-    switch (error.status) {
-      case 401:
-        // Redirect to login
-        break
-      case 404:
-        // Show not found message
-        break
-      case 500:
-        // Show generic error
-        break
-    }
-  }
-}
-```
-
-## Testing Strategy
-
-### Edge Function Testing
-
-- Unit tests for individual handlers
-- Integration tests with test Supabase instance
-- JWT mocking for auth testing
-- Route coverage tests
-
-### Client SDK Testing
-
-- Mock fetch responses
-- Type safety validation
-- Error handling coverage
-- Cross-platform compatibility (browser + React Native)
-
-### End-to-End Testing
-
-- Test each module through full stack
-- Verify old and new implementations produce same results during migration
-- Performance comparison tests
-
-## Security Considerations
-
-### JWT Verification
-
-- Every Edge Function verifies JWT before handler execution
-- Token expiration enforced
-- User ID extracted from verified token
-
-### Authorization
-
-- Permission checks in handlers based on user roles
-- Ministry scoping enforced where applicable
-- Admin-only operations protected
-
-### Input Validation
-
-- Zod schemas validate all request bodies
-- SQL injection prevented by Supabase client parameterization
-- XSS prevention through JSON responses
-
-### CORS Configuration
-
-- Whitelist specific origins in production
-- Allow credentials for authenticated requests
-- Preflight handling for complex requests
-
-## Performance Considerations
-
-### Edge Function Optimization
-
-- Connection pooling for database access
-- Caching for frequently accessed data (roles, permissions)
-- Batch operations where possible
-
-### Client SDK Optimization
-
-- Request deduplication
-- Response caching with TTL
-- Retry logic with exponential backoff
-
-### Database Optimization
-
-- Indexes on frequently queried fields
-- Efficient joins for related data
-- Pagination for large result sets
-
-## Deployment
-
-### Edge Functions Deployment
-
-```bash
-# Deploy all functions
-supabase functions deploy
-
-# Deploy specific function
-supabase functions deploy workers
-
-# Set environment variables
-supabase secrets set SUPABASE_URL=...
-supabase secrets set SUPABASE_ANON_KEY=...
-```
-
-### Client SDK Publishing
-
-```bash
-# Build package
-cd packages/client
-npm run build
-
-# Publish to npm (if external) or use workspace protocol
-npm publish
-```
-
-### App Deployment
-
-```bash
-# Deploy web app
-cd apps/web
-vercel deploy
-
-# Deploy inventory app
-cd apps/inventory
-vercel deploy
-```
-
-## Monitoring and Observability
-
-### Logging
-
-- Structured JSON logs from Edge Functions
-- Request/response logging with correlation IDs
-- Error stack traces captured
-
-### Metrics
-
-- Request count per endpoint
-- Response time percentiles
-- Error rate by status code
-- Token validation failures
-
-### Alerts
-
-- High error rate threshold
-- Slow response time threshold
-- Authentication failure spike
-
-## Documentation Requirements
-
-### API Documentation
-
-- OpenAPI/Swagger spec for each Edge Function
-- Request/response examples
-- Error code reference
-
-### SDK Documentation
-
-- TypeScript API docs generated from code
-- Usage examples for each client
-- Migration guide from server actions
-
-### Developer Guide
-
-- Local development setup
-- Testing procedures
-- Deployment process
-- Troubleshooting common issues
-
-## Success Criteria
-
-1. All 10 Edge Functions deployed and operational
-2. `@studio/client` SDK published and consumed by apps
-3. `apps/web` has zero direct database calls
-4. `apps/inventory` uses only `@studio/client` for data access
-5. All existing features preserved and functional
-6. No breaking changes to user-facing functionality
-7. Performance metrics within 10% of baseline
-8. Zero critical security vulnerabilities
-9. Complete test coverage for all modules
-10. Documentation complete and reviewed
-
-## Risks and Mitigations
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking changes during migration | High | Module-by-module approach, keep old code until verified |
-| Performance degradation | Medium | Load testing, caching strategy, monitoring |
-| Type drift between Edge Functions and SDK | Medium | Shared type definitions, automated type generation |
-| JWT token expiration handling | Medium | Token refresh logic in client SDK |
-| CORS issues in production | Low | Thorough CORS testing, environment-specific config |
-| Database connection limits | Medium | Connection pooling, function concurrency limits |
-
-## Future Enhancements
-
-1. GraphQL layer on top of Edge Functions
-2. Real-time subscriptions via Supabase Realtime
-3. Offline support in mobile apps
-4. API rate limiting and throttling
-5. Advanced caching with Redis
-6. Webhook support for external integrations
-7. API versioning strategy
-8. Multi-tenancy support
+Consuming apps import only from `@studio/client` — never directly from `@studio/types` for data-layer types.
 
 ---
 
-**Design Status**: Complete  
-**Last Updated**: 2024  
-**Reviewed By**: [Pending]
+## Migration Strategy
+
+### Incremental Page Switching (Req 15.1–15.4)
+
+No feature flags needed. The switch is at the **hook level**. During migration, two hook versions coexist:
+
+- **Old:** `useWorkers()` — calls server action in `db.ts`
+- **New:** `useWorkersV2()` — calls `WorkersClient`
+
+Pages are migrated one at a time. When all pages for a module use the `V2` hook, the old hook and server actions are deleted and `useWorkersV2` is renamed to `useWorkers`.
+
+### Deployment Sequence
+
+| Phase | Module | Risk |
+|-------|--------|------|
+| 0 | Shared utilities + `@studio/client` scaffold | None — no app changes |
+| 1 | Settings | Low — configuration data only |
+| 2 | Workers | Medium — foundational; other modules depend on it |
+| 3 | Ministries | Low |
+| 4 | Schedule | Medium — complex validation logic |
+| 5 | Venue | Medium — conflict detection |
+| 6 | Approvals | Low |
+| 7 | Meals | Low |
+| 8 | Attendance | Medium — QR scan path is live-critical |
+| 9 | C2S | Low |
+| 10 | Inventory + apps/inventory overhaul | Medium — atomic stock RPC required first |
+| 11 | Final cleanup | Low — removal only |
+
+### Per-Phase Verification Checklist
+
+- [ ] Edge Function deploys without errors (`supabase functions deploy {module}`)
+- [ ] Unauthenticated requests return 401
+- [ ] `OPTIONS` preflight returns 200 without auth
+- [ ] Client module builds without TypeScript errors
+- [ ] All pages for the module load correctly via new client hooks
+- [ ] No direct Prisma or Supabase client calls remain in migrated pages
+- [ ] All existing routes still work at the same URLs
+
+---
+
+## Known Gaps and Resolutions
+
+| # | Gap identified | Resolution |
+|---|----------------|------------|
+| G1 | Route ambiguity: literal vs parameterized same path depth | `RouteMap` is an ordered array; literals registered before parameterized routes |
+| G2 | JWT `role` claim ≠ application role (naming collision in Req 2.4) | `dbRole` = database role from JWT; application roles resolved from `WorkerRole` table |
+| G3 | Concurrent stock updates break clamp invariant | `adjust_item_stock` Postgres RPC with `FOR UPDATE` row lock |
+| G4 | QR code payload schema never defined (Req 12.2) | Signed JWT `{ workerId, iat }` using `SUPABASE_JWT_SECRET`, verified server-side |
+| G5 | Zod schemas can't be shared natively between Deno and Node | Mirror schemas in `_shared/schemas/`; CI script detects drift |
+| G6 | "Active assignment" undefined — past assignments blocked deletion | Active = `Schedule.date >= CURRENT_DATE` |
+| G7 | Recurring booking horizon unbounded — DoS vector | Default 90 days; max 365 days enforced; 400 if exceeded |
+| G8 | No mechanism for incremental page switching | Hook naming convention (`useXxxV2`); no feature flags needed |
+| G9 | `console.error()` emits plain text, not structured JSON | `logError()` helper in `_shared/logger.ts` |
+| G10 | `process.env.NEXT_PUBLIC_*` not available in Expo | SDK accepts `baseUrl`/`getToken` as constructor args |
+| G11 | Req 16.2 type sync in same commit is un-automatable | PR template checklist item |
+| G12 | Room deletion guard not time-scoped | Only future reservations (`startTime >= now()`) block deletion |
