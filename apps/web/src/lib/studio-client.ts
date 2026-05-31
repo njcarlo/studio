@@ -1,4 +1,4 @@
-import { supabase } from '@studio/database/supabase-client'
+import { supabase } from '@studio/database'
 import {
   SettingsClient, WorkersClient, MinistriesClient, ScheduleClient,
   VenueClient, ApprovalsClient, MealsClient, AttendanceClient,

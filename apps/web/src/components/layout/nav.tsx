@@ -173,6 +173,11 @@ const allNavItems: NavItem[] = [
     permissionKey: "canViewReports",
   },
   {
+    href: "/events",
+    icon: CalendarDays,
+    label: "Events",
+  },
+    {
     href: "/venue",
     icon: Building2,
     label: "Venue",

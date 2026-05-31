@@ -163,6 +163,7 @@ model Room {
   areaId                 String
   weight                 Int?
   bookings               Booking[]
+  eventBookings          EventRoomBooking[]
   venueBookings          VenueBooking[]            @relation("RoomVenueBookings")
   assistanceConfigurations AssistanceConfiguration[] @relation("RoomAssistanceConfigs")
   area                   Area                      @relation(fields: [areaId], references: [id])
@@ -335,6 +336,7 @@ model InventoryItem {
   parent              InventoryItem?       @relation("ItemBundles", fields: [parentId], references: [id])
   children            InventoryItem[]      @relation("ItemBundles")
   logs                InventoryLog[]
+  eventEquipment      EventEquipment[]
 }
 
 model InventoryBorrowing {
@@ -597,4 +599,73 @@ model ScheduleAssignment {
 
   @@index([scheduleId])
   @@index([ministryId])
+}
+
+// ── Events Management ────────────────────────────────────────────────────────
+
+model ChurchEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  date        DateTime
+  endDate     DateTime?
+  startTime   String?
+  endTime     String?
+  location    String?
+  status      String   @default("Planning") // Planning | Confirmed | Ongoing | Completed | Cancelled
+  createdBy   String
+  notes       String?
+  scheduleId  String?  // optional link to a ServiceSchedule
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rooms       EventRoomBooking[]
+  assignments EventAssignment[]
+  equipment   EventEquipment[]
+
+  @@index([date])
+  @@index([status])
+}
+
+model EventRoomBooking {
+  id        String      @id @default(uuid())
+  eventId   String
+  event     ChurchEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  roomId    String
+  room      Room        @relation(fields: [roomId], references: [id])
+  startTime String      // "HH:MM" local time
+  endTime   String
+  purpose   String?
+  notes     String?
+
+  @@index([eventId])
+  @@index([roomId])
+}
+
+model EventAssignment {
+  id         String      @id @default(uuid())
+  eventId    String
+  event      ChurchEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ministryId String
+  roleName   String
+  workerId   String?
+  workerName String?
+  notes      String?
+  order      Int         @default(0)
+
+  @@index([eventId])
+  @@index([ministryId])
+}
+
+model EventEquipment {
+  id          String        @id @default(uuid())
+  eventId     String
+  event       ChurchEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  itemId      String
+  item        InventoryItem @relation(fields: [itemId], references: [id])
+  quantity    Int           @default(1)
+  notes       String?
+
+  @@index([eventId])
+  @@index([itemId])
 }
