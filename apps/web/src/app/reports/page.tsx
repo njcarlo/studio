@@ -312,7 +312,7 @@ function SummaryDashboard() {
   });
   const { data: approvals, isLoading: apLoading } = useQuery({
     queryKey: ["approvals"],
-    queryFn: getApprovals,
+    queryFn: () => getApprovals({ isSuperAdmin: true }),
   });
 
   const isLoading = aLoading || mLoading || wLoading || apLoading;
