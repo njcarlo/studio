@@ -570,6 +570,7 @@ export async function getWorshipSlots(scheduleId: string) {
 
 export async function createWorshipSlot(data: {
     scheduleId: string;
+    ministryId?: string | null;
     slotName: string;
     notes?: string;
     order?: number;
@@ -578,6 +579,7 @@ export async function createWorshipSlot(data: {
     const slot = await prisma.worshipSlot.create({
         data: {
             scheduleId: data.scheduleId,
+            ministryId: data.ministryId ?? null,
             slotName: data.slotName,
             isTws,
             notes: data.notes ?? null,

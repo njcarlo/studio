@@ -60,6 +60,7 @@ export default function ScheduleDetailPage() {
 
     // Worship slot state
     const [newSlotName, setNewSlotName] = useState("");
+    const [newSlotMinistryId, setNewSlotMinistryId] = useState<string>("");
     const [addSlotOpen, setAddSlotOpen] = useState(false);
     const [slotAssignDialog, setSlotAssignDialog] = useState<{ slotId: string; slotName: string } | null>(null);
     const [slotWorkerSearch, setSlotWorkerSearch] = useState("");
@@ -427,233 +428,127 @@ export default function ScheduleDetailPage() {
                 </TabsList>
 
                 <TabsContent value="assignments">
-            {/* Add Ministry */}
+            {/* Service Slots grouped by Department → Ministry */}
             <div className="mt-4 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Ministries</h2>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Service Slots</h2>
                 {canManageSchedule && (
-                <Select onValueChange={(ministryId) => {
-                    upsertAssignment({ scheduleId: id, ministryId, roleName: "Role", order: 0 });
-                    setExpandedMinistries(prev => new Set([...prev, ministryId]));
-                }}>
-                    <SelectTrigger className="w-[200px] h-8 text-sm">
-                        <SelectValue placeholder="+ Add Ministry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {Object.entries(unselectedMinistriesByDept).map(([deptName, deptMinistries]) => (
-                            <SelectGroup key={deptName}>
-                                <SelectLabel className="text-xs font-semibold text-primary/70">{deptName}</SelectLabel>
-                                {deptMinistries.map((m: any) => (
-                                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                ))}
-                            </SelectGroup>
-                        ))}
-                    </SelectContent>
-                </Select>
+                    <Button size="sm" onClick={() => { setNewSlotName(""); setNewSlotMinistryId(""); setAddSlotOpen(true); }}>
+                        <Plus className="mr-1 h-4 w-4" /> Add Slot
+                    </Button>
                 )}
             </div>
 
-            {/* Ministry Cards Grouped by Department */}
             <div className="mt-3 space-y-6">
-                {allMinistryIds.length === 0 && (
-                    <Card>
-                        <CardContent className="py-10 text-center text-muted-foreground">
-                            No ministries added yet. Use the dropdown above to add one.
-                        </CardContent>
-                    </Card>
-                )}
+                {/* Department → Ministry → Slots */}
+                {(() => {
+                    // Build dept → ministry → slots hierarchy from all ministries
+                    const deptMap: Record<string, { id: string; name: string }[]> = {};
+                    ministries.forEach((m: any) => {
+                        const dept = m.department || m.departmentCode || 'Other';
+                        if (!deptMap[dept]) deptMap[dept] = [];
+                        deptMap[dept].push(m);
+                    });
 
-                {Object.entries(ministriesByDepartment).map(([deptName, deptMinistryIds]) => (
-                    <div key={deptName} className="space-y-3">
-                        <h3 className="text-sm font-semibold text-primary uppercase tracking-wider pl-1 border-b pb-1">
-                            {deptName} Department
-                        </h3>
-                        {deptMinistryIds.map(ministryId => {
-                            const assignments = (byMinistry[ministryId] || []) as NonNullable<typeof schedule>['assignments'];
-                            const filled = assignments.filter((a: any) => a.workerId).length;
-                            const isExpanded = expandedMinistries.has(ministryId);
-                            const ministryTemplates = templates.filter((t: any) => t.ministryId === ministryId);
+                    const hasSlotsAnywhere = worshipSlots.length > 0;
 
-                            // Group by role name
-                            const byRole = assignments.reduce<Record<string, typeof assignments>>((acc: Record<string, typeof assignments>, a: any) => {
-                                if (!acc[a.roleName]) acc[a.roleName] = [];
-                                acc[a.roleName].push(a);
-                                return acc;
-                            }, {});
+                    if (!hasSlotsAnywhere) return (
+                        <Card className="mt-2">
+                            <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                                No slots yet. Click "Add Slot" to get started.
+                            </CardContent>
+                        </Card>
+                    );
 
-                            return (
-                                <Card key={ministryId}>
-                                    <CardHeader
-                                        className="cursor-pointer py-3 px-4"
-                                        onClick={() => toggleMinistry(ministryId)}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                                <CardTitle className="text-base">{getMinistryName(ministryId)}</CardTitle>
-                                                <span className="text-xs text-muted-foreground">{filled}/{assignments.length} filled</span>
-                                            </div>
-                                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                                {(templatesLoading || ministryTemplates.length > 0) && (
-                                                    <Button variant="outline" size="sm" className="h-7 text-xs"
-                                                        disabled={templatesLoading}
-                                                        onClick={() => setApplyTemplateDialog(ministryId)}>
-                                                        {templatesLoading
-                                                            ? <LoaderCircle className="mr-1 h-3 w-3 animate-spin" />
-                                                            : <LayoutTemplate className="mr-1 h-3 w-3" />
-                                                        }
-                                                        Apply Template
-                                                    </Button>
-                                                )}
-                                                <Button variant="outline" size="sm" className="h-7 text-xs"
-                                                    onClick={() => { setAddRoleDialog(ministryId); setNewRoleName(""); }}>
-                                                    <Plus className="mr-1 h-3 w-3" /> Add Role
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                                                    onClick={() => {
-                                                        assignments.forEach((a: any) => deleteAssignment(a.id));
-                                                    }}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
+                    return Object.entries(deptMap).map(([deptName, deptMinistries]) => {
+                        const deptSlots = worshipSlots.filter((s: any) =>
+                            deptMinistries.some((m: any) => m.id === s.ministryId)
+                        );
+                        if (deptSlots.length === 0) return null;
 
-                                    {isExpanded && (
-                                        <CardContent className="pt-0 pb-4 px-4">
-                                            <div className="space-y-4">
-                                                {Object.entries(byRole).map(([roleName, slots]) => (
-                                                    <div key={roleName}>
-                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                                                            {roleName}
-                                                        </p>
-                                                        <div className="space-y-1.5">
-                                                            {(slots as any[]).map((slot: any) => {
-                                                                const status = slot.attendanceStatus || 'Pending';
-                                                                const statusDot = status === 'Confirmed'
-                                                                    ? 'bg-green-500'
-                                                                    : status === 'Not Attending'
-                                                                    ? 'bg-red-500'
-                                                                    : 'bg-yellow-400';
-                                                                return (
-                                                                <React.Fragment key={slot.id}>
-                                                                <div className="flex items-center gap-3 rounded-md border px-3 py-2">
-                                                                    {slot.workerId ? (
-                                                                        <>
-                                                                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDot}`} title={status} />
-                                                                            <Avatar className="h-6 w-6">
-                                                                                <AvatarImage src={workers.find((w: any) => w.id === slot.workerId)?.avatarUrl} />
-                                                                                <AvatarFallback className="text-[10px]">
-                                                                                    {slot.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}
-                                                                                </AvatarFallback>
-                                                                            </Avatar>
-                                                                            <span className="text-sm flex-1">{slot.workerName}</span>
-                                                                            {canConfirmSchedule && (
-                                                                                <Select
-                                                                                    value={status}
-                                                                                    onValueChange={(v: any) => setAttendanceStatus({ assignmentId: slot.id, status: v, updatedBy: workerProfile?.id || user?.uid || 'system' })}
-                                                                                >
-                                                                                    <SelectTrigger className="h-6 w-32 text-xs border-0 bg-transparent p-0 focus:ring-0">
-                                                                                        <SelectValue />
-                                                                                    </SelectTrigger>
-                                                                                    <SelectContent>
-                                                                                        <SelectItem value="Pending">⏳ Pending</SelectItem>
-                                                                                        <SelectItem value="Confirmed">✅ Confirmed</SelectItem>
-                                                                                        <SelectItem value="Not Attending">❌ Not Attending</SelectItem>
-                                                                                    </SelectContent>
-                                                                                </Select>
-                                                                            )}
-                                                                            {!canConfirmSchedule && (
-                                                                                <span className="text-xs text-muted-foreground">{status}</span>
-                                                                            )}
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6"
-                                                                                title="Rehearsal Schedule"
-                                                                                onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
-                                                                                <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
-                                                                            </Button>
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6"
-                                                                                onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
-                                                                                <UserPlus className="h-3.5 w-3.5" />
-                                                                            </Button>
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                                                                                onClick={() => deleteAssignment(slot.id)}>
-                                                                                <X className="h-3.5 w-3.5" />
-                                                                            </Button>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                                            <span className="text-sm text-muted-foreground flex-1">Unassigned</span>
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6"
-                                                                                title="Rehearsal Schedule"
-                                                                                onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
-                                                                                <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
-                                                                            </Button>
-                                                                            <Button variant="ghost" size="sm" className="h-7 text-xs"
-                                                                                onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
-                                                                                <UserPlus className="mr-1 h-3 w-3" /> Assign
-                                                                            </Button>
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                                                                                onClick={() => deleteAssignment(slot.id)}>
-                                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                                            </Button>
-                                                                        </>
+                        return (
+                            <div key={deptName} className="space-y-3">
+                                <h3 className="text-sm font-semibold text-primary uppercase tracking-wider pl-1 border-b pb-1">
+                                    {deptName} Department
+                                </h3>
+                                {deptMinistries.map((ministry: any) => {
+                                    const ministrySlots = worshipSlots.filter((s: any) => s.ministryId === ministry.id);
+                                    if (ministrySlots.length === 0) return null;
+                                    return (
+                                        <div key={ministry.id} className="space-y-2">
+                                            <h4 className="text-sm font-semibold text-foreground pl-1 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 inline-block" />
+                                                {ministry.name.replace(/^[WORDA]-/i, '')}
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                    {ministrySlots.length} slot{ministrySlots.length !== 1 ? 's' : ''}
+                                                </span>
+                                            </h4>
+                                            {ministrySlots.map((slot: any) => (
+                                                <Card key={slot.id}>
+                                                    <CardHeader className="py-3 px-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <CardTitle className="text-sm">{slot.slotName}</CardTitle>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {slot.workers.length} worker{slot.workers.length !== 1 ? 's' : ''}
+                                                                </span>
+                                                            </div>
+                                                            {canManageSchedule && (
+                                                                <div className="flex items-center gap-1">
+                                                                    <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                                        onClick={() => { setSlotWorkerSearch(""); setSlotAssignDialog({ slotId: slot.id, slotName: slot.slotName }); }}>
+                                                                        <UserPlus className="mr-1 h-3 w-3" /> Add Worker
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                                                                        onClick={() => deleteSlot(slot.id)}>
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {slot.notes && <p className="text-xs text-muted-foreground mt-1">{slot.notes}</p>}
+                                                    </CardHeader>
+                                                    {slot.workers.length > 0 && (
+                                                        <CardContent className="pt-0 pb-4 px-4 space-y-1.5">
+                                                            {(slot.workers as any[]).map((sw: any) => (
+                                                                <div key={sw.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
+                                                                    <Avatar className="h-6 w-6">
+                                                                        <AvatarImage src={workers.find((w: any) => w.id === sw.workerId)?.avatarUrl} />
+                                                                        <AvatarFallback className="text-[10px]">
+                                                                            {sw.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                    <span className="text-sm flex-1">{sw.workerName}</span>
+                                                                    {sw.role && (
+                                                                        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{sw.role}</span>
+                                                                    )}
+                                                                    {canManageSchedule && (
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                                                                            onClick={() => removeWorshipWorker(sw.id)}>
+                                                                            <X className="h-3.5 w-3.5" />
+                                                                        </Button>
                                                                     )}
                                                                 </div>
-                                                                {slot.rehearsalDate && (
-                                                                    <div className="ml-8 text-[10px] text-muted-foreground flex items-center gap-1.5 -mt-0.5 mb-1">
-                                                                        <CalendarClock className="h-3 w-3" />
-                                                                        Rehearsal: {format(new Date(slot.rehearsalDate), "MMM d, yyyy")} {slot.rehearsalTime ? `at ${slot.rehearsalTime}` : ""}
-                                                                    </div>
-                                                                )}
-                                                                </React.Fragment>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    )}
-                                </Card>
-                            );
-                        })}
-                    </div>
-                ))}
-            </div>
+                                                            ))}
+                                                        </CardContent>
+                                                    )}
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    });
+                })()}
 
-            {/* Service Slots — flat list of worker assignments per slot */}
-            <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Service Slots</h2>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                            Named slots for this service (e.g. TWS, Mid Slot). Add workers directly to each slot.
-                        </p>
-                    </div>
-                    {canManageSchedule && (
-                        <Button size="sm" onClick={() => { setNewSlotName(""); setAddSlotOpen(true); }}>
-                            <Plus className="mr-1 h-4 w-4" /> Add Slot
-                        </Button>
-                    )}
-                </div>
-
-                {worshipSlots.length === 0 && (
-                    <Card>
-                        <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                            No slots yet. Add a slot like "TWS", "Mid Slot", or "Empowered Night".
-                        </CardContent>
-                    </Card>
-                )}
-
-                {worshipSlots.map((slot: any) => (
+                {/* Slots with no ministry assigned */}
+                {worshipSlots.filter((s: any) => !s.ministryId).map((slot: any) => (
                     <Card key={slot.id}>
                         <CardHeader className="py-3 px-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <CardTitle className="text-base">{slot.slotName}</CardTitle>
-                                    <span className="text-xs text-muted-foreground">
-                                        {slot.workers.length} worker{slot.workers.length !== 1 ? 's' : ''}
-                                    </span>
+                                    <CardTitle className="text-sm">{slot.slotName}</CardTitle>
+                                    <span className="text-xs text-muted-foreground">{slot.workers.length} worker{slot.workers.length !== 1 ? 's' : ''}</span>
                                 </div>
                                 {canManageSchedule && (
                                     <div className="flex items-center gap-1">
@@ -668,7 +563,6 @@ export default function ScheduleDetailPage() {
                                     </div>
                                 )}
                             </div>
-                            {slot.notes && <p className="text-xs text-muted-foreground mt-1">{slot.notes}</p>}
                         </CardHeader>
                         {slot.workers.length > 0 && (
                             <CardContent className="pt-0 pb-4 px-4 space-y-1.5">
@@ -676,19 +570,12 @@ export default function ScheduleDetailPage() {
                                     <div key={sw.id} className="flex items-center gap-3 rounded-md border px-3 py-2">
                                         <Avatar className="h-6 w-6">
                                             <AvatarImage src={workers.find((w: any) => w.id === sw.workerId)?.avatarUrl} />
-                                            <AvatarFallback className="text-[10px]">
-                                                {sw.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}
-                                            </AvatarFallback>
+                                            <AvatarFallback className="text-[10px]">{sw.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}</AvatarFallback>
                                         </Avatar>
                                         <span className="text-sm flex-1">{sw.workerName}</span>
-                                        {sw.role && (
-                                            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                                {sw.role}
-                                            </span>
-                                        )}
+                                        {sw.role && <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{sw.role}</span>}
                                         {canManageSchedule && (
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                                                onClick={() => removeWorshipWorker(sw.id)}>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeWorshipWorker(sw.id)}>
                                                 <X className="h-3.5 w-3.5" />
                                             </Button>
                                         )}
@@ -698,7 +585,8 @@ export default function ScheduleDetailPage() {
                         )}
                     </Card>
                 ))}
-            </div>
+
+            </div>{/* end mt-3 space-y-6 */}
 
                 </TabsContent>
 
@@ -931,24 +819,41 @@ export default function ScheduleDetailPage() {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
+                            <Label>Ministry</Label>
+                            <Select value={newSlotMinistryId} onValueChange={setNewSlotMinistryId}>
+                                <SelectTrigger><SelectValue placeholder="Select ministry" /></SelectTrigger>
+                                <SelectContent>
+                                    {ministries.map((m: any) => (
+                                        <SelectItem key={m.id} value={m.id}>
+                                            {m.name.replace(/^[WORDA]-/i, '')}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
                             <Label>Slot Name</Label>
                             <Input
                                 value={newSlotName}
                                 onChange={e => setNewSlotName(e.target.value)}
-                                placeholder="e.g. TWS, Mid Slot, Empowered Night"
+                                placeholder="e.g. TWS, Main Slot, Empowered Night"
                                 autoFocus
                             />
-                            <p className="text-xs text-muted-foreground">Enter any name — TWS, Mid Slot, Empowered Night, or a custom name.</p>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddSlotOpen(false)}>Cancel</Button>
                         <Button
-                            disabled={!newSlotName.trim()}
+                            disabled={!newSlotName.trim() || !newSlotMinistryId}
                             onClick={async () => {
-                                await createSlot({ slotName: newSlotName.trim(), order: worshipSlots.length });
+                                await createSlot({
+                                    slotName: newSlotName.trim(),
+                                    ministryId: newSlotMinistryId,
+                                    order: worshipSlots.length,
+                                });
                                 setAddSlotOpen(false);
                                 setNewSlotName("");
+                                setNewSlotMinistryId("");
                             }}
                         >
                             Add Slot

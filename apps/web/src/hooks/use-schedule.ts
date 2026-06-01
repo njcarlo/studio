@@ -197,7 +197,7 @@ export function useWorshipSlots(scheduleId: string) {
     });
 
     const createMutation = useMutation({
-        mutationFn: (d: { slotName: string; notes?: string; order?: number }) =>
+        mutationFn: (d: { slotName: string; ministryId?: string | null; notes?: string; order?: number }) =>
             createWorshipSlot({ scheduleId, ...d }),
         onSuccess: () => qc.invalidateQueries({ queryKey: key }),
     });

@@ -520,8 +520,9 @@ model WorshipSlot {
   id         String              @id @default(uuid())
   scheduleId String
   schedule   ServiceSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  slotName   String              // e.g. "TWS", "Pre-service", "Offering"
-  isTws      Boolean             @default(false) // true when slotName = "TWS"
+  ministryId String?
+  slotName   String
+  isTws      Boolean             @default(false)
   order      Int                 @default(0)
   notes      String?
   createdAt  DateTime            @default(now())

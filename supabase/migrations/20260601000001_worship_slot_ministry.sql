@@ -1,0 +1,1 @@
+ALTER TABLE "WorshipSlot" ADD COLUMN IF NOT EXISTS "ministryId" TEXT;
