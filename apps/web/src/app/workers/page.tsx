@@ -1316,7 +1316,7 @@ export default function WorkersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {getPermissions(worker.roleId).map((p) => (
+                        {getPermissions(worker.roleId).map((p: string) => (
                           <Badge
                             key={p}
                             variant="outline"
