@@ -810,14 +810,19 @@ export async function createMealStub(data: {
     stubType?: string;
     assignedBy?: string;
     assignedByName?: string;
-    date?: Date; // Optional: allow passing a custom date (e.g. for Sunday mode)
+    date?: Date;
+    scheduleId?: string;
 }) {
-    return await prisma.mealStub.create({
-        data: {
-            ...data,
-            date: data.date || new Date(),
-        },
+    const stubDate = data.date || new Date();
+    const dayStart = new Date(stubDate); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd   = new Date(stubDate); dayEnd.setHours(23, 59, 59, 999);
+
+    const existing = await prisma.mealStub.findFirst({
+        where: { workerId: data.workerId, date: { gte: dayStart, lte: dayEnd } },
     });
+    if (existing) throw new Error(`${data.workerName} already has a meal stub for this date.`);
+
+    return await prisma.mealStub.create({ data: { ...data, date: stubDate } });
 }
 
 export async function updateMealStub(id: string, data: any) {

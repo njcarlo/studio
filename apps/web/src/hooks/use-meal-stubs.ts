@@ -10,6 +10,7 @@ export function useMealStubs(filters: { workerId?: string; dateFrom?: Date; date
     const { data, isLoading, error } = useQuery({
         queryKey: ['meal-stubs', queryFilters],
         queryFn: () => getMealStubs(queryFilters),
+        staleTime: 30_000,
         enabled,
     });
 

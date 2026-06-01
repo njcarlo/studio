@@ -98,7 +98,9 @@ function MealsPageContent() {
     deleteMealStub
   } = useMealStubs(canManageAllMealStubs ? { dateFrom: thirtyDaysAgo } : { workerId: workerProfile?.id });
 
-  const { mealStubs: allMealStubsInRange } = useMealStubs({ dateFrom: thirtyDaysAgo });
+  // For admins mealStubs already covers the full 30-day range — skip duplicate fetch
+  const { mealStubs: _nonAdminRange } = useMealStubs({ dateFrom: thirtyDaysAgo, enabled: !canManageAllMealStubs });
+  const allMealStubsInRange = canManageAllMealStubs ? mealStubs : _nonAdminRange;
 
   // Live worker profile (for QR token)
   const liveWorkerProfile = useMemo(() => allWorkers.find(w => w.id === (workerProfile?.id || user?.uid)), [allWorkers, workerProfile, user]);

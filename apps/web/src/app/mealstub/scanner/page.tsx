@@ -10,8 +10,7 @@ import { Alert, AlertTitle, AlertDescription } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow } from "date-fns";
-import { getMealStubs, updateMealStub, createScanLog } from "@/actions/db";
-import { useWorkers } from "@/hooks/use-workers";
+import { getMealStubs, updateMealStub, createScanLog, getWorkerById } from "@/actions/db";
 
 type ScanLogEntry = { id: string; details: string; scannerName: string; timestamp: Date };
 
@@ -26,8 +25,6 @@ export default function QRScannerPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
     const [scanLogs, setScanLogs] = useState<ScanLogEntry[]>([]);
-
-    const { workers } = useWorkers();
 
     useEffect(() => {
         if (!isAuthenticated) return;
@@ -74,7 +71,8 @@ export default function QRScannerPage() {
         }
 
         try {
-            const worker = workers?.find(w => w.id === workerId || w.workerId === workerId);
+            // Fetch worker from DB directly — avoids client-side pagination limit issues
+            const worker = await getWorkerById(workerId);
 
             // Token validation
             if (worker?.qrToken && token && worker.qrToken !== token) {
@@ -116,7 +114,7 @@ export default function QRScannerPage() {
         } finally {
             setTimeout(resetScanner, 3000);
         }
-    }, [isProcessing, workers, toast, resetScanner]);
+    }, [isProcessing, toast, resetScanner]);
 
     // Camera + BarcodeDetector loop
     useEffect(() => {
