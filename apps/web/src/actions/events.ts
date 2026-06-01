@@ -160,8 +160,7 @@ export async function removeEventEquipment(id: string, eventId: string) {
 export async function getInventoryItemsForPicker() {
     return prisma.inventoryItem.findMany({
         select: { id: true, name: true, unit: true, quantity: true, category: { select: { name: true } } },
-        where: { isActive: undefined }, // fetch all
-        orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
+orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
         take: 500,
     });
 }
