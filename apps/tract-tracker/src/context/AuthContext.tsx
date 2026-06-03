@@ -131,6 +131,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await AsyncStorage.removeItem('tract_user_id');
         setUser(null);
         setAuthStateInternal(initialState);
+        // On web: replace the entire history stack with /auth so the back button
+        // can never return to an authenticated route after sign-out.
+        if (typeof window !== 'undefined') {
+            window.location.replace('/auth');
+        }
     };
 
     const isDasmarinas =

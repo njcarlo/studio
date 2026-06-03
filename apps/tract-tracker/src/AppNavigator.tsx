@@ -77,14 +77,17 @@ const linking: LinkingOptions<RootStackParamList> = {
 export default function AppNavigator() {
     const { session, isLoading, isTester } = useAuth();
 
-    // On web: if the URL is /auth but we already have a session, replace history with /
     useEffect(() => {
-        if (Platform.OS !== 'web') return;
-        if (!session) return;
-        if (typeof window !== 'undefined' && window.location.pathname === '/auth') {
+        if (typeof window === 'undefined') return;
+        const path = window.location.pathname;
+        if (session && path === '/auth') {
+            // Authenticated but landed on /auth — go to root
             window.history.replaceState(null, '', '/');
+        } else if (!session && !isLoading && path !== '/auth') {
+            // No session on any protected route — hard redirect to /auth
+            window.location.replace('/auth');
         }
-    }, [session]);
+    }, [session, isLoading]);
 
     if (isLoading) {
         return (
