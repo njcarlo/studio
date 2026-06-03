@@ -24,7 +24,7 @@ interface AuthContextType {
 }
 
 // Emails that always bypass the countdown (testers/admins)
-const TESTER_EMAILS = new Set(['njcarlo@gmail.com', 'pacleb@gmail.com']);
+const TESTER_EMAILS = new Set(['njcarlo@gmail.com', 'pacleb@gmail.com', 'pardopreciousjohn@gmail.com']);
 
 const initialState: AuthState = { region: '', subRegion: '', barangay: '', name: '' };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
