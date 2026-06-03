@@ -56,12 +56,13 @@ function MainTabs() {
 }
 
 const linking: LinkingOptions<RootStackParamList> = {
-    prefixes: ['tracttracker://', 'https://tracttracker.app'],
+    prefixes: ['tracttracker://', 'https://tracttracker.app', 'https://tract-tracker.vercel.app'],
     config: {
         screens: {
             Auth: 'auth',
             Countdown: 'countdown',
             Main: {
+                path: '',
                 screens: {
                     Action: 'action',
                     Map: 'map',
