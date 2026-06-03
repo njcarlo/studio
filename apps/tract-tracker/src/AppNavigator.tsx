@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 
 import AuthScreen from './screens/AuthScreen';
 import ActionScreen from './screens/ActionScreen';
@@ -76,6 +76,15 @@ const linking: LinkingOptions<RootStackParamList> = {
 
 export default function AppNavigator() {
     const { session, isLoading, isTester } = useAuth();
+
+    // On web: if the URL is /auth but we already have a session, replace history with /
+    useEffect(() => {
+        if (Platform.OS !== 'web') return;
+        if (!session) return;
+        if (typeof window !== 'undefined' && window.location.pathname === '/auth') {
+            window.history.replaceState(null, '', '/');
+        }
+    }, [session]);
 
     if (isLoading) {
         return (
