@@ -10,11 +10,16 @@ import MapScreen from './screens/MapScreen';
 import AdminDashboardScreen from './screens/AdminDashboardScreen';
 import CountdownScreen from './screens/CountdownScreen';
 import LiveBoardScreen from './screens/LiveBoardScreen';
+import CorrespondentScreen from './screens/CorrespondentScreen';
+import NewsFeedScreen from './screens/NewsFeedScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from './context/AuthContext';
 
 const EVENT_DATE = new Date('2026-06-12T06:00:00+08:00'); // June 12, 6am PHT
 const isEventLive = () => new Date() >= EVENT_DATE;
+
+// Paths that don't require authentication (accessible on monitors/public displays)
+const PUBLIC_PATHS = new Set(['/', '/auth', '/news-feed', '/live-board']);
 
 export type RootStackParamList = {
     Auth: undefined;
@@ -22,18 +27,20 @@ export type RootStackParamList = {
     Main: undefined;
     AdminDashboard: undefined;
     LiveBoard: undefined;
+    NewsFeed: undefined;
 };
 
 export type MainTabParamList = {
     Action: undefined;
     Map: undefined;
+    Correspondent: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
-    const { isDasmarinas } = useAuth();
+    const { isDasmarinas, isCorrespondent } = useAuth();
 
     return (
         <Tab.Navigator
@@ -42,6 +49,7 @@ function MainTabs() {
                     let iconName: keyof typeof Ionicons.glyphMap = 'help';
                     if (route.name === 'Action') iconName = focused ? 'hand-right' : 'hand-right-outline';
                     else if (route.name === 'Map') iconName = focused ? 'map' : 'map-outline';
+                    else if (route.name === 'Correspondent') iconName = focused ? 'camera' : 'camera-outline';
                     return <Ionicons name={iconName} size={size} color={color} />;
                 },
                 tabBarActiveTintColor: '#2f95dc',
@@ -51,6 +59,7 @@ function MainTabs() {
         >
             <Tab.Screen name="Action" component={ActionScreen} />
             {isDasmarinas && <Tab.Screen name="Map" component={MapScreen} />}
+            {isCorrespondent && <Tab.Screen name="Correspondent" component={CorrespondentScreen} />}
         </Tab.Navigator>
     );
 }
@@ -66,10 +75,12 @@ const linking: LinkingOptions<RootStackParamList> = {
                 screens: {
                     Action: 'action',
                     Map: 'map',
+                    Correspondent: 'correspondent',
                 }
             },
             AdminDashboard: 'admin-dashboard',
             LiveBoard: 'live-board',
+            NewsFeed: 'news-feed',
         },
     },
 };
@@ -81,10 +92,8 @@ export default function AppNavigator() {
         if (typeof window === 'undefined') return;
         const path = window.location.pathname;
         if (session && path === '/auth') {
-            // Authenticated but landed on /auth — go to root
             window.history.replaceState(null, '', '/');
-        } else if (!session && !isLoading && path !== '/auth') {
-            // No session on any protected route — hard redirect to /auth
+        } else if (!session && !isLoading && !PUBLIC_PATHS.has(path)) {
             window.location.replace('/auth');
         }
     }, [session, isLoading]);
@@ -109,9 +118,13 @@ export default function AppNavigator() {
                         )}
                         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
                         <Stack.Screen name="LiveBoard" component={LiveBoardScreen} />
+                        <Stack.Screen name="NewsFeed" component={NewsFeedScreen} />
                     </>
                 ) : (
-                    <Stack.Screen name="Auth" component={AuthScreen} />
+                    <>
+                        <Stack.Screen name="Auth" component={AuthScreen} />
+                        <Stack.Screen name="NewsFeed" component={NewsFeedScreen} />
+                    </>
                 )}
             </Stack.Navigator>
         </NavigationContainer>

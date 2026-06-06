@@ -4,7 +4,6 @@ import {
     ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabaseAdmin } from '../supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -12,7 +11,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../AppNavigator';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
-const CACHE_KEY = 'admin_users_cache';
 
 type Tab = 'overview' | 'region' | 'barangay';
 
@@ -24,6 +22,7 @@ interface UserData {
     subRegion?: string;
     barangay?: string;
     tractsGiven: number;
+    isCorrespondent: boolean;
 }
 
 const REGION_LABELS: Record<string, string> = {
@@ -48,13 +47,14 @@ export default function AdminDashboardScreen() {
     const [loading, setLoading] = useState(true);
     const [resetting, setResetting] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [togglingId, setTogglingId] = useState<string | null>(null);
 
     const fetchData = async () => {
         setLoading(true);
         try {
             const { data, error } = await supabaseAdmin
                 .from('tract_users')
-                .select('id, name, email, region, sub_region, barangay, tracts_given');
+                .select('id, name, email, region, sub_region, barangay, tracts_given, is_correspondent');
             if (error) throw error;
             setUsers((data ?? []).map(d => ({
                 id: d.id,
@@ -64,6 +64,7 @@ export default function AdminDashboardScreen() {
                 subRegion: d.sub_region,
                 barangay: d.barangay,
                 tractsGiven: d.tracts_given ?? 0,
+                isCorrespondent: d.is_correspondent ?? false,
             })));
         } catch (e) {
             console.error('fetchData error', e);
@@ -75,7 +76,27 @@ export default function AdminDashboardScreen() {
 
     useEffect(() => { fetchData(); }, []);
 
+    const handleToggleCorrespondent = async (userId: string, current: boolean) => {
+        setTogglingId(userId);
+        try {
+            const { error } = await supabaseAdmin
+                .from('tract_users')
+                .update({ is_correspondent: !current })
+                .eq('id', userId);
+            if (error) throw error;
+            setUsers(prev => prev.map(u =>
+                u.id === userId ? { ...u, isCorrespondent: !current } : u
+            ));
+        } catch (e: any) {
+            if (Platform.OS !== 'web') Alert.alert('Error', e.message || 'Failed to update.');
+            else console.error('Toggle correspondent failed:', e);
+        } finally {
+            setTogglingId(null);
+        }
+    };
+
     const totalTracts = users.reduce((s, u) => s + u.tractsGiven, 0);
+    const correspondentCount = users.filter(u => u.isCorrespondent).length;
 
     const byRegion = users.reduce<Record<string, number>>((acc, u) => {
         const key = u.region || 'Unknown';
@@ -133,14 +154,32 @@ export default function AdminDashboardScreen() {
                         <Ionicons name="arrow-back" size={22} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Admin Dashboard</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('LiveBoard')} style={styles.resetBtn}>
-                        <Ionicons name="tv-outline" size={24} color="#C9A84C" />
-                    </TouchableOpacity>                </View>
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity onPress={() => navigation.navigate('NewsFeed')} style={styles.headerBtn}>
+                            <Ionicons name="newspaper-outline" size={22} color="#C9A84C" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate('LiveBoard')} style={styles.headerBtn}>
+                            <Ionicons name="tv-outline" size={22} color="#C9A84C" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
 
-                {/* Total */}
-                <View style={styles.totalBlock}>
-                    <Text style={styles.totalCount}>{totalTracts.toLocaleString()}</Text>
-                    <Text style={styles.totalLabel}>Total Tracts Given Nationwide</Text>
+                {/* Stats row */}
+                <View style={styles.statsRow}>
+                    <View style={styles.statBlock}>
+                        <Text style={styles.statCount}>{totalTracts.toLocaleString()}</Text>
+                        <Text style={styles.statLabel}>Tracts Given</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statBlock}>
+                        <Text style={[styles.statCount, { color: '#C9A84C' }]}>{correspondentCount}</Text>
+                        <Text style={styles.statLabel}>Correspondents</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statBlock}>
+                        <Text style={styles.statCount}>{users.length}</Text>
+                        <Text style={styles.statLabel}>Total Users</Text>
+                    </View>
                 </View>
 
                 {/* Tabs */}
@@ -165,16 +204,40 @@ export default function AdminDashboardScreen() {
                             {users.sort((a, b) => b.tractsGiven - a.tractsGiven).map((u, i) => (
                                 <View key={u.id} style={[styles.row, i === users.length - 1 && styles.lastRow]}>
                                     <View style={{ flex: 2 }}>
-                                        <Text style={styles.rowName}>{u.name || 'Unknown'}</Text>
+                                        <View style={styles.nameRow}>
+                                            <Text style={styles.rowName}>{u.name || 'Unknown'}</Text>
+                                            {u.isCorrespondent && (
+                                                <View style={styles.correspondentBadge}>
+                                                    <Ionicons name="camera" size={10} color="#fff" />
+                                                </View>
+                                            )}
+                                        </View>
                                         <Text style={styles.rowSub}>{u.email || '—'}</Text>
                                     </View>
                                     <View style={{ flex: 2 }}>
                                         <Text style={styles.rowSub}>{getLocationLabel(u)}</Text>
                                     </View>
-                                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                                    <View style={{ flex: 1, alignItems: 'flex-end', gap: 6 }}>
                                         <View style={[styles.badge, u.tractsGiven === 0 && styles.badgeZero]}>
-                                            <Text style={[styles.badgeText, u.tractsGiven === 0 && styles.badgeTextZero]}>{u.tractsGiven}</Text>
+                                            <Text style={[styles.badgeText, u.tractsGiven === 0 && styles.badgeTextZero]}>
+                                                {u.tractsGiven}
+                                            </Text>
                                         </View>
+                                        <TouchableOpacity
+                                            style={[styles.correspondentToggle, u.isCorrespondent && styles.correspondentToggleActive]}
+                                            onPress={() => handleToggleCorrespondent(u.id, u.isCorrespondent)}
+                                            disabled={togglingId === u.id}
+                                        >
+                                            {togglingId === u.id ? (
+                                                <ActivityIndicator size="small" color={u.isCorrespondent ? '#fff' : '#C9A84C'} />
+                                            ) : (
+                                                <Ionicons
+                                                    name={u.isCorrespondent ? 'camera' : 'camera-outline'}
+                                                    size={14}
+                                                    color={u.isCorrespondent ? '#fff' : '#C9A84C'}
+                                                />
+                                            )}
+                                        </TouchableOpacity>
                                     </View>
                                 </View>
                             ))}
@@ -240,7 +303,6 @@ export default function AdminDashboardScreen() {
                             })}
                         </View>
                     )}
-
                 </ScrollView>
             </SafeAreaView>
 
@@ -277,15 +339,22 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16, paddingVertical: 14,
     },
     backBtn: { padding: 4 },
-    headerTitle: { color: '#fff', fontSize: 18, fontFamily: 'Anton_400Regular' },
-    resetBtn: { padding: 4 },
+    headerTitle: { color: '#fff', fontSize: 18, fontFamily: 'Anton_400Regular', flex: 1, marginLeft: 8 },
+    headerActions: { flexDirection: 'row', gap: 8 },
+    headerBtn: { padding: 4 },
 
-    totalBlock: { alignItems: 'center', paddingVertical: 16 },
-    totalCount: { color: '#C9A84C', fontSize: 56, letterSpacing: -2, fontFamily: 'Anton_400Regular' },
-    totalLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 },
+    statsRow: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        paddingVertical: 12, marginHorizontal: 16,
+        backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, marginBottom: 4,
+    },
+    statBlock: { flex: 1, alignItems: 'center' },
+    statCount: { color: '#fff', fontSize: 28, fontFamily: 'Anton_400Regular', letterSpacing: -1 },
+    statLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 2 },
+    statDivider: { width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.15)' },
 
     tabBar: {
-        flexDirection: 'row', marginHorizontal: 16, marginBottom: 16,
+        flexDirection: 'row', marginHorizontal: 16, marginVertical: 12,
         backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 4,
     },
     tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
@@ -308,12 +377,28 @@ const styles = StyleSheet.create({
     headCell: { fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8 },
     row: {
         flexDirection: 'row', alignItems: 'center',
-        paddingVertical: 14, paddingHorizontal: 16,
+        paddingVertical: 12, paddingHorizontal: 16,
         borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
     },
     lastRow: { borderBottomWidth: 0 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     rowName: { fontSize: 14, color: '#1e293b', marginBottom: 2 },
     rowSub: { fontSize: 12, color: '#94a3b8' },
+
+    correspondentBadge: {
+        backgroundColor: '#C9A84C', width: 18, height: 18, borderRadius: 9,
+        alignItems: 'center', justifyContent: 'center',
+    },
+    correspondentToggle: {
+        width: 30, height: 30, borderRadius: 8,
+        borderWidth: 1.5, borderColor: '#C9A84C',
+        alignItems: 'center', justifyContent: 'center',
+        backgroundColor: 'transparent',
+    },
+    correspondentToggleActive: {
+        backgroundColor: '#C9A84C', borderColor: '#C9A84C',
+    },
+
     badge: { backgroundColor: '#e8f4fd', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
     badgeZero: { backgroundColor: '#f1f5f9' },
     badgeText: { color: '#1d6fa4', fontSize: 13 },
@@ -321,14 +406,6 @@ const styles = StyleSheet.create({
 
     barBg: { height: 4, backgroundColor: '#f1f5f9', borderRadius: 2, marginTop: 6, width: '90%' },
     barFill: { height: 4, backgroundColor: '#C9A84C', borderRadius: 2 },
-
-    resetCta: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: '#e74c3c', borderRadius: 14, paddingVertical: 14,
-        shadowColor: '#e74c3c', shadowOpacity: 0.3, shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 }, elevation: 4,
-    },
-    resetCtaText: { color: '#fff', fontSize: 16 },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
     modalCard: {

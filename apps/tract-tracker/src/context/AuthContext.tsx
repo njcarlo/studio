@@ -15,6 +15,7 @@ interface AuthContextType {
     isDasmarinas: boolean;
     isTester: boolean;
     isAdmin: boolean;
+    isCorrespondent: boolean;
     session: any | null;
     user: any | null;
     isLoading: boolean;
@@ -131,11 +132,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await AsyncStorage.removeItem('tract_user_id');
         setUser(null);
         setAuthStateInternal(initialState);
-        // On web: replace the entire history stack with /auth so the back button
-        // can never return to an authenticated route after sign-out.
-        if (typeof window !== 'undefined') {
-            window.location.replace('/auth');
-        }
     };
 
     const isDasmarinas =
@@ -145,11 +141,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const isTester = user?.is_tester === true || TESTER_EMAILS.has(user?.email?.toLowerCase() ?? '');
     const isAdmin = user?.is_admin === true || TESTER_EMAILS.has(user?.email?.toLowerCase() ?? '');
+    const isCorrespondent = user?.is_correspondent === true || isAdmin;
     const session = user ? { user } : null;
 
     return (
         <AuthContext.Provider value={{
-            authState, setAuthState, isDasmarinas, isTester, isAdmin,
+            authState, setAuthState, isDasmarinas, isTester, isAdmin, isCorrespondent,
             session, user, isLoading, signIn, signUp, signOut,
         }}>
             {children}
