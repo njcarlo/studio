@@ -94,7 +94,7 @@ export default function AppNavigator() {
         if (session && path === '/auth') {
             window.history.replaceState(null, '', '/');
         } else if (!session && !isLoading && !PUBLIC_PATHS.has(path)) {
-            window.location.replace('/auth');
+            window.location.replace('/');
         }
     }, [session, isLoading]);
 
