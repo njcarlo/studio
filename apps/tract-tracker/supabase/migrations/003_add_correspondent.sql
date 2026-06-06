@@ -25,10 +25,25 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('correspondent-photos', 'correspondent-photos', true)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY IF NOT EXISTS "Public read correspondent photos"
-    ON storage.objects FOR SELECT
-    USING (bucket_id = 'correspondent-photos');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'storage' AND tablename = 'objects'
+        AND policyname = 'Public read correspondent photos'
+    ) THEN
+        CREATE POLICY "Public read correspondent photos"
+            ON storage.objects FOR SELECT
+            USING (bucket_id = 'correspondent-photos');
+    END IF;
 
-CREATE POLICY IF NOT EXISTS "Service role insert correspondent photos"
-    ON storage.objects FOR INSERT
-    WITH CHECK (bucket_id = 'correspondent-photos');
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'storage' AND tablename = 'objects'
+        AND policyname = 'Service role insert correspondent photos'
+    ) THEN
+        CREATE POLICY "Service role insert correspondent photos"
+            ON storage.objects FOR INSERT
+            WITH CHECK (bucket_id = 'correspondent-photos');
+    END IF;
+END $$;
