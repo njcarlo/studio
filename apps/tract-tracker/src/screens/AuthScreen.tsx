@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     ScrollView, Modal, FlatList, ImageBackground, Alert,
@@ -6,6 +6,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
 import { supabaseAdmin } from '../supabase';
 
@@ -71,7 +74,14 @@ export default function AuthScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [isForgotLoading, setIsForgotLoading] = useState(false);
 
-    const { signIn, signUp } = useAuth();
+    const { signIn, signUp, session } = useAuth();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+    useEffect(() => {
+        if (session) {
+            navigation.replace('Main');
+        }
+    }, [session]);
 
     const filteredBarangays = BARANGAYS.filter(b =>
         b.toLowerCase().includes(searchQuery.toLowerCase())
