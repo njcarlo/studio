@@ -90,13 +90,12 @@ export default function AppNavigator() {
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        const path = window.location.pathname;
-        if (session && path === '/auth') {
+        // Only clean up the URL bar when a logged-in user lands on /auth via direct URL.
+        // No hard redirects — React Navigation's conditional stack handles auth gating.
+        if (session && window.location.pathname === '/auth') {
             window.history.replaceState(null, '', '/');
-        } else if (!session && !isLoading && !PUBLIC_PATHS.has(path)) {
-            window.location.replace('/');
         }
-    }, [session, isLoading]);
+    }, [session]);
 
     if (isLoading) {
         return (
