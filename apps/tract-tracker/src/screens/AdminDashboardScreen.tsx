@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Alert, ImageBackground, Modal, Platform,
-    ScrollView, StyleSheet, Text, TouchableOpacity, View,
+    ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabaseAdmin } from '../supabase';
@@ -12,7 +12,7 @@ import { RootStackParamList } from '../AppNavigator';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
-type Tab = 'overview' | 'region' | 'barangay';
+type Tab = 'overview' | 'region' | 'barangay' | 'reporters';
 
 interface UserData {
     id: string;
@@ -45,9 +45,9 @@ export default function AdminDashboardScreen() {
     const [tab, setTab] = useState<Tab>('overview');
     const [users, setUsers] = useState<UserData[]>([]);
     const [loading, setLoading] = useState(true);
-    const [resetting, setResetting] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [togglingId, setTogglingId] = useState<string | null>(null);
+    const [reporterSearch, setReporterSearch] = useState('');
 
     const fetchData = async () => {
         setLoading(true);
@@ -96,7 +96,16 @@ export default function AdminDashboardScreen() {
     };
 
     const totalTracts = users.reduce((s, u) => s + u.tractsGiven, 0);
-    const correspondentCount = users.filter(u => u.isCorrespondent).length;
+    const activeReporters = users.filter(u => u.isCorrespondent);
+    const nonReporters = users.filter(u => !u.isCorrespondent);
+
+    const filteredNonReporters = reporterSearch.trim()
+        ? nonReporters.filter(u =>
+            (u.name || '').toLowerCase().includes(reporterSearch.toLowerCase()) ||
+            (u.email || '').toLowerCase().includes(reporterSearch.toLowerCase()) ||
+            (u.region || '').toLowerCase().includes(reporterSearch.toLowerCase())
+        )
+        : nonReporters;
 
     const byRegion = users.reduce<Record<string, number>>((acc, u) => {
         const key = u.region || 'Unknown';
@@ -114,7 +123,6 @@ export default function AdminDashboardScreen() {
 
     const handleReset = async () => {
         setShowResetConfirm(false);
-        setResetting(true);
         try {
             const { error } = await supabaseAdmin
                 .from('tract_users')
@@ -125,12 +133,17 @@ export default function AdminDashboardScreen() {
         } catch (err) {
             if (Platform.OS !== 'web') Alert.alert('Error', 'Failed to reset.');
             else console.error('Reset failed:', err);
-        } finally {
-            setResetting(false);
         }
     };
 
     const goBack = () => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Main');
+
+    const TABS: { key: Tab; label: string }[] = [
+        { key: 'overview', label: 'Users' },
+        { key: 'region', label: 'Region' },
+        { key: 'barangay', label: 'Barangay' },
+        { key: 'reporters', label: 'Reporters' },
+    ];
 
     if (loading) {
         return (
@@ -148,6 +161,7 @@ export default function AdminDashboardScreen() {
         <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
             <View style={styles.overlay} />
             <SafeAreaView style={styles.safe}>
+
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={goBack} style={styles.backBtn}>
@@ -164,7 +178,7 @@ export default function AdminDashboardScreen() {
                     </View>
                 </View>
 
-                {/* Stats row */}
+                {/* Stats */}
                 <View style={styles.statsRow}>
                     <View style={styles.statBlock}>
                         <Text style={styles.statCount}>{totalTracts.toLocaleString()}</Text>
@@ -172,8 +186,8 @@ export default function AdminDashboardScreen() {
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statBlock}>
-                        <Text style={[styles.statCount, { color: '#C9A84C' }]}>{correspondentCount}</Text>
-                        <Text style={styles.statLabel}>Correspondents</Text>
+                        <Text style={[styles.statCount, { color: '#C9A84C' }]}>{activeReporters.length}</Text>
+                        <Text style={styles.statLabel}>Reporters</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statBlock}>
@@ -184,16 +198,30 @@ export default function AdminDashboardScreen() {
 
                 {/* Tabs */}
                 <View style={styles.tabBar}>
-                    {(['overview', 'region', 'barangay'] as Tab[]).map(t => (
-                        <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
-                            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                                {t === 'overview' ? 'Users' : t === 'region' ? 'By Region' : 'By Barangay'}
+                    {TABS.map(t => (
+                        <TouchableOpacity
+                            key={t.key}
+                            style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}
+                            onPress={() => setTab(t.key)}
+                        >
+                            {t.key === 'reporters' && (
+                                <Ionicons
+                                    name="camera"
+                                    size={11}
+                                    color={tab === t.key ? '#1a1a2e' : 'rgba(255,255,255,0.6)'}
+                                    style={{ marginBottom: 1 }}
+                                />
+                            )}
+                            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>
+                                {t.label}
                             </Text>
                         </TouchableOpacity>
                     ))}
                 </View>
 
-                <ScrollView contentContainerStyle={styles.scroll}>
+                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+
+                    {/* ── USERS OVERVIEW ── */}
                     {tab === 'overview' && (
                         <View style={styles.card}>
                             <View style={styles.tableHead}>
@@ -201,8 +229,8 @@ export default function AdminDashboardScreen() {
                                 <Text style={[styles.headCell, { flex: 2 }]}>Location</Text>
                                 <Text style={[styles.headCell, { flex: 1, textAlign: 'right' }]}>Tracts</Text>
                             </View>
-                            {users.sort((a, b) => b.tractsGiven - a.tractsGiven).map((u, i) => (
-                                <View key={u.id} style={[styles.row, i === users.length - 1 && styles.lastRow]}>
+                            {[...users].sort((a, b) => b.tractsGiven - a.tractsGiven).map((u, i, arr) => (
+                                <View key={u.id} style={[styles.row, i === arr.length - 1 && styles.lastRow]}>
                                     <View style={{ flex: 2 }}>
                                         <View style={styles.nameRow}>
                                             <Text style={styles.rowName}>{u.name || 'Unknown'}</Text>
@@ -217,33 +245,19 @@ export default function AdminDashboardScreen() {
                                     <View style={{ flex: 2 }}>
                                         <Text style={styles.rowSub}>{getLocationLabel(u)}</Text>
                                     </View>
-                                    <View style={{ flex: 1, alignItems: 'flex-end', gap: 6 }}>
+                                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
                                         <View style={[styles.badge, u.tractsGiven === 0 && styles.badgeZero]}>
                                             <Text style={[styles.badgeText, u.tractsGiven === 0 && styles.badgeTextZero]}>
                                                 {u.tractsGiven}
                                             </Text>
                                         </View>
-                                        <TouchableOpacity
-                                            style={[styles.correspondentToggle, u.isCorrespondent && styles.correspondentToggleActive]}
-                                            onPress={() => handleToggleCorrespondent(u.id, u.isCorrespondent)}
-                                            disabled={togglingId === u.id}
-                                        >
-                                            {togglingId === u.id ? (
-                                                <ActivityIndicator size="small" color={u.isCorrespondent ? '#fff' : '#C9A84C'} />
-                                            ) : (
-                                                <Ionicons
-                                                    name={u.isCorrespondent ? 'camera' : 'camera-outline'}
-                                                    size={14}
-                                                    color={u.isCorrespondent ? '#fff' : '#C9A84C'}
-                                                />
-                                            )}
-                                        </TouchableOpacity>
                                     </View>
                                 </View>
                             ))}
                         </View>
                     )}
 
+                    {/* ── BY REGION ── */}
                     {tab === 'region' && (
                         <View style={styles.card}>
                             <View style={styles.tableHead}>
@@ -274,6 +288,7 @@ export default function AdminDashboardScreen() {
                         </View>
                     )}
 
+                    {/* ── BY BARANGAY ── */}
                     {tab === 'barangay' && (
                         <View style={styles.card}>
                             <View style={styles.tableHead}>
@@ -302,6 +317,126 @@ export default function AdminDashboardScreen() {
                                 );
                             })}
                         </View>
+                    )}
+
+                    {/* ── REPORTERS MANAGEMENT ── */}
+                    {tab === 'reporters' && (
+                        <>
+                            {/* Active reporters section */}
+                            <View style={styles.sectionHeader}>
+                                <View style={styles.sectionHeaderLeft}>
+                                    <Ionicons name="camera" size={16} color="#C9A84C" />
+                                    <Text style={styles.sectionTitle}>Active Reporters</Text>
+                                </View>
+                                <View style={styles.sectionCount}>
+                                    <Text style={styles.sectionCountText}>{activeReporters.length}</Text>
+                                </View>
+                            </View>
+
+                            {activeReporters.length === 0 ? (
+                                <View style={styles.emptySection}>
+                                    <Text style={styles.emptySectionText}>No reporters assigned yet.</Text>
+                                </View>
+                            ) : (
+                                <View style={styles.card}>
+                                    {activeReporters.map((u, i) => (
+                                        <View key={u.id} style={[styles.reporterRow, i === activeReporters.length - 1 && styles.lastRow]}>
+                                            <View style={styles.reporterAvatar}>
+                                                <Text style={styles.reporterAvatarText}>
+                                                    {(u.name || u.email || '?')[0].toUpperCase()}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.reporterInfo}>
+                                                <Text style={styles.reporterName}>{u.name || 'Unknown'}</Text>
+                                                <Text style={styles.reporterMeta}>
+                                                    {u.email || '—'} · {REGION_LABELS[u.region || ''] || u.region || '—'}
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.removeBtn}
+                                                onPress={() => handleToggleCorrespondent(u.id, true)}
+                                                disabled={togglingId === u.id}
+                                            >
+                                                {togglingId === u.id ? (
+                                                    <ActivityIndicator size="small" color="#e74c3c" />
+                                                ) : (
+                                                    <Text style={styles.removeBtnText}>Remove</Text>
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Add reporter section */}
+                            <View style={[styles.sectionHeader, { marginTop: 8 }]}>
+                                <View style={styles.sectionHeaderLeft}>
+                                    <Ionicons name="person-add-outline" size={16} color="rgba(255,255,255,0.7)" />
+                                    <Text style={[styles.sectionTitle, { color: 'rgba(255,255,255,0.7)' }]}>
+                                        Add Reporter
+                                    </Text>
+                                </View>
+                                <Text style={styles.sectionCountText}>{nonReporters.length} users</Text>
+                            </View>
+
+                            {/* Search */}
+                            <View style={styles.searchBar}>
+                                <Ionicons name="search-outline" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+                                <TextInput
+                                    style={styles.searchInput}
+                                    placeholder="Search by name, email, or region…"
+                                    placeholderTextColor="#94a3b8"
+                                    value={reporterSearch}
+                                    onChangeText={setReporterSearch}
+                                    autoCapitalize="none"
+                                />
+                                {reporterSearch.length > 0 && (
+                                    <TouchableOpacity onPress={() => setReporterSearch('')}>
+                                        <Ionicons name="close-circle" size={16} color="#94a3b8" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {filteredNonReporters.length === 0 ? (
+                                <View style={styles.emptySection}>
+                                    <Text style={styles.emptySectionText}>
+                                        {reporterSearch ? 'No users match your search.' : 'All users are already reporters.'}
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.card}>
+                                    {filteredNonReporters.map((u, i) => (
+                                        <View key={u.id} style={[styles.reporterRow, i === filteredNonReporters.length - 1 && styles.lastRow]}>
+                                            <View style={[styles.reporterAvatar, styles.reporterAvatarMuted]}>
+                                                <Text style={[styles.reporterAvatarText, { color: '#64748b' }]}>
+                                                    {(u.name || u.email || '?')[0].toUpperCase()}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.reporterInfo}>
+                                                <Text style={styles.reporterName}>{u.name || 'Unknown'}</Text>
+                                                <Text style={styles.reporterMeta}>
+                                                    {u.email || '—'} · {REGION_LABELS[u.region || ''] || u.region || '—'}
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.addBtn}
+                                                onPress={() => handleToggleCorrespondent(u.id, false)}
+                                                disabled={togglingId === u.id}
+                                            >
+                                                {togglingId === u.id ? (
+                                                    <ActivityIndicator size="small" color="#1a1a2e" />
+                                                ) : (
+                                                    <>
+                                                        <Ionicons name="camera-outline" size={14} color="#1a1a2e" style={{ marginRight: 4 }} />
+                                                        <Text style={styles.addBtnText}>Add</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                        </>
                     )}
                 </ScrollView>
             </SafeAreaView>
@@ -357,10 +492,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row', marginHorizontal: 16, marginVertical: 12,
         backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 4,
     },
-    tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+    tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10, justifyContent: 'center' },
     tabBtnActive: { backgroundColor: '#C9A84C' },
-    tabText: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
-    tabTextActive: { color: '#1a1a2e' },
+    tabText: { color: 'rgba(255,255,255,0.6)', fontSize: 11 },
+    tabTextActive: { color: '#1a1a2e', fontFamily: 'Anton_400Regular' },
 
     scroll: { paddingHorizontal: 16, paddingBottom: 40 },
 
@@ -389,15 +524,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#C9A84C', width: 18, height: 18, borderRadius: 9,
         alignItems: 'center', justifyContent: 'center',
     },
-    correspondentToggle: {
-        width: 30, height: 30, borderRadius: 8,
-        borderWidth: 1.5, borderColor: '#C9A84C',
-        alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'transparent',
-    },
-    correspondentToggleActive: {
-        backgroundColor: '#C9A84C', borderColor: '#C9A84C',
-    },
 
     badge: { backgroundColor: '#e8f4fd', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
     badgeZero: { backgroundColor: '#f1f5f9' },
@@ -406,6 +532,66 @@ const styles = StyleSheet.create({
 
     barBg: { height: 4, backgroundColor: '#f1f5f9', borderRadius: 2, marginTop: 6, width: '90%' },
     barFill: { height: 4, backgroundColor: '#C9A84C', borderRadius: 2 },
+
+    // Reporter tab
+    sectionHeader: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    sectionTitle: { color: '#C9A84C', fontSize: 13, fontFamily: 'Anton_400Regular', letterSpacing: 0.5 },
+    sectionCount: {
+        backgroundColor: '#C9A84C', borderRadius: 10,
+        paddingHorizontal: 10, paddingVertical: 3,
+    },
+    sectionCountText: { color: '#1a1a2e', fontSize: 12, fontFamily: 'Anton_400Regular' },
+
+    emptySection: {
+        backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14,
+        paddingVertical: 20, alignItems: 'center', marginBottom: 20,
+    },
+    emptySectionText: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
+
+    reporterRow: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingVertical: 14, paddingHorizontal: 16,
+        borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
+        gap: 12,
+    },
+    reporterAvatar: {
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: 'rgba(201,168,76,0.15)',
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1.5, borderColor: '#C9A84C',
+    },
+    reporterAvatarMuted: {
+        backgroundColor: '#f1f5f9', borderColor: '#e2e8f0',
+    },
+    reporterAvatarText: { fontSize: 16, color: '#C9A84C', fontFamily: 'Anton_400Regular' },
+    reporterInfo: { flex: 1 },
+    reporterName: { fontSize: 14, color: '#1e293b', marginBottom: 2 },
+    reporterMeta: { fontSize: 11, color: '#94a3b8' },
+
+    addBtn: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: '#C9A84C', paddingHorizontal: 14, paddingVertical: 8,
+        borderRadius: 10,
+    },
+    addBtnText: { color: '#1a1a2e', fontSize: 13, fontFamily: 'Anton_400Regular' },
+
+    removeBtn: {
+        paddingHorizontal: 14, paddingVertical: 8,
+        borderRadius: 10, borderWidth: 1.5, borderColor: '#fca5a5',
+    },
+    removeBtnText: { color: '#e74c3c', fontSize: 13 },
+
+    searchBar: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: '#fff', borderRadius: 12,
+        paddingHorizontal: 14, paddingVertical: 10,
+        marginBottom: 12,
+    },
+    searchInput: { flex: 1, fontSize: 14, color: '#1e293b' },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
     modalCard: {
