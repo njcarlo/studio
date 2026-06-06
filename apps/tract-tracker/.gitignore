@@ -35,6 +35,10 @@ yarn-error.*
 .env.*
 !.env.example
 
+# secrets setup scripts (contain private keys — never commit)
+.secrets-setup.ps1
+*.secrets.ps1
+
 # typescript
 *.tsbuildinfo
 

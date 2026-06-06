@@ -59,7 +59,7 @@ function MainTabs() {
         >
             <Tab.Screen name="Action" component={ActionScreen} />
             {isDasmarinas && <Tab.Screen name="Map" component={MapScreen} />}
-            {isCorrespondent && <Tab.Screen name="Correspondent" component={CorrespondentScreen} />}
+            <Tab.Screen name="Correspondent" component={CorrespondentScreen} options={{ tabBarLabel: 'Photos' }} />
         </Tab.Navigator>
     );
 }

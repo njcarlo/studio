@@ -26,6 +26,7 @@ interface AuthContextType {
 
 // Emails that always bypass the countdown (testers/admins)
 const TESTER_EMAILS = new Set(['njcarlo@gmail.com', 'pacleb@gmail.com', 'pardopreciousjohn@gmail.com']);
+const ADMIN_EMAILS  = new Set(['njcarlo@gmail.com', 'cogtv@gmail.com']);
 
 const initialState: AuthState = { region: '', subRegion: '', barangay: '', name: '' };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -140,7 +141,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         authState.subRegion.toLowerCase() === 'dasmariñas';
 
     const isTester = user?.is_tester === true || TESTER_EMAILS.has(user?.email?.toLowerCase() ?? '');
-    const isAdmin = user?.is_admin === true || TESTER_EMAILS.has(user?.email?.toLowerCase() ?? '');
+    const isAdmin = user?.is_admin === true || ADMIN_EMAILS.has(user?.email?.toLowerCase() ?? '');
     const isCorrespondent = user?.is_correspondent === true || isAdmin;
     const session = user ? { user } : null;
 
