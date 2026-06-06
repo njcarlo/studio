@@ -47,24 +47,25 @@ function useLayout(width: number, height: number) {
     const isMonitor = width >= 1024;
     const isTablet  = width >= 640;
 
-    // Hero slideshow takes a fixed slice of the viewport
-    const heroH = Math.min(Math.floor(height * (isMonitor ? 0.58 : isTablet ? 0.52 : 0.46)), 640);
+    // Hero: max 800px wide and centered, 4:3 on mobile, 16:9 on wide screens
+    const heroMaxW   = Math.min(width, isMonitor ? 800 : width);
+    const heroAspect = isTablet ? 16 / 9 : 4 / 3;
 
-    // Cards are centered at max 600px (Facebook-like) on wide screens
-    const cardMaxW = isMonitor ? 620 : isTablet ? 520 : undefined;
+    // Cards are a single column, max 560px (close to Facebook's ~500px) on wide screens
+    const cardMaxW = isMonitor ? 560 : isTablet ? 500 : undefined;
 
     // Avatar and font sizes scale for readability on monitors
-    const avatarSize   = isMonitor ? 52 : 40;
-    const nameFont     = isMonitor ? 18 : 15;
-    const captionFont  = isMonitor ? 17 : 14;
-    const tagFont      = isMonitor ? 14 : 12;
+    const avatarSize   = isMonitor ? 48 : 40;
+    const nameFont     = isMonitor ? 17 : 15;
+    const captionFont  = isMonitor ? 16 : 14;
+    const tagFont      = isMonitor ? 13 : 12;
     const metaFont     = isMonitor ? 13 : 11;
-    const heroCapFont  = isMonitor ? 36 : isTablet ? 26 : 20;
-    const heroMetaFont = isMonitor ? 20 : isTablet ? 15 : 13;
-    const thumbSize    = isMonitor ? 90 : isTablet ? 76 : 64;
+    const heroCapFont  = isMonitor ? 28 : isTablet ? 22 : 18;
+    const heroMetaFont = isMonitor ? 16 : isTablet ? 14 : 12;
+    const thumbSize    = isMonitor ? 80 : isTablet ? 68 : 58;
 
     return {
-        heroH, cardMaxW, avatarSize, nameFont, captionFont, tagFont, metaFont,
+        heroMaxW, heroAspect, cardMaxW, avatarSize, nameFont, captionFont, tagFont, metaFont,
         heroCapFont, heroMetaFont, thumbSize, isMonitor, isTablet,
     };
 }
@@ -183,8 +184,6 @@ export default function NewsFeedScreen() {
     const goBack = () => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Main');
     const heroPost = posts[heroIdx] ?? null;
 
-    // Width of card content area (respects max-width centering)
-    const feedCardW = layout.cardMaxW ?? width;
     const cardHPad = layout.isTablet ? 16 : 0;
 
     return (
@@ -232,7 +231,7 @@ export default function NewsFeedScreen() {
 
                         {/* ── Hero slideshow ── */}
                         {heroPost && (
-                            <View style={[styles.heroWrap, { height: layout.heroH }]}>
+                            <View style={[styles.heroWrap, { width: layout.heroMaxW, aspectRatio: layout.heroAspect }]}>
                                 <Animated.Image
                                     source={{ uri: heroPost.image_url }}
                                     style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}
@@ -339,10 +338,10 @@ export default function NewsFeedScreen() {
                                             )}
                                         </View>
 
-                                        {/* Photo — 4:3 aspect ratio */}
+                                        {/* Photo — square (1:1) like Facebook default */}
                                         <Image
                                             source={{ uri: post.image_url }}
-                                            style={[styles.cardImage, { aspectRatio: 4 / 3 }]}
+                                            style={[styles.cardImage, { aspectRatio: 1 }]}
                                             resizeMode="cover"
                                         />
 
@@ -404,7 +403,7 @@ const styles = StyleSheet.create({
     countPillLabel: { color: '#1a1a2e', letterSpacing: 0.5 },
 
     // ── Hero ──
-    heroWrap: { position: 'relative', overflow: 'hidden' },
+    heroWrap: { position: 'relative', overflow: 'hidden', alignSelf: 'center', borderRadius: 12, marginVertical: 8 },
     heroGradient: {
         position: 'absolute', left: 0, right: 0, bottom: 0, height: '65%',
         background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.95) 100%)',
@@ -432,7 +431,7 @@ const styles = StyleSheet.create({
     thumbNewDot: { position: 'absolute', top: 4, right: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#22c55e', borderWidth: 1.5, borderColor: '#fff' },
 
     // ── Feed ──
-    feed: { paddingTop: 16 },
+    feed: { paddingTop: 16, flexDirection: 'column' },
     feedLabel: { color: 'rgba(201,168,76,0.7)', letterSpacing: 1.4, marginBottom: 12, paddingHorizontal: 16 },
 
     // Post card — Facebook-style
