@@ -14,7 +14,7 @@ import { useAuth } from '../context/AuthContext';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 const REFRESH_INTERVAL = 30_000;
-const SLIDE_INTERVAL = 9_000;
+const SLIDE_INTERVAL  = 9_000;
 
 interface Post {
     id: string;
@@ -35,7 +35,6 @@ function isNew(iso: string) {
     return Date.now() - new Date(iso).getTime() < 5 * 60 * 1000;
 }
 
-// Split caption from auto-appended hashtags for nicer display
 function splitCaption(text: string) {
     const lines = text.split('\n');
     const main = lines.filter(l => !l.trim().startsWith('#')).join('\n').trim();
@@ -43,29 +42,22 @@ function splitCaption(text: string) {
     return { main, tags };
 }
 
-function useLayout(width: number, height: number) {
+function useLayout(width: number, _height: number) {
     const isMonitor = width >= 1024;
     const isTablet  = width >= 640;
 
-    // Hero: max 800px wide and centered, 4:3 on mobile, 16:9 on wide screens
-    const heroMaxW   = Math.min(width, isMonitor ? 800 : width);
-    const heroAspect = isTablet ? 16 / 9 : 4 / 3;
-
-    // Cards are a single column, max 560px (close to Facebook's ~500px) on wide screens
-    const cardMaxW = isMonitor ? 560 : isTablet ? 500 : undefined;
-
-    // Avatar and font sizes scale for readability on monitors
+    const cardMaxW     = isMonitor ? 560 : isTablet ? 500 : undefined;
     const avatarSize   = isMonitor ? 48 : 40;
     const nameFont     = isMonitor ? 17 : 15;
     const captionFont  = isMonitor ? 16 : 14;
     const tagFont      = isMonitor ? 13 : 12;
     const metaFont     = isMonitor ? 13 : 11;
-    const heroCapFont  = isMonitor ? 28 : isTablet ? 22 : 18;
-    const heroMetaFont = isMonitor ? 16 : isTablet ? 14 : 12;
+    const heroCapFont  = isMonitor ? 42 : isTablet ? 32 : 24;
+    const heroMetaFont = isMonitor ? 22 : isTablet ? 17 : 14;
     const thumbSize    = isMonitor ? 80 : isTablet ? 68 : 58;
 
     return {
-        heroMaxW, heroAspect, cardMaxW, avatarSize, nameFont, captionFont, tagFont, metaFont,
+        cardMaxW, avatarSize, nameFont, captionFont, tagFont, metaFont,
         heroCapFont, heroMetaFont, thumbSize, isMonitor, isTablet,
     };
 }
@@ -76,16 +68,17 @@ export default function NewsFeedScreen() {
     const layout = useLayout(width, height);
     const { isAdmin } = useAuth();
 
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [heroIdx, setHeroIdx] = useState(0);
+    const [posts, setPosts]           = useState<Post[]>([]);
+    const [loading, setLoading]       = useState(true);
+    const [heroIdx, setHeroIdx]       = useState(0);
     const [lastUpdated, setLastUpdated] = useState('');
+    const [viewMode, setViewMode]     = useState<'slideshow' | 'feed'>('slideshow');
 
-    const heroIdxRef    = useRef(0);
-    const postCountRef  = useRef(0);
-    const slideTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
-    const filmstripRef  = useRef<ScrollView>(null);
-    const fadeAnim      = useRef(new Animated.Value(1)).current;
+    const heroIdxRef   = useRef(0);
+    const postCountRef = useRef(0);
+    const slideTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
+    const filmstripRef = useRef<ScrollView>(null);
+    const fadeAnim     = useRef(new Animated.Value(1)).current;
 
     const fetchPosts = useCallback(async () => {
         try {
@@ -117,8 +110,7 @@ export default function NewsFeedScreen() {
                 setHeroIdx(idx);
                 Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
             });
-        const gap = 8;
-        const itemW = layout.thumbSize + gap;
+        const itemW = layout.thumbSize + 8;
         filmstripRef.current?.scrollTo({ x: Math.max(0, idx * itemW - width / 2 + itemW / 2), animated: true });
     }, [fadeAnim, layout.thumbSize, width]);
 
@@ -181,10 +173,31 @@ export default function NewsFeedScreen() {
         );
     }, []);
 
-    const goBack = () => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Main');
+    const goBack  = () => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Main');
     const heroPost = posts[heroIdx] ?? null;
-
     const cardHPad = layout.isTablet ? 16 : 0;
+
+    // Shared filmstrip — rendered in both modes; ref is valid whichever is mounted
+    const FilmstripBar = posts.length > 1 ? (
+        <View style={styles.filmstripWrap}>
+            <ScrollView ref={filmstripRef} horizontal showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.filmstrip, { paddingHorizontal: layout.isTablet ? 20 : 10 }]}>
+                {posts.map((post, i) => (
+                    <TouchableOpacity
+                        key={post.id}
+                        style={[styles.thumb, {
+                            width: layout.thumbSize, height: layout.thumbSize,
+                            borderColor: i === heroIdx ? '#C9A84C' : 'rgba(255,255,255,0.1)',
+                        }]}
+                        onPress={() => handleThumbPress(i)} activeOpacity={0.75}
+                    >
+                        <Image source={{ uri: post.image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                        {isNew(post.created_at) && <View style={styles.thumbNewDot} />}
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+        </View>
+    ) : null;
 
     return (
         <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
@@ -207,6 +220,24 @@ export default function NewsFeedScreen() {
                             </Text>
                         </View>
                     </View>
+
+                    {/* Slideshow ↔ Feed toggle */}
+                    {posts.length > 0 && (
+                        <TouchableOpacity
+                            style={styles.viewToggleBtn}
+                            onPress={() => setViewMode(m => m === 'slideshow' ? 'feed' : 'slideshow')}
+                        >
+                            <Ionicons
+                                name={viewMode === 'slideshow' ? 'list' : 'play-circle'}
+                                size={layout.isMonitor ? 20 : 17}
+                                color="#C9A84C"
+                            />
+                            <Text style={[styles.viewToggleText, { fontSize: layout.isMonitor ? 13 : 11 }]}>
+                                {viewMode === 'slideshow' ? 'Feed' : 'Slideshow'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+
                     <View style={styles.countPill}>
                         <Text style={[styles.countPillNum, { fontSize: layout.isMonitor ? 22 : 16 }]}>{posts.length}</Text>
                         <Text style={[styles.countPillLabel, { fontSize: layout.isMonitor ? 11 : 9 }]}>posts</Text>
@@ -226,42 +257,122 @@ export default function NewsFeedScreen() {
                             Correspondents' field photos will appear here.
                         </Text>
                     </View>
-                ) : (
-                    <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollArea}>
 
-                        {/* ── Hero slideshow ── */}
+                ) : viewMode === 'slideshow' ? (
+
+                    /* ══════════════════ FULL-SCREEN SLIDESHOW ══════════════════ */
+                    <View style={styles.slideshowFull}>
                         {heroPost && (
-                            <View style={[styles.heroWrap, { width: layout.heroMaxW, aspectRatio: layout.heroAspect }]}>
+                            <>
+                                {/* Full-bleed image */}
                                 <Animated.Image
                                     source={{ uri: heroPost.image_url }}
                                     style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}
                                     resizeMode="cover"
                                 />
-                                <View style={styles.heroGradient as any} />
 
+                                {/* Gradient overlays */}
+                                <View style={styles.slideshowTopGrad as any} />
+                                <View style={styles.slideshowBottomGrad as any} />
+
+                                {/* Badges */}
                                 {isNew(heroPost.created_at) && (
                                     <View style={styles.newBadge}>
-                                        <Text style={[styles.newBadgeText, { fontSize: layout.isMonitor ? 13 : 10 }]}>JUST IN</Text>
+                                        <Text style={[styles.newBadgeText, { fontSize: layout.isMonitor ? 14 : 11 }]}>JUST IN</Text>
                                     </View>
                                 )}
-
                                 {isAdmin && (
                                     <TouchableOpacity style={styles.heroDeleteBtn} onPress={() => deletePost(heroPost)}>
                                         <Ionicons name="trash-outline" size={layout.isMonitor ? 22 : 18} color="#fff" />
                                     </TouchableOpacity>
                                 )}
 
+                                {/* Left / right nav */}
                                 {posts.length > 1 && (
                                     <>
-                                        <TouchableOpacity style={[styles.navArrow, styles.navLeft]} onPress={() => handleThumbPress((heroIdx - 1 + posts.length) % posts.length)}>
+                                        <TouchableOpacity style={[styles.navArrow, styles.navLeft]}
+                                            onPress={() => handleThumbPress((heroIdx - 1 + posts.length) % posts.length)}>
+                                            <Ionicons name="chevron-back" size={layout.isMonitor ? 64 : 40} color="rgba(255,255,255,0.9)" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={[styles.navArrow, styles.navRight]}
+                                            onPress={() => handleThumbPress((heroIdx + 1) % posts.length)}>
+                                            <Ionicons name="chevron-forward" size={layout.isMonitor ? 64 : 40} color="rgba(255,255,255,0.9)" />
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+                            </>
+                        )}
+
+                        {/* Spacer pushes caption + filmstrip to bottom */}
+                        <View style={{ flex: 1 }} />
+
+                        {/* Caption overlay */}
+                        {heroPost && (
+                            <View style={[styles.slideshowInfo, { paddingHorizontal: layout.isMonitor ? 60 : 20 }]}>
+                                {(() => { const { main } = splitCaption(heroPost.caption); return main ? (
+                                    <Text style={[styles.heroCaption, { fontSize: layout.heroCapFont, lineHeight: layout.heroCapFont * 1.25 }]} numberOfLines={3}>
+                                        {main}
+                                    </Text>
+                                ) : null; })()}
+                                <View style={styles.heroMeta}>
+                                    <Ionicons name="person-circle" size={layout.heroMetaFont + 10} color="#C9A84C" />
+                                    <Text style={[styles.heroReporter, { fontSize: layout.heroMetaFont }]}>{heroPost.user_name}</Text>
+                                    {heroPost.region ? <Text style={[styles.heroRegion, { fontSize: layout.heroMetaFont }]}>· {heroPost.region}</Text> : null}
+                                    <Text style={[styles.heroTime, { fontSize: layout.metaFont }]}>· {formatTime(heroPost.created_at)}</Text>
+                                </View>
+                                {posts.length > 1 && (
+                                    <View style={styles.dots}>
+                                        {posts.slice(0, 20).map((_, i) => (
+                                            <TouchableOpacity key={i} style={[styles.dot, i === heroIdx && styles.dotActive]} onPress={() => handleThumbPress(i)} />
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Filmstrip pinned at very bottom */}
+                        {FilmstripBar}
+                    </View>
+
+                ) : (
+
+                    /* ══════════════════ NEWS FEED ══════════════════ */
+                    <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollArea}>
+
+                        {/* Mini hero card */}
+                        {heroPost && (
+                            <View style={[styles.heroWrap, {
+                                width: Math.min(width, layout.isMonitor ? 800 : width),
+                                aspectRatio: layout.isTablet ? 16 / 9 : 4 / 3,
+                            }]}>
+                                <Animated.Image
+                                    source={{ uri: heroPost.image_url }}
+                                    style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}
+                                    resizeMode="cover"
+                                />
+                                <View style={styles.heroGradient as any} />
+                                {isNew(heroPost.created_at) && (
+                                    <View style={styles.newBadge}>
+                                        <Text style={[styles.newBadgeText, { fontSize: layout.isMonitor ? 13 : 10 }]}>JUST IN</Text>
+                                    </View>
+                                )}
+                                {isAdmin && (
+                                    <TouchableOpacity style={styles.heroDeleteBtn} onPress={() => deletePost(heroPost)}>
+                                        <Ionicons name="trash-outline" size={layout.isMonitor ? 22 : 18} color="#fff" />
+                                    </TouchableOpacity>
+                                )}
+                                {posts.length > 1 && (
+                                    <>
+                                        <TouchableOpacity style={[styles.navArrow, styles.navLeft]}
+                                            onPress={() => handleThumbPress((heroIdx - 1 + posts.length) % posts.length)}>
                                             <Ionicons name="chevron-back" size={layout.isMonitor ? 40 : 26} color="rgba(255,255,255,0.9)" />
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={[styles.navArrow, styles.navRight]} onPress={() => handleThumbPress((heroIdx + 1) % posts.length)}>
+                                        <TouchableOpacity style={[styles.navArrow, styles.navRight]}
+                                            onPress={() => handleThumbPress((heroIdx + 1) % posts.length)}>
                                             <Ionicons name="chevron-forward" size={layout.isMonitor ? 40 : 26} color="rgba(255,255,255,0.9)" />
                                         </TouchableOpacity>
                                     </>
                                 )}
-
                                 <View style={[styles.heroInfo, { paddingHorizontal: layout.isMonitor ? 40 : 16 }]}>
                                     {(() => { const { main } = splitCaption(heroPost.caption); return main ? (
                                         <Text style={[styles.heroCaption, { fontSize: layout.heroCapFont, lineHeight: layout.heroCapFont * 1.3 }]} numberOfLines={3}>
@@ -285,26 +396,10 @@ export default function NewsFeedScreen() {
                             </View>
                         )}
 
-                        {/* ── Filmstrip ── */}
-                        {posts.length > 1 && (
-                            <View style={styles.filmstripWrap}>
-                                <ScrollView ref={filmstripRef} horizontal showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={[styles.filmstrip, { paddingHorizontal: layout.isTablet ? 20 : 10 }]}>
-                                    {posts.map((post, i) => (
-                                        <TouchableOpacity
-                                            key={post.id}
-                                            style={[styles.thumb, { width: layout.thumbSize, height: layout.thumbSize, borderColor: i === heroIdx ? '#C9A84C' : 'rgba(255,255,255,0.1)' }]}
-                                            onPress={() => handleThumbPress(i)} activeOpacity={0.75}
-                                        >
-                                            <Image source={{ uri: post.image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                                            {isNew(post.created_at) && <View style={styles.thumbNewDot} />}
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-                        )}
+                        {/* Filmstrip */}
+                        {FilmstripBar}
 
-                        {/* ── Facebook-style feed ── */}
+                        {/* Card feed */}
                         <View style={[styles.feed, { paddingHorizontal: cardHPad }]}>
                             <Text style={[styles.feedLabel, { fontSize: layout.isMonitor ? 13 : 11 }]}>ALL REPORTS</Text>
 
@@ -319,7 +414,6 @@ export default function NewsFeedScreen() {
                                             layout.cardMaxW ? { alignSelf: 'center', width: layout.cardMaxW } : { width: '100%' },
                                         ]}
                                     >
-                                        {/* Card header */}
                                         <View style={styles.cardHeader}>
                                             <View style={[styles.avatar, { width: layout.avatarSize, height: layout.avatarSize, borderRadius: layout.avatarSize / 2 }]}>
                                                 <Text style={[styles.avatarText, { fontSize: layout.avatarSize * 0.38 }]}>{initials}</Text>
@@ -338,14 +432,12 @@ export default function NewsFeedScreen() {
                                             )}
                                         </View>
 
-                                        {/* Photo — square (1:1) like Facebook default */}
                                         <Image
                                             source={{ uri: post.image_url }}
                                             style={[styles.cardImage, { aspectRatio: 1 }]}
                                             resizeMode="cover"
                                         />
 
-                                        {/* Caption + hashtags */}
                                         {(main || tags) ? (
                                             <View style={styles.cardBody}>
                                                 {main ? (
@@ -378,80 +470,104 @@ export default function NewsFeedScreen() {
 }
 
 const styles = StyleSheet.create({
-    bg: { flex: 1 },
-    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,10,40,0.92)' },
-    safe: { flex: 1 },
-    scrollArea: { flex: 1 },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+    bg:          { flex: 1 },
+    overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,10,40,0.88)' },
+    safe:        { flex: 1 },
+    scrollArea:  { flex: 1 },
+    centered:    { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
     loadingText: { color: 'rgba(255,255,255,0.6)', marginTop: 14 },
-    emptyTitle: { color: '#fff', marginTop: 20, fontFamily: 'Anton_400Regular' },
-    emptySub: { color: 'rgba(255,255,255,0.45)', textAlign: 'center', marginTop: 10, lineHeight: 28 },
+    emptyTitle:  { color: '#fff', marginTop: 20, fontFamily: 'Anton_400Regular' },
+    emptySub:    { color: 'rgba(255,255,255,0.45)', textAlign: 'center', marginTop: 10, lineHeight: 28 },
 
+    // ── Top bar ──
     topBar: {
         flexDirection: 'row', alignItems: 'center',
         paddingHorizontal: 12, paddingVertical: 10,
         borderBottomWidth: 2, borderBottomColor: '#C9A84C',
     },
-    backBtn: { padding: 4, marginRight: 8 },
-    topBarCenter: { flex: 1 },
-    topBarTitle: { color: '#C9A84C', fontFamily: 'Anton_400Regular', letterSpacing: 0.5 },
-    topBarMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
-    liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e', marginRight: 7 },
+    backBtn:        { padding: 4, marginRight: 8 },
+    topBarCenter:   { flex: 1 },
+    topBarTitle:    { color: '#C9A84C', fontFamily: 'Anton_400Regular', letterSpacing: 0.5 },
+    topBarMeta:     { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+    liveDot:        { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e', marginRight: 7 },
     topBarMetaText: { color: 'rgba(255,255,255,0.55)' },
-    countPill: { backgroundColor: '#C9A84C', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, alignItems: 'center', marginLeft: 8 },
-    countPillNum: { color: '#1a1a2e', fontFamily: 'Anton_400Regular', lineHeight: 26 },
+    viewToggleBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        backgroundColor: 'rgba(201,168,76,0.12)', borderRadius: 20,
+        paddingHorizontal: 12, paddingVertical: 6, marginRight: 8,
+        borderWidth: 1, borderColor: 'rgba(201,168,76,0.4)',
+    },
+    viewToggleText: { color: '#C9A84C' },
+    countPill:      { backgroundColor: '#C9A84C', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, alignItems: 'center' },
+    countPillNum:   { color: '#1a1a2e', fontFamily: 'Anton_400Regular', lineHeight: 26 },
     countPillLabel: { color: '#1a1a2e', letterSpacing: 0.5 },
 
-    // ── Hero ──
+    // ── Full-screen slideshow ──
+    slideshowFull: { flex: 1, flexDirection: 'column' },
+    slideshowTopGrad: {
+        position: 'absolute', top: 0, left: 0, right: 0, height: '25%',
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)',
+    },
+    slideshowBottomGrad: {
+        position: 'absolute', left: 0, right: 0, bottom: 0, height: '60%',
+        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.97) 100%)',
+    },
+    slideshowInfo: { paddingBottom: 18 },
+
+    // ── Hero (feed mode) ──
     heroWrap: { position: 'relative', overflow: 'hidden', alignSelf: 'center', borderRadius: 12, marginVertical: 8 },
     heroGradient: {
         position: 'absolute', left: 0, right: 0, bottom: 0, height: '65%',
         background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.95) 100%)',
     },
-    newBadge: { position: 'absolute', top: 14, left: 14, backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    newBadgeText: { color: '#fff', letterSpacing: 1.2, fontFamily: 'Anton_400Regular' },
-    heroDeleteBtn: { position: 'absolute', top: 14, right: 14, backgroundColor: 'rgba(239,68,68,0.85)', borderRadius: 8, padding: 8 },
-    navArrow: { position: 'absolute', top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: 12, zIndex: 10 },
-    navLeft: { left: 0 },
-    navRight: { right: 0 },
     heroInfo: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 16 },
-    heroCaption: { color: '#fff', fontFamily: 'Anton_400Regular', marginBottom: 12, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 },
-    heroMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+
+    // ── Shared hero overlays ──
+    newBadge:    { position: 'absolute', top: 14, left: 14, backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+    newBadgeText:{ color: '#fff', letterSpacing: 1.2, fontFamily: 'Anton_400Regular' },
+    heroDeleteBtn: { position: 'absolute', top: 14, right: 14, backgroundColor: 'rgba(239,68,68,0.85)', borderRadius: 8, padding: 8 },
+    navArrow: { position: 'absolute', top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: 16, zIndex: 10 },
+    navLeft:  { left: 0 },
+    navRight: { right: 0 },
+    heroCaption: {
+        color: '#fff', fontFamily: 'Anton_400Regular', marginBottom: 12,
+        textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10,
+    },
+    heroMeta:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
     heroReporter: { color: '#C9A84C', fontFamily: 'Anton_400Regular' },
-    heroRegion: { color: 'rgba(255,255,255,0.65)' },
-    heroTime: { color: 'rgba(255,255,255,0.45)' },
-    dots: { flexDirection: 'row', gap: 8 },
-    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
-    dotActive: { backgroundColor: '#C9A84C', width: 24 },
+    heroRegion:   { color: 'rgba(255,255,255,0.65)' },
+    heroTime:     { color: 'rgba(255,255,255,0.45)' },
+    dots:         { flexDirection: 'row', gap: 8 },
+    dot:          { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
+    dotActive:    { backgroundColor: '#C9A84C', width: 24 },
 
     // ── Filmstrip ──
-    filmstripWrap: { borderTopWidth: 2, borderTopColor: 'rgba(201,168,76,0.3)', backgroundColor: 'rgba(0,0,0,0.7)', paddingVertical: 8 },
-    filmstrip: { gap: 8, alignItems: 'center' },
-    thumb: { borderRadius: 8, overflow: 'hidden', borderWidth: 2.5 },
-    thumbNewDot: { position: 'absolute', top: 4, right: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#22c55e', borderWidth: 1.5, borderColor: '#fff' },
+    filmstripWrap: { borderTopWidth: 2, borderTopColor: 'rgba(201,168,76,0.3)', backgroundColor: 'rgba(0,0,0,0.75)', paddingVertical: 8 },
+    filmstrip:     { gap: 8, alignItems: 'center' },
+    thumb:         { borderRadius: 8, overflow: 'hidden', borderWidth: 2.5 },
+    thumbNewDot:   { position: 'absolute', top: 4, right: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#22c55e', borderWidth: 1.5, borderColor: '#fff' },
 
     // ── Feed ──
-    feed: { paddingTop: 16, flexDirection: 'column' },
+    feed:      { paddingTop: 16, flexDirection: 'column' },
     feedLabel: { color: 'rgba(201,168,76,0.7)', letterSpacing: 1.4, marginBottom: 12, paddingHorizontal: 16 },
 
-    // Post card — Facebook-style
     card: {
         backgroundColor: '#111c44', borderRadius: 16, overflow: 'hidden',
         marginBottom: 20, marginHorizontal: 'auto' as any,
         shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 8,
     },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, paddingBottom: 10 },
-    avatar: { backgroundColor: '#C9A84C', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    avatarText: { color: '#1a1a2e', fontFamily: 'Anton_400Regular' },
-    cardMeta: { flex: 1 },
-    cardName: { color: '#fff', fontFamily: 'Anton_400Regular', marginBottom: 2 },
+    cardHeader:  { flexDirection: 'row', alignItems: 'center', padding: 14, paddingBottom: 10 },
+    avatar:      { backgroundColor: '#C9A84C', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    avatarText:  { color: '#1a1a2e', fontFamily: 'Anton_400Regular' },
+    cardMeta:    { flex: 1 },
+    cardName:    { color: '#fff', fontFamily: 'Anton_400Regular', marginBottom: 2 },
     cardSubMeta: { color: 'rgba(255,255,255,0.45)' },
     cardDeleteBtn: { padding: 6 },
-    cardImage: { width: '100%' },
-    cardBody: { padding: 14, paddingTop: 12 },
+    cardImage:   { width: '100%' },
+    cardBody:    { padding: 14, paddingTop: 12 },
     cardCaption: { color: '#e2e8f0', marginBottom: 8 },
-    cardTags: { color: '#C9A84C', lineHeight: 22 },
+    cardTags:    { color: '#C9A84C', lineHeight: 22 },
 
-    footer: { borderTopWidth: 1, borderTopColor: 'rgba(201,168,76,0.25)', paddingVertical: 8, paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.65)' },
+    footer:     { borderTopWidth: 1, borderTopColor: 'rgba(201,168,76,0.25)', paddingVertical: 8, paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.65)' },
     footerText: { color: 'rgba(201,168,76,0.6)', letterSpacing: 0.8, textAlign: 'center' },
 });
