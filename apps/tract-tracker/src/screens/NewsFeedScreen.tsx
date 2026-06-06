@@ -42,6 +42,22 @@ function splitCaption(text: string) {
     return { main, tags };
 }
 
+// CSS gradient styles — web-only, kept outside StyleSheet.create to avoid RN type errors
+const webGrad = {
+    slideshowTopGrad: {
+        position: 'absolute', top: 0, left: 0, right: 0, height: '25%',
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)',
+    } as any,
+    slideshowBottomGrad: {
+        position: 'absolute', left: 0, right: 0, bottom: 0, height: '60%',
+        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.97) 100%)',
+    } as any,
+    heroGradient: {
+        position: 'absolute', left: 0, right: 0, bottom: 0, height: '65%',
+        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.95) 100%)',
+    } as any,
+};
+
 function useLayout(width: number, _height: number) {
     const isMonitor = width >= 1024;
     const isTablet  = width >= 640;
@@ -68,17 +84,19 @@ export default function NewsFeedScreen() {
     const layout = useLayout(width, height);
     const { isAdmin } = useAuth();
 
-    const [posts, setPosts]           = useState<Post[]>([]);
-    const [loading, setLoading]       = useState(true);
-    const [heroIdx, setHeroIdx]       = useState(0);
+    const [posts, setPosts]             = useState<Post[]>([]);
+    const [loading, setLoading]         = useState(true);
+    const [heroIdx, setHeroIdx]         = useState(0);
     const [lastUpdated, setLastUpdated] = useState('');
-    const [viewMode, setViewMode]     = useState<'slideshow' | 'feed'>('slideshow');
+    const [viewMode, setViewMode]       = useState<'slideshow' | 'feed'>('slideshow');
+    const [lightboxPost, setLightboxPost] = useState<Post | null>(null);
 
-    const heroIdxRef   = useRef(0);
-    const postCountRef = useRef(0);
-    const slideTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
-    const filmstripRef = useRef<ScrollView>(null);
-    const fadeAnim     = useRef(new Animated.Value(1)).current;
+    const heroIdxRef    = useRef(0);
+    const postCountRef  = useRef(0);
+    const slideTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
+    const filmstripRef  = useRef<ScrollView>(null);
+    const fadeAnim      = useRef(new Animated.Value(1)).current;
+    const lightboxAnim  = useRef(new Animated.Value(0)).current;
 
     const fetchPosts = useCallback(async () => {
         try {
@@ -161,6 +179,18 @@ export default function NewsFeedScreen() {
             return updated;
         });
     }, []);
+
+    const openLightbox = useCallback((post: Post) => {
+        setLightboxPost(post);
+        lightboxAnim.setValue(0);
+        Animated.spring(lightboxAnim, { toValue: 1, useNativeDriver: true, tension: 120, friction: 8 }).start();
+    }, [lightboxAnim]);
+
+    const closeLightbox = useCallback(() => {
+        Animated.timing(lightboxAnim, { toValue: 0, duration: 180, useNativeDriver: true, easing: Easing.ease }).start(() => {
+            setLightboxPost(null);
+        });
+    }, [lightboxAnim]);
 
     const goBack  = () => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Main');
     const heroPost = posts[heroIdx] ?? null;
@@ -261,8 +291,8 @@ export default function NewsFeedScreen() {
                                 />
 
                                 {/* Gradient overlays */}
-                                <View style={styles.slideshowTopGrad as any} />
-                                <View style={styles.slideshowBottomGrad as any} />
+                                <View style={webGrad.slideshowTopGrad} />
+                                <View style={webGrad.slideshowBottomGrad} />
 
                                 {/* Badges */}
                                 {isNew(heroPost.created_at) && (
@@ -364,11 +394,13 @@ export default function NewsFeedScreen() {
                                             )}
                                         </View>
 
-                                        <Image
-                                            source={{ uri: post.image_url }}
-                                            style={[styles.cardImage, { aspectRatio: 1 }]}
-                                            resizeMode="cover"
-                                        />
+                                        <TouchableOpacity onPress={() => openLightbox(post)} activeOpacity={0.92}>
+                                            <Image
+                                                source={{ uri: post.image_url }}
+                                                style={styles.cardImage}
+                                                resizeMode="contain"
+                                            />
+                                        </TouchableOpacity>
 
                                         {(main || tags) ? (
                                             <View style={styles.cardBody}>
@@ -397,6 +429,35 @@ export default function NewsFeedScreen() {
                     </Text>
                 </View>
             </SafeAreaView>
+            {/* ── Lightbox ── */}
+            {lightboxPost && (
+                <Animated.View style={[StyleSheet.absoluteFill, styles.lightboxBg, { opacity: lightboxAnim }]}>
+                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeLightbox} activeOpacity={1} />
+                    <Animated.View
+                        style={[styles.lightboxContent, {
+                            transform: [{ scale: lightboxAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) }],
+                        }]}
+                    >
+                        <TouchableOpacity style={styles.lightboxCloseBtn} onPress={closeLightbox}>
+                            <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
+                        </TouchableOpacity>
+                        <Image
+                            source={{ uri: lightboxPost.image_url }}
+                            style={{ width: width * 0.92, height: height * 0.72 }}
+                            resizeMode="contain"
+                        />
+                        <View style={styles.lightboxInfo}>
+                            <Text style={[styles.lightboxName, { fontSize: layout.isMonitor ? 18 : 15 }]}>
+                                {lightboxPost.user_name}
+                                {lightboxPost.region ? <Text style={styles.lightboxRegion}>  ·  {lightboxPost.region}</Text> : null}
+                            </Text>
+                            {(() => { const { main } = splitCaption(lightboxPost.caption); return main ? (
+                                <Text style={[styles.lightboxCaption, { fontSize: layout.isMonitor ? 15 : 13 }]}>{main}</Text>
+                            ) : null; })()}
+                        </View>
+                    </Animated.View>
+                </Animated.View>
+            )}
         </ImageBackground>
     );
 }
@@ -436,22 +497,10 @@ const styles = StyleSheet.create({
 
     // ── Full-screen slideshow ──
     slideshowFull: { flex: 1, flexDirection: 'column' },
-    slideshowTopGrad: {
-        position: 'absolute', top: 0, left: 0, right: 0, height: '25%',
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)',
-    },
-    slideshowBottomGrad: {
-        position: 'absolute', left: 0, right: 0, bottom: 0, height: '60%',
-        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.97) 100%)',
-    },
     slideshowInfo: { paddingBottom: 18 },
 
     // ── Hero (feed mode) ──
     heroWrap: { position: 'relative', overflow: 'hidden', alignSelf: 'center', borderRadius: 12, marginVertical: 8 },
-    heroGradient: {
-        position: 'absolute', left: 0, right: 0, bottom: 0, height: '65%',
-        background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.95) 100%)',
-    },
     heroInfo: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 16 },
 
     // ── Shared hero overlays ──
@@ -495,11 +544,37 @@ const styles = StyleSheet.create({
     cardName:    { color: '#fff', fontFamily: 'Anton_400Regular', marginBottom: 2 },
     cardSubMeta: { color: 'rgba(255,255,255,0.45)' },
     cardDeleteBtn: { padding: 6 },
-    cardImage:   { width: '100%' },
+    cardImage:   { width: '100%', aspectRatio: 1, backgroundColor: '#0a0f2a' },
     cardBody:    { padding: 14, paddingTop: 12 },
     cardCaption: { color: '#e2e8f0', marginBottom: 8 },
     cardTags:    { color: '#C9A84C', lineHeight: 22 },
 
     footer:     { borderTopWidth: 1, borderTopColor: 'rgba(201,168,76,0.25)', paddingVertical: 8, paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.65)' },
     footerText: { color: 'rgba(201,168,76,0.6)', letterSpacing: 0.8, textAlign: 'center' },
+
+    // ── Lightbox ──
+    lightboxBg: {
+        backgroundColor: 'rgba(0,0,0,0.93)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 999,
+    },
+    lightboxContent: {
+        alignItems: 'center',
+        width: '100%',
+    },
+    lightboxCloseBtn: {
+        alignSelf: 'flex-end',
+        paddingRight: 16,
+        paddingBottom: 8,
+    },
+    lightboxInfo: {
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        maxWidth: 600,
+        width: '100%',
+    },
+    lightboxName:    { color: '#C9A84C', fontFamily: 'Anton_400Regular', marginBottom: 4 },
+    lightboxRegion:  { color: 'rgba(255,255,255,0.5)' },
+    lightboxCaption: { color: '#e2e8f0', lineHeight: 22 },
 });

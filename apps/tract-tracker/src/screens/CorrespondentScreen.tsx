@@ -114,12 +114,12 @@ export default function CorrespondentScreen() {
     // Correspondents upload at full resolution with free-form crop.
     // Regular users upload at 0.6 quality with a fixed 4:3 crop to save storage.
     const cameraOpts: ImagePicker.ImagePickerOptions = isCorrespondent
-        ? { mediaTypes: ['images'], allowsEditing: true, quality: 1.0 }
-        : { mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.6 };
+        ? { mediaTypes: ['images'], allowsEditing: false, quality: 1.0 }
+        : { mediaTypes: ['images'], allowsEditing: false, quality: 0.6 };
 
     const galleryOpts: ImagePicker.ImagePickerOptions = isCorrespondent
         ? { mediaTypes: ['images'], allowsEditing: false, quality: 1.0 }
-        : { mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.6 };
+        : { mediaTypes: ['images'], allowsEditing: false, quality: 0.6 };
 
     const openCamera = async () => {
         if (!guardUpload()) return;
