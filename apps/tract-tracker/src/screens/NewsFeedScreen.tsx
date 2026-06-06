@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     View, Text, StyleSheet, ImageBackground, ScrollView,
     Image, TouchableOpacity, ActivityIndicator, useWindowDimensions,
-    Animated, Easing, Alert,
+    Animated, Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -145,32 +145,21 @@ export default function NewsFeedScreen() {
     const handleThumbPress = (i: number) => { goToHero(i); if (posts.length > 1) resetTimer(); };
 
     const deletePost = useCallback(async (post: Post) => {
-        Alert.alert(
-            'Delete Report',
-            `Remove this report by ${post.user_name}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete', style: 'destructive',
-                    onPress: async () => {
-                        await supabaseAdmin.from('correspondent_posts').delete().eq('id', post.id);
-                        try {
-                            const urlPath = new URL(post.image_url).pathname;
-                            const storagePath = urlPath.split('/correspondent-photos/').at(-1);
-                            if (storagePath) await supabaseAdmin.storage.from('correspondent-photos').remove([storagePath]);
-                        } catch (_) {}
-                        setPosts(prev => {
-                            const updated = prev.filter(p => p.id !== post.id);
-                            postCountRef.current = updated.length;
-                            const newIdx = Math.min(heroIdxRef.current, Math.max(0, updated.length - 1));
-                            heroIdxRef.current = newIdx;
-                            setHeroIdx(newIdx);
-                            return updated;
-                        });
-                    },
-                },
-            ]
-        );
+        if (!window.confirm(`Remove this report by ${post.user_name}?`)) return;
+        await supabaseAdmin.from('correspondent_posts').delete().eq('id', post.id);
+        try {
+            const urlPath = new URL(post.image_url).pathname;
+            const storagePath = urlPath.split('/correspondent-photos/').at(-1);
+            if (storagePath) await supabaseAdmin.storage.from('correspondent-photos').remove([storagePath]);
+        } catch (_) {}
+        setPosts(prev => {
+            const updated = prev.filter(p => p.id !== post.id);
+            postCountRef.current = updated.length;
+            const newIdx = Math.min(heroIdxRef.current, Math.max(0, updated.length - 1));
+            heroIdxRef.current = newIdx;
+            setHeroIdx(newIdx);
+            return updated;
+        });
     }, []);
 
     const goBack  = () => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Main');
