@@ -328,64 +328,7 @@ export default function NewsFeedScreen() {
                     /* ══════════════════ NEWS FEED ══════════════════ */
                     <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollArea}>
 
-                        {/* Mini hero card */}
-                        {heroPost && (
-                            <View style={[styles.heroWrap, {
-                                width: Math.min(width, layout.isMonitor ? 800 : width),
-                                aspectRatio: layout.isTablet ? 16 / 9 : 4 / 3,
-                            }]}>
-                                <Animated.Image
-                                    source={{ uri: heroPost.image_url }}
-                                    style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}
-                                    resizeMode="cover"
-                                />
-                                <View style={styles.heroGradient as any} />
-                                {isNew(heroPost.created_at) && (
-                                    <View style={styles.newBadge}>
-                                        <Text style={[styles.newBadgeText, { fontSize: layout.isMonitor ? 13 : 10 }]}>JUST IN</Text>
-                                    </View>
-                                )}
-                                {isAdmin && (
-                                    <TouchableOpacity style={styles.heroDeleteBtn} onPress={() => deletePost(heroPost)}>
-                                        <Ionicons name="trash-outline" size={layout.isMonitor ? 22 : 18} color="#fff" />
-                                    </TouchableOpacity>
-                                )}
-                                {posts.length > 1 && (
-                                    <>
-                                        <TouchableOpacity style={[styles.navArrow, styles.navLeft]}
-                                            onPress={() => handleThumbPress((heroIdx - 1 + posts.length) % posts.length)}>
-                                            <Ionicons name="chevron-back" size={layout.isMonitor ? 40 : 26} color="rgba(255,255,255,0.9)" />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={[styles.navArrow, styles.navRight]}
-                                            onPress={() => handleThumbPress((heroIdx + 1) % posts.length)}>
-                                            <Ionicons name="chevron-forward" size={layout.isMonitor ? 40 : 26} color="rgba(255,255,255,0.9)" />
-                                        </TouchableOpacity>
-                                    </>
-                                )}
-                                <View style={[styles.heroInfo, { paddingHorizontal: layout.isMonitor ? 40 : 16 }]}>
-                                    {(() => { const { main } = splitCaption(heroPost.caption); return main ? (
-                                        <Text style={[styles.heroCaption, { fontSize: layout.heroCapFont, lineHeight: layout.heroCapFont * 1.3 }]} numberOfLines={3}>
-                                            {main}
-                                        </Text>
-                                    ) : null; })()}
-                                    <View style={styles.heroMeta}>
-                                        <Ionicons name="person-circle" size={layout.heroMetaFont + 8} color="#C9A84C" />
-                                        <Text style={[styles.heroReporter, { fontSize: layout.heroMetaFont }]}>{heroPost.user_name}</Text>
-                                        {heroPost.region ? <Text style={[styles.heroRegion, { fontSize: layout.heroMetaFont }]}>· {heroPost.region}</Text> : null}
-                                        <Text style={[styles.heroTime, { fontSize: layout.metaFont }]}>· {formatTime(heroPost.created_at)}</Text>
-                                    </View>
-                                    {posts.length > 1 && (
-                                        <View style={styles.dots}>
-                                            {posts.slice(0, 14).map((_, i) => (
-                                                <TouchableOpacity key={i} style={[styles.dot, i === heroIdx && styles.dotActive]} onPress={() => handleThumbPress(i)} />
-                                            ))}
-                                        </View>
-                                    )}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Filmstrip */}
+                        {/* Filmstrip at top of feed — tap to jump to a post in slideshow */}
                         {FilmstripBar}
 
                         {/* Card feed */}
@@ -460,7 +403,7 @@ export default function NewsFeedScreen() {
 
 const styles = StyleSheet.create({
     bg:          { flex: 1 },
-    overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,10,40,0.88)' },
+    overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,10,40,0.70)' },
     safe:        { flex: 1 },
     scrollArea:  { flex: 1 },
     centered:    { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
