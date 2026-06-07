@@ -26,7 +26,9 @@
  */
 
 const TOKEN_URL  = 'https://oauth2.googleapis.com/token';
-const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+// supportsAllDrives is required for service accounts to read/write Shared Drive content —
+// service accounts have no storage quota of their own and can only land files in a Shared Drive.
+const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
 
 // ── Google service-account JWT ────────────────────────────────────────────────
 
