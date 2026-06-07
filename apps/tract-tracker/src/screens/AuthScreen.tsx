@@ -10,7 +10,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
-import { callApi } from '../supabase';
 
 // image import
 const Ntgd = require("../../assets/ntgd.png");
@@ -72,7 +71,6 @@ export default function AuthScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [isForgotLoading, setIsForgotLoading] = useState(false);
 
     const { signIn, signUp, session } = useAuth();
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -86,35 +84,6 @@ export default function AuthScreen() {
     const filteredBarangays = BARANGAYS.filter(b =>
         b.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-    const handleForgotPassword = async () => {
-        if (!email.trim()) {
-            Alert.alert('Enter your email', 'Please type your email address above first, then tap Forgot Password.');
-            return;
-        }
-        setIsForgotLoading(true);
-        try {
-            const { data, error } = await callApi<{ tempPassword: string }>('auth-api', {
-                action: 'forgotPassword',
-                email: email.trim().toLowerCase(),
-            });
-
-            if (error || !data?.tempPassword) {
-                Alert.alert('Not found', error?.message || 'No account found with that email address.');
-                return;
-            }
-
-            Alert.alert(
-                'Temporary Password Set',
-                `Your temporary password is:\n\n${data.tempPassword}\n\nPlease log in and change it immediately.`,
-            );
-        } catch (e: any) {
-            Alert.alert('Error', e.message || 'Something went wrong. Please try again.');
-        } finally {
-            setIsForgotLoading(false);
-        }
-    };
-
 
     const handleAuth = async () => {
         if (!email || !password) {
@@ -224,19 +193,6 @@ export default function AuthScreen() {
                                     />
                                 </TouchableOpacity>
                             </View>
-
-                            {screen === 'login' && (
-                                <TouchableOpacity
-                                    style={styles.forgotBtn}
-                                    onPress={handleForgotPassword}
-                                    disabled={isForgotLoading}
-                                >
-                                    {isForgotLoading
-                                        ? <ActivityIndicator size="small" color="#C9A84C" />
-                                        : <Text style={styles.forgotText}>Forgot your password?</Text>
-                                    }
-                                </TouchableOpacity>
-                            )}
 
                             {screen === 'signup' && (
                                 <>
@@ -442,16 +398,6 @@ const styles = StyleSheet.create({
     eyeBtn: {
         paddingHorizontal: 14,
         paddingVertical: 14,
-    },
-    forgotBtn: {
-        alignSelf: 'flex-end',
-        marginBottom: 14,
-        paddingVertical: 2,
-    },
-    forgotText: {
-        color: '#C9A84C',
-        fontSize: 13,
-        textDecorationLine: 'underline',
     },
     label: { fontSize: 13, color: '#444', marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
     dropdownTrigger: {

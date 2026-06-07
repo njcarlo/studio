@@ -11,7 +11,6 @@
  *   signup         { email, password, name, region,
  *                    subRegion, barangay }                      -> { user }
  *   session        { userId }                                   -> { user }
- *   forgotPassword { email }                                    -> { tempPassword }
  *
  * The returned `user` object never includes the `password` column.
  */
@@ -99,27 +98,6 @@ Deno.serve(async (req: Request) => {
                     .single();
                 if (error || !data) return json({ error: 'Session not found.' }, 404);
                 return json({ user: sanitize(data) });
-            }
-
-            case 'forgotPassword': {
-                const { email } = body;
-                if (!email) return json({ error: 'Please enter your email address.' }, 400);
-                const cleanEmail = String(email).trim().toLowerCase();
-
-                const { data: existing } = await admin
-                    .from('tract_users')
-                    .select('id')
-                    .eq('email', cleanEmail)
-                    .maybeSingle();
-                if (!existing) return json({ error: 'No account found with that email address.' }, 404);
-
-                const tempPassword = Math.random().toString(36).slice(-8);
-                const { error } = await admin
-                    .from('tract_users')
-                    .update({ password: tempPassword })
-                    .eq('email', cleanEmail);
-                if (error) return json({ error: error.message }, 400);
-                return json({ tempPassword });
             }
 
             default:
