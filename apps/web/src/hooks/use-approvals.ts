@@ -32,7 +32,11 @@ export function useApprovals(options: { enabled?: boolean } = {}) {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateApproval(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+            const res = await updateApproval(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['approvals'] });
         },

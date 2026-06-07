@@ -39,7 +39,8 @@ export default function ScanMealStubPage() {
 
     const handleScan = async (stubId: string, currentStatus: 'Issued' | 'Claimed') => {
         if (currentStatus === 'Issued') {
-            await updateMealStub(stubId, { status: 'Claimed' });
+            const res = await updateMealStub(stubId, { status: 'Claimed' });
+            if (!res.success) throw new Error(res.error);
             toast({
                 title: "Meal Stub Claimed!",
                 description: "The meal stub has been successfully validated and claimed.",

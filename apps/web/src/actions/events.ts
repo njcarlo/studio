@@ -1,166 +1,186 @@
 'use server';
 
-import { prisma } from '@studio/database/prisma';
 import { revalidatePath } from 'next/cache';
+import { withPermission } from '@/lib/auth/with-permission';
+import { PERMISSIONS } from '@/lib/permissions/registry';
+import * as eventsService from '@/services/events';
+import {
+    createEventSchema,
+    updateEventSchema,
+    addEventRoomSchema,
+    updateEventRoomSchema,
+    upsertEventAssignmentSchema,
+    addEventEquipmentSchema,
+    updateEventEquipmentSchema,
+} from '@/lib/schemas/events.schemas';
 
+// public-action: read-only
 export async function getEvents(filters: { status?: string } = {}) {
-    const where: any = {};
-    if (filters.status) where.status = filters.status;
-    return prisma.churchEvent.findMany({
-        where,
-        include: {
-            rooms: { include: { room: { include: { area: { include: { branch: true } } } } } },
-            assignments: true,
-            equipment: { include: { item: true } },
-        },
-        orderBy: { date: 'desc' },
-    });
+    return eventsService.getEvents(filters);
 }
 
+// public-action: read-only
 export async function getEvent(id: string) {
-    return prisma.churchEvent.findUnique({
-        where: { id },
-        include: {
-            rooms: { include: { room: { include: { area: { include: { branch: true } } } } } },
-            assignments: { orderBy: [{ ministryId: 'asc' }, { order: 'asc' }] },
-            equipment: { include: { item: { include: { category: true } } } },
-        },
-    });
+    return eventsService.getEvent(id);
 }
 
-export async function createEvent(data: {
-    title: string;
-    description?: string;
-    date: Date;
-    endDate?: Date;
-    startTime?: string;
-    endTime?: string;
-    location?: string;
-    notes?: string;
-    createdBy: string;
-}) {
-    const event = await prisma.churchEvent.create({ data });
-    revalidatePath('/events');
-    return event;
-}
+export const createEvent = withPermission(
+    PERMISSIONS.events.create,
+    async (_ctx, data: {
+        title: string;
+        description?: string;
+        date: Date;
+        endDate?: Date;
+        startTime?: string;
+        endTime?: string;
+        location?: string;
+        notes?: string;
+        createdBy: string;
+    }) => {
+        const event = await eventsService.createEvent(createEventSchema.parse(data));
+        revalidatePath('/events');
+        return event;
+    },
+);
 
-export async function updateEvent(id: string, data: Partial<{
-    title: string;
-    description: string;
-    date: Date;
-    endDate: Date;
-    startTime: string;
-    endTime: string;
-    location: string;
-    status: string;
-    notes: string;
-    scheduleId: string;
-}>) {
-    const event = await prisma.churchEvent.update({ where: { id }, data });
-    revalidatePath('/events');
-    revalidatePath(`/events/${id}`);
-    return event;
-}
+export const updateEvent = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, id: string, data: Partial<{
+        title: string;
+        description: string;
+        date: Date;
+        endDate: Date;
+        startTime: string;
+        endTime: string;
+        location: string;
+        status: string;
+        notes: string;
+        scheduleId: string;
+    }>) => {
+        const event = await eventsService.updateEvent(id, updateEventSchema.parse(data));
+        revalidatePath('/events');
+        revalidatePath(`/events/${id}`);
+        return event;
+    },
+);
 
-export async function deleteEvent(id: string) {
-    await prisma.churchEvent.delete({ where: { id } });
-    revalidatePath('/events');
-}
+export const deleteEvent = withPermission(
+    PERMISSIONS.events.delete,
+    async (_ctx, id: string) => {
+        await eventsService.deleteEvent(id);
+        revalidatePath('/events');
+    },
+);
 
 // ── Room Bookings ─────────────────────────────────────────────────────────────
 
-export async function addEventRoom(data: {
-    eventId: string;
-    roomId: string;
-    startTime: string;
-    endTime: string;
-    purpose?: string;
-    notes?: string;
-}) {
-    const booking = await prisma.eventRoomBooking.create({
-        data,
-        include: { room: { include: { area: { include: { branch: true } } } } },
-    });
-    revalidatePath(`/events/${data.eventId}`);
-    return booking;
-}
+export const addEventRoom = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, data: {
+        eventId: string;
+        roomId: string;
+        startTime: string;
+        endTime: string;
+        purpose?: string;
+        notes?: string;
+    }) => {
+        const parsed = addEventRoomSchema.parse(data);
+        const booking = await eventsService.addEventRoom(parsed);
+        revalidatePath(`/events/${parsed.eventId}`);
+        return booking;
+    },
+);
 
-export async function updateEventRoom(id: string, eventId: string, data: Partial<{
-    startTime: string;
-    endTime: string;
-    purpose: string;
-    notes: string;
-}>) {
-    const booking = await prisma.eventRoomBooking.update({ where: { id }, data });
-    revalidatePath(`/events/${eventId}`);
-    return booking;
-}
+export const updateEventRoom = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, id: string, eventId: string, data: Partial<{
+        startTime: string;
+        endTime: string;
+        purpose: string;
+        notes: string;
+    }>) => {
+        const booking = await eventsService.updateEventRoom(id, updateEventRoomSchema.parse(data));
+        revalidatePath(`/events/${eventId}`);
+        return booking;
+    },
+);
 
-export async function removeEventRoom(id: string, eventId: string) {
-    await prisma.eventRoomBooking.delete({ where: { id } });
-    revalidatePath(`/events/${eventId}`);
-}
+export const removeEventRoom = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, id: string, eventId: string) => {
+        await eventsService.removeEventRoom(id);
+        revalidatePath(`/events/${eventId}`);
+    },
+);
 
 // ── Manpower Assignments ──────────────────────────────────────────────────────
 
-export async function upsertEventAssignment(data: {
-    id?: string;
-    eventId: string;
-    ministryId: string;
-    roleName: string;
-    workerId?: string | null;
-    workerName?: string | null;
-    notes?: string;
-    order?: number;
-}) {
-    const { id, ...rest } = data;
-    const assignment = id
-        ? await prisma.eventAssignment.update({ where: { id }, data: rest })
-        : await prisma.eventAssignment.create({ data: rest });
-    revalidatePath(`/events/${data.eventId}`);
-    return assignment;
-}
+export const upsertEventAssignment = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, data: {
+        id?: string;
+        eventId: string;
+        ministryId: string;
+        roleName: string;
+        workerId?: string | null;
+        workerName?: string | null;
+        notes?: string;
+        order?: number;
+    }) => {
+        const parsed = upsertEventAssignmentSchema.parse(data);
+        const assignment = await eventsService.upsertEventAssignment(parsed);
+        revalidatePath(`/events/${parsed.eventId}`);
+        return assignment;
+    },
+);
 
-export async function deleteEventAssignment(id: string, eventId: string) {
-    await prisma.eventAssignment.delete({ where: { id } });
-    revalidatePath(`/events/${eventId}`);
-}
+export const deleteEventAssignment = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, id: string, eventId: string) => {
+        await eventsService.deleteEventAssignment(id);
+        revalidatePath(`/events/${eventId}`);
+    },
+);
 
 // ── Equipment ─────────────────────────────────────────────────────────────────
 
-export async function addEventEquipment(data: {
-    eventId: string;
-    itemId: string;
-    quantity: number;
-    notes?: string;
-}) {
-    const eq = await prisma.eventEquipment.create({
-        data,
-        include: { item: { include: { category: true } } },
-    });
-    revalidatePath(`/events/${data.eventId}`);
-    return eq;
-}
+export const addEventEquipment = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, data: {
+        eventId: string;
+        itemId: string;
+        quantity: number;
+        notes?: string;
+    }) => {
+        const parsed = addEventEquipmentSchema.parse(data);
+        const eq = await eventsService.addEventEquipment(parsed);
+        revalidatePath(`/events/${parsed.eventId}`);
+        return eq;
+    },
+);
 
-export async function updateEventEquipment(id: string, eventId: string, data: Partial<{
-    quantity: number;
-    notes: string;
-}>) {
-    const eq = await prisma.eventEquipment.update({ where: { id }, data });
-    revalidatePath(`/events/${eventId}`);
-    return eq;
-}
+export const updateEventEquipment = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, id: string, eventId: string, data: Partial<{
+        quantity: number;
+        notes: string;
+    }>) => {
+        const eq = await eventsService.updateEventEquipment(id, updateEventEquipmentSchema.parse(data));
+        revalidatePath(`/events/${eventId}`);
+        return eq;
+    },
+);
 
-export async function removeEventEquipment(id: string, eventId: string) {
-    await prisma.eventEquipment.delete({ where: { id } });
-    revalidatePath(`/events/${eventId}`);
-}
+export const removeEventEquipment = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, id: string, eventId: string) => {
+        await eventsService.removeEventEquipment(id);
+        revalidatePath(`/events/${eventId}`);
+    },
+);
 
 // ── Inventory lookup for equipment picker ────────────────────────────────────
+// public-action: read-only picker helper
 export async function getInventoryItemsForPicker() {
-    return prisma.inventoryItem.findMany({
-        select: { id: true, name: true, unit: true, quantity: true, category: { select: { name: true } } },
-orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
-        take: 500,
-    });
+    return eventsService.getInventoryItemsForPicker();
 }

@@ -15,21 +15,33 @@ export function useMealStubs(filters: { workerId?: string; dateFrom?: Date; date
     });
 
     const createMutation = useMutation({
-        mutationFn: createMealStub,
+        mutationFn: async (data: any) => {
+            const res = await createMealStub(data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['meal-stubs'] });
         },
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateMealStub(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+            const res = await updateMealStub(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['meal-stubs'] });
         },
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteMealStub,
+        mutationFn: async (id: string) => {
+            const res = await deleteMealStub(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['meal-stubs'] });
         },

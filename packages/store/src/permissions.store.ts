@@ -56,6 +56,7 @@ export interface PermissionsState {
     canManageSchedule: boolean;
     canConfirmSchedule: boolean;
     canAssignSchedulers: boolean;
+    canViewAllSchedules: boolean;
     canAccessInventory: boolean;
 
     // Internal action — called by UserRoleSyncer
@@ -100,6 +101,7 @@ const DEFAULT_STATE: Omit<PermissionsState, '_setPermissions'> = {
     canManageSchedule: false,
     canConfirmSchedule: false,
     canAssignSchedulers: false,
+    canViewAllSchedules: false,
     canAccessInventory: false,
 };
 

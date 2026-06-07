@@ -87,7 +87,7 @@ export default function SlotRolesPage() {
 
         if (worshipMinistry?.id && categories && !categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
             try {
-                await createCategory({ name }, { skipAuth: true });
+                await createCategory({ name });
             } catch (e) {
                 console.error("Failed to auto-create category", e);
             }

@@ -11,28 +11,44 @@ export function useDepartments() {
     });
 
     const createMutation = useMutation({
-        mutationFn: createDepartmentSetting,
+        mutationFn: async (data: any) => {
+            const res = await createDepartmentSetting(data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['departments'] });
         },
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateDepartmentSetting(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+            const res = await updateDepartmentSetting(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['departments'] });
         },
     });
 
     const upsertMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => upsertDepartmentSetting(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+            const res = await upsertDepartmentSetting(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['departments'] });
         },
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteDepartmentSetting,
+        mutationFn: async (id: string) => {
+            const res = await deleteDepartmentSetting(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['departments'] });
         },

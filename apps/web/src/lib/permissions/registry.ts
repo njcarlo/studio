@@ -65,8 +65,12 @@ export const PERMISSIONS = {
   },
   schedule: {
     manage:           'schedule:manage',
+    view_all:         'schedule:view_all',
     confirm:          'schedule:confirm',
     assign_schedulers: 'schedule:assign_schedulers',
+  },
+  ministry: {
+    manage: 'ministry:manage',
   },
   inventory: {
     access:   'inventory:access',
@@ -112,8 +116,10 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'venue_assistance', action: 'manage',              description: 'Manage all venue assistance requests' },
   { module: 'venue_assistance', action: 'manage_own_ministry', description: 'Manage own ministry assistance requests' },
   { module: 'schedule',         action: 'manage',              description: 'Create and manage Sunday service schedules' },
+  { module: 'schedule',         action: 'view_all',            description: 'Master Scheduler — view and manage all ministry schedules' },
   { module: 'schedule',         action: 'confirm',             description: 'Confirm worker acknowledgement of schedule assignments' },
   { module: 'schedule',         action: 'assign_schedulers',   description: 'Assign Ministry Scheduler role to workers' },
+  { module: 'ministry',         action: 'manage',              description: 'Manage workload categories and ministry managers' },
   { module: 'inventory',        action: 'access',              description: 'Access the Inventory Management module' },
   { module: 'inventory',        action: 'manage',              description: 'Inventory Officer — create, edit, delete items and manage stock' },
   { module: 'inventory',        action: 'set_code',            description: 'Set custom inventory codes on items' },

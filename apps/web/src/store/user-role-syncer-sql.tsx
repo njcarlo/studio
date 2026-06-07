@@ -226,6 +226,8 @@ export function UserRoleSyncerSQL() {
         hasPerm('manage_own_ministry_assistance'),
       canManageSchedule:
         sa || hasPerm('schedule:manage'),
+      canViewAllSchedules:
+        sa || hasPerm('schedule:view_all'),
       canConfirmSchedule:
         sa || hasPerm('schedule:confirm') || hasPerm('schedule:manage'),
       canAssignSchedulers:

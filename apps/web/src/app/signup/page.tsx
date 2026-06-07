@@ -7,7 +7,7 @@ import { Church } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@studio/database";
-import { createWorker, createApproval, assignRolesToWorker } from "@/actions/db";
+import { createWorker, createApproval, assignViewerRoleOnSignup } from "@/actions/db";
 
 export default function SignUpPage() {
   const [firstName, setFirstName] = useState("");
@@ -33,7 +33,7 @@ export default function SignUpPage() {
       if (!uid) throw new Error("Failed to get user ID after sign up.");
 
       // 2. Create worker profile in Prisma DB
-      await createWorker({
+      const workerRes = await createWorker({
         id: uid,
         firstName,
         lastName,
@@ -43,9 +43,10 @@ export default function SignUpPage() {
         avatarUrl: `https://picsum.photos/seed/${uid.slice(0, 5)}/100/100`,
         workerId: String(20000 + Math.floor(Math.random() * 1000)).padStart(6, '0'),
       });
+      if (!workerRes.success) throw new Error(workerRes.error);
 
       // 2b. Populate WorkerRole join table for multi-role support
-      await assignRolesToWorker(uid, ['viewer']);
+      await assignViewerRoleOnSignup(uid);
 
       // 3. Create approval request
       await createApproval({

@@ -12,7 +12,11 @@ export function useSettings(id: string) {
     });
 
     const updateMutation = useMutation({
-        mutationFn: (newData: any) => updateSetting(id, newData),
+        mutationFn: async (newData: any) => {
+            const res = await updateSetting(id, newData);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['settings', id] });
         },

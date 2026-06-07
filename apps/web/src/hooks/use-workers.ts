@@ -36,7 +36,11 @@ export function useWorkers(params: {
     });
 
     const createMutation = useMutation({
-        mutationFn: createWorker,
+        mutationFn: async (data: any) => {
+            const res = await createWorker(data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['workers'] });
             queryClient.invalidateQueries({ queryKey: ['worker-stats'] });
@@ -44,7 +48,11 @@ export function useWorkers(params: {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateWorker(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+            const res = await updateWorker(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['workers'] });
             queryClient.invalidateQueries({ queryKey: ['worker-stats'] });
@@ -52,7 +60,11 @@ export function useWorkers(params: {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteWorker,
+        mutationFn: async (id: string) => {
+            const res = await deleteWorker(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['workers'] });
             queryClient.invalidateQueries({ queryKey: ['worker-stats'] });
@@ -60,7 +72,11 @@ export function useWorkers(params: {
     });
 
     const deleteBatchMutation = useMutation({
-        mutationFn: deleteWorkers,
+        mutationFn: async (ids: string[]) => {
+            const res = await deleteWorkers(ids);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['workers'] });
             queryClient.invalidateQueries({ queryKey: ['worker-stats'] });

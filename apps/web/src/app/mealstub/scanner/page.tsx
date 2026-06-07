@@ -89,7 +89,8 @@ export default function QRScannerPage() {
             const validStub = stubs.find(s => s.status === 'Issued');
 
             if (validStub) {
-                await updateMealStub(validStub.id, { status: 'Claimed', claimedAt: new Date() });
+                const res = await updateMealStub(validStub.id, { status: 'Claimed', claimedAt: new Date() });
+                if (!res.success) throw new Error(res.error);
                 const workerName = worker ? `${worker.firstName} ${worker.lastName}` : workerId;
                 const details = `Claimed meal stub for ${workerName}.`;
                 toast({ title: 'Meal Stub Claimed!', description: details });
@@ -102,7 +103,7 @@ export default function QRScannerPage() {
                     targetUserName: workerName,
                     scannerId: 'public_scanner',
                     scannerName: 'Public Kiosk Scanner',
-                });
+                }).catch(() => {}); // audit log — best-effort
             } else {
                 const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
                 toast({ variant: 'destructive', title: 'No Meal Stub Found', description: `No valid meal stub for ${workerName} today.` });

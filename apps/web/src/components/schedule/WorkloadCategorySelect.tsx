@@ -45,10 +45,7 @@ export const WorkloadCategorySelect: React.FC<WorkloadCategorySelectProps> = ({
         if (!newRoleName.trim() || !ministryId) return;
         setIsSaving(true);
         try {
-            await createCategory(
-                { name: newRoleName.trim() }, 
-                { skipAuth: true } 
-            );
+            await createCategory({ name: newRoleName.trim() });
             onChange(newRoleName.trim());
             setIsCreateOpen(false);
             setNewRoleName("");

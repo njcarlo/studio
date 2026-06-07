@@ -16,11 +16,11 @@ export function useEvents(status?: string) {
         staleTime: 30_000,
     });
     const deleteMutation = useMutation({
-        mutationFn: deleteEvent,
+        mutationFn: async (id: string) => { const res = await deleteEvent(id); if (!res.success) throw new Error(res.error); return res.data; },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
     });
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateEvent(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: any }) => { const res = await updateEvent(id, data); if (!res.success) throw new Error(res.error); return res.data; },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
     });
     return {
@@ -44,15 +44,15 @@ export function useEvent(id: string) {
 
     const inv = () => qc.invalidateQueries({ queryKey: key });
 
-    const updateMutation        = useMutation({ mutationFn: (data: any) => updateEvent(id, data), onSuccess: inv });
-    const addRoomMutation       = useMutation({ mutationFn: addEventRoom, onSuccess: inv });
-    const updateRoomMutation    = useMutation({ mutationFn: ({ bid, data }: any) => updateEventRoom(bid, id, data), onSuccess: inv });
-    const removeRoomMutation    = useMutation({ mutationFn: (bid: string) => removeEventRoom(bid, id), onSuccess: inv });
-    const upsertAssignMutation  = useMutation({ mutationFn: upsertEventAssignment, onSuccess: inv });
-    const deleteAssignMutation  = useMutation({ mutationFn: (aid: string) => deleteEventAssignment(aid, id), onSuccess: inv });
-    const addEquipMutation      = useMutation({ mutationFn: addEventEquipment, onSuccess: inv });
-    const updateEquipMutation   = useMutation({ mutationFn: ({ eid, data }: any) => updateEventEquipment(eid, id, data), onSuccess: inv });
-    const removeEquipMutation   = useMutation({ mutationFn: (eid: string) => removeEventEquipment(eid, id), onSuccess: inv });
+    const updateMutation        = useMutation({ mutationFn: async (data: any) => { const res = await updateEvent(id, data); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
+    const addRoomMutation       = useMutation({ mutationFn: async (data: any) => { const res = await addEventRoom(data); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
+    const updateRoomMutation    = useMutation({ mutationFn: async ({ bid, data }: any) => { const res = await updateEventRoom(bid, id, data); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
+    const removeRoomMutation    = useMutation({ mutationFn: async (bid: string) => { const res = await removeEventRoom(bid, id); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
+    const upsertAssignMutation  = useMutation({ mutationFn: async (data: any) => { const res = await upsertEventAssignment(data); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
+    const deleteAssignMutation  = useMutation({ mutationFn: async (aid: string) => { const res = await deleteEventAssignment(aid, id); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
+    const addEquipMutation      = useMutation({ mutationFn: async (data: any) => { const res = await addEventEquipment(data); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
+    const updateEquipMutation   = useMutation({ mutationFn: async ({ eid, data }: any) => { const res = await updateEventEquipment(eid, id, data); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
+    const removeEquipMutation   = useMutation({ mutationFn: async (eid: string) => { const res = await removeEventEquipment(eid, id); if (!res.success) throw new Error(res.error); return res.data; }, onSuccess: inv });
 
     return {
         event: query.data ?? null,

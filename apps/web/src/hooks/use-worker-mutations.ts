@@ -14,7 +14,9 @@ export function useWorkerMutations() {
 
     const updateWorkerMutation = useMutation({
         mutationFn: async ({ id, data }: { id: string; data: Partial<Worker> }) => {
-            return updateWorker(id, data);
+            const res = await updateWorker(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
         },
         onSuccess: () => {
             toast({
@@ -22,19 +24,21 @@ export function useWorkerMutations() {
                 description: 'The worker details have been successfully updated.',
             });
         },
-        onError: (error) => {
+        onError: (error: any) => {
             console.error('Update worker error:', error);
             toast({
                 variant: 'destructive',
                 title: 'Update Failed',
-                description: 'Could not update worker details.',
+                description: error.message || 'Could not update worker details.',
             });
         },
     });
 
     const addWorkerMutation = useMutation({
         mutationFn: async (data: Partial<Worker>) => {
-            return createWorker(data);
+            const res = await createWorker(data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
         },
         onSuccess: () => {
             toast({
@@ -42,19 +46,21 @@ export function useWorkerMutations() {
                 description: 'Successfully added the new worker.',
             });
         },
-        onError: (error) => {
+        onError: (error: any) => {
             console.error('Add worker error:', error);
             toast({
                 variant: 'destructive',
                 title: 'Addition Failed',
-                description: 'Could not add the new worker.',
+                description: error.message || 'Could not add the new worker.',
             });
         },
     });
 
     const deleteWorkerMutation = useMutation({
         mutationFn: async (id: string) => {
-            return deleteWorker(id);
+            const res = await deleteWorker(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
         },
         onSuccess: () => {
             toast({
@@ -62,12 +68,12 @@ export function useWorkerMutations() {
                 description: 'The worker has been removed from the system.',
             });
         },
-        onError: (error) => {
+        onError: (error: any) => {
             console.error('Delete worker error:', error);
             toast({
                 variant: 'destructive',
                 title: 'Deletion Failed',
-                description: 'Could not delete the worker.',
+                description: error.message || 'Could not delete the worker.',
             });
         },
     });
@@ -80,7 +86,11 @@ export function useWorkerMutations() {
             workerIds: string[];
             data: Partial<Worker>;
         }) => {
-            await Promise.all(workerIds.map((id) => updateWorker(id, data)));
+            await Promise.all(workerIds.map(async (id) => {
+                const res = await updateWorker(id, data);
+                if (!res.success) throw new Error(res.error);
+                return res.data;
+            }));
         },
         onSuccess: (_, variables) => {
             toast({

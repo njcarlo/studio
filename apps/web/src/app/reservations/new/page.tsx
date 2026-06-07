@@ -237,7 +237,9 @@ export default function NewReservationPage() {
                 guidelinesAccepted: true,
             };
 
-            const newBooking = await createBooking(bookingData);
+            const res = await createBooking(bookingData);
+            if (!res.success) throw new Error(res.error);
+            const newBooking = res.data;
 
             if (newBooking?.id) {
                 await createApproval({

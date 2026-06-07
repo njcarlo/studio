@@ -45,7 +45,7 @@ export default function EventsPage() {
         if (!form.title || !form.date) return;
         setSaving(true);
         try {
-            const event = await createEvent({
+            const res = await createEvent({
                 title: form.title,
                 description: form.description || undefined,
                 date: new Date(form.date),
@@ -55,6 +55,8 @@ export default function EventsPage() {
                 location: form.location || undefined,
                 createdBy: workerProfile?.id || user?.uid || "system",
             });
+            if (!res.success) throw new Error(res.error);
+            const event = res.data;
             setCreateOpen(false);
             setForm({ title: "", date: "", endDate: "", startTime: "", endTime: "", location: "", description: "" });
             router.push(`/events/${event.id}`);

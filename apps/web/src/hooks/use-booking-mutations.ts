@@ -24,7 +24,9 @@ export function useBookingMutations() {
             if (!booking.id) {
                 throw new Error('Missing booking ID');
             }
-            return updateBooking(booking.id, { status: newStatus });
+            const res = await updateBooking(booking.id, { status: newStatus });
+            if (!res.success) throw new Error(res.error);
+            return res.data;
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['bookings'] });

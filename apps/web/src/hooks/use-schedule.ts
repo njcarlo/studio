@@ -22,17 +22,29 @@ export function useServiceSchedules() {
     });
 
     const createMutation = useMutation({
-        mutationFn: createServiceSchedule,
+        mutationFn: async (args: Parameters<typeof createServiceSchedule>[0]) => {
+            const res = await createServiceSchedule(args);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedules'] }),
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateServiceSchedule(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+            const res = await updateServiceSchedule(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedules'] }),
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteServiceSchedule,
+        mutationFn: async (id: string) => {
+            const res = await deleteServiceSchedule(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedules'] }),
     });
 
@@ -65,8 +77,11 @@ export function useServiceSchedule(id: string) {
     });
 
     const applyTemplateMutation = useMutation({
-        mutationFn: ({ templateId }: { templateId: string }) =>
-            applyTemplateToSchedule(id, templateId),
+        mutationFn: async ({ templateId }: { templateId: string }) => {
+            const res = await applyTemplateToSchedule(id, templateId);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['service-schedule', id] });
             qc.invalidateQueries({ queryKey: ['workload-categories'] });
@@ -74,8 +89,11 @@ export function useServiceSchedule(id: string) {
     });
 
     const publishMutation = useMutation({
-        mutationFn: ({ publishedBy }: { publishedBy: string }) =>
-            publishScheduleAndNotify(id, publishedBy),
+        mutationFn: async ({ publishedBy }: { publishedBy: string }) => {
+            const res = await publishScheduleAndNotify(id, publishedBy);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['service-schedule', id] });
             qc.invalidateQueries({ queryKey: ['service-schedules'] });
@@ -116,7 +134,11 @@ export function useServiceSchedule(id: string) {
     });
 
     const togglePublicMutation = useMutation({
-        mutationFn: ({ isPublic }: { isPublic: boolean }) => togglePublicSchedule(id, isPublic),
+        mutationFn: async ({ isPublic }: { isPublic: boolean }) => {
+            const res = await togglePublicSchedule(id, isPublic);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['service-schedule', id] });
             qc.invalidateQueries({ queryKey: ['service-schedules'] });
@@ -150,7 +172,11 @@ export function useServiceTemplates(ministryId?: string) {
     });
 
     const createMutation = useMutation({
-        mutationFn: createServiceTemplate,
+        mutationFn: async (args: Parameters<typeof createServiceTemplate>[0]) => {
+            const res = await createServiceTemplate(args);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['service-templates'] });
             qc.invalidateQueries({ queryKey: ['workload-categories'] });
@@ -158,7 +184,11 @@ export function useServiceTemplates(ministryId?: string) {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => updateServiceTemplate(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+            const res = await updateServiceTemplate(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['service-templates'] });
             qc.invalidateQueries({ queryKey: ['workload-categories'] });
@@ -166,7 +196,11 @@ export function useServiceTemplates(ministryId?: string) {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteServiceTemplate,
+        mutationFn: async (id: string) => {
+            const res = await deleteServiceTemplate(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['service-templates'] }),
     });
 
@@ -197,30 +231,47 @@ export function useWorshipSlots(scheduleId: string) {
     });
 
     const createMutation = useMutation({
-        mutationFn: (d: { slotName: string; ministryId?: string | null; notes?: string; order?: number }) =>
-            createWorshipSlot({ scheduleId, ...d }),
+        mutationFn: async (d: { slotName: string; ministryId?: string | null; notes?: string; order?: number }) => {
+            const res = await createWorshipSlot({ scheduleId, ...d });
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: key }),
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: string; data: { slotName?: string; notes?: string } }) =>
-            updateWorshipSlot(id, data),
+        mutationFn: async ({ id, data }: { id: string; data: { slotName?: string; notes?: string } }) => {
+            const res = await updateWorshipSlot(id, data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: key }),
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteWorshipSlot,
+        mutationFn: async (id: string) => {
+            const res = await deleteWorshipSlot(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: key }),
     });
 
     const addWorkerMutation = useMutation({
-        mutationFn: ({ slotId, workerId, workerName, role }: { slotId: string; workerId: string; workerName: string; role?: string }) =>
-            addWorkerToWorshipSlot(slotId, workerId, workerName, role),
+        mutationFn: async ({ slotId, workerId, workerName, role }: { slotId: string; workerId: string; workerName: string; role?: string }) => {
+            const res = await addWorkerToWorshipSlot(slotId, workerId, workerName, role);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: key }),
     });
 
     const removeWorkerMutation = useMutation({
-        mutationFn: removeWorkerFromWorshipSlot,
+        mutationFn: async (id: string) => {
+            const res = await removeWorkerFromWorshipSlot(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: key }),
     });
 

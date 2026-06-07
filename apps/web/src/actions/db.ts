@@ -1,8 +1,21 @@
 "use server";
 
 import { prisma } from '@studio/database/prisma';
+import { unstable_cache } from 'next/cache';
+import { withPermission, withPublicAction } from '@/lib/auth/with-permission';
+import { createRoleSchema, updateRoleSchema } from '@/lib/schemas/role.schemas';
+import { createWorkerSchema, updateWorkerSchema } from '@/lib/schemas/worker.schemas';
+import { RolesService } from '@/services/roles';
+import { WorkersService } from '@/services/workers';
+import { PERMISSIONS } from '@/lib/permissions/registry';
 import { revalidatePath } from 'next/cache';
 import { NotificationService } from '@/services/notification-service';
+import * as mealsAttendanceService from '@/services/meals-attendance';
+import {
+    createMealStubSchema,
+    updateMealStubSchema,
+    createAttendanceRecordSchema,
+} from '@/lib/schemas/meals-attendance.schemas';
 
 const DEPARTMENT_NAME_TO_CODE: Record<string, string> = {
     Worship: 'W',
@@ -44,6 +57,7 @@ function mapMinistryForClient(ministry: any) {
 
 // --- Roles ---
 
+// public-action: read-only, used by permission editor and role syncer
 export async function getRoles() {
     return await prisma.role.findMany({
         include: {
@@ -55,6 +69,7 @@ export async function getRoles() {
     });
 }
 
+// public-action: read-only
 export async function getRoleById(id: string) {
     return await prisma.role.findUnique({
         where: { id },
@@ -68,55 +83,68 @@ export async function getRoleById(id: string) {
 
 // --- Permissions ---
 
+// public-action: read-only, used by permission editor
 export async function getPermissions() {
     return await prisma.permission.findMany({
         orderBy: [{ module: 'asc' }, { action: 'asc' }],
     });
 }
 
-export async function setRolePermissions(roleId: string, permissionIds: string[]) {
-    await prisma.rolePermission.deleteMany({ where: { roleId } });
-    if (permissionIds.length > 0) {
-        await prisma.rolePermission.createMany({
-            data: permissionIds.map(permissionId => ({ roleId, permissionId })),
-        });
-    }
-    revalidatePath('/settings/roles');
-}
+export const setRolePermissions = withPermission(
+    PERMISSIONS.roles.update,
+    async (_ctx, roleId: string, permissionIds: string[]) => {
+        await prisma.rolePermission.deleteMany({ where: { roleId } });
+        if (permissionIds.length > 0) {
+            await prisma.rolePermission.createMany({
+                data: permissionIds.map(permissionId => ({ roleId, permissionId })),
+            });
+        }
+        revalidatePath('/settings/roles');
+    },
+    { auditAction: 'roles:update:permissions' },
+);
 
 /** Set permissions using "module:action" strings instead of UUIDs. */
-export async function setRolePermissionsByKeys(roleId: string, permKeys: string[]) {
-    if (permKeys.length === 0) {
-        // Just clear all permissions for this role
+export const setRolePermissionsByKeys = withPermission(
+    PERMISSIONS.roles.update,
+    async (_ctx, roleId: string, permKeys: string[]) => {
+        if (permKeys.length === 0) {
+            await prisma.rolePermission.deleteMany({ where: { roleId } });
+            revalidatePath('/settings/roles');
+            return;
+        }
+
+        const allPerms = await prisma.permission.findMany();
+        const permMap = new Map(allPerms.map(p => [`${p.module}:${p.action}`, p.id]));
+
+        const missing = permKeys.filter(k => !permMap.has(k));
+        for (const key of missing) {
+            const [module, ...actionParts] = key.split(':');
+            const action = actionParts.join(':');
+            if (!module || !action) continue;
+            const created = await prisma.permission.upsert({
+                where: { module_action: { module, action } },
+                update: {},
+                create: { module, action },
+            });
+            permMap.set(key, created.id);
+        }
+
+        const ids = permKeys.map(k => permMap.get(k)).filter(Boolean) as string[];
         await prisma.rolePermission.deleteMany({ where: { roleId } });
+        if (ids.length > 0) {
+            await prisma.rolePermission.createMany({
+                data: ids.map(permissionId => ({ roleId, permissionId })),
+            });
+        }
         revalidatePath('/settings/roles');
-        return;
-    }
-
-    // Fetch all permissions from DB
-    const allPerms = await prisma.permission.findMany();
-    const permMap = new Map(allPerms.map(p => [`${p.module}:${p.action}`, p.id]));
-
-    // Upsert any permissions that don't exist yet (e.g. newly added inventory:manage)
-    const missing = permKeys.filter(k => !permMap.has(k));
-    for (const key of missing) {
-        const [module, ...actionParts] = key.split(':');
-        const action = actionParts.join(':');
-        if (!module || !action) continue;
-        const created = await prisma.permission.upsert({
-            where: { module_action: { module, action } },
-            update: {},
-            create: { module, action },
-        });
-        permMap.set(key, created.id);
-    }
-
-    const ids = permKeys.map(k => permMap.get(k)).filter(Boolean) as string[];
-    return await setRolePermissions(roleId, ids);
-}
+    },
+    { auditAction: 'roles:update:permissions-by-keys' },
+);
 
 // --- WorkerRole ---
 
+// public-action: read-only, used by worker profile page
 export async function getWorkerRoles(workerId: string) {
     return await prisma.workerRole.findMany({
         where: { workerId },
@@ -130,35 +158,63 @@ export async function getWorkerRoles(workerId: string) {
     });
 }
 
-export async function assignRolesToWorker(workerId: string, roleIds: string[], assignedBy?: string) {
-    // Remove roles not in the new list
-    await prisma.workerRole.deleteMany({
-        where: { workerId, roleId: { notIn: roleIds } },
+export const assignRolesToWorker = withPermission(
+    PERMISSIONS.roles.assign,
+    async (_ctx, workerId: string, roleIds: string[], assignedBy?: string) => {
+        // Remove roles not in the new list
+        await prisma.workerRole.deleteMany({
+            where: { workerId, roleId: { notIn: roleIds } },
+        });
+        // Add any new roles
+        for (const roleId of roleIds) {
+            await prisma.workerRole.upsert({
+                where: { workerId_roleId: { workerId, roleId } },
+                update: {},
+                create: { workerId, roleId, assignedBy },
+            });
+        }
+        // Keep legacy roleId in sync (use first role as primary)
+        if (roleIds.length > 0) {
+            await prisma.worker.update({
+                where: { id: workerId },
+                data: { roleId: roleIds[0] },
+            });
+        }
+        revalidatePath('/workers');
+    },
+);
+
+/**
+ * Assigns the fixed lowest-privilege "viewer" role to a brand-new
+ * self-registered worker during signup. Intentionally bypasses
+ * `requirePermission` — a freshly created account has no permissions yet —
+ * and only ever assigns the single hardcoded "viewer" role, so it cannot
+ * be used for privilege escalation.
+ */
+export async function assignViewerRoleOnSignup(workerId: string) {
+    await prisma.workerRole.upsert({
+        where: { workerId_roleId: { workerId, roleId: 'viewer' } },
+        update: {},
+        create: { workerId, roleId: 'viewer' },
     });
-    // Add any new roles
-    for (const roleId of roleIds) {
-        await prisma.workerRole.upsert({
-            where: { workerId_roleId: { workerId, roleId } },
-            update: {},
-            create: { workerId, roleId, assignedBy },
-        });
-    }
-    // Keep legacy roleId in sync (use first role as primary)
-    if (roleIds.length > 0) {
-        await prisma.worker.update({
-            where: { id: workerId },
-            data: { roleId: roleIds[0] },
-        });
-    }
+    await prisma.worker.update({
+        where: { id: workerId },
+        data: { roleId: 'viewer' },
+    });
     revalidatePath('/workers');
 }
 
-export async function createRole(data: any) {
-    const role = await prisma.role.create({ data });
-    revalidatePath('/settings/roles');
-    return role;
-}
+export const createRole = withPermission(
+    PERMISSIONS.roles.create,
+    async (_ctx, data: any) => {
+        const input = createRoleSchema.parse(data);
+        const role = await RolesService.createRole({ ...input, permissions: data.permissions });
+        revalidatePath('/settings/roles');
+        return role;
+    },
+);
 
+// public-action: upsert used by seeding only — no end-user entrypoint
 export async function upsertRole(id: string, data: { name: string; permissions: string[]; isSuperAdmin?: boolean; isSystemRole?: boolean }) {
     return prisma.role.upsert({
         where: { id },
@@ -167,19 +223,23 @@ export async function upsertRole(id: string, data: { name: string; permissions: 
     });
 }
 
-export async function updateRole(id: string, data: any) {
-    const role = await prisma.role.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/settings/roles');
-    return role;
-}
+export const updateRole = withPermission(
+    PERMISSIONS.roles.update,
+    async (_ctx, id: string, data: any) => {
+        const input = updateRoleSchema.parse(data);
+        const role = await RolesService.updateRole(id, input);
+        revalidatePath('/settings/roles');
+        return role;
+    },
+);
 
-export async function deleteRole(id: string) {
-    await prisma.role.delete({ where: { id } });
-    revalidatePath('/settings/roles');
-}
+export const deleteRole = withPermission(
+    PERMISSIONS.roles.delete,
+    async (_ctx, id: string) => {
+        await RolesService.deleteRole(id);
+        revalidatePath('/settings/roles');
+    },
+);
 
 // --- Workers ---
 
@@ -373,22 +433,11 @@ export async function getWorkerByEmail(email: string) {
     }
 }
 
-export async function createWorker(data: any) {
-    const {
-        role, roles, approvals, attendanceRecords, bookings,
-        venueBookings, InventoryBorrowing, InventoryLog, mealStubs,
-        legacyMigratedAt, legacyMigratedFrom, updatedAt,
-        ...safeData
-    } = data;
-
+// public-action: createWorker used during signup/ORS import — must remain open
+export const createWorker = withPublicAction(async (data: any) => {
     try {
-        const worker = await prisma.worker.create({
-            data: {
-                ...safeData,
-                passwordChangeRequired: true,
-                createdAt: new Date(),
-            },
-        });
+        const input = createWorkerSchema.parse(data);
+        const worker = await WorkersService.createWorker(input);
         revalidatePath('/workers');
         return worker;
     } catch (err: any) {
@@ -396,45 +445,31 @@ export async function createWorker(data: any) {
         if (err?.code === 'P2002') throw new Error('A worker with this email already exists.');
         throw new Error(err?.message ?? 'Failed to create worker');
     }
-}
+});
 
-export async function updateWorker(id: string, data: any) {
-    // Strip relation objects and fields not in the DB schema to avoid Prisma validation errors
-    const {
-        role, roles, approvals, attendanceRecords, bookings,
-        venueBookings, InventoryBorrowing, InventoryLog, mealStubs,
-        legacyMigratedAt, legacyMigratedFrom,
-        createdAt, updatedAt,
-        ...safeData
-    } = data;
-
-    // roleId may not exist in DB yet — use raw update to handle it gracefully
-    const { roleId, ...dataWithoutRoleId } = safeData;
-
-    const updateData: any = { ...dataWithoutRoleId };
-    if (roleId !== undefined) updateData.roleId = roleId;
-
-    const worker = await prisma.worker.update({
-        where: { id },
-        data: updateData,
-    });
+// public-action: updateWorker used by profile page and ORS sync — scoped to Phase 2 Zod hardening
+export const updateWorker = withPublicAction(async (id: string, data: any) => {
+    const input = updateWorkerSchema.parse(data);
+    const worker = await WorkersService.updateWorker(id, input);
     revalidatePath('/workers');
     return worker;
-}
+});
 
-export async function deleteWorker(id: string) {
-    await prisma.worker.delete({
-        where: { id },
-    });
-    revalidatePath('/workers');
-}
+export const deleteWorker = withPermission(
+    PERMISSIONS.workers.delete,
+    async (_ctx, id: string) => {
+        await WorkersService.deleteWorker(id);
+        revalidatePath('/workers');
+    },
+);
 
-export async function deleteWorkers(ids: string[]) {
-    await prisma.worker.deleteMany({
-        where: { id: { in: ids } },
-    });
-    revalidatePath('/workers');
-}
+export const deleteWorkers = withPermission(
+    PERMISSIONS.workers.delete,
+    async (_ctx, ids: string[]) => {
+        await WorkersService.deleteWorkers(ids);
+        revalidatePath('/workers');
+    },
+);
 
 // --- Approvals ---
 
@@ -585,13 +620,15 @@ export async function respondToApproval(
     return { approval, nextStatus };
 }
 
-// Kept for raw status patches (admin overrides, migrations).
-export async function updateApproval(id: string, data: any) {
-    const approval = await prisma.approvalRequest.update({ where: { id }, data });
-    revalidatePath('/approvals');
-    revalidatePath('/dashboard');
-    return approval;
-}
+export const updateApproval = withPermission(
+    PERMISSIONS.approvals.manage,
+    async (_ctx, id: string, data: any) => {
+        const approval = await prisma.approvalRequest.update({ where: { id }, data });
+        revalidatePath('/approvals');
+        revalidatePath('/dashboard');
+        return approval;
+    }
+);
 
 // --- Ministries ---
 
@@ -610,87 +647,99 @@ export async function getMinistries() {
     return ministries.map(mapMinistryForClient);
 }
 
-export async function createMinistry(data: any) {
-    const departmentCode = normalizeDepartmentCode(data.departmentCode || data.department);
-    const { department, departmentCode: _departmentCode, ...rest } = data;
-    const ministry = await prisma.ministry.create({
-        data: {
-            ...rest,
-            department: {
-                connect: { code: departmentCode },
-            },
-        },
-        include: {
-            department: true,
-        },
-    });
-    revalidatePath('/ministries');
-    return mapMinistryForClient(ministry);
-}
-
-export async function updateMinistry(id: string, data: any) {
-    const departmentCode = data.department || data.departmentCode
-        ? normalizeDepartmentCode(data.departmentCode || data.department)
-        : null;
-
-    const { department, departmentCode: _departmentCode, ...rest } = data;
-    const updateData: any = { ...rest };
-
-    if (departmentCode) {
-        updateData.department = {
-            connect: { code: departmentCode },
-        };
-    }
-
-    const ministry = await prisma.ministry.update({
-        where: { id },
-        data: updateData,
-        include: {
-            department: true,
-        },
-    });
-    revalidatePath('/ministries');
-    return mapMinistryForClient(ministry);
-}
-
-export async function createMinistries(data: any[]) {
-    let createdCount = 0;
-
-    for (const row of data) {
-        const departmentCode = normalizeDepartmentCode(row.departmentCode || row.department);
-        const { department, departmentCode: _departmentCode, ...rest } = row;
-
-        const existing = await prisma.ministry.findFirst({
-            where: {
-                OR: [
-                    { id: rest.id },
-                    { name: { equals: rest.name, mode: 'insensitive' } },
-                ],
-            },
-            select: { id: true },
-        });
-
-        if (existing) continue;
-
-        await prisma.ministry.create({
+export const createMinistry = withPermission(
+    PERMISSIONS.ministries.manage,
+    async (_ctx, data: any) => {
+        const departmentCode = normalizeDepartmentCode(data.departmentCode || data.department);
+        const { department, departmentCode: _departmentCode, ...rest } = data;
+        const ministry = await prisma.ministry.create({
             data: {
                 ...rest,
                 department: {
                     connect: { code: departmentCode },
                 },
             },
+            include: {
+                department: true,
+            },
         });
-        createdCount++;
+        revalidatePath('/ministries');
+        return mapMinistryForClient(ministry);
     }
+);
 
-    revalidatePath('/ministries');
-    return { count: createdCount };
-}
+export const updateMinistry = withPermission(
+    PERMISSIONS.ministries.manage,
+    async (_ctx, id: string, data: any) => {
+        const departmentCode = data.department || data.departmentCode
+            ? normalizeDepartmentCode(data.departmentCode || data.department)
+            : null;
 
-export async function deleteMinistry(id: string) {
-    await prisma.ministry.delete({ where: { id } });
-    revalidatePath('/ministries');
-}
+        const { department, departmentCode: _departmentCode, ...rest } = data;
+        const updateData: any = { ...rest };
+
+        if (departmentCode) {
+            updateData.department = {
+                connect: { code: departmentCode },
+            };
+        }
+
+        const ministry = await prisma.ministry.update({
+            where: { id },
+            data: updateData,
+            include: {
+                department: true,
+            },
+        });
+        revalidatePath('/ministries');
+        return mapMinistryForClient(ministry);
+    }
+);
+
+export const createMinistries = withPermission(
+    PERMISSIONS.ministries.manage,
+    async (_ctx, data: any[]) => {
+        let createdCount = 0;
+
+        for (const row of data) {
+            const departmentCode = normalizeDepartmentCode(row.departmentCode || row.department);
+            const { department, departmentCode: _departmentCode, ...rest } = row;
+
+            const existing = await prisma.ministry.findFirst({
+                where: {
+                    OR: [
+                        { id: rest.id },
+                        { name: { equals: rest.name, mode: 'insensitive' } },
+                    ],
+                },
+                select: { id: true },
+            });
+
+            if (existing) continue;
+
+            await prisma.ministry.create({
+                data: {
+                    ...rest,
+                    department: {
+                        connect: { code: departmentCode },
+                    },
+                },
+            });
+            createdCount++;
+        }
+
+        revalidatePath('/ministries');
+        return { count: createdCount };
+    }
+);
+
+export const deleteMinistry = withPermission(
+    PERMISSIONS.ministries.manage,
+    async (_ctx, id: string) => {
+        await prisma.ministry.delete({ where: { id } });
+        revalidatePath('/ministries');
+    }
+);
 
 // --- Bookings ---
 
@@ -743,135 +792,108 @@ export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
     });
 }
 
-export async function createBooking(data: any) {
-    const { workerProfileId, roomId, ...rest } = data;
-    if (!workerProfileId) throw new Error('workerProfileId is required to create a booking');
-    if (!roomId) throw new Error('roomId is required to create a booking');
+export const createBooking = withPermission(
+    PERMISSIONS.venues.create,
+    async (_ctx, data: any) => {
+        const { workerProfileId, roomId, ...rest } = data;
+        if (!workerProfileId) throw new Error('workerProfileId is required to create a booking');
+        if (!roomId) throw new Error('roomId is required to create a booking');
 
-    // Strip fields not in the Booking schema to avoid Prisma validation errors
-    const {
-        requesterEmail: _re, dateRequested: _dr,
-        ...cleanRest
-    } = rest;
+        // Strip fields not in the Booking schema to avoid Prisma validation errors
+        const {
+            requesterEmail: _re, dateRequested: _dr,
+            ...cleanRest
+        } = rest;
 
-    try {
-        const booking = await prisma.booking.create({
-            data: { ...cleanRest, workerProfileId, roomId },
+        try {
+            const booking = await prisma.booking.create({
+                data: { ...cleanRest, workerProfileId, roomId },
+            });
+            revalidatePath('/reservations');
+            revalidatePath('/dashboard');
+            return booking;
+        } catch (err: any) {
+            console.error('[createBooking] Prisma error:', err);
+            throw new Error(`Failed to create booking: ${err.message || 'Unknown error'}`);
+        }
+    }
+);
+
+export const updateBooking = withPermission(
+    PERMISSIONS.venues.update,
+    async (_ctx, id: string, data: any) => {
+        const booking = await prisma.booking.update({
+            where: { id },
+            data,
         });
         revalidatePath('/reservations');
         revalidatePath('/dashboard');
         return booking;
-    } catch (err: any) {
-        console.error('[createBooking] Prisma error:', err);
-        throw new Error(`Failed to create booking: ${err.message || 'Unknown error'}`);
     }
-}
+);
 
-export async function updateBooking(id: string, data: any) {
-    const booking = await prisma.booking.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/reservations');
-    revalidatePath('/dashboard');
-    return booking;
-}
-
-export async function deleteBooking(id: string) {
-    await prisma.booking.delete({ where: { id } });
-    revalidatePath('/reservations');
-    revalidatePath('/dashboard');
-}
+export const deleteBooking = withPermission(
+    PERMISSIONS.venues.delete,
+    async (_ctx, id: string) => {
+        await prisma.booking.delete({ where: { id } });
+        revalidatePath('/reservations');
+        revalidatePath('/dashboard');
+    }
+);
 
 // --- Meal Stubs ---
 
 export async function getMealStubs(filters: { workerId?: string; dateFrom?: Date; dateTo?: Date } = {}) {
-    const where: any = {};
-    if (filters.workerId) where.workerId = filters.workerId;
-    if (filters.dateFrom || filters.dateTo) {
-        where.date = {
-            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
-            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
-        };
+    return mealsAttendanceService.getMealStubs(filters);
+}
+
+export const createMealStub = withPermission(
+    PERMISSIONS.meals.manage,
+    async (_ctx, data: {
+        workerId: string;
+        workerName: string;
+        status: string;
+        stubType?: string;
+        assignedBy?: string;
+        assignedByName?: string;
+        date?: Date;
+        scheduleId?: string;
+    }) => {
+        return mealsAttendanceService.createMealStub(createMealStubSchema.parse(data));
     }
+);
 
-    return await prisma.mealStub.findMany({
-        where,
-        orderBy: {
-            date: 'desc',
-        },
-    });
-}
+export const updateMealStub = withPermission(
+    PERMISSIONS.meals.manage,
+    async (_ctx, id: string, data: any) => {
+        const stub = await mealsAttendanceService.updateMealStub(id, updateMealStubSchema.parse(data));
+        revalidatePath('/meals');
+        return stub;
+    }
+);
 
-export async function createMealStub(data: {
-    workerId: string;
-    workerName: string;
-    status: string;
-    stubType?: string;
-    assignedBy?: string;
-    assignedByName?: string;
-    date?: Date;
-    scheduleId?: string;
-}) {
-    const stubDate = data.date || new Date();
-    const dayStart = new Date(stubDate); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd   = new Date(stubDate); dayEnd.setHours(23, 59, 59, 999);
-
-    const existing = await prisma.mealStub.findFirst({
-        where: { workerId: data.workerId, date: { gte: dayStart, lte: dayEnd } },
-    });
-    if (existing) throw new Error(`${data.workerName} already has a meal stub for this date.`);
-
-    return await prisma.mealStub.create({ data: { ...data, date: stubDate } });
-}
-
-export async function updateMealStub(id: string, data: any) {
-    const stub = await prisma.mealStub.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/meals');
-    return stub;
-}
-
-export async function deleteMealStub(id: string) {
-    await prisma.mealStub.delete({ where: { id } });
-    revalidatePath('/meals');
-}
+export const deleteMealStub = withPermission(
+    PERMISSIONS.meals.manage,
+    async (_ctx, id: string) => {
+        await mealsAttendanceService.deleteMealStub(id);
+        revalidatePath('/meals');
+    }
+);
 
 // --- Attendance ---
 
 export async function getAttendanceRecords(filters: { workerProfileId?: string; dateFrom?: Date; dateTo?: Date } = {}) {
-    const where: any = {};
-    if (filters.workerProfileId) where.workerProfileId = filters.workerProfileId;
-    if (filters.dateFrom || filters.dateTo) {
-        where.time = {
-            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
-            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
-        };
+    return mealsAttendanceService.getAttendanceRecords(filters);
+}
+
+export const createAttendanceRecord = withPermission(
+    PERMISSIONS.attendance.scan,
+    async (_ctx, data: { workerProfileId: string; type: string }) => {
+        const record = await mealsAttendanceService.createAttendanceRecord(createAttendanceRecordSchema.parse(data));
+        revalidatePath('/attendance');
+        return record;
     }
-
-    return await prisma.attendanceRecord.findMany({
-        where,
-        include: {
-            worker: true,
-        },
-        orderBy: {
-            time: 'desc',
-        },
-    });
-}
-
-export async function createAttendanceRecord(data: { workerProfileId: string; type: string }) {
-    const record = await prisma.attendanceRecord.create({
-        data: {
-            ...data,
-            time: new Date(),
-        },
-    });
-    revalidatePath('/attendance');
-    return record;
-}
+);
 
 // --- Rooms, Areas, Branches ---
 
@@ -890,30 +912,42 @@ export async function getRooms() {
     });
 }
 
-export async function createRoom(data: any) {
-    const room = await prisma.room.create({ data });
-    revalidatePath('/settings/rooms');
-    return room;
-}
+export const createRoom = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, data: any) => {
+        const room = await prisma.room.create({ data });
+        revalidatePath('/settings/rooms');
+        return room;
+    }
+);
 
-export async function updateRoom(id: string, data: any) {
-    const room = await prisma.room.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/settings/rooms');
-    return room;
-}
+export const updateRoom = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string, data: any) => {
+        const room = await prisma.room.update({
+            where: { id },
+            data,
+        });
+        revalidatePath('/settings/rooms');
+        return room;
+    }
+);
 
-export async function deleteRoom(id: string) {
-    await prisma.room.delete({ where: { id } });
-    revalidatePath('/settings/rooms');
-}
+export const deleteRoom = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string) => {
+        await prisma.room.delete({ where: { id } });
+        revalidatePath('/settings/rooms');
+    }
+);
 
-export async function createRooms(data: any[]) {
-    await prisma.room.createMany({ data });
-    revalidatePath('/settings/rooms');
-}
+export const createRooms = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, data: any[]) => {
+        await prisma.room.createMany({ data });
+        revalidatePath('/settings/rooms');
+    }
+);
 
 export async function getAreas() {
     return await prisma.area.findMany({
@@ -926,30 +960,42 @@ export async function getAreas() {
     });
 }
 
-export async function createArea(data: any) {
-    const area = await prisma.area.create({ data });
-    revalidatePath('/settings/rooms');
-    return area;
-}
+export const createArea = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, data: any) => {
+        const area = await prisma.area.create({ data });
+        revalidatePath('/settings/rooms');
+        return area;
+    }
+);
 
-export async function updateArea(id: string, data: any) {
-    const area = await prisma.area.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/settings/rooms');
-    return area;
-}
+export const updateArea = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string, data: any) => {
+        const area = await prisma.area.update({
+            where: { id },
+            data,
+        });
+        revalidatePath('/settings/rooms');
+        return area;
+    }
+);
 
-export async function deleteArea(id: string) {
-    await prisma.area.delete({ where: { id } });
-    revalidatePath('/settings/rooms');
-}
+export const deleteArea = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string) => {
+        await prisma.area.delete({ where: { id } });
+        revalidatePath('/settings/rooms');
+    }
+);
 
-export async function createAreas(data: any[]) {
-    await prisma.area.createMany({ data });
-    revalidatePath('/settings/rooms');
-}
+export const createAreas = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, data: any[]) => {
+        await prisma.area.createMany({ data });
+        revalidatePath('/settings/rooms');
+    }
+);
 
 export async function getBranches() {
     return await prisma.branch.findMany({
@@ -959,25 +1005,34 @@ export async function getBranches() {
     });
 }
 
-export async function createBranch(data: any) {
-    const branch = await prisma.branch.create({ data });
-    revalidatePath('/settings/rooms');
-    return branch;
-}
+export const createBranch = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, data: any) => {
+        const branch = await prisma.branch.create({ data });
+        revalidatePath('/settings/rooms');
+        return branch;
+    }
+);
 
-export async function updateBranch(id: string, data: any) {
-    const branch = await prisma.branch.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/settings/rooms');
-    return branch;
-}
+export const updateBranch = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string, data: any) => {
+        const branch = await prisma.branch.update({
+            where: { id },
+            data,
+        });
+        revalidatePath('/settings/rooms');
+        return branch;
+    }
+);
 
-export async function deleteBranch(id: string) {
-    await prisma.branch.delete({ where: { id } });
-    revalidatePath('/settings/rooms');
-}
+export const deleteBranch = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string) => {
+        await prisma.branch.delete({ where: { id } });
+        revalidatePath('/settings/rooms');
+    }
+);
 
 // --- Scan Logs ---
 
@@ -990,14 +1045,17 @@ export async function getScanLogs(limit: number = 100) {
     });
 }
 
-export async function createScanLog(data: any) {
-    return await prisma.scanLog.create({
-        data: {
-            ...data,
-            timestamp: new Date(),
-        },
-    });
-}
+export const createScanLog = withPermission(
+    PERMISSIONS.attendance.scan,
+    async (_ctx, data: any) => {
+        return await prisma.scanLog.create({
+            data: {
+                ...data,
+                timestamp: new Date(),
+            },
+        });
+    }
+);
 
 // --- C2S ---
 
@@ -1023,71 +1081,89 @@ export async function getC2SMentees() {
     });
 }
 
-export async function createC2SGroup(data: {
-    name: string;
-    mentorId: string;
-    menteeIds?: string[];
-}) {
-    const group = await prisma.c2SGroup.create({
-        data: {
-            name: data.name,
-            mentorId: data.mentorId,
-            menteeIds: data.menteeIds ?? [],
-        },
-    });
-    revalidatePath('/c2s');
-    return group;
-}
+export const createC2SGroup = withPermission(
+    PERMISSIONS.mentorship.manage,
+    async (_ctx, data: {
+        name: string;
+        mentorId: string;
+        menteeIds?: string[];
+    }) => {
+        const group = await prisma.c2SGroup.create({
+            data: {
+                name: data.name,
+                mentorId: data.mentorId,
+                menteeIds: data.menteeIds ?? [],
+            },
+        });
+        revalidatePath('/c2s');
+        return group;
+    }
+);
 
-export async function updateC2SGroup(id: string, data: { name?: string; mentorId?: string; menteeIds?: string[] }) {
-    const group = await prisma.c2SGroup.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/c2s');
-    return group;
-}
+export const updateC2SGroup = withPermission(
+    PERMISSIONS.mentorship.manage,
+    async (_ctx, id: string, data: { name?: string; mentorId?: string; menteeIds?: string[] }) => {
+        const group = await prisma.c2SGroup.update({
+            where: { id },
+            data,
+        });
+        revalidatePath('/c2s');
+        return group;
+    }
+);
 
-export async function deleteC2SGroup(id: string) {
-    await prisma.c2SGroup.delete({ where: { id } });
-    revalidatePath('/c2s');
-}
+export const deleteC2SGroup = withPermission(
+    PERMISSIONS.mentorship.manage,
+    async (_ctx, id: string) => {
+        await prisma.c2SGroup.delete({ where: { id } });
+        revalidatePath('/c2s');
+    }
+);
 
-export async function createC2SMentee(data: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    status: string;
-    groupId: string;
-    mentorId: string;
-}) {
-    const mentee = await prisma.c2SMentee.create({ data });
-    revalidatePath('/c2s');
-    return mentee;
-}
+export const createC2SMentee = withPermission(
+    PERMISSIONS.mentorship.manage,
+    async (_ctx, data: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone: string;
+        status: string;
+        groupId: string;
+        mentorId: string;
+    }) => {
+        const mentee = await prisma.c2SMentee.create({ data });
+        revalidatePath('/c2s');
+        return mentee;
+    }
+);
 
-export async function updateC2SMentee(id: string, data: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    status?: string;
-    groupId?: string;
-    mentorId?: string;
-}) {
-    const mentee = await prisma.c2SMentee.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/c2s');
-    return mentee;
-}
+export const updateC2SMentee = withPermission(
+    PERMISSIONS.mentorship.manage,
+    async (_ctx, id: string, data: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+        status?: string;
+        groupId?: string;
+        mentorId?: string;
+    }) => {
+        const mentee = await prisma.c2SMentee.update({
+            where: { id },
+            data,
+        });
+        revalidatePath('/c2s');
+        return mentee;
+    }
+);
 
-export async function deleteC2SMentee(id: string) {
-    await prisma.c2SMentee.delete({ where: { id } });
-    revalidatePath('/c2s');
-}
+export const deleteC2SMentee = withPermission(
+    PERMISSIONS.mentorship.manage,
+    async (_ctx, id: string) => {
+        await prisma.c2SMentee.delete({ where: { id } });
+        revalidatePath('/c2s');
+    }
+);
 
 // --- Venue Elements ---
 
@@ -1099,46 +1175,54 @@ export async function getVenueElements() {
     });
 }
 
-export async function createVenueElement(data: any) {
-    const element = await prisma.venueElement.create({ data });
-    revalidatePath('/settings/venue-elements');
-    revalidatePath('/settings/rooms');
-    return element;
-}
+export const createVenueElement = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, data: any) => {
+        const element = await prisma.venueElement.create({ data });
+        revalidatePath('/settings/venue-elements');
+        revalidatePath('/settings/rooms');
+        return element;
+    }
+);
 
-export async function updateVenueElement(id: string, data: any) {
-    const element = await prisma.venueElement.update({
-        where: { id },
-        data,
-    });
-    revalidatePath('/settings/venue-elements');
-    revalidatePath('/settings/rooms');
-    return element;
-}
+export const updateVenueElement = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string, data: any) => {
+        const element = await prisma.venueElement.update({
+            where: { id },
+            data,
+        });
+        revalidatePath('/settings/venue-elements');
+        revalidatePath('/settings/rooms');
+        return element;
+    }
+);
 
-export async function deleteVenueElement(id: string) {
-    await prisma.venueElement.delete({ where: { id } });
-    revalidatePath('/settings/venue-elements');
-    revalidatePath('/settings/rooms');
-}
+export const deleteVenueElement = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string) => {
+        await prisma.venueElement.delete({ where: { id } });
+        revalidatePath('/settings/venue-elements');
+        revalidatePath('/settings/rooms');
+    }
+);
 
 // --- Batch Ministry Update ---
 
-export async function updateWorkersMinistries(
-    ids: string[],
-    majorMinistryId?: string,
-    minorMinistryId?: string,
-) {
-    const data: any = {};
-    if (majorMinistryId !== undefined) data.majorMinistryId = majorMinistryId;
-    if (minorMinistryId !== undefined) data.minorMinistryId = minorMinistryId;
+export const updateWorkersMinistries = withPermission(
+    PERMISSIONS.workers.update,
+    async (_ctx, ids: string[], majorMinistryId?: string, minorMinistryId?: string) => {
+        const data: any = {};
+        if (majorMinistryId !== undefined) data.majorMinistryId = majorMinistryId;
+        if (minorMinistryId !== undefined) data.minorMinistryId = minorMinistryId;
 
-    await prisma.worker.updateMany({
-        where: { id: { in: ids } },
-        data,
-    });
-    revalidatePath('/workers');
-}
+        await prisma.worker.updateMany({
+            where: { id: { in: ids } },
+            data,
+        });
+        revalidatePath('/workers');
+    }
+);
 
 // --- Settings ---
 
@@ -1149,15 +1233,18 @@ export async function getSetting(id: string) {
     return (setting?.data as any) || null;
 }
 
-export async function updateSetting(id: string, data: any) {
-    const setting = await prisma.setting.upsert({
-        where: { id },
-        update: { data },
-        create: { id, data },
-    });
-    revalidatePath('/settings');
-    return setting.data;
-}
+export const updateSetting = withPermission(
+    null, // super-admin only
+    async (_ctx, id: string, data: any) => {
+        const setting = await prisma.setting.upsert({
+            where: { id },
+            update: { data },
+            create: { id, data },
+        });
+        revalidatePath('/settings');
+        return setting.data;
+    }
+);
 
 // --- Department Settings ---
 
@@ -1175,32 +1262,42 @@ export async function getDepartmentSetting(id: string) {
     });
 }
 
-export async function createDepartmentSetting(data: any) {
-    return await prisma.departmentSetting.create({
-        data,
-    });
-}
+export const createDepartmentSetting = withPermission(
+    null, // super-admin only
+    async (_ctx, data: any) => {
+        return await prisma.departmentSetting.create({ data });
+    }
+);
 
-export async function updateDepartmentSetting(id: string, data: any) {
-    return await prisma.departmentSetting.update({
-        where: { id },
-        data,
-    });
-}
+export const updateDepartmentSetting = withPermission(
+    null, // super-admin only
+    async (_ctx, id: string, data: any) => {
+        return await prisma.departmentSetting.update({
+            where: { id },
+            data,
+        });
+    }
+);
 
-export async function upsertDepartmentSetting(id: string, data: any) {
-    return await prisma.departmentSetting.upsert({
-        where: { id },
-        update: data,
-        create: { id, ...data },
-    });
-}
+export const upsertDepartmentSetting = withPermission(
+    null, // super-admin only
+    async (_ctx, id: string, data: any) => {
+        return await prisma.departmentSetting.upsert({
+            where: { id },
+            update: data,
+            create: { id, ...data },
+        });
+    }
+);
 
-export async function deleteDepartmentSetting(id: string) {
-    return await prisma.departmentSetting.delete({
-        where: { id },
-    });
-}
+export const deleteDepartmentSetting = withPermission(
+    null, // super-admin only
+    async (_ctx, id: string) => {
+        return await prisma.departmentSetting.delete({
+            where: { id },
+        });
+    }
+);
 
 // --- Transaction Logs ---
 

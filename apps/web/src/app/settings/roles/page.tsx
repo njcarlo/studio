@@ -329,13 +329,17 @@ export default function RoleManagementPage() {
     }) => {
       try {
         if (role?.id) {
-          await updateRole(role.id, { name });
-          await setRolePermissionsByKeys(role.id, permKeys);
+          const updateRes = await updateRole(role.id, { name });
+          if (!updateRes.success) throw new Error(updateRes.error);
+          const permRes = await setRolePermissionsByKeys(role.id, permKeys);
+          if (!permRes.success) throw new Error(permRes.error);
           return { id: role.id, name };
         } else {
           const created = await createRole({ name, permissions: [] });
-          await setRolePermissionsByKeys(created.id, permKeys);
-          return created;
+          if (!created.success) throw new Error(created.error);
+          const permRes = await setRolePermissionsByKeys(created.data!.id, permKeys);
+          if (!permRes.success) throw new Error(permRes.error);
+          return created.data;
         }
       } catch (err) {
         console.error('[RoleManagement] mutationFn error:', err);
@@ -364,7 +368,11 @@ export default function RoleManagementPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteRole(id),
+    mutationFn: async (id: string) => {
+      const res = await deleteRole(id);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["roles"] });
       await logAction(

@@ -12,6 +12,7 @@ async function getToken(): Promise<string | null> {
   return data.session?.access_token ?? null
 }
 
+
 export const settingsClient   = new SettingsClient(FUNCTIONS_URL, getToken)
 export const workersClient    = new WorkersClient(FUNCTIONS_URL, getToken)
 export const ministriesClient = new MinistriesClient(FUNCTIONS_URL, getToken)

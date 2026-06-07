@@ -78,7 +78,8 @@ export default function MyReservationsPage() {
         if (!booking.id) return;
 
         try {
-            await updateBooking(booking.id, { checkedInAt: new Date() });
+            const res = await updateBooking(booking.id, { checkedInAt: new Date() });
+            if (!res.success) throw new Error(res.error);
 
             await createScanLog({
                 scannerId: workerProfile?.id || "system-admin",
@@ -88,7 +89,7 @@ export default function MyReservationsPage() {
                 reservationId: booking.id,
                 targetUserId: workerProfile?.id,
                 targetUserName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : undefined,
-            });
+            }).catch(() => {}); // audit log — best-effort
 
             queryClient.invalidateQueries({ queryKey: ['bookings'] });
             toast({

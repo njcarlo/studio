@@ -507,7 +507,8 @@ export default function WorkersPage() {
           major === "unchanged" ? undefined : major === "none" ? "" : major;
         const minorVal =
           minor === "unchanged" ? undefined : minor === "none" ? "" : minor;
-        await updateWorkersMinistries(selectedWorkerIds, majorVal, minorVal);
+        const res = await updateWorkersMinistries(selectedWorkerIds, majorVal, minorVal);
+        if (!res.success) throw new Error(res.error);
         await logAction(
           "Batch Moved Workers (SQL)",
           "Workers",

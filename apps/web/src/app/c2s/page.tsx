@@ -539,41 +539,63 @@ export default function C2SPage() {
   });
 
   const createGroupMutation = useMutation({
-    mutationFn: createC2SGroup,
+    mutationFn: async (data: any) => {
+      const res = await createC2SGroup(data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["c2s-groups"] });
     },
   });
   const updateGroupMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      updateC2SGroup(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await updateC2SGroup(id, data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["c2s-groups"] });
     },
   });
   const deleteGroupMutation = useMutation({
-    mutationFn: deleteC2SGroup,
+    mutationFn: async (id: string) => {
+      const res = await deleteC2SGroup(id);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["c2s-groups"] });
       queryClient.invalidateQueries({ queryKey: ["c2s-mentees"] });
     },
   });
   const createMenteeMutation = useMutation({
-    mutationFn: createC2SMentee,
+    mutationFn: async (data: any) => {
+      const res = await createC2SMentee(data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["c2s-mentees"] });
       queryClient.invalidateQueries({ queryKey: ["c2s-groups"] });
     },
   });
   const updateMenteeMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      updateC2SMentee(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await updateC2SMentee(id, data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["c2s-mentees"] });
     },
   });
   const deleteMenteeMutation = useMutation({
-    mutationFn: deleteC2SMentee,
+    mutationFn: async (id: string) => {
+      const res = await deleteC2SMentee(id);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["c2s-mentees"] });
       queryClient.invalidateQueries({ queryKey: ["c2s-groups"] });

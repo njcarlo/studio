@@ -62,6 +62,7 @@ export function useUserRole(): UserRoleContextType {
       canManageVenueAssistance: s.canManageVenueAssistance,
       canManageOwnMinistryAssistance: s.canManageOwnMinistryAssistance,
       canManageSchedule: s.canManageSchedule,
+      canViewAllSchedules: s.canViewAllSchedules,
       canConfirmSchedule: s.canConfirmSchedule,
       canAssignSchedulers: s.canAssignSchedulers,
       canAccessInventory: s.canAccessInventory,

@@ -28,7 +28,11 @@ export function useRooms() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   })
   const createRoomsMutation = useMutation({
-    mutationFn: (data: any[]) => createRooms(data),
+    mutationFn: async (data: any[]) => {
+      const res = await createRooms(data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   })
   const createAreaMutation = useMutation({
@@ -36,15 +40,27 @@ export function useRooms() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['areas'] }),
   })
   const updateAreaMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => updateArea(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await updateArea(id, data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['areas'] }),
   })
   const deleteAreaMutation = useMutation({
-    mutationFn: (id: string) => deleteArea(id),
+    mutationFn: async (id: string) => {
+      const res = await deleteArea(id);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['areas'] }),
   })
   const createAreasMutation = useMutation({
-    mutationFn: (data: any[]) => createAreas(data),
+    mutationFn: async (data: any[]) => {
+      const res = await createAreas(data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['areas'] }),
   })
   const createBranchMutation = useMutation({
@@ -52,11 +68,19 @@ export function useRooms() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['branches'] }),
   })
   const updateBranchMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => updateBranch(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await updateBranch(id, data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['branches'] }),
   })
   const deleteBranchMutation = useMutation({
-    mutationFn: (id: string) => deleteBranch(id),
+    mutationFn: async (id: string) => {
+      const res = await deleteBranch(id);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['branches'] }),
   })
 

@@ -1,5 +1,5 @@
 import { prisma } from '@studio/database/prisma';
-import { allocateMealstubs } from './services/mealstubService';
+import { allocateMealstubs } from './services/meal-stub-service';
 
 async function main() {
   console.log('=== STARTING MEALSTUB ALLOCATION INTEGRATION TEST ===');

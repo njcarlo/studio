@@ -902,7 +902,8 @@ function MealAllocationsReport({ dateRange }: { dateRange: DateRange }) {
     };
 
     try {
-      await createMealStub(newStub);
+      const res = await createMealStub(newStub);
+      if (!res.success) throw new Error(res.error);
       toast({
         title: "Meal Stub Assigned",
         description: `Assigned a Sunday meal stub to ${worker.firstName}.`,

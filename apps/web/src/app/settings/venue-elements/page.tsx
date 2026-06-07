@@ -130,30 +130,37 @@ export default function VenueElementsManagementPage() {
 
     const saveMutation = useMutation({
         mutationFn: async (data: Partial<VenueElement>) => {
+            let res;
             if (data.id) {
-                return updateVenueElement(data.id, data);
+                res = await updateVenueElement(data.id, data);
             } else {
-                return createVenueElement(data);
+                res = await createVenueElement(data);
             }
+            if (!res.success) throw new Error(res.error);
+            return res.data;
         },
         onSuccess: (_, data) => {
             queryClient.invalidateQueries({ queryKey: ["venue-elements"] });
             toast({ title: data.id ? 'Element Updated' : 'Element Added' });
             setIsSheetOpen(false);
         },
-        onError: () => {
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save venue element.' });
+        onError: (err: any) => {
+            toast({ variant: 'destructive', title: 'Save Failed', description: err.message || 'Could not save venue element.' });
         },
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (id: string) => deleteVenueElement(id),
+        mutationFn: async (id: string) => {
+            const res = await deleteVenueElement(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["venue-elements"] });
             toast({ title: 'Element Deleted' });
         },
-        onError: () => {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete venue element.' });
+        onError: (err: any) => {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: err.message || 'Could not delete venue element.' });
         },
     });
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { allocateMealstubs } from '@/services/mealstubService';
+import { allocateMealstubs } from '@/services/meal-stub-service';
 
 export async function POST(request: Request) {
   try {

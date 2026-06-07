@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
+import { Checkbox } from "@studio/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";import {
     ArrowLeft, LoaderCircle, UserPlus, X, LayoutTemplate,
     CheckCircle2, Circle, ChevronDown, ChevronUp, Plus, Trash2,
@@ -36,7 +37,7 @@ export default function ScheduleDetailPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { user } = useAuthStore();
-    const { canManageSchedule, canConfirmSchedule, canAssignSchedulers, workerProfile } = useUserRole();
+    const { canManageSchedule, canConfirmSchedule, canAssignSchedulers, canViewAllSchedules, workerProfile } = useUserRole();
 
     const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus } = useServiceSchedule(id);
     const { ministries } = useMinistries();
@@ -53,6 +54,10 @@ export default function ScheduleDetailPage() {
     const [workerIdSearching, setWorkerIdSearching] = useState(false);
     const [applyTemplateDialog, setApplyTemplateDialog] = useState<string | null>(null); // ministryId
     const [addRoleDialog, setAddRoleDialog] = useState<string | null>(null); // ministryId
+    const [addMinistryDialogOpen, setAddMinistryDialogOpen] = useState(false);
+    const [selectedMinistryIds, setSelectedMinistryIds] = useState<Set<string>>(new Set());
+    // Ministries added to this view locally (no role yet, so no ScheduleAssignment row exists)
+    const [addedMinistryIds, setAddedMinistryIds] = useState<Set<string>>(new Set());
     const [newRoleName, setNewRoleName] = useState("");
     const [newRoleWorkerId, setNewRoleWorkerId] = useState<string | null>(null);
     const [rehearsalDialog, setRehearsalDialog] = useState<{ assignmentId: string, date: string, time: string } | null>(null);
@@ -82,13 +87,13 @@ export default function ScheduleDetailPage() {
 
     const ministryIds = Object.keys(byMinistry);
     const allMinistryIds = useMemo(() => {
-        const fromAssignments = new Set(ministryIds);
+        const fromAssignments = new Set([...ministryIds, ...addedMinistryIds]);
         let ids = [...fromAssignments];
-        if (canManageSchedule && !canAssignSchedulers && workerProfile?.majorMinistryId) {
+        if (!canViewAllSchedules && canManageSchedule && workerProfile?.majorMinistryId) {
             ids = ids.filter(id => id === workerProfile.majorMinistryId || id === workerProfile.minorMinistryId);
         }
         return ids.sort((a, b) => getMinistryName(a).localeCompare(getMinistryName(b)));
-    }, [ministryIds, canManageSchedule, canAssignSchedulers, workerProfile, ministries]);
+    }, [ministryIds, canManageSchedule, canViewAllSchedules, workerProfile, ministries]);
 
     const ministriesByDepartment = useMemo(() => {
         const grouped: Record<string, string[]> = {};
@@ -196,7 +201,7 @@ export default function ScheduleDetailPage() {
             const existingCategories = await getWorkloadCategories(addRoleDialog);
             if (!existingCategories.some((c: any) => c.name.toLowerCase() === roleNameStr.toLowerCase())) {
                 try {
-                    await createWorkloadCategory({ ministryId: addRoleDialog, name: roleNameStr }, callerId, { skipAuth: true });
+                    await createWorkloadCategory({ ministryId: addRoleDialog, name: roleNameStr });
                 } catch (e) {
                     console.error("Failed to auto-create category", e);
                 }
@@ -211,6 +216,12 @@ export default function ScheduleDetailPage() {
                 order: (byMinistry[addRoleDialog]?.length ?? 0),
             });
             toast({ title: "Role slot added" });
+            setAddedMinistryIds(prev => {
+                if (!prev.has(addRoleDialog)) return prev;
+                const next = new Set(prev);
+                next.delete(addRoleDialog);
+                return next;
+            });
             setAddRoleDialog(null);
             setNewRoleName("");
             setNewRoleWorkerId(null);
@@ -432,24 +443,10 @@ export default function ScheduleDetailPage() {
             <div className="mt-4 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Service Slots</h2>
                 {canManageSchedule && (
-                    <Select onValueChange={(ministryId) => {
-                        upsertAssignment({ scheduleId: id, ministryId, roleName: "Role", order: 0 });
-                        setExpandedMinistries(prev => new Set([...prev, ministryId]));
-                    }}>
-                        <SelectTrigger className="w-[200px] h-8 text-sm">
-                            <SelectValue placeholder="+ Add Ministry" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Object.entries(unselectedMinistriesByDept).map(([deptName, deptMinistries]) => (
-                                <SelectGroup key={deptName}>
-                                    <SelectLabel className="text-xs font-semibold text-primary/70">{deptName}</SelectLabel>
-                                    {deptMinistries.map((m: any) => (
-                                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Button variant="outline" size="sm" className="h-8 text-sm"
+                        onClick={() => { setSelectedMinistryIds(new Set()); setAddMinistryDialogOpen(true); }}>
+                        <Plus className="mr-1 h-3.5 w-3.5" /> Add Ministry
+                    </Button>
                 )}
             </div>
 
@@ -500,7 +497,7 @@ export default function ScheduleDetailPage() {
                                                 )}
                                                 <Button variant="outline" size="sm" className="h-7 text-xs"
                                                     onClick={() => { setAddRoleDialog(ministryId); setNewRoleName(""); }}>
-                                                    <Plus className="mr-1 h-3 w-3" /> Add Slot
+                                                    <Plus className="mr-1 h-3 w-3" /> Add Role
                                                 </Button>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
                                                     onClick={() => assignments.forEach((a: any) => deleteAssignment(a.id))}>
@@ -513,6 +510,11 @@ export default function ScheduleDetailPage() {
                                     {isExpanded && (
                                         <CardContent className="pt-0 pb-4 px-4">
                                             <div className="space-y-4">
+                                                {assignments.length === 0 && (
+                                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                                        No roles yet — click + Add Role to add one.
+                                                    </p>
+                                                )}
                                                 {Object.entries(byRole).map(([roleName, slots]) => (
                                                     <div key={roleName}>
                                                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{roleName}</p>
@@ -537,7 +539,7 @@ export default function ScheduleDetailPage() {
                                                                                             <SelectContent>
                                                                                                 <SelectItem value="Pending">⏳ Pending</SelectItem>
                                                                                                 <SelectItem value="Confirmed">✅ Confirmed</SelectItem>
-                                                                                                <SelectItem value="Not Attending">❌ Not Attending</SelectItem>
+                                                                                                <SelectItem value="Not Attending">❌ Not Available</SelectItem>
                                                                                             </SelectContent>
                                                                                         </Select>
                                                                                     )}
@@ -623,7 +625,7 @@ export default function ScheduleDetailPage() {
                                                 if (st === 'Not Attending') return (
                                                     <div className="flex items-center gap-1.5 text-red-600">
                                                         <span className="w-2 h-2 rounded-full bg-red-500" />
-                                                        <span className="text-xs">Not Attending</span>
+                                                        <span className="text-xs">Not Available</span>
                                                     </div>
                                                 );
                                                 return (
@@ -714,6 +716,54 @@ export default function ScheduleDetailPage() {
                 </DialogContent>
             </Dialog>
 
+            {/* Add Ministry Dialog */}
+            <Dialog open={addMinistryDialogOpen} onOpenChange={setAddMinistryDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Ministry</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+                        {Object.keys(unselectedMinistriesByDept).length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-6">All ministries have been added.</p>
+                        )}
+                        {Object.entries(unselectedMinistriesByDept).map(([deptName, deptMinistries]) => (
+                            <div key={deptName} className="space-y-1.5">
+                                <p className="text-xs font-semibold text-primary/70 uppercase tracking-wide">{deptName}</p>
+                                {(deptMinistries as any[]).map((m: any) => (
+                                    <label key={m.id} className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-muted/50">
+                                        <Checkbox
+                                            checked={selectedMinistryIds.has(m.id)}
+                                            onCheckedChange={(checked) => {
+                                                setSelectedMinistryIds(prev => {
+                                                    const next = new Set(prev);
+                                                    if (checked) next.add(m.id); else next.delete(m.id);
+                                                    return next;
+                                                });
+                                            }}
+                                        />
+                                        <span className="text-sm">{m.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setAddMinistryDialogOpen(false); setSelectedMinistryIds(new Set()); }}>Discard</Button>
+                        <Button
+                            disabled={selectedMinistryIds.size === 0}
+                            onClick={() => {
+                                setAddedMinistryIds(prev => new Set([...prev, ...selectedMinistryIds]));
+                                setExpandedMinistries(prev => new Set([...prev, ...selectedMinistryIds]));
+                                setAddMinistryDialogOpen(false);
+                                setSelectedMinistryIds(new Set());
+                            }}
+                        >
+                            Confirm
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Add Role Dialog */}
             <Dialog open={!!addRoleDialog} onOpenChange={() => setAddRoleDialog(null)}>
                 <DialogContent>
@@ -753,7 +803,7 @@ export default function ScheduleDetailPage() {
                         <Button variant="outline" onClick={() => setAddRoleDialog(null)}>Cancel</Button>
                         <Button onClick={handleAddRole} disabled={isSaving || !newRoleName.trim()}>
                             {isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                            Add Slot
+                            Add Role
                         </Button>
                     </DialogFooter>
                 </DialogContent>
