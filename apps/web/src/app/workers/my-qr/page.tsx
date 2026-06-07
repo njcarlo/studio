@@ -35,7 +35,14 @@ export default function MyQRCodePage() {
     : "";
 
   const refreshCodes = async () => {
-    if (!workerProfile) return;
+    if (!workerProfile) {
+      toast({
+        variant: "destructive",
+        title: "Profile Not Loaded",
+        description: "Your worker profile hasn't finished loading yet. Please wait a moment and try again.",
+      });
+      return;
+    }
     setIsRegenerating(true);
     try {
       const newToken =
