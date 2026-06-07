@@ -10,7 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
-import { supabaseAdmin } from '../supabase';
+import { callApi } from '../supabase';
 
 // image import
 const Ntgd = require("../../assets/ntgd.png");
@@ -94,26 +94,19 @@ export default function AuthScreen() {
         }
         setIsForgotLoading(true);
         try {
-            const { data: existing } = await supabaseAdmin
-                .from('tract_users')
-                .select('id')
-                .eq('email', email.trim().toLowerCase())
-                .maybeSingle();
+            const { data, error } = await callApi<{ tempPassword: string }>('auth-api', {
+                action: 'forgotPassword',
+                email: email.trim().toLowerCase(),
+            });
 
-            if (!existing) {
-                Alert.alert('Not found', 'No account found with that email address.');
+            if (error || !data?.tempPassword) {
+                Alert.alert('Not found', error?.message || 'No account found with that email address.');
                 return;
             }
-            // Generate a simple temp password
-            const tempPassword = Math.random().toString(36).slice(-8);
-            await supabaseAdmin
-                .from('tract_users')
-                .update({ password: tempPassword })
-                .eq('email', email.trim().toLowerCase());
 
             Alert.alert(
                 'Temporary Password Set',
-                `Your temporary password is:\n\n${tempPassword}\n\nPlease log in and change it immediately.`,
+                `Your temporary password is:\n\n${data.tempPassword}\n\nPlease log in and change it immediately.`,
             );
         } catch (e: any) {
             Alert.alert('Error', e.message || 'Something went wrong. Please try again.');

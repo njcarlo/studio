@@ -4,11 +4,12 @@ import {
     ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabaseAdmin } from '../supabase';
+import { callApi } from '../supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../AppNavigator';
+import { useAuth } from '../context/AuthContext';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
@@ -42,6 +43,7 @@ function getLocationLabel(u: UserData): string {
 
 export default function AdminDashboardScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const { user } = useAuth();
     const [tab, setTab] = useState<Tab>('overview');
     const [users, setUsers] = useState<UserData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -50,13 +52,12 @@ export default function AdminDashboardScreen() {
     const [reporterSearch, setReporterSearch] = useState('');
 
     const fetchData = async () => {
+        if (!user) return;
         setLoading(true);
         try {
-            const { data, error } = await supabaseAdmin
-                .from('tract_users')
-                .select('id, name, email, region, sub_region, barangay, tracts_given, is_correspondent');
-            if (error) throw error;
-            setUsers((data ?? []).map(d => ({
+            const { data, error } = await callApi<{ users: any[] }>('users-api', { action: 'adminList', requesterId: user.id });
+            if (error) throw new Error(error.message);
+            setUsers((data?.users ?? []).map(d => ({
                 id: d.id,
                 name: d.name,
                 email: d.email,
@@ -74,16 +75,16 @@ export default function AdminDashboardScreen() {
         }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); }, [user]);
 
     const handleToggleCorrespondent = async (userId: string, current: boolean) => {
+        if (!user) return;
         setTogglingId(userId);
         try {
-            const { error } = await supabaseAdmin
-                .from('tract_users')
-                .update({ is_correspondent: !current })
-                .eq('id', userId);
-            if (error) throw error;
+            const { error } = await callApi('users-api', {
+                action: 'adminToggleCorrespondent', requesterId: user.id, userId, value: !current,
+            });
+            if (error) throw new Error(error.message);
             setUsers(prev => prev.map(u =>
                 u.id === userId ? { ...u, isCorrespondent: !current } : u
             ));
@@ -123,12 +124,10 @@ export default function AdminDashboardScreen() {
 
     const handleReset = async () => {
         setShowResetConfirm(false);
+        if (!user) return;
         try {
-            const { error } = await supabaseAdmin
-                .from('tract_users')
-                .update({ tracts_given: 0 })
-                .in('id', users.map(u => u.id));
-            if (error) throw error;
+            const { error } = await callApi('users-api', { action: 'adminResetCounts', requesterId: user.id });
+            if (error) throw new Error(error.message);
             await fetchData();
         } catch (err) {
             if (Platform.OS !== 'web') Alert.alert('Error', 'Failed to reset.');

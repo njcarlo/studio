@@ -8,13 +8,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
-import { supabaseAdmin } from '../supabase';
+import { supabase, callApi } from '../supabase';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
-const AUTO_HASHTAGS = '\n\n#NationalTractsGivingDay\n#OutsideIsBeautiful\n#Connect2Souls\n#BornAgainPilipinas';
-
 // ── Upload limits ─────────────────────────────────────────────────────────────
+// Authoritative enforcement happens server-side in the posts-api edge function;
+// these mirror it for fast client-side UX (disabling buttons, status messages).
 const REGULAR_MAX_POSTS    = 1;    // one-time upload for regular users
 const REGULAR_UPLOAD_SLOTS = 500;  // global first-come-first-serve pool for regular users
 // Correspondents have NO cap — unlimited uploads at full resolution
@@ -59,7 +59,7 @@ export default function CorrespondentScreen() {
         if (!user?.id) return;
         setLoading(true);
         try {
-            const { data } = await supabaseAdmin
+            const { data } = await supabase
                 .from('correspondent_posts')
                 .select('id, image_url, caption, created_at')
                 .eq('user_id', user.id)
@@ -72,7 +72,7 @@ export default function CorrespondentScreen() {
 
     const fetchSlots = useCallback(async () => {
         if (isCorrespondent) { setSlotsLeft(null); return; }  // correspondents bypass the pool
-        const { count } = await supabaseAdmin
+        const { count } = await supabase
             .from('correspondent_posts')
             .select('id', { count: 'exact', head: true })
             .eq('from_correspondent', false);
@@ -145,34 +145,7 @@ export default function CorrespondentScreen() {
 
     const handleUpload = async () => {
         if (!selectedUri || !user?.id) return;
-
-        // Server-side safety check (correspondents are unlimited, only check regular users)
-        if (!isCorrespondent) {
-            const { count: myCount } = await supabaseAdmin
-                .from('correspondent_posts')
-                .select('id', { count: 'exact', head: true })
-                .eq('user_id', user.id);
-            if ((myCount ?? 0) >= REGULAR_MAX_POSTS) {
-                Alert.alert('Limit reached', "You've already shared your photo. Thank you!");
-                setShowModal(false);
-                setSelectedUri(null);
-                await fetchMyPosts();
-                return;
-            }
-        }
-        if (!isCorrespondent) {
-            const { count: totalRegular } = await supabaseAdmin
-                .from('correspondent_posts')
-                .select('id', { count: 'exact', head: true })
-                .eq('from_correspondent', false);
-            if ((totalRegular ?? 0) >= REGULAR_UPLOAD_SLOTS) {
-                Alert.alert('Slots full', 'All upload slots have been claimed. Thank you!');
-                setShowModal(false);
-                setSelectedUri(null);
-                setSlotsLeft(0);
-                return;
-            }
-        }
+        if (!guardUpload()) { setShowModal(false); setSelectedUri(null); return; }
 
         setUploading(true);
         try {
@@ -181,34 +154,34 @@ export default function CorrespondentScreen() {
             const timestamp = Date.now();
             const fileName = `${user.id}/${timestamp}.jpg`;
 
-            const { error: uploadError } = await supabaseAdmin.storage
+            // Storage policy permits public inserts into this bucket by bucket_id —
+            // the upload itself doesn't need elevated privileges.
+            const { error: uploadError } = await supabase.storage
                 .from('correspondent-photos')
                 .upload(fileName, blob, { contentType: 'image/jpeg', upsert: false });
             if (uploadError) throw uploadError;
 
-            const { data: urlData } = supabaseAdmin.storage
+            const { data: urlData } = supabase.storage
                 .from('correspondent-photos')
                 .getPublicUrl(fileName);
 
-            const { error: insertError } = await supabaseAdmin
-                .from('correspondent_posts')
-                .insert({
-                    user_id: user.id,
-                    user_name: authState.name || user.email,
-                    region: authState.region || '',
-                    image_url: urlData.publicUrl,
-                    caption: caption.trim() + AUTO_HASHTAGS,
-                    from_correspondent: isCorrespondent,
-                });
-            if (insertError) throw insertError;
+            // Privileged write — server validates slot limits, computes
+            // isCorrespondent, and inserts the row using the service-role key.
+            const { data: created, error: createErr } = await callApi<{ post: any; isCorrespondent: boolean }>('posts-api', {
+                action: 'create',
+                userId: user.id,
+                imageUrl: urlData.publicUrl,
+                caption: caption.trim(),
+            });
+            if (createErr || !created?.post) throw new Error(createErr?.message || 'Failed to save post.');
 
             // Fire-and-forget backup to Google Drive
             const driveFileName =
                 `${new Date(timestamp).toISOString().slice(0, 19).replace(/[T:]/g, '-')}_` +
                 `${(authState.name || user.email).replace(/\s+/g, '_')}.jpg`;
-            supabaseAdmin.functions
+            supabase.functions
                 .invoke('upload-to-drive', {
-                    body: { imageUrl: urlData.publicUrl, fileName: driveFileName, isCorrespondent },
+                    body: { imageUrl: urlData.publicUrl, fileName: driveFileName, isCorrespondent: created.isCorrespondent },
                 })
                 .then(({ data, error }) => {
                     if (error) console.warn('[Drive] invoke error:', error);
@@ -223,6 +196,7 @@ export default function CorrespondentScreen() {
             await Promise.all([fetchMyPosts(), fetchSlots()]);
         } catch (e: any) {
             Alert.alert('Upload failed', e.message || 'Something went wrong. Please try again.');
+            await Promise.all([fetchMyPosts(), fetchSlots()]);
         } finally {
             setUploading(false);
         }

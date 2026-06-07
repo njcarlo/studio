@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabaseAdmin } from '../supabase';
+import { callApi } from '../supabase';
 
 export interface AuthState {
     region: string;
@@ -41,19 +41,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             try {
                 const storedUserId = await AsyncStorage.getItem('tract_user_id');
                 if (storedUserId) {
-                    const { data, error } = await supabaseAdmin
-                        .from('tract_users')
-                        .select('*')
-                        .eq('id', storedUserId)
-                        .single();
+                    const { data, error } = await callApi<{ user: any }>('auth-api', { action: 'session', userId: storedUserId });
 
-                    if (data && !error) {
-                        setUser(data);
+                    if (data?.user && !error) {
+                        setUser(data.user);
                         setAuthStateInternal({
-                            region: data.region || '',
-                            subRegion: data.sub_region || '',
-                            barangay: data.barangay || '',
-                            name: data.name || '',
+                            region: data.user.region || '',
+                            subRegion: data.user.sub_region || '',
+                            barangay: data.user.barangay || '',
+                            name: data.user.name || '',
                         });
                     } else {
                         await AsyncStorage.removeItem('tract_user_id');
@@ -75,22 +71,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const signIn = async (email: string, password: string) => {
         if (!email || !password) return { error: 'Please enter your email and password.' };
 
-        const { data, error } = await supabaseAdmin
-            .from('tract_users')
-            .select('*')
-            .eq('email', email.trim().toLowerCase())
-            .eq('password', password)
-            .maybeSingle();
+        const { data, error } = await callApi<{ user: any }>('auth-api', { action: 'signin', email, password });
+        if (error || !data?.user) return { error: error?.message || 'Invalid email or password.' };
 
-        if (error || !data) return { error: 'Invalid email or password.' };
-
-        await AsyncStorage.setItem('tract_user_id', data.id);
-        setUser(data);
+        await AsyncStorage.setItem('tract_user_id', data.user.id);
+        setUser(data.user);
         setAuthStateInternal({
-            region: data.region || '',
-            subRegion: data.sub_region || '',
-            barangay: data.barangay || '',
-            name: data.name || '',
+            region: data.user.region || '',
+            subRegion: data.user.sub_region || '',
+            barangay: data.user.barangay || '',
+            name: data.user.name || '',
         });
         return { error: null };
     };
@@ -98,33 +88,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const signUp = async (email: string, password: string, metadata: Partial<AuthState>) => {
         if (!email || !password) return { error: 'Please enter your email and password.' };
 
-        const { data: existing } = await supabaseAdmin
-            .from('tract_users')
-            .select('id')
-            .eq('email', email.trim().toLowerCase())
-            .maybeSingle();
-
-        if (existing) return { error: 'Email already registered.' };
-
-        const { data, error } = await supabaseAdmin.from('tract_users').insert({
-            email: email.trim().toLowerCase(),
+        const { data, error } = await callApi<{ user: any }>('auth-api', {
+            action: 'signup',
+            email,
             password,
-            name: metadata.name || email.split('@')[0],
-            region: metadata.region || '',
-            sub_region: metadata.subRegion || '',
+            name: metadata.name,
+            region: metadata.region,
+            subRegion: metadata.subRegion,
             barangay: metadata.barangay,
-            tracts_given: 0,
-        }).select().single();
+        });
+        if (error || !data?.user) return { error: error?.message || 'Failed to create account.' };
 
-        if (error || !data) return { error: error?.message || 'Failed to create account.' };
-
-        await AsyncStorage.setItem('tract_user_id', data.id);
-        setUser(data);
+        await AsyncStorage.setItem('tract_user_id', data.user.id);
+        setUser(data.user);
         setAuthStateInternal({
-            region: data.region || '',
-            subRegion: data.sub_region || '',
-            barangay: data.barangay || '',
-            name: data.name || '',
+            region: data.user.region || '',
+            subRegion: data.user.sub_region || '',
+            barangay: data.user.barangay || '',
+            name: data.user.name || '',
         });
         return { error: null };
     };

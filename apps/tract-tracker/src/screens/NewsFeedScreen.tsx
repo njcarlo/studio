@@ -8,18 +8,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { supabaseAdmin } from '../supabase';
+import { supabase, callApi } from '../supabase';
 import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
-const REFRESH_INTERVAL = 30_000;
-const SLIDE_INTERVAL  = 9_000;
+const REFRESH_INTERVAL = 10_000;
+const SLIDE_INTERVAL   = 10_000;
 
 interface Post {
     id: string;
     user_name: string;
     region: string;
+    barangay: string;
     image_url: string;
     caption: string;
     created_at: string;
@@ -82,7 +83,7 @@ export default function NewsFeedScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { width, height } = useWindowDimensions();
     const layout = useLayout(width, height);
-    const { isAdmin } = useAuth();
+    const { isAdmin, user } = useAuth();
 
     const [posts, setPosts]             = useState<Post[]>([]);
     const [loading, setLoading]         = useState(true);
@@ -100,13 +101,25 @@ export default function NewsFeedScreen() {
 
     const fetchPosts = useCallback(async () => {
         try {
-            const { data } = await supabaseAdmin
+            const { data } = await supabase
                 .from('correspondent_posts')
-                .select('id, user_name, region, image_url, caption, created_at')
+                .select('id, user_name, region, barangay, image_url, caption, created_at')
                 .order('created_at', { ascending: false })
                 .limit(60);
             if (data) {
-                setPosts(data);
+                // Preserve the currently-displayed post's position across background
+                // refreshes — find where it landed in the new list instead of
+                // jarringly resetting the slideshow back to index 0 every 10s.
+                setPosts(prev => {
+                    const currentId = prev[heroIdxRef.current]?.id;
+                    const preservedIdx = currentId ? data.findIndex(p => p.id === currentId) : -1;
+                    const nextIdx = preservedIdx >= 0 ? preservedIdx : 0;
+                    if (nextIdx !== heroIdxRef.current) {
+                        heroIdxRef.current = nextIdx;
+                        setHeroIdx(nextIdx);
+                    }
+                    return data;
+                });
                 postCountRef.current = data.length;
                 const now = new Date();
                 setLastUpdated(
@@ -143,33 +156,29 @@ export default function NewsFeedScreen() {
     useEffect(() => {
         fetchPosts();
         const interval = setInterval(fetchPosts, REFRESH_INTERVAL);
-        const channel = supabaseAdmin
+        const channel = supabase
             .channel('newsfeed_realtime')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'correspondent_posts' }, () => fetchPosts())
             .subscribe();
         return () => {
             clearInterval(interval);
             if (slideTimer.current) clearInterval(slideTimer.current);
-            supabaseAdmin.removeChannel(channel);
+            supabase.removeChannel(channel);
         };
     }, [fetchPosts]);
 
     useEffect(() => {
-        heroIdxRef.current = 0;
-        setHeroIdx(0);
         if (posts.length > 1) resetTimer();
+        else if (slideTimer.current) { clearInterval(slideTimer.current); slideTimer.current = null; }
     }, [posts.length, resetTimer]);
 
     const handleThumbPress = (i: number) => { goToHero(i); if (posts.length > 1) resetTimer(); };
 
     const deletePost = useCallback(async (post: Post) => {
+        if (!user) return;
         if (!window.confirm(`Remove this report by ${post.user_name}?`)) return;
-        await supabaseAdmin.from('correspondent_posts').delete().eq('id', post.id);
-        try {
-            const urlPath = new URL(post.image_url).pathname;
-            const storagePath = urlPath.split('/correspondent-photos/').at(-1);
-            if (storagePath) await supabaseAdmin.storage.from('correspondent-photos').remove([storagePath]);
-        } catch (_) {}
+        const { error } = await callApi('posts-api', { action: 'delete', requesterId: user.id, postId: post.id });
+        if (error) { console.error('deletePost error', error.message); return; }
         setPosts(prev => {
             const updated = prev.filter(p => p.id !== post.id);
             postCountRef.current = updated.length;
@@ -178,7 +187,7 @@ export default function NewsFeedScreen() {
             setHeroIdx(newIdx);
             return updated;
         });
-    }, []);
+    }, [user]);
 
     const openLightbox = useCallback((post: Post) => {
         setLightboxPost(post);
@@ -337,6 +346,7 @@ export default function NewsFeedScreen() {
                                     <Ionicons name="person-circle" size={layout.heroMetaFont + 10} color="#C9A84C" />
                                     <Text style={[styles.heroReporter, { fontSize: layout.heroMetaFont }]}>{heroPost.user_name}</Text>
                                     {heroPost.region ? <Text style={[styles.heroRegion, { fontSize: layout.heroMetaFont }]}>· {heroPost.region}</Text> : null}
+                                    {heroPost.barangay ? <Text style={[styles.heroRegion, { fontSize: layout.heroMetaFont }]}>· {heroPost.barangay}</Text> : null}
                                     <Text style={[styles.heroTime, { fontSize: layout.metaFont }]}>· {formatTime(heroPost.created_at)}</Text>
                                 </View>
                                 {posts.length > 1 && (
@@ -383,7 +393,7 @@ export default function NewsFeedScreen() {
                                             <View style={styles.cardMeta}>
                                                 <Text style={[styles.cardName, { fontSize: layout.nameFont }]}>{post.user_name}</Text>
                                                 <Text style={[styles.cardSubMeta, { fontSize: layout.metaFont }]}>
-                                                    {post.region ? `${post.region} · ` : ''}{formatTime(post.created_at)}
+                                                    {post.region ? `${post.region} · ` : ''}{post.barangay ? `${post.barangay} · ` : ''}{formatTime(post.created_at)}
                                                     {isNew(post.created_at) ? '  🟢 NEW' : ''}
                                                 </Text>
                                             </View>
@@ -425,7 +435,7 @@ export default function NewsFeedScreen() {
 
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { fontSize: layout.isMonitor ? 13 : 10 }]}>
-                        COG Philippines · NTGD Field Correspondents · Auto-refreshes every 30s
+                        COG Philippines · NTGD Field Correspondents · Auto-refreshes every 10s
                     </Text>
                 </View>
             </SafeAreaView>
@@ -450,6 +460,7 @@ export default function NewsFeedScreen() {
                             <Text style={[styles.lightboxName, { fontSize: layout.isMonitor ? 18 : 15 }]}>
                                 {lightboxPost.user_name}
                                 {lightboxPost.region ? <Text style={styles.lightboxRegion}>  ·  {lightboxPost.region}</Text> : null}
+                                {lightboxPost.barangay ? <Text style={styles.lightboxRegion}>  ·  {lightboxPost.barangay}</Text> : null}
                             </Text>
                             {(() => { const { main } = splitCaption(lightboxPost.caption); return main ? (
                                 <Text style={[styles.lightboxCaption, { fontSize: layout.isMonitor ? 15 : 13 }]}>{main}</Text>

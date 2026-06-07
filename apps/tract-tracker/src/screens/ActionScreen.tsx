@@ -10,7 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
-import { supabaseAdmin } from '../supabase';
+import { supabase, callApi } from '../supabase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const isSmallDevice = SCREEN_WIDTH < 375 || SCREEN_HEIGHT < 667;
@@ -76,10 +76,7 @@ function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
         if (!region) { Alert.alert('Required', 'Please select your region.'); return; }
         setSaving(true);
         try {
-            await supabaseAdmin
-                .from('tract_users')
-                .update({ region, sub_region: subRegion || null, barangay: barangay || null })
-                .eq('id', user.id);
+            await callApi('users-api', { action: 'updateProfile', userId: user.id, region, subRegion, barangay });
             setAuthState({ region, subRegion, barangay });
             onConfirm();
         } catch (e: any) {
@@ -230,7 +227,7 @@ export default function ActionScreen() {
     const loadCounts = useCallback(async () => {
         if (!user) return;
         try {
-            const { data: allUsers } = await supabaseAdmin
+            const { data: allUsers } = await supabase
                 .from('tract_users')
                 .select('id, tracts_given, region, barangay');
 
@@ -288,9 +285,7 @@ export default function ActionScreen() {
         isSyncingRef.current = true;
         setIsSyncing(true);
         try {
-            const { data: fresh } = await supabaseAdmin.from('tract_users').select('tracts_given').eq('id', user.id).single();
-            const newCount = (fresh?.tracts_given ?? 0) + pending;
-            const { error } = await supabaseAdmin.from('tract_users').update({ tracts_given: newCount }).eq('id', user.id);
+            const { error } = await callApi('users-api', { action: 'increment', userId: user.id, amount: pending });
             if (!error) {
                 await savePending(0);
                 setPendingCount(0);
@@ -320,11 +315,11 @@ export default function ActionScreen() {
     // Realtime — reload full counts for accuracy (not incremental diff)
     useEffect(() => {
         if (!setupDone) return;
-        const channel = supabaseAdmin
+        const channel = supabase
             .channel('tract_users_realtime')
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tract_users' }, () => loadCounts())
             .subscribe();
-        return () => { supabaseAdmin.removeChannel(channel); };
+        return () => { supabase.removeChannel(channel); };
     }, [setupDone, loadCounts]);
 
     // ── +1 handler — optimistic + offline queue ───────────────────────────────
@@ -343,27 +338,14 @@ export default function ActionScreen() {
         let online = false;
 
         try {
-            const { data: fresh, error: fetchErr } = await supabaseAdmin
-                .from('tract_users')
-                .select('tracts_given')
-                .eq('id', user.id)
-                .single();
+            // Atomic server-side increment — write DB value + any queued pending + this tap
+            const { error: incErr } = await callApi('users-api', { action: 'increment', userId: user.id, amount: queued + 1 });
 
-            if (!fetchErr && fresh !== null) {
-                // Online — write DB value + any queued pending + this tap
-                const newCount = (fresh.tracts_given ?? 0) + queued + 1;
-
-                const { error: updateErr } = await supabaseAdmin
-                    .from('tract_users')
-                    .update({ tracts_given: newCount })
-                    .eq('id', user.id);
-
-                if (!updateErr) {
-                    online = true;
-                    await savePending(0);
-                    setPendingCount(0);
-                    loadCounts(); // fire and forget — don't await so UI stays responsive
-                }
+            if (!incErr) {
+                online = true;
+                await savePending(0);
+                setPendingCount(0);
+                loadCounts(); // fire and forget — don't await so UI stays responsive
             }
         } catch {
             // Network error — fall through to offline queue

@@ -4,7 +4,7 @@ import {
     TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabaseAdmin } from '../supabase';
+import { supabase } from '../supabase';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 const REFRESH_INTERVAL = 30_000;
@@ -55,7 +55,7 @@ export default function LiveBoardScreen() {
 
     const fetchData = useCallback(async () => {
         try {
-            const { data } = await supabaseAdmin
+            const { data } = await supabase
                 .from('tract_users')
                 .select('region, barangay, tracts_given');
 
@@ -79,7 +79,7 @@ export default function LiveBoardScreen() {
         const interval = setInterval(fetchData, REFRESH_INTERVAL);
 
         // Realtime subscription — refetch on any tract_users update
-        const channel = supabaseAdmin
+        const channel = supabase
             .channel('liveboard_realtime')
             .on(
                 'postgres_changes',
@@ -90,7 +90,7 @@ export default function LiveBoardScreen() {
 
         return () => {
             clearInterval(interval);
-            supabaseAdmin.removeChannel(channel);
+            supabase.removeChannel(channel);
         };
     }, [fetchData]);
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabaseAdmin } from '../supabase';
+import { supabase } from '../supabase';
 
 type BarangayCount = { barangay: string; count: number };
 type RegionCount = { region: string; label: string; lat: number; lng: number; count: number };
@@ -192,7 +192,7 @@ export default function MapScreen() {
     useEffect(() => {
         async function load() {
             try {
-                const { data } = await supabaseAdmin
+                const { data } = await supabase
                     .from('tract_users')
                     .select('barangay, region, tracts_given');
 
