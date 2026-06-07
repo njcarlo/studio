@@ -41,18 +41,21 @@ export default function MyQRCodePage() {
       const newToken =
         Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-      await (updateWorkerSql as any)(workerProfile.id, { qrToken: newToken });
+      const res = await (updateWorkerSql as any)(workerProfile.id, { qrToken: newToken });
+      if (!res?.success) {
+        throw new Error(res?.error || "Could not update your QR token. Please try again.");
+      }
 
       setLocalToken(newToken);
       toast({
         title: "QR Code regenerated",
         description: "Your identification token has been securely updated.",
       });
-    } catch (e) {
+    } catch (e: any) {
       toast({
         variant: "destructive",
         title: "Regeneration failed",
-        description: "Could not update your QR token. Please try again.",
+        description: e?.message || "Could not update your QR token. Please try again.",
       });
     } finally {
       setIsRegenerating(false);

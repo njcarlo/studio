@@ -189,6 +189,35 @@ No — not a rewrite. The per-row skip-if-exists checks, the diff-preview (`getW
 
 ---
 
+## Edge Functions — Deployment & Health Status (verified 2026-06-07)
+
+**Why this section exists:** commit `1e33f28` ("remove exposed service-role key, move privileged DB ops to edge functions") moved a meaningful slice of privileged DB logic for the `studio` app out of Next.js and into Supabase edge functions (`supabase/functions/*`). Phase 4 above documents the *architectural* decision; this section is the **operational snapshot** — so a future session can answer "are the edge functions actually up?" without re-running CLI/curl checks from scratch.
+
+**Linked Supabase project:** `vpgykxfbrfnojmgmzriq` (read from `supabase/.temp/project-ref`; CLI: `supabase functions list`).
+
+**Studio-app functions — all `ACTIVE`, version `5`, last deployed `2026-05-31 09:23:12 UTC`:**
+`settings`, `venue`, `workers`, `c2s`, `meals`, `ministries`, `schedule`, `approvals`, `attendance`, `inventory`
+*(source: `supabase/functions/{settings,venue,workers,c2s,meals,ministries,schedule,approvals,attendance,inventory}/index.ts`, all sharing `supabase/functions/_shared/{auth,router,response,cors,logger}.ts`)*
+
+**Other deployed functions (separate `tract-tracker` app, not part of this plan's scope):** `upload-to-drive` (v3), `auth-api` (v3), `users-api` (v2), `posts-api` (v3) — sourced from `apps/tract-tracker/supabase/functions/*`.
+
+**Reachability check performed:** unauthenticated `curl` to each studio-function endpoint
+(`https://vpgykxfbrfnojmgmzriq.supabase.co/functions/v1/<name>`) returned **`HTTP 401`** for all of `settings`, `venue`, `workers`, `schedule`, `meals`, `attendance`, `inventory` — i.e., they are deployed, reachable, and `_shared/auth.ts#verifyAuth()` is correctly rejecting requests that lack a valid `Authorization: Bearer <jwt>` header (not 404/500/connection-refused, which would indicate a broken deployment).
+
+**What this check does *not* prove:**
+- It does not exercise business logic — that needs a real authenticated worker session (sign in through the app, then watch network calls / `supabase functions logs <name>`).
+- It does not confirm permission parity. As recorded in the Phase 4 "Decision" subsection above, `verifyAuth()` only validates the JWT (`supabase.auth.getUser`) and returns `{ userId, dbRole }` — it does **not** replicate the `Worker → WorkerRole → Role → RolePermission` permission check that `withPermission` enforces on the Next.js side. So: **deployed and authenticating ✅, but not yet permission-checked at parity with Server Actions** — treat these as trusted-caller-only surfaces per the Phase 4 exception policy until that follow-up lands.
+
+**How to re-verify quickly in a future session:**
+```bash
+supabase functions list                      # deployment status/version/timestamp
+curl -s -o /dev/null -w "%{http_code}" \
+  https://vpgykxfbrfnojmgmzriq.supabase.co/functions/v1/<name>   # expect 401 if healthy
+supabase functions logs <name>                # inspect recent invocations/errors
+```
+
+---
+
 ## Phase 5 — Performance enhancements
 
 **Why:** the new auth layer adds a Prisma round-trip (`Worker → WorkerRole → Role → RolePermission → Permission`, 4-level include) to *every* mutating call. At scale that's a meaningful tax unless we cache it — and the layering work is also a natural point to fix pre-existing N+1 patterns in the actions being migrated.

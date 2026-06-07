@@ -10,6 +10,20 @@ export type OrsPagedResponse<T> = {
     meta: { total: number; page: number; limit: number; totalPages: number };
 };
 
+// The legacy ORS reader API itself returns a FLAT paging envelope — NOT the
+// nested `meta` shape above (which is this module's own UI-facing pagination
+// type, e.g. `getWorkerDiffPage`). Raw API responses look like:
+// `{ table, page, limit, total, pages, data }`. Mixing these up is what broke
+// ORS sync (every `.meta.total`/`.meta.totalPages` access on a raw API
+// response threw `TypeError: Cannot read properties of undefined`).
+type OrsApiPage<T> = {
+    data: T[];
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+};
+
 export type ImportResult = {
     success: number;
     skipped: number;
@@ -250,11 +264,11 @@ async function orsFetch<T>(path: string): Promise<T> {
 
 async function fetchAllOrsWorkerIds(): Promise<Set<string>> {
     const limit = 500;
-    const first = await orsFetch<OrsPagedResponse<{ id: number }>>(`/tables/worker?page=1&limit=${limit}`);
+    const first = await orsFetch<OrsApiPage<{ id: number }>>(`/tables/worker?page=1&limit=${limit}`);
     const all = new Set<string>(first.data.map((w) => String(w.id)));
 
-    for (let page = 2; page <= first.meta.totalPages; page++) {
-        const res = await orsFetch<OrsPagedResponse<{ id: number }>>(`/tables/worker?page=${page}&limit=${limit}`);
+    for (let page = 2; page <= first.pages; page++) {
+        const res = await orsFetch<OrsApiPage<{ id: number }>>(`/tables/worker?page=${page}&limit=${limit}`);
         for (const w of res.data) all.add(String(w.id));
     }
 
@@ -263,11 +277,11 @@ async function fetchAllOrsWorkerIds(): Promise<Set<string>> {
 
 async function fetchAllOrsWorkers(): Promise<any[]> {
     const limit = 500;
-    const first = await orsFetch<OrsPagedResponse<any>>(`/tables/worker?page=1&limit=${limit}`);
+    const first = await orsFetch<OrsApiPage<any>>(`/tables/worker?page=1&limit=${limit}`);
     const all = [...first.data];
 
-    for (let page = 2; page <= first.meta.totalPages; page++) {
-        const res = await orsFetch<OrsPagedResponse<any>>(`/tables/worker?page=${page}&limit=${limit}`);
+    for (let page = 2; page <= first.pages; page++) {
+        const res = await orsFetch<OrsApiPage<any>>(`/tables/worker?page=${page}&limit=${limit}`);
         all.push(...res.data);
     }
 
@@ -355,13 +369,13 @@ export async function getOrsSyncStats(): Promise<OrsSyncStats> {
         impWorkers, impMinistries, impBranches, impAreas,
         impGroups, impMentees, impAttendance,
     ] = await Promise.all([
-        orsFetch<OrsPagedResponse<any>>('/tables/worker?page=1&limit=1'),
-        orsFetch<OrsPagedResponse<any>>('/tables/ministry?page=1&limit=1'),
-        orsFetch<OrsPagedResponse<any>>('/tables/satellite?page=1&limit=1'),
-        orsFetch<OrsPagedResponse<any>>('/tables/area?page=1&limit=1'),
-        orsFetch<OrsPagedResponse<any>>('/tables/c2s_online_group_view?page=1&limit=1'),
-        orsFetch<OrsPagedResponse<any>>('/tables/mentee?page=1&limit=1'),
-        orsFetch<OrsPagedResponse<any>>('/tables/hr_attendance_scan?page=1&limit=1'),
+        orsFetch<OrsApiPage<any>>('/tables/worker?page=1&limit=1'),
+        orsFetch<OrsApiPage<any>>('/tables/ministry?page=1&limit=1'),
+        orsFetch<OrsApiPage<any>>('/tables/satellite?page=1&limit=1'),
+        orsFetch<OrsApiPage<any>>('/tables/area?page=1&limit=1'),
+        orsFetch<OrsApiPage<any>>('/tables/c2s_online_group_view?page=1&limit=1'),
+        orsFetch<OrsApiPage<any>>('/tables/mentee?page=1&limit=1'),
+        orsFetch<OrsApiPage<any>>('/tables/hr_attendance_scan?page=1&limit=1'),
         prisma.worker.count({ where: { workerId: { not: null } } }),
         prisma.ministry.count(),
         prisma.branch.count(),
@@ -372,13 +386,13 @@ export async function getOrsSyncStats(): Promise<OrsSyncStats> {
     ]);
 
     return {
-        workers:    { total: orsWorkers.meta.total,    imported: impWorkers },
-        ministries: { total: orsMinistries.meta.total, imported: impMinistries },
-        branches:   { total: orsSatellites.meta.total, imported: impBranches },
-        areas:      { total: orsAreas.meta.total,      imported: impAreas },
-        c2sGroups:  { total: orsGroups.meta.total,     imported: impGroups },
-        mentees:    { total: orsMentees.meta.total,    imported: impMentees },
-        attendance: { total: orsAttendance.meta.total, imported: impAttendance },
+        workers:    { total: orsWorkers.total,    imported: impWorkers },
+        ministries: { total: orsMinistries.total, imported: impMinistries },
+        branches:   { total: orsSatellites.total, imported: impBranches },
+        areas:      { total: orsAreas.total,      imported: impAreas },
+        c2sGroups:  { total: orsGroups.total,     imported: impGroups },
+        mentees:    { total: orsMentees.total,    imported: impMentees },
+        attendance: { total: orsAttendance.total, imported: impAttendance },
     };
 }
 
@@ -386,7 +400,7 @@ export async function getOrsSyncStats(): Promise<OrsSyncStats> {
 
 export async function getOrsMinistryMap(): Promise<Record<string, string>> {
     const [orsRes, newMinistries] = await Promise.all([
-        orsFetch<OrsPagedResponse<OrsMinistry>>('/tables/ministry?limit=200'),
+        orsFetch<OrsApiPage<OrsMinistry>>('/tables/ministry?limit=200'),
         prisma.ministry.findMany(),
     ]);
     const map: Record<string, string> = {};
@@ -426,8 +440,12 @@ export async function getWorkerDiffPage(
     if (includeLegacy) {
         if (!search) {
             const path = `/tables/worker?page=${page}&limit=${limit}`;
-            orsRes = await orsFetch<OrsPagedResponse<any>>(path);
-            orsWorkers = orsRes.data;
+            const apiRes = await orsFetch<OrsApiPage<any>>(path);
+            orsWorkers = apiRes.data;
+            orsRes = {
+                data: apiRes.data,
+                meta: { total: apiRes.total, page: apiRes.page, limit: apiRes.limit, totalPages: apiRes.pages },
+            };
         } else {
             const q = search.toLowerCase().trim();
             const allLegacy = await fetchAllOrsWorkers();
@@ -1053,7 +1071,7 @@ export async function importOrsMentees(mentees: OrsMentee[]): Promise<ImportResu
         groupsByMentor[g.mentorId].push(g);
     }
 
-    const orsGroups = await orsFetch<OrsPagedResponse<OrsMentorGroup>>('/tables/c2s_online_group_view?limit=200');
+    const orsGroups = await orsFetch<OrsApiPage<OrsMentorGroup>>('/tables/c2s_online_group_view?limit=200');
     const orsGroupMap = Object.fromEntries(orsGroups.data.map(g => [String(g.group_id || g.id), g]));
 
     for (const m of mentees) {
