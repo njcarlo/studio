@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet,
-    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState, ScrollView, Dimensions, Platform,
+    ImageBackground, ActivityIndicator, Alert, Modal, FlatList, TextInput, AppState, ScrollView, useWindowDimensions, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,10 +11,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
 import { supabase, callApi } from '../supabase';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const isSmallDevice = SCREEN_WIDTH < 375 || SCREEN_HEIGHT < 667;
-const isMediumDevice = SCREEN_WIDTH >= 375 && SCREEN_WIDTH < 414;
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
 
@@ -61,6 +57,10 @@ const BARANGAYS = [
 // ── Setup Screen ─────────────────────────────────────────────────────────────
 function SetupScreen({ onConfirm }: { onConfirm: () => void }) {
     const { user, authState, setAuthState } = useAuth();
+    const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+    const isSmallDevice = screenWidth < 375 || screenHeight < 667;
+    const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
+    const styles = useMemo(() => createStyles(isSmallDevice, isMediumDevice), [isSmallDevice, isMediumDevice]);
     const [region, setRegion] = useState(authState.region || '');
     const [subRegion, setSubRegion] = useState(authState.subRegion || '');
     const [barangay, setBarangay] = useState(authState.barangay || '');
@@ -203,6 +203,11 @@ async function savePending(n: number) {
 export default function ActionScreen() {
     const { user, authState, signOut, isAdmin } = useAuth();
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+    const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+    const isSmallDevice = screenWidth < 375 || screenHeight < 667;
+    const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
+    const styles = useMemo(() => createStyles(isSmallDevice, isMediumDevice), [isSmallDevice, isMediumDevice]);
 
     const [setupDone, setSetupDone] = useState(!!authState.region);
     const [personalCount, setPersonalCount] = useState(0);
@@ -474,7 +479,7 @@ export default function ActionScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (isSmallDevice: boolean, isMediumDevice: boolean) => StyleSheet.create({
     bg: { flex: 1 },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,60,0.78)' },
     safe: { flex: 1 },

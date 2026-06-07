@@ -3,6 +3,7 @@ import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     ScrollView, Modal, FlatList, ImageBackground, Alert,
     ActivityIndicator, KeyboardAvoidingView, Platform, Image,
+    useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,7 +59,24 @@ const BARANGAYS = [
 
 type Screen = 'landing' | 'login' | 'signup';
 
+// Logos are designed to overlap at their natural size (324x216 / 302x201).
+// On narrow phones that combined width overflows the padded content area, so
+// scale both — and their offsets — down together to preserve the composition.
+const NTGD_W = 324, NTGD_H = 216;
+const BO_W = 302, BO_H = 201;
+const LOGO_HPAD = 64; // matches landingContent/formScroll horizontal padding (worst case)
+
+function useLogoSizes(width: number) {
+    const scale = Math.min(1, (width - LOGO_HPAD) / NTGD_W);
+    return {
+        ntgd: { width: NTGD_W * scale, height: NTGD_H * scale, left: -10 * scale },
+        bo: { width: BO_W * scale, height: BO_H * scale, marginTop: -130 * scale, left: -20 * scale },
+    };
+}
+
 export default function AuthScreen() {
+    const { width } = useWindowDimensions();
+    const logoSizes = useLogoSizes(width);
     const [screen, setScreen] = useState<Screen>('landing');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -114,8 +132,8 @@ export default function AuthScreen() {
                 <SafeAreaView style={styles.landingSafe}>
                     <View style={styles.landingContent}>
                         <Text style={styles.landingEyebrow}>Ready to step out{'\n'}and spread the{'\n'}good news?</Text>
-                        <Image source={Ntgd} style={styles.ntgd} />
-                        <Image source={Obpng} style={styles.bo} />
+                        <Image source={Ntgd} style={[styles.ntgd, logoSizes.ntgd]} />
+                        <Image source={Obpng} style={[styles.bo, logoSizes.bo]} />
                     </View>
 
                     <View style={styles.landingBottom}>
@@ -146,8 +164,8 @@ export default function AuthScreen() {
                         </TouchableOpacity>
 
                         {/* Header */}
-                        <Image style={styles.ntgd} source={Ntgd} />
-                        <Image style={styles.bo} source={Obpng} />
+                        <Image style={[styles.ntgd, logoSizes.ntgd]} source={Ntgd} />
+                        <Image style={[styles.bo, logoSizes.bo]} source={Obpng} />
                         <Text style={styles.formTitle}>{screen === 'login' ? 'Welcome back' : 'Create account'}</Text>
                         
 
@@ -313,8 +331,10 @@ const styles = StyleSheet.create({
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,15,60,0.75)' },
 
     // Image of national tract distribution and logo
-    ntgd: { width: 324, height: 216, resizeMode: "contain", left: -10 },
-    bo: { width: 302, height: 201, resizeMode: "contain", marginTop: -130, left: -20 },
+    // Base sizing is overridden per-render by useLogoSizes() so the logos scale
+    // down (and keep their overlap composition) on narrow phone screens.
+    ntgd: { resizeMode: "contain" },
+    bo: { resizeMode: "contain" },
 
     // ── Landing ──
     landingSafe: { flex: 1, justifyContent: 'space-between' },
