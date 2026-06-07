@@ -86,7 +86,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 export default function AppNavigator() {
-    const { session, isLoading, isTester } = useAuth();
+    const { session, isLoading, isTester, isCorrespondent } = useAuth();
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -110,7 +110,7 @@ export default function AppNavigator() {
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 {session ? (
                     <>
-                        {isTester || isEventLive() ? (
+                        {isTester || isCorrespondent || isEventLive() ? (
                             <Stack.Screen name="Main" component={MainTabs} />
                         ) : (
                             <Stack.Screen name="Countdown" component={CountdownScreen} />
