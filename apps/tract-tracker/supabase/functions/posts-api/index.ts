@@ -9,6 +9,10 @@
  * Actions (POST body: { action, ...params }):
  *   create  { userId, imageUrl, caption }      -> { post, isCorrespondent }
  *   delete  { requesterId, postId }            -> { ok }
+ *
+ * After every successful create, checks total usage of the correspondent-photos
+ * bucket and — once it crosses STORAGE_THRESHOLD_BYTES (~700MB, ~70% of the 1GB
+ * free-tier limit) — deletes the oldest posts first (FIFO) until back under it.
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -36,6 +40,12 @@ const REGULAR_MAX_POSTS    = 1;
 const REGULAR_UPLOAD_SLOTS = 500;
 const AUTO_HASHTAGS = '\n\n#NationalTractsGivingDay\n#OutsideIsBeautiful\n#Connect2Souls\n#BornAgainPilipinas';
 
+// ~70% of the 1GB free-tier Supabase Storage limit. Crossing this triggers FIFO
+// cleanup of correspondent-photos (oldest posts first) so uploads can keep flowing.
+// Google Drive backups are never touched — Drive is the permanent archive.
+const STORAGE_THRESHOLD_BYTES   = 700 * 1024 * 1024;
+const MAX_FIFO_DELETIONS_PER_RUN = 25;
+
 interface UserRow {
     id: string; name: string | null; email: string | null;
     region: string | null; barangay: string | null;
@@ -53,6 +63,30 @@ function storagePathFromUrl(imageUrl: string): string | null {
         return path.split('/correspondent-photos/').at(-1) ?? null;
     } catch {
         return null;
+    }
+}
+
+// Deletes the oldest correspondent_posts (DB row + storage object) one at a time,
+// re-checking total bucket usage after each, until back under the threshold.
+// Google Drive is intentionally never touched — it's the permanent archive.
+async function enforceFifoStorageLimit(): Promise<void> {
+    for (let i = 0; i < MAX_FIFO_DELETIONS_PER_RUN; i++) {
+        const { data: totalBytes, error: usageErr } = await admin.rpc('correspondent_storage_bytes');
+        if (usageErr) { console.warn('[FIFO] usage check failed:', usageErr.message); return; }
+        if (typeof totalBytes !== 'number' || totalBytes <= STORAGE_THRESHOLD_BYTES) return;
+
+        const { data: oldest } = await admin
+            .from('correspondent_posts')
+            .select('id, image_url')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+        if (!oldest) return;
+
+        await admin.from('correspondent_posts').delete().eq('id', oldest.id);
+        const storagePath = storagePathFromUrl(oldest.image_url);
+        if (storagePath) await admin.storage.from('correspondent-photos').remove([storagePath]);
+        console.log('[FIFO] pruned oldest post', oldest.id, 'to stay under storage threshold');
     }
 }
 
@@ -111,6 +145,8 @@ Deno.serve(async (req: Request) => {
                     .select()
                     .single();
                 if (insertErr || !post) return json({ error: insertErr?.message || 'Failed to save post.' }, 400);
+
+                enforceFifoStorageLimit().catch(e => console.warn('[FIFO] cleanup error:', e));
 
                 return json({ post, isCorrespondent });
             }
