@@ -9,8 +9,6 @@ const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf
 const REFRESH_INTERVAL = 30_000;
 const TOP_N = 10;
 
-const ROW_COLORS = ['#8B0000', '#1a3a6b', '#1a3a6b', '#1a3a6b', '#1a3a6b'];
-
 type Row = { rank: number; name: string; count: number };
 type UserRow = { barangay: string; tracts_given: number };
 
@@ -87,30 +85,44 @@ export default function LedWallBarangayScreen() {
         };
     }, [fetchData]);
 
-    const heroFont = isMonitor ? 160 : 88;
-    const heroLabelFont = isMonitor ? 28 : 18;
-    const statFont = isMonitor ? 96 : 56;
+    const heroFont = isMonitor ? 140 : 80;
+    const heroLabelFont = isMonitor ? 22 : 14;
+    const statFont = isMonitor ? 72 : 44;
     const statLabelFont = isMonitor ? 18 : 12;
     const manyRows = barangayRows.length > 5;
-    const rowNameFont = isMonitor ? (manyRows ? 36 : 44) : (manyRows ? 22 : 28);
-    const rowCountFont = isMonitor ? (manyRows ? 46 : 56) : (manyRows ? 28 : 36);
+    const rowNameFont = isMonitor ? (manyRows ? 30 : 38) : (manyRows ? 17 : 22);
+    const rowCountFont = isMonitor ? (manyRows ? 36 : 46) : (manyRows ? 22 : 28);
+    const rankFont = isMonitor ? (manyRows ? 22 : 30) : (manyRows ? 14 : 18);
 
     return (
         <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
             <View style={styles.overlay} />
             <SafeAreaView style={styles.safe}>
 
-                {/* Title + participants */}
-                <View style={styles.topRow}>
-                    <View style={styles.titleWrap}>
-                        <Text style={[styles.title, { fontSize: isMonitor ? 28 : 18 }]}>
-                            NATIONAL TRACTS GIVING DAY
+                {/* Title bar */}
+                <View style={styles.titleBar}>
+                    <Text style={[styles.title, { fontSize: isMonitor ? 26 : 17 }]}>
+                        NATIONAL TRACTS GIVING DAY
+                    </Text>
+                    <Text style={[styles.subtitle, { fontSize: isMonitor ? 13 : 10 }]}>
+                        LIVE COUNT · as of {lastUpdated}
+                    </Text>
+                </View>
+
+                {/* Split body */}
+                <View style={styles.splitRow}>
+
+                    {/* Left — big totals */}
+                    <View style={styles.leftCol}>
+                        <Text style={[styles.heroNumber, { fontSize: heroFont, lineHeight: heroFont * 1.05 }]}>
+                            {totalTracts.toLocaleString()}
                         </Text>
-                        <Text style={[styles.subtitle, { fontSize: isMonitor ? 14 : 11 }]}>
-                            LIVE COUNT · as of {lastUpdated}
+                        <Text style={[styles.heroLabel, { fontSize: heroLabelFont }]}>
+                            TOTAL TRACTS GIVEN
                         </Text>
-                    </View>
-                    <View style={styles.participantsBox}>
+
+                        <View style={styles.leftDivider} />
+
                         <Text style={[styles.statNumber, { fontSize: statFont }]}>
                             {totalParticipants.toLocaleString()}
                         </Text>
@@ -118,50 +130,30 @@ export default function LedWallBarangayScreen() {
                             PARTICIPANTS
                         </Text>
                     </View>
-                </View>
 
-                {/* Hero number */}
-                <View style={styles.heroWrap}>
-                    <Text style={[styles.heroNumber, { fontSize: heroFont, lineHeight: heroFont * 1.05 }]}>
-                        {totalTracts.toLocaleString()}
-                    </Text>
-                    <Text style={[styles.heroLabel, { fontSize: heroLabelFont }]}>
-                        TOTAL TRACTS GIVEN
-                    </Text>
-                </View>
-
-                {/* Top barangays breakdown */}
-                <View style={styles.list}>
-                    {barangayRows.map((row, i) => (
-                        <View
-                            key={row.name}
-                            style={[
-                                styles.row,
-                                { backgroundColor: ROW_COLORS[Math.min(i, ROW_COLORS.length - 1)] },
-                                i === 0 && styles.rowFirst,
-                            ]}
-                        >
-                            <View style={[styles.rankBox, i === 0 && styles.rankBoxFirst]}>
-                                <Text style={[styles.rankText, { fontSize: rowNameFont }, i === 0 && styles.rankTextFirst]}>
+                    {/* Right — ranked list */}
+                    <View style={styles.rightCol}>
+                        {barangayRows.map((row, i) => (
+                            <View
+                                key={row.name}
+                                style={[styles.row, i < barangayRows.length - 1 && styles.rowDivider]}
+                            >
+                                <Text style={[styles.rankText, { fontSize: rankFont }, i === 0 && styles.rankTextFirst]}>
                                     {row.rank}
                                 </Text>
-                            </View>
-                            <View style={styles.nameBlock}>
-                                <Text style={[styles.nameText, { fontSize: rowNameFont }]} numberOfLines={1}>
+                                <Text style={[styles.nameText, { fontSize: rowNameFont }, i === 0 && styles.nameTextFirst]} numberOfLines={1}>
                                     {row.name}
                                 </Text>
-                            </View>
-                            <View style={[styles.countBox, i === 0 && styles.countBoxFirst]}>
                                 <Text style={[styles.countText, { fontSize: rowCountFont }, i === 0 && styles.countTextFirst]}>
                                     {row.count.toLocaleString()}
                                 </Text>
                             </View>
-                        </View>
-                    ))}
+                        ))}
 
-                    {barangayRows.length === 0 && (
-                        <Text style={styles.emptyText}>No data yet. Start giving tracts!</Text>
-                    )}
+                        {barangayRows.length === 0 && (
+                            <Text style={styles.emptyText}>No data yet. Start giving tracts!</Text>
+                        )}
+                    </View>
                 </View>
 
                 {/* Footer ticker */}
@@ -180,51 +172,45 @@ const styles = StyleSheet.create({
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,10,40,0.90)' },
     safe: { flex: 1 },
 
-    topRow: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: 14, paddingBottom: 4, paddingHorizontal: 24,
-    },
-    titleWrap: { alignItems: 'flex-start' },
-    title: { color: '#C9A84C', letterSpacing: 2, fontFamily: 'Anton_400Regular' },
+    titleBar: { alignItems: 'center', paddingTop: 14, paddingBottom: 10 },
+    title: { color: '#C9A84C', letterSpacing: 3, fontFamily: 'Anton_400Regular' },
     subtitle: { color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, marginTop: 4 },
 
-    participantsBox: { alignItems: 'center' },
+    splitRow: { flex: 1, flexDirection: 'row' },
 
-    heroWrap: { alignItems: 'center', paddingVertical: 8 },
-    heroNumber: { color: '#fff', fontFamily: 'Anton_400Regular', textShadowColor: 'rgba(201,168,76,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 30 },
-    heroLabel: { color: '#C9A84C', letterSpacing: 4, fontFamily: 'Anton_400Regular', marginTop: 4 },
+    leftCol: {
+        flex: 1, alignItems: 'center', justifyContent: 'center',
+        borderRightWidth: 1, borderRightColor: 'rgba(201,168,76,0.25)',
+        paddingHorizontal: 16,
+    },
+    heroNumber: {
+        color: '#fff', fontFamily: 'Anton_400Regular', textAlign: 'center',
+        textShadowColor: 'rgba(201,168,76,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 30,
+    },
+    heroLabel: { color: '#C9A84C', letterSpacing: 4, fontFamily: 'Anton_400Regular', marginTop: 6, textAlign: 'center' },
 
-    statNumber: { color: '#fff', fontFamily: 'Anton_400Regular' },
-    statLabel: { color: 'rgba(255,255,255,0.55)', letterSpacing: 2, marginTop: 4 },
+    leftDivider: { width: '60%', height: 1, backgroundColor: 'rgba(201,168,76,0.25)', marginVertical: 28 },
 
-    list: { flex: 1, paddingHorizontal: 24, paddingBottom: 16 },
+    statNumber: { color: '#fff', fontFamily: 'Anton_400Regular', textAlign: 'center' },
+    statLabel: { color: 'rgba(255,255,255,0.55)', letterSpacing: 2, marginTop: 4, textAlign: 'center' },
+
+    rightCol: { flex: 1.2, paddingHorizontal: 28, justifyContent: 'center' },
     row: {
         flex: 1, flexDirection: 'row', alignItems: 'center',
-        borderRadius: 10, marginBottom: 8, overflow: 'hidden',
+        maxHeight: 90,
     },
-    rowFirst: { flex: 1.3 },
+    rowDivider: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' },
 
-    rankBox: {
-        width: 80, alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.25)', alignSelf: 'stretch',
-    },
-    rankBoxFirst: { width: 96 },
-    rankText: { color: '#fff', fontFamily: 'Anton_400Regular' },
+    rankText: { color: 'rgba(255,255,255,0.35)', fontFamily: 'Anton_400Regular', width: 48 },
     rankTextFirst: { color: '#C9A84C' },
 
-    nameBlock: { flex: 1, paddingHorizontal: 20, justifyContent: 'center' },
-    nameText: { color: '#fff', fontFamily: 'Anton_400Regular', letterSpacing: 0.5 },
+    nameText: { color: 'rgba(255,255,255,0.85)', fontFamily: 'Anton_400Regular', flex: 1, letterSpacing: 0.5 },
+    nameTextFirst: { color: '#fff' },
 
-    countBox: {
-        paddingHorizontal: 24, paddingVertical: 10,
-        backgroundColor: 'rgba(0,0,0,0.3)', alignSelf: 'stretch',
-        justifyContent: 'center', alignItems: 'flex-end', minWidth: 160,
-    },
-    countBoxFirst: { backgroundColor: 'rgba(201,168,76,0.2)', minWidth: 190 },
-    countText: { color: '#fff', fontFamily: 'Anton_400Regular' },
+    countText: { color: 'rgba(255,255,255,0.85)', fontFamily: 'Anton_400Regular', textAlign: 'right' },
     countTextFirst: { color: '#C9A84C' },
 
-    emptyText: { color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 40, fontSize: 16 },
+    emptyText: { color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 16 },
 
     footer: {
         borderTopWidth: 1, borderTopColor: 'rgba(201,168,76,0.3)',

@@ -232,11 +232,23 @@ export default function ActionScreen() {
     const loadCounts = useCallback(async () => {
         if (!user) return;
         try {
-            const { data: allUsers } = await supabase
-                .from('tract_users')
-                .select('id, tracts_given, region, barangay');
+            // PostgREST caps each request at 1000 rows, so page through the
+            // full tract_users table to keep this in sync with the LED wall totals.
+            const PAGE_SIZE = 1000;
+            const allUsers: { id: string; tracts_given: number | null; region: string | null; barangay: string | null }[] = [];
+            for (let page = 0; ; page++) {
+                const from = page * PAGE_SIZE;
+                const to = from + PAGE_SIZE - 1;
+                const { data, error } = await supabase
+                    .from('tract_users')
+                    .select('id, tracts_given, region, barangay')
+                    .range(from, to);
+                if (error || !data) break;
+                allUsers.push(...data);
+                if (data.length < PAGE_SIZE) break;
+            }
 
-            if (!allUsers) return;
+            if (allUsers.length === 0) return;
 
             const pending = await getPending();
             const me = allUsers.find(u => u.id === user.id);
