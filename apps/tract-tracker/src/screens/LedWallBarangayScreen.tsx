@@ -108,7 +108,7 @@ export default function LedWallBarangayScreen() {
                             {totalTracts.toLocaleString()}
                         </Text>
                         <Text style={[styles.heroLabel, { fontSize: heroLabelFont }]}>
-                            TOTAL TRACTS GIVEN
+                            TOTAL TRACTS GIVEN BY COG DASMARINAS
                         </Text>
 
                         <View style={styles.leftDivider} />
