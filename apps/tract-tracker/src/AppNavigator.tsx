@@ -13,6 +13,7 @@ import AdminDashboardScreen from './screens/AdminDashboardScreen';
 import CountdownScreen from './screens/CountdownScreen';
 import LiveBoardScreen from './screens/LiveBoardScreen';
 import LedWallScreen from './screens/LedWallScreen';
+import LedWallBarangayScreen from './screens/LedWallBarangayScreen';
 import CorrespondentScreen from './screens/CorrespondentScreen';
 import NewsFeedScreen from './screens/NewsFeedScreen';
 import { useAuth } from './context/AuthContext';
@@ -21,7 +22,7 @@ const EVENT_DATE = new Date('2026-06-12T06:00:00+08:00'); // June 12, 6am PHT
 const isEventLive = () => new Date() >= EVENT_DATE;
 
 // Paths that don't require authentication (accessible on monitors/public displays)
-const PUBLIC_PATHS = new Set(['/', '/auth', '/news-feed', '/live-board', '/led-wall']);
+const PUBLIC_PATHS = new Set(['/', '/auth', '/news-feed', '/live-board', '/led-wall', '/led-wall-barangay']);
 
 export type RootStackParamList = {
     Auth: undefined;
@@ -30,6 +31,7 @@ export type RootStackParamList = {
     AdminDashboard: undefined;
     LiveBoard: undefined;
     LedWall: undefined;
+    LedWallBarangay: undefined;
     NewsFeed: undefined;
 };
 
@@ -133,6 +135,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             AdminDashboard: 'admin-dashboard',
             LiveBoard: 'live-board',
             LedWall: 'led-wall',
+            LedWallBarangay: 'led-wall-barangay',
             NewsFeed: 'news-feed',
         },
     },
@@ -171,12 +174,14 @@ export default function AppNavigator() {
                         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
                         <Stack.Screen name="LiveBoard" component={LiveBoardScreen} />
                         <Stack.Screen name="LedWall" component={LedWallScreen} />
+                        <Stack.Screen name="LedWallBarangay" component={LedWallBarangayScreen} />
                         <Stack.Screen name="NewsFeed" component={NewsFeedScreen} />
                     </>
                 ) : (
                     <>
                         <Stack.Screen name="Auth" component={AuthScreen} />
                         <Stack.Screen name="LedWall" component={LedWallScreen} />
+                        <Stack.Screen name="LedWallBarangay" component={LedWallBarangayScreen} />
                         <Stack.Screen name="NewsFeed" component={NewsFeedScreen} />
                     </>
                 )}
