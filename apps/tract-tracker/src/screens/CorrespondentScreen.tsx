@@ -76,15 +76,13 @@ export default function CorrespondentScreen() {
         return true;
     };
 
-    // Correspondents upload at full resolution with free-form crop.
-    // Regular users upload at 0.6 quality with a fixed 4:3 crop to save storage.
-    const cameraOpts: ImagePicker.ImagePickerOptions = isCorrespondent
-        ? { mediaTypes: ['images'], allowsEditing: false, quality: 1.0 }
-        : { mediaTypes: ['images'], allowsEditing: false, quality: 0.6 };
+    // All uploads (correspondents and regular users) use 0.6 quality to
+    // keep News Feed loads fast — every post's full image_url is loaded there.
+    const cameraOpts: ImagePicker.ImagePickerOptions =
+        { mediaTypes: ['images'], allowsEditing: false, quality: 0.8 };
 
-    const galleryOpts: ImagePicker.ImagePickerOptions = isCorrespondent
-        ? { mediaTypes: ['images'], allowsEditing: false, quality: 1.0 }
-        : { mediaTypes: ['images'], allowsEditing: false, quality: 0.6 };
+    const galleryOpts: ImagePicker.ImagePickerOptions =
+        { mediaTypes: ['images'], allowsEditing: false, quality: 0.8 };
 
     const openCamera = async () => {
         const ok = await requestPermission();
