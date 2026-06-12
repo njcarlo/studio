@@ -50,6 +50,7 @@ export default function AdminDashboardScreen() {
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [togglingId, setTogglingId] = useState<string | null>(null);
     const [reporterSearch, setReporterSearch] = useState('');
+    const [overviewPage, setOverviewPage] = useState(0);
 
     const fetchData = async () => {
         if (!user) return;
@@ -67,6 +68,7 @@ export default function AdminDashboardScreen() {
                 tractsGiven: d.tracts_given ?? 0,
                 isCorrespondent: d.is_correspondent ?? false,
             })));
+            setOverviewPage(0);
         } catch (e) {
             console.error('fetchData error', e);
             setUsers([]);
@@ -95,6 +97,14 @@ export default function AdminDashboardScreen() {
             setTogglingId(null);
         }
     };
+
+    const OVERVIEW_PAGE_SIZE = 50;
+    const sortedUsers = [...users].sort((a, b) => b.tractsGiven - a.tractsGiven);
+    const overviewPageCount = Math.max(1, Math.ceil(sortedUsers.length / OVERVIEW_PAGE_SIZE));
+    const overviewUsers = sortedUsers.slice(
+        overviewPage * OVERVIEW_PAGE_SIZE,
+        (overviewPage + 1) * OVERVIEW_PAGE_SIZE
+    );
 
     const totalTracts = users.reduce((s, u) => s + u.tractsGiven, 0);
     const activeReporters = users.filter(u => u.isCorrespondent);
@@ -228,7 +238,7 @@ export default function AdminDashboardScreen() {
                                 <Text style={[styles.headCell, { flex: 2 }]}>Location</Text>
                                 <Text style={[styles.headCell, { flex: 1, textAlign: 'right' }]}>Tracts</Text>
                             </View>
-                            {[...users].sort((a, b) => b.tractsGiven - a.tractsGiven).map((u, i, arr) => (
+                            {overviewUsers.map((u, i, arr) => (
                                 <View key={u.id} style={[styles.row, i === arr.length - 1 && styles.lastRow]}>
                                     <View style={{ flex: 2 }}>
                                         <View style={styles.nameRow}>
@@ -253,6 +263,28 @@ export default function AdminDashboardScreen() {
                                     </View>
                                 </View>
                             ))}
+                        </View>
+                    )}
+
+                    {tab === 'overview' && overviewPageCount > 1 && (
+                        <View style={styles.pagination}>
+                            <TouchableOpacity
+                                style={[styles.pageBtn, overviewPage === 0 && styles.pageBtnDisabled]}
+                                onPress={() => setOverviewPage(p => Math.max(0, p - 1))}
+                                disabled={overviewPage === 0}
+                            >
+                                <Ionicons name="chevron-back" size={16} color={overviewPage === 0 ? 'rgba(255,255,255,0.3)' : '#C9A84C'} />
+                            </TouchableOpacity>
+                            <Text style={styles.pageText}>
+                                Page {overviewPage + 1} of {overviewPageCount} · {users.length.toLocaleString()} users
+                            </Text>
+                            <TouchableOpacity
+                                style={[styles.pageBtn, overviewPage >= overviewPageCount - 1 && styles.pageBtnDisabled]}
+                                onPress={() => setOverviewPage(p => Math.min(overviewPageCount - 1, p + 1))}
+                                disabled={overviewPage >= overviewPageCount - 1}
+                            >
+                                <Ionicons name="chevron-forward" size={16} color={overviewPage >= overviewPageCount - 1 ? 'rgba(255,255,255,0.3)' : '#C9A84C'} />
+                            </TouchableOpacity>
                         </View>
                     )}
 
@@ -528,6 +560,18 @@ const styles = StyleSheet.create({
     badgeZero: { backgroundColor: '#f1f5f9' },
     badgeText: { color: '#1d6fa4', fontSize: 13 },
     badgeTextZero: { color: '#94a3b8' },
+
+    pagination: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 16, marginTop: -10, marginBottom: 20,
+    },
+    pageBtn: {
+        width: 32, height: 32, borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    pageBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.04)' },
+    pageText: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
 
     barBg: { height: 4, backgroundColor: '#f1f5f9', borderRadius: 2, marginTop: 6, width: '90%' },
     barFill: { height: 4, backgroundColor: '#C9A84C', borderRadius: 2 },
