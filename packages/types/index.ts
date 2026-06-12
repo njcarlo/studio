@@ -48,6 +48,7 @@ export type Ministry = {
     headId?: string | null;
     managerId?: string | null;
     approverId?: string | null;
+    schedulerId?: string | null;
     mealStubAssignerId?: string | null;
     mealStubWeeklyLimit?: number | null; // Total stubs allowed per week for this ministry
     weight?: number | null;

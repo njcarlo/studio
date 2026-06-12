@@ -20,12 +20,14 @@ export interface PermissionsState {
     workerProfile: Worker | null;
     allRoles: Role[];
     myMinistryIds: string[];
+    myScheduledMinistryIds: string[];
 
     // Role flags
     isSuperAdmin: boolean;
     isMinistryHead: boolean;
     isMinistryApprover: boolean;
     isMealStubAssigner: boolean;
+    isMinistryScheduler: boolean;
 
     // Permission flags
     canManageWorkers: boolean;
@@ -69,10 +71,12 @@ const DEFAULT_STATE: Omit<PermissionsState, '_setPermissions'> = {
     workerProfile: null,
     allRoles: [],
     myMinistryIds: [],
+    myScheduledMinistryIds: [],
     isSuperAdmin: false,
     isMinistryHead: false,
     isMinistryApprover: false,
     isMealStubAssigner: false,
+    isMinistryScheduler: false,
     canManageWorkers: false,
     canManageRoles: false,
     canManageMinistries: false,

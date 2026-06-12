@@ -146,6 +146,18 @@ export function UserRoleSyncerSQL() {
       .map((m: any) => m.id);
   }, [user, allMinistries, effectiveProfile]);
 
+  const isMinistryScheduler = useMemo(() => {
+    if (!user || !allMinistries || !effectiveProfile) return false;
+    return allMinistries.some((m: any) => m.schedulerId === effectiveProfile.id);
+  }, [user, allMinistries, effectiveProfile]);
+
+  const myScheduledMinistryIds = useMemo(() => {
+    if (!user || !allMinistries || !effectiveProfile) return [];
+    return allMinistries
+      .filter((m: any) => m.schedulerId === effectiveProfile.id)
+      .map((m: any) => m.id);
+  }, [user, allMinistries, effectiveProfile]);
+
   const isLoading =
     isUserLoading ||
     isRealProfileLoading ||
@@ -163,10 +175,12 @@ export function UserRoleSyncerSQL() {
       workerProfile: workerProfile ?? null,
       allRoles: (allRoles as any) ?? [],
       myMinistryIds,
+      myScheduledMinistryIds,
       isSuperAdmin: effectiveIsSuperAdmin, // use effective — false during impersonation
       isMinistryHead: sa || isMinistryHead,
       isMinistryApprover: sa || isMinistryApprover,
       isMealStubAssigner: sa || isMealStubAssigner,
+      isMinistryScheduler: sa || isMinistryScheduler,
 
       // module:action checks (with legacy string fallback)
       canManageWorkers:
@@ -225,11 +239,11 @@ export function UserRoleSyncerSQL() {
         sa || hasPerm('venue_assistance:manage_own_ministry') ||
         hasPerm('manage_own_ministry_assistance'),
       canManageSchedule:
-        sa || hasPerm('schedule:manage'),
+        sa || hasPerm('schedule:manage') || isMinistryScheduler,
       canViewAllSchedules:
         sa || hasPerm('schedule:view_all'),
       canConfirmSchedule:
-        sa || hasPerm('schedule:confirm') || hasPerm('schedule:manage'),
+        sa || hasPerm('schedule:confirm') || hasPerm('schedule:manage') || isMinistryScheduler,
       canAssignSchedulers:
         sa || hasPerm('schedule:assign_schedulers'),
       canAccessInventory:
