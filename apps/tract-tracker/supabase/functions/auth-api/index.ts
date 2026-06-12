@@ -34,6 +34,9 @@ function sanitize(user: Record<string, unknown> | null) {
     return rest;
 }
 
+// Login/signup is currently restricted to these accounts.
+const ALLOWED_EMAILS = new Set(['njcarlo@gmail.com', 'cogtv@gmail.com']);
+
 const admin = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -50,6 +53,9 @@ Deno.serve(async (req: Request) => {
             case 'signin': {
                 const { email, password } = body;
                 if (!email || !password) return json({ error: 'Please enter your email and password.' }, 400);
+                if (!ALLOWED_EMAILS.has(String(email).trim().toLowerCase())) {
+                    return json({ error: 'Login is currently restricted.' }, 403);
+                }
 
                 const { data, error } = await admin
                     .from('tract_users')
@@ -65,6 +71,9 @@ Deno.serve(async (req: Request) => {
                 const { email, password, name, region, subRegion, barangay } = body;
                 if (!email || !password) return json({ error: 'Please enter your email and password.' }, 400);
                 const cleanEmail = String(email).trim().toLowerCase();
+                if (!ALLOWED_EMAILS.has(cleanEmail)) {
+                    return json({ error: 'Sign up is currently disabled.' }, 403);
+                }
 
                 const { data: existing } = await admin
                     .from('tract_users')

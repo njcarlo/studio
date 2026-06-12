@@ -140,10 +140,6 @@ export default function AuthScreen() {
                         <TouchableOpacity style={styles.loginBtn} onPress={() => setScreen('login')}>
                             <Text style={styles.loginBtnText}>Login</Text>
                         </TouchableOpacity>
-                        <Text style={styles.signupPrompt}>
-                            Don't have an account yet?{' '}
-                            <Text style={styles.signupLink} onPress={() => setScreen('signup')}>Sign up</Text>
-                        </Text>
                     </View>
                 </SafeAreaView>
             </ImageBackground>
@@ -246,16 +242,6 @@ export default function AuthScreen() {
                                     : <Text style={styles.submitBtnText}>{screen === 'login' ? 'Login' : 'Sign Up'}</Text>
                                 }
                             </TouchableOpacity>
-
-                            <Text style={styles.switchPrompt}>
-                                {screen === 'login' ? "Don't have an account? " : 'Already have an account? '}
-                                <Text
-                                    style={styles.switchLink}
-                                    onPress={() => setScreen(screen === 'login' ? 'signup' : 'login')}
-                                >
-                                    {screen === 'login' ? 'Sign up' : 'Login'}
-                                </Text>
-                            </Text>
                         </View>
                     </ScrollView>
                 </KeyboardAvoidingView>
@@ -375,8 +361,6 @@ const styles = StyleSheet.create({
         elevation: 6,
     },
     loginBtnText: { color: '#1a1a2e', fontSize: 18, fontFamily: 'Anton_400Regular' },
-    signupPrompt: { color: '#ccc', fontSize: 14, textAlign: 'center' },
-    signupLink: { color: '#C9A84C', textDecorationLine: 'underline' },
 
     // ── Form ──
     formSafe: { flex: 1 },
@@ -439,8 +423,6 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     submitBtnText: { color: '#1a1a2e', fontSize: 17, fontFamily: 'Anton_400Regular' },
-    switchPrompt: { color: '#666', fontSize: 13, textAlign: 'center', marginTop: 16 },
-    switchLink: { color: '#C9A84C' },
 
     // ── Barangay modal ──
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
