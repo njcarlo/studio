@@ -3,8 +3,8 @@
  *
  * Server-side validation + writes for correspondent_posts. Runs with the
  * service-role key (auto-injected, never sent to the client) so it can
- * enforce upload-slot limits and ownership/admin checks that the client
- * cannot be trusted to enforce on its own.
+ * enforce ownership/admin checks that the client cannot be trusted to
+ * enforce on its own.
  *
  * Actions (POST body: { action, ...params }):
  *   create  { userId, imageUrl, caption }      -> { post, isCorrespondent }
@@ -36,8 +36,6 @@ const admin = createClient(
 // Mirrors AuthContext.tsx ADMIN_EMAILS — emails treated as admin/correspondent without a DB flag.
 const ADMIN_EMAILS = new Set(['njcarlo@gmail.com', 'cogtv@gmail.com']);
 
-const REGULAR_MAX_POSTS    = 3;
-const REGULAR_UPLOAD_SLOTS = 1500;
 const AUTO_HASHTAGS = '\n\n#NationalTractsGivingDay\n#OutsideIsBeautiful\n#Connect2Souls\n#BornAgainPilipinas';
 
 // ~70% of the 1GB free-tier Supabase Storage limit. Crossing this triggers FIFO
@@ -110,24 +108,6 @@ Deno.serve(async (req: Request) => {
                 if (userErr || !user) return json({ error: 'User not found.' }, 404);
 
                 const isCorrespondent = isPrivileged(user as UserRow);
-
-                if (!isCorrespondent) {
-                    const { count: myCount } = await admin
-                        .from('correspondent_posts')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('user_id', userId);
-                    if ((myCount ?? 0) >= REGULAR_MAX_POSTS) {
-                        return json({ error: `You've already shared ${REGULAR_MAX_POSTS} photos. Thank you!` }, 403);
-                    }
-
-                    const { count: totalRegular } = await admin
-                        .from('correspondent_posts')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('from_correspondent', false);
-                    if ((totalRegular ?? 0) >= REGULAR_UPLOAD_SLOTS) {
-                        return json({ error: 'All upload slots have been claimed. Thank you!' }, 403);
-                    }
-                }
 
                 const trimmedCaption = (typeof caption === 'string' ? caption.trim() : '') + AUTO_HASHTAGS;
 

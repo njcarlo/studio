@@ -3,7 +3,11 @@
     "name": "National Tracts Giving Day",
     "slug": "tract-tracker",
     "version": "1.0.1",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -40,7 +44,8 @@
     },
     "owner": "jace29",
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-image"
     ]
   }
 }

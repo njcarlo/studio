@@ -4,6 +4,7 @@ import {
     Image, TouchableOpacity, ActivityIndicator, useWindowDimensions,
     Animated, Easing,
 } from 'react-native';
+import { Image as CachedImage } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -13,6 +14,7 @@ import { RootStackParamList } from '../AppNavigator';
 import { useAuth } from '../context/AuthContext';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
+const AnimatedCachedImage = Animated.createAnimatedComponent(CachedImage);
 const REFRESH_INTERVAL = 10_000;
 const SLIDE_INTERVAL   = 10_000;
 
@@ -219,7 +221,7 @@ export default function NewsFeedScreen() {
                         }]}
                         onPress={() => handleThumbPress(i)} activeOpacity={0.75}
                     >
-                        <Image source={{ uri: post.image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                        <CachedImage source={{ uri: post.image_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
                         {isNew(post.created_at) && <View style={styles.thumbNewDot} />}
                     </TouchableOpacity>
                 ))}
@@ -293,10 +295,11 @@ export default function NewsFeedScreen() {
                         {heroPost && (
                             <>
                                 {/* Full-bleed image */}
-                                <Animated.Image
+                                <AnimatedCachedImage
                                     source={{ uri: heroPost.image_url }}
                                     style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}
-                                    resizeMode="cover"
+                                    contentFit="cover"
+                                    cachePolicy="memory-disk"
                                 />
 
                                 {/* Gradient overlays */}
@@ -405,10 +408,11 @@ export default function NewsFeedScreen() {
                                         </View>
 
                                         <TouchableOpacity onPress={() => openLightbox(post)} activeOpacity={0.92}>
-                                            <Image
+                                            <CachedImage
                                                 source={{ uri: post.image_url }}
                                                 style={styles.cardImage}
-                                                resizeMode="contain"
+                                                contentFit="contain"
+                                                cachePolicy="memory-disk"
                                             />
                                         </TouchableOpacity>
 
@@ -451,10 +455,11 @@ export default function NewsFeedScreen() {
                         <TouchableOpacity style={styles.lightboxCloseBtn} onPress={closeLightbox}>
                             <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
                         </TouchableOpacity>
-                        <Image
+                        <CachedImage
                             source={{ uri: lightboxPost.image_url }}
                             style={{ width: width * 0.92, height: height * 0.72 }}
-                            resizeMode="contain"
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
                         />
                         <View style={styles.lightboxInfo}>
                             <Text style={[styles.lightboxName, { fontSize: layout.isMonitor ? 18 : 15 }]}>

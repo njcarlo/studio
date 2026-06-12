@@ -7,18 +7,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { Image as CachedImage } from 'expo-image';
 import { useAuth } from '../context/AuthContext';
 import { supabase, callApi } from '../supabase';
 
 const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2244&auto=format&fit=crop' };
-
-// ── Upload limits ─────────────────────────────────────────────────────────────
-// Authoritative enforcement happens server-side in the posts-api edge function;
-// these mirror it for fast client-side UX (disabling buttons, status messages).
-const REGULAR_MAX_POSTS    = 3;    // per-person cap for regular users
-const REGULAR_UPLOAD_SLOTS = 1500; // global first-come-first-serve pool for regular users
-// Correspondents have NO cap — unlimited uploads at full resolution
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface Post {
     id: string;
@@ -39,7 +32,6 @@ export default function CorrespondentScreen() {
 
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
-    const [slotsLeft, setSlotsLeft] = useState<number | null>(null);  // null = loading or correspondent
     const [showModal, setShowModal] = useState(false);
     const [selectedUri, setSelectedUri] = useState<string | null>(null);
     const [caption, setCaption] = useState('');
@@ -70,42 +62,15 @@ export default function CorrespondentScreen() {
         }
     }, [user?.id]);
 
-    const fetchSlots = useCallback(async () => {
-        if (isCorrespondent) { setSlotsLeft(null); return; }  // correspondents bypass the pool
-        const { count } = await supabase
-            .from('correspondent_posts')
-            .select('id', { count: 'exact', head: true })
-            .eq('from_correspondent', false);
-        setSlotsLeft(Math.max(0, REGULAR_UPLOAD_SLOTS - (count ?? 0)));
-    }, [isCorrespondent]);
-
     useEffect(() => {
         fetchMyPosts();
-        fetchSlots();
-    }, [fetchMyPosts, fetchSlots]);
-
-    // Derived state — correspondents are never at a limit
-    const atLimit = !isCorrespondent && !loading && posts.length >= REGULAR_MAX_POSTS;
-    const noSlots = !isCorrespondent && slotsLeft !== null && slotsLeft <= 0;
-    const canUpload = !atLimit && !noSlots;
+    }, [fetchMyPosts]);
 
     const requestPermission = async () => {
         if (Platform.OS === 'web') return true;
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
             Alert.alert('Permission needed', 'Camera access is required to take photos.');
-            return false;
-        }
-        return true;
-    };
-
-    const guardUpload = (): boolean => {
-        if (atLimit) {
-            Alert.alert('Limit reached', `You've already shared ${REGULAR_MAX_POSTS} photos. Thank you!`);
-            return false;
-        }
-        if (noSlots) {
-            Alert.alert('Slots full', 'All upload slots have been claimed. Thank you for participating!');
             return false;
         }
         return true;
@@ -122,7 +87,6 @@ export default function CorrespondentScreen() {
         : { mediaTypes: ['images'], allowsEditing: false, quality: 0.6 };
 
     const openCamera = async () => {
-        if (!guardUpload()) return;
         const ok = await requestPermission();
         if (!ok) return;
         const result = await ImagePicker.launchCameraAsync(cameraOpts);
@@ -134,7 +98,6 @@ export default function CorrespondentScreen() {
     };
 
     const openGallery = async () => {
-        if (!guardUpload()) return;
         const result = await ImagePicker.launchImageLibraryAsync(galleryOpts);
         if (!result.canceled && result.assets[0]) {
             setSelectedUri(result.assets[0].uri);
@@ -145,7 +108,6 @@ export default function CorrespondentScreen() {
 
     const handleUpload = async () => {
         if (!selectedUri || !user?.id) return;
-        if (!guardUpload()) { setShowModal(false); setSelectedUri(null); return; }
 
         setUploading(true);
         try {
@@ -165,8 +127,8 @@ export default function CorrespondentScreen() {
                 .from('correspondent-photos')
                 .getPublicUrl(fileName);
 
-            // Privileged write — server validates slot limits, computes
-            // isCorrespondent, and inserts the row using the service-role key.
+            // Privileged write — server computes isCorrespondent and inserts
+            // the row using the service-role key.
             const { data: created, error: createErr } = await callApi<{ post: any; isCorrespondent: boolean }>('posts-api', {
                 action: 'create',
                 userId: user.id,
@@ -193,10 +155,10 @@ export default function CorrespondentScreen() {
             setShowModal(false);
             setSelectedUri(null);
             setCaption('');
-            await Promise.all([fetchMyPosts(), fetchSlots()]);
+            await fetchMyPosts();
         } catch (e: any) {
             Alert.alert('Upload failed', e.message || 'Something went wrong. Please try again.');
-            await Promise.all([fetchMyPosts(), fetchSlots()]);
+            await fetchMyPosts();
         } finally {
             setUploading(false);
         }
@@ -210,42 +172,6 @@ export default function CorrespondentScreen() {
     const modalWrapStyle = isWide
         ? [styles.modalWrap, styles.modalWrapCentered]
         : [styles.modalWrap];
-
-    // Status bar shown at top of the screen
-    const renderStatusBar = () => {
-        if (loading && slotsLeft === null) return null;
-        if (noSlots) {
-            return (
-                <View style={[styles.statusBar, styles.statusBarFull]}>
-                    <Ionicons name="lock-closed" size={15} color="#fca5a5" />
-                    <Text style={[styles.statusBarText, { color: '#fca5a5' }]}>
-                        All {REGULAR_UPLOAD_SLOTS} upload slots have been claimed.
-                    </Text>
-                </View>
-            );
-        }
-        if (atLimit) {
-            return (
-                <View style={[styles.statusBar, styles.statusBarDone]}>
-                    <Ionicons name="checkmark-circle" size={15} color="#bbf7d0" />
-                    <Text style={[styles.statusBarText, { color: '#bbf7d0' }]}>
-                        {`You've shared your ${REGULAR_MAX_POSTS} photos. Thank you!`}
-                    </Text>
-                </View>
-            );
-        }
-        if (!isCorrespondent && slotsLeft !== null) {
-            return (
-                <View style={[styles.statusBar, styles.statusBarOpen]}>
-                    <Ionicons name="aperture-outline" size={15} color="#C9A84C" />
-                    <Text style={[styles.statusBarText, { color: '#C9A84C' }]}>
-                        {slotsLeft} upload slots remaining · First come, first served
-                    </Text>
-                </View>
-            );
-        }
-        return null;
-    };
 
     return (
         <ImageBackground source={BG_IMAGE} style={styles.bg} resizeMode="cover">
@@ -264,30 +190,20 @@ export default function CorrespondentScreen() {
                             {' · '}
                             {isCorrespondent
                                 ? `${posts.length} reports uploaded`
-                                : `${posts.length}/${REGULAR_MAX_POSTS} photos`}
+                                : `${posts.length} photos shared`}
                         </Text>
                     </View>
                     <View style={styles.headerActions}>
-                        <TouchableOpacity
-                            style={[styles.headerBtn, !canUpload && styles.headerBtnDisabled]}
-                            onPress={openGallery}
-                            disabled={!canUpload}
-                        >
-                            <Ionicons name="images-outline" size={22} color={canUpload ? '#C9A84C' : 'rgba(255,255,255,0.2)'} />
+                        <TouchableOpacity style={styles.headerBtn} onPress={openGallery}>
+                            <Ionicons name="images-outline" size={22} color="#C9A84C" />
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.headerBtn, !canUpload && styles.headerBtnDisabled]}
-                            onPress={openCamera}
-                            disabled={!canUpload}
-                        >
-                            <Ionicons name="camera-outline" size={22} color={canUpload ? '#C9A84C' : 'rgba(255,255,255,0.2)'} />
+                        <TouchableOpacity style={styles.headerBtn} onPress={openCamera}>
+                            <Ionicons name="camera-outline" size={22} color="#C9A84C" />
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 <View style={styles.bodyRow}>
-                {renderStatusBar()}
-
                 {/* Posts */}
                 {loading ? (
                     <View style={styles.centered}>
@@ -295,29 +211,19 @@ export default function CorrespondentScreen() {
                     </View>
                 ) : posts.length === 0 ? (
                     <View style={styles.centered}>
-                        {noSlots ? (
-                            <>
-                                <Ionicons name="lock-closed-outline" size={56} color="rgba(252,165,165,0.5)" />
-                                <Text style={styles.emptyTitle}>Upload slots are full</Text>
-                                <Text style={styles.emptySub}>All {REGULAR_UPLOAD_SLOTS} slots were claimed. Thank you for participating in NTGD!</Text>
-                            </>
-                        ) : (
-                            <>
-                                <Ionicons name="camera-outline" size={56} color="rgba(201,168,76,0.4)" />
-                                <Text style={styles.emptyTitle}>
-                                    {isCorrespondent ? 'No reports yet' : 'Share your NTGD moment'}
-                                </Text>
-                                <Text style={styles.emptySub}>
-                                    {isCorrespondent
-                                        ? 'Tap the camera icon to share what\'s happening in the field.'
-                                        : `You have ${REGULAR_MAX_POSTS} photo slots. Capture your moments from the field!`}
-                                </Text>
-                                <TouchableOpacity style={styles.emptyBtn} onPress={openCamera}>
-                                    <Ionicons name="camera" size={18} color="#1a1a2e" style={{ marginRight: 8 }} />
-                                    <Text style={styles.emptyBtnText}>Take a Photo</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
+                        <Ionicons name="camera-outline" size={56} color="rgba(201,168,76,0.4)" />
+                        <Text style={styles.emptyTitle}>
+                            {isCorrespondent ? 'No reports yet' : 'Share your NTGD moment'}
+                        </Text>
+                        <Text style={styles.emptySub}>
+                            {isCorrespondent
+                                ? 'Tap the camera icon to share what\'s happening in the field.'
+                                : 'Capture your moments from the field!'}
+                        </Text>
+                        <TouchableOpacity style={styles.emptyBtn} onPress={openCamera}>
+                            <Ionicons name="camera" size={18} color="#1a1a2e" style={{ marginRight: 8 }} />
+                            <Text style={styles.emptyBtnText}>Take a Photo</Text>
+                        </TouchableOpacity>
                     </View>
                 ) : (
                     <ScrollView
@@ -336,15 +242,16 @@ export default function CorrespondentScreen() {
                         <Text style={styles.sectionLabel}>
                             {isCorrespondent
                                 ? `YOUR REPORTS (${posts.length})`
-                                : `YOUR PHOTOS (${posts.length}/${REGULAR_MAX_POSTS})`}
+                                : `YOUR PHOTOS (${posts.length})`}
                         </Text>
                         <View style={[styles.grid, { gap }]}>
                             {posts.map(post => (
                                 <View key={post.id} style={[styles.postCard, { width: cardW }]}>
-                                    <Image
+                                    <CachedImage
                                         source={{ uri: post.image_url }}
                                         style={{ width: '100%', height: imgH }}
-                                        resizeMode="cover"
+                                        contentFit="cover"
+                                        cachePolicy="memory-disk"
                                     />
                                     {post.caption ? (
                                         <View style={styles.postBody}>
@@ -364,12 +271,10 @@ export default function CorrespondentScreen() {
                 )}
                 </View>
 
-                {/* FAB — hidden when upload not allowed */}
-                {canUpload && (
-                    <TouchableOpacity style={styles.fab} onPress={openCamera}>
-                        <Ionicons name="camera" size={28} color="#1a1a2e" />
-                    </TouchableOpacity>
-                )}
+                {/* FAB */}
+                <TouchableOpacity style={styles.fab} onPress={openCamera}>
+                    <Ionicons name="camera" size={28} color="#1a1a2e" />
+                </TouchableOpacity>
             </SafeAreaView>
 
             {/* Upload modal */}
@@ -454,18 +359,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(201,168,76,0.1)',
         alignItems: 'center', justifyContent: 'center',
     },
-    headerBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.04)' },
-
-    // Status bar
-    statusBar: {
-        flexDirection: 'row', alignItems: 'center', gap: 8,
-        paddingHorizontal: 16, paddingVertical: 9,
-        borderLeftWidth: 3,
-    },
-    statusBarOpen: { backgroundColor: 'rgba(201,168,76,0.1)', borderLeftColor: '#C9A84C' },
-    statusBarDone: { backgroundColor: 'rgba(34,197,94,0.1)', borderLeftColor: '#22c55e' },
-    statusBarFull: { backgroundColor: 'rgba(239,68,68,0.1)', borderLeftColor: '#ef4444' },
-    statusBarText: { fontSize: 12, flex: 1, lineHeight: 17 },
 
     emptyTitle: { color: '#fff', fontSize: 18, marginTop: 16, fontFamily: 'Anton_400Regular' },
     emptySub: { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 22 },
