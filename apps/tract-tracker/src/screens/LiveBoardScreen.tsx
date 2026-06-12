@@ -11,6 +11,12 @@ const REFRESH_INTERVAL = 30_000;
 
 type Tab = 'region' | 'barangay';
 type Row = { rank: number; name: string; count: number };
+type TractAggregates = {
+    grand_total: number;
+    total_participants: number;
+    by_region: Record<string, number>;
+    by_barangay: Record<string, number>;
+};
 
 const REGION_LABELS: Record<string, string> = {
     NLR: 'North Luzon Region',
@@ -28,8 +34,6 @@ const ROW_COLORS = [
     '#1a3a6b',
 ];
 
-type LiveData = { region: string; barangay: string; tracts_given: number };
-
 export default function LiveBoardScreen() {
     const [tab, setTab] = useState<Tab>('region');
     const [regionRows, setRegionRows] = useState<Row[]>([]);
@@ -38,16 +42,7 @@ export default function LiveBoardScreen() {
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState('');
 
-    const processData = (data: LiveData[]) => {
-        const byRegion: Record<string, number> = {};
-        const byBarangay: Record<string, number> = {};
-        let grand = 0;
-        data.forEach(u => {
-            const t = u.tracts_given || 0;
-            grand += t;
-            if (u.region) byRegion[u.region] = (byRegion[u.region] || 0) + t;
-            if (u.barangay) byBarangay[u.barangay] = (byBarangay[u.barangay] || 0) + t;
-        });
+    const processData = (byRegion: Record<string, number>, byBarangay: Record<string, number>, grand: number) => {
         setRegionRows(Object.entries(byRegion).sort((a, b) => b[1] - a[1]).map(([name, count], i) => ({ rank: i + 1, name: REGION_LABELS[name] || name, count })));
         setBarangayRows(Object.entries(byBarangay).sort((a, b) => b[1] - a[1]).map(([name, count], i) => ({ rank: i + 1, name, count })));
         setTotal(grand);
@@ -55,24 +50,16 @@ export default function LiveBoardScreen() {
 
     const fetchData = useCallback(async () => {
         try {
-            // PostgREST caps each request at 1000 rows, so page through the
-            // full tract_users table to get accurate totals once the event
-            // has more than 1000 participants.
-            const PAGE_SIZE = 1000;
-            const allRows: LiveData[] = [];
-            for (let page = 0; ; page++) {
-                const from = page * PAGE_SIZE;
-                const to = from + PAGE_SIZE - 1;
-                const { data, error } = await supabase
-                    .from('tract_users')
-                    .select('region, barangay, tracts_given')
-                    .range(from, to);
-                if (error || !data) break;
-                allRows.push(...(data as LiveData[]));
-                if (data.length < PAGE_SIZE) break;
-            }
+            // Single aggregated RPC instead of paging the full tract_users table.
+            const { data: raw, error } = await supabase.rpc('get_tract_aggregates').single();
+            if (error || !raw) return;
+            const data = raw as unknown as TractAggregates;
 
-            processData(allRows);
+            processData(
+                (data.by_region ?? {}) as Record<string, number>,
+                (data.by_barangay ?? {}) as Record<string, number>,
+                Number(data.grand_total ?? 0),
+            );
             const now = new Date();
             setLastUpdated(
                 now.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) +

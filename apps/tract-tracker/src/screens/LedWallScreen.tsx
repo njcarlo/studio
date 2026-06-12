@@ -17,7 +17,12 @@ const REGION_LABELS: Record<string, string> = {
 };
 
 type Row = { rank: number; name: string; count: number };
-type UserRow = { region: string; tracts_given: number };
+type TractAggregates = {
+    grand_total: number;
+    total_participants: number;
+    by_region: Record<string, number>;
+    by_barangay: Record<string, number>;
+};
 
 export default function LedWallScreen() {
     const { width } = useWindowDimensions();
@@ -30,33 +35,12 @@ export default function LedWallScreen() {
 
     const fetchData = useCallback(async () => {
         try {
-            // PostgREST caps each request at 1000 rows, so page through the
-            // full tract_users table to get accurate totals once the event
-            // has more than 1000 participants.
-            const PAGE_SIZE = 1000;
-            const allRows: UserRow[] = [];
-            let totalCount = 0;
-            for (let page = 0; ; page++) {
-                const from = page * PAGE_SIZE;
-                const to = from + PAGE_SIZE - 1;
-                const { data, count, error } = await supabase
-                    .from('tract_users')
-                    .select('region, tracts_given', { count: 'exact' })
-                    .range(from, to);
-                if (error || !data) break;
-                allRows.push(...(data as UserRow[]));
-                totalCount = count ?? allRows.length;
-                if (data.length < PAGE_SIZE) break;
-            }
+            // Single aggregated RPC instead of paging the full tract_users table.
+            const { data: raw, error } = await supabase.rpc('get_tract_aggregates').single();
+            if (error || !raw) return;
+            const data = raw as unknown as TractAggregates;
 
-            const byRegion: Record<string, number> = {};
-            let grand = 0;
-            allRows.forEach(u => {
-                const t = u.tracts_given || 0;
-                grand += t;
-                if (!u.region) return;
-                byRegion[u.region] = (byRegion[u.region] || 0) + t;
-            });
+            const byRegion: Record<string, number> = { ...(data.by_region ?? {}) };
 
             // Always show every known region, even if it has 0 tracts so far.
             Object.keys(REGION_LABELS).forEach(code => {
@@ -65,8 +49,8 @@ export default function LedWallScreen() {
 
             const entries = Object.entries(byRegion);
 
-            setTotalTracts(grand);
-            setTotalParticipants(totalCount);
+            setTotalTracts(Number(data.grand_total ?? 0));
+            setTotalParticipants(Number(data.total_participants ?? 0));
             setRegionRows(
                 entries
                     .sort((a, b) => b[1] - a[1])

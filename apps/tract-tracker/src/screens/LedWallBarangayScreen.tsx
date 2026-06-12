@@ -10,7 +10,12 @@ const REFRESH_INTERVAL = 30_000;
 const TOP_N = 10;
 
 type Row = { rank: number; name: string; count: number };
-type UserRow = { barangay: string; tracts_given: number };
+type TractAggregates = {
+    grand_total: number;
+    total_participants: number;
+    by_region: Record<string, number>;
+    by_barangay: Record<string, number>;
+};
 
 export default function LedWallBarangayScreen() {
     const { width } = useWindowDimensions();
@@ -23,36 +28,15 @@ export default function LedWallBarangayScreen() {
 
     const fetchData = useCallback(async () => {
         try {
-            // PostgREST caps each request at 1000 rows, so page through the
-            // full tract_users table to get accurate totals once the event
-            // has more than 1000 participants.
-            const PAGE_SIZE = 1000;
-            const allRows: UserRow[] = [];
-            let totalCount = 0;
-            for (let page = 0; ; page++) {
-                const from = page * PAGE_SIZE;
-                const to = from + PAGE_SIZE - 1;
-                const { data, count, error } = await supabase
-                    .from('tract_users')
-                    .select('barangay, tracts_given', { count: 'exact' })
-                    .range(from, to);
-                if (error || !data) break;
-                allRows.push(...(data as UserRow[]));
-                totalCount = count ?? allRows.length;
-                if (data.length < PAGE_SIZE) break;
-            }
+            // Single aggregated RPC instead of paging the full tract_users table.
+            const { data: raw, error } = await supabase.rpc('get_tract_aggregates').single();
+            if (error || !raw) return;
+            const data = raw as unknown as TractAggregates;
 
-            const byBarangay: Record<string, number> = {};
-            let grand = 0;
-            allRows.forEach(u => {
-                const t = u.tracts_given || 0;
-                grand += t;
-                if (!u.barangay) return;
-                byBarangay[u.barangay] = (byBarangay[u.barangay] || 0) + t;
-            });
+            const byBarangay = (data.by_barangay ?? {}) as Record<string, number>;
 
-            setTotalTracts(grand);
-            setTotalParticipants(totalCount);
+            setTotalTracts(Number(data.grand_total ?? 0));
+            setTotalParticipants(Number(data.total_participants ?? 0));
             setBarangayRows(
                 Object.entries(byBarangay)
                     .sort((a, b) => b[1] - a[1])

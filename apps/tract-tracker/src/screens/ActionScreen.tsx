@@ -16,6 +16,13 @@ const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf
 
 const REGIONS = ['NLR', 'SLR', 'MMR', 'VIS', 'MIN', 'COG Dasmarinas'];
 
+type TractAggregates = {
+    grand_total: number;
+    total_participants: number;
+    by_region: Record<string, number>;
+    by_barangay: Record<string, number>;
+};
+
 const REGION_LABELS: Record<string, string> = {
     NLR: 'North Luzon Region',
     SLR: 'South Luzon Region',
@@ -232,55 +239,38 @@ export default function ActionScreen() {
     const loadCounts = useCallback(async () => {
         if (!user) return;
         try {
-            // PostgREST caps each request at 1000 rows, so page through the
-            // full tract_users table to keep this in sync with the LED wall totals.
-            const PAGE_SIZE = 1000;
-            const allUsers: { id: string; tracts_given: number | null; region: string | null; barangay: string | null }[] = [];
-            for (let page = 0; ; page++) {
-                const from = page * PAGE_SIZE;
-                const to = from + PAGE_SIZE - 1;
-                const { data, error } = await supabase
-                    .from('tract_users')
-                    .select('id, tracts_given, region, barangay')
-                    .range(from, to);
-                if (error || !data) break;
-                allUsers.push(...data);
-                if (data.length < PAGE_SIZE) break;
-            }
+            // Single aggregated RPC instead of paging the full tract_users table.
+            const { data: rawAgg, error: aggError } = await supabase.rpc('get_tract_aggregates').single();
+            if (aggError || !rawAgg) return;
+            const agg = rawAgg as unknown as TractAggregates;
 
-            if (allUsers.length === 0) return;
+            const { data: me } = await supabase
+                .from('tract_users')
+                .select('tracts_given')
+                .eq('id', user.id)
+                .maybeSingle();
 
             const pending = await getPending();
-            const me = allUsers.find(u => u.id === user.id);
+            const byRegion = { ...(agg.by_region ?? {}) } as Record<string, number>;
+            const byBarangay = { ...(agg.by_barangay ?? {}) } as Record<string, number>;
+
             // Personal = DB value + any unsynced offline increments
             setPersonalCount((me?.tracts_given ?? 0) + pending);
 
-            const national = allUsers.reduce((s, u) => s + (u.tracts_given ?? 0), 0);
+            const national = Number(agg.grand_total ?? 0);
             setNationalCount(national + pending);
 
-            const regional = allUsers
-                .filter(u => u.region === authState.region)
-                .reduce((s, u) => s + (u.tracts_given ?? 0), 0);
-            setRegionalCount(regional + pending);
+            const regional = byRegion[authState.region] ?? 0;
+            setRegionalCount(regional + (authState.region ? pending : 0));
 
             if (authState.barangay) {
-                const brgy = allUsers
-                    .filter(u => u.barangay === authState.barangay)
-                    .reduce((s, u) => s + (u.tracts_given ?? 0), 0);
+                const brgy = byBarangay[authState.barangay] ?? 0;
                 setBarangayCount(brgy + pending);
             }
 
-            const byRegion: Record<string, number> = {};
-            allUsers.forEach(u => {
-                if (u.region) byRegion[u.region] = (byRegion[u.region] || 0) + (u.tracts_given ?? 0);
-            });
             if (authState.region && pending > 0) byRegion[authState.region] = (byRegion[authState.region] || 0) + pending;
             setTopRegions(Object.entries(byRegion).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([region, count]) => ({ region, count })));
 
-            const byBarangay: Record<string, number> = {};
-            allUsers.forEach(u => {
-                if (u.barangay) byBarangay[u.barangay] = (byBarangay[u.barangay] || 0) + (u.tracts_given ?? 0);
-            });
             if (authState.barangay && pending > 0) byBarangay[authState.barangay] = (byBarangay[authState.barangay] || 0) + pending;
             setTopBarangays(Object.entries(byBarangay).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([barangay, count]) => ({ barangay, count })));
         } catch (e) {
