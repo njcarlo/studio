@@ -14,7 +14,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { storageKey: 'supabase-anon' },
 });
 
-export function callApi<T = any>(fn: 'auth-api' | 'users-api' | 'posts-api', body: Record<string, unknown>): Promise<{ data: T | null; error: { message: string } | null }> {
+export function callApi<T = any>(fn: 'auth-api' | 'users-api' | 'posts-api' | 'drive-sync', body: Record<string, unknown>): Promise<{ data: T | null; error: { message: string } | null }> {
     return supabase.functions.invoke(fn, { body }).then(({ data, error }) => {
         if (error) return { data: null, error: { message: error.message } };
         if (data?.error) return { data: null, error: { message: data.error } };

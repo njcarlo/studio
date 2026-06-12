@@ -51,6 +51,7 @@ export default function AdminDashboardScreen() {
     const [togglingId, setTogglingId] = useState<string | null>(null);
     const [reporterSearch, setReporterSearch] = useState('');
     const [overviewPage, setOverviewPage] = useState(0);
+    const [syncingDrive, setSyncingDrive] = useState(false);
 
     const fetchData = async () => {
         if (!user) return;
@@ -145,6 +146,26 @@ export default function AdminDashboardScreen() {
         }
     };
 
+    const handleDriveSync = async () => {
+        if (!user || syncingDrive) return;
+        setSyncingDrive(true);
+        try {
+            const { data, error } = await callApi<{ added: number; skipped: number; total: number }>(
+                'drive-sync', { requesterId: user.id }
+            );
+            if (error) throw new Error(error.message);
+            const msg = `Added ${data?.added ?? 0} new post(s) from Drive (${data?.skipped ?? 0} already in feed, ${data?.total ?? 0} total in Drive).`;
+            if (Platform.OS !== 'web') Alert.alert('Drive Sync', msg);
+            else window.alert(msg);
+        } catch (e: any) {
+            const msg = e.message || 'Failed to sync from Drive.';
+            if (Platform.OS !== 'web') Alert.alert('Error', msg);
+            else window.alert(msg);
+        } finally {
+            setSyncingDrive(false);
+        }
+    };
+
     const goBack = () => navigation.canGoBack() ? navigation.goBack() : navigation.replace('Main');
 
     const TABS: { key: Tab; label: string }[] = [
@@ -183,6 +204,11 @@ export default function AdminDashboardScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => navigation.navigate('LiveBoard')} style={styles.headerBtn}>
                             <Ionicons name="tv-outline" size={22} color="#C9A84C" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={handleDriveSync} style={styles.headerBtn} disabled={syncingDrive}>
+                            {syncingDrive
+                                ? <ActivityIndicator size="small" color="#C9A84C" />
+                                : <Ionicons name="cloud-download-outline" size={22} color="#C9A84C" />}
                         </TouchableOpacity>
                     </View>
                 </View>
