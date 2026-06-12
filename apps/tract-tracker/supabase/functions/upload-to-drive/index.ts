@@ -100,6 +100,23 @@ async function uploadToDrive(
     return uploadJson.id as string;
 }
 
+// Makes a Drive file publicly viewable via link, so it can be used as an
+// image source (e.g. when FIFO cleanup repoints a post's image_url at Drive).
+async function makeFilePublic(fileId: string, accessToken: string): Promise<void> {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    });
+    if (!res.ok) {
+        const body = await res.json();
+        throw new Error(`Drive permission failed: ${JSON.stringify(body)}`);
+    }
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -141,7 +158,13 @@ Deno.serve(async (req: Request) => {
         const accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
         const fileId       = await uploadToDrive(imageUrl, fileName, accessToken, folderId, description);
 
-        return new Response(JSON.stringify({ fileId }), {
+        try {
+            await makeFilePublic(fileId, accessToken);
+        } catch (e) {
+            console.warn('[Drive] makeFilePublic failed for', fileId, ':', e);
+        }
+
+        return new Response(JSON.stringify({ fileId, viewUrl: `https://lh3.googleusercontent.com/d/${fileId}` }), {
             status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     } catch (err: unknown) {

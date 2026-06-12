@@ -66,7 +66,7 @@ function storagePathFromUrl(imageUrl: string): string | null {
 
 // Calls upload-to-drive and returns the resulting Drive file ID, or null if
 // the backup didn't succeed (missing secrets, Drive error, etc).
-async function backupToDrive(imageUrl: string, fileName: string, isCorrespondent: boolean, description?: string): Promise<string | null> {
+async function backupToDrive(imageUrl: string, fileName: string, isCorrespondent: boolean, description?: string): Promise<{ fileId: string; viewUrl: string } | null> {
     try {
         const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/upload-to-drive`, {
             method: 'POST',
@@ -77,18 +77,19 @@ async function backupToDrive(imageUrl: string, fileName: string, isCorrespondent
             body: JSON.stringify({ imageUrl, fileName, isCorrespondent, description }),
         });
         const data = await res.json();
-        return typeof data?.fileId === 'string' ? data.fileId : null;
+        return typeof data?.fileId === 'string' ? { fileId: data.fileId, viewUrl: data.viewUrl } : null;
     } catch (e) {
         console.warn('[Drive] backup error:', e);
         return null;
     }
 }
 
-// Deletes the oldest correspondent_posts (DB row + storage object) one at a time,
-// re-checking total bucket usage after each, until back under the threshold.
-// Only posts with a confirmed Drive backup (drive_file_id) are eligible —
-// Drive is the permanent archive, so nothing is removed from Storage until
-// its archive copy is confirmed to exist.
+// Archives the oldest correspondent_posts one at a time, re-checking total
+// bucket usage after each, until back under the threshold. The DB row is
+// kept (so it stays visible in the feed/history) — only the Storage object
+// is removed, and image_url is repointed at the publicly-viewable Drive
+// copy. Only posts with a confirmed Drive backup (drive_file_id +
+// drive_view_url) and still pointing at correspondent-photos are eligible.
 async function enforceFifoStorageLimit(): Promise<void> {
     for (let i = 0; i < MAX_FIFO_DELETIONS_PER_RUN; i++) {
         const { data: totalBytes, error: usageErr } = await admin.rpc('correspondent_storage_bytes');
@@ -97,20 +98,22 @@ async function enforceFifoStorageLimit(): Promise<void> {
 
         const { data: oldest } = await admin
             .from('correspondent_posts')
-            .select('id, image_url')
+            .select('id, image_url, drive_view_url')
             .not('drive_file_id', 'is', null)
+            .not('drive_view_url', 'is', null)
+            .like('image_url', '%/correspondent-photos/%')
             .order('created_at', { ascending: true })
             .limit(1)
             .maybeSingle();
         if (!oldest) {
-            console.warn('[FIFO] storage over threshold but no posts with confirmed Drive backup to prune');
+            console.warn('[FIFO] storage over threshold but no posts with confirmed Drive backup to archive');
             return;
         }
 
-        await admin.from('correspondent_posts').delete().eq('id', oldest.id);
         const storagePath = storagePathFromUrl(oldest.image_url);
+        await admin.from('correspondent_posts').update({ image_url: oldest.drive_view_url }).eq('id', oldest.id);
         if (storagePath) await admin.storage.from('correspondent-photos').remove([storagePath]);
-        console.log('[FIFO] pruned oldest backed-up post', oldest.id, 'to stay under storage threshold');
+        console.log('[FIFO] archived oldest backed-up post', oldest.id, 'to stay under storage threshold');
     }
 }
 
@@ -161,10 +164,14 @@ Deno.serve(async (req: Request) => {
                     `Location: ${[post.region, post.barangay].filter(Boolean).join(' · ') || 'Unknown'}`,
                     `Posted: ${post.created_at}`,
                 ].join('\n');
-                const fileId = await backupToDrive(imageUrl, driveFileName, isCorrespondent, driveDescription);
-                if (fileId) {
-                    await admin.from('correspondent_posts').update({ drive_file_id: fileId }).eq('id', post.id);
-                    post.drive_file_id = fileId;
+                const backup = await backupToDrive(imageUrl, driveFileName, isCorrespondent, driveDescription);
+                if (backup) {
+                    await admin.from('correspondent_posts').update({
+                        drive_file_id: backup.fileId,
+                        drive_view_url: backup.viewUrl,
+                    }).eq('id', post.id);
+                    post.drive_file_id = backup.fileId;
+                    post.drive_view_url = backup.viewUrl;
                 } else {
                     console.warn('[Drive] backup failed for post', post.id, '— excluded from FIFO cleanup until backed up');
                 }
