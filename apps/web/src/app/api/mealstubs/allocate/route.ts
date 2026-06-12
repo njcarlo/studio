@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { allocateMealstubs } from '@/services/meal-stub-service';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 export async function POST(request: Request) {
+  try {
+    await requirePermission('meals:manage');
+  } catch (error: any) {
+    const status = error.message === 'Not authenticated' ? 401 : 403;
+    return NextResponse.json({ error: error.message }, { status });
+  }
+
   try {
     const body = await request.json();
     const { scheduleId, publishedBy } = body;

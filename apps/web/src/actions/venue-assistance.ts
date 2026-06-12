@@ -1,6 +1,8 @@
 "use server";
 
 import * as venueAssistanceService from '@/services/venue-assistance';
+import { requirePermission } from '@/lib/auth/require-permission';
+import { PERMISSIONS } from '@/lib/permissions/registry';
 import {
     createVenueBookingSchema,
     createRecurringBookingSchema,
@@ -214,6 +216,7 @@ export async function getAuditLogsForRequest(requestId: string) {
 
 /** Update the global SLA setting (requires manage_venue_assistance permission). */
 export async function updateVenueAssistanceSetting(slaDays: number, actorId: string) {
+    await requirePermission(PERMISSIONS.venue_assistance.manage);
     const parsed = updateVenueAssistanceSettingSchema.parse({ slaDays, actorId });
     return venueAssistanceService.updateVenueAssistanceSetting(parsed.slaDays, parsed.actorId);
 }

@@ -65,26 +65,30 @@ export const deleteServiceSchedule = withPermission(
 
 // ── Schedule Assignments ──────────────────────────────────────────────────────
 
-// public-action: used by the confirm-assignment worker self-service flow
-export async function upsertAssignment(data: {
-    id?: string;
-    scheduleId: string;
-    ministryId: string;
-    roleName: string;
-    workerId?: string | null;
-    workerName?: string | null;
-    notes?: string | null;
-    rehearsalDate?: Date | null;
-    rehearsalTime?: string | null;
-    order?: number;
-}) {
-    return scheduleService.upsertAssignment(data);
-}
+export const upsertAssignment = withPermission(
+    PERMISSIONS.schedule.manage,
+    async (_ctx, data: {
+        id?: string;
+        scheduleId: string;
+        ministryId: string;
+        roleName: string;
+        workerId?: string | null;
+        workerName?: string | null;
+        notes?: string | null;
+        rehearsalDate?: Date | null;
+        rehearsalTime?: string | null;
+        order?: number;
+    }) => {
+        return scheduleService.upsertAssignment(data);
+    },
+);
 
-// public-action: confirmed by the assigned worker themselves
-export async function deleteAssignment(id: string) {
-    await scheduleService.deleteAssignment(id);
-}
+export const deleteAssignment = withPermission(
+    PERMISSIONS.schedule.manage,
+    async (_ctx, id: string) => {
+        await scheduleService.deleteAssignment(id);
+    },
+);
 
 export const applyTemplateToSchedule = withPermission(
     PERMISSIONS.schedule.manage,

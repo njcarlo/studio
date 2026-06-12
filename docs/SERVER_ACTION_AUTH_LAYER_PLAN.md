@@ -241,6 +241,31 @@ supabase functions logs <name>                # inspect recent invocations/error
 
 ---
 
+## Venue Assistance — Residual Authorization Findings (recorded 2026-06-12)
+
+**Why flagged separately:** a security review of `actions/venue-assistance.ts` / `services/venue-assistance.ts` found that while Phase 2/3 added Zod validation and extracted a service layer, the **identity** used for permission checks (`actorId`/`responderId`/`workerProfileId`) is still a plain argument supplied by the *client* rather than derived from the caller's session (`resolveCallerCtx()`). `requirePermission`-style checks that exist (`assertConfigPermission`) check whether *that supplied ID* has the permission — not whether the actual logged-in caller does. So any caller can pass another worker's ID and have the check pass on their behalf.
+
+### Findings
+
+1. **`upsertAssistanceConfig` / `deleteAssistanceConfig`** — call `assertConfigPermission(actorId, ministryId)`, but `actorId` is client-supplied. Spoofing a privileged worker's ID bypasses the check entirely.
+2. **`respondToAssistanceRequest` / `bulkRespondToRecurringRequests`** — no permission check at all (service or action layer). Any caller can approve/decline any ministry's assistance requests; `responderId` is recorded in the audit log but not verified.
+3. **`cancelVenueBooking` / `cancelRecurringOccurrence` / `cancelRecurringSeries`** — no check that `actorId` owns the booking or holds `venue_assistance:manage` / `venues:update`. Any caller can cancel any booking by ID.
+4. **`createVenueBooking` / `createRecurringBooking`** — `workerProfileId` is client-supplied with no verification against the session, so a caller can create bookings attributed to another worker.
+5. **`fulfillCompletedBookings`** — exported as a directly-callable Server Action with no auth, duplicating the `CRON_SECRET`-gated `/api/cron/venue-assistance` route. Low severity (idempotent, non-destructive) but should either require `venue_assistance:manage` or be removed from the action export surface.
+
+### Plan
+
+- Replace `actorId`/`responderId`/`workerProfileId` params with identity derived from `resolveCallerCtx()` in the `actions/venue-assistance.ts` boundary layer; keep the param only where it's a legitimate "on behalf of" admin action (and gate that path with `venue_assistance:manage`).
+- Add permission checks to `respondToAssistanceRequest`/`bulkRespondToRecurringRequests` (own-ministry vs. `manage`, mirroring `assertConfigPermission`).
+- Add ownership/permission checks to the cancel-booking family (`workerProfileId === caller` OR `venue_assistance:manage`/`venues:update`).
+- For `createVenueBooking`/`createRecurringBooking`, derive `workerProfileId` from the caller's session unless the caller has an admin permission allowing booking on behalf of others.
+- Remove or permission-gate the standalone `fulfillCompletedBookings` action export.
+- Update all call sites (`venue/command-center`, `venue/my-bookings`, booking dialogs, etc.) and test the full booking → request → respond → cancel/check-in flow end-to-end before merging.
+
+**Risk note:** this is higher-risk than prior phases because it changes who is allowed to do what for an actively-used feature — needs careful end-to-end testing of the booking/approval/cancellation flows, not just type-checking.
+
+---
+
 ## Suggested order of domains for Phases 2–3
 
 Roughly by risk × frequency of change, based on the original review:
@@ -276,3 +301,4 @@ Each phase should land as its own PR (or small stack of PRs per domain in Phases
 - [x] Phase 3.5 — Schedule Management Scope: Master vs. Ministry Schedulers (`canViewAllSchedules` added to syncer/hook/store; `/schedule/[id]` UI scoped by it; per-write `ministryId` enforcement intentionally skipped — see rationale in the Phase 3.5 section)
 - [x] Phase 4 — consolidate privileged-write pattern + document exceptions (decision recorded: Server Actions + Prisma is primary; edge-function exception policy + the `_shared/auth.ts` permission-parity gap documented as an explicit follow-up — see Phase 4 "Decision" subsection)
 - [x] Phase 5 — performance enhancements (permission-lookup caching ✅ already landed in Phase 1 via `cache()`; join-path indexes ✅ verified in `schema.prisma`; `assignRolesToWorker` N+1 ✅ fixed via `createMany`; `revalidatePath` narrowing flagged as open follow-up — see Phase 5 "Status" subsection)
+- [ ] Venue Assistance — residual authorization findings (client-trusted `actorId`/`responderId`/`workerProfileId`; missing checks on `respondToAssistanceRequest`/`bulkRespondToRecurringRequests`/cancel-booking family; see dedicated section above)

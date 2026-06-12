@@ -1,7 +1,8 @@
 'use server';
 
 import { prisma } from '@studio/database/prisma';
-import { ALL_PERMISSIONS, LEGACY_PERMISSION_MAP } from '@/lib/permissions/registry';
+import { ALL_PERMISSIONS, LEGACY_PERMISSION_MAP, PERMISSIONS } from '@/lib/permissions/registry';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * Seeds the Permission table with all module:action entries, then
@@ -12,6 +13,8 @@ import { ALL_PERMISSIONS, LEGACY_PERMISSION_MAP } from '@/lib/permissions/regist
  * Safe to run multiple times (idempotent via upsert).
  */
 export async function seedPermissions() {
+    await requirePermission(PERMISSIONS.roles.update);
+
     // 0. Ensure the 'admin' role has isSuperAdmin = true
     await prisma.role.updateMany({
         where: { id: 'admin' },

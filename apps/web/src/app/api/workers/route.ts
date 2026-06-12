@@ -1,5 +1,6 @@
 import { prisma } from '@studio/database/prisma';
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/auth/require-permission';
 
 /**
  * GET /api/workers
@@ -10,6 +11,13 @@ import { NextResponse } from 'next/server';
  *   ?page=1&limit=50   — pagination
  */
 export async function GET(request: Request) {
+    try {
+        await requirePermission('workers:view');
+    } catch (error: any) {
+        const status = error.message === 'Not authenticated' ? 401 : 403;
+        return NextResponse.json({ error: error.message }, { status });
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';

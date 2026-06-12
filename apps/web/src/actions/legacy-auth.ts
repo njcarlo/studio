@@ -265,7 +265,6 @@ export async function getWorkerAuthStatus(identifier: string) {
           id: true,
           email: true,
           passwordChangeRequired: true,
-          firstName: true,
           legacyPasswordHash: true,
         }
       });
@@ -275,7 +274,6 @@ export async function getWorkerAuthStatus(identifier: string) {
         passwordChangeRequired: worker?.passwordChangeRequired ?? false,
         hasLegacyPassword: !!(worker?.legacyPasswordHash),
         email: worker?.email,
-        firstName: worker?.firstName,
       };
     } catch (error) {
       console.error("Critical error in getWorkerAuthStatus:", error);
@@ -315,7 +313,17 @@ export async function completeFirstLoginPasswordChange(
     // 2. Verify identity
     if (mode === "worker") {
       // For worker logins, verificationValue is the First Name
+      const recentAttempts = await getRecentFailedAttempts(identifier);
+      if (recentAttempts >= LEGACY_LOGIN_MAX_ATTEMPTS) {
+        return { success: false, error: "Too many failed attempts. Please try again later." };
+      }
+
       if (workerRecord.firstName.toLowerCase().trim() !== verificationValue.toLowerCase().trim()) {
+        await logLegacyAuthEvent(
+          "legacy_login_failed",
+          `Failed identity confirmation for worker #${identifier}: First Name mismatch`,
+          identifier,
+        );
         return { success: false, error: "Invalid identity confirmation (First Name mismatch)." };
       }
     } else {

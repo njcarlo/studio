@@ -67,12 +67,20 @@ export function useServiceSchedule(id: string) {
     });
 
     const upsertMutation = useMutation({
-        mutationFn: upsertAssignment,
+        mutationFn: async (data: Parameters<typeof upsertAssignment>[0]) => {
+            const res = await upsertAssignment(data);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
     });
 
     const deleteMutation = useMutation({
-        mutationFn: deleteAssignment,
+        mutationFn: async (id: string) => {
+            const res = await deleteAssignment(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
     });
 

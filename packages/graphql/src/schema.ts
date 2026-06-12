@@ -1,5 +1,20 @@
 import { gql } from 'graphql-tag';
+import { GraphQLError } from 'graphql';
 import { prisma } from '@studio/database/prisma';
+
+export type GraphQLContext = {
+  callerCtx: { isSuperAdmin: boolean; permissions: Set<string> } | null;
+};
+
+function requireWorkersView(context: GraphQLContext) {
+  const ctx = context.callerCtx;
+  if (!ctx) {
+    throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+  }
+  if (!ctx.isSuperAdmin && !ctx.permissions.has('workers:view')) {
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+  }
+}
 
 export const typeDefs = gql`
   """
@@ -57,10 +72,12 @@ export const resolvers = {
         },
       });
     },
-    workers: async () => {
+    workers: async (_: unknown, __: unknown, context: GraphQLContext) => {
+      requireWorkersView(context);
       return prisma.worker.findMany();
     },
-    worker: async (_: unknown, { id }: { id: string }) => {
+    worker: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
+      requireWorkersView(context);
       return prisma.worker.findUnique({ where: { id } });
     },
   },
