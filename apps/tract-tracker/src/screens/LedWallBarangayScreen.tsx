@@ -14,8 +14,12 @@ type TractAggregates = {
     grand_total: number;
     total_participants: number;
     by_region: Record<string, number>;
+    by_region_participants: Record<string, number>;
     by_barangay: Record<string, number>;
+    by_barangay_featured: Record<string, number>;
 };
+
+const FEATURED_REGION = 'COG Dasmarinas';
 
 export default function LedWallBarangayScreen() {
     const { width } = useWindowDimensions();
@@ -33,10 +37,12 @@ export default function LedWallBarangayScreen() {
             if (error || !raw) return;
             const data = raw as unknown as TractAggregates;
 
-            const byBarangay = (data.by_barangay ?? {}) as Record<string, number>;
+            const byBarangay = (data.by_barangay_featured ?? {}) as Record<string, number>;
+            const byRegion = (data.by_region ?? {}) as Record<string, number>;
+            const byRegionParticipants = (data.by_region_participants ?? {}) as Record<string, number>;
 
-            setTotalTracts(Number(data.grand_total ?? 0));
-            setTotalParticipants(Number(data.total_participants ?? 0));
+            setTotalTracts(Number(byRegion[FEATURED_REGION] ?? 0));
+            setTotalParticipants(Number(byRegionParticipants[FEATURED_REGION] ?? 0));
             setBarangayRows(
                 Object.entries(byBarangay)
                     .sort((a, b) => b[1] - a[1])
