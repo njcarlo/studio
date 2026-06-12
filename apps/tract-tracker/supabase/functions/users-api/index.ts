@@ -82,11 +82,22 @@ Deno.serve(async (req: Request) => {
                 const { requesterId } = body;
                 if (!(await requireAdmin(requesterId))) return json({ error: 'Forbidden.' }, 403);
 
-                const { data, error } = await admin
-                    .from('tract_users')
-                    .select('id, name, email, region, sub_region, barangay, tracts_given, is_correspondent');
-                if (error) return json({ error: error.message }, 400);
-                return json({ users: data ?? [] });
+                // PostgREST caps each request at 1000 rows, so page through the
+                // full tract_users table to keep dashboard totals accurate.
+                const PAGE_SIZE = 1000;
+                const users: any[] = [];
+                for (let page = 0; ; page++) {
+                    const from = page * PAGE_SIZE;
+                    const to = from + PAGE_SIZE - 1;
+                    const { data, error } = await admin
+                        .from('tract_users')
+                        .select('id, name, email, region, sub_region, barangay, tracts_given, is_correspondent')
+                        .range(from, to);
+                    if (error) return json({ error: error.message }, 400);
+                    users.push(...(data ?? []));
+                    if (!data || data.length < PAGE_SIZE) break;
+                }
+                return json({ users });
             }
 
             case 'adminToggleCorrespondent': {
