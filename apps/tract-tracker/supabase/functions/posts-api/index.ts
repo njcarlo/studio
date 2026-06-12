@@ -36,8 +36,8 @@ const admin = createClient(
 // Mirrors AuthContext.tsx ADMIN_EMAILS — emails treated as admin/correspondent without a DB flag.
 const ADMIN_EMAILS = new Set(['njcarlo@gmail.com', 'cogtv@gmail.com']);
 
-const REGULAR_MAX_POSTS    = 1;
-const REGULAR_UPLOAD_SLOTS = 500;
+const REGULAR_MAX_POSTS    = 3;
+const REGULAR_UPLOAD_SLOTS = 1500;
 const AUTO_HASHTAGS = '\n\n#NationalTractsGivingDay\n#OutsideIsBeautiful\n#Connect2Souls\n#BornAgainPilipinas';
 
 // ~70% of the 1GB free-tier Supabase Storage limit. Crossing this triggers FIFO
@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
                         .select('id', { count: 'exact', head: true })
                         .eq('user_id', userId);
                     if ((myCount ?? 0) >= REGULAR_MAX_POSTS) {
-                        return json({ error: "You've already shared your photo. Thank you!" }, 403);
+                        return json({ error: `You've already shared ${REGULAR_MAX_POSTS} photos. Thank you!` }, 403);
                     }
 
                     const { count: totalRegular } = await admin

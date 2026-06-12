@@ -15,8 +15,8 @@ const BG_IMAGE = { uri: 'https://images.unsplash.com/photo-1477959858617-67f85cf
 // ── Upload limits ─────────────────────────────────────────────────────────────
 // Authoritative enforcement happens server-side in the posts-api edge function;
 // these mirror it for fast client-side UX (disabling buttons, status messages).
-const REGULAR_MAX_POSTS    = 1;    // one-time upload for regular users
-const REGULAR_UPLOAD_SLOTS = 500;  // global first-come-first-serve pool for regular users
+const REGULAR_MAX_POSTS    = 3;    // per-person cap for regular users
+const REGULAR_UPLOAD_SLOTS = 1500; // global first-come-first-serve pool for regular users
 // Correspondents have NO cap — unlimited uploads at full resolution
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -101,7 +101,7 @@ export default function CorrespondentScreen() {
 
     const guardUpload = (): boolean => {
         if (atLimit) {
-            Alert.alert('Limit reached', "You've already shared your photo. Thank you!");
+            Alert.alert('Limit reached', `You've already shared ${REGULAR_MAX_POSTS} photos. Thank you!`);
             return false;
         }
         if (noSlots) {
@@ -229,7 +229,7 @@ export default function CorrespondentScreen() {
                 <View style={[styles.statusBar, styles.statusBarDone]}>
                     <Ionicons name="checkmark-circle" size={15} color="#bbf7d0" />
                     <Text style={[styles.statusBarText, { color: '#bbf7d0' }]}>
-                        {"You've shared your photo. Thank you!"}
+                        {`You've shared your ${REGULAR_MAX_POSTS} photos. Thank you!`}
                     </Text>
                 </View>
             );
@@ -264,7 +264,7 @@ export default function CorrespondentScreen() {
                             {' · '}
                             {isCorrespondent
                                 ? `${posts.length} reports uploaded`
-                                : `${posts.length}/${REGULAR_MAX_POSTS} photo`}
+                                : `${posts.length}/${REGULAR_MAX_POSTS} photos`}
                         </Text>
                     </View>
                     <View style={styles.headerActions}>
@@ -285,6 +285,7 @@ export default function CorrespondentScreen() {
                     </View>
                 </View>
 
+                <View style={styles.bodyRow}>
                 {renderStatusBar()}
 
                 {/* Posts */}
@@ -309,7 +310,7 @@ export default function CorrespondentScreen() {
                                 <Text style={styles.emptySub}>
                                     {isCorrespondent
                                         ? 'Tap the camera icon to share what\'s happening in the field.'
-                                        : 'You have 1 photo slot. Capture your moment from the field!'}
+                                        : `You have ${REGULAR_MAX_POSTS} photo slots. Capture your moments from the field!`}
                                 </Text>
                                 <TouchableOpacity style={styles.emptyBtn} onPress={openCamera}>
                                     <Ionicons name="camera" size={18} color="#1a1a2e" style={{ marginRight: 8 }} />
@@ -335,7 +336,7 @@ export default function CorrespondentScreen() {
                         <Text style={styles.sectionLabel}>
                             {isCorrespondent
                                 ? `YOUR REPORTS (${posts.length})`
-                                : `YOUR PHOTO (${posts.length}/${REGULAR_MAX_POSTS})`}
+                                : `YOUR PHOTOS (${posts.length}/${REGULAR_MAX_POSTS})`}
                         </Text>
                         <View style={[styles.grid, { gap }]}>
                             {posts.map(post => (
@@ -361,6 +362,7 @@ export default function CorrespondentScreen() {
                         </View>
                     </ScrollView>
                 )}
+                </View>
 
                 {/* FAB — hidden when upload not allowed */}
                 {canUpload && (
@@ -476,6 +478,8 @@ const styles = StyleSheet.create({
 
     list: { paddingTop: 16 },
     sectionLabel: { color: 'rgba(201,168,76,0.7)', fontSize: 11, letterSpacing: 1.2, marginBottom: 12 },
+
+    bodyRow: { flex: 1 },
 
     grid: { flexDirection: 'row', flexWrap: 'wrap' },
     postCard: {

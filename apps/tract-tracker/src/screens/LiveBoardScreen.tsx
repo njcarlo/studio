@@ -55,12 +55,24 @@ export default function LiveBoardScreen() {
 
     const fetchData = useCallback(async () => {
         try {
-            const { data } = await supabase
-                .from('tract_users')
-                .select('region, barangay, tracts_given');
+            // PostgREST caps each request at 1000 rows, so page through the
+            // full tract_users table to get accurate totals once the event
+            // has more than 1000 participants.
+            const PAGE_SIZE = 1000;
+            const allRows: LiveData[] = [];
+            for (let page = 0; ; page++) {
+                const from = page * PAGE_SIZE;
+                const to = from + PAGE_SIZE - 1;
+                const { data, error } = await supabase
+                    .from('tract_users')
+                    .select('region, barangay, tracts_given')
+                    .range(from, to);
+                if (error || !data) break;
+                allRows.push(...(data as LiveData[]));
+                if (data.length < PAGE_SIZE) break;
+            }
 
-            if (!data) return;
-            processData(data);
+            processData(allRows);
             const now = new Date();
             setLastUpdated(
                 now.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) +
