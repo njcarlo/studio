@@ -59,6 +59,7 @@ async function uploadToDrive(
     fileName: string,
     accessToken: string,
     folderId: string,
+    description?: string,
 ): Promise<string> {
     // Download the image from Supabase Storage
     const imgRes  = await fetch(imageUrl);
@@ -67,7 +68,11 @@ async function uploadToDrive(
 
     // Build a multipart/related body manually (FormData can't set part Content-Types reliably in Deno)
     const boundary = `ntgd_${Date.now()}`;
-    const meta     = JSON.stringify({ name: fileName, parents: folderId ? [folderId] : [] });
+    const meta     = JSON.stringify({
+        name: fileName,
+        parents: folderId ? [folderId] : [],
+        ...(description ? { description } : {}),
+    });
     const encoder  = new TextEncoder();
 
     const parts = [
@@ -108,8 +113,8 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
-        const { imageUrl, fileName, isCorrespondent } =
-            await req.json() as { imageUrl: string; fileName: string; isCorrespondent?: boolean };
+        const { imageUrl, fileName, isCorrespondent, description } =
+            await req.json() as { imageUrl: string; fileName: string; isCorrespondent?: boolean; description?: string };
         if (!imageUrl || !fileName) {
             return new Response(JSON.stringify({ error: 'imageUrl and fileName are required' }), {
                 status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -134,7 +139,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
-        const fileId       = await uploadToDrive(imageUrl, fileName, accessToken, folderId);
+        const fileId       = await uploadToDrive(imageUrl, fileName, accessToken, folderId, description);
 
         return new Response(JSON.stringify({ fileId }), {
             status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

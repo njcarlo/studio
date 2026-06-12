@@ -135,21 +135,6 @@ export default function CorrespondentScreen() {
             });
             if (createErr || !created?.post) throw new Error(createErr?.message || 'Failed to save post.');
 
-            // Fire-and-forget backup to Google Drive
-            const driveFileName =
-                `${new Date(timestamp).toISOString().slice(0, 19).replace(/[T:]/g, '-')}_` +
-                `${(authState.name || user.email).replace(/\s+/g, '_')}.jpg`;
-            supabase.functions
-                .invoke('upload-to-drive', {
-                    body: { imageUrl: urlData.publicUrl, fileName: driveFileName, isCorrespondent: created.isCorrespondent },
-                })
-                .then(({ data, error }) => {
-                    if (error) console.warn('[Drive] invoke error:', error);
-                    else if (data?.error) console.warn('[Drive] function error:', data.error);
-                    else console.log('[Drive] uploaded:', data?.fileId ?? data);
-                })
-                .catch(e => console.warn('[Drive] catch:', e));
-
             setShowModal(false);
             setSelectedUri(null);
             setCaption('');
