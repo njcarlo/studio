@@ -106,8 +106,7 @@ export default function NewsFeedScreen() {
             const { data } = await supabase
                 .from('correspondent_posts')
                 .select('id, user_name, region, barangay, image_url, caption, created_at')
-                .order('created_at', { ascending: false })
-                .limit(60);
+                .order('created_at', { ascending: false });
             if (data) {
                 // Preserve the currently-displayed post's position across background
                 // refreshes — find where it landed in the new list instead of
