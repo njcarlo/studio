@@ -251,6 +251,11 @@ const allNavItems: NavItem[] = [
         label: "Major Events",
         permissionKey: "canManageMajorEvents",
       },
+      {
+        href: "/settings/attendance",
+        label: "Master Schedule & Attendance",
+        permissionKey: "canManageMasterSchedule",
+      },
     ],
   },
 ];

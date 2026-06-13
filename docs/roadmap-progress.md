@@ -29,16 +29,16 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 
 ### Phase 3 — HR & Time Tracking + Training Management
 - [x] Training Management open decision resolved: Ministry Head/Dept Head/Sys Admin manage records, all workers view own, no scheduling-block in v1
-- [ ] **3.2 — Master schedule + late flagging** (5.10.1, 5.10.3) — *in progress*
+- [x] **3.2 — Master schedule + late flagging** (5.10.1, 5.10.3)
   - [x] Prisma schema: `MasterSchedule`, `MasterScheduleOverride`, `AttendanceSetting`, `AttendanceRecord.isLate/lateMinutes`
-  - [x] Migration SQL (Prisma DDL + RLS lockdown) — written, not yet applied to live DB
+  - [x] Migration SQL (Prisma DDL + RLS lockdown) — applied to live DB
   - [x] Shared types (`packages/types`)
   - [x] Permission registry + `canManageMasterSchedule` flag wired (store → syncer → hook)
   - [x] `services/master-schedule.ts` service layer
-  - [ ] Server actions in `actions/db.ts`
-  - [ ] HR-facing UI (shift editor, grace period, incomplete time-out resolution)
-  - [ ] Apply migrations to live DB + `prisma generate`
-  - [ ] End-to-end verification
+  - [x] Server actions in `actions/db.ts`
+  - [x] HR-facing UI at `/settings/attendance` (shift editor, grace period, incomplete time-out resolution)
+  - [x] Migrations applied to live DB + `prisma generate`
+  - [x] End-to-end verification (effective schedule, overrides, late flagging, incomplete time-outs)
 - [ ] **3.1 — FT/OC weekly weekday meal stub allocation** (5.4.4, 5.5.3)
 - [ ] **3.3 — Leave & Request filing + 4-stage approval + balances** (5.10.4-5.10.6)
 - [ ] **3.4 — Training Management** (5.9)

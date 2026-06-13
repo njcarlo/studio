@@ -83,7 +83,7 @@ export const updateMajorEventSetting = withPermission(
 // --- Major Event requests ---
 
 export const createMajorEventRequest = withPublicAction(
-    async (input: MajorEventWorkflow.CreateMajorEventRequestInput) => {
+    async (input: Omit<MajorEventWorkflow.CreateMajorEventRequestInput, 'requesterId'>) => {
         const ctx = await resolveCallerCtx();
         if (!ctx) throw new Error('You must be logged in to do this.');
 

@@ -23,6 +23,7 @@ import * as ApprovalEngine from '@/services/approval-engine';
 import * as RoomReservationWorkflow from '@/services/room-reservation-workflow';
 import * as MajorEventWorkflow from '@/services/major-event-workflow';
 import * as mealsAttendanceService from '@/services/meals-attendance';
+import * as MasterScheduleService from '@/services/master-schedule';
 import {
     createMealStubSchema,
     updateMealStubSchema,
@@ -1250,11 +1251,93 @@ export async function getAttendanceRecords(filters: { workerProfileId?: string; 
 export const createAttendanceRecord = withPermission(
     PERMISSIONS.attendance.scan,
     async (_ctx, data: { workerProfileId: string; type: string }) => {
-        const record = await mealsAttendanceService.createAttendanceRecord(createAttendanceRecordSchema.parse(data));
+        const input = createAttendanceRecordSchema.parse(data);
+        const record = input.type === 'Clock In' || input.type === 'Clock Out'
+            ? await MasterScheduleService.recordAttendanceWithLateCheck(input.workerProfileId, input.type)
+            : await mealsAttendanceService.createAttendanceRecord(input);
         revalidatePath('/attendance');
         return record;
     }
 );
+
+// --- Master Schedule & Attendance Settings (HR — SRD 5.10.1, 5.10.3) ---
+
+async function requireMasterScheduleAccess() {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+    const allowed =
+        ctx.isSuperAdmin ||
+        ctx.permissions.has(PERMISSIONS.hr_attendance.manage_master_schedule) ||
+        (await isHRWorker(ctx.workerId));
+    if (!allowed) throw new Error('You do not have permission to manage the master schedule.');
+    return ctx;
+}
+
+export const getMasterSchedules = withPublicAction(async () => {
+    await requireMasterScheduleAccess();
+    return MasterScheduleService.getMasterSchedules();
+});
+
+export const getAttendanceSetting = withPublicAction(async () => {
+    await requireMasterScheduleAccess();
+    return MasterScheduleService.getAttendanceSetting();
+});
+
+export const updateAttendanceSetting = withPublicAction(async (gracePeriodMinutes: number) => {
+    const ctx = await requireMasterScheduleAccess();
+    const before = await MasterScheduleService.getAttendanceSetting();
+    const setting = await MasterScheduleService.updateAttendanceSetting(gracePeriodMinutes, ctx.workerId);
+    await writeAudit({
+        actor: ctx, module: 'hr_attendance', action: 'update_grace_period',
+        targetId: 'global', before, after: setting,
+    });
+    revalidatePath('/settings/attendance');
+    return setting;
+});
+
+export const upsertMasterSchedule = withPublicAction(async (input: {
+    workerId: string;
+    shiftStart: string;
+    shiftEnd: string;
+    daysOff: number[];
+}) => {
+    const ctx = await requireMasterScheduleAccess();
+    const before = await MasterScheduleService.getMasterSchedule(input.workerId);
+    const schedule = await MasterScheduleService.upsertMasterSchedule({ ...input, updatedBy: ctx.workerId });
+    await writeAudit({
+        actor: ctx, module: 'hr_attendance', action: 'upsert_master_schedule',
+        targetId: input.workerId, before, after: schedule,
+    });
+    revalidatePath('/settings/attendance');
+    return schedule;
+});
+
+export const deleteMasterSchedule = withPublicAction(async (workerId: string) => {
+    const ctx = await requireMasterScheduleAccess();
+    const before = await MasterScheduleService.getMasterSchedule(workerId);
+    await MasterScheduleService.deleteMasterSchedule(workerId);
+    await writeAudit({
+        actor: ctx, module: 'hr_attendance', action: 'delete_master_schedule',
+        targetId: workerId, before,
+    });
+    revalidatePath('/settings/attendance');
+});
+
+export const getIncompleteTimeOuts = withPublicAction(async () => {
+    await requireMasterScheduleAccess();
+    return MasterScheduleService.getIncompleteTimeOuts();
+});
+
+export const resolveIncompleteTimeOut = withPublicAction(async (clockInId: string, clockOutTime: Date) => {
+    const ctx = await requireMasterScheduleAccess();
+    const record = await MasterScheduleService.resolveIncompleteTimeOut(clockInId, clockOutTime);
+    await writeAudit({
+        actor: ctx, module: 'hr_attendance', action: 'resolve_incomplete_timeout',
+        targetId: clockInId, after: record,
+    });
+    revalidatePath('/settings/attendance');
+    return record;
+});
 
 // --- Rooms, Areas, Branches ---
 
