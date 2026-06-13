@@ -126,6 +126,7 @@ export default function WorkersPage() {
   const [sortField, setSortField] = useState("workerId");
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>("asc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [ministryFilter, setMinistryFilter] = useState<string>("all");
   const itemsPerPage = 25;
 
   // Debounce search — only fire query after user stops typing for 400ms
@@ -154,10 +155,29 @@ export default function WorkersPage() {
     return String(num).padStart(6, '0');
   };
 
-  const workerMinistryIds = useMemo(() => {
+  // Ministries the signed-in worker is scoped to (undefined = unrestricted, all ministries)
+  const scopedMinistryIds = useMemo(() => {
     if (isSuperAdmin || (canManageWorkers && !workerProfile?.majorMinistryId)) return undefined;
     return [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(Boolean) as string[];
   }, [isSuperAdmin, canManageWorkers, workerProfile]);
+
+  // Effective ministry filter sent to the server — the "Ministry" dropdown
+  // narrows the (already-scoped) query so the table doesn't have to load
+  // every worker across every ministry at once.
+  const workerMinistryIds = useMemo(() => {
+    if (ministryFilter !== "all") return [ministryFilter];
+    return scopedMinistryIds;
+  }, [ministryFilter, scopedMinistryIds]);
+
+  const { ministries: ministries, isLoading: ministriesLoading } =
+    useMinistries();
+
+  // Ministries selectable in the filter dropdown — limited to the worker's
+  // own scope when one applies.
+  const filterableMinistries = useMemo(() => {
+    if (!scopedMinistryIds) return ministries;
+    return ministries.filter((m) => scopedMinistryIds.includes(m.id));
+  }, [ministries, scopedMinistryIds]);
 
   const {
     workers: allWorkers,
@@ -177,9 +197,6 @@ export default function WorkersPage() {
     sortDir,
     ministryIds: workerMinistryIds,
   });
-
-  const { ministries: ministries, isLoading: ministriesLoading } =
-    useMinistries();
 
   const { roles: roles, isLoading: rolesLoading } = useRoles();
 
@@ -1216,6 +1233,28 @@ export default function WorkersPage() {
             </Button>
           </div>
         </div>
+
+        {filterableMinistries.length > 1 && (
+          <div className="w-full sm:w-64">
+            <Label htmlFor="ministry-filter" className="mb-2 block">
+              Ministry
+            </Label>
+            <Select
+              value={ministryFilter}
+              onValueChange={(v) => { setMinistryFilter(v); setCurrentPage(1); }}
+            >
+              <SelectTrigger id="ministry-filter">
+                <SelectValue placeholder="All Ministries" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ministries</SelectItem>
+                {filterableMinistries.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex flex-col gap-4">
