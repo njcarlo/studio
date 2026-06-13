@@ -39,7 +39,10 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
   - [x] HR-facing UI at `/settings/attendance` (shift editor, grace period, incomplete time-out resolution)
   - [x] Migrations applied to live DB + `prisma generate`
   - [x] End-to-end verification (effective schedule, overrides, late flagging, incomplete time-outs)
-- [ ] **3.1 — FT/OC weekly weekday meal stub allocation** (5.4.4, 5.5.3)
+- [x] **3.1 — FT/OC weekly weekday meal stub allocation** (5.4.4, 5.5.3) — lazy allocation
+  on Clock In (issues an `Issued` `Weekday` MealStub for the day unless it's a day off per
+  `MasterSchedule`/`MasterScheduleOverride`, or already issued). Avoids needing the Monday/Sunday
+  cron jobs from the original design; auto-voiding unused stubs deferred to Layer 5.
 - [ ] **3.3 — Leave & Request filing + 4-stage approval + balances** (5.10.4-5.10.6)
 - [ ] **3.4 — Training Management** (5.9)
 

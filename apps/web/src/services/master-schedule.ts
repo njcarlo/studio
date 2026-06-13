@@ -153,8 +153,54 @@ export async function recordAttendanceWithLateCheck(workerProfileId: string, typ
         }
     }
 
-    return prisma.attendanceRecord.create({
+    const record = await prisma.attendanceRecord.create({
         data: { workerProfileId, type, time: now, isLate, lateMinutes },
+    });
+
+    if (type === 'Clock In') {
+        await ensureWeekdayMealStub(workerProfileId, now);
+    }
+
+    return record;
+}
+
+// ── Weekday meal stub allocation (SRD 5.4.4, 5.5.3) ─────────────────────────
+
+const WEEKDAY_STUB_TYPE = 'Weekday';
+
+/**
+ * Issues today's weekday meal stub for an FT/OC worker on Clock In, unless
+ * the day is a day off (MasterSchedule.daysOff, or an approved-leave override
+ * via MasterScheduleOverride) or a stub for that date already exists.
+ */
+export async function ensureWeekdayMealStub(workerProfileId: string, date: Date) {
+    const worker = await prisma.worker.findUnique({
+        where: { id: workerProfileId },
+        select: { firstName: true, lastName: true, employmentType: true },
+    });
+    if (!worker) return null;
+    if (worker.employmentType !== 'Full-Time' && worker.employmentType !== 'On-Call') return null;
+
+    const effective = await getEffectiveSchedule(workerProfileId, date);
+    if (!effective || effective.isDayOff) return null;
+
+    const dayStart = startOfDay(date);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const existing = await prisma.mealStub.findFirst({
+        where: { workerId: workerProfileId, date: { gte: dayStart, lte: dayEnd } },
+    });
+    if (existing) return existing;
+
+    return prisma.mealStub.create({
+        data: {
+            workerId: workerProfileId,
+            workerName: `${worker.firstName} ${worker.lastName}`,
+            date: dayStart,
+            status: 'Issued',
+            stubType: WEEKDAY_STUB_TYPE,
+        },
     });
 }
 
