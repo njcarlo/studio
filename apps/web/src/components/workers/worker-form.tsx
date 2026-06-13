@@ -20,6 +20,7 @@ import { Mail } from "lucide-react";
 import type { Worker, Role, Ministry } from "@studio/types";
 import { WorkerActivityLog } from "./worker-activity-log";
 import { assignRolesToWorker } from "@/actions/db";
+import { ALL_WORKER_FLAGS, WORKER_FLAGS } from "@/lib/permissions/registry";
 
 interface WorkerFormProps {
   worker: Partial<Worker> | null;
@@ -29,6 +30,10 @@ interface WorkerFormProps {
   onClose: () => void;
   onResetPassword?: (worker: Worker) => void;
   canManage: boolean;
+  /** Sys Admin only — shows the Permission Flags editor (Worker.flags[] + subMinistryId) */
+  canManageFlags?: boolean;
+  /** Sys Admin / HR / worker_type:change grantees — allows editing Worker Type (employmentType) */
+  canChangeWorkerType?: boolean;
 }
 
 export function WorkerForm({
@@ -39,6 +44,8 @@ export function WorkerForm({
   onClose,
   onResetPassword,
   canManage,
+  canManageFlags = false,
+  canChangeWorkerType = false,
 }: WorkerFormProps) {
   const [formData, setFormData] = useState<Partial<Worker>>({
     firstName: "",
@@ -50,6 +57,8 @@ export function WorkerForm({
     avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
     majorMinistryId: "",
     minorMinistryId: "",
+    subMinistryId: "",
+    flags: [],
     birthDate: "",
     isSeniorPastor: false,
     address: "",
@@ -72,6 +81,8 @@ export function WorkerForm({
         roleId: worker.roleId || "viewer",
         majorMinistryId: worker.majorMinistryId || "",
         minorMinistryId: worker.minorMinistryId || "",
+        subMinistryId: worker.subMinistryId || "",
+        flags: worker.flags ?? [],
         birthDate: worker.birthDate || "",
         isSeniorPastor: worker.isSeniorPastor ?? false,
         address: worker.address || "",
@@ -99,6 +110,8 @@ export function WorkerForm({
         avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
         majorMinistryId: "",
         minorMinistryId: "",
+        subMinistryId: "",
+        flags: [],
         birthDate: "",
         isSeniorPastor: false,
         address: "",
@@ -246,7 +259,7 @@ export function WorkerForm({
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="employmentType" className="text-right">Worker Type</Label>
-        <Select value={formData.employmentType || "Volunteer"} onValueChange={(v: any) => setFormData({ ...formData, employmentType: v })} disabled={!canManage}>
+        <Select value={formData.employmentType || "Volunteer"} onValueChange={(v: any) => setFormData({ ...formData, employmentType: v })} disabled={!canChangeWorkerType}>
           <SelectTrigger className="col-span-3"><SelectValue placeholder="Select type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="Full-Time">Full-Time</SelectItem>
@@ -255,6 +268,47 @@ export function WorkerForm({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Permission Flags (Sys Admin only) */}
+      {canManageFlags && (
+        <div className="pt-2 border-t">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Permission Flags</p>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-1">Flags</Label>
+              <div className="col-span-3 flex flex-col gap-2">
+                {ALL_WORKER_FLAGS.map((flag) => (
+                  <div key={flag.value} className="flex items-start gap-2">
+                    <Checkbox
+                      id={`flag-${flag.value}`}
+                      checked={(formData.flags ?? []).includes(flag.value)}
+                      onCheckedChange={(checked) => {
+                        const current = formData.flags ?? [];
+                        const next = checked === true
+                          ? [...current, flag.value]
+                          : current.filter((f) => f !== flag.value);
+                        setFormData({ ...formData, flags: next });
+                      }}
+                    />
+                    <div>
+                      <Label htmlFor={`flag-${flag.value}`} className="font-normal cursor-pointer">
+                        {flag.label}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">{flag.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {(formData.flags ?? []).includes(WORKER_FLAGS.TEAM_LEADER) && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Sub-Ministry</Label>
+                <MinistrySelect value={formData.subMinistryId || ""} onChange={(v) => setFormData({ ...formData, subMinistryId: v })} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Additional Info section */}
       <div className="pt-2 border-t">

@@ -27,7 +27,7 @@ export default function EditWorkerPage() {
 
   const { roles, isLoading: rolesLoading } = useRoles();
   const { ministries, isLoading: ministriesLoading } = useMinistries();
-  const { workerProfile, canManageWorkers, isSuperAdmin, isLoading: userRoleLoading } = useUserRole();
+  const { workerProfile, canManageWorkers, isSuperAdmin, canChangeWorkerType, isLoading: userRoleLoading } = useUserRole();
 
   useEffect(() => {
     if (id) {
@@ -214,6 +214,8 @@ export default function EditWorkerPage() {
           onClose={() => router.push("/workers")}
           onResetPassword={handleResetPassword}
           canManage={canEditWorker}
+          canManageFlags={isSuperAdmin}
+          canChangeWorkerType={canChangeWorkerType}
         />
       </div>
     </AppLayout>
