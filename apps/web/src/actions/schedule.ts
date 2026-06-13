@@ -175,6 +175,13 @@ export async function getScheduleConfirmationStatus(scheduleId: string) {
     return scheduleService.getScheduleConfirmationStatus(scheduleId);
 }
 
+// ── My Schedule (worker personal view) ────────────────────────────────────────
+
+// public-action: read-only, a worker's own upcoming assignments
+export async function getMyAssignments(workerId: string) {
+    return scheduleService.getMyAssignments(workerId);
+}
+
 // ── Eligible Worker Search ────────────────────────────────────────────────────
 
 export async function getEligibleWorkers(params: {

@@ -340,6 +340,25 @@ export async function setAttendanceStatus(assignmentId: string, status: 'Confirm
     });
 }
 
+// ── My Schedule (worker personal view) ────────────────────────────────────────
+
+export async function getMyAssignments(workerId: string) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    return prisma.scheduleAssignment.findMany({
+        where: {
+            workerId,
+            schedule: {
+                status: 'Published',
+                date: { gte: startOfToday },
+            },
+        },
+        include: { schedule: true },
+        orderBy: { schedule: { date: 'asc' } },
+    });
+}
+
 export async function getScheduleConfirmationStatus(scheduleId: string) {
     return prisma.scheduleAssignment.findMany({
         where: { scheduleId, workerId: { not: null } },

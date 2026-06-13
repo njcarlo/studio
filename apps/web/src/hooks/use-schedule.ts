@@ -10,7 +10,7 @@ import {
     getWorkerConflicts, togglePublicSchedule, getScheduleHistory, setAttendanceStatus,
     getWorshipSlots, createWorshipSlot, updateWorshipSlot, deleteWorshipSlot,
     addWorkerToWorshipSlot, removeWorkerFromWorshipSlot,
-    getMonthlyDutyCounts,
+    getMonthlyDutyCounts, getMyAssignments,
 } from '@/actions/schedule';
 
 export function useServiceSchedules() {
@@ -291,5 +291,35 @@ export function useWorshipSlots(scheduleId: string) {
         deleteSlot: deleteMutation.mutateAsync,
         addWorker: addWorkerMutation.mutateAsync,
         removeWorker: removeWorkerMutation.mutateAsync,
+    };
+}
+
+export function useMySchedule(workerId?: string) {
+    const qc = useQueryClient();
+    const key = ['my-schedule', workerId];
+
+    const { data, isLoading } = useQuery({
+        queryKey: key,
+        queryFn: () => getMyAssignments(workerId as string),
+        enabled: !!workerId,
+    });
+
+    const confirmMutation = useMutation({
+        mutationFn: ({ assignmentId, confirmedBy }: { assignmentId: string; confirmedBy: string }) =>
+            confirmAssignment(assignmentId, confirmedBy),
+        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    });
+
+    const setStatusMutation = useMutation({
+        mutationFn: ({ assignmentId, status, updatedBy }: { assignmentId: string; status: 'Confirmed' | 'Pending' | 'Not Attending'; updatedBy: string }) =>
+            setAttendanceStatus(assignmentId, status, updatedBy),
+        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    });
+
+    return {
+        assignments: data || [],
+        isLoading,
+        confirmAssignment: confirmMutation.mutateAsync,
+        setAttendanceStatus: setStatusMutation.mutateAsync,
     };
 }
