@@ -16,6 +16,7 @@ import { useAttendance } from "@/hooks/use-attendance";
 import { useScanLogs } from "@/hooks/use-scan-logs";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { Tabs, TabsList, TabsTrigger } from "@studio/ui";
+import { verifyKioskPassword } from "@/actions/db";
 
 
 export default function QRScannerPage() {
@@ -32,6 +33,22 @@ export default function QRScannerPage() {
 
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
+    const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+
+    const handleUnlock = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsVerifyingPassword(true);
+        try {
+            const res = await verifyKioskPassword(passwordInput);
+            if (res.success && res.data) {
+                setIsAuthenticated(true);
+            } else {
+                toast({ variant: 'destructive', title: 'Invalid Password', description: 'Incorrect kiosk password.' });
+            }
+        } finally {
+            setIsVerifyingPassword(false);
+        }
+    };
 
     const { workers: allWorkers, isLoading: workersLoading } = useWorkers();
     const { scanLogs, isLoading: logsLoading, createScanLog: createScanLogSql } = useScanLogs();
@@ -328,14 +345,7 @@ export default function QRScannerPage() {
                         <CardDescription className="text-center">Enter the kiosk password to activate the scanner.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            if (passwordInput === 'c0g4@sm4!!!') {
-                                setIsAuthenticated(true);
-                            } else {
-                                toast({ variant: 'destructive', title: 'Invalid Password', description: 'Incorrect kiosk password.' });
-                            }
-                        }} className="flex flex-col gap-4">
+                        <form onSubmit={handleUnlock} className="flex flex-col gap-4">
                             <input
                                 type="password"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
@@ -343,7 +353,10 @@ export default function QRScannerPage() {
                                 value={passwordInput}
                                 onChange={e => setPasswordInput(e.target.value)}
                             />
-                            <Button type="submit">Unlock Scanner</Button>
+                            <Button type="submit" disabled={isVerifyingPassword}>
+                                {isVerifyingPassword ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Unlock Scanner
+                            </Button>
                         </form>
                     </CardContent>
                 </Card>

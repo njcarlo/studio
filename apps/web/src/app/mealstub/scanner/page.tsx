@@ -10,7 +10,7 @@ import { Alert, AlertTitle, AlertDescription } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow } from "date-fns";
-import { getMealStubs, updateMealStub, createScanLog, getWorkerById } from "@/actions/db";
+import { getMealStubs, updateMealStub, createScanLog, getWorkerById, verifyKioskPassword } from "@/actions/db";
 
 type ScanLogEntry = { id: string; details: string; scannerName: string; timestamp: Date };
 
@@ -24,7 +24,23 @@ export default function QRScannerPage() {
     const [isBarcodeDetectorSupported, setIsBarcodeDetectorSupported] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
+    const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
     const [scanLogs, setScanLogs] = useState<ScanLogEntry[]>([]);
+
+    const handleUnlock = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsVerifyingPassword(true);
+        try {
+            const res = await verifyKioskPassword(passwordInput);
+            if (res.success && res.data) {
+                setIsAuthenticated(true);
+            } else {
+                toast({ variant: 'destructive', title: 'Invalid Password' });
+            }
+        } finally {
+            setIsVerifyingPassword(false);
+        }
+    };
 
     useEffect(() => {
         if (!isAuthenticated) return;
@@ -161,14 +177,13 @@ export default function QRScannerPage() {
                         <CardDescription className="text-center">Enter the kiosk password to activate the scanner.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            if (passwordInput === 'c0g4@sm4!!!') setIsAuthenticated(true);
-                            else toast({ variant: 'destructive', title: 'Invalid Password' });
-                        }} className="flex flex-col gap-4">
+                        <form onSubmit={handleUnlock} className="flex flex-col gap-4">
                             <input type="password" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 placeholder="Scanner Password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} />
-                            <Button type="submit">Unlock Scanner</Button>
+                            <Button type="submit" disabled={isVerifyingPassword}>
+                                {isVerifyingPassword ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Unlock Scanner
+                            </Button>
                         </form>
                     </CardContent>
                 </Card>
