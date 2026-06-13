@@ -1727,9 +1727,9 @@ export default function WorkersPage() {
                   <SelectValue placeholder="Select employment type" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Full-Time">Full-Time</SelectItem>
+                  <SelectItem value="On-Call">On-Call</SelectItem>
                   <SelectItem value="Volunteer">Volunteer</SelectItem>
-                  <SelectItem value="Full-time">Full-time</SelectItem>
-                  <SelectItem value="Part-time">Part-time</SelectItem>
                 </SelectContent>
               </Select>
             </div>
