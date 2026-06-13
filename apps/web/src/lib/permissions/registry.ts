@@ -26,7 +26,10 @@ export const PERMISSIONS = {
     create:        'venues:create',
     update:        'venues:update',
     delete:        'venues:delete',
-    approve:       'venues:approve',
+    approve:       'venues:approve', // legacy — superseded by approve_l1/l2/final for the 3-stage workflow
+    approve_l1:    'venues:approve_l1',
+    approve_l2:    'venues:approve_l2',
+    approve_final: 'venues:approve_final',
     view_calendar: 'venues:view_calendar',
   },
   approvals: {
@@ -41,8 +44,11 @@ export const PERMISSIONS = {
     approve: 'events:approve',
   },
   attendance: {
-    view: 'attendance:view',
-    scan: 'attendance:scan',
+    view:           'attendance:view',
+    scan:           'attendance:scan', // legacy — superseded by scan_meal/scan_weekday for finer-grained kiosk roles
+    scan_meal:      'attendance:scan_meal',
+    scan_weekday:   'attendance:scan_weekday',
+    confirm_sunday: 'attendance:confirm_sunday',
   },
   meals: {
     view:   'meals:view',
@@ -77,6 +83,9 @@ export const PERMISSIONS = {
     manage:   'inventory:manage',
     set_code: 'inventory:set_code',
   },
+  worker_type: {
+    change: 'worker_type:change',
+  },
 } as const;
 
 /** Flat list of all permission strings for iteration/seeding. */
@@ -95,7 +104,10 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'venues',           action: 'create',              description: 'Create room reservations' },
   { module: 'venues',           action: 'update',              description: 'Edit room reservations' },
   { module: 'venues',           action: 'delete',              description: 'Delete room reservations' },
-  { module: 'venues',           action: 'approve',             description: 'Approve/reject room reservations' },
+  { module: 'venues',           action: 'approve',             description: 'Approve/reject room reservations (legacy — single stage)' },
+  { module: 'venues',           action: 'approve_l1',          description: 'Room reservation approval — stage 1 (Ministry Head)' },
+  { module: 'venues',           action: 'approve_l2',          description: 'Room reservation approval — stage 2 (Department Head)' },
+  { module: 'venues',           action: 'approve_final',       description: 'Room reservation approval — final stage (Room Reservation Manager)' },
   { module: 'venues',           action: 'view_calendar',       description: 'View master schedule calendar' },
   { module: 'approvals',        action: 'manage',              description: 'Manage all approval requests' },
   { module: 'approvals',        action: 'approve_all',         description: 'Approve any request type globally (super-approver)' },
@@ -105,7 +117,10 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'events',           action: 'delete',              description: 'Delete events' },
   { module: 'events',           action: 'approve',             description: 'Approve event requests and room/manpower allocations' },
   { module: 'attendance',       action: 'view',                description: 'View attendance logs' },
-  { module: 'attendance',       action: 'scan',                description: 'Operate attendance/meal scanner' },
+  { module: 'attendance',       action: 'scan',                description: 'Operate attendance/meal scanner (legacy — covers both meal and weekday scans)' },
+  { module: 'attendance',       action: 'scan_meal',           description: 'Operate Sunday meal stub scanner kiosk' },
+  { module: 'attendance',       action: 'scan_weekday',        description: 'Operate FT/OC weekday time-in/out scanner kiosk' },
+  { module: 'attendance',       action: 'confirm_sunday',      description: 'Confirm own Sunday service attendance (volunteer self-service)' },
   { module: 'meals',            action: 'view',                description: 'View meal stubs' },
   { module: 'meals',            action: 'manage',              description: 'Manage and assign all meal stubs' },
   { module: 'mentorship',       action: 'manage',              description: 'Manage C2S groups & mentees' },
@@ -123,6 +138,31 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'inventory',        action: 'access',              description: 'Access the Inventory Management module' },
   { module: 'inventory',        action: 'manage',              description: 'Inventory Officer — create, edit, delete items and manage stock' },
   { module: 'inventory',        action: 'set_code',            description: 'Set custom inventory codes on items' },
+  { module: 'worker_type',      action: 'change',               description: 'Change a worker\'s Employment Type (Full Time / On-call / Volunteer)' },
+];
+
+/**
+ * Scoped permission "flags" — Worker.flags[] (Layer 1: RBAC restructure).
+ * Unlike Role/Permission, these carry per-worker capabilities that don't fit
+ * a role hierarchy (e.g. a Volunteer can also be a C2S Mentor). `team_leader`
+ * is additionally scoped by `Worker.subMinistryId`.
+ */
+export const WORKER_FLAGS = {
+  TEAM_LEADER: 'team_leader',
+  MINISTRY_SCHEDULER: 'ministry_scheduler',
+  MENTOR: 'mentor',
+  HR: 'hr',
+  ROOM_RESERVATION_MANAGER: 'room_reservation_manager',
+} as const;
+
+export type WorkerFlag = (typeof WORKER_FLAGS)[keyof typeof WORKER_FLAGS];
+
+export const ALL_WORKER_FLAGS: { value: WorkerFlag; label: string; description: string }[] = [
+  { value: WORKER_FLAGS.TEAM_LEADER, label: 'Team Leader', description: 'Leads a sub-ministry, scoped via Worker.subMinistryId' },
+  { value: WORKER_FLAGS.MINISTRY_SCHEDULER, label: 'Ministry Scheduler', description: 'Can build and publish Sunday service schedules for their ministry' },
+  { value: WORKER_FLAGS.MENTOR, label: 'Mentor', description: 'Manages C2S groups and mentees' },
+  { value: WORKER_FLAGS.HR, label: 'HR', description: 'Manages leave requests, training records, and worker employment type' },
+  { value: WORKER_FLAGS.ROOM_RESERVATION_MANAGER, label: 'Room Reservation Manager', description: 'Final-stage approver for room reservation requests' },
 ];
 
 /**

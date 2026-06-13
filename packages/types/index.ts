@@ -23,6 +23,11 @@ export type Worker = {
     avatarUrl: string;
     majorMinistryId: string;
     minorMinistryId: string;
+    subMinistryId?: string | null;
+    /** Scoped permission flags — team_leader, ministry_scheduler, mentor, hr, room_reservation_manager */
+    flags?: string[];
+    /** Auto-set when employmentType is Full-Time or On-Call */
+    institutionFlag?: boolean;
     capabilities?: string[];
     employmentType?: 'Full-Time' | 'On-Call' | 'Volunteer' | string | null;
     birthDate?: string | null;
@@ -36,6 +41,21 @@ export type Worker = {
     passwordChangeRequired?: boolean | null;
     qrToken?: string | null;
     createdAt: TimestampLike | Date;
+};
+
+// Minimal worker projection for rosters/lookups — see getWorkersLite().
+export type WorkerLite = {
+    id: string;
+    workerId?: string | null;
+    firstName: string;
+    lastName: string;
+    email: string;
+    roleId?: string | null;
+    status: string;
+    avatarUrl: string;
+    majorMinistryId: string;
+    minorMinistryId: string;
+    capabilities?: string[];
 };
 
 export type Ministry = {

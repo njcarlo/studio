@@ -38,6 +38,11 @@ export function useUserRole(): UserRoleContextType {
       isMinistryApprover: s.isMinistryApprover,
       isMealStubAssigner: s.isMealStubAssigner,
       isMinistryScheduler: s.isMinistryScheduler,
+      isTeamLeader: s.isTeamLeader,
+      isMentor: s.isMentor,
+      isHR: s.isHR,
+      isRoomReservationManager: s.isRoomReservationManager,
+      teamLeaderMinistryId: s.teamLeaderMinistryId,
       canManageWorkers: s.canManageWorkers,
       canManageRoles: s.canManageRoles,
       canManageMinistries: s.canManageMinistries,
@@ -68,6 +73,7 @@ export function useUserRole(): UserRoleContextType {
       canConfirmSchedule: s.canConfirmSchedule,
       canAssignSchedulers: s.canAssignSchedulers,
       canAccessInventory: s.canAccessInventory,
+      canChangeWorkerType: s.canChangeWorkerType,
     })),
   );
 }

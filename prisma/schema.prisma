@@ -63,6 +63,9 @@ model Worker {
   avatarUrl              String
   majorMinistryId        String
   minorMinistryId        String
+  subMinistryId          String?              // Team Leader scope — sub-ministry this flag applies to
+  flags                  String[]             @default([]) // team_leader, ministry_scheduler, mentor, hr, room_reservation_manager
+  institutionFlag        Boolean              @default(false) // auto-set when employmentType is Full Time or On-call
   employmentType         String?
   birthDate              String?
   passwordChangeRequired Boolean              @default(false)

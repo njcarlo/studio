@@ -162,6 +162,15 @@ export function UserRoleSyncerSQL() {
       .map((m: any) => m.id);
   }, [user, allMinistries, effectiveProfile]);
 
+  // Worker.flags[] — scoped permission flags (Layer 1)
+  const workerFlags: string[] = effectiveProfile?.flags ?? [];
+  const isTeamLeader = workerFlags.includes('team_leader');
+  const isMentor = workerFlags.includes('mentor');
+  const isHR = workerFlags.includes('hr');
+  const isRoomReservationManager = workerFlags.includes('room_reservation_manager');
+  const isMinistrySchedulerFlag = workerFlags.includes('ministry_scheduler');
+  const teamLeaderMinistryId = isTeamLeader ? (effectiveProfile?.subMinistryId ?? null) : null;
+
   const isLoading =
     isUserLoading ||
     isRealProfileLoading ||
@@ -184,7 +193,12 @@ export function UserRoleSyncerSQL() {
       isMinistryHead: sa || isMinistryHead,
       isMinistryApprover: sa || isMinistryApprover,
       isMealStubAssigner: sa || isMealStubAssigner,
-      isMinistryScheduler: sa || isMinistryScheduler,
+      isMinistryScheduler: sa || isMinistryScheduler || isMinistrySchedulerFlag,
+      isTeamLeader,
+      isMentor,
+      isHR,
+      isRoomReservationManager,
+      teamLeaderMinistryId,
 
       // module:action checks (with legacy string fallback)
       canManageWorkers:
@@ -205,7 +219,7 @@ export function UserRoleSyncerSQL() {
         sa || hasPerm('venues:delete') || hasPerm('delete_room_reservation'),
       canApproveRoomReservation:
         sa || hasPerm('venues:approve') || hasPerm('approve_room_reservation') ||
-        isMinistryApprover || isMinistryHead,
+        isMinistryApprover || isMinistryHead || isRoomReservationManager,
       canManageApprovals:
         sa || hasPerm('approvals:manage') || hasPerm('manage_approvals') ||
         isMinistryApprover || isMinistryHead,
@@ -243,13 +257,15 @@ export function UserRoleSyncerSQL() {
         sa || hasPerm('venue_assistance:manage_own_ministry') ||
         hasPerm('manage_own_ministry_assistance'),
       canManageSchedule:
-        sa || hasPerm('schedule:manage') || isMinistryScheduler,
+        sa || hasPerm('schedule:manage') || isMinistryScheduler || isMinistrySchedulerFlag,
       canViewAllSchedules:
         sa || hasPerm('schedule:view_all'),
       canConfirmSchedule:
-        sa || hasPerm('schedule:confirm') || hasPerm('schedule:manage') || isMinistryScheduler,
+        sa || hasPerm('schedule:confirm') || hasPerm('schedule:manage') || isMinistryScheduler || isMinistrySchedulerFlag,
       canAssignSchedulers:
-        sa || hasPerm('schedule:assign_schedulers'),
+        sa || hasPerm('schedule:assign_schedulers') || isMinistryHead,
+      canChangeWorkerType:
+        sa || hasPerm('worker_type:change') || isHR,
       canAccessInventory:
         sa || hasPerm('inventory:access'),
     };
@@ -266,6 +282,14 @@ export function UserRoleSyncerSQL() {
     isMinistryHead,
     isMinistryApprover,
     isMealStubAssigner,
+    isMinistryScheduler,
+    isMinistrySchedulerFlag,
+    isTeamLeader,
+    isMentor,
+    isHR,
+    isRoomReservationManager,
+    teamLeaderMinistryId,
+    myScheduledMinistryIds,
   ]);
 
   useEffect(() => {

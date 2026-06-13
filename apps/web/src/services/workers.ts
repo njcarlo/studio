@@ -1,15 +1,24 @@
 import { prisma } from '@studio/database/prisma';
 import { CreateWorkerInput, UpdateWorkerInput } from '@/lib/schemas/worker.schemas';
 
+// Worker Types that grant institution access (FT/OC weekday meal stubs, master schedule).
+const INSTITUTION_EMPLOYMENT_TYPES = new Set(['Full-Time', 'On-Call']);
+
+/** Derives institutionFlag from employmentType whenever employmentType is part of the write. */
+function withInstitutionFlag<T extends { employmentType?: string }>(data: T): T & { institutionFlag?: boolean } {
+    if (data.employmentType === undefined) return data;
+    return { ...data, institutionFlag: INSTITUTION_EMPLOYMENT_TYPES.has(data.employmentType) };
+}
+
 export class WorkersService {
     static async createWorker(data: CreateWorkerInput) {
         // Strip undefined to please Prisma
-        const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
+        const cleanData = Object.fromEntries(Object.entries(withInstitutionFlag(data)).filter(([_, v]) => v !== undefined));
         return prisma.worker.create({ data: cleanData as any });
     }
 
     static async updateWorker(id: string, data: UpdateWorkerInput) {
-        const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
+        const cleanData = Object.fromEntries(Object.entries(withInstitutionFlag(data)).filter(([_, v]) => v !== undefined));
         return prisma.worker.update({
             where: { id },
             data: cleanData as any,

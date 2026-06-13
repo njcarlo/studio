@@ -29,6 +29,14 @@ export interface PermissionsState {
     isMealStubAssigner: boolean;
     isMinistryScheduler: boolean;
 
+    // Worker.flags[] (Layer 1 — scoped permission flags)
+    isTeamLeader: boolean;
+    isMentor: boolean;
+    isHR: boolean;
+    isRoomReservationManager: boolean;
+    /** Ministry this worker leads as Team Leader (Worker.subMinistryId), null if not a team leader */
+    teamLeaderMinistryId: string | null;
+
     // Permission flags
     canManageWorkers: boolean;
     canManageRoles: boolean;
@@ -60,6 +68,7 @@ export interface PermissionsState {
     canAssignSchedulers: boolean;
     canViewAllSchedules: boolean;
     canAccessInventory: boolean;
+    canChangeWorkerType: boolean;
 
     // Internal action — called by UserRoleSyncer
     _setPermissions: (state: Omit<PermissionsState, '_setPermissions'>) => void;
@@ -77,6 +86,11 @@ const DEFAULT_STATE: Omit<PermissionsState, '_setPermissions'> = {
     isMinistryApprover: false,
     isMealStubAssigner: false,
     isMinistryScheduler: false,
+    isTeamLeader: false,
+    isMentor: false,
+    isHR: false,
+    isRoomReservationManager: false,
+    teamLeaderMinistryId: null,
     canManageWorkers: false,
     canManageRoles: false,
     canManageMinistries: false,
@@ -107,6 +121,7 @@ const DEFAULT_STATE: Omit<PermissionsState, '_setPermissions'> = {
     canAssignSchedulers: false,
     canViewAllSchedules: false,
     canAccessInventory: false,
+    canChangeWorkerType: false,
 };
 
 export const usePermissionsStore = create<PermissionsState>()(
