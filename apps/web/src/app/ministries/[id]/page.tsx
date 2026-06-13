@@ -10,9 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@studio/ui";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@studio/ui";
 import { HeartHandshake, Copy, ClipboardCheck, ArrowLeft, Edit, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useMinistries } from "@/hooks/use-ministries";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkersLite } from "@/hooks/use-workers";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { Ministry, Worker } from "@studio/types";
+import type { Ministry, WorkerLite } from "@studio/types";
 import { WorkloadCategoriesSection } from "../workload-categories-section";
 import { LoaderCircle } from "lucide-react";
 
@@ -24,7 +24,7 @@ const DEPT_COLORS: Record<string, string> = {
   Administration: "bg-slate-500/10 text-slate-600 border-slate-200",
 };
 
-const ProfileItem = ({ label, worker }: { label: string; worker?: Worker | null }) => (
+const ProfileItem = ({ label, worker }: { label: string; worker?: WorkerLite | null }) => (
   <div className="space-y-1.5">
     <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">{label}</p>
     {worker ? (
@@ -51,7 +51,7 @@ export default function MinistryDetailsPage() {
   const decodedId = decodeURIComponent(id);
 
   const { ministries, isLoading: ministriesLoading } = useMinistries();
-  const { workers, isLoading: workersLoading } = useWorkers({ limit: 2000 });
+  const { data: workers, isLoading: workersLoading } = useWorkersLite();
   const { workerProfile, canManageWorkers } = useUserRole();
 
   const [copied, setCopied] = useState(false);
@@ -120,7 +120,7 @@ export default function MinistryDetailsPage() {
   const primaryMembers = sortedMembers.filter(m => m.majorMinistryId === ministry.id);
   const secondaryMembers = sortedMembers.filter(m => m.minorMinistryId === ministry.id && m.majorMinistryId !== ministry.id);
 
-  const WorkerTable = ({ membersList, title, emptyMessage }: { membersList: Worker[], title: string, emptyMessage: string }) => (
+  const WorkerTable = ({ membersList, title, emptyMessage }: { membersList: WorkerLite[], title: string, emptyMessage: string }) => (
     <div className="space-y-4">
       <h3 className="font-semibold text-sm flex items-center gap-2">
         {title} <span className="bg-muted text-muted-foreground text-[10px] px-2 py-0.5 rounded-full">{membersList.length}</span>

@@ -7,9 +7,9 @@ import { useWorkloadCategories } from "@/hooks/use-workload-categories";
 import { useWorkers } from "@/hooks/use-workers";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import type { Ministry, WorkloadCategory, Worker } from "@studio/types";
+import type { Ministry, WorkloadCategory, WorkerLite } from "@studio/types";
 
-export const WorkloadCategoriesSection = ({ ministry, members }: { ministry: Ministry, members: Worker[] }) => {
+export const WorkloadCategoriesSection = ({ ministry, members }: { ministry: Ministry, members: WorkerLite[] }) => {
     const { categories, isLoading, createCategory, updateCategory, deleteCategory, reorderCategories } = useWorkloadCategories(ministry.id);
     const { workerProfile, canManageMinistries } = useUserRole();
     const { toast } = useToast();
@@ -146,7 +146,7 @@ const WorkloadCategoryRow = ({
     onDelete 
 }: { 
     category: WorkloadCategory; 
-    members: Worker[];
+    members: WorkerLite[];
     index: number; 
     isFirst: boolean; 
     isLast: boolean; 
@@ -291,10 +291,11 @@ const AssignWorkersSheet = ({
     onClose 
 }: { 
     category: WorkloadCategory, 
-    members: Worker[], 
+    members: WorkerLite[], 
     onClose: () => void 
 }) => {
-    const { updateWorker } = useWorkers({});
+    // Only the update mutation is needed here — skip the paginated workers query.
+    const { updateWorker } = useWorkers({ enabled: false });
     const { toast } = useToast();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(
         members.filter(m => m.capabilities?.includes(category.id)).map(m => m.id)

@@ -6,7 +6,7 @@ import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { HeartHandshake, Users, LoaderCircle, Upload, PlusCircle, MoreHorizontal, Edit, Trash2, UserCog, Utensils, Search, ChevronRight, Shield, User as UserIcon, Building2, Check } from "lucide-react";
-import type { Ministry, Worker, Department } from "@studio/types";
+import type { Ministry, WorkerLite, Department } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@studio/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
 import { useMinistries } from "@/hooks/use-ministries";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkersLite } from "@/hooks/use-workers";
 import { createMinistries } from "@/actions/db";
 import { WorkloadCategoriesSection } from "./workload-categories-section";
 
@@ -45,7 +45,7 @@ const generateMinistryId = (name: string, department: string) => {
   return `${firstLetter}-${name.trim()}`;
 };
 
-const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { ministry: Partial<Ministry> | null; workers: Worker[]; departments: Department[]; onSave: (data: Partial<Ministry>) => void; onClose: () => void; }) => {
+const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { ministry: Partial<Ministry> | null; workers: WorkerLite[]; departments: Department[]; onSave: (data: Partial<Ministry>) => void; onClose: () => void; }) => {
   const [formData, setFormData] = useState<Partial<Ministry>>({ name: '', description: '', department: 'Worship', leaderId: '', headId: '', weight: 0 });
   useEffect(() => { if (ministry) setFormData(ministry); else setFormData({ name: '', description: '', department: 'Worship', leaderId: '', headId: '', weight: 0 }); }, [ministry]);
   const set = (field: keyof Ministry, value: string | number) => setFormData(p => ({ ...p, [field]: value }));
@@ -80,7 +80,7 @@ const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { min
   );
 };
 
-const AppointForm = ({ ministry, workers, type, onSave, onClose }: { ministry: Ministry; workers: Worker[]; type: 'approver' | 'assigner' | 'head' | 'manager'; onSave: (id: string, userId: string | null, type: any) => void; onClose: () => void; }) => {
+const AppointForm = ({ ministry, workers, type, onSave, onClose }: { ministry: Ministry; workers: WorkerLite[]; type: 'approver' | 'assigner' | 'head' | 'manager'; onSave: (id: string, userId: string | null, type: any) => void; onClose: () => void; }) => {
   const current = type === 'approver' ? ministry.approverId : type === 'assigner' ? ministry.mealStubAssignerId : type === 'manager' ? ministry.managerId : ministry.headId;
   const [sel, setSel] = useState(current || 'none');
   const [search, setSearch] = useState('');
@@ -151,7 +151,7 @@ const AppointForm = ({ ministry, workers, type, onSave, onClose }: { ministry: M
 export default function MinistryManagementPage() {
   const { canManageMinistries, canAppointApprovers, workerProfile, isLoading: roleLoading } = useUserRole();
   const { ministries, isLoading: ministriesLoading, createMinistry, updateMinistry, deleteMinistry, assignMinistryManager } = useMinistries();
-  const { workers, isLoading: workersLoading } = useWorkers({ limit: 2000 });
+  const { data: workers, isLoading: workersLoading } = useWorkersLite();
   const { toast } = useToast();
   const { logAction } = useAuditLog();
   const router = useRouter();

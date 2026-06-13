@@ -1,14 +1,15 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-    getWorkers, 
-    createWorker, 
-    updateWorker, 
-    deleteWorker, 
+import {
+    getWorkers,
+    createWorker,
+    updateWorker,
+    deleteWorker,
     deleteWorkers,
     getPaginatedWorkers,
-    getWorkerStats
+    getWorkerStats,
+    getWorkersLite
 } from '@/actions/db';
 
 export function useWorkers(params: {
@@ -102,6 +103,16 @@ export function useWorkers(params: {
         deleteWorker: deleteMutation.mutateAsync,
         deleteWorkers: deleteBatchMutation.mutateAsync,
     };
+}
+
+// Lightweight roster of all workers (id, name, ministry assignments, status)
+// for ministry rosters and member pickers — avoids paginated/full Worker fetches.
+export function useWorkersLite() {
+    return useQuery({
+        queryKey: ['workers-lite'],
+        queryFn: getWorkersLite,
+        staleTime: 60_000,
+    });
 }
 
 export function useWorkerStats(ministryIds?: string[]) {

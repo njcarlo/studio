@@ -30,7 +30,8 @@ export default function AttendancePage() {
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [localToken, setLocalToken] = useState<string | null>(null);
 
-    const { updateWorker: updateWorkerSql } = useWorkers();
+    // Only the update mutation is needed here — skip the paginated workers query.
+    const { updateWorker: updateWorkerSql } = useWorkers({ enabled: false });
 
     const { attendanceRecords: allAttendance, isLoading: attendanceLoading } = useAttendance(
         workerProfile?.id ? { workerProfileId: workerProfile.id } : {}

@@ -114,10 +114,11 @@ export default function WorkersPage() {
     isSuperAdmin,
     allRoles,
     isLoading: isRoleLoading,
+    isMealStubAssigner,
+    canManageAllMealStubs,
   } = useUserRole();
   const { startImpersonation } = useImpersonation();
   const { logAction } = useAuditLog();
-  const { isMealStubAssigner, canManageAllMealStubs } = useUserRole();
 
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
