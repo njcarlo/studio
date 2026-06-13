@@ -17,6 +17,7 @@ import { WorkersService } from '@/services/workers';
 import { PERMISSIONS } from '@/lib/permissions/registry';
 import { revalidatePath } from 'next/cache';
 import { NotificationService } from '@/services/notification-service';
+import * as ApprovalEngine from '@/services/approval-engine';
 import * as mealsAttendanceService from '@/services/meals-attendance';
 import {
     createMealStubSchema,
@@ -777,6 +778,43 @@ export const updateApproval = withPermission(
         revalidatePath('/dashboard');
         return approval;
     }
+);
+
+// --- Approval Workflow Engine (Layer 2) ---
+//
+// Generic multi-stage workflow engine (apps/web/src/services/approval-engine.ts).
+// createWorkflow() is intentionally NOT exposed here — it takes an
+// approverSpec that must be constructed server-side by the feature that owns
+// the workflow (e.g. Room Reservation, Major Event). These two actions are
+// the read/decide surface for any signed-in worker.
+
+/** Workflows the caller can act on, plus workflows the caller requested. */
+export const getMyApprovalWorkflows = withPublicAction(async () => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+
+    const [actionable, requested] = await Promise.all([
+        ApprovalEngine.getActionableWorkflows(ctx.workerId),
+        prisma.approvalWorkflow.findMany({
+            where: { requesterId: ctx.workerId },
+            include: { stages: { orderBy: { stageOrder: 'asc' } } },
+            orderBy: { createdAt: 'desc' },
+        }),
+    ]);
+
+    return { actionable, requested };
+});
+
+/** Approve or reject the active stage of a workflow. Authorization is enforced by the engine itself. */
+export const decideApprovalStage = withPublicAction(
+    async (stageId: string, decision: 'approve' | 'reject', reason?: string) => {
+        const ctx = await resolveCallerCtx();
+        if (!ctx) throw new Error('You must be logged in to do this.');
+
+        const workflow = await ApprovalEngine.decide({ stageId, workerId: ctx.workerId, decision, reason });
+        revalidatePath('/approvals');
+        return workflow;
+    },
 );
 
 // --- Ministries ---
