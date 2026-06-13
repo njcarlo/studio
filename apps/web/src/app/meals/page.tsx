@@ -40,13 +40,13 @@ import { Checkbox } from "@studio/ui";
 import { Ticket, Layers } from "lucide-react";
 import { Progress } from "@studio/ui";
 import { useMealAudio } from "@/hooks/use-meal-audio";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkers, useWorkersLite } from "@/hooks/use-workers";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { useSettings } from "@/hooks/use-settings";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
-import type { Worker } from "@studio/types";
+import type { WorkerLite } from "@studio/types";
 
 // ------------------------------------------------------------
 // helpers
@@ -86,7 +86,9 @@ function MealsPageContent() {
     router.push(`/meals?tab=${value}`);
   };
 
-  const { workers: allWorkers, isLoading: workersLoading, updateWorker } = useWorkers();
+  const { data: allWorkers, isLoading: workersLoading } = useWorkersLite();
+  // Only the update mutation is needed here — skip the paginated workers query.
+  const { updateWorker } = useWorkers({ enabled: false });
   const { ministries, isLoading: ministriesLoading } = useMinistries();
   const { settings: globalSettings } = useSettings('mealstubs');
 
@@ -102,14 +104,11 @@ function MealsPageContent() {
   const { mealStubs: _nonAdminRange } = useMealStubs({ dateFrom: thirtyDaysAgo, enabled: !canManageAllMealStubs });
   const allMealStubsInRange = canManageAllMealStubs ? mealStubs : _nonAdminRange;
 
-  // Live worker profile (for QR token)
-  const liveWorkerProfile = useMemo(() => allWorkers.find(w => w.id === (workerProfile?.id || user?.uid)), [allWorkers, workerProfile, user]);
-
   // QR Token
   const [localSeed, setLocalSeed] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
 
-  const activeToken = localSeed ?? liveWorkerProfile?.qrToken ?? workerProfile?.id ?? '';
+  const activeToken = localSeed ?? workerProfile?.qrToken ?? workerProfile?.id ?? '';
   const qrData = activeToken ? `MEAL_STUB:${workerProfile?.id}:${activeToken}` : '';
   const qrUrl = qrData ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}` : '';
 
@@ -342,7 +341,7 @@ function MealsPageContent() {
     } catch (e) { console.error(e); } finally { setIsAssigning(false); }
   }, [allMealStubsInRange, deleteMealStub, toast]);
 
-  const toggleSelectAll = (workers: Worker[]) => {
+  const toggleSelectAll = (workers: WorkerLite[]) => {
     if (selectedWorkerIds.length === workers.length && workers.length > 0) setSelectedWorkerIds([]);
     else setSelectedWorkerIds(workers.map(w => w.id));
   };

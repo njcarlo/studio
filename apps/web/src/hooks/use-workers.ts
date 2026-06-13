@@ -9,7 +9,8 @@ import {
     deleteWorkers,
     getPaginatedWorkers,
     getWorkerStats,
-    getWorkersLite
+    getWorkersLite,
+    getWorkersForScanner
 } from '@/actions/db';
 
 export function useWorkers(params: {
@@ -111,6 +112,15 @@ export function useWorkersLite() {
     return useQuery({
         queryKey: ['workers-lite'],
         queryFn: getWorkersLite,
+        staleTime: 60_000,
+    });
+}
+
+// Lightweight roster for QR scanner kiosks — includes qrToken for scan validation.
+export function useWorkersForScanner() {
+    return useQuery({
+        queryKey: ['workers-scanner'],
+        queryFn: getWorkersForScanner,
         staleTime: 60_000,
     });
 }

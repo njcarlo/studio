@@ -305,7 +305,29 @@ export async function getWorkersLite() {
             avatarUrl: true,
             majorMinistryId: true,
             minorMinistryId: true,
+            employmentType: true,
             capabilities: true,
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+}
+
+// Projection for the QR scanner kiosks — same shape as getWorkersLite() plus
+// qrToken, which the scanner needs to validate a scanned code against the
+// worker's current token. Kept separate from getWorkersLite() so the more
+// widely-used roster projection doesn't carry every worker's QR token.
+export async function getWorkersForScanner() {
+    return await prisma.worker.findMany({
+        select: {
+            id: true,
+            workerId: true,
+            firstName: true,
+            lastName: true,
+            roleId: true,
+            status: true,
+            avatarUrl: true,
+            employmentType: true,
+            qrToken: true,
         },
         orderBy: { createdAt: 'desc' },
     });

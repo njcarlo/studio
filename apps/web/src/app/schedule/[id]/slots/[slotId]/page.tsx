@@ -9,7 +9,7 @@ import { Badge } from "@studio/ui";
 import { ArrowLeft, Plus, X, CheckCircle2, LoaderCircle, Trash2 } from "lucide-react";
 import { useWorshipSlots } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkersLite } from "@/hooks/use-workers";
 import { useToast } from "@/hooks/use-toast";
 import { WorkloadCategorySelect } from "@/components/schedule/WorkloadCategorySelect";
 import { useWorkloadCategories } from "@/hooks/use-workload-categories";
@@ -21,7 +21,7 @@ export default function SlotRolesPage() {
 
     const { slots, isLoading, addWorker, removeWorker } = useWorshipSlots(scheduleId);
     const { ministries } = useMinistries();
-    const { workers } = useWorkers({ limit: 500 });
+    const { data: workers = [] } = useWorkersLite();
 
     const worshipMinistry = ministries?.find((m: any) => m.departmentCode === 'W' || m.department === 'Worship');
     const { categories, createCategory } = useWorkloadCategories(worshipMinistry?.id || "");

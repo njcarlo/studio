@@ -11,7 +11,7 @@ import { useAuthStore } from "@studio/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow, isToday } from "date-fns";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkersForScanner } from "@/hooks/use-workers";
 import { useAttendance } from "@/hooks/use-attendance";
 import { useScanLogs } from "@/hooks/use-scan-logs";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
@@ -50,7 +50,7 @@ export default function QRScannerPage() {
         }
     };
 
-    const { workers: allWorkers, isLoading: workersLoading } = useWorkers();
+    const { data: allWorkers, isLoading: workersLoading } = useWorkersForScanner();
     const { scanLogs, isLoading: logsLoading, createScanLog: createScanLogSql } = useScanLogs();
     const { createAttendanceRecord: createAttendanceSql } = useAttendance();
     const { mealStubs: allMealStubs, updateMealStub: updateMealStubSql } = useMealStubs();

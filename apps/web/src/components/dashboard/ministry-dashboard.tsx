@@ -10,12 +10,12 @@ import { Button } from '@studio/ui';
 import { useUserRole } from '@/hooks/use-user-role';
 import { format } from 'date-fns';
 import { useApprovals } from '@/hooks/use-approvals';
-import { useWorkers } from '@/hooks/use-workers';
+import { useWorkersLite } from '@/hooks/use-workers';
 
 export function MinistryDashboard() {
     const { workerProfile, myMinistryIds, isSuperAdmin } = useUserRole();
     const { approvals: allApprovals, isLoading: approvalsLoading } = useApprovals();
-    const { workers: allWorkers, isLoading: workersLoading } = useWorkers();
+    const { data: allWorkers, isLoading: workersLoading } = useWorkersLite();
 
     // Filter approvals for this ministry's users
     const myApprovals = React.useMemo(() => {

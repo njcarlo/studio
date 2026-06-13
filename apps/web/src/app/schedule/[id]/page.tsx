@@ -20,7 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";import {
 } from "lucide-react";
 import { useServiceSchedule, useServiceTemplates, useScheduleHistory, useWorshipSlots } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkersLite } from "@/hooks/use-workers";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -41,7 +41,7 @@ export default function ScheduleDetailPage() {
 
     const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus } = useServiceSchedule(id);
     const { ministries } = useMinistries();
-    const { workers } = useWorkers({ limit: 100 }); // avatar lookups only — search uses getEligibleWorkers
+    const { data: workers = [] } = useWorkersLite(); // avatar lookups only — search uses getEligibleWorkers
     const { templates, isLoading: templatesLoading } = useServiceTemplates();
     const { data: history } = useScheduleHistory();
     const { slots: worshipSlots, createSlot, deleteSlot, addWorker: addWorshipWorker, removeWorker: removeWorshipWorker } = useWorshipSlots(id);

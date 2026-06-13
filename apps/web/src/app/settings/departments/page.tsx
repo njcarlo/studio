@@ -5,10 +5,10 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Building2, UserCog, LoaderCircle, Users, Utensils } from "lucide-react";
-import type { Department, Worker } from "@studio/types";
+import type { Department, WorkerLite } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkersLite } from "@/hooks/use-workers";
 import { useDepartments } from "@/hooks/use-departments";
 import { Button } from "@studio/ui";
 import { Input } from "@studio/ui";
@@ -42,7 +42,7 @@ const AppointHeadForm = ({
 }: {
     departmentName: Department;
     departmentData: DepartmentData | null;
-    workers: Worker[];
+    workers: WorkerLite[];
     onSave: (departmentId: string, headId: string | null, description: string, weekdayAlloc: number, sundayAlloc: number) => void;
     onClose: () => void;
 }) => {
@@ -122,7 +122,7 @@ export default function DepartmentManagementPage() {
     const [isAppointHeadSheetOpen, setIsAppointHeadSheetOpen] = useState(false);
     const [departmentToAppoint, setDepartmentToAppoint] = useState<Department | null>(null);
 
-    const { workers, isLoading: workersLoading } = useWorkers();
+    const { data: workers, isLoading: workersLoading } = useWorkersLite();
     const { departments: departmentDataList, isLoading: departmentsLoading, upsertDepartment } = useDepartments();
 
     const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);

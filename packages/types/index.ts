@@ -55,7 +55,21 @@ export type WorkerLite = {
     avatarUrl: string;
     majorMinistryId: string;
     minorMinistryId: string;
+    employmentType?: 'Full-Time' | 'On-Call' | 'Volunteer' | string | null;
     capabilities?: string[];
+};
+
+// QR scanner kiosk projection — see getWorkersForScanner().
+export type WorkerScanProfile = {
+    id: string;
+    workerId?: string | null;
+    firstName: string;
+    lastName: string;
+    roleId?: string | null;
+    status: string;
+    avatarUrl: string;
+    employmentType?: 'Full-Time' | 'On-Call' | 'Volunteer' | string | null;
+    qrToken?: string | null;
 };
 
 export type Ministry = {

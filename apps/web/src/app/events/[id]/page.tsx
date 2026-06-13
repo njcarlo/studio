@@ -22,7 +22,7 @@ import { getInventoryItemsForPicker } from "@/actions/events";
 import { useQuery } from "@tanstack/react-query";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useRooms } from "@/hooks/use-rooms";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkersLite } from "@/hooks/use-workers";
 import { useServiceSchedules } from "@/hooks/use-schedule";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -47,7 +47,7 @@ export default function EventDetailPage() {
     const { event, isLoading, updateEvent, addRoom, removeRoom, upsertAssignment, deleteAssignment, addEquipment, updateEquipment, removeEquipment } = useEvent(id);
     const { ministries } = useMinistries();
     const { rooms } = useRooms();
-    const { workers } = useWorkers({ limit: 500 });
+    const { data: workers = [] } = useWorkersLite();
     const { schedules } = useServiceSchedules?.() ?? { schedules: [] };
     const { data: inventoryItems = [] } = useQuery({
         queryKey: ['inventoryItems', 'picker'],
