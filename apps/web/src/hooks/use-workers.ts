@@ -17,6 +17,7 @@ export function useWorkers(params: {
     search?: string;
     searchMode?: 'workerId' | 'name';
     ministryIds?: string[];
+    status?: string;
     sortField?: string;
     sortDir?: 'asc' | 'desc';
     enabled?: boolean;
@@ -29,6 +30,7 @@ export function useWorkers(params: {
             search: params.search,
             searchMode: params.searchMode,
             ministryIds: params.ministryIds,
+            status: params.status,
             sortField: params.sortField,
             sortDir: params.sortDir,
         }),

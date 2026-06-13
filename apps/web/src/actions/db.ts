@@ -260,6 +260,7 @@ export async function getPaginatedWorkers(
         search?: string;
         searchMode?: 'workerId' | 'name';
         ministryIds?: string[];
+        status?: string;
         sortField?: string;
         sortDir?: 'asc' | 'desc';
     } = {}
@@ -311,6 +312,11 @@ export async function getPaginatedWorkers(
         const minorPlaceholders = ids.map(() => `$${paramIdx++}`).join(', ');
         conditions.push(`("majorMinistryId" IN (${majorPlaceholders}) OR "minorMinistryId" IN (${minorPlaceholders}))`);
         queryParams.push(...ids, ...ids);
+    }
+
+    if (filters.status) {
+        conditions.push(`"status" = $${paramIdx++}`);
+        queryParams.push(filters.status);
     }
 
     if (filters.search) {

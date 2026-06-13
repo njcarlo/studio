@@ -148,13 +148,13 @@ export function UserRoleSyncerSQL() {
 
   const isMinistryScheduler = useMemo(() => {
     if (!user || !allMinistries || !effectiveProfile) return false;
-    return allMinistries.some((m: any) => m.schedulerId === effectiveProfile.id);
+    return allMinistries.some((m: any) => (m.schedulerIds || []).includes(effectiveProfile.id));
   }, [user, allMinistries, effectiveProfile]);
 
   const myScheduledMinistryIds = useMemo(() => {
     if (!user || !allMinistries || !effectiveProfile) return [];
     return allMinistries
-      .filter((m: any) => m.schedulerId === effectiveProfile.id)
+      .filter((m: any) => (m.schedulerIds || []).includes(effectiveProfile.id))
       .map((m: any) => m.id);
   }, [user, allMinistries, effectiveProfile]);
 

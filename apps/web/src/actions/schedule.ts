@@ -285,10 +285,18 @@ export const removeWorkerFromWorshipSlot = withPermission(
 
 // ── Scheduler Assignment ──────────────────────────────────────────────────────
 
-export const assignMinistryScheduler = withPermission(
+export const addMinistryScheduler = withPermission(
     PERMISSIONS.schedule.assign_schedulers,
-    async (_ctx, ministryId: string, workerId: string | null) => {
-        await scheduleService.assignMinistryScheduler(ministryId, workerId);
+    async (_ctx, ministryId: string, workerId: string) => {
+        await scheduleService.addMinistryScheduler(ministryId, workerId);
+        revalidatePath('/schedule');
+    },
+);
+
+export const removeMinistryScheduler = withPermission(
+    PERMISSIONS.schedule.assign_schedulers,
+    async (_ctx, ministryId: string, workerId: string) => {
+        await scheduleService.removeMinistryScheduler(ministryId, workerId);
         revalidatePath('/schedule');
     },
 );

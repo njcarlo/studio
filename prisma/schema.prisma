@@ -101,7 +101,7 @@ model Ministry {
   leaderId            String
   headId              String?
   approverId          String?
-  schedulerId         String?
+  schedulerIds        String[]   @default([])
   mealStubAssignerId  String?
   mealStubWeeklyLimit Int?
   weight              Int?

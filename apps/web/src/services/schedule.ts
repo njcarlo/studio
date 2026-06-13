@@ -553,22 +553,44 @@ export async function removeWorkerFromWorshipSlot(id: string) {
 
 // ── Scheduler Assignment ──────────────────────────────────────────────────────
 
-export async function assignMinistryScheduler(ministryId: string, workerId: string | null) {
+export async function addMinistryScheduler(ministryId: string, workerId: string) {
+    const ministry = await (prisma.ministry as any).findUnique({
+        where: { id: ministryId },
+        select: { schedulerIds: true },
+    }) as { schedulerIds: string[] } | null;
+
+    const schedulerIds = ministry?.schedulerIds ?? [];
+    if (schedulerIds.includes(workerId)) return;
+
     await (prisma.ministry as any).update({
         where: { id: ministryId },
-        data: { schedulerId: workerId },
+        data: { schedulerIds: [...schedulerIds, workerId] },
+    });
+}
+
+export async function removeMinistryScheduler(ministryId: string, workerId: string) {
+    const ministry = await (prisma.ministry as any).findUnique({
+        where: { id: ministryId },
+        select: { schedulerIds: true },
+    }) as { schedulerIds: string[] } | null;
+
+    const schedulerIds = (ministry?.schedulerIds ?? []).filter(id => id !== workerId);
+
+    await (prisma.ministry as any).update({
+        where: { id: ministryId },
+        data: { schedulerIds },
     });
 }
 
 export async function getMinistrySchedulers() {
     const ministries = await (prisma.ministry as any).findMany({
-        select: { id: true, name: true, schedulerId: true },
-    }) as { id: string; name: string; schedulerId: string | null }[];
+        select: { id: true, name: true, schedulerIds: true },
+    }) as { id: string; name: string; schedulerIds: string[] }[];
 
-    const schedulerIds = [...new Set(ministries.map(m => m.schedulerId).filter((id): id is string => !!id))];
-    const schedulers = schedulerIds.length > 0
+    const allSchedulerIds = [...new Set(ministries.flatMap(m => m.schedulerIds))];
+    const schedulers = allSchedulerIds.length > 0
         ? await prisma.worker.findMany({
-            where: { id: { in: schedulerIds } },
+            where: { id: { in: allSchedulerIds } },
             select: { id: true, firstName: true, lastName: true, avatarUrl: true },
         })
         : [];
@@ -576,7 +598,7 @@ export async function getMinistrySchedulers() {
 
     return ministries.map(m => ({
         ...m,
-        scheduler: m.schedulerId ? schedulerById.get(m.schedulerId) ?? null : null,
+        schedulers: m.schedulerIds.map(id => schedulerById.get(id)).filter((w): w is NonNullable<typeof w> => !!w),
     }));
 }
 
