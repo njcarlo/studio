@@ -4,7 +4,7 @@ import React from "react";
 import { Button } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Badge } from "@studio/ui";
-import { Dialog, DialogContent, DialogFooter } from "@studio/ui";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@studio/ui";
 import { Info, UserPlus, Calendar, UserCog, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -54,7 +54,7 @@ export function ApprovalDetailsDialog({
           <div className="flex items-center gap-4 text-white">
             <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl">{getIconForType(request.type)}</div>
             <div>
-              <h2 className="text-xl font-bold font-headline leading-tight">{request.type}</h2>
+              <DialogTitle className="text-xl font-bold font-headline leading-tight text-white">{request.type}</DialogTitle>
               <p className="text-white/80 text-sm">Request Details</p>
             </div>
           </div>

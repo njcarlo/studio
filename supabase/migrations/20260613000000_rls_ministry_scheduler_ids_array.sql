@@ -24,4 +24,6 @@ language sql stable security definer set search_path = public as $$
     )
 $$;
 
-grant execute on function public.can_manage_ministry_assistance(text) to authenticated, anon;
+-- Note: do not grant to `anon` — the hardening migrations revoke `anon`/`PUBLIC`
+-- execute on all RLS helper functions (every policy here is `TO authenticated`).
+grant execute on function public.can_manage_ministry_assistance(text) to authenticated;
