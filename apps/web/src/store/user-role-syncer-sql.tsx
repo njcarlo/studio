@@ -81,16 +81,18 @@ export function UserRoleSyncerSQL() {
   }, [user, realWorkerProfile]);
 
   const viewAsWorkerId = isSuperAdmin ? impersonatedWorkerId : null;
-  const idToFetch = viewAsWorkerId ?? user?.uid;
+  const isImpersonating = !!viewAsWorkerId;
 
   // ── 3. "View As" profile (impersonated worker) ────────────────────────────
-  const { data: workerProfile, isLoading: isProfileLoading } = useQuery({
-    queryKey: ["worker-view-as", idToFetch],
+  // Only fetched while impersonating — otherwise this would be a duplicate
+  // getWorkerById(user.uid) call for the same data as realWorkerProfile.
+  const { data: impersonatedProfile, isLoading: isProfileLoading } = useQuery({
+    queryKey: ["worker-view-as", viewAsWorkerId],
     queryFn: async () => {
-      if (!idToFetch) return null;
-      return await getWorkerById(idToFetch);
+      if (!viewAsWorkerId) return null;
+      return await getWorkerById(viewAsWorkerId);
     },
-    enabled: !!idToFetch,
+    enabled: isImpersonating,
   });
 
   // ── 4. Roles (for allRoles in store) ──────────────────────────────────────
@@ -98,6 +100,7 @@ export function UserRoleSyncerSQL() {
     queryKey: ["roles"],
     queryFn: getRoles,
     enabled: !!user,
+    staleTime: 5 * 60_000, // static reference data
   });
 
   const needsSeeding =
@@ -108,11 +111,12 @@ export function UserRoleSyncerSQL() {
     queryKey: ["ministries"],
     queryFn: getMinistries,
     enabled: !!user,
+    staleTime: 5 * 60_000, // static reference data
   });
 
   // ── 6. Effective profile (impersonated or real) ───────────────────────────
-  const isImpersonating = !!viewAsWorkerId;
-  const effectiveProfile = isImpersonating ? workerProfile : realWorkerProfile;
+  const workerProfile = isImpersonating ? impersonatedProfile : realWorkerProfile;
+  const effectiveProfile = workerProfile;
   const effectiveIsSuperAdmin = isImpersonating ? false : isSuperAdmin;
 
   // Aggregate permissions from all roles of the effective profile

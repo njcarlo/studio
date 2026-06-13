@@ -36,15 +36,19 @@ export async function getSupabaseServerClient() {
 }
 
 /**
- * Resolves the current authenticated user once per request. Wrapped in
- * React's `cache()` so every `requirePermission`/action call in a request
- * chain reuses the same Supabase Auth round-trip instead of repeating it.
+ * Resolves the current authenticated user's identity from the request's
+ * session JWT. Wrapped in React's `cache()` so every `requirePermission`/
+ * action call in a request chain reuses the same result.
+ *
+ * Uses `getClaims()` instead of `getUser()`: this project's JWTs are signed
+ * with ES256 (asymmetric), so the claims are verified locally via WebCrypto
+ * against the cached JWKS — no per-call round trip to `/auth/v1/user`.
  */
 export const getServerUser = cache(async () => {
   const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
+  const { data, error } = await supabase.auth.getClaims();
+  if (error || !data?.claims?.email) {
     return null;
   }
-  return data.user;
+  return { id: data.claims.sub, email: data.claims.email as string };
 });
