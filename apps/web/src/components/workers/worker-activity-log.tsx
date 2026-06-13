@@ -41,7 +41,7 @@ export function WorkerActivityLog({ workerId }: { workerId: string }) {
               </span>
             </div>
             <p className="text-xs text-muted-foreground line-clamp-2">{log.details}</p>
-            <div className="text-[10px] font-medium text-primary/70 mt-1">By: {log.userName}</div>
+            <div className="text-[10px] font-medium text-primary/70 mt-1">By: {log.userName || "Self"}</div>
           </div>
         </div>
       ))}

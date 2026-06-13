@@ -563,8 +563,21 @@ export async function assignMinistryScheduler(ministryId: string, workerId: stri
 export async function getMinistrySchedulers() {
     const ministries = await (prisma.ministry as any).findMany({
         select: { id: true, name: true, schedulerId: true },
-    });
-    return ministries as { id: string; name: string; schedulerId: string | null }[];
+    }) as { id: string; name: string; schedulerId: string | null }[];
+
+    const schedulerIds = [...new Set(ministries.map(m => m.schedulerId).filter((id): id is string => !!id))];
+    const schedulers = schedulerIds.length > 0
+        ? await prisma.worker.findMany({
+            where: { id: { in: schedulerIds } },
+            select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+        })
+        : [];
+    const schedulerById = new Map(schedulers.map(w => [w.id, w]));
+
+    return ministries.map(m => ({
+        ...m,
+        scheduler: m.schedulerId ? schedulerById.get(m.schedulerId) ?? null : null,
+    }));
 }
 
 // ── Monthly Duty Caps ─────────────────────────────────────────────────────────

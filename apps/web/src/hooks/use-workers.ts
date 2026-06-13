@@ -19,6 +19,7 @@ export function useWorkers(params: {
     ministryIds?: string[];
     sortField?: string;
     sortDir?: 'asc' | 'desc';
+    enabled?: boolean;
 } = {}) {
     const queryClient = useQueryClient();
 
@@ -33,6 +34,7 @@ export function useWorkers(params: {
         }),
         staleTime: 60_000,
         placeholderData: (prev) => prev,
+        enabled: params.enabled ?? true,
     });
 
     const createMutation = useMutation({

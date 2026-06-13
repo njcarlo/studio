@@ -26,7 +26,6 @@ export default function SchedulersPage() {
     const { canAssignSchedulers, isSuperAdmin, workerProfile } = useUserRole();
 
     const { ministries, isLoading: ministriesLoading } = useMinistries();
-    const { workers } = useWorkers({ limit: 500 });
 
     const { data: schedulerData, isLoading: schedulersLoading } = useQuery({
         queryKey: ['ministry-schedulers'],
@@ -46,6 +45,13 @@ export default function SchedulersPage() {
     const [assignDialog, setAssignDialog] = useState<{ ministryId: string; ministryName: string } | null>(null);
     const [workerSearch, setWorkerSearch] = useState("");
 
+    // Only fetch workers for the target ministry, and only while the dialog is open
+    const { workers: ministryWorkers } = useWorkers({
+        limit: 200,
+        ministryIds: assignDialog ? [assignDialog.ministryId] : undefined,
+        enabled: !!assignDialog,
+    });
+
     // Department Schedulers can only manage ministries in their department, sorted alpha
     const visibleMinistries = useMemo(() => {
         // Super admins see everything
@@ -64,20 +70,17 @@ export default function SchedulersPage() {
     }, [ministries, isSuperAdmin, workerProfile]);
 
 
-    // Filter workers to only those in the target ministry (major or minor)
+    // Workers for the target ministry are already scoped server-side; just filter by status/search
     const filteredWorkers = useMemo(() => {
-        const targetMinistryId = assignDialog?.ministryId;
-        return workers.filter((w: any) => {
+        return ministryWorkers.filter((w: any) => {
             if (w.status !== "Active") return false;
             if (workerSearch && !`${w.firstName} ${w.lastName}`.toLowerCase().includes(workerSearch.toLowerCase())) return false;
-            if (!targetMinistryId) return true;
-            return w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId;
+            return true;
         });
-    }, [workers, workerSearch, assignDialog?.ministryId]);
+    }, [ministryWorkers, workerSearch]);
 
     const getScheduler = (ministryId: string) => {
-        const schedulerId = schedulerData?.find(s => s.id === ministryId)?.schedulerId;
-        return schedulerId ? workers.find((w: any) => w.id === schedulerId) : null;
+        return schedulerData?.find(s => s.id === ministryId)?.scheduler ?? null;
     };
 
     const isLoading = ministriesLoading || schedulersLoading;
