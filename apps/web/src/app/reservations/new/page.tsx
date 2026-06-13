@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuthStore } from "@studio/store";
 import { useQuery } from "@tanstack/react-query";
-import { getRooms, getBranches, getAreas, getMinistries, getVenueElements, getBookingsForRoomOnDate, createBooking, createApproval } from "@/actions/db";
+import { getRooms, getBranches, getAreas, getMinistries, getVenueElements, getBookingsForRoomOnDate, createBooking } from "@/actions/db";
 import { useToast } from "@/hooks/use-toast";
 import type { Room, Branch, Area, Ministry, VenueElement } from "@studio/types";
 
@@ -241,19 +241,10 @@ export default function NewReservationPage() {
             if (!res.success) throw new Error(res.error);
             const newBooking = res.data;
 
+            // createBooking() starts the 3-stage Room Reservation approval
+            // workflow (Ministry Head -> Department Head -> Room Reservation
+            // Manager) automatically — no separate ApprovalRequest needed.
             if (newBooking?.id) {
-                await createApproval({
-                    requester: requesterName,
-                    type: 'Room Booking',
-                    details: `"${purpose}" for room: ${selectedRoom?.name}` + (hasConflict && conflictingStatus === 'Pending' ? `\n(⚠️ Conflicts with pending request by ${conflictingRequester})` : ""),
-                    date: new Date(),
-                    status: 'Pending Ministry Approval',
-                    roomId,
-                    reservationId: newBooking.id,
-                    workerId: workerProfile.id,
-                    requestId
-                });
-
                 setNewRequestId(newBooking.id);
                 setIsSubmitted(true);
             }

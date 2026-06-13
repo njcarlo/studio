@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePermissionsStore } from '@studio/store';
 import { useShallow } from 'zustand/react/shallow';
-import { getApprovals, createApproval, updateApproval } from '@/actions/db';
+import { getApprovals, getRoomReservationApprovals, createApproval, updateApproval } from '@/actions/db';
 
 export function useApprovals(options: { enabled?: boolean } = {}) {
     const queryClient = useQueryClient();
@@ -19,7 +19,14 @@ export function useApprovals(options: { enabled?: boolean } = {}) {
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['approvals', scope],
-        queryFn: () => getApprovals(scope),
+        queryFn: async () => {
+            const [legacy, roomReservations] = await Promise.all([
+                getApprovals(scope),
+                getRoomReservationApprovals(),
+            ]);
+            const rooms = roomReservations.success ? roomReservations.data : [];
+            return [...(legacy as any[]), ...rooms];
+        },
         staleTime: 2 * 60_000,
         enabled: options?.enabled !== false,
     });

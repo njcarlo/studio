@@ -11,6 +11,7 @@ import { useMinistries } from "@/hooks/use-ministries";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useApprovalMutations } from "@/hooks/use-approval-mutations";
 import { ApprovalDetailsDialog } from "@/components/approvals/approval-details-dialog";
+import { RejectReasonDialog } from "@/components/approvals/reject-reason-dialog";
 import { KanbanColumn } from "@/components/approvals/kanban-column";
 import {
     Select,
@@ -33,10 +34,11 @@ export default function ApprovalsPage() {
     const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterType, setFilterType] = useState<string>("all");
+    const [rejectTarget, setRejectTarget] = useState<any | null>(null);
 
     const { approvals: requests, isLoading: approvalsLoading } = useApprovals();
     const { ministries, isLoading: ministriesLoading } = useMinistries();
-    const { respond, isUpdating } = useApprovalMutations();
+    const { respond, decideWorkflow, isUpdating } = useApprovalMutations();
 
     const isLoading = isRoleLoading || approvalsLoading || ministriesLoading;
 
@@ -69,6 +71,9 @@ export default function ApprovalsPage() {
     };
 
     const checkCanManage = (request: any) => {
+        // Room Booking requests created via the approval workflow engine —
+        // authorization is computed server-side per active stage.
+        if (request._workflowId) return request._actionable;
         if (canApproveAllRequests || isSuperAdmin) return true;
         if (request.type === 'Ministry Change') {
             if (!workerProfile) return false;
@@ -97,7 +102,23 @@ export default function ApprovalsPage() {
 
     const handleUpdateRequestStatus = (request: any, action: 'Approved' | 'Rejected') => {
         if (!request.id || !checkCanManage(request)) return;
+
+        if (request._workflowId) {
+            if (action === 'Rejected') {
+                setRejectTarget(request);
+                return;
+            }
+            decideWorkflow({ stageId: request._stageId, decision: 'approve' });
+            return;
+        }
+
         respond({ id: request.id, action: action === 'Approved' ? 'approve' : 'reject' });
+    };
+
+    const handleConfirmReject = (reason: string) => {
+        if (!rejectTarget) return;
+        decideWorkflow({ stageId: rejectTarget._stageId, decision: 'reject', reason });
+        setRejectTarget(null);
     };
 
     if (isLoading) {
@@ -238,6 +259,13 @@ export default function ApprovalsPage() {
                 open={!!selectedRequest}
                 requesterWorker={selectedRequest?.worker}
                 onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}
+            />
+
+            <RejectReasonDialog
+                open={!!rejectTarget}
+                onOpenChange={(open) => { if (!open) setRejectTarget(null); }}
+                onConfirm={handleConfirmReject}
+                isSubmitting={isUpdating}
             />
         </AppLayout>
     );

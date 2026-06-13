@@ -15,7 +15,8 @@ import { EmailService } from './email-service';
 export type ApproverSpec =
     | { kind: 'worker'; workerId: string }
     | { kind: 'permission'; module: string; action: string }
-    | { kind: 'ministryRole'; ministryId: string; role: 'head' | 'manager' | 'approver' | 'scheduler' };
+    | { kind: 'ministryRole'; ministryId: string; role: 'head' | 'manager' | 'approver' | 'scheduler' }
+    | { kind: 'flag'; flag: string };
 
 export type StageTemplate = {
     approverSpec: ApproverSpec;
@@ -182,6 +183,10 @@ export async function getActionableWorkflows(workerId: string): Promise<Workflow
 async function canActOnStage(stage: ApprovalStage, workerId: string): Promise<boolean> {
     const spec = stage.approverSpec as unknown as ApproverSpec;
 
+    // Super Admins can act on any stage — backstops ministryRole/flag specs
+    // that have no assigned worker yet (e.g. a ministry with no head set).
+    if (await isSuperAdmin(workerId)) return true;
+
     switch (spec.kind) {
         case 'worker':
             return spec.workerId === workerId;
@@ -199,7 +204,20 @@ async function canActOnStage(stage: ApprovalStage, workerId: string): Promise<bo
                 case 'scheduler': return ministry.schedulerIds.includes(workerId);
             }
         }
+
+        case 'flag': {
+            const worker = await prisma.worker.findUnique({ where: { id: workerId } });
+            return worker ? worker.flags.includes(spec.flag) : false;
+        }
     }
+}
+
+async function isSuperAdmin(workerId: string): Promise<boolean> {
+    const worker = await prisma.worker.findUnique({
+        where: { id: workerId },
+        include: { roles: { include: { role: true } } },
+    });
+    return worker?.roles.some((wr) => wr.role.isSuperAdmin) ?? false;
 }
 
 async function workerHasPermission(workerId: string, module: string, action: string): Promise<boolean> {
@@ -263,6 +281,14 @@ async function resolveStageApprovers(stage: ApprovalStage): Promise<{ id: string
             if (ids.length === 0) return [];
             const workers = await prisma.worker.findMany({
                 where: { id: { in: ids } },
+                select: { id: true, email: true },
+            });
+            return workers;
+        }
+
+        case 'flag': {
+            const workers = await prisma.worker.findMany({
+                where: { status: 'Active', flags: { has: spec.flag } },
                 select: { id: true, email: true },
             });
             return workers;

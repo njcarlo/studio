@@ -19,6 +19,7 @@ import { revalidatePath } from 'next/cache';
 import { NotificationService } from '@/services/notification-service';
 import { writeAudit } from '@/lib/audit/log';
 import * as ApprovalEngine from '@/services/approval-engine';
+import * as RoomReservationWorkflow from '@/services/room-reservation-workflow';
 import * as mealsAttendanceService from '@/services/meals-attendance';
 import {
     createMealStubSchema,
@@ -814,6 +815,12 @@ export const decideApprovalStage = withPublicAction(
 
         const workflow = await ApprovalEngine.decide({ stageId, workerId: ctx.workerId, decision, reason });
 
+        if (workflow.type === RoomReservationWorkflow.ROOM_BOOKING_WORKFLOW_TYPE) {
+            await RoomReservationWorkflow.syncBookingStatusFromWorkflow(workflow);
+            revalidatePath('/reservations');
+            revalidatePath('/dashboard');
+        }
+
         await writeAudit({
             actor: ctx,
             module: 'approvals',
@@ -828,6 +835,55 @@ export const decideApprovalStage = withPublicAction(
         return workflow;
     },
 );
+
+/**
+ * Room Booking approval workflows, normalized into the legacy
+ * ApprovalRequest shape so the existing Kanban UI on /approvals can render
+ * them alongside other request types. `_workflowId`/`_stageId`/`_actionable`
+ * let the UI route decisions through decideApprovalStage().
+ */
+export const getRoomReservationApprovals = withPublicAction(async () => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+
+    const [workflows, actionable] = await Promise.all([
+        prisma.approvalWorkflow.findMany({
+            where: { type: RoomReservationWorkflow.ROOM_BOOKING_WORKFLOW_TYPE },
+            include: { stages: { orderBy: { stageOrder: 'asc' } } },
+            orderBy: { createdAt: 'desc' },
+        }),
+        ApprovalEngine.getActionableWorkflows(ctx.workerId),
+    ]);
+
+    const actionableIds = new Set(actionable.map((w) => w.id));
+    const requesterIds = [...new Set(workflows.map((w) => w.requesterId))];
+    const workers = await prisma.worker.findMany({
+        where: { id: { in: requesterIds } },
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true, majorMinistryId: true, minorMinistryId: true },
+    });
+    const workerById = new Map(workers.map((w) => [w.id, w]));
+
+    return workflows.map((workflow) => {
+        const requester = workerById.get(workflow.requesterId);
+        const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
+        const active = ApprovalEngine.getActiveStages(workflow.stages);
+
+        return {
+            id: workflow.id,
+            requester: requester ? `${requester.firstName} ${requester.lastName}` : 'Unknown',
+            type: RoomReservationWorkflow.ROOM_BOOKING_WORKFLOW_TYPE,
+            details: `"${meta.title ?? ''}" for room: ${meta.roomName ?? 'Unknown Room'}`,
+            date: workflow.createdAt,
+            status: RoomReservationWorkflow.bookingStatusForWorkflow(workflow),
+            workerId: workflow.requesterId,
+            reservationId: workflow.subjectId,
+            worker: requester ?? null,
+            _workflowId: workflow.id,
+            _stageId: active[0]?.id ?? null,
+            _actionable: actionableIds.has(workflow.id),
+        };
+    });
+});
 
 // --- Ministries ---
 
@@ -1008,8 +1064,18 @@ export const createBooking = withPermission(
             const booking = await prisma.booking.create({
                 data: { ...cleanRest, workerProfileId, roomId },
             });
+
+            // Kick off the 3-stage Room Reservation approval workflow
+            // (Ministry Head -> Department Head -> Room Reservation Manager).
+            try {
+                await RoomReservationWorkflow.createRoomReservationWorkflow(booking);
+            } catch (err) {
+                console.error('[createBooking] Failed to create approval workflow:', err);
+            }
+
             revalidatePath('/reservations');
             revalidatePath('/dashboard');
+            revalidatePath('/approvals');
             return booking;
         } catch (err: any) {
             console.error('[createBooking] Prisma error:', err);
