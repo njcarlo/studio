@@ -290,6 +290,11 @@ model TransactionLog {
   details    String?
   targetId   String?
   targetName String?
+  // Layer 4 (generic audit log) additions — before/after state snapshots and
+  // a free-text reason, e.g. for approval rejections or RBAC/role changes.
+  before     Json?
+  after      Json?
+  reason     String?
   timestamp  DateTime @default(now())
 }
 

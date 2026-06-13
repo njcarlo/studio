@@ -17,6 +17,7 @@ import { WorkersService } from '@/services/workers';
 import { PERMISSIONS } from '@/lib/permissions/registry';
 import { revalidatePath } from 'next/cache';
 import { NotificationService } from '@/services/notification-service';
+import { writeAudit } from '@/lib/audit/log';
 import * as ApprovalEngine from '@/services/approval-engine';
 import * as mealsAttendanceService from '@/services/meals-attendance';
 import {
@@ -812,6 +813,17 @@ export const decideApprovalStage = withPublicAction(
         if (!ctx) throw new Error('You must be logged in to do this.');
 
         const workflow = await ApprovalEngine.decide({ stageId, workerId: ctx.workerId, decision, reason });
+
+        await writeAudit({
+            actor: ctx,
+            module: 'approvals',
+            action: `workflow_stage_${decision}`,
+            targetId: workflow.id,
+            targetName: workflow.type,
+            reason,
+            after: { status: workflow.status },
+        });
+
         revalidatePath('/approvals');
         return workflow;
     },

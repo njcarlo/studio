@@ -44,7 +44,8 @@ export default function TransactionLogsPage() {
             (log.targetName || '').toLowerCase().includes(lower) ||
             (log.action || '').toLowerCase().includes(lower) ||
             (log.module || '').toLowerCase().includes(lower) ||
-            (log.details || '').toLowerCase().includes(lower)
+            (log.details || '').toLowerCase().includes(lower) ||
+            (log.reason || '').toLowerCase().includes(lower)
         );
     }, [logs, searchTerm]);
 
@@ -110,18 +111,19 @@ export default function TransactionLogsPage() {
                                     <TableHead className="w-[120px]">Module</TableHead>
                                     <TableHead className="w-[150px]">Action</TableHead>
                                     <TableHead>Details</TableHead>
+                                    <TableHead>Reason</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLogsLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
+                                        <TableCell colSpan={7} className="h-24 text-center">
                                             <LoaderCircle className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                                         </TableCell>
                                     </TableRow>
                                 ) : filteredLogs.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                                             No logs found matching your criteria.
                                         </TableCell>
                                     </TableRow>
@@ -147,6 +149,9 @@ export default function TransactionLogsPage() {
                                             <TableCell className="font-medium text-sm">{log.action}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">
                                                 {log.details || "-"}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {log.reason || "-"}
                                             </TableCell>
                                         </TableRow>
                                     ))
