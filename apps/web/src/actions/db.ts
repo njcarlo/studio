@@ -2,7 +2,14 @@
 
 import { prisma } from '@studio/database/prisma';
 import { unstable_cache } from 'next/cache';
-import { withPermission, withPublicAction } from '@/lib/auth/with-permission';
+import {
+    withPermission,
+    withPublicAction,
+    resolveCallerCtx,
+    canManageWorker,
+    canManageWorkersInMinistries,
+    isHRWorker,
+} from '@/lib/auth/with-permission';
 import { createRoleSchema, updateRoleSchema } from '@/lib/schemas/role.schemas';
 import { createWorkerSchema, updateWorkerSchema } from '@/lib/schemas/worker.schemas';
 import { RolesService } from '@/services/roles';
@@ -214,14 +221,43 @@ export const createRole = withPermission(
     },
 );
 
-// public-action: upsert used by seeding only — no end-user entrypoint
-export async function upsertRole(id: string, data: { name: string; permissions: string[]; isSuperAdmin?: boolean; isSystemRole?: boolean }) {
-    return prisma.role.upsert({
-        where: { id },
-        update: data,
-        create: { id, ...data },
-    });
-}
+// public-action: one-time system bootstrap. Seeds the default role set and promotes
+// the calling worker to System Administrator — but ONLY while no Role rows exist yet
+// (i.e. the system has never been initialized). Once any role exists this always
+// fails, so it cannot be replayed for privilege escalation after setup.
+export const claimSystemAdmin = withPublicAction(async () => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+
+    const existingRoleCount = await prisma.role.count();
+    if (existingRoleCount > 0) {
+        throw new Error('The system has already been initialized.');
+    }
+
+    const rolesData: { id: string; name: string; permissions: string[]; isSuperAdmin?: boolean; isSystemRole?: boolean }[] = [
+        { id: 'admin', name: 'Admin', permissions: [], isSuperAdmin: true, isSystemRole: true },
+        { id: 'approver', name: 'Approver', permissions: ['manage_approvals'], isSystemRole: true },
+        { id: 'editor', name: 'Editor', permissions: ['manage_ministries', 'manage_rooms'], isSystemRole: true },
+        { id: 'viewer', name: 'Viewer', permissions: [], isSystemRole: true },
+    ];
+
+    await prisma.$transaction([
+        ...rolesData.map((role) =>
+            prisma.role.upsert({
+                where: { id: role.id },
+                update: { name: role.name, permissions: role.permissions, isSuperAdmin: role.isSuperAdmin ?? false, isSystemRole: role.isSystemRole ?? false },
+                create: { id: role.id, name: role.name, permissions: role.permissions, isSuperAdmin: role.isSuperAdmin ?? false, isSystemRole: role.isSystemRole ?? false },
+            }),
+        ),
+        prisma.worker.update({
+            where: { id: ctx.workerId },
+            data: { roleId: 'admin', status: 'Active' },
+        }),
+    ]);
+
+    revalidatePath('/workers');
+    revalidatePath('/settings');
+});
 
 export const updateRole = withPermission(
     PERMISSIONS.roles.update,
@@ -248,6 +284,28 @@ export async function getWorkers() {
         include: {
             role: true,
             roles: { include: { role: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+}
+
+// Minimal projection of every worker — for ministry rosters, member pickers,
+// and other UI that needs to list/lookup all workers by id without paying
+// for the full record (roles, contact info, etc.) on every fetch.
+export async function getWorkersLite() {
+    return await prisma.worker.findMany({
+        select: {
+            id: true,
+            workerId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            roleId: true,
+            status: true,
+            avatarUrl: true,
+            majorMinistryId: true,
+            minorMinistryId: true,
+            capabilities: true,
         },
         orderBy: { createdAt: 'desc' },
     });
@@ -439,11 +497,33 @@ export async function getWorkerByEmail(email: string) {
     }
 }
 
-// public-action: createWorker used during signup/ORS import — must remain open
+// public-action: createWorker used during signup/ORS import — must remain open.
+// Only callers with worker-management permission over the target ministry may set
+// privileged fields (role, status, ministries, employment type, RBAC flags,
+// sub-ministry); everyone else gets the same safe defaults the signup form sends.
 export const createWorker = withPublicAction(async (data: any) => {
     try {
         const input = createWorkerSchema.parse(data);
-        const worker = await WorkersService.createWorker(input);
+
+        const ctx = await resolveCallerCtx();
+        const authorized = ctx
+            ? await canManageWorkersInMinistries(ctx, [input.majorMinistryId, input.minorMinistryId])
+            : false;
+
+        const safeInput = authorized
+            ? input
+            : {
+                ...input,
+                roleId: 'viewer',
+                status: 'Pending Approval',
+                flags: undefined,
+                subMinistryId: undefined,
+                employmentType: undefined,
+                majorMinistryId: undefined,
+                minorMinistryId: undefined,
+            };
+
+        const worker = await WorkersService.createWorker(safeInput);
         revalidatePath('/workers');
         return worker;
     } catch (err: any) {
@@ -453,12 +533,53 @@ export const createWorker = withPublicAction(async (data: any) => {
     }
 });
 
-// public-action: updateWorker used by profile page and ORS sync — scoped to Phase 2 Zod hardening
+// public-action: updateWorker used by the profile page (self-service) and admin worker
+// management. Self-service fields below may always be changed on the caller's own
+// record. Any other field (role, status, ministries, employment type, RBAC flags,
+// sub-ministry, etc.) — or any change to someone else's record — requires
+// worker-management permission, resolved server-side via resolveCallerCtx().
+const SELF_SERVICE_WORKER_FIELDS = new Set<string>([
+    'firstName', 'lastName', 'phone', 'address', 'avatarUrl', 'qrToken',
+    'passwordChangeRequired', 'firstLogin', 'birthday', 'gender',
+]);
+
 export const updateWorker = withPublicAction(async (id: string, data: any) => {
     const input = updateWorkerSchema.parse(data);
+    const fields = Object.keys(input);
+
+    if (fields.length > 0) {
+        const ctx = await resolveCallerCtx();
+        const isSelfServiceOnly = fields.every((f) => SELF_SERVICE_WORKER_FIELDS.has(f));
+        const isSelfProfileEdit = isSelfServiceOnly && ctx?.workerId === id;
+
+        if (!isSelfProfileEdit) {
+            if (!ctx) throw new Error('You must be logged in to do this.');
+            if (!(await canManageWorker(ctx, id))) {
+                throw new Error('You do not have permission to update this worker.');
+            }
+            if ('employmentType' in input) {
+                const canChangeType =
+                    ctx.isSuperAdmin ||
+                    ctx.permissions.has('worker_type:change') ||
+                    (await isHRWorker(ctx.workerId));
+                if (!canChangeType) {
+                    throw new Error('You do not have permission to change Worker Type.');
+                }
+            }
+        }
+    }
+
     const worker = await WorkersService.updateWorker(id, input);
     revalidatePath('/workers');
     return worker;
+});
+
+// public-action: kiosk unlock screen — checks the shared scanner password
+// server-side against KIOSK_SCANNER_PASSWORD so it never ships in the client bundle.
+export const verifyKioskPassword = withPublicAction(async (password: string) => {
+    const expected = process.env.KIOSK_SCANNER_PASSWORD;
+    if (!expected) return false;
+    return password === expected;
 });
 
 export const deleteWorker = withPermission(

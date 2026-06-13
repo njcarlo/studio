@@ -52,6 +52,65 @@ export const resolveCallerCtx = cache(async (): Promise<CallerCtx | null> => {
   return { workerId: worker.id, email, isSuperAdmin, permissions };
 });
 
+// ── Worker-management helpers ────────────────────────────────────────────────
+//
+// `updateWorker`/`createWorker` are intentionally `withPublicAction` (no
+// permission key) because every signed-in worker uses them for self-service
+// profile edits (name, phone, QR token, etc). These helpers gate the
+// *privileged* fields (role, ministries, RBAC flags, employment type, ...) on
+// top of that, resolved per-call since "Ministry Head/Approver of this worker"
+// can't be expressed as a static permission string.
+
+/**
+ * True if `ctx` may create/update worker records belonging to `targetMinistryIds`
+ * (a worker's majorMinistryId/minorMinistryId) — i.e. has a blanket workers
+ * permission, or heads/approves one of those ministries.
+ */
+export async function canManageWorkersInMinistries(
+  ctx: CallerCtx,
+  targetMinistryIds: (string | null | undefined)[],
+): Promise<boolean> {
+  if (ctx.isSuperAdmin) return true;
+  if (
+    ctx.permissions.has('workers:create') ||
+    ctx.permissions.has('workers:update') ||
+    ctx.permissions.has('manage_workers')
+  ) {
+    return true;
+  }
+
+  const ministryIds = targetMinistryIds.filter((id): id is string => !!id);
+  if (ministryIds.length === 0) return false;
+
+  const count = await prisma.ministry.count({
+    where: {
+      id: { in: ministryIds },
+      OR: [{ headId: ctx.workerId }, { approverId: ctx.workerId }],
+    },
+  });
+  return count > 0;
+}
+
+/** True if `ctx` may update the existing worker record `targetWorkerId`. */
+export async function canManageWorker(ctx: CallerCtx, targetWorkerId: string): Promise<boolean> {
+  if (ctx.isSuperAdmin) return true;
+  const target = await prisma.worker.findUnique({
+    where: { id: targetWorkerId },
+    select: { majorMinistryId: true, minorMinistryId: true },
+  });
+  if (!target) return false;
+  return canManageWorkersInMinistries(ctx, [target.majorMinistryId, target.minorMinistryId]);
+}
+
+/** True if `workerId` carries the HR scoped permission flag (Worker.flags[]). */
+export async function isHRWorker(workerId: string): Promise<boolean> {
+  const worker = await prisma.worker.findUnique({
+    where: { id: workerId },
+    select: { flags: true },
+  });
+  return !!worker?.flags?.includes('hr');
+}
+
 // ── withPermission ─────────────────────────────────────────────────────────────
 //
 // The single choke-point for all privileged Server Actions.

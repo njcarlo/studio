@@ -14,7 +14,7 @@ import { LoaderCircle, AlertTriangle } from "lucide-react";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import { upsertRole, updateWorker } from "@/actions/db";
+import { claimSystemAdmin } from "@/actions/db";
 
 
 export default function SettingsPage() {
@@ -29,31 +29,19 @@ export default function SettingsPage() {
     const { user } = useAuthStore();
     const { toast } = useToast();
 
-    // System Initializer
+    // System Initializer — seeds the default role set and promotes the current
+    // user to Admin. Server-side, this only succeeds while no roles exist yet.
     const initializeSystem = async () => {
         if (!user) {
             toast({ variant: "destructive", title: "Not Logged In" });
             return;
         }
-        try {
-            const rolesData = [
-                { id: 'admin', name: 'Admin', permissions: [], isSuperAdmin: true, isSystemRole: true },
-                { id: 'approver', name: 'Approver', permissions: ['manage_approvals'], isSystemRole: true },
-                { id: 'editor', name: 'Editor', permissions: ['manage_ministries', 'manage_rooms'], isSystemRole: true },
-                { id: 'viewer', name: 'Viewer', permissions: [], isSystemRole: true },
-            ];
-            for (const role of rolesData) {
-                await upsertRole(role.id, { name: role.name, permissions: role.permissions, isSuperAdmin: role.isSuperAdmin, isSystemRole: role.isSystemRole });
-            }
-
-            // Set current user as admin
-            await updateWorker(user.uid, { roleId: 'admin', status: 'Active' });
-
-            toast({ title: "System Initialized", description: "Default roles have been created. Please refresh." });
-        } catch (dbError: any) {
-            toast({ variant: "destructive", title: "Database Seed Failed", description: dbError.message || "Could not seed the database." });
-            console.error(dbError);
+        const res = await claimSystemAdmin();
+        if (!res.success) {
+            toast({ variant: "destructive", title: "Database Seed Failed", description: res.error || "Could not seed the database." });
+            return;
         }
+        toast({ title: "System Initialized", description: "Default roles have been created. Please refresh." });
     };
 
     const canAccess = canManageRoles || canManageMinistries || canManageFacilities || needsSeeding || (workerProfile && !workerProfile.roleId);
