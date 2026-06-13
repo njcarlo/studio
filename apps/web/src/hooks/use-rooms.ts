@@ -1,11 +1,13 @@
 'use client'
 
-import { Room, Area, Branch } from '@studio/types'
+import { Room, Area, Branch, RoomDisplayDevice } from '@studio/types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { settingsClient } from '@/lib/studio-client'
 import {
   createRooms, updateArea, deleteArea, createAreas,
   updateBranch, deleteBranch,
+  getRoomDisplayDevices, createRoomDisplayDevice, updateRoomDisplayDevice,
+  deleteRoomDisplayDevice, regenerateRoomDisplayDeviceToken,
 } from '@/actions/db'
 
 export function useRooms() {
@@ -84,6 +86,48 @@ export function useRooms() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['branches'] }),
   })
 
+  // --- Room Display Devices ---
+  const displayDevicesQuery = useQuery({
+    queryKey: ['room-display-devices'],
+    queryFn: async () => {
+      const res = await getRoomDisplayDevices();
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
+  })
+  const createDisplayDeviceMutation = useMutation({
+    mutationFn: async (data: { name: string; roomId?: string | null }) => {
+      const res = await createRoomDisplayDevice(data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room-display-devices'] }),
+  })
+  const updateDisplayDeviceMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name?: string; roomId?: string | null } }) => {
+      const res = await updateRoomDisplayDevice(id, data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room-display-devices'] }),
+  })
+  const regenerateDisplayDeviceTokenMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await regenerateRoomDisplayDeviceToken(id);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room-display-devices'] }),
+  })
+  const deleteDisplayDeviceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await deleteRoomDisplayDevice(id);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room-display-devices'] }),
+  })
+
   return {
     rooms:    ((roomsQuery.data    as any[]) || []) as Room[],
     areas:    ((areasQuery.data    as any[]) || []) as Area[],
@@ -101,5 +145,12 @@ export function useRooms() {
     createBranch: createBranchMutation.mutateAsync,
     updateBranch: updateBranchMutation.mutateAsync,
     deleteBranch: deleteBranchMutation.mutateAsync,
+
+    displayDevices: (displayDevicesQuery.data || []) as (RoomDisplayDevice & { room: Room | null })[],
+    displayDevicesLoading: displayDevicesQuery.isLoading,
+    createDisplayDevice: createDisplayDeviceMutation.mutateAsync,
+    updateDisplayDevice: updateDisplayDeviceMutation.mutateAsync,
+    regenerateDisplayDeviceToken: regenerateDisplayDeviceTokenMutation.mutateAsync,
+    deleteDisplayDevice: deleteDisplayDeviceMutation.mutateAsync,
   }
 }

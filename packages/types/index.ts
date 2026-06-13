@@ -107,6 +107,36 @@ export type AttendanceRecord = {
     workerProfileId: string;
     type: "Clock In" | "Clock Out";
     time: TimestampLike | Date;
+    isLate: boolean;
+    lateMinutes?: number | null;
+};
+
+export type MasterSchedule = {
+    id: string;
+    workerId: string;
+    shiftStart: string; // "HH:mm"
+    shiftEnd: string; // "HH:mm"
+    daysOff: number[]; // 0=Sunday..6=Saturday
+    effectiveFrom: TimestampLike | Date;
+    updatedBy?: string | null;
+};
+
+export type MasterScheduleOverride = {
+    id: string;
+    workerId: string;
+    date: TimestampLike | Date;
+    shiftStart?: string | null;
+    shiftEnd?: string | null;
+    isDayOff: boolean;
+    reason?: string | null;
+    sourceType?: string | null;
+    sourceId?: string | null;
+};
+
+export type AttendanceSetting = {
+    id: string;
+    gracePeriodMinutes: number;
+    updatedBy?: string | null;
 };
 
 export type Booking = {
@@ -144,6 +174,16 @@ export type Room = {
     weight?: number;
 };
 
+export type RoomDisplayDevice = {
+    id: string;
+    name: string;
+    token: string;
+    roomId: string | null;
+    lastSeenAt?: TimestampLike | Date | null;
+    createdAt: TimestampLike | Date;
+    updatedAt: TimestampLike | Date;
+};
+
 export type Area = {
     id: string;
     name: string;
@@ -178,7 +218,7 @@ export type VenueElement = {
 export type ApprovalRequest = {
     id?: string;
     requester: string;
-    type: 'New Worker' | 'Profile Update' | 'Room Booking' | 'Ministry Change';
+    type: 'New Worker' | 'Profile Update' | 'Room Booking' | 'Ministry Change' | 'Major Event';
     details: string;
     date: TimestampLike | Date;
     status: 'Pending' | 'Pending Ministry Approval' | 'Pending Admin Approval' | 'Approved' | 'Rejected' | 'Pending Outgoing Approval' | 'Pending Incoming Approval';
@@ -234,5 +274,51 @@ export type WorkloadCategory = {
     ministryId: string;
     sortOrder: number;
     createdAt?: Date | string;
+    updatedAt?: Date | string;
+};
+
+// --- Major Event Request (SRD 5.11) ---
+
+export type MajorEventServiceCatalogItem = {
+    id: string;
+    ministryId: string;
+    name: string;
+    description?: string | null;
+    sortOrder: number;
+    active: boolean;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+};
+
+export type MajorEventRequestItem = {
+    id: string;
+    requestId: string;
+    catalogItemId?: string | null;
+    ministryId: string;
+    name: string;
+    notes?: string | null;
+    quantity?: number | null;
+    status: 'Pending' | 'Approved' | 'Declined' | string;
+};
+
+export type MajorEventRequest = {
+    id: string;
+    title: string;
+    description?: string | null;
+    eventDate: TimestampLike | Date;
+    endDate?: TimestampLike | Date | null;
+    location?: string | null;
+    requesterId: string;
+    ministryId: string;
+    status: string;
+    items?: MajorEventRequestItem[];
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+};
+
+export type MajorEventSetting = {
+    id: string;
+    enabled: boolean;
+    updatedBy?: string | null;
     updatedAt?: Date | string;
 };

@@ -9,42 +9,48 @@ import {
     syncUpdatedWorkerItemSchema,
 } from '@/lib/schemas/ors-sync.schemas';
 
-export type {
-    OrsPagedResponse,
-    ImportResult,
-    OrsWorker,
-    OrsMinistry,
-    OrsArea,
-    OrsSatellite,
-    OrsMentorGroup,
-    OrsMentee,
-    OrsAttendanceScan,
-    HashType,
-    WorkerSyncStatus,
-    WorkerSyncDirection,
-    PasswordSyncStatus,
-    ExistingWorkerSummary,
-    WorkerDiffRecord,
-    DiffField,
-    SyncUpdatedWorkerInput,
-    OrsSyncStats,
+// `export type {...} from '...'` re-export syntax is rejected by Next's
+// "use server" transform ("Only async functions are allowed to be exported in
+// a 'use server' file") — import as types and re-export local aliases instead.
+import type {
+    OrsPagedResponse as _OrsPagedResponse,
+    ImportResult as _ImportResult,
+    OrsWorker as _OrsWorker,
+    OrsMinistry as _OrsMinistry,
+    OrsArea as _OrsArea,
+    OrsSatellite as _OrsSatellite,
+    OrsMentorGroup as _OrsMentorGroup,
+    OrsMentee as _OrsMentee,
+    OrsAttendanceScan as _OrsAttendanceScan,
+    HashType as _HashType,
+    WorkerSyncStatus as _WorkerSyncStatus,
+    WorkerSyncDirection as _WorkerSyncDirection,
+    PasswordSyncStatus as _PasswordSyncStatus,
+    ExistingWorkerSummary as _ExistingWorkerSummary,
+    WorkerDiffRecord as _WorkerDiffRecord,
+    DiffField as _DiffField,
+    SyncUpdatedWorkerInput as _SyncUpdatedWorkerInput,
+    OrsSyncStats as _OrsSyncStats,
 } from '@/services/ors-sync';
 
-import type {
-    OrsPagedResponse,
-    ImportResult,
-    OrsWorker,
-    OrsMinistry,
-    OrsArea,
-    OrsSatellite,
-    OrsMentorGroup,
-    OrsMentee,
-    OrsAttendanceScan,
-    WorkerSyncDirection,
-    SyncUpdatedWorkerInput,
-    WorkerDiffRecord,
-    OrsSyncStats,
-} from '@/services/ors-sync';
+export type OrsPagedResponse<T> = _OrsPagedResponse<T>;
+export type ImportResult = _ImportResult;
+export type OrsWorker = _OrsWorker;
+export type OrsMinistry = _OrsMinistry;
+export type OrsArea = _OrsArea;
+export type OrsSatellite = _OrsSatellite;
+export type OrsMentorGroup = _OrsMentorGroup;
+export type OrsMentee = _OrsMentee;
+export type OrsAttendanceScan = _OrsAttendanceScan;
+export type HashType = _HashType;
+export type WorkerSyncStatus = _WorkerSyncStatus;
+export type WorkerSyncDirection = _WorkerSyncDirection;
+export type PasswordSyncStatus = _PasswordSyncStatus;
+export type ExistingWorkerSummary = _ExistingWorkerSummary;
+export type WorkerDiffRecord = _WorkerDiffRecord;
+export type DiffField = _DiffField;
+export type SyncUpdatedWorkerInput = _SyncUpdatedWorkerInput;
+export type OrsSyncStats = _OrsSyncStats;
 
 const ORS_SYNC_PERMISSION = PERMISSIONS.system.manage_ors_sync;
 

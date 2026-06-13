@@ -13,21 +13,32 @@ import {
     updateVenueAssistanceSettingSchema,
 } from '@/lib/schemas/venue-assistance.schemas';
 
-// Re-export types/helpers consumed directly by the UI
-export type { ItemStatus, RequestStatus } from '@/actions/venue-assistance-status';
-export type {
-    CreateVenueBookingInput as CreateVenueBookingData,
-    CreateRecurringBookingInput as CreateRecurringBookingData,
-    UpsertAssistanceConfigInput,
-    ItemStatusUpdateInput as ItemStatusUpdate,
-    CommandCenterFiltersInput as CommandCenterFilters,
+// Re-export types/helpers consumed directly by the UI.
+// NOTE: `export type {...} from '...'` re-export syntax is rejected by Next's
+// "use server" transform ("Only async functions are allowed to be exported in
+// a 'use server' file") — import as types and re-export local aliases instead.
+import type { ItemStatus as _ItemStatus, RequestStatus as _RequestStatus } from '@/actions/venue-assistance-status';
+import type {
+    CreateVenueBookingInput as _CreateVenueBookingInput,
+    CreateRecurringBookingInput as _CreateRecurringBookingInput,
+    UpsertAssistanceConfigInput as _UpsertAssistanceConfigInput,
+    ItemStatusUpdateInput as _ItemStatusUpdateInput,
+    CommandCenterFiltersInput as _CommandCenterFiltersInput,
 } from '@/lib/schemas/venue-assistance.schemas';
-export interface AssistanceConfigItemInput {
+
+export type ItemStatus = _ItemStatus;
+export type RequestStatus = _RequestStatus;
+export type CreateVenueBookingData = _CreateVenueBookingInput;
+export type CreateRecurringBookingData = _CreateRecurringBookingInput;
+export type UpsertAssistanceConfigInput = _UpsertAssistanceConfigInput;
+export type ItemStatusUpdate = _ItemStatusUpdateInput;
+export type CommandCenterFilters = _CommandCenterFiltersInput;
+export type AssistanceConfigItemInput = {
     name: string;
     description?: string;
     quantity?: number;
     isRequired?: boolean;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Booking actions

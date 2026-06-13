@@ -69,6 +69,14 @@ export const PERMISSIONS = {
     manage:            'venue_assistance:manage',
     manage_own_ministry: 'venue_assistance:manage_own_ministry',
   },
+  major_events: {
+    manage_catalog: 'major_events:manage_catalog',
+    approve_final:  'major_events:approve_final',
+  },
+  hr_attendance: {
+    manage_master_schedule: 'hr_attendance:manage_master_schedule',
+    resolve_flags:          'hr_attendance:resolve_flags',
+  },
   schedule: {
     manage:           'schedule:manage',
     view_all:         'schedule:view_all',
@@ -130,6 +138,10 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'system',           action: 'manage_ors_sync',     description: 'Manage ORS worker sync' },
   { module: 'venue_assistance', action: 'manage',              description: 'Manage all venue assistance requests' },
   { module: 'venue_assistance', action: 'manage_own_ministry', description: 'Manage own ministry assistance requests' },
+  { module: 'major_events',     action: 'manage_catalog',      description: 'Manage Major Event service catalogue and enable/disable toggle' },
+  { module: 'major_events',     action: 'approve_final',       description: 'Major Event Request approval — final stage (Admin Dept Head)' },
+  { module: 'hr_attendance',    action: 'manage_master_schedule', description: 'Manage worker master schedules (shift times, days off) and grace period' },
+  { module: 'hr_attendance',    action: 'resolve_flags',       description: 'Resolve late / incomplete time-out attendance flags' },
   { module: 'schedule',         action: 'manage',              description: 'Create and manage Sunday service schedules' },
   { module: 'schedule',         action: 'view_all',            description: 'Master Scheduler — view and manage all ministry schedules' },
   { module: 'schedule',         action: 'confirm',             description: 'Confirm worker acknowledgement of schedule assignments' },

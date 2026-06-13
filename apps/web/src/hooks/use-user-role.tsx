@@ -74,6 +74,8 @@ export function useUserRole(): UserRoleContextType {
       canAssignSchedulers: s.canAssignSchedulers,
       canAccessInventory: s.canAccessInventory,
       canChangeWorkerType: s.canChangeWorkerType,
+      canManageMajorEvents: s.canManageMajorEvents,
+      canManageMasterSchedule: s.canManageMasterSchedule,
     })),
   );
 }

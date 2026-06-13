@@ -178,6 +178,11 @@ const allNavItems: NavItem[] = [
     icon: CalendarDays,
     label: "Events",
   },
+  {
+    href: "/major-events",
+    icon: CalendarDays,
+    label: "Major Events",
+  },
     {
     href: "/venue",
     icon: Building2,
@@ -240,6 +245,11 @@ const allNavItems: NavItem[] = [
         href: "/settings/venue-assistance",
         label: "Venue Assistance",
         anyPermissionKeys: ["canManageVenueAssistance", "canManageOwnMinistryAssistance"],
+      },
+      {
+        href: "/settings/major-events",
+        label: "Major Events",
+        permissionKey: "canManageMajorEvents",
       },
     ],
   },

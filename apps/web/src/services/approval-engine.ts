@@ -132,7 +132,12 @@ export async function decide(input: DecideInput): Promise<WorkflowWithStages> {
             include: { stages: { orderBy: { stageOrder: 'asc' } } },
         });
 
-        if (decision === 'reject') {
+        // Rejecting a sequential stage rejects the whole workflow (Room
+        // Reservation, Leave Request). Rejecting a stage that's part of a
+        // parallel group (Major Event's per-ministry stages) only rejects
+        // that ministry's stage — other stages' decisions are retained and
+        // the workflow keeps moving once the rest of the group is decided.
+        if (decision === 'reject' && stage.parallelGroup == null) {
             return tx.approvalWorkflow.update({
                 where: { id: refreshed.id },
                 data: { status: 'Rejected' },
@@ -150,6 +155,15 @@ export async function decide(input: DecideInput): Promise<WorkflowWithStages> {
 
         return refreshed;
     });
+
+    if (decision === 'reject' && workflow.status === 'Pending') {
+        // Parallel-group stage was rejected but the workflow itself is still
+        // Pending (other stages/groups continue) — let the requester know
+        // about this specific decline now rather than waiting for the
+        // workflow's terminal notification.
+        const rejectedStage = workflow.stages.find((s: ApprovalStage) => s.id === stageId);
+        if (rejectedStage) await notifyStageRejected(workflow, rejectedStage);
+    }
 
     if (workflow.status === 'Pending') {
         await notifyActiveStageApprovers(workflow);
@@ -180,7 +194,8 @@ export async function getActionableWorkflows(workerId: string): Promise<Workflow
     return actionable;
 }
 
-async function canActOnStage(stage: ApprovalStage, workerId: string): Promise<boolean> {
+/** Whether `workerId` is currently authorized to decide `stage` (per its approverSpec, or Super Admin). */
+export async function canActOnStage(stage: ApprovalStage, workerId: string): Promise<boolean> {
     const spec = stage.approverSpec as unknown as ApproverSpec;
 
     // Super Admins can act on any stage — backstops ministryRole/flag specs
@@ -324,6 +339,34 @@ async function notifyActiveStageApprovers(workflow: WorkflowWithStages): Promise
         });
     } catch (error) {
         console.error('Failed to notify approval stage approvers:', error);
+    }
+}
+
+/** Notifies the requester that one stage of a parallel group was declined, without waiting for the workflow's terminal outcome. */
+async function notifyStageRejected(workflow: WorkflowWithStages, stage: ApprovalStage): Promise<void> {
+    try {
+        const requester = await prisma.worker.findUnique({ where: { id: workflow.requesterId } });
+        if (!requester) return;
+
+        const title = `${workflow.type} request: part declined`;
+        const body = stage.reason
+            ? `One part of your ${workflow.type} request was declined: ${stage.reason}`
+            : `One part of your ${workflow.type} request was declined.`;
+
+        await prisma.inAppNotification.create({
+            data: { userId: requester.id, title, body, link: '/approvals' },
+        });
+
+        if (requester.email) {
+            await EmailService.sendEmail({
+                to: requester.email,
+                subject: `[Studio] ${title}`,
+                html: `<p>${body}</p>`,
+                text: body,
+            });
+        }
+    } catch (error) {
+        console.error('Failed to notify approval requester of stage rejection:', error);
     }
 }
 

@@ -53,13 +53,14 @@ import {
     SelectGroup,
     SelectLabel,
 } from "@studio/ui";
-import type { Room, Branch, Area, VenueElement } from "@studio/types";
+import type { Room, Branch, Area, VenueElement, RoomDisplayDevice } from "@studio/types";
 import { useToast } from "@/hooks/use-toast";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useRooms } from "@/hooks/use-rooms";
 import { useVenueElements } from "@/hooks/use-venue-elements";
 import { Badge } from "@studio/ui";
 import { Textarea } from "@studio/ui";
+import { Copy, RefreshCw, MonitorPlay } from "lucide-react";
 
 // --- Satellite (Branch) Management ---
 
@@ -504,6 +505,113 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
     );
 }
 
+// --- Room Display Device Management ---
+
+const DisplayForm = ({ device, rooms, onSave }: { device: Partial<RoomDisplayDevice> | null; rooms: Room[]; onSave: (data: { name: string; roomId: string | null }) => void; }) => {
+    const [name, setName] = useState(device?.name || '');
+    const [roomId, setRoomId] = useState<string>(device?.roomId || '');
+
+    return (
+        <>
+            <SheetHeader>
+                <SheetTitle className="font-headline">{device ? 'Edit Display' : 'Add New Display'}</SheetTitle>
+                <SheetDescription>
+                    Register a kiosk or tablet and assign it to a room. The device shows that room's schedule using its display link — no login required.
+                </SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="display-name">Display Name</Label>
+                    <Input id="display-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Conference Room A — Hallway Tablet" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="display-room">Assigned Room</Label>
+                    <Select value={roomId || '__none__'} onValueChange={value => setRoomId(value === '__none__' ? '' : value)}>
+                        <SelectTrigger id="display-room"><SelectValue placeholder="Select a room" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__none__">Unassigned</SelectItem>
+                            {rooms.map(room => <SelectItem key={room.id} value={room.id}>{room.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <SheetFooter>
+                <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
+                <Button onClick={() => onSave({ name, roomId: roomId || null })} disabled={!name.trim()}>Save</Button>
+            </SheetFooter>
+        </>
+    );
+};
+
+const DisplaysTab = ({ devices, rooms, isLoading, onAdd, onEdit, onDelete, onRegenerateToken, onCopyLink }: {
+    devices: (RoomDisplayDevice & { room: Room | null })[];
+    rooms: Room[];
+    isLoading: boolean;
+    onAdd: () => void;
+    onEdit: (device: RoomDisplayDevice & { room: Room | null }) => void;
+    onDelete: (device: RoomDisplayDevice & { room: Room | null }) => void;
+    onRegenerateToken: (device: RoomDisplayDevice & { room: Room | null }) => void;
+    onCopyLink: (device: RoomDisplayDevice & { room: Room | null }) => void;
+}) => {
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Room Displays</CardTitle>
+                    <CardDescription>Register kiosks/tablets and assign each one to a room. Open the display link on the device — no login needed.</CardDescription>
+                </div>
+                <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Display</Button>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Assigned Room</TableHead>
+                            <TableHead>Last Seen</TableHead>
+                            <TableHead className="w-[140px] text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading && <TableRow><TableCell colSpan={4} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>}
+                        {!isLoading && devices.length === 0 && (
+                            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-10">No displays registered yet.</TableCell></TableRow>
+                        )}
+                        {devices.map(device => (
+                            <TableRow key={device.id}>
+                                <TableCell className="font-medium">{device.name}</TableCell>
+                                <TableCell>
+                                    {device.room ? device.room.name : <span className="text-muted-foreground">Unassigned</span>}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                    {device.lastSeenAt ? new Date(device.lastSeenAt as any).toLocaleString() : 'Never'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex justify-end gap-1">
+                                        <Button variant="ghost" size="icon" title="Copy display link" onClick={() => onCopyLink(device)}>
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onEdit(device), 100)}>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onRegenerateToken(device), 100)}>
+                                                    <RefreshCw className="mr-2 h-4 w-4" /> Regenerate Link
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setTimeout(() => onDelete(device), 100)} className="text-destructive">Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+};
+
 // --- Main Page Component ---
 
 export default function RoomManagementPage() {
@@ -515,7 +623,9 @@ export default function RoomManagementPage() {
         rooms, areas, branches, isLoading: roomsDataLoading,
         createRoom, updateRoom, deleteRoom, createRooms,
         createArea, updateArea, deleteArea, createAreas,
-        createBranch, updateBranch, deleteBranch
+        createBranch, updateBranch, deleteBranch,
+        displayDevices, displayDevicesLoading,
+        createDisplayDevice, updateDisplayDevice, deleteDisplayDevice, regenerateDisplayDeviceToken,
     } = useRooms();
     const { venueElements, isLoading: venueElementsLoading } = useVenueElements();
 
@@ -533,6 +643,10 @@ export default function RoomManagementPage() {
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
     const [isRoomImportSheetOpen, setIsRoomImportSheetOpen] = useState(false);
+
+    const [isDisplaySheetOpen, setIsDisplaySheetOpen] = useState(false);
+    const [selectedDisplay, setSelectedDisplay] = useState<(RoomDisplayDevice & { room: Room | null }) | null>(null);
+    const [displayToDelete, setDisplayToDelete] = useState<(RoomDisplayDevice & { room: Room | null }) | null>(null);
 
     const isLoading = roomsDataLoading || isRoleLoading || venueElementsLoading;
 
@@ -786,6 +900,50 @@ export default function RoomManagementPage() {
         }
     };
 
+    // --- Display Handlers ---
+    const handleSaveDisplay = async (data: { name: string; roomId: string | null }) => {
+        try {
+            if (selectedDisplay) {
+                await updateDisplayDevice({ id: selectedDisplay.id, data });
+                toast({ title: 'Display Updated' });
+            } else {
+                await createDisplayDevice(data);
+                toast({ title: 'Display Added' });
+            }
+            setIsDisplaySheetOpen(false);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save display.' });
+        }
+    };
+
+    const handleDeleteDisplay = async () => {
+        if (!displayToDelete) return;
+        try {
+            await deleteDisplayDevice(displayToDelete.id);
+            toast({ title: 'Display Removed' });
+            setDisplayToDelete(null);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not remove display.' });
+        }
+    };
+
+    const handleRegenerateToken = async (device: RoomDisplayDevice & { room: Room | null }) => {
+        try {
+            const updated = await regenerateDisplayDeviceToken(device.id);
+            toast({ title: 'Link Regenerated', description: 'The old display link for this device no longer works.' });
+            if (updated) handleCopyDisplayLink(updated as RoomDisplayDevice);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Failed', description: 'Could not regenerate the display link.' });
+        }
+    };
+
+    const handleCopyDisplayLink = (device: RoomDisplayDevice) => {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        const url = `${baseUrl}/rooms/display?token=${device.token}`;
+        navigator.clipboard.writeText(url);
+        toast({ title: 'Link Copied', description: 'Open this link on the display device.' });
+    };
+
     if (isLoading) {
         return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
     }
@@ -806,6 +964,7 @@ export default function RoomManagementPage() {
                     <TabsTrigger value="rooms">Rooms</TabsTrigger>
                     <TabsTrigger value="areas">Areas</TabsTrigger>
                     <TabsTrigger value="branches">Satellites</TabsTrigger>
+                    <TabsTrigger value="displays"><MonitorPlay className="mr-2 h-4 w-4" /> Displays</TabsTrigger>
                 </TabsList>
                 <TabsContent value="rooms" className="mt-4">
                     <RoomsTab
@@ -847,6 +1006,18 @@ export default function RoomManagementPage() {
                         onDelete={(loc) => setBranchToDelete(loc)}
                     />
                 </TabsContent>
+                <TabsContent value="displays" className="mt-4">
+                    <DisplaysTab
+                        devices={displayDevices}
+                        rooms={rooms || []}
+                        isLoading={displayDevicesLoading}
+                        onAdd={() => { setSelectedDisplay(null); setIsDisplaySheetOpen(true); }}
+                        onEdit={(device) => { setSelectedDisplay(device); setIsDisplaySheetOpen(true); }}
+                        onDelete={(device) => setDisplayToDelete(device)}
+                        onRegenerateToken={handleRegenerateToken}
+                        onCopyLink={handleCopyDisplayLink}
+                    />
+                </TabsContent>
             </Tabs>
 
             {/* Sheets */}
@@ -878,6 +1049,11 @@ export default function RoomManagementPage() {
             <Sheet open={isRoomSheetOpen} onOpenChange={setIsRoomSheetOpen}>
                 <SheetContent className="sm:max-w-lg">
                     <RoomForm room={selectedRoom} areas={areas || []} branches={branches || []} venueElements={venueElements || []} onSave={handleSaveRoom} />
+                </SheetContent>
+            </Sheet>
+            <Sheet open={isDisplaySheetOpen} onOpenChange={setIsDisplaySheetOpen}>
+                <SheetContent className="sm:max-w-lg">
+                    <DisplayForm device={selectedDisplay} rooms={rooms || []} onSave={handleSaveDisplay} />
                 </SheetContent>
             </Sheet>
 
@@ -921,6 +1097,20 @@ export default function RoomManagementPage() {
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteRoom}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog open={!!displayToDelete} onOpenChange={(open) => !open && setDisplayToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will remove the display <span className="font-bold">{displayToDelete?.name}</span> and its link will stop working. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteDisplay}>Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

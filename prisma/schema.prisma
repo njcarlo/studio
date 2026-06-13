@@ -94,6 +94,8 @@ model Worker {
   mealStubs              MealStub[]
   role                   Role?                @relation(fields: [roleId], references: [id])
   capabilities           String[]             @default([])
+  masterSchedule         MasterSchedule?
+  masterScheduleOverrides MasterScheduleOverride[]
 }
 
 model Ministry {
@@ -127,7 +129,54 @@ model AttendanceRecord {
   workerProfileId String
   type            String
   time            DateTime @default(now())
+  isLate          Boolean  @default(false)
+  lateMinutes     Int?
   worker          Worker   @relation(fields: [workerProfileId], references: [id])
+
+  @@index([workerProfileId, time])
+}
+
+// HR-editable per-worker shift schedule (5.10.1) — drives late-flagging on
+// Clock In and the FT/OC weekday meal stub allocation's "days off" exclusion.
+model MasterSchedule {
+  id            String   @id @default(cuid())
+  workerId      String   @unique
+  worker        Worker   @relation(fields: [workerId], references: [id])
+  shiftStart    String   // "HH:mm" 24h
+  shiftEnd      String   // "HH:mm" 24h
+  daysOff       Int[]    @default([0]) // 0=Sunday..6=Saturday
+  effectiveFrom DateTime @default(now())
+  updatedBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Per-date overrides to a worker's MasterSchedule — written by approved
+// ChangeTime/ChangeDayOff leave requests (5.10.4) so that date doesn't get a
+// false late flag or incorrect weekday stub allocation.
+model MasterScheduleOverride {
+  id         String   @id @default(cuid())
+  workerId   String
+  worker     Worker   @relation(fields: [workerId], references: [id])
+  date       DateTime
+  shiftStart String?
+  shiftEnd   String?
+  isDayOff   Boolean  @default(false)
+  reason     String?
+  sourceType String?
+  sourceId   String?
+  createdAt  DateTime @default(now())
+
+  @@unique([workerId, date])
+  @@index([workerId])
+}
+
+// Global HR-configurable grace period for late-flagging.
+model AttendanceSetting {
+  id                 String   @id @default("global")
+  gracePeriodMinutes Int      @default(15)
+  updatedBy          String?
+  updatedAt          DateTime @updatedAt
 }
 
 model Booking {
@@ -169,7 +218,23 @@ model Room {
   eventBookings          EventRoomBooking[]
   venueBookings          VenueBooking[]            @relation("RoomVenueBookings")
   assistanceConfigurations AssistanceConfiguration[] @relation("RoomAssistanceConfigs")
+  displayDevices         RoomDisplayDevice[]
   area                   Area                      @relation(fields: [areaId], references: [id])
+}
+
+// Room Display Monitor (SRD 5.8.3): a registered kiosk/tablet that shows a
+// single room's schedule. Identified by an opaque token in the URL
+// (?token=...) — no worker login required. Sys Admin assigns a device to a
+// room from Settings > Rooms > Displays.
+model RoomDisplayDevice {
+  id         String    @id @default(uuid())
+  name       String
+  token      String    @unique
+  roomId     String?
+  room       Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
 }
 
 model Area {
@@ -720,4 +785,70 @@ model ApprovalStage {
   createdAt     DateTime         @default(now())
 
   @@index([workflowId, status])
+}
+
+// ── Major Event Requests (SRD 5.11) ──────────────────────────────────────────
+//
+// A cross-ministry event request built from a Sys-Admin-managed service
+// catalogue (grouped by providing ministry). Approval runs on the generic
+// engine above: one parallel-group stage per providing ministry's Ministry
+// Head, followed by a sequential Admin Dept Head final stage. ministryId /
+// requesterId / catalogItemId are soft references (matching
+// ApprovalWorkflow.subjectId / requesterId and AssistanceConfiguration.ministryId)
+// — no Prisma relation, to avoid growing the Worker/Ministry models.
+
+model MajorEventServiceCatalogItem {
+  id          String   @id @default(cuid())
+  ministryId  String
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ministryId])
+}
+
+model MajorEventRequest {
+  id          String                  @id @default(cuid())
+  title       String
+  description String?
+  eventDate   DateTime
+  endDate     DateTime?
+  location    String?
+  requesterId String
+  ministryId  String
+  status      String                  @default("Pending")
+  items       MajorEventRequestItem[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([requesterId])
+  @@index([ministryId])
+}
+
+model MajorEventRequestItem {
+  id            String            @id @default(cuid())
+  requestId     String
+  request       MajorEventRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  catalogItemId String?
+  // Providing ministry — drives which parallel approval stage this item belongs to.
+  ministryId    String
+  name          String
+  notes         String?
+  quantity      Int?
+  // Synced from the providing ministry's parallel stage decision: Pending | Approved | Declined.
+  status        String            @default("Pending")
+
+  @@index([requestId])
+  @@index([ministryId])
+}
+
+// Sys Admin toggle for enabling/disabling the Major Event request button (SA3).
+model MajorEventSetting {
+  id        String   @id @default("global")
+  enabled   Boolean  @default(true)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
 }

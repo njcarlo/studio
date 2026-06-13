@@ -268,6 +268,10 @@ export function UserRoleSyncerSQL() {
         sa || hasPerm('worker_type:change') || isHR,
       canAccessInventory:
         sa || hasPerm('inventory:access'),
+      canManageMajorEvents:
+        sa || hasPerm('major_events:manage_catalog'),
+      canManageMasterSchedule:
+        sa || hasPerm('hr_attendance:manage_master_schedule') || isHR,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [

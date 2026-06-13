@@ -21,8 +21,17 @@ import {
   getBranches,
   getRooms,
   getWorkers,
+  getRoomDisplayDeviceByToken,
 } from "@/actions/db";
 import { handleBookingCheckIn } from "@/actions/venue-assistance";
+
+// Near-real-time refresh interval for the kiosk display. True push-based
+// updates would require the unauthenticated kiosk to hold a Supabase
+// session for Realtime (Booking RLS requires `authenticated`); polling on a
+// short interval is the pragmatic equivalent for a wall-mounted display.
+const DISPLAY_REFRESH_INTERVAL_MS = 15_000;
+// How often a registered device reports a heartbeat (lastSeenAt).
+const DEVICE_HEARTBEAT_INTERVAL_MS = 60_000;
 
 const ClockComponent = () => {
   const [time, setTime] = useState(new Date());
@@ -41,7 +50,19 @@ const ClockComponent = () => {
 
 function RoomDisplayContent() {
   const searchParams = useSearchParams();
-  const roomId = searchParams.get("roomId");
+  const token = searchParams.get("token");
+
+  // Registered devices resolve their assigned room from a token (no login
+  // required); the legacy ?roomId= form is kept for backward compatibility.
+  const { data: device, isLoading: deviceLoading } = useQuery({
+    queryKey: ["room-display-device", token],
+    queryFn: () => getRoomDisplayDeviceByToken(token!),
+    enabled: !!token,
+    refetchInterval: DEVICE_HEARTBEAT_INTERVAL_MS,
+  });
+
+  const roomId = token ? device?.roomId ?? null : searchParams.get("roomId");
+
   const { data: rooms, isLoading: roomLoading } = useQuery({
     queryKey: ["rooms"],
     queryFn: getRooms,
@@ -61,6 +82,7 @@ function RoomDisplayContent() {
     queryFn: () =>
       getBookings({ roomId: roomId || undefined, status: "Approved" }),
     enabled: !!roomId,
+    refetchInterval: DISPLAY_REFRESH_INTERVAL_MS,
   });
   const { data: workers, isLoading: workersLoading } = useQuery({
     queryKey: ["workers"],
@@ -74,6 +96,7 @@ function RoomDisplayContent() {
       .sort((a, b) => a.start.getTime() - b.start.getTime()) || [];
 
   const isLoading =
+    (!!token && deviceLoading) ||
     roomLoading ||
     bookingsLoading ||
     workersLoading ||
@@ -109,16 +132,32 @@ function RoomDisplayContent() {
     );
   }
 
+  if (token && !device) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold">Display Not Registered</h1>
+          <p className="text-gray-400 mt-2">
+            This display link is no longer valid. Ask an admin to re-register
+            this device in Settings &gt; Rooms &gt; Displays.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!roomId || !room) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
         <div className="text-center">
           <h1 className="text-4xl font-bold">
-            {!roomId ? "No Room ID Provided" : "Room Not Found"}
+            {!roomId ? "No Room Assigned" : "Room Not Found"}
           </h1>
           {!roomId && (
             <p className="text-gray-400 mt-2">
-              Please provide a roomId in the URL parameters.
+              {token
+                ? "Ask an admin to assign this display to a room in Settings > Rooms > Displays."
+                : "Please provide a roomId or token in the URL parameters."}
             </p>
           )}
         </div>

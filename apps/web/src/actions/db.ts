@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from 'crypto';
 import { prisma } from '@studio/database/prisma';
 import { unstable_cache } from 'next/cache';
 import {
@@ -20,6 +21,7 @@ import { NotificationService } from '@/services/notification-service';
 import { writeAudit } from '@/lib/audit/log';
 import * as ApprovalEngine from '@/services/approval-engine';
 import * as RoomReservationWorkflow from '@/services/room-reservation-workflow';
+import * as MajorEventWorkflow from '@/services/major-event-workflow';
 import * as mealsAttendanceService from '@/services/meals-attendance';
 import {
     createMealStubSchema,
@@ -821,6 +823,11 @@ export const decideApprovalStage = withPublicAction(
             revalidatePath('/dashboard');
         }
 
+        if (workflow.type === MajorEventWorkflow.MAJOR_EVENT_WORKFLOW_TYPE) {
+            await MajorEventWorkflow.syncMajorEventStatusFromWorkflow(workflow);
+            revalidatePath('/major-events');
+        }
+
         await writeAudit({
             actor: ctx,
             module: 'approvals',
@@ -883,6 +890,95 @@ export const getRoomReservationApprovals = withPublicAction(async () => {
             _actionable: actionableIds.has(workflow.id),
         };
     });
+});
+
+/**
+ * Major Event Request approval workflows, normalized into the legacy
+ * ApprovalRequest shape for the /approvals Kanban. Unlike Room Booking, a
+ * Major Event's active stages can be a *parallel group* — one stage per
+ * providing ministry's Ministry Head, each actionable by a different worker.
+ * Emits one card per active stage (each with its own `_stageId`/`_actionable`)
+ * so each ministry head sees and acts on only their own stage; terminal
+ * workflows (no active stages) emit a single summary card.
+ */
+export const getMajorEventApprovals = withPublicAction(async () => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+
+    const workflows = await prisma.approvalWorkflow.findMany({
+        where: { type: MajorEventWorkflow.MAJOR_EVENT_WORKFLOW_TYPE },
+        include: { stages: { orderBy: { stageOrder: 'asc' } } },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    const requestIds = workflows.map((w) => w.subjectId);
+    const requesterIds = [...new Set(workflows.map((w) => w.requesterId))];
+    const [requests, ministries, workers] = await Promise.all([
+        prisma.majorEventRequest.findMany({
+            where: { id: { in: requestIds } },
+            include: { items: true },
+        }),
+        prisma.ministry.findMany({ select: { id: true, name: true } }),
+        prisma.worker.findMany({
+            where: { id: { in: requesterIds } },
+            select: { id: true, firstName: true, lastName: true, avatarUrl: true, majorMinistryId: true, minorMinistryId: true },
+        }),
+    ]);
+    const requestById = new Map(requests.map((r) => [r.id, r]));
+    const ministryNameById = new Map(ministries.map((m) => [m.id, m.name]));
+    const workerById = new Map(workers.map((w) => [w.id, w]));
+
+    const rows: any[] = [];
+    for (const workflow of workflows) {
+        const request = requestById.get(workflow.subjectId);
+        if (!request) continue;
+
+        const requester = workerById.get(workflow.requesterId);
+        const active = ApprovalEngine.getActiveStages(workflow.stages);
+        const itemSummary = request.items.map((i) => i.name).join(', ');
+
+        const base = {
+            requester: requester ? `${requester.firstName} ${requester.lastName}` : 'Unknown',
+            type: MajorEventWorkflow.MAJOR_EVENT_WORKFLOW_TYPE,
+            date: workflow.createdAt,
+            status: MajorEventWorkflow.majorEventStatusForWorkflow(workflow),
+            workerId: workflow.requesterId,
+            requestId: workflow.subjectId,
+            worker: requester ?? null,
+            _workflowId: workflow.id,
+        };
+
+        if (active.length === 0) {
+            rows.push({
+                id: workflow.id,
+                ...base,
+                details: `"${request.title}" (${itemSummary || 'no items'})`,
+                _stageId: null,
+                _actionable: false,
+            });
+            continue;
+        }
+
+        for (const stage of active) {
+            const spec = stage.approverSpec as unknown as ApprovalEngine.ApproverSpec;
+            const ministryName = spec.kind === 'ministryRole' ? ministryNameById.get(spec.ministryId) ?? 'Unknown Ministry' : null;
+            const items = spec.kind === 'ministryRole'
+                ? request.items.filter((i) => i.ministryId === spec.ministryId)
+                : request.items;
+
+            rows.push({
+                id: `${workflow.id}:${stage.id}`,
+                ...base,
+                details: ministryName
+                    ? `"${request.title}" — ${ministryName}: ${items.map((i) => i.name).join(', ') || 'no items'}`
+                    : `"${request.title}" — final approval (${itemSummary || 'no items'})`,
+                _stageId: stage.id,
+                _actionable: await ApprovalEngine.canActOnStage(stage, ctx.workerId),
+            });
+        }
+    }
+
+    return rows;
 });
 
 // --- Ministries ---
@@ -1298,6 +1394,88 @@ export const deleteBranch = withPermission(
         revalidatePath('/settings/rooms');
     }
 );
+
+// --- Room Display Devices (SRD 5.8.3) ---
+// Kiosk/tablet devices identified by an opaque token (?token=... in the
+// /rooms/display URL), each assigned to a single room. No worker login
+// required for the kiosk itself.
+
+export const getRoomDisplayDevices = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx) => {
+        return await prisma.roomDisplayDevice.findMany({
+            include: { room: true },
+            orderBy: { name: 'asc' },
+        });
+    }
+);
+
+export const createRoomDisplayDevice = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, data: { name: string; roomId?: string | null }) => {
+        const device = await prisma.roomDisplayDevice.create({
+            data: {
+                name: data.name,
+                roomId: data.roomId || null,
+                token: randomBytes(24).toString('base64url'),
+            },
+        });
+        revalidatePath('/settings/rooms');
+        return device;
+    }
+);
+
+export const updateRoomDisplayDevice = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string, data: { name?: string; roomId?: string | null }) => {
+        const device = await prisma.roomDisplayDevice.update({
+            where: { id },
+            data,
+        });
+        revalidatePath('/settings/rooms');
+        return device;
+    }
+);
+
+export const regenerateRoomDisplayDeviceToken = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string) => {
+        const device = await prisma.roomDisplayDevice.update({
+            where: { id },
+            data: { token: randomBytes(24).toString('base64url') },
+        });
+        revalidatePath('/settings/rooms');
+        return device;
+    }
+);
+
+export const deleteRoomDisplayDevice = withPermission(
+    PERMISSIONS.facilities.manage,
+    async (_ctx, id: string) => {
+        await prisma.roomDisplayDevice.delete({ where: { id } });
+        revalidatePath('/settings/rooms');
+    }
+);
+
+/**
+ * Resolves a display device's token to its assigned room and records a
+ * heartbeat. Called by the unauthenticated kiosk page — intentionally not
+ * permission-gated, mirroring getRooms/getBookings.
+ */
+export async function getRoomDisplayDeviceByToken(token: string) {
+    const device = await prisma.roomDisplayDevice.findUnique({
+        where: { token },
+        include: { room: true },
+    });
+    if (!device) return null;
+
+    await prisma.roomDisplayDevice.update({
+        where: { id: device.id },
+        data: { lastSeenAt: new Date() },
+    });
+
+    return device;
+}
 
 // --- Scan Logs ---
 
