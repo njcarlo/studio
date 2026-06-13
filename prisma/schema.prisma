@@ -673,3 +673,46 @@ model EventEquipment {
   @@index([eventId])
   @@index([itemId])
 }
+
+// ── Generic Approval Workflow Engine (Layer 2) ──────────────────────────────
+// Reusable multi-stage approval state machine shared by Room Reservation,
+// Major Event Requests, Leave/Request filing, Minor Ministry assignment, etc.
+// New workflow types are added by passing a different stage template to
+// createWorkflow() — no schema changes needed. See
+// apps/web/src/services/approval-engine.ts.
+
+model ApprovalWorkflow {
+  id          String          @id @default(cuid())
+  type        String
+  subjectId   String
+  requesterId String
+  status      String          @default("Pending")
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  stages      ApprovalStage[]
+
+  @@index([type, subjectId])
+  @@index([requesterId])
+}
+
+model ApprovalStage {
+  id            String           @id @default(cuid())
+  workflowId    String
+  workflow      ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  stageOrder    Int
+  // Stages sharing a parallelGroup are all active at once and must all be
+  // decided before the workflow advances past the group (e.g. Major Event's
+  // per-ministry approval stages).
+  parallelGroup Int?
+  // { kind: 'worker', workerId } | { kind: 'permission', module, action }
+  // | { kind: 'ministryRole', ministryId, role: 'head'|'manager'|'approver'|'scheduler' }
+  approverSpec  Json
+  status        String           @default("Pending")
+  decidedBy     String?
+  decidedAt     DateTime?
+  reason        String?
+  createdAt     DateTime         @default(now())
+
+  @@index([workflowId, status])
+}
