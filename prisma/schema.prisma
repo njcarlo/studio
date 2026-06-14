@@ -733,10 +733,30 @@ model ScheduleAssignment {
   acknowledgedAt   DateTime?
   acknowledgedBy   String?
   attendanceStatus String          @default("Pending") // Pending | Confirmed | Not Attending
+  slotType         String          @default("Standard") // Standard | Main | Mid | Open
   createdAt        DateTime        @default(now())
 
   @@index([scheduleId])
   @@index([ministryId])
+}
+
+// Append-only ledger of meal stub issuance/voiding, written alongside MealStub
+// rows whenever Sunday attendance is confirmed/unconfirmed (Layer 6 reporting).
+model MealStubLedger {
+  id             String   @id @default(uuid())
+  workerId       String
+  ministryId     String?
+  departmentCode String?
+  slotType       String
+  count          Int
+  costPhp        Int
+  scheduleId     String?
+  weekOf         DateTime
+  source         String   // sunday_confirm | sunday_void | manual_adjustment
+  createdAt      DateTime @default(now())
+
+  @@index([workerId, weekOf])
+  @@index([ministryId, weekOf])
 }
 
 // ── Events Management ────────────────────────────────────────────────────────

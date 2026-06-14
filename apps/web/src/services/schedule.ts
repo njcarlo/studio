@@ -2,6 +2,8 @@ import { prisma } from '@studio/database/prisma';
 import { getWorkloadCategories } from '@/actions/ministry-categories';
 import { EmailService } from '@/services/email-service';
 import { allocateMealstubs as allocateMealstubsService } from '@/services/meal-stub-service';
+import { allocateStubsForConfirmation, voidStubsForConfirmation } from '@/services/meal-stub-engine';
+import { canManageWorkersInMinistries, type CallerCtx } from '@/lib/auth/with-permission';
 import type {
     CreateServiceScheduleInput,
     UpdateServiceScheduleInput,
@@ -89,6 +91,7 @@ export async function upsertAssignment(data: {
     rehearsalDate?: Date | null;
     rehearsalTime?: string | null;
     order?: number;
+    slotType?: string;
 }) {
     let existing;
     if (data.id) {
@@ -115,6 +118,7 @@ export async function upsertAssignment(data: {
                 notes: data.notes ?? null,
                 rehearsalDate: data.rehearsalDate !== undefined ? data.rehearsalDate : undefined,
                 rehearsalTime: data.rehearsalTime !== undefined ? data.rehearsalTime : undefined,
+                slotType: data.slotType !== undefined ? data.slotType : undefined,
             },
         });
     }
@@ -129,6 +133,7 @@ export async function upsertAssignment(data: {
         rehearsalDate: data.rehearsalDate ?? null,
         rehearsalTime: data.rehearsalTime ?? null,
         order: data.order ?? 0,
+        slotType: data.slotType ?? 'Standard',
     }});
 }
 
@@ -245,11 +250,8 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
         include: { assignments: true },
     });
 
-    try {
-        await allocateMealstubsService(scheduleId, publishedBy);
-    } catch (err) {
-        console.error('Failed to allocate mealstubs during publish:', err);
-    }
+    // Meal stubs are now issued at confirm-time (see meal-stub-engine.ts),
+    // not at publish-time.
 
     const workerIds = [...new Set(
         schedule.assignments
@@ -318,8 +320,21 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
 
 // ── Confirm / Attendance ──────────────────────────────────────────────────────
 
-export async function confirmAssignment(assignmentId: string, confirmedBy: string) {
-    return (prisma.scheduleAssignment as any).update({
+/** True if `ctx` may confirm/decline attendance for `assignment` — its owner, or anyone who can manage workers in its ministry. */
+async function canActOnAssignment(ctx: CallerCtx, assignment: { workerId: string | null; ministryId: string }): Promise<boolean> {
+    if (assignment.workerId === ctx.workerId) return true;
+    if (ctx.permissions.has('schedule:manage')) return true;
+    return canManageWorkersInMinistries(ctx, [assignment.ministryId]);
+}
+
+export async function confirmAssignment(ctx: CallerCtx, assignmentId: string, confirmedBy: string) {
+    const existing = await prisma.scheduleAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
+
+    if (!(await canActOnAssignment(ctx, existing))) {
+        throw new Error('You do not have permission to confirm this assignment.');
+    }
+
+    const assignment = await prisma.scheduleAssignment.update({
         where: { id: assignmentId },
         data: {
             acknowledgedAt: new Date(),
@@ -327,10 +342,27 @@ export async function confirmAssignment(assignmentId: string, confirmedBy: strin
             attendanceStatus: 'Confirmed',
         },
     });
+
+    let stubsIssued = 0;
+    if (existing.attendanceStatus !== 'Confirmed') {
+        stubsIssued = await allocateStubsForConfirmation(ctx, assignmentId);
+    }
+
+    return { assignment, stubsIssued };
 }
 
-export async function setAttendanceStatus(assignmentId: string, status: 'Confirmed' | 'Pending' | 'Not Attending', updatedBy: string) {
-    return (prisma.scheduleAssignment as any).update({
+export async function setAttendanceStatus(ctx: CallerCtx, assignmentId: string, status: 'Confirmed' | 'Pending' | 'Not Attending', updatedBy: string) {
+    const existing = await prisma.scheduleAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
+
+    if (!(await canActOnAssignment(ctx, existing))) {
+        throw new Error('You do not have permission to update this assignment.');
+    }
+
+    if (existing.attendanceStatus === 'Confirmed' && status !== 'Confirmed') {
+        await voidStubsForConfirmation(ctx, assignmentId);
+    }
+
+    const assignment = await prisma.scheduleAssignment.update({
         where: { id: assignmentId },
         data: {
             attendanceStatus: status,
@@ -338,6 +370,13 @@ export async function setAttendanceStatus(assignmentId: string, status: 'Confirm
             acknowledgedBy: status !== 'Pending' ? updatedBy : null,
         },
     });
+
+    let stubsIssued = 0;
+    if (status === 'Confirmed' && existing.attendanceStatus !== 'Confirmed') {
+        stubsIssued = await allocateStubsForConfirmation(ctx, assignmentId);
+    }
+
+    return { assignment, stubsIssued };
 }
 
 // ── My Schedule (worker personal view) ────────────────────────────────────────

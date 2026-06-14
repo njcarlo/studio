@@ -49,6 +49,7 @@ import {
     getIncompleteTimeOuts,
     resolveIncompleteTimeOut,
 } from "@/actions/db";
+import { getMealStubSettings, updateMealStubSettings } from "@/actions/schedule";
 import { getAllLeaveBalances, updateLeaveBalance } from "@/actions/leave";
 import type { LeaveBalance } from "@studio/types";
 
@@ -57,7 +58,7 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export default function AttendanceSettingsPage() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const { isLoading: isPermissionsLoading, canManageMasterSchedule } = useUserRole();
+    const { isLoading: isPermissionsLoading, canManageMasterSchedule, isSuperAdmin } = useUserRole();
 
     const { data: workers = [], isLoading: isWorkersLoading } = useWorkersLite();
 
@@ -172,6 +173,50 @@ export default function AttendanceSettingsPage() {
             toast({ variant: "destructive", title: "Save failed", description: err?.message });
         } finally {
             setIsSavingGrace(false);
+        }
+    };
+
+    // ── Sunday confirmation & meal stub settings ────────────────────────────
+    const { data: mealStubSettings, isLoading: isMealStubSettingsLoading } = useQuery({
+        queryKey: ["mealStubSettings"],
+        queryFn: async () => {
+            const res = await getMealStubSettings();
+            return res.success ? res.data : null;
+        },
+        enabled: isSuperAdmin,
+    });
+
+    const [weeklyCapInput, setWeeklyCapInput] = useState<string | null>(null);
+    const [windowOpenInput, setWindowOpenInput] = useState<string | null>(null);
+    const [windowCloseInput, setWindowCloseInput] = useState<string | null>(null);
+    const [isSavingMealStubSettings, setIsSavingMealStubSettings] = useState(false);
+
+    const weeklyCapValue = weeklyCapInput ?? String(mealStubSettings?.cap.weeklyCap ?? 2000);
+    const windowOpenValue = windowOpenInput ?? String(mealStubSettings?.confirmation.windowOpenDaysBefore ?? 7);
+    const windowCloseValue = windowCloseInput ?? String(mealStubSettings?.confirmation.windowCloseHoursAfterMidnight ?? 24);
+
+    const handleSaveMealStubSettings = async () => {
+        const weeklyCap = parseInt(weeklyCapValue, 10);
+        const windowOpenDaysBefore = parseInt(windowOpenValue, 10);
+        const windowCloseHoursAfterMidnight = parseInt(windowCloseValue, 10);
+        if ([weeklyCap, windowOpenDaysBefore, windowCloseHoursAfterMidnight].some((n) => isNaN(n) || n < 0)) {
+            toast({ variant: "destructive", title: "Enter valid non-negative numbers" });
+            return;
+        }
+        setIsSavingMealStubSettings(true);
+        try {
+            const res = await updateMealStubSettings({ weeklyCap, windowOpenDaysBefore, windowCloseHoursAfterMidnight });
+            if (!res.success) throw new Error(res.error);
+            toast({ title: "Sunday confirmation & meal stub settings updated" });
+            queryClient.invalidateQueries({ queryKey: ["mealStubSettings"] });
+            queryClient.invalidateQueries({ queryKey: ["sunday-confirmation-window"] });
+            setWeeklyCapInput(null);
+            setWindowOpenInput(null);
+            setWindowCloseInput(null);
+        } catch (err: any) {
+            toast({ variant: "destructive", title: "Save failed", description: err?.message });
+        } finally {
+            setIsSavingMealStubSettings(false);
         }
     };
 
@@ -511,6 +556,63 @@ export default function AttendanceSettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {isSuperAdmin && (
+                        <Card className="mt-4">
+                            <CardHeader>
+                                <CardTitle className="text-base">Sunday Confirmation &amp; Meal Stubs</CardTitle>
+                                <CardDescription>
+                                    Control the attendance confirmation window and the weekly meal stub cap.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {isMealStubSettingsLoading ? (
+                                    <div className="flex justify-center py-10">
+                                        <LoaderCircle className="h-8 w-8 animate-spin" />
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-wrap items-end gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="weekly-cap">Weekly meal stub cap</Label>
+                                            <Input
+                                                id="weekly-cap"
+                                                type="number"
+                                                min={0}
+                                                className="w-40"
+                                                value={weeklyCapValue}
+                                                onChange={(e) => setWeeklyCapInput(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="window-open">Confirmation opens (days before)</Label>
+                                            <Input
+                                                id="window-open"
+                                                type="number"
+                                                min={0}
+                                                className="w-40"
+                                                value={windowOpenValue}
+                                                onChange={(e) => setWindowOpenInput(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="window-close">Confirmation closes (hours after midnight)</Label>
+                                            <Input
+                                                id="window-close"
+                                                type="number"
+                                                min={0}
+                                                className="w-40"
+                                                value={windowCloseValue}
+                                                onChange={(e) => setWindowCloseInput(e.target.value)}
+                                            />
+                                        </div>
+                                        <Button onClick={handleSaveMealStubSettings} disabled={isSavingMealStubSettings}>
+                                            {isSavingMealStubSettings ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Save"}
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                 </TabsContent>
             </Tabs>
 

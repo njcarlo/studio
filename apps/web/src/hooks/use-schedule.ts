@@ -10,7 +10,7 @@ import {
     getWorkerConflicts, togglePublicSchedule, getScheduleHistory, setAttendanceStatus,
     getWorshipSlots, createWorshipSlot, updateWorshipSlot, deleteWorshipSlot,
     addWorkerToWorshipSlot, removeWorkerFromWorshipSlot,
-    getMonthlyDutyCounts, getMyAssignments,
+    getMonthlyDutyCounts, getMyAssignments, getMyMealStubCounts, getSundayConfirmationWindow,
 } from '@/actions/schedule';
 
 export function useServiceSchedules() {
@@ -109,14 +109,20 @@ export function useServiceSchedule(id: string) {
     });
 
     const confirmMutation = useMutation({
-        mutationFn: ({ assignmentId, confirmedBy }: { assignmentId: string; confirmedBy: string }) =>
-            confirmAssignment(assignmentId, confirmedBy),
+        mutationFn: async ({ assignmentId, confirmedBy }: { assignmentId: string; confirmedBy: string }) => {
+            const res = await confirmAssignment(assignmentId, confirmedBy);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
     });
 
     const setStatusMutation = useMutation({
-        mutationFn: ({ assignmentId, status, updatedBy }: { assignmentId: string; status: 'Confirmed' | 'Pending' | 'Not Attending'; updatedBy: string }) =>
-            setAttendanceStatus(assignmentId, status, updatedBy),
+        mutationFn: async ({ assignmentId, status, updatedBy }: { assignmentId: string; status: 'Confirmed' | 'Pending' | 'Not Attending'; updatedBy: string }) => {
+            const res = await setAttendanceStatus(assignmentId, status, updatedBy);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['service-schedule', id] });
             qc.invalidateQueries({ queryKey: ['schedule-confirmation', id] });
@@ -304,21 +310,50 @@ export function useMySchedule(workerId?: string) {
         enabled: !!workerId,
     });
 
+    const assignments = data || [];
+    const scheduleIds = [...new Set(assignments.map((a: any) => a.scheduleId))] as string[];
+
+    const { data: stubCounts = {} } = useQuery({
+        queryKey: ['my-meal-stub-counts', workerId, scheduleIds],
+        queryFn: () => getMyMealStubCounts(workerId as string, scheduleIds),
+        enabled: !!workerId && scheduleIds.length > 0,
+    });
+
+    const { data: confirmationWindow } = useQuery({
+        queryKey: ['sunday-confirmation-window'],
+        queryFn: () => getSundayConfirmationWindow(),
+        staleTime: 5 * 60_000,
+    });
+
     const confirmMutation = useMutation({
-        mutationFn: ({ assignmentId, confirmedBy }: { assignmentId: string; confirmedBy: string }) =>
-            confirmAssignment(assignmentId, confirmedBy),
-        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+        mutationFn: async ({ assignmentId, confirmedBy }: { assignmentId: string; confirmedBy: string }) => {
+            const res = await confirmAssignment(assignmentId, confirmedBy);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: key });
+            qc.invalidateQueries({ queryKey: ['my-meal-stub-counts', workerId] });
+        },
     });
 
     const setStatusMutation = useMutation({
-        mutationFn: ({ assignmentId, status, updatedBy }: { assignmentId: string; status: 'Confirmed' | 'Pending' | 'Not Attending'; updatedBy: string }) =>
-            setAttendanceStatus(assignmentId, status, updatedBy),
-        onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+        mutationFn: async ({ assignmentId, status, updatedBy }: { assignmentId: string; status: 'Confirmed' | 'Pending' | 'Not Attending'; updatedBy: string }) => {
+            const res = await setAttendanceStatus(assignmentId, status, updatedBy);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: key });
+            qc.invalidateQueries({ queryKey: ['my-meal-stub-counts', workerId] });
+        },
     });
 
     return {
-        assignments: data || [],
+        assignments,
         isLoading,
+        stubCounts,
+        confirmationWindow,
         confirmAssignment: confirmMutation.mutateAsync,
         setAttendanceStatus: setStatusMutation.mutateAsync,
     };

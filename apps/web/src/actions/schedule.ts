@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from 'next/cache';
-import { withPermission } from '@/lib/auth/with-permission';
+import { withPermission, withPublicAction, resolveCallerCtx } from '@/lib/auth/with-permission';
 import { PERMISSIONS } from '@/lib/permissions/registry';
 import * as scheduleService from '@/services/schedule';
+import * as MealStubEngine from '@/services/meal-stub-engine';
+import * as MealStubService from '@/services/meal-stub-service';
 import {
     createServiceScheduleSchema,
     updateServiceScheduleSchema,
@@ -11,6 +13,7 @@ import {
     updateServiceTemplateSchema,
     createWorshipSlotSchema,
     updateWorshipSlotSchema,
+    slotTypeSchema,
 } from '@/lib/schemas/schedule.schemas';
 
 // ── Service Schedules ─────────────────────────────────────────────────────────
@@ -78,8 +81,10 @@ export const upsertAssignment = withPermission(
         rehearsalDate?: Date | null;
         rehearsalTime?: string | null;
         order?: number;
+        slotType?: string;
     }) => {
-        return scheduleService.upsertAssignment(data);
+        const slotType = data.slotType !== undefined ? slotTypeSchema.parse(data.slotType) : undefined;
+        return scheduleService.upsertAssignment({ ...data, slotType });
     },
 );
 
@@ -157,22 +162,65 @@ export const publishScheduleAndNotify = withPermission(
 
 // ── Confirm Assignment ────────────────────────────────────────────────────────
 
-// public-action: workers confirm their own assignment (no admin perm needed)
-export async function confirmAssignment(assignmentId: string, confirmedBy: string) {
-    const assignment = await scheduleService.confirmAssignment(assignmentId, confirmedBy);
-    revalidatePath(`/schedule/${assignment.scheduleId}`);
-    return assignment;
-}
+// Workers confirm their own assignment (or a scheduler/ministry head confirms on
+// their behalf) — permission checked inside the service per-assignment.
+export const confirmAssignment = withPublicAction(async (assignmentId: string, confirmedBy: string) => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+    const result = await scheduleService.confirmAssignment(ctx, assignmentId, confirmedBy);
+    revalidatePath(`/schedule/${result.assignment.scheduleId}`);
+    return result;
+});
 
-// public-action: workers update their own attendance status
-export async function setAttendanceStatus(assignmentId: string, status: 'Confirmed' | 'Pending' | 'Not Attending', updatedBy: string) {
-    const assignment = await scheduleService.setAttendanceStatus(assignmentId, status, updatedBy);
-    revalidatePath(`/schedule/${assignment.scheduleId}`);
-    return assignment;
-}
+// Workers update their own attendance status (or a scheduler/ministry head on
+// their behalf) — permission checked inside the service per-assignment.
+export const setAttendanceStatus = withPublicAction(async (assignmentId: string, status: 'Confirmed' | 'Pending' | 'Not Attending', updatedBy: string) => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+    const result = await scheduleService.setAttendanceStatus(ctx, assignmentId, status, updatedBy);
+    revalidatePath(`/schedule/${result.assignment.scheduleId}`);
+    return result;
+});
+
+// ── Sunday Confirmation & Meal Stub Settings (Sys Admin) ───────────────────────
+
+export const getMealStubSettings = withPermission(
+    null,
+    async () => {
+        const [confirmation, cap] = await Promise.all([
+            MealStubEngine.getSundayConfirmationSettings(),
+            MealStubEngine.getMealStubCap(),
+        ]);
+        return { confirmation, cap };
+    },
+);
+
+export const updateMealStubSettings = withPermission(
+    null,
+    async (ctx, data: {
+        windowOpenDaysBefore?: number;
+        windowCloseHoursAfterMidnight?: number;
+        weeklyCap?: number;
+    }) => {
+        const [confirmation, cap] = await Promise.all([
+            MealStubEngine.updateSundayConfirmationSettings(ctx, {
+                windowOpenDaysBefore: data.windowOpenDaysBefore,
+                windowCloseHoursAfterMidnight: data.windowCloseHoursAfterMidnight,
+            }),
+            MealStubEngine.updateMealStubCap(ctx, { weeklyCap: data.weeklyCap }),
+        ]);
+        revalidatePath('/settings/attendance');
+        return { confirmation, cap };
+    },
+);
 
 export async function getScheduleConfirmationStatus(scheduleId: string) {
     return scheduleService.getScheduleConfirmationStatus(scheduleId);
+}
+
+// public-action: read-only — lets /my-schedule show whether the confirm/decline window is open
+export async function getSundayConfirmationWindow() {
+    return MealStubEngine.getSundayConfirmationSettings();
 }
 
 // ── My Schedule (worker personal view) ────────────────────────────────────────
@@ -180,6 +228,11 @@ export async function getScheduleConfirmationStatus(scheduleId: string) {
 // public-action: read-only, a worker's own upcoming assignments
 export async function getMyAssignments(workerId: string) {
     return scheduleService.getMyAssignments(workerId);
+}
+
+// public-action: read-only — meal stub counts per schedule, for badge display on /my-schedule
+export async function getMyMealStubCounts(workerId: string, scheduleIds: string[]) {
+    return MealStubService.getMealStubCountsByScheduleForWorker(workerId, scheduleIds);
 }
 
 // ── Eligible Worker Search ────────────────────────────────────────────────────

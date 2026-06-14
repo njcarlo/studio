@@ -272,6 +272,22 @@ export default function ScheduleDetailPage() {
         }
     };
 
+    const handleSlotTypeChange = async (slot: any, slotType: string) => {
+        try {
+            await upsertAssignment({
+                id: slot.id,
+                scheduleId: id,
+                ministryId: slot.ministryId,
+                roleName: slot.roleName,
+                workerId: slot.workerId,
+                workerName: slot.workerName,
+                slotType,
+            });
+        } catch {
+            toast({ variant: "destructive", title: "Failed to update slot type" });
+        }
+    };
+
     const handleSaveRehearsal = async () => {
         if (!rehearsalDialog) return;
         setIsSaving(true);
@@ -568,6 +584,17 @@ export default function ScheduleDetailPage() {
                                                                                         <Trash2 className="h-3.5 w-3.5" />
                                                                                     </Button>
                                                                                 </>
+                                                                            )}
+                                                                            {canManageSchedule && (
+                                                                                <Select value={slot.slotType || 'Standard'} onValueChange={(v: any) => handleSlotTypeChange(slot, v)}>
+                                                                                    <SelectTrigger className="h-6 w-[5.5rem] text-xs border-0 bg-transparent p-0 focus:ring-0" title="Slot type"><SelectValue /></SelectTrigger>
+                                                                                    <SelectContent>
+                                                                                        <SelectItem value="Standard">Standard</SelectItem>
+                                                                                        <SelectItem value="Main">Main</SelectItem>
+                                                                                        <SelectItem value="Mid">Mid</SelectItem>
+                                                                                        <SelectItem value="Open">Open</SelectItem>
+                                                                                    </SelectContent>
+                                                                                </Select>
                                                                             )}
                                                                         </div>
                                                                         {slot.rehearsalDate && (

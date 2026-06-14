@@ -5,26 +5,31 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
 import { Badge } from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@studio/ui";
-import { CalendarDays, CheckCircle2, XCircle, Clock, LoaderCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, XCircle, Clock, LoaderCircle, Ticket } from "lucide-react";
 import { useMySchedule } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuthStore } from "@studio/store";
 import { useToast } from "@/hooks/use-toast";
+import { isWithinConfirmationWindow } from "@/lib/scheduling/confirmation-window";
 
 export default function MySchedulePage() {
     const { toast } = useToast();
     const { user } = useAuthStore();
     const { workerProfile } = useUserRole();
-    const { assignments, isLoading, confirmAssignment, setAttendanceStatus } = useMySchedule(workerProfile?.id);
+    const { assignments, isLoading, stubCounts, confirmationWindow, confirmAssignment, setAttendanceStatus } = useMySchedule(workerProfile?.id);
     const { ministries } = useMinistries();
 
     const ministryName = (id: string) => ministries.find((m: any) => m.id === id)?.name || id;
 
     const handleConfirm = async (assignmentId: string) => {
         try {
-            await confirmAssignment({ assignmentId, confirmedBy: workerProfile?.id || user?.uid || 'system' });
-            toast({ title: "Confirmed", description: "You're confirmed for this assignment." });
+            const result = await confirmAssignment({ assignmentId, confirmedBy: workerProfile?.id || user?.uid || 'system' });
+            if (result?.stubsIssued) {
+                toast({ title: "Confirmed", description: `You're confirmed for this assignment. 🎫 ${result.stubsIssued} meal stub(s) issued.` });
+            } else {
+                toast({ title: "Confirmed", description: "You're confirmed for this assignment." });
+            }
         } catch (e: any) {
             toast({ title: "Error", description: e.message, variant: "destructive" });
         }
@@ -62,6 +67,11 @@ export default function MySchedulePage() {
                     <div className="grid gap-4">
                         {assignments.map((a: any) => {
                             const status = a.attendanceStatus || 'Pending';
+                            const slotType = a.slotType || 'Standard';
+                            const stubsForThis = stubCounts?.[a.scheduleId] ?? 0;
+                            const withinWindow = confirmationWindow && a.schedule?.date
+                                ? isWithinConfirmationWindow(a.schedule.date, new Date(), confirmationWindow)
+                                : true;
                             return (
                                 <Card key={a.id}>
                                     <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
@@ -106,12 +116,28 @@ export default function MySchedulePage() {
                                             <p className="text-sm text-muted-foreground">{a.notes}</p>
                                         )}
 
+                                        {stubsForThis > 0 && (
+                                            <Badge variant="outline" className="w-fit bg-amber-50 text-amber-700 border-amber-200">
+                                                <Ticket className="mr-1 h-3 w-3" /> {stubsForThis} meal stub{stubsForThis > 1 ? "s" : ""} issued
+                                            </Badge>
+                                        )}
+
+                                        {status === 'Confirmed' && slotType === 'Open' && stubsForThis === 0 && (
+                                            <p className="text-xs text-muted-foreground">
+                                                This is an Open slot — confirm your assignment for the paired Sunday to activate your meal stub.
+                                            </p>
+                                        )}
+
+                                        {!withinWindow && status !== 'Confirmed' && status !== 'Not Attending' && (
+                                            <p className="text-xs text-muted-foreground">Confirmation window is closed for this service.</p>
+                                        )}
+
                                         {status !== 'Confirmed' && status !== 'Not Attending' && (
                                             <div className="flex gap-2 pt-1">
-                                                <Button size="sm" onClick={() => handleConfirm(a.id)}>
+                                                <Button size="sm" onClick={() => handleConfirm(a.id)} disabled={!withinWindow}>
                                                     <CheckCircle2 className="mr-1 h-4 w-4" /> Confirm
                                                 </Button>
-                                                <Button size="sm" variant="outline" onClick={() => handleDecline(a.id)}>
+                                                <Button size="sm" variant="outline" onClick={() => handleDecline(a.id)} disabled={!withinWindow}>
                                                     <XCircle className="mr-1 h-4 w-4" /> Decline
                                                 </Button>
                                             </div>
@@ -119,7 +145,7 @@ export default function MySchedulePage() {
 
                                         {status === 'Not Attending' && (
                                             <div className="pt-1">
-                                                <Button size="sm" variant="outline" onClick={() => handleConfirm(a.id)}>
+                                                <Button size="sm" variant="outline" onClick={() => handleConfirm(a.id)} disabled={!withinWindow}>
                                                     <CheckCircle2 className="mr-1 h-4 w-4" /> Actually, I can serve
                                                 </Button>
                                             </div>

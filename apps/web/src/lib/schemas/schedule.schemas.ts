@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const slotTypeSchema = z.enum(['Standard', 'Main', 'Mid', 'Open']);
+export type SlotType = z.infer<typeof slotTypeSchema>;
+
 export const createServiceScheduleSchema = z.object({
   date: z.coerce.date(),
   title: z.string().optional(),

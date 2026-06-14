@@ -24,6 +24,23 @@ export async function createMealstub(data: {
   });
 }
 
+/** Number of `MealStub` rows issued to `workerId` per `scheduleId`, for badge display on /my-schedule. */
+export async function getMealStubCountsByScheduleForWorker(workerId: string, scheduleIds: string[]): Promise<Record<string, number>> {
+  if (scheduleIds.length === 0) return {};
+
+  const stubs = await prisma.mealStub.findMany({
+    where: { workerId, scheduleId: { in: scheduleIds } },
+    select: { scheduleId: true },
+  });
+
+  const counts: Record<string, number> = {};
+  for (const stub of stubs) {
+    if (!stub.scheduleId) continue;
+    counts[stub.scheduleId] = (counts[stub.scheduleId] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function allocateMealstubs(scheduleId: string, assignedByUserId: string = 'system') {
   // 1. Fetch schedule and its assignments
   const schedule = await prisma.serviceSchedule.findUnique({

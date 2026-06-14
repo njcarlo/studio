@@ -10,14 +10,14 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 - [ ] **Layer 3 — Notification system** (only `InAppNotification` model exists; push/email + outbox drain not built)
 - [x] **Layer 4 — Generic Audit Log** (`TransactionLog` extended with before/after/reason; `writeAudit()` helper)
 - [ ] **Layer 5 — Scheduled jobs (cron)** (not started; Phase 3.2 deliberately avoids needing this)
-- [ ] **Layer 6 — Reporting ledger** (`MealStubLedger` + report views not started)
+- [x] **Layer 6 — Reporting ledger** (`MealStubLedger` append-only table + cap aggregation; report views not yet built)
 
 ## Feature Phases
 
 ### Phase 1 — Volunteer-facing core loop
-- [ ] Sunday attendance confirmation (5.7)
-- [ ] Slot Type taxonomy + per-slot stub rules (5.3.2, 5.4.1, 5.4.3)
-- [ ] Meal stub weekly cap & allocation (5.4.2)
+- [x] Sunday attendance confirmation (5.7)
+- [x] Slot Type taxonomy + per-slot stub rules (5.3.2, 5.4.1, 5.4.3)
+- [x] Meal stub weekly cap & allocation (5.4.2)
 - [ ] Emergency reassignment (5.3.5)
 - [ ] Major/Minor ministry assignment approval (5.2.5)
 - [ ] Availability (5.2.2)
