@@ -28,10 +28,14 @@ export async function createMealStub(data: CreateMealStubInput) {
     const dayStart = new Date(stubDate); dayStart.setHours(0, 0, 0, 0);
     const dayEnd   = new Date(stubDate); dayEnd.setHours(23, 59, 59, 999);
 
-    const existing = await prisma.mealStub.findFirst({
+    const existingCount = await prisma.mealStub.count({
         where: { workerId: data.workerId, date: { gte: dayStart, lte: dayEnd } },
     });
-    if (existing) throw new Error(`${data.workerName} already has a meal stub for this date.`);
+    // Sundays allow up to 2 stubs per worker per day; every other day allows 1.
+    const maxPerDay = stubDate.getDay() === 0 ? 2 : 1;
+    if (existingCount >= maxPerDay) {
+        throw new Error(`${data.workerName} already has ${existingCount} meal stub(s) for this date.`);
+    }
 
     return prisma.mealStub.create({ data: { ...data, date: stubDate } });
 }

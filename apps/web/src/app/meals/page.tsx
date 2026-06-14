@@ -544,7 +544,10 @@ function MealsPageContent() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-7 px-2 text-[10px] text-muted-foreground"
+                                  className={`h-7 px-2 text-[10px] ${dayCount === 0
+                                    ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-400'
+                                    : 'text-muted-foreground'
+                                    }`}
                                   onClick={() => handleQuickAssign(w, 0)}
                                   title="Issue 0 stubs"
                                 >
@@ -553,7 +556,10 @@ function MealsPageContent() {
                                 <Button
                                   size="sm"
                                   variant={dayCount === 1 ? 'secondary' : 'outline'}
-                                  className="h-7 px-2 text-[10px]"
+                                  className={`h-7 px-2 text-[10px] ${dayCount === 1
+                                    ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-100 dark:bg-green-950 dark:text-green-400'
+                                    : ''
+                                    }`}
                                   onClick={() => handleQuickAssign(w, 1)}
                                   disabled={hasToday}
                                   title="Issue 1 stub"
@@ -563,7 +569,10 @@ function MealsPageContent() {
                                 <Button
                                   size="sm"
                                   variant={hasTwoToday ? 'secondary' : 'outline'}
-                                  className="h-7 px-2 text-[10px]"
+                                  className={`h-7 px-2 text-[10px] ${hasTwoToday
+                                    ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-100 dark:bg-green-950 dark:text-green-400'
+                                    : ''
+                                    }`}
                                   onClick={() => handleQuickAssign(w, 2)}
                                   disabled={hasTwoToday}
                                   title="Issue 2 stubs"
