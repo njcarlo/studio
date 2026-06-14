@@ -13,7 +13,8 @@ import {
   VideoOff,
   LoaderCircle,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@studio/database";
 import { toJsDate } from "@/lib/utils";
 import {
   getAreas,
@@ -25,11 +26,12 @@ import {
 } from "@/actions/db";
 import { handleBookingCheckIn } from "@/actions/venue-assistance";
 
-// Near-real-time refresh interval for the kiosk display. True push-based
-// updates would require the unauthenticated kiosk to hold a Supabase
-// session for Realtime (Booking RLS requires `authenticated`); polling on a
-// short interval is the pragmatic equivalent for a wall-mounted display.
-const DISPLAY_REFRESH_INTERVAL_MS = 15_000;
+// Realtime updates: a Postgres trigger on Booking upserts a `RoomDisplayPing`
+// row (roomId + timestamp only, no booking content) which is readable by
+// `anon` and added to the realtime publication — the kiosk subscribes to
+// that ping and refetches booking details on change. This polling interval
+// is kept as a fallback in case the realtime connection drops.
+const DISPLAY_REFRESH_INTERVAL_MS = 60_000;
 // How often a registered device reports a heartbeat (lastSeenAt).
 const DEVICE_HEARTBEAT_INTERVAL_MS = 60_000;
 
@@ -88,6 +90,26 @@ function RoomDisplayContent() {
     queryKey: ["workers"],
     queryFn: getWorkers,
   });
+
+  // Realtime: refetch this room's bookings the moment a Booking row changes,
+  // signalled via RoomDisplayPing (anon-readable, content-free).
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!roomId) return;
+    const channel = supabase
+      .channel(`room-display-ping-${roomId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "RoomDisplayPing", filter: `roomId=eq.${roomId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["bookings", { roomId, status: "Approved" }] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, queryClient]);
 
   const todaysBookings =
     allBookings

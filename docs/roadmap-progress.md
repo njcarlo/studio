@@ -24,7 +24,7 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 
 ### Phase 2 — Room Reservation completion + Major Event Request
 - [x] Room Reservation 3-stage flow (5.8.2)
-- [ ] Room Display Monitor realtime completion (5.8.3)
+- [x] Room Display Monitor realtime completion (5.8.3)
 - [x] Major Event Request module (5.11) — worker-facing form, parallel-then-sequential approval, catalogue + enable toggle
 
 ### Phase 3 — HR & Time Tracking + Training Management

@@ -317,6 +317,15 @@ model RoomDisplayDevice {
   updatedAt  DateTime  @default(now()) @updatedAt
 }
 
+// Lightweight "a booking for this room changed" ping (5.8.3) — written by a
+// Postgres trigger on Booking, read via Supabase Realtime by the unauthenticated
+// room display kiosk (which then refetches booking details through the normal
+// server action). Contains no booking content, only roomId + timestamp.
+model RoomDisplayPing {
+  roomId    String   @id
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
 model Area {
   id       String  @id @default(uuid())
   areaId   String?
