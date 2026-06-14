@@ -128,7 +128,11 @@ function MealsPageContent() {
       });
     } catch (e) {
       console.error(e);
-      toast({ variant: "destructive", title: "Failed to regenerate QR" });
+      toast({
+        variant: "destructive",
+        title: "Failed to Regenerate QR",
+        description: e instanceof Error ? e.message : "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsRegenerating(false);
     }
@@ -256,7 +260,11 @@ function MealsPageContent() {
     } catch (e) {
       console.error(e);
       playError();
-      toast({ variant: "destructive", title: "Error" });
+      toast({
+        variant: "destructive",
+        title: "Failed to Issue Stub",
+        description: e instanceof Error ? e.message : "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsAssigning(false);
     }
@@ -341,7 +349,14 @@ function MealsPageContent() {
       if (deletedCount > 0) {
         toast({ title: "Cleanup Success", description: `Deleted ${deletedCount} duplicate stubs.` });
       }
-    } catch (e) { console.error(e); } finally { setIsAssigning(false); }
+    } catch (e) {
+      console.error(e);
+      toast({
+        variant: "destructive",
+        title: "Cleanup Failed",
+        description: e instanceof Error ? e.message : "An unexpected error occurred. Please try again.",
+      });
+    } finally { setIsAssigning(false); }
   }, [allMealStubsInRange, deleteMealStub, toast]);
 
   const toggleSelectAll = (workers: WorkerLite[]) => {
