@@ -92,7 +92,10 @@ function MealsPageContent() {
   const { ministries, isLoading: ministriesLoading } = useMinistries();
   const { settings: globalSettings } = useSettings('mealstubs');
 
-  const thirtyDaysAgo = subDays(new Date(), 30);
+  // Memoized so it doesn't create a new Date (and thus a new useMealStubs
+  // queryKey) on every render — an unstable key here means the query never
+  // settles and isLoading stays true forever.
+  const thirtyDaysAgo = useMemo(() => subDays(new Date(), 30), []);
   const {
     mealStubs,
     isLoading: mealStubsLoading,
