@@ -31,10 +31,10 @@ import {
 import { Badge } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { PlusCircle, QrCode, LoaderCircle, Scan, RefreshCw, ShieldAlert, ClipboardList, ShieldCheck, Search, CheckCircle2, Trash2 } from "lucide-react";
-import { format, isToday, subDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { format, isToday, isSameDay, subDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
-import { getTodayStubCount, getWeeklyStubCount, getStubCountForDate } from "@/lib/utils";
+import { getTodayStubCount, getWeeklyStubCount, getStubCountForDate, toJsDate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@studio/ui";
 import { Checkbox } from "@studio/ui";
 import { Ticket, Layers } from "lucide-react";
@@ -271,6 +271,89 @@ function MealsPageContent() {
   }, [workerProfile, user, allWorkers, ministries, allMealStubsInRange, globalSettings, isSelectedSunday, assignDateObj, issueSingleStub, toast, playSuccess, playError]);
 
   const handleQuickAssign = (w: any, count: number = 1) => issueStub(w.id, count);
+
+  // Directly set a worker's stub count for the selected (Sunday) date to 0, 1, or 2 —
+  // creates missing stubs or removes excess ones, instead of only allowing increments.
+  const setSundayStubCount = useCallback(async (targetWorker: any, targetCount: number) => {
+    const assignerId = workerProfile?.id || user?.uid || 'system';
+    const assignerName = workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.displayName || user?.email || 'System Admin');
+    const targetId = targetWorker.id;
+
+    const dayStubs = (allMealStubsInRange || []).filter(s => s.workerId === targetId && isSameDay(toJsDate(s.date), assignDateObj));
+    const dayCount = dayStubs.length;
+
+    if (targetCount === dayCount) {
+      toast({ title: "No Change", description: `${targetWorker.firstName} ${targetWorker.lastName} already has ${dayCount} meal stub(s) for this date.` });
+      return;
+    }
+
+    setIsAssigning(true);
+    try {
+      if (targetCount > dayCount) {
+        const increment = targetCount - dayCount;
+
+        // Volunteer Day Check
+        if (targetWorker.employmentType === 'Volunteer') {
+          const d = assignDateObj.getDay();
+          if ((globalSettings as any)?.disabledVolunteerDays?.includes(d)) {
+            playError();
+            toast({ variant: "destructive", title: "Disabled", description: "Volunteer stubs are disabled for today." });
+            return;
+          }
+        }
+
+        // Ministry Pool Check
+        const targetMinistryId = targetWorker.majorMinistryId;
+        const ministry = ministries?.find(m => m.id === targetMinistryId);
+        if (ministry && ministry.mealStubWeeklyLimit !== null) {
+          const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+          const end = endOfWeek(new Date());
+          const ministryWorkersIds = allWorkers?.filter(w => w.majorMinistryId === targetMinistryId || w.minorMinistryId === targetMinistryId).map(w => w.id) || [];
+          const usedThisWeek = allMealStubsInRange?.filter(s => {
+            if (!ministryWorkersIds.includes(s.workerId)) return false;
+            return isWithinInterval(toJsDate(s.date), { start, end });
+          }).length || 0;
+
+          const limit = ministry.mealStubWeeklyLimit ?? 0;
+          const remaining = limit - usedThisWeek;
+          if (remaining <= 0) {
+            playError();
+            toast({ variant: "destructive", title: "Limit Reached", description: `Ministry ${ministry.name} has reached its weekly limit (${ministry.mealStubWeeklyLimit}).` });
+            return;
+          }
+          if (increment > remaining) {
+            playError();
+            toast({ variant: "destructive", title: "Pool Insufficient", description: `Only ${remaining} stub(s) left in the pool for ${ministry.name}. Requested ${increment} more.` });
+            return;
+          }
+        }
+
+        for (let i = 0; i < increment; i++) {
+          const label = dayCount + i === 0 ? 'sunday-1' : 'sunday-2';
+          await issueSingleStub(targetId, assignerId, assignerName, targetWorker, label);
+        }
+        playSuccess(targetWorker.employmentType as 'Full-Time' | 'On-Call' | 'Volunteer' | undefined, targetCount);
+        toast({ title: `Stub${increment > 1 ? 's' : ''} Issued`, description: `${targetWorker.firstName} ${targetWorker.lastName} now has ${targetCount} meal stub(s) for this date.` });
+      } else {
+        // Remove excess stubs to bring the count down to targetCount.
+        const toRemove = dayStubs.slice(0, dayCount - targetCount);
+        for (const s of toRemove) {
+          await deleteMealStub(s.id);
+        }
+        toast({ title: "Stub Removed", description: `${targetWorker.firstName} ${targetWorker.lastName} now has ${targetCount} meal stub(s) for this date.` });
+      }
+    } catch (e) {
+      console.error(e);
+      playError();
+      toast({
+        variant: "destructive",
+        title: "Failed to Update Stub Count",
+        description: e instanceof Error ? e.message : "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      setIsAssigning(false);
+    }
+  }, [workerProfile, user, allWorkers, ministries, allMealStubsInRange, globalSettings, assignDateObj, issueSingleStub, deleteMealStub, toast, playSuccess, playError]);
 
   // ---- Ministry Pool Data ----
   const ministryPoolData = useMemo(() => {
@@ -527,7 +610,6 @@ function MealsPageContent() {
                     }).map(w => {
                       const dayCount = getStubCountForDate(allMealStubsInRange as any || [], w.id, assignDateObj);
                       const hasToday = dayCount >= 1;
-                      const hasTwoToday = dayCount >= 2;
                       return (
                         <TableRow key={w.id}>
                           <TableCell><Checkbox checked={selectedWorkerIds.includes(w.id)} onCheckedChange={() => toggleSelectWorker(w.id)} /></TableCell>
@@ -540,45 +622,25 @@ function MealsPageContent() {
                           </TableCell>
                           <TableCell className="text-right">
                             {isSelectedSunday ? (
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className={`h-7 px-2 text-[10px] ${dayCount === 0
-                                    ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-400'
-                                    : 'text-muted-foreground'
-                                    }`}
-                                  onClick={() => handleQuickAssign(w, 0)}
-                                  title="Issue 0 stubs"
-                                >
-                                  0
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant={dayCount === 1 ? 'secondary' : 'outline'}
-                                  className={`h-7 px-2 text-[10px] ${dayCount === 1
-                                    ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-100 dark:bg-green-950 dark:text-green-400'
-                                    : ''
-                                    }`}
-                                  onClick={() => handleQuickAssign(w, 1)}
-                                  disabled={hasToday}
-                                  title="Issue 1 stub"
-                                >
-                                  1
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant={hasTwoToday ? 'secondary' : 'outline'}
-                                  className={`h-7 px-2 text-[10px] ${hasTwoToday
-                                    ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-100 dark:bg-green-950 dark:text-green-400'
-                                    : ''
-                                    }`}
-                                  onClick={() => handleQuickAssign(w, 2)}
-                                  disabled={hasTwoToday}
-                                  title="Issue 2 stubs"
-                                >
-                                  2
-                                </Button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                {[0, 1, 2].map((n) => {
+                                  const isSelected = n === 2 ? dayCount >= 2 : dayCount === n;
+                                  return (
+                                    <Button
+                                      key={n}
+                                      size="sm"
+                                      variant={isSelected ? 'default' : 'outline'}
+                                      className={`h-8 w-8 p-0 text-xs font-semibold rounded-md transition-colors ${isSelected
+                                        ? 'bg-green-600 text-white border-green-600 ring-2 ring-green-300 hover:bg-green-600 dark:bg-green-600 dark:text-white'
+                                        : 'text-muted-foreground hover:bg-muted'
+                                        }`}
+                                      onClick={() => setSundayStubCount(w, n)}
+                                      title={`Set to ${n} stub${n === 1 ? '' : 's'}`}
+                                    >
+                                      {n}
+                                    </Button>
+                                  );
+                                })}
                               </div>
                             ) : (
                               <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => handleQuickAssign(w)} disabled={hasToday}>Issue</Button>
