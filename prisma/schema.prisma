@@ -734,6 +734,7 @@ model ScheduleAssignment {
   acknowledgedBy   String?
   attendanceStatus String          @default("Pending") // Pending | Confirmed | Not Attending
   slotType         String          @default("Standard") // Standard | Main | Mid | Open
+  approvalWorkflowId String?       // set when assigning to the worker's minor ministry requires Minor Ministry Head approval (5.2.5)
   createdAt        DateTime        @default(now())
 
   @@index([scheduleId])

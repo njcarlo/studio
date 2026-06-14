@@ -68,6 +68,7 @@ export default function MySchedulePage() {
                         {assignments.map((a: any) => {
                             const status = a.attendanceStatus || 'Pending';
                             const slotType = a.slotType || 'Standard';
+                            const awaitingApproval = a.approvalStatus === 'Pending';
                             const stubsForThis = stubCounts?.[a.scheduleId] ?? 0;
                             const withinWindow = confirmationWindow && a.schedule?.date
                                 ? isWithinConfirmationWindow(a.schedule.date, new Date(), confirmationWindow)
@@ -93,9 +94,14 @@ export default function MySchedulePage() {
                                                 <XCircle className="mr-1 h-3 w-3" /> Not Attending
                                             </Badge>
                                         )}
-                                        {status === 'Pending' && (
+                                        {status === 'Pending' && !awaitingApproval && (
                                             <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
                                                 <Clock className="mr-1 h-3 w-3" /> Pending
+                                            </Badge>
+                                        )}
+                                        {awaitingApproval && (
+                                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                                                <Clock className="mr-1 h-3 w-3" /> Awaiting Approval
                                             </Badge>
                                         )}
                                     </CardHeader>
@@ -128,11 +134,17 @@ export default function MySchedulePage() {
                                             </p>
                                         )}
 
+                                        {awaitingApproval && (
+                                            <p className="text-xs text-muted-foreground">
+                                                This assignment is in your minor ministry and is awaiting approval from the Ministry Head.
+                                            </p>
+                                        )}
+
                                         {!withinWindow && status !== 'Confirmed' && status !== 'Not Attending' && (
                                             <p className="text-xs text-muted-foreground">Confirmation window is closed for this service.</p>
                                         )}
 
-                                        {status !== 'Confirmed' && status !== 'Not Attending' && (
+                                        {!awaitingApproval && status !== 'Confirmed' && status !== 'Not Attending' && (
                                             <div className="flex gap-2 pt-1">
                                                 <Button size="sm" onClick={() => handleConfirm(a.id)} disabled={!withinWindow}>
                                                     <CheckCircle2 className="mr-1 h-4 w-4" /> Confirm

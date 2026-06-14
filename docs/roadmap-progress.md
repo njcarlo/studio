@@ -19,7 +19,7 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 - [x] Slot Type taxonomy + per-slot stub rules (5.3.2, 5.4.1, 5.4.3)
 - [x] Meal stub weekly cap & allocation (5.4.2)
 - [ ] Emergency reassignment (5.3.5)
-- [ ] Major/Minor ministry assignment approval (5.2.5)
+- [x] Major/Minor ministry assignment approval (5.2.5)
 - [ ] Availability (5.2.2)
 
 ### Phase 2 — Room Reservation completion + Major Event Request

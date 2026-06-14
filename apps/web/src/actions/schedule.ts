@@ -70,7 +70,7 @@ export const deleteServiceSchedule = withPermission(
 
 export const upsertAssignment = withPermission(
     PERMISSIONS.schedule.manage,
-    async (_ctx, data: {
+    async (ctx, data: {
         id?: string;
         scheduleId: string;
         ministryId: string;
@@ -84,7 +84,7 @@ export const upsertAssignment = withPermission(
         slotType?: string;
     }) => {
         const slotType = data.slotType !== undefined ? slotTypeSchema.parse(data.slotType) : undefined;
-        return scheduleService.upsertAssignment({ ...data, slotType });
+        return scheduleService.upsertAssignment({ ...data, slotType, requestedBy: ctx.workerId });
     },
 );
 

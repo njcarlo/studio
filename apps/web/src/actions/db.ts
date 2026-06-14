@@ -25,6 +25,7 @@ import * as MajorEventWorkflow from '@/services/major-event-workflow';
 import * as mealsAttendanceService from '@/services/meals-attendance';
 import * as MasterScheduleService from '@/services/master-schedule';
 import * as LeaveWorkflow from '@/services/leave-workflow';
+import * as MinorMinistryAssignmentWorkflow from '@/services/minor-ministry-assignment-workflow';
 import {
     createMealStubSchema,
     updateMealStubSchema,
@@ -836,6 +837,13 @@ export const decideApprovalStage = withPublicAction(
             revalidatePath('/settings/attendance');
         }
 
+        if (workflow.type === MinorMinistryAssignmentWorkflow.MINOR_MINISTRY_ASSIGNMENT_WORKFLOW_TYPE) {
+            await MinorMinistryAssignmentWorkflow.syncAssignmentFromWorkflow(workflow);
+            const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
+            if (meta.scheduleId) revalidatePath(`/schedule/${meta.scheduleId}`);
+            revalidatePath('/my-schedule');
+        }
+
         await writeAudit({
             actor: ctx,
             module: 'approvals',
@@ -1033,6 +1041,55 @@ export const getLeaveApprovals = withPublicAction(async () => {
             status: workflow.status,
             workerId: workflow.requesterId,
             requestId: workflow.subjectId,
+            worker: requester ?? null,
+            _workflowId: workflow.id,
+            _stageId: active[0]?.id ?? null,
+            _actionable: actionableIds.has(workflow.id),
+        };
+    });
+});
+
+/**
+ * Minor Ministry assignment approval workflows (SRD 5.2.5), normalized into
+ * the legacy ApprovalRequest shape so the existing Kanban UI on /approvals
+ * can render them alongside other request types. Single-stage workflow (Minor
+ * Ministry Head).
+ */
+export const getMinorMinistryAssignmentApprovals = withPublicAction(async () => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+
+    const [workflows, actionable] = await Promise.all([
+        prisma.approvalWorkflow.findMany({
+            where: { type: MinorMinistryAssignmentWorkflow.MINOR_MINISTRY_ASSIGNMENT_WORKFLOW_TYPE },
+            include: { stages: { orderBy: { stageOrder: 'asc' } } },
+            orderBy: { createdAt: 'desc' },
+        }),
+        ApprovalEngine.getActionableWorkflows(ctx.workerId),
+    ]);
+
+    const actionableIds = new Set(actionable.map((w) => w.id));
+    const requesterIds = [...new Set(workflows.map((w) => w.requesterId))];
+    const workers = await prisma.worker.findMany({
+        where: { id: { in: requesterIds } },
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true, majorMinistryId: true, minorMinistryId: true },
+    });
+    const workerById = new Map(workers.map((w) => [w.id, w]));
+
+    return workflows.map((workflow) => {
+        const requester = workerById.get(workflow.requesterId);
+        const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
+        const active = ApprovalEngine.getActiveStages(workflow.stages);
+
+        return {
+            id: workflow.id,
+            requester: requester ? `${requester.firstName} ${requester.lastName}` : 'Unknown',
+            type: MinorMinistryAssignmentWorkflow.MINOR_MINISTRY_ASSIGNMENT_WORKFLOW_TYPE,
+            details: `${meta.workerName ?? 'A worker'} for "${meta.roleName ?? 'a role'}"`,
+            date: workflow.createdAt,
+            status: workflow.status,
+            workerId: workflow.requesterId,
+            assignmentId: workflow.subjectId,
             worker: requester ?? null,
             _workflowId: workflow.id,
             _stageId: active[0]?.id ?? null,

@@ -3,6 +3,7 @@ import { getWorkloadCategories } from '@/actions/ministry-categories';
 import { EmailService } from '@/services/email-service';
 import { allocateMealstubs as allocateMealstubsService } from '@/services/meal-stub-service';
 import { allocateStubsForConfirmation, voidStubsForConfirmation } from '@/services/meal-stub-engine';
+import { createMinorMinistryAssignmentWorkflow } from '@/services/minor-ministry-assignment-workflow';
 import { canManageWorkersInMinistries, type CallerCtx } from '@/lib/auth/with-permission';
 import type {
     CreateServiceScheduleInput,
@@ -92,6 +93,7 @@ export async function upsertAssignment(data: {
     rehearsalTime?: string | null;
     order?: number;
     slotType?: string;
+    requestedBy?: string;
 }) {
     let existing;
     if (data.id) {
@@ -109,8 +111,12 @@ export async function upsertAssignment(data: {
         });
     }
 
+    const workerIdChanged = data.workerId !== undefined && data.workerId !== (existing?.workerId ?? null);
+    const clearApprovalWorkflow = workerIdChanged && !!existing?.approvalWorkflowId;
+
+    let saved;
     if (existing) {
-        return prisma.scheduleAssignment.update({
+        saved = await prisma.scheduleAssignment.update({
             where: { id: existing.id },
             data: {
                 workerId: data.workerId ?? null,
@@ -119,22 +125,39 @@ export async function upsertAssignment(data: {
                 rehearsalDate: data.rehearsalDate !== undefined ? data.rehearsalDate : undefined,
                 rehearsalTime: data.rehearsalTime !== undefined ? data.rehearsalTime : undefined,
                 slotType: data.slotType !== undefined ? data.slotType : undefined,
+                ...(clearApprovalWorkflow ? { approvalWorkflowId: null } : {}),
             },
         });
+    } else {
+        saved = await prisma.scheduleAssignment.create({ data: {
+            scheduleId: data.scheduleId,
+            ministryId: data.ministryId,
+            roleName: data.roleName,
+            workerId: data.workerId ?? null,
+            workerName: data.workerName ?? null,
+            notes: data.notes ?? null,
+            rehearsalDate: data.rehearsalDate ?? null,
+            rehearsalTime: data.rehearsalTime ?? null,
+            order: data.order ?? 0,
+            slotType: data.slotType ?? 'Standard',
+        }});
     }
 
-    return prisma.scheduleAssignment.create({ data: {
-        scheduleId: data.scheduleId,
-        ministryId: data.ministryId,
-        roleName: data.roleName,
-        workerId: data.workerId ?? null,
-        workerName: data.workerName ?? null,
-        notes: data.notes ?? null,
-        rehearsalDate: data.rehearsalDate ?? null,
-        rehearsalTime: data.rehearsalTime ?? null,
-        order: data.order ?? 0,
-        slotType: data.slotType ?? 'Standard',
-    }});
+    if (workerIdChanged && data.workerId) {
+        const worker = await prisma.worker.findUnique({
+            where: { id: data.workerId },
+            select: { minorMinistryId: true, majorMinistryId: true },
+        });
+        if (worker && worker.minorMinistryId === data.ministryId && worker.majorMinistryId !== data.ministryId) {
+            const workflow = await createMinorMinistryAssignmentWorkflow(saved, data.requestedBy ?? data.workerId, data.ministryId);
+            saved = await prisma.scheduleAssignment.update({
+                where: { id: saved.id },
+                data: { approvalWorkflowId: workflow.id },
+            });
+        }
+    }
+
+    return saved;
 }
 
 export async function deleteAssignment(id: string) {
@@ -385,7 +408,7 @@ export async function getMyAssignments(workerId: string) {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    return prisma.scheduleAssignment.findMany({
+    const assignments = await prisma.scheduleAssignment.findMany({
         where: {
             workerId,
             schedule: {
@@ -396,6 +419,23 @@ export async function getMyAssignments(workerId: string) {
         include: { schedule: true },
         orderBy: { schedule: { date: 'asc' } },
     });
+
+    const workflowIds = assignments
+        .map((a) => a.approvalWorkflowId)
+        .filter((id): id is string => !!id);
+
+    const workflows = workflowIds.length
+        ? await prisma.approvalWorkflow.findMany({
+            where: { id: { in: workflowIds } },
+            select: { id: true, status: true },
+        })
+        : [];
+    const statusById = new Map(workflows.map((w) => [w.id, w.status]));
+
+    return assignments.map((a) => ({
+        ...a,
+        approvalStatus: a.approvalWorkflowId ? statusById.get(a.approvalWorkflowId) ?? null : null,
+    }));
 }
 
 export async function getScheduleConfirmationStatus(scheduleId: string) {

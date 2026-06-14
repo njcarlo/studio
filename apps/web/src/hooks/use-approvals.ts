@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePermissionsStore } from '@studio/store';
 import { useShallow } from 'zustand/react/shallow';
-import { getApprovals, getRoomReservationApprovals, getMajorEventApprovals, getLeaveApprovals, createApproval, updateApproval } from '@/actions/db';
+import { getApprovals, getRoomReservationApprovals, getMajorEventApprovals, getLeaveApprovals, getMinorMinistryAssignmentApprovals, createApproval, updateApproval } from '@/actions/db';
 
 export function useApprovals(options: { enabled?: boolean } = {}) {
     const queryClient = useQueryClient();
@@ -20,16 +20,18 @@ export function useApprovals(options: { enabled?: boolean } = {}) {
     const { data, isLoading, error } = useQuery({
         queryKey: ['approvals', scope],
         queryFn: async () => {
-            const [legacy, roomReservations, majorEvents, leaveRequests] = await Promise.all([
+            const [legacy, roomReservations, majorEvents, leaveRequests, minorMinistryAssignments] = await Promise.all([
                 getApprovals(scope),
                 getRoomReservationApprovals(),
                 getMajorEventApprovals(),
                 getLeaveApprovals(),
+                getMinorMinistryAssignmentApprovals(),
             ]);
             const rooms = roomReservations.success ? roomReservations.data : [];
             const events = majorEvents.success ? majorEvents.data : [];
             const leave = leaveRequests.success ? leaveRequests.data : [];
-            return [...(legacy as any[]), ...rooms, ...events, ...leave];
+            const minorMinistry = minorMinistryAssignments.success ? minorMinistryAssignments.data : [];
+            return [...(legacy as any[]), ...rooms, ...events, ...leave, ...minorMinistry];
         },
         staleTime: 2 * 60_000,
         enabled: options?.enabled !== false,
