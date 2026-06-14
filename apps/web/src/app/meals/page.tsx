@@ -336,7 +336,9 @@ function MealsPageContent() {
         toast({ title: `Stub${increment > 1 ? 's' : ''} Issued`, description: `${targetWorker.firstName} ${targetWorker.lastName} now has ${targetCount} meal stub(s) for this date.` });
       } else {
         // Remove excess stubs to bring the count down to targetCount.
-        const toRemove = dayStubs.slice(0, dayCount - targetCount);
+        // Skip any not-yet-synced optimistic entries (no real id to delete yet).
+        const removable = dayStubs.filter(s => !String(s.id).startsWith('optimistic-'));
+        const toRemove = removable.slice(0, dayCount - targetCount);
         for (const s of toRemove) {
           await deleteMealStub(s.id);
         }
@@ -525,6 +527,7 @@ function MealsPageContent() {
                     <TableBody>
                       {mealStubs?.filter(s => {
                         if (!s.date) return false;
+                        if (s.workerId !== workerProfile?.id) return false;
                         const d = s.date instanceof Date ? s.date : new Date(s.date as any);
                         return isWithinInterval(d, { start: startOfWeek(new Date(), { weekStartsOn: 1 }), end: endOfWeek(new Date()) });
                       }).sort((a, b) => {
