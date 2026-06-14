@@ -304,7 +304,43 @@ export type C2SGroup = {
     name: string;
     mentorId: string;
     menteeIds: string[];
+    location?: string | null;
+    meetingSchedule?: string | null;
+    currentModule?: string | null;
     createdAt: TimestampLike;
+    updatedAt: TimestampLike;
+};
+
+export type C2SJoinRequest = {
+    id: string;
+    groupId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+    message?: string | null;
+    status: 'Pending' | 'Approved' | 'Rejected';
+    workflowId?: string | null;
+    createdAt: TimestampLike;
+};
+
+export type C2SAttendanceRecord = {
+    id: string;
+    sessionId: string;
+    menteeId: string;
+    present: boolean;
+    createdAt: TimestampLike;
+};
+
+export type C2SSession = {
+    id: string;
+    groupId: string;
+    date: TimestampLike;
+    module?: string | null;
+    notes?: string | null;
+    createdBy: string;
+    createdAt: TimestampLike;
+    attendance?: C2SAttendanceRecord[];
 };
 
 export type WorkloadCategory = {

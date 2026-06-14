@@ -26,6 +26,7 @@ import * as mealsAttendanceService from '@/services/meals-attendance';
 import * as MasterScheduleService from '@/services/master-schedule';
 import * as LeaveWorkflow from '@/services/leave-workflow';
 import * as MinorMinistryAssignmentWorkflow from '@/services/minor-ministry-assignment-workflow';
+import * as C2SService from '@/services/c2s';
 import {
     createMealStubSchema,
     updateMealStubSchema,
@@ -842,6 +843,11 @@ export const decideApprovalStage = withPublicAction(
             const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
             if (meta.scheduleId) revalidatePath(`/schedule/${meta.scheduleId}`);
             revalidatePath('/my-schedule');
+        }
+
+        if (workflow.type === C2SService.C2S_JOIN_REQUEST_WORKFLOW_TYPE) {
+            await C2SService.syncC2SJoinRequestFromWorkflow(workflow);
+            revalidatePath('/c2s');
         }
 
         await writeAudit({

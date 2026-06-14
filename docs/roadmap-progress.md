@@ -72,7 +72,19 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
     denied self-manage, Sys Admin manage-all, full CRUD lifecycle)
 
 ### Phase 4 — C2S completion, Mobile app, Offline
-- [ ] C2S gaps (5.12)
+- [x] **C2S gaps (5.12)** — mentor-facing "My Group" tab (location/meeting schedule/current
+  module editing, mentee roster, per-session attendance), anonymous public join-request page
+  (`/public/c2s-join`) routed through the approval engine to the group's mentor with email
+  decision notifications for requesters with no Worker record
+  - [x] Prisma schema: `C2SGroup` profile fields + `C2SJoinRequest`, `C2SSession`, `C2SAttendanceRecord`
+  - [x] Migration SQL (Prisma DDL + RLS) — applied to live DB
+  - [x] Shared types (`packages/types`)
+  - [x] Approval engine: anonymous-requester email fallback via `workflow.metadata`
+  - [x] `services/c2s.ts` + `actions/c2s.ts`
+  - [x] Wired into `decideApprovalStage` + `/approvals` via `getC2SJoinRequestApprovals`
+  - [x] UI: `/c2s` "My Group" tab + public join page `/public/c2s-join`
+  - [x] End-to-end verification (join request -> mentor approval -> C2SMentee created,
+    profile edit, session attendance recording)
 - [ ] Mobile app (6.1)
 - [ ] Offline support (6.4)
 

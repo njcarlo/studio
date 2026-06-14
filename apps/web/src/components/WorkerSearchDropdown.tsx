@@ -29,6 +29,8 @@ interface WorkerSearchDropdownProps {
   setWorkerIdResult: (v: any) => void;
   handleWorkerIdSearch: () => void;
   workerIdSearching: boolean;
+  isAssigning?: boolean;
+  assigningWorkerId?: string | null;
 }
 
 export default function WorkerSearchDropdown({
@@ -48,6 +50,8 @@ export default function WorkerSearchDropdown({
   setWorkerIdResult,
   handleWorkerIdSearch,
   workerIdSearching,
+  isAssigning = false,
+  assigningWorkerId = null,
 }: WorkerSearchDropdownProps) {
   const getMinistryName = (id: string) => {
     const m = ministries.find((m) => m.id === id);
@@ -79,26 +83,40 @@ export default function WorkerSearchDropdown({
               {!assignDialog?.reassign && (
                 <button
                   type="button"
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-sm text-muted-foreground"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-sm text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isAssigning}
                   onClick={() => handleAssign(null)}
                 >
-                  <X className="h-4 w-4" /> Clear assignment
+                  {isAssigning && assigningWorkerId === "__clear__" ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4" />
+                  )}
+                  Clear assignment
                 </button>
               )}
               {filteredWorkers.map((w) => {
                 const dutyCount = monthlyDuties[w.id] || 0;
+                const isThisAssigning = isAssigning && assigningWorkerId === w.id;
                 return (
                   <button
                     type="button"
                     key={w.id}
-                    className="w-full flex flex-col gap-1 px-3 py-2 rounded-md hover:bg-muted text-left border border-transparent focus:border-border mb-1"
+                    className="w-full flex flex-col gap-1 px-3 py-2 rounded-md hover:bg-muted text-left border border-transparent focus:border-border mb-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isAssigning}
                     onClick={() => handleAssign(w.id)}
                   >
                     <div className="w-full flex items-center gap-3">
-                      <Avatar className="h-7 w-7">
-                        <AvatarImage src={w.avatarUrl} />
-                        <AvatarFallback className="text-[10px]">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
-                      </Avatar>
+                      {isThisAssigning ? (
+                        <div className="h-7 w-7 flex items-center justify-center shrink-0">
+                          <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <Avatar className="h-7 w-7">
+                          <AvatarImage src={w.avatarUrl} />
+                          <AvatarFallback className="text-[10px]">{w.firstName[0]}{w.lastName[0]}</AvatarFallback>
+                        </Avatar>
+                      )}
                       <div className="flex-1">
                         <p className="text-sm font-medium">{w.firstName} {w.lastName}</p>
                         <p className="text-xs text-muted-foreground">{ministries.find((m) => m.id === w.majorMinistryId)?.name || "—"}</p>
@@ -147,11 +165,16 @@ export default function WorkerSearchDropdown({
                   <div className="space-y-2">
                     <button
                       type="button"
-                      className="w-full flex flex-col gap-1 px-3 py-3 rounded-md border hover:bg-muted text-left"
+                      className="w-full flex flex-col gap-1 px-3 py-3 rounded-md border hover:bg-muted text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isAssigning}
                       onClick={() => handleAssign(workerIdResult.id)}
                     >
                       <div className="w-full flex items-center gap-3">
-                        <CheckCircle2 className={`h-5 w-5 shrink-0 ${isSameMinistry ? "text-green-500" : "text-amber-500"}`} />
+                        {isAssigning && assigningWorkerId === workerIdResult.id ? (
+                          <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" />
+                        ) : (
+                          <CheckCircle2 className={`h-5 w-5 shrink-0 ${isSameMinistry ? "text-green-500" : "text-amber-500"}`} />
+                        )}
                         <div className="flex-1">
                           <p className="text-sm font-medium">{workerIdResult.firstName} {workerIdResult.lastName}</p>
                           <p className="text-xs text-muted-foreground">{workerMinistryName} · {workerIdResult.status}</p>

@@ -414,12 +414,55 @@ model C2SMentee {
 }
 
 model C2SGroup {
-  id        String      @id @default(uuid())
-  name      String
-  mentorId  String
-  menteeIds String[]
-  createdAt DateTime    @default(now())
-  mentees   C2SMentee[]
+  id              String      @id @default(uuid())
+  name            String
+  mentorId        String
+  menteeIds       String[]
+  location        String?
+  meetingSchedule String?
+  currentModule   String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  mentees         C2SMentee[]
+  joinRequests    C2SJoinRequest[]
+  sessions        C2SSession[]
+}
+
+model C2SJoinRequest {
+  id        String   @id @default(uuid())
+  groupId   String
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  message   String?
+  status    String   @default("Pending")
+  workflowId String?
+  createdAt DateTime @default(now())
+  group     C2SGroup @relation(fields: [groupId], references: [id])
+}
+
+model C2SSession {
+  id        String                @id @default(uuid())
+  groupId   String
+  date      DateTime
+  module    String?
+  notes     String?
+  createdBy String
+  createdAt DateTime              @default(now())
+  group     C2SGroup              @relation(fields: [groupId], references: [id])
+  attendance C2SAttendanceRecord[]
+}
+
+model C2SAttendanceRecord {
+  id        String     @id @default(uuid())
+  sessionId String
+  menteeId  String
+  present   Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  session   C2SSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, menteeId])
 }
 
 model Setting {

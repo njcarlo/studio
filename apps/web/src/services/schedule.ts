@@ -178,20 +178,28 @@ export async function applyTemplateToSchedule(scheduleId: string, templateId: st
         template.roles.map(r => r.roleName)
     );
 
-    await prisma.scheduleAssignment.deleteMany({
+    // Amend rather than replace, so multiple templates can be layered onto
+    // the same ministry without wiping out existing assignments.
+    const existing = await prisma.scheduleAssignment.findMany({
         where: { scheduleId, ministryId: template.ministryId },
+        select: { roleName: true },
     });
+    const countByRole = new Map<string, number>();
+    for (const a of existing) {
+        countByRole.set(a.roleName, (countByRole.get(a.roleName) ?? 0) + 1);
+    }
 
     await prisma.scheduleAssignment.createMany({
-        data: template.roles.flatMap(role =>
-            Array.from({ length: role.count }, (_, i) => ({
+        data: template.roles.flatMap(role => {
+            const start = countByRole.get(role.roleName) ?? 0;
+            return Array.from({ length: role.count }, (_, i) => ({
                 scheduleId,
                 ministryId: template.ministryId,
                 roleName: role.roleName,
-                order: i,
+                order: start + i,
                 notes: role.notes ?? null,
-            }))
-        ),
+            }));
+        }),
     });
 }
 

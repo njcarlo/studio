@@ -342,24 +342,39 @@ async function notifyActiveStageApprovers(workflow: WorkflowWithStages): Promise
     }
 }
 
+/**
+ * Fallback contact info for requesters with no Worker record (e.g. anonymous
+ * public-form submissions such as C2S join requests), read from
+ * `workflow.metadata.requesterEmail`/`requesterName`.
+ */
+function getAnonymousRequesterInfo(workflow: WorkflowWithStages): { email: string; name?: string } | null {
+    const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
+    const email = meta.requesterEmail;
+    if (typeof email !== 'string' || !email) return null;
+    const name = typeof meta.requesterName === 'string' ? meta.requesterName : undefined;
+    return { email, name };
+}
+
 /** Notifies the requester that one stage of a parallel group was declined, without waiting for the workflow's terminal outcome. */
 async function notifyStageRejected(workflow: WorkflowWithStages, stage: ApprovalStage): Promise<void> {
     try {
         const requester = await prisma.worker.findUnique({ where: { id: workflow.requesterId } });
-        if (!requester) return;
 
         const title = `${workflow.type} request: part declined`;
         const body = stage.reason
             ? `One part of your ${workflow.type} request was declined: ${stage.reason}`
             : `One part of your ${workflow.type} request was declined.`;
 
-        await prisma.inAppNotification.create({
-            data: { userId: requester.id, title, body, link: '/approvals' },
-        });
+        if (requester) {
+            await prisma.inAppNotification.create({
+                data: { userId: requester.id, title, body, link: '/approvals' },
+            });
+        }
 
-        if (requester.email) {
+        const email = requester?.email ?? getAnonymousRequesterInfo(workflow)?.email;
+        if (email) {
             await EmailService.sendEmail({
-                to: requester.email,
+                to: email,
                 subject: `[Studio] ${title}`,
                 html: `<p>${body}</p>`,
                 text: body,
@@ -373,7 +388,6 @@ async function notifyStageRejected(workflow: WorkflowWithStages, stage: Approval
 async function notifyRequester(workflow: WorkflowWithStages): Promise<void> {
     try {
         const requester = await prisma.worker.findUnique({ where: { id: workflow.requesterId } });
-        if (!requester) return;
 
         const title = `${workflow.type} request ${workflow.status.toLowerCase()}`;
         const rejectedStage = workflow.stages.find((s) => s.status === 'Rejected');
@@ -381,13 +395,16 @@ async function notifyRequester(workflow: WorkflowWithStages): Promise<void> {
             ? `Your ${workflow.type} request was rejected: ${rejectedStage.reason}`
             : `Your ${workflow.type} request has been ${workflow.status.toLowerCase()}.`;
 
-        await prisma.inAppNotification.create({
-            data: { userId: requester.id, title, body, link: '/approvals' },
-        });
+        if (requester) {
+            await prisma.inAppNotification.create({
+                data: { userId: requester.id, title, body, link: '/approvals' },
+            });
+        }
 
-        if (requester.email) {
+        const email = requester?.email ?? getAnonymousRequesterInfo(workflow)?.email;
+        if (email) {
             await EmailService.sendEmail({
-                to: requester.email,
+                to: email,
                 subject: `[Studio] ${title}`,
                 html: `<p>${body}</p>`,
                 text: body,

@@ -39,7 +39,7 @@ export default function ScheduleDetailPage() {
     const { user } = useAuthStore();
     const { canManageSchedule, canConfirmSchedule, canAssignSchedulers, canViewAllSchedules, workerProfile } = useUserRole();
 
-    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus, reassignAssignment } = useServiceSchedule(id);
+    const { schedule, isLoading, upsertAssignment, isAssigning, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus, reassignAssignment } = useServiceSchedule(id);
     const { ministries } = useMinistries();
     const { data: workers = [] } = useWorkersLite(); // avatar lookups only — search uses getEligibleWorkers
     const { templates, isLoading: templatesLoading } = useServiceTemplates();
@@ -62,6 +62,7 @@ export default function ScheduleDetailPage() {
     const [newRoleWorkerId, setNewRoleWorkerId] = useState<string | null>(null);
     const [rehearsalDialog, setRehearsalDialog] = useState<{ assignmentId: string, date: string, time: string } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [assigningWorkerId, setAssigningWorkerId] = useState<string | null>(null);
 
     // Worship slot state
     const [newSlotName, setNewSlotName] = useState("");
@@ -173,6 +174,7 @@ export default function ScheduleDetailPage() {
             }
         }
 
+        setAssigningWorkerId(workerId ?? "__clear__");
         try {
             if (assignDialog.reassign && workerId) {
                 await reassignAssignment({
@@ -200,6 +202,8 @@ export default function ScheduleDetailPage() {
             setAssignDialog(null);
         } catch {
             toast({ variant: "destructive", title: assignDialog.reassign ? "Failed to reassign" : "Failed to assign" });
+        } finally {
+            setAssigningWorkerId(null);
         }
     };
 
@@ -725,7 +729,7 @@ export default function ScheduleDetailPage() {
                 </TabsContent>
             </Tabs>
 
-            <WorkerSearchDropdown open={!!assignDialog} onClose={() => { setAssignDialog(null); setWorkerSearch(""); setWorkerIdSearch(""); setWorkerIdResult(null); }} assignDialog={assignDialog} ministries={ministries} workers={workers} monthlyDuties={monthlyDuties} workerSearch={workerSearch} setWorkerSearch={setWorkerSearch} filteredWorkers={filteredWorkers} handleAssign={handleAssign} workerIdSearch={workerIdSearch} setWorkerIdSearch={setWorkerIdSearch} workerIdResult={workerIdResult} setWorkerIdResult={setWorkerIdResult} handleWorkerIdSearch={handleWorkerIdSearch} workerIdSearching={workerIdSearching} />
+            <WorkerSearchDropdown open={!!assignDialog} onClose={() => { setAssignDialog(null); setWorkerSearch(""); setWorkerIdSearch(""); setWorkerIdResult(null); }} assignDialog={assignDialog} ministries={ministries} workers={workers} monthlyDuties={monthlyDuties} workerSearch={workerSearch} setWorkerSearch={setWorkerSearch} filteredWorkers={filteredWorkers} handleAssign={handleAssign} workerIdSearch={workerIdSearch} setWorkerIdSearch={setWorkerIdSearch} workerIdResult={workerIdResult} setWorkerIdResult={setWorkerIdResult} handleWorkerIdSearch={handleWorkerIdSearch} workerIdSearching={workerIdSearching} isAssigning={isAssigning} assigningWorkerId={assigningWorkerId} />
 
             {/* Apply Template Dialog */}
             <Dialog open={!!applyTemplateDialog} onOpenChange={() => setApplyTemplateDialog(null)}>

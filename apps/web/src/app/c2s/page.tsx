@@ -94,6 +94,7 @@ import {
 } from "@studio/ui";
 import { Badge } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
+import MyGroupTab from "./MyGroupTab";
 
 // --- Group Form Component ---
 const GroupForm = ({
@@ -504,12 +505,12 @@ const C2SAnalytics = ({
 
 export default function C2SPage() {
   const { user } = useAuthStore();
-  const { canManageC2S, canViewC2SAnalytics } = useUserRole();
+  const { canManageC2S, canViewC2SAnalytics, isMentor } = useUserRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState(
-    canManageC2S ? "groups" : "analytics",
+    isMentor ? "my-group" : canManageC2S ? "groups" : "analytics",
   );
   const [isGroupSheetOpen, setIsGroupSheetOpen] = useState(false);
   const [isMenteeSheetOpen, setIsMenteeSheetOpen] = useState(false);
@@ -666,7 +667,7 @@ export default function C2SPage() {
     }
   };
 
-  if (!canManageC2S && !canViewC2SAnalytics) {
+  if (!canManageC2S && !canViewC2SAnalytics && !isMentor) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
@@ -719,21 +720,23 @@ export default function C2SPage() {
         </div>
 
         <Tabs
-          defaultValue={canManageC2S ? "groups" : "analytics"}
+          defaultValue={isMentor ? "my-group" : canManageC2S ? "groups" : "analytics"}
           onValueChange={setActiveTab}
           className="w-full"
         >
           <TabsList
-            className="grid w-full max-w-md mb-8"
+            className="grid w-full max-w-xl mb-8"
             style={{
-              gridTemplateColumns:
-                canViewC2SAnalytics && canManageC2S
-                  ? "repeat(3, 1fr)"
-                  : canViewC2SAnalytics || canManageC2S
-                    ? "repeat(2, 1fr)"
-                    : "1fr",
+              gridTemplateColumns: `repeat(${
+                (isMentor ? 1 : 0) + (canManageC2S ? 2 : 0) + (canViewC2SAnalytics ? 1 : 0)
+              }, 1fr)`,
             }}
           >
+            {isMentor && (
+              <TabsTrigger value="my-group" className="text-sm font-medium">
+                <HeartHandshake className="mr-2 h-4 w-4" /> My Group
+              </TabsTrigger>
+            )}
             {canManageC2S && (
               <>
                 <TabsTrigger value="groups" className="text-sm font-medium">
@@ -750,6 +753,12 @@ export default function C2SPage() {
               </TabsTrigger>
             )}
           </TabsList>
+
+          {isMentor && (
+            <TabsContent value="my-group" className="mt-0">
+              <MyGroupTab />
+            </TabsContent>
+          )}
 
           <TabsContent value="groups" className="mt-0">
             {isLoading ? (

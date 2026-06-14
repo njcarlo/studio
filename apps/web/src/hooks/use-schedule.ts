@@ -178,6 +178,7 @@ export function useServiceSchedule(id: string) {
         monthlyDuties: monthlyDutiesData || {},
         confirmationStatus: confirmationStatus || [],
         upsertAssignment: upsertMutation.mutateAsync,
+        isAssigning: upsertMutation.isPending || reassignMutation.isPending,
         deleteAssignment: deleteMutation.mutateAsync,
         applyTemplate: applyTemplateMutation.mutateAsync,
         isApplyingTemplate: applyTemplateMutation.isPending,
