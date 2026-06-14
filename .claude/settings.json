@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m 'fix\\(auth\\): redirect to / on sign-out instead of /auth to avoid Vercel 404 *)",
+      "Bash(git commit -m 'fix\\(nav\\): remove hard window.location.replace to fix back/forward 404 *)",
+      "Bash(git commit -m 'fix\\(vercel\\): use /:path* -> / rewrite for reliable SPA fallback *)",
+      "Bash(git commit -m 'feat\\(admin\\): add dedicated Reporters tab for managing correspondents *)",
+      "Bash(not exist *)",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"c:\\\\Users\\\\Jace\\\\studio\\\\apps\\\\tract-tracker\\\\supabase\\\\functions\\\\upload-to-drive\")",
+      "Bash(git commit -m ' *)",
+      "Bash(supabase functions *)",
+      "Bash(git checkout -b config/local-settings)",
+      "Bash(git add .claude/settings.json .mcp.json)",
+      "Bash(git push -u origin config/local-settings)"
+    ]
+  }
+}
