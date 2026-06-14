@@ -253,6 +253,7 @@ export async function getEligibleWorkers(params: {
     ministryId: string;
     query?: string;
     limit?: number;
+    date?: Date;
 }) {
     return scheduleService.getEligibleWorkers(params);
 }

@@ -99,6 +99,7 @@ model Worker {
   leaveRequests          LeaveRequest[]
   leaveBalances          LeaveBalance[]
   trainingRecords        TrainingRecord[]
+  availability           WorkerAvailability[]
 }
 
 model Ministry {
@@ -239,6 +240,21 @@ model TrainingRecord {
   recordedBy    String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([workerId])
+}
+
+// Worker-managed availability (5.2.2) — self-service blocks the scheduler's
+// eligible-worker search checks against the schedule's date/day-of-week.
+model WorkerAvailability {
+  id        String   @id @default(cuid())
+  workerId  String
+  worker    Worker   @relation(fields: [workerId], references: [id])
+  type      String   // Recurring | OneTime
+  dayOfWeek Int?     // 0-6 (Sun-Sat), for Recurring
+  date      DateTime? // for OneTime
+  note      String?
+  createdAt DateTime @default(now())
 
   @@index([workerId])
 }

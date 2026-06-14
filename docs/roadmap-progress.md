@@ -20,7 +20,7 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 - [x] Meal stub weekly cap & allocation (5.4.2)
 - [x] Emergency reassignment (5.3.5)
 - [x] Major/Minor ministry assignment approval (5.2.5)
-- [ ] Availability (5.2.2)
+- [x] Availability (5.2.2)
 
 ### Phase 2 — Room Reservation completion + Major Event Request
 - [x] Room Reservation 3-stage flow (5.8.2)

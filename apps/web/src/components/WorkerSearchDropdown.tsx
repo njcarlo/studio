@@ -110,6 +110,11 @@ export default function WorkerSearchDropdown({
                         <AlertTriangle className="h-3 w-3" /> Exceeds 3 duties/month. You can still assign.
                       </p>
                     )}
+                    {w.unavailable && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-500 flex items-center gap-1 mt-0.5 font-medium">
+                        <AlertTriangle className="h-3 w-3" /> Marked themselves unavailable this day. You can still assign.
+                      </p>
+                    )}
                   </button>
                 );
               })}

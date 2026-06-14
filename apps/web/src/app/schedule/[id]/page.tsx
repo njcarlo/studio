@@ -147,7 +147,7 @@ export default function ScheduleDetailPage() {
     // Server-side scored worker search — replaces client-side filteredWorkers scoring over 6000 rows.
     const { data: filteredWorkers = [] } = useQuery({
         queryKey: ['eligible-workers', assignDialog?.ministryId, workerSearch],
-        queryFn: () => getEligibleWorkers({ ministryId: assignDialog!.ministryId, query: workerSearch }),
+        queryFn: () => getEligibleWorkers({ ministryId: assignDialog!.ministryId, query: workerSearch, date: schedule?.date ? new Date(schedule.date) : undefined }),
         enabled: !!assignDialog?.ministryId,
         staleTime: 30_000,
         placeholderData: (prev) => prev,

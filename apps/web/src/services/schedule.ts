@@ -4,6 +4,7 @@ import { EmailService } from '@/services/email-service';
 import { allocateMealstubs as allocateMealstubsService } from '@/services/meal-stub-service';
 import { allocateStubsForConfirmation, voidStubsForConfirmation } from '@/services/meal-stub-engine';
 import { createMinorMinistryAssignmentWorkflow } from '@/services/minor-ministry-assignment-workflow';
+import { getUnavailableWorkerIds } from '@/services/availability';
 import { canManageWorkersInMinistries, type CallerCtx } from '@/lib/auth/with-permission';
 import { writeAudit } from '@/lib/audit/log';
 import type {
@@ -521,8 +522,9 @@ export async function getEligibleWorkers(params: {
     ministryId: string;
     query?: string;
     limit?: number;
+    date?: Date;
 }) {
-    const { ministryId, query = '', limit = 50 } = params;
+    const { ministryId, query = '', limit = 50, date } = params;
 
     const targetMinistry = await prisma.ministry.findUnique({
         where: { id: ministryId },
@@ -580,11 +582,19 @@ export async function getEligibleWorkers(params: {
         });
     }
 
-    return [
+    const unavailableIds = date ? await getUnavailableWorkerIds(date) : new Set<string>();
+
+    const withPriority = [
         ...directMembers.map(w => ({ ...w, priority: 3 as const })),
         ...deptMembers.map(w =>   ({ ...w, priority: 2 as const })),
         ...globalMembers.map(w => ({ ...w, priority: 1 as const })),
-    ];
+    ].map(w => ({ ...w, unavailable: unavailableIds.has(w.id) }));
+
+    // Deprioritize (but don't hide) workers who marked themselves unavailable that day.
+    return withPriority.sort((a, b) => {
+        if (a.unavailable !== b.unavailable) return a.unavailable ? 1 : -1;
+        return b.priority - a.priority;
+    });
 }
 
 export async function findWorkerByWorkerId(workerId: string) {

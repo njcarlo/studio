@@ -12,6 +12,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useAuthStore } from "@studio/store";
 import { useToast } from "@/hooks/use-toast";
 import { isWithinConfirmationWindow } from "@/lib/scheduling/confirmation-window";
+import { AvailabilityCard } from "@/components/availability-card";
 
 export default function MySchedulePage() {
     const { toast } = useToast();
@@ -51,6 +52,8 @@ export default function MySchedulePage() {
                     <h1 className="text-2xl font-bold tracking-tight">My Schedule</h1>
                     <p className="text-muted-foreground">Your upcoming assignments. Confirm if you can serve, or let us know if you can't make it.</p>
                 </div>
+
+                <AvailabilityCard />
 
                 {isLoading ? (
                     <div className="flex justify-center py-12">
