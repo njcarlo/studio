@@ -5,6 +5,7 @@ import { allocateMealstubs as allocateMealstubsService } from '@/services/meal-s
 import { allocateStubsForConfirmation, voidStubsForConfirmation } from '@/services/meal-stub-engine';
 import { createMinorMinistryAssignmentWorkflow } from '@/services/minor-ministry-assignment-workflow';
 import { canManageWorkersInMinistries, type CallerCtx } from '@/lib/auth/with-permission';
+import { writeAudit } from '@/lib/audit/log';
 import type {
     CreateServiceScheduleInput,
     UpdateServiceScheduleInput,
@@ -400,6 +401,69 @@ export async function setAttendanceStatus(ctx: CallerCtx, assignmentId: string, 
     }
 
     return { assignment, stubsIssued };
+}
+
+/** True if `ctx` may reassign an assignment in `ministryId` — schedule:manage, or ministry head/scheduler/manager of that ministry. */
+async function canManageAssignment(ctx: CallerCtx, ministryId: string): Promise<boolean> {
+    if (ctx.permissions.has('schedule:manage')) return true;
+    return canManageWorkersInMinistries(ctx, [ministryId]);
+}
+
+/**
+ * Emergency reassignment (SRD 5.3.5): swaps the assigned worker on a slot —
+ * typically used when the original worker reports `Not Attending`. Voids any
+ * meal stubs already issued to the original worker, resets attendance to
+ * `Pending` for the replacement (who then runs the normal confirm flow to
+ * activate their own stub), and notifies the replacement.
+ */
+export async function reassignAssignment(
+    ctx: CallerCtx,
+    assignmentId: string,
+    newWorkerId: string,
+    newWorkerName: string,
+) {
+    const existing = await prisma.scheduleAssignment.findUniqueOrThrow({
+        where: { id: assignmentId },
+        include: { schedule: true },
+    });
+
+    if (!(await canManageAssignment(ctx, existing.ministryId))) {
+        throw new Error('You do not have permission to reassign this assignment.');
+    }
+
+    if (existing.attendanceStatus === 'Confirmed') {
+        await voidStubsForConfirmation(ctx, assignmentId);
+    }
+
+    const assignment = await prisma.scheduleAssignment.update({
+        where: { id: assignmentId },
+        data: {
+            workerId: newWorkerId,
+            workerName: newWorkerName,
+            attendanceStatus: 'Pending',
+            acknowledgedAt: null,
+            acknowledgedBy: null,
+            approvalWorkflowId: null,
+        },
+    });
+
+    await prisma.inAppNotification.create({
+        data: {
+            userId: newWorkerId,
+            title: 'New assignment',
+            body: `You've been assigned to "${existing.roleName}" for ${existing.schedule.title} on ${existing.schedule.date.toLocaleDateString()}. Please confirm your attendance.`,
+            link: '/my-schedule',
+        },
+    });
+
+    await writeAudit({
+        actor: ctx, module: 'schedule', action: 'emergency_reassign',
+        targetId: assignmentId, targetName: existing.roleName,
+        before: { workerId: existing.workerId, workerName: existing.workerName },
+        after: { workerId: newWorkerId, workerName: newWorkerName },
+    });
+
+    return { assignment };
 }
 
 // ── My Schedule (worker personal view) ────────────────────────────────────────

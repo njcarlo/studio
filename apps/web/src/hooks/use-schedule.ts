@@ -7,7 +7,7 @@ import {
     upsertAssignment, deleteAssignment, applyTemplateToSchedule,
     getServiceTemplates, createServiceTemplate, updateServiceTemplate, deleteServiceTemplate,
     publishScheduleAndNotify, confirmAssignment, getScheduleConfirmationStatus, findWorkerByWorkerId,
-    getWorkerConflicts, togglePublicSchedule, getScheduleHistory, setAttendanceStatus,
+    getWorkerConflicts, togglePublicSchedule, getScheduleHistory, setAttendanceStatus, reassignAssignment,
     getWorshipSlots, createWorshipSlot, updateWorshipSlot, deleteWorshipSlot,
     addWorkerToWorshipSlot, removeWorkerFromWorshipSlot,
     getMonthlyDutyCounts, getMyAssignments, getMyMealStubCounts, getSundayConfirmationWindow,
@@ -129,6 +129,18 @@ export function useServiceSchedule(id: string) {
         },
     });
 
+    const reassignMutation = useMutation({
+        mutationFn: async ({ assignmentId, newWorkerId, newWorkerName }: { assignmentId: string; newWorkerId: string; newWorkerName: string }) => {
+            const res = await reassignAssignment(assignmentId, newWorkerId, newWorkerName);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['service-schedule', id] });
+            qc.invalidateQueries({ queryKey: ['schedule-confirmation', id] });
+        },
+    });
+
     const { data: confirmationStatus } = useQuery({
         queryKey: ['schedule-confirmation', id],
         queryFn: () => getScheduleConfirmationStatus(id),
@@ -173,6 +185,7 @@ export function useServiceSchedule(id: string) {
         isPublishing: publishMutation.isPending,
         confirmAssignment: confirmMutation.mutateAsync,
         setAttendanceStatus: setStatusMutation.mutateAsync,
+        reassignAssignment: reassignMutation.mutateAsync,
         togglePublic: togglePublicMutation.mutateAsync,
     };
 }

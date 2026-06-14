@@ -39,7 +39,7 @@ export default function ScheduleDetailPage() {
     const { user } = useAuthStore();
     const { canManageSchedule, canConfirmSchedule, canAssignSchedulers, canViewAllSchedules, workerProfile } = useUserRole();
 
-    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus } = useServiceSchedule(id);
+    const { schedule, isLoading, upsertAssignment, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus, reassignAssignment } = useServiceSchedule(id);
     const { ministries } = useMinistries();
     const { data: workers = [] } = useWorkersLite(); // avatar lookups only — search uses getEligibleWorkers
     const { templates, isLoading: templatesLoading } = useServiceTemplates();
@@ -47,7 +47,7 @@ export default function ScheduleDetailPage() {
     const { slots: worshipSlots, createSlot, deleteSlot, addWorker: addWorshipWorker, removeWorker: removeWorshipWorker } = useWorshipSlots(id);
 
     const [expandedMinistries, setExpandedMinistries] = useState<Set<string>>(new Set());
-    const [assignDialog, setAssignDialog] = useState<{ assignmentId: string; ministryId: string; roleName: string } | null>(null);
+    const [assignDialog, setAssignDialog] = useState<{ assignmentId: string; ministryId: string; roleName: string; reassign?: boolean } | null>(null);
     const [workerSearch, setWorkerSearch] = useState("");
     const [workerIdSearch, setWorkerIdSearch] = useState("");
     const [workerIdResult, setWorkerIdResult] = useState<any>(null);
@@ -174,6 +174,17 @@ export default function ScheduleDetailPage() {
         }
 
         try {
+            if (assignDialog.reassign && workerId) {
+                await reassignAssignment({
+                    assignmentId: assignDialog.assignmentId,
+                    newWorkerId: workerId,
+                    newWorkerName: worker ? `${(worker as any).firstName} ${(worker as any).lastName}` : '',
+                });
+                toast({ title: "Reassigned", description: "The replacement has been notified to confirm." });
+                setAssignDialog(null);
+                return;
+            }
+
             await upsertAssignment({
                 id: assignDialog.assignmentId,
                 scheduleId: id,
@@ -188,7 +199,7 @@ export default function ScheduleDetailPage() {
             toast({ title: workerId ? "Worker assigned" : "Assignment cleared" });
             setAssignDialog(null);
         } catch {
-            toast({ variant: "destructive", title: "Failed to assign" });
+            toast({ variant: "destructive", title: assignDialog.reassign ? "Failed to reassign" : "Failed to assign" });
         }
     };
 
@@ -560,6 +571,11 @@ export default function ScheduleDetailPage() {
                                                                                         </Select>
                                                                                     )}
                                                                                     {!canConfirmSchedule && <span className="text-xs text-muted-foreground">{status}</span>}
+                                                                                    {canManageSchedule && status === 'Not Attending' && (
+                                                                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, reassign: true })}>
+                                                                                            <UserPlus className="mr-1 h-3 w-3" /> Reassign
+                                                                                        </Button>
+                                                                                    )}
                                                                                     <Button variant="ghost" size="icon" className="h-6 w-6" title="Rehearsal" onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
                                                                                         <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
                                                                                     </Button>

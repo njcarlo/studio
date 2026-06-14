@@ -182,6 +182,18 @@ export const setAttendanceStatus = withPublicAction(async (assignmentId: string,
     return result;
 });
 
+// ── Emergency Reassignment (5.3.5) ──────────────────────────────────────────────
+
+// Scheduler/Ministry Head reassigns a slot to a replacement worker —
+// permission checked inside the service per-assignment.
+export const reassignAssignment = withPublicAction(async (assignmentId: string, newWorkerId: string, newWorkerName: string) => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+    const result = await scheduleService.reassignAssignment(ctx, assignmentId, newWorkerId, newWorkerName);
+    revalidatePath(`/schedule/${result.assignment.scheduleId}`);
+    return result;
+});
+
 // ── Sunday Confirmation & Meal Stub Settings (Sys Admin) ───────────────────────
 
 export const getMealStubSettings = withPermission(

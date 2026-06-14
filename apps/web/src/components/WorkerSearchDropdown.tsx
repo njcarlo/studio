@@ -15,7 +15,7 @@ import { LoaderCircle, X, CheckCircle2, AlertTriangle } from "lucide-react";
 interface WorkerSearchDropdownProps {
   open: boolean;
   onClose: () => void;
-  assignDialog: { assignmentId: string; ministryId: string; roleName: string } | null;
+  assignDialog: { assignmentId: string; ministryId: string; roleName: string; reassign?: boolean } | null;
   ministries: any[];
   workers: any[];
   monthlyDuties: Record<string, number>;
@@ -58,7 +58,7 @@ export default function WorkerSearchDropdown({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign Worker — {assignDialog?.roleName}</DialogTitle>
+          <DialogTitle>{assignDialog?.reassign ? "Reassign Worker" : "Assign Worker"} — {assignDialog?.roleName}</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="search">
           <TabsList className="w-full">
@@ -76,13 +76,15 @@ export default function WorkerSearchDropdown({
               Showing workers from <strong>{assignDialog ? getMinistryName(assignDialog.ministryId) : ""}</strong>. Search by name or Worker ID.
             </p>
             <div className="max-h-64 overflow-y-auto space-y-1">
-              <button
-                type="button"
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-sm text-muted-foreground"
-                onClick={() => handleAssign(null)}
-              >
-                <X className="h-4 w-4" /> Clear assignment
-              </button>
+              {!assignDialog?.reassign && (
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted text-sm text-muted-foreground"
+                  onClick={() => handleAssign(null)}
+                >
+                  <X className="h-4 w-4" /> Clear assignment
+                </button>
+              )}
               {filteredWorkers.map((w) => {
                 const dutyCount = monthlyDuties[w.id] || 0;
                 return (
