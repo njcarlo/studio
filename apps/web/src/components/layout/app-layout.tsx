@@ -12,6 +12,7 @@ import {
 } from "@studio/ui";
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import {
   LoaderCircle,
   Info,
@@ -139,6 +140,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="text-sm font-semibold font-headline">COG App</span>
           </div>
           <div className="w-full flex-1" />
+          <NotificationBell />
           <UserNav />
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">

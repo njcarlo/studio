@@ -100,6 +100,7 @@ model Worker {
   leaveBalances          LeaveBalance[]
   trainingRecords        TrainingRecord[]
   availability           WorkerAvailability[]
+  notificationPreference NotificationPreference?
 }
 
 model Ministry {
@@ -674,6 +675,15 @@ model InAppNotification {
   link      String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// Per-worker notification channel preferences (Layer 3). In-app notifications
+// (InAppNotification, above) are always written; this controls whether
+// notification-service.ts also sends an email for a given worker.
+model NotificationPreference {
+  workerId     String  @id
+  worker       Worker  @relation(fields: [workerId], references: [id])
+  emailEnabled Boolean @default(true)
 }
 
 // ── Worship Slots ─────────────────────────────────────────────────────────────

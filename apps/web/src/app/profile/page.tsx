@@ -7,7 +7,8 @@ import { useAuthStore } from "@studio/store";
 import { useToast } from "@/hooks/use-toast";
 import { updateWorker } from "@/actions/db";
 import { useMinistries } from "@/hooks/use-ministries";
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from "@studio/ui";
+import { useMyNotificationPreference } from "@/hooks/use-notifications";
+import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Switch } from "@studio/ui";
 import { LoaderCircle } from "lucide-react";
 
 export default function ProfilePage() {
@@ -15,6 +16,7 @@ export default function ProfilePage() {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const { ministries } = useMinistries();
+  const { emailEnabled, setEmailEnabled } = useMyNotificationPreference();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -109,6 +111,21 @@ export default function ProfilePage() {
             <div className="flex justify-between"><span className="text-muted-foreground">Worker ID</span><span>{workerProfile.workerId || "—"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span>{workerProfile.status}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Employment Type</span><span>{(workerProfile as any).employmentType || "—"}</span></div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Notifications</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Email notifications</p>
+                <p className="text-sm text-muted-foreground">
+                  Also send an email when you get an in-app notification.
+                </p>
+              </div>
+              <Switch checked={emailEnabled} onCheckedChange={(checked) => setEmailEnabled(checked)} />
+            </div>
           </CardContent>
         </Card>
 
