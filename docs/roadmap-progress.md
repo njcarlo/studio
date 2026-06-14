@@ -78,3 +78,7 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 
 ### Phase 5 — Deferred
 - [ ] Attendee-facing public module (5.13) — intentionally out of v1 scope
+
+## Side Tasks
+- [ ] In schedules, show feedback when assigning or clicking workers in the assign worker view
+- [ ] When applying a schedule template, amend the current schedule instead of replacing it (so multiple templates can be applied to the same ministry), and show a confirmation feedback after adding the template

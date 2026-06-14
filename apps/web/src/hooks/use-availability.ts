@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import {
     getMyAvailability,
     setRecurringUnavailability,
@@ -48,11 +49,17 @@ export function useMyAvailability() {
         onSuccess: () => qc.invalidateQueries({ queryKey: key }),
     });
 
-    const availability = data || [];
-    const recurringDays = availability
-        .filter((a: any) => a.type === 'Recurring')
-        .map((a: any) => a.dayOfWeek as number);
-    const oneTimeBlocks = availability.filter((a: any) => a.type === 'OneTime');
+    const recurringDays = useMemo(() => {
+        const availability = data || [];
+        return availability
+            .filter((a: any) => a.type === 'Recurring')
+            .map((a: any) => a.dayOfWeek as number);
+    }, [data]);
+
+    const oneTimeBlocks = useMemo(() => {
+        const availability = data || [];
+        return availability.filter((a: any) => a.type === 'OneTime');
+    }, [data]);
 
     return {
         isLoading,
