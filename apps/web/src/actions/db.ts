@@ -24,6 +24,7 @@ import * as RoomReservationWorkflow from '@/services/room-reservation-workflow';
 import * as MajorEventWorkflow from '@/services/major-event-workflow';
 import * as mealsAttendanceService from '@/services/meals-attendance';
 import * as MasterScheduleService from '@/services/master-schedule';
+import * as LeaveWorkflow from '@/services/leave-workflow';
 import {
     createMealStubSchema,
     updateMealStubSchema,
@@ -829,6 +830,12 @@ export const decideApprovalStage = withPublicAction(
             revalidatePath('/major-events');
         }
 
+        if (workflow.type === LeaveWorkflow.LEAVE_WORKFLOW_TYPE) {
+            await LeaveWorkflow.syncLeaveStatusFromWorkflow(workflow);
+            revalidatePath('/leave');
+            revalidatePath('/settings/attendance');
+        }
+
         await writeAudit({
             actor: ctx,
             module: 'approvals',
@@ -980,6 +987,58 @@ export const getMajorEventApprovals = withPublicAction(async () => {
     }
 
     return rows;
+});
+
+/**
+ * Leave & Request approval workflows (SRD 5.10.4-5.10.6), normalized into the
+ * legacy ApprovalRequest shape so the existing Kanban UI on /approvals can
+ * render them alongside other request types. Sequential 3-stage workflow
+ * (Ministry Head -> HR -> Admin Dept Head), same shape as Room Booking.
+ */
+export const getLeaveApprovals = withPublicAction(async () => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+
+    const [workflows, actionable] = await Promise.all([
+        prisma.approvalWorkflow.findMany({
+            where: { type: LeaveWorkflow.LEAVE_WORKFLOW_TYPE },
+            include: { stages: { orderBy: { stageOrder: 'asc' } } },
+            orderBy: { createdAt: 'desc' },
+        }),
+        ApprovalEngine.getActionableWorkflows(ctx.workerId),
+    ]);
+
+    const actionableIds = new Set(actionable.map((w) => w.id));
+    const requesterIds = [...new Set(workflows.map((w) => w.requesterId))];
+    const workers = await prisma.worker.findMany({
+        where: { id: { in: requesterIds } },
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true, majorMinistryId: true, minorMinistryId: true },
+    });
+    const workerById = new Map(workers.map((w) => [w.id, w]));
+
+    return workflows.map((workflow) => {
+        const requester = workerById.get(workflow.requesterId);
+        const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
+        const active = ApprovalEngine.getActiveStages(workflow.stages);
+        const startDate = meta.startDate ? new Date(meta.startDate as string).toLocaleDateString() : '';
+        const endDate = meta.endDate ? new Date(meta.endDate as string).toLocaleDateString() : '';
+        const dateRange = startDate === endDate ? startDate : `${startDate} – ${endDate}`;
+
+        return {
+            id: workflow.id,
+            requester: requester ? `${requester.firstName} ${requester.lastName}` : 'Unknown',
+            type: LeaveWorkflow.LEAVE_WORKFLOW_TYPE,
+            details: `${meta.leaveType ?? ''} — ${dateRange} (${meta.days ?? '?'} day${meta.days === 1 ? '' : 's'})`,
+            date: workflow.createdAt,
+            status: workflow.status,
+            workerId: workflow.requesterId,
+            requestId: workflow.subjectId,
+            worker: requester ?? null,
+            _workflowId: workflow.id,
+            _stageId: active[0]?.id ?? null,
+            _actionable: actionableIds.has(workflow.id),
+        };
+    });
 });
 
 // --- Ministries ---

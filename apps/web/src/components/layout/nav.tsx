@@ -17,6 +17,7 @@ import {
   Package,
   ExternalLink,
   Landmark,
+  CalendarOff,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -182,6 +183,11 @@ const allNavItems: NavItem[] = [
     href: "/major-events",
     icon: CalendarDays,
     label: "Major Events",
+  },
+  {
+    href: "/leave",
+    icon: CalendarOff,
+    label: "Leave & Requests",
   },
     {
     href: "/venue",

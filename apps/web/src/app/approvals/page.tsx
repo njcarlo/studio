@@ -196,6 +196,7 @@ export default function ApprovalsPage() {
                                 <SelectItem value="Ministry Change">Ministry Change</SelectItem>
                                 <SelectItem value="Event">Event</SelectItem>
                                 <SelectItem value="Major Event">Major Event</SelectItem>
+                                <SelectItem value="Leave Request">Leave Request</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -139,6 +139,32 @@ export type AttendanceSetting = {
     updatedBy?: string | null;
 };
 
+export type LeaveRequestType = 'Vacation' | 'Sick' | 'Emergency' | 'ChangeTime' | 'ChangeDayOff';
+
+export type LeaveRequest = {
+    id: string;
+    workerId: string;
+    type: LeaveRequestType;
+    startDate: TimestampLike | Date;
+    endDate: TimestampLike | Date;
+    reason: string;
+    newShiftStart?: string | null;
+    newShiftEnd?: string | null;
+    days: number;
+    status: string;
+    workflowId?: string | null;
+    createdAt: TimestampLike | Date;
+};
+
+export type LeaveBalance = {
+    id: string;
+    workerId: string;
+    type: 'Vacation' | 'Sick' | 'Emergency';
+    year: number;
+    totalDays: number;
+    usedDays: number;
+};
+
 export type Booking = {
     id: string;
     requestId?: string;

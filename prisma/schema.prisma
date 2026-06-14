@@ -96,6 +96,8 @@ model Worker {
   capabilities           String[]             @default([])
   masterSchedule         MasterSchedule?
   masterScheduleOverrides MasterScheduleOverride[]
+  leaveRequests          LeaveRequest[]
+  leaveBalances          LeaveBalance[]
 }
 
 model Ministry {
@@ -177,6 +179,48 @@ model AttendanceSetting {
   gracePeriodMinutes Int      @default(15)
   updatedBy          String?
   updatedAt          DateTime @updatedAt
+}
+
+// Leave & Request filing (5.10.4-5.10.6). Vacation/Sick/Emergency consume
+// LeaveBalance (applied when the HR stage of the workflow approves);
+// ChangeTime/ChangeDayOff don't consume balance but write a
+// MasterScheduleOverride for `startDate` on final approval. Approved via a
+// 3-stage ApprovalWorkflow (Ministry Head -> HR -> Admin Dept Head).
+model LeaveRequest {
+  id             String   @id @default(cuid())
+  workerId       String
+  worker         Worker   @relation(fields: [workerId], references: [id])
+  type           String   // Vacation | Sick | Emergency | ChangeTime | ChangeDayOff
+  startDate      DateTime
+  endDate        DateTime
+  reason         String
+  newShiftStart  String?  // ChangeTime only — "HH:mm"
+  newShiftEnd    String?  // ChangeTime only — "HH:mm"
+  days           Float    // inclusive day count, used for balance accounting
+  status         String   @default("Pending")
+  workflowId     String?  @unique
+  balanceApplied Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([workerId])
+}
+
+// Per-worker, per-type, per-year leave balance (5.10.5). HR sets totalDays;
+// usedDays is incremented when the HR stage of a LeaveRequest workflow approves.
+model LeaveBalance {
+  id        String   @id @default(cuid())
+  workerId  String
+  worker    Worker   @relation(fields: [workerId], references: [id])
+  type      String   // Vacation | Sick | Emergency
+  year      Int
+  totalDays Float
+  usedDays  Float    @default(0)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@unique([workerId, type, year])
+  @@index([workerId])
 }
 
 model Booking {

@@ -49,6 +49,8 @@ import {
     getIncompleteTimeOuts,
     resolveIncompleteTimeOut,
 } from "@/actions/db";
+import { getAllLeaveBalances, updateLeaveBalance } from "@/actions/leave";
+import type { LeaveBalance } from "@studio/types";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -82,6 +84,15 @@ export default function AttendanceSettingsPage() {
         queryFn: async () => {
             const res = await getIncompleteTimeOuts();
             return res.success ? res.data! : [];
+        },
+        enabled: canManageMasterSchedule,
+    });
+
+    const { data: leaveBalancesData, isLoading: isLeaveBalancesLoading } = useQuery({
+        queryKey: ["allLeaveBalances"],
+        queryFn: async () => {
+            const res = await getAllLeaveBalances();
+            return res.success ? res.data! : { workers: [], balances: [], year: new Date().getFullYear() };
         },
         enabled: canManageMasterSchedule,
     });
@@ -196,6 +207,45 @@ export default function AttendanceSettingsPage() {
         }
     };
 
+    // ── Leave balances ────────────────────────────────────────────────────────
+    const [editingBalance, setEditingBalance] = useState<{ workerId: string; type: string; workerName: string } | null>(null);
+    const [balanceInput, setBalanceInput] = useState("");
+    const [isSavingBalance, setIsSavingBalance] = useState(false);
+
+    const leaveBalanceByKey = useMemo(() => {
+        const map = new Map<string, LeaveBalance>();
+        for (const b of leaveBalancesData?.balances ?? []) map.set(`${b.workerId}:${b.type}`, b as LeaveBalance);
+        return map;
+    }, [leaveBalancesData]);
+
+    const openEditBalance = (workerId: string, type: string, workerName: string) => {
+        const existing = leaveBalanceByKey.get(`${workerId}:${type}`);
+        setEditingBalance({ workerId, type, workerName });
+        setBalanceInput(String(existing?.totalDays ?? 0));
+    };
+
+    const handleSaveBalance = async () => {
+        if (!editingBalance) return;
+        const totalDays = parseFloat(balanceInput);
+        if (isNaN(totalDays) || totalDays < 0) {
+            toast({ variant: "destructive", title: "Enter a valid number of days" });
+            return;
+        }
+        setIsSavingBalance(true);
+        try {
+            const year = leaveBalancesData?.year ?? new Date().getFullYear();
+            const res = await updateLeaveBalance(editingBalance.workerId, editingBalance.type, year, totalDays);
+            if (!res.success) throw new Error(res.error);
+            toast({ title: "Leave balance updated" });
+            queryClient.invalidateQueries({ queryKey: ["allLeaveBalances"] });
+            setEditingBalance(null);
+        } catch (err: any) {
+            toast({ variant: "destructive", title: "Save failed", description: err?.message });
+        } finally {
+            setIsSavingBalance(false);
+        }
+    };
+
     const isLoading = isPermissionsLoading || isWorkersLoading || isSchedulesLoading || isSettingLoading;
 
     if (isPermissionsLoading) {
@@ -244,6 +294,7 @@ export default function AttendanceSettingsPage() {
                             <Badge variant="destructive" className="ml-2">{incompleteTimeOuts.length}</Badge>
                         )}
                     </TabsTrigger>
+                    <TabsTrigger value="leave-balances">Leave Balances</TabsTrigger>
                     <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
 
@@ -370,6 +421,70 @@ export default function AttendanceSettingsPage() {
                     </Card>
                 </TabsContent>
 
+                <TabsContent value="leave-balances" className="mt-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Leave Balances ({leaveBalancesData?.year ?? new Date().getFullYear()})</CardTitle>
+                            <CardDescription>
+                                Annual Vacation/Sick/Emergency leave day caps for each Full-Time worker.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {isLeaveBalancesLoading ? (
+                                <div className="flex justify-center py-10">
+                                    <LoaderCircle className="h-8 w-8 animate-spin" />
+                                </div>
+                            ) : (leaveBalancesData?.workers ?? []).length === 0 ? (
+                                <p className="text-sm text-muted-foreground py-6 text-center">
+                                    No Full-Time workers found.
+                                </p>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Worker</TableHead>
+                                            <TableHead>Vacation</TableHead>
+                                            <TableHead>Sick</TableHead>
+                                            <TableHead>Emergency</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {(leaveBalancesData?.workers ?? []).map((worker: any) => {
+                                            const workerName = `${worker.firstName} ${worker.lastName}`;
+                                            return (
+                                                <TableRow key={worker.id}>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar>
+                                                                <AvatarImage src={worker.avatarUrl} alt={workerName} />
+                                                                <AvatarFallback>{worker.firstName?.charAt(0)}</AvatarFallback>
+                                                            </Avatar>
+                                                            {workerName}
+                                                        </div>
+                                                    </TableCell>
+                                                    {(["Vacation", "Sick", "Emergency"] as const).map((type) => {
+                                                        const balance = leaveBalanceByKey.get(`${worker.id}:${type}`);
+                                                        return (
+                                                            <TableCell key={type} className="text-sm">
+                                                                <button
+                                                                    className="hover:underline"
+                                                                    onClick={() => openEditBalance(worker.id, type, workerName)}
+                                                                >
+                                                                    {balance ? `${balance.usedDays} / ${balance.totalDays}` : "Not set"}
+                                                                </button>
+                                                            </TableCell>
+                                                        );
+                                                    })}
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 <TabsContent value="settings" className="mt-4">
                     <Card>
                         <CardHeader>
@@ -434,6 +549,34 @@ export default function AttendanceSettingsPage() {
                         <Button variant="outline" onClick={() => setEditingWorker(null)}>Cancel</Button>
                         <Button onClick={handleSaveSchedule} disabled={isSaving}>
                             {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Save"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Leave balance edit dialog */}
+            <Dialog open={!!editingBalance} onOpenChange={(open) => !open && setEditingBalance(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editingBalance ? `${editingBalance.type} Leave — ${editingBalance.workerName}` : ""}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="balance-total">Annual cap (days)</Label>
+                        <Input
+                            id="balance-total"
+                            type="number"
+                            min={0}
+                            step={0.5}
+                            value={balanceInput}
+                            onChange={(e) => setBalanceInput(e.target.value)}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingBalance(null)}>Cancel</Button>
+                        <Button onClick={handleSaveBalance} disabled={isSavingBalance}>
+                            {isSavingBalance ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Save"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

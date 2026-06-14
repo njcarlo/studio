@@ -76,6 +76,8 @@ export const PERMISSIONS = {
   hr_attendance: {
     manage_master_schedule: 'hr_attendance:manage_master_schedule',
     resolve_flags:          'hr_attendance:resolve_flags',
+    manage_leave_balances:  'hr_attendance:manage_leave_balances',
+    approve_leave_final:    'hr_attendance:approve_leave_final',
   },
   schedule: {
     manage:           'schedule:manage',
@@ -142,6 +144,8 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'major_events',     action: 'approve_final',       description: 'Major Event Request approval — final stage (Admin Dept Head)' },
   { module: 'hr_attendance',    action: 'manage_master_schedule', description: 'Manage worker master schedules (shift times, days off) and grace period' },
   { module: 'hr_attendance',    action: 'resolve_flags',       description: 'Resolve late / incomplete time-out attendance flags' },
+  { module: 'hr_attendance',    action: 'manage_leave_balances', description: 'Manage Full-Time worker leave balances (Vacation/Sick/Emergency caps)' },
+  { module: 'hr_attendance',    action: 'approve_leave_final', description: 'Leave & Request approval — final stage (Admin Dept Head)' },
   { module: 'schedule',         action: 'manage',              description: 'Create and manage Sunday service schedules' },
   { module: 'schedule',         action: 'view_all',            description: 'Master Scheduler — view and manage all ministry schedules' },
   { module: 'schedule',         action: 'confirm',             description: 'Confirm worker acknowledgement of schedule assignments' },

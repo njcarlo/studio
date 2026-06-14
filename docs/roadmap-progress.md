@@ -43,7 +43,19 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
   on Clock In (issues an `Issued` `Weekday` MealStub for the day unless it's a day off per
   `MasterSchedule`/`MasterScheduleOverride`, or already issued). Avoids needing the Monday/Sunday
   cron jobs from the original design; auto-voiding unused stubs deferred to Layer 5.
-- [ ] **3.3 — Leave & Request filing + 4-stage approval + balances** (5.10.4-5.10.6)
+- [x] **3.3 — Leave & Request filing + 4-stage approval + balances** (5.10.4-5.10.6)
+  - [x] Prisma schema: `LeaveRequest`, `LeaveBalance`
+  - [x] Migration SQL (Prisma DDL + RLS lockdown) — applied to live DB
+  - [x] `services/leave-workflow.ts` — built on the approval engine (Ministry Head → HR flag →
+    Admin Dept Head); Vacation/Sick/Emergency consume `LeaveBalance` (applied on HR-stage approval,
+    reverted on later rejection); ChangeTime/ChangeDayOff write a `MasterScheduleOverride` on final
+    approval; blocks filing when balance is insufficient; Full-Time only
+  - [x] Server actions in `actions/leave.ts` (worker-facing filing/balances/history + HR balance management)
+  - [x] Worker-facing UI at `/leave` (balances, request history, new request dialog)
+  - [x] Leave requests surfaced in `/approvals` via `getLeaveApprovals`
+  - [x] Migrations applied to live DB + `prisma generate`
+  - [x] End-to-end verification (balance block, full approval → balance increment, rejection
+    reversion, ChangeTime/ChangeDayOff → `MasterScheduleOverride`, FT-only enforcement)
 - [ ] **3.4 — Training Management** (5.9)
 
 ### Phase 4 — C2S completion, Mobile app, Offline
