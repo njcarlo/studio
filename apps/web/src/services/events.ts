@@ -48,6 +48,57 @@ export async function deleteEvent(id: string) {
     await prisma.churchEvent.delete({ where: { id } });
 }
 
+export async function setEventPublicVisibility(id: string, isPublic: boolean) {
+    return prisma.churchEvent.update({ where: { id }, data: { isPublic } });
+}
+
+// ─── Public attendee-facing events (5.13) ───────────────────────────────────
+
+export async function listPublicEvents() {
+    return prisma.churchEvent.findMany({
+        where: { isPublic: true, date: { gte: new Date() } },
+        select: {
+            id: true,
+            title: true,
+            description: true,
+            date: true,
+            endDate: true,
+            startTime: true,
+            endTime: true,
+            location: true,
+        },
+        orderBy: { date: 'asc' },
+    });
+}
+
+export type EventSignupInput = {
+    name: string;
+    email: string;
+    phone?: string;
+    guestCount?: number;
+    notes?: string;
+};
+
+export async function createEventSignup(eventId: string, input: EventSignupInput) {
+    return prisma.eventSignup.create({
+        data: {
+            eventId,
+            name: input.name,
+            email: input.email,
+            phone: input.phone ?? null,
+            guestCount: input.guestCount ?? 1,
+            notes: input.notes ?? null,
+        },
+    });
+}
+
+export async function getEventSignups(eventId: string) {
+    return prisma.eventSignup.findMany({
+        where: { eventId },
+        orderBy: { createdAt: 'desc' },
+    });
+}
+
 // ─── Room bookings ───────────────────────────────────────────────────────────
 
 export async function addEventRoom(data: AddEventRoomInput) {

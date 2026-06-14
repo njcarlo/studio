@@ -19,6 +19,8 @@ import {
   Landmark,
   CalendarOff,
   GraduationCap,
+  BookOpen,
+  HandHeart,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -194,6 +196,18 @@ const allNavItems: NavItem[] = [
     href: "/training",
     icon: GraduationCap,
     label: "Training",
+  },
+  {
+    href: "/sermons",
+    icon: BookOpen,
+    label: "Sermons",
+    permissionKey: "canManageContent",
+  },
+  {
+    href: "/pastoral",
+    icon: HandHeart,
+    label: "Pastoral Care",
+    permissionKey: "canManagePastoral",
   },
     {
     href: "/venue",

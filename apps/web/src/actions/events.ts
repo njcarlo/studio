@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { withPermission } from '@/lib/auth/with-permission';
+import { withPermission, withPublicAction } from '@/lib/auth/with-permission';
 import { PERMISSIONS } from '@/lib/permissions/registry';
 import * as eventsService from '@/services/events';
 import {
@@ -69,6 +69,36 @@ export const deleteEvent = withPermission(
     async (_ctx, id: string) => {
         await eventsService.deleteEvent(id);
         revalidatePath('/events');
+    },
+);
+
+// ── Attendee-facing public module (5.13) ──────────────────────────────────────
+
+export const setEventPublicVisibility = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, id: string, isPublic: boolean) => {
+        const event = await eventsService.setEventPublicVisibility(id, isPublic);
+        revalidatePath(`/events/${id}`);
+        revalidatePath('/public/events');
+        return event;
+    },
+);
+
+export const getEventSignupsAction = withPermission(
+    PERMISSIONS.events.update,
+    async (_ctx, eventId: string) => {
+        return eventsService.getEventSignups(eventId);
+    },
+);
+
+// public-action: read-only
+export const getPublicEvents = withPublicAction(async () => {
+    return eventsService.listPublicEvents();
+});
+
+export const submitEventSignup = withPublicAction(
+    async (eventId: string, input: eventsService.EventSignupInput) => {
+        return eventsService.createEventSignup(eventId, input);
     },
 );
 

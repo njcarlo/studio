@@ -23,6 +23,7 @@ export const updateEventSchema = z.object({
   status: z.string().optional(),
   notes: z.string().optional(),
   scheduleId: z.string().optional(),
+  isPublic: z.boolean().optional(),
 });
 
 export const addEventRoomSchema = z.object({

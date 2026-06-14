@@ -454,6 +454,39 @@ model C2SSession {
   attendance C2SAttendanceRecord[]
 }
 
+model Sermon {
+  id          String   @id @default(uuid())
+  title       String
+  speaker     String?
+  date        DateTime
+  scripture   String?
+  description String?
+  videoUrl    String?
+  audioUrl    String?
+  isPublic    Boolean  @default(true)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+model PrayerRequest {
+  id         String   @id @default(uuid())
+  name       String
+  email      String
+  phone      String?
+  type       String // Prayer | Counselling
+  message    String
+  status     String   @default("New") // New | In Progress | Resolved
+  assignedTo String?
+  response   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status])
+}
+
 model C2SAttendanceRecord {
   id        String     @id @default(uuid())
   sessionId String
@@ -850,6 +883,7 @@ model ChurchEvent {
   endTime     String?
   location    String?
   status      String   @default("Planning") // Planning | Confirmed | Ongoing | Completed | Cancelled
+  isPublic    Boolean  @default(false) // listed on /public/events for attendee sign-ups
   createdBy   String
   notes       String?
   scheduleId  String?  // optional link to a ServiceSchedule
@@ -859,9 +893,24 @@ model ChurchEvent {
   rooms       EventRoomBooking[]
   assignments EventAssignment[]
   equipment   EventEquipment[]
+  signups     EventSignup[]
 
   @@index([date])
   @@index([status])
+}
+
+model EventSignup {
+  id         String      @id @default(uuid())
+  eventId    String
+  event      ChurchEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name       String
+  email      String
+  phone      String?
+  guestCount Int         @default(1)
+  notes      String?
+  createdAt  DateTime    @default(now())
+
+  @@index([eventId])
 }
 
 model EventRoomBooking {

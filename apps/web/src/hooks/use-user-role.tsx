@@ -77,6 +77,8 @@ export function useUserRole(): UserRoleContextType {
       canManageMajorEvents: s.canManageMajorEvents,
       canManageMasterSchedule: s.canManageMasterSchedule,
       canManageTraining: s.canManageTraining,
+      canManageContent: s.canManageContent,
+      canManagePastoral: s.canManagePastoral,
     })),
   );
 }

@@ -274,6 +274,10 @@ export function UserRoleSyncerSQL() {
         sa || hasPerm('hr_attendance:manage_master_schedule') || isHR,
       canManageTraining:
         sa || hasPerm('training:manage') || isMinistryHead,
+      canManageContent:
+        sa || hasPerm('content:manage'),
+      canManagePastoral:
+        sa || hasPerm('pastoral:manage'),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [

@@ -343,6 +343,46 @@ export type C2SSession = {
     attendance?: C2SAttendanceRecord[];
 };
 
+export type Sermon = {
+    id: string;
+    title: string;
+    speaker?: string | null;
+    date: TimestampLike;
+    scripture?: string | null;
+    description?: string | null;
+    videoUrl?: string | null;
+    audioUrl?: string | null;
+    isPublic: boolean;
+    createdBy: string;
+    createdAt: TimestampLike;
+    updatedAt: TimestampLike;
+};
+
+export type EventSignup = {
+    id: string;
+    eventId: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    guestCount: number;
+    notes?: string | null;
+    createdAt: TimestampLike;
+};
+
+export type PrayerRequest = {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    type: 'Prayer' | 'Counselling';
+    message: string;
+    status: 'New' | 'In Progress' | 'Resolved';
+    assignedTo?: string | null;
+    response?: string | null;
+    createdAt: TimestampLike;
+    updatedAt: TimestampLike;
+};
+
 export type WorkloadCategory = {
     id: string;
     name: string;

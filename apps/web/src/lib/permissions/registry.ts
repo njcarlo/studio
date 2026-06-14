@@ -99,6 +99,12 @@ export const PERMISSIONS = {
   training: {
     manage: 'training:manage',
   },
+  content: {
+    manage: 'content:manage',
+  },
+  pastoral: {
+    manage: 'pastoral:manage',
+  },
 } as const;
 
 /** Flat list of all permission strings for iteration/seeding. */
@@ -159,6 +165,8 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'inventory',        action: 'set_code',            description: 'Set custom inventory codes on items' },
   { module: 'worker_type',      action: 'change',               description: 'Change a worker\'s Employment Type (Full Time / On-call / Volunteer)' },
   { module: 'training',         action: 'manage',               description: 'Manage Training Records for all workers (Ministry/Department Head also manage their own scope)' },
+  { module: 'content',          action: 'manage',              description: 'Manage sermons and the public events/sermons directory' },
+  { module: 'pastoral',         action: 'manage',              description: 'View and manage prayer & counselling requests' },
 ];
 
 /**

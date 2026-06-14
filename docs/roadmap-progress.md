@@ -88,9 +88,20 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 - [ ] Mobile app (6.1)
 - [ ] Offline support (6.4)
 
-### Phase 5 — Deferred
-- [ ] Attendee-facing public module (5.13) — intentionally out of v1 scope
+### Phase 5
+- [x] **Attendee-facing public module (5.13)**
+  - [x] Sermons catalogue: `Sermon` model, `/sermons` admin (CRUD + public toggle),
+    `/public/sermons` listing
+  - [x] Public service schedule directory: `/public/services` (lists published
+    `ServiceSchedule`s via existing `getPublicSchedules()`, links to `/public/schedule/[token]`)
+  - [x] Public C2S directory (`/public/c2s-join`, done in 5.12)
+  - [x] Event sign-ups: `ChurchEvent.isPublic` + `EventSignup` model, "Make Public" toggle
+    and Sign-ups tab on `/events/[id]`, `/public/events` listing + sign-up form
+  - [x] Prayer/counselling requests: `PrayerRequest` model, `/public/prayer-requests` form
+    (with pastoral-team notification), `/pastoral` admin inbox
+  - [x] Permissions: `content:manage`, `pastoral:manage` wired through registry/store/syncer/nav
+  - [x] Migration SQL (Prisma DDL + RLS) — applied to live DB; `seedPermissions()` run
 
 ## Side Tasks
-- [ ] In schedules, show feedback when assigning or clicking workers in the assign worker view
-- [ ] When applying a schedule template, amend the current schedule instead of replacing it (so multiple templates can be applied to the same ministry), and show a confirmation feedback after adding the template
+- [x] In schedules, show feedback when assigning or clicking workers in the assign worker view
+- [x] When applying a schedule template, amend the current schedule instead of replacing it (so multiple templates can be applied to the same ministry), and show a confirmation feedback after adding the template

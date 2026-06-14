@@ -13,12 +13,13 @@ import { Input } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";
+import { Switch } from "@studio/ui";
 import {
     ArrowLeft, LoaderCircle, Plus, Trash2, UserPlus, X,
-    CalendarDays, MapPin, Package, Users, Link2, CheckCircle2,
+    CalendarDays, MapPin, Package, Users, Link2, CheckCircle2, Globe,
 } from "lucide-react";
 import { useEvent } from "@/hooks/use-events";
-import { getInventoryItemsForPicker } from "@/actions/events";
+import { getInventoryItemsForPicker, getEventSignupsAction } from "@/actions/events";
 import { useQuery } from "@tanstack/react-query";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useRooms } from "@/hooks/use-rooms";
@@ -41,7 +42,7 @@ export default function EventDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
     const { toast } = useToast();
-    const { workerProfile } = useUserRole();
+    const { workerProfile, canManageContent } = useUserRole();
     const { user } = useAuthStore();
 
     const { event, isLoading, updateEvent, addRoom, removeRoom, upsertAssignment, deleteAssignment, addEquipment, updateEquipment, removeEquipment } = useEvent(id);
@@ -53,6 +54,15 @@ export default function EventDetailPage() {
         queryKey: ['inventoryItems', 'picker'],
         queryFn: getInventoryItemsForPicker,
         staleTime: 5 * 60_000,
+    });
+    const { data: signups = [] } = useQuery({
+        queryKey: ['event-signups', id],
+        queryFn: async () => {
+            const res = await getEventSignupsAction(id);
+            if (!res.success) throw new Error(res.error);
+            return res.data;
+        },
+        enabled: !!event?.isPublic,
     });
 
     // Dialogs
@@ -142,6 +152,17 @@ export default function EventDetailPage() {
                     </div>
                     {event.description && <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>}
                 </div>
+                {canManageContent && (
+                    <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                        <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Label htmlFor="event-public" className="text-xs font-medium cursor-pointer">Public</Label>
+                        <Switch
+                            id="event-public"
+                            checked={!!event.isPublic}
+                            onCheckedChange={(checked) => updateEvent({ isPublic: checked })}
+                        />
+                    </div>
+                )}
                 {event.scheduleId && (
                     <Button variant="outline" size="sm" onClick={() => router.push(`/schedule/${event.scheduleId}`)}>
                         <Link2 className="mr-1 h-3.5 w-3.5" /> View Schedule
@@ -171,6 +192,13 @@ export default function EventDetailPage() {
                         Equipment
                         <Badge variant="secondary" className="ml-1.5 text-xs">{event.equipment.length}</Badge>
                     </TabsTrigger>
+                    {event.isPublic && (
+                        <TabsTrigger value="signups">
+                            <Globe className="mr-1.5 h-3.5 w-3.5" />
+                            Sign-ups
+                            <Badge variant="secondary" className="ml-1.5 text-xs">{signups.length}</Badge>
+                        </TabsTrigger>
+                    )}
                 </TabsList>
 
                 {/* ── MANPOWER ── */}
@@ -337,6 +365,38 @@ export default function EventDetailPage() {
                         ))}
                     </div>
                 </TabsContent>
+
+                {/* ── SIGN-UPS ── */}
+                {event.isPublic && (
+                    <TabsContent value="signups">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Attendee Sign-ups</h2>
+                            <p className="text-xs text-muted-foreground">
+                                This event is listed on{" "}
+                                <a href="/public/events" target="_blank" rel="noopener noreferrer" className="underline">/public/events</a>
+                            </p>
+                        </div>
+                        {signups.length === 0 ? (
+                            <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">No sign-ups yet.</CardContent></Card>
+                        ) : (
+                            <div className="space-y-2">
+                                {signups.map((s: any) => (
+                                    <Card key={s.id}>
+                                        <CardContent className="py-3 px-4 flex items-center gap-4">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm">{s.name}</p>
+                                                <p className="text-xs text-muted-foreground">{s.email}{s.phone ? ` · ${s.phone}` : ""}</p>
+                                                {s.notes && <p className="text-xs text-muted-foreground mt-0.5">{s.notes}</p>}
+                                            </div>
+                                            <Badge variant="secondary">{s.guestCount} {s.guestCount === 1 ? "guest" : "guests"}</Badge>
+                                            <span className="text-xs text-muted-foreground shrink-0">{format(new Date(s.createdAt), "MMM d, h:mm a")}</span>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </TabsContent>
+                )}
             </Tabs>
 
             {/* Add Room Dialog */}
