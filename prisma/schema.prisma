@@ -98,6 +98,7 @@ model Worker {
   masterScheduleOverrides MasterScheduleOverride[]
   leaveRequests          LeaveRequest[]
   leaveBalances          LeaveBalance[]
+  trainingRecords        TrainingRecord[]
 }
 
 model Ministry {
@@ -220,6 +221,25 @@ model LeaveBalance {
   updatedAt DateTime @updatedAt
 
   @@unique([workerId, type, year])
+  @@index([workerId])
+}
+
+// Training Management (5.9) — record-only in v1, does not block scheduling
+// (Open Decision #2: managed by Ministry Head / Department Head / Sys Admin
+// for workers in their ministry/department; every worker can view their own).
+model TrainingRecord {
+  id            String    @id @default(cuid())
+  workerId      String
+  worker        Worker    @relation(fields: [workerId], references: [id])
+  name          String
+  dateCompleted DateTime?
+  expiryDate    DateTime?
+  status        String    @default("Completed") // Completed | Scheduled | Expired | Cancelled
+  notes         String?
+  recordedBy    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
   @@index([workerId])
 }
 

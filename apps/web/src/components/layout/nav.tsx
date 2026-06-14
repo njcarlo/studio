@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Landmark,
   CalendarOff,
+  GraduationCap,
 } from "lucide-react";
 import {
   SidebarGroup,
@@ -188,6 +189,11 @@ const allNavItems: NavItem[] = [
     href: "/leave",
     icon: CalendarOff,
     label: "Leave & Requests",
+  },
+  {
+    href: "/training",
+    icon: GraduationCap,
+    label: "Training",
   },
     {
     href: "/venue",

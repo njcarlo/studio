@@ -56,7 +56,20 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
   - [x] Migrations applied to live DB + `prisma generate`
   - [x] End-to-end verification (balance block, full approval → balance increment, rejection
     reversion, ChangeTime/ChangeDayOff → `MasterScheduleOverride`, FT-only enforcement)
-- [ ] **3.4 — Training Management** (5.9)
+- [x] **3.4 — Training Management** (5.9) — record-only in v1, no scheduler blocking
+  - [x] Prisma schema: `TrainingRecord` (workerId, name, dateCompleted, expiryDate, status, notes, recordedBy)
+  - [x] Migration SQL (Prisma DDL + RLS lockdown) — applied to live DB
+  - [x] Shared types (`packages/types`)
+  - [x] Permission registry + `canManageTraining` flag wired (store → syncer → hook)
+  - [x] `services/training.ts` — `canManageTrainingFor`/`getManageableWorkers` cover Ministry
+    Head/Approver, Department Head (`DepartmentSetting.headId`), and Sys Admin/`training:manage`
+  - [x] Server actions in `actions/training.ts` (self-view + scoped manage CRUD, audit-logged)
+  - [x] UI at `/training` — "My Training Records" for every worker, plus a manager section
+    (worker picker → per-worker record table with add/edit/delete) shown when in scope
+  - [x] Nav entry added
+  - [x] Migrations applied to live DB + `prisma generate`
+  - [x] End-to-end verification (Ministry Head manage-in-scope, outsider denied, plain worker
+    denied self-manage, Sys Admin manage-all, full CRUD lifecycle)
 
 ### Phase 4 — C2S completion, Mobile app, Offline
 - [ ] C2S gaps (5.12)

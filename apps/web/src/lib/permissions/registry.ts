@@ -96,6 +96,9 @@ export const PERMISSIONS = {
   worker_type: {
     change: 'worker_type:change',
   },
+  training: {
+    manage: 'training:manage',
+  },
 } as const;
 
 /** Flat list of all permission strings for iteration/seeding. */
@@ -155,6 +158,7 @@ export const ALL_PERMISSIONS: { module: string; action: string; description?: st
   { module: 'inventory',        action: 'manage',              description: 'Inventory Officer — create, edit, delete items and manage stock' },
   { module: 'inventory',        action: 'set_code',            description: 'Set custom inventory codes on items' },
   { module: 'worker_type',      action: 'change',               description: 'Change a worker\'s Employment Type (Full Time / On-call / Volunteer)' },
+  { module: 'training',         action: 'manage',               description: 'Manage Training Records for all workers (Ministry/Department Head also manage their own scope)' },
 ];
 
 /**

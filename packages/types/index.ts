@@ -165,6 +165,20 @@ export type LeaveBalance = {
     usedDays: number;
 };
 
+export type TrainingRecordStatus = 'Completed' | 'Scheduled' | 'Expired' | 'Cancelled';
+
+export type TrainingRecord = {
+    id: string;
+    workerId: string;
+    name: string;
+    dateCompleted?: TimestampLike | Date | null;
+    expiryDate?: TimestampLike | Date | null;
+    status: TrainingRecordStatus;
+    notes?: string | null;
+    recordedBy?: string | null;
+    createdAt: TimestampLike | Date;
+};
+
 export type Booking = {
     id: string;
     requestId?: string;
