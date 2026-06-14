@@ -347,7 +347,9 @@ function MealsPageContent() {
   };
   const toggleSelectWorker = (id: string) => setSelectedWorkerIds(prev => prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id]);
 
-  const isLoading = mealStubsLoading || workersLoading || isRoleLoading;
+  // Don't block the whole page on the worker roster — it can be large and slow
+  // to fetch, and only the Assign/Reports tabs need it (already null-guarded).
+  const isLoading = mealStubsLoading || isRoleLoading;
 
   if (isLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
   if (!canViewMealStubs) return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle></CardHeader></Card></AppLayout>;
@@ -491,6 +493,14 @@ function MealsPageContent() {
                     <TableHead>Worker</TableHead><TableHead>Type</TableHead><TableHead>Today</TableHead><TableHead className="text-right">Action</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
+                    {workersLoading && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-6">
+                          <LoaderCircle className="h-4 w-4 animate-spin inline-block mr-2" />
+                          Loading workers...
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {ministryWorkers.filter(w => {
                       const q = assignSearch.trim().toLowerCase();
                       if (!q) return true;
