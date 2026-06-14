@@ -20,7 +20,27 @@ export function useMealStubs(filters: { workerId?: string; dateFrom?: Date; date
             if (!res.success) throw new Error(res.error);
             return res.data;
         },
-        onSuccess: () => {
+        // Optimistically add the stub so badges/buttons update instantly,
+        // instead of waiting for the round trip + refetch.
+        onMutate: async (newStub: any) => {
+            await queryClient.cancelQueries({ queryKey: ['meal-stubs'] });
+            const previous = queryClient.getQueriesData({ queryKey: ['meal-stubs'] });
+            const optimisticStub = {
+                id: `optimistic-${Date.now()}-${Math.random()}`,
+                ...newStub,
+                date: newStub.date ?? new Date(),
+            };
+            queryClient.setQueriesData({ queryKey: ['meal-stubs'] }, (old: any) =>
+                old ? [optimisticStub, ...old] : old
+            );
+            return { previous };
+        },
+        onError: (_err, _vars, context) => {
+            context?.previous?.forEach(([key, data]: any) => {
+                queryClient.setQueryData(key, data);
+            });
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['meal-stubs'] });
         },
     });
