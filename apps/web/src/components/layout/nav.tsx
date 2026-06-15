@@ -74,6 +74,10 @@ type NavItem = {
     UserRoleContextType,
     "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
   >;
+  anyPermissionKeys?: Array<keyof Omit<
+    UserRoleContextType,
+    "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
+  >>;
   subItems?: NavSubItem[];
 };
 
@@ -134,7 +138,15 @@ const allNavItems: NavItem[] = [
     href: "/c2s",
     icon: HeartHandshake,
     label: "Connect 2 Souls",
-    permissionKey: "canManageC2S",
+    anyPermissionKeys: ["canManageC2S", "canViewC2SAnalytics", "isMentor"],
+    subItems: [
+      {
+        href: "/c2s",
+        label: "Dashboard",
+        anyPermissionKeys: ["canManageC2S", "canViewC2SAnalytics"],
+      },
+      { href: "/c2s/my-group", label: "My Group", permissionKey: "isMentor" },
+    ],
   },
   {
     href: "/approvals",
@@ -352,7 +364,7 @@ export function Nav({
       return item.subItems?.some((sub) => !sub.permissionKey) ?? false;
     }
 
-    return hasAccess(item.permissionKey);
+    return hasAccess(item.permissionKey, item.anyPermissionKeys);
   });
 
   const { state: sidebarState } = useSidebar();

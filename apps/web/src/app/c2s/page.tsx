@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import {
   Card,
@@ -94,7 +95,6 @@ import {
 } from "@studio/ui";
 import { Badge } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
-import MyGroupTab from "./MyGroupTab";
 
 // --- Group Form Component ---
 const GroupForm = ({
@@ -508,9 +508,10 @@ export default function C2SPage() {
   const { canManageC2S, canViewC2SAnalytics, isMentor } = useUserRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState(
-    isMentor ? "my-group" : canManageC2S ? "groups" : "analytics",
+    canManageC2S ? "groups" : "analytics",
   );
   const [isGroupSheetOpen, setIsGroupSheetOpen] = useState(false);
   const [isMenteeSheetOpen, setIsMenteeSheetOpen] = useState(false);
@@ -667,6 +668,14 @@ export default function C2SPage() {
     }
   };
 
+  // Mentors without admin/analytics access have no tabs on this page —
+  // send them straight to their group instead of an empty dashboard.
+  useEffect(() => {
+    if (isMentor && !canManageC2S && !canViewC2SAnalytics) {
+      router.replace("/c2s/my-group");
+    }
+  }, [isMentor, canManageC2S, canViewC2SAnalytics, router]);
+
   if (!canManageC2S && !canViewC2SAnalytics && !isMentor) {
     return (
       <AppLayout>
@@ -677,6 +686,16 @@ export default function C2SPage() {
             You don't have permission to access the Connect 2 Souls Member
             Monitoring System. Contact an administrator to request access.
           </p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isMentor && !canManageC2S && !canViewC2SAnalytics) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center py-12">
+          <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
         </div>
       </AppLayout>
     );
@@ -720,7 +739,7 @@ export default function C2SPage() {
         </div>
 
         <Tabs
-          defaultValue={isMentor ? "my-group" : canManageC2S ? "groups" : "analytics"}
+          defaultValue={canManageC2S ? "groups" : "analytics"}
           onValueChange={setActiveTab}
           className="w-full"
         >
@@ -728,15 +747,10 @@ export default function C2SPage() {
             className="grid w-full max-w-xl mb-8"
             style={{
               gridTemplateColumns: `repeat(${
-                (isMentor ? 1 : 0) + (canManageC2S ? 2 : 0) + (canViewC2SAnalytics ? 1 : 0)
+                (canManageC2S ? 2 : 0) + (canViewC2SAnalytics ? 1 : 0)
               }, 1fr)`,
             }}
           >
-            {isMentor && (
-              <TabsTrigger value="my-group" className="text-sm font-medium">
-                <HeartHandshake className="mr-2 h-4 w-4" /> My Group
-              </TabsTrigger>
-            )}
             {canManageC2S && (
               <>
                 <TabsTrigger value="groups" className="text-sm font-medium">
@@ -753,12 +767,6 @@ export default function C2SPage() {
               </TabsTrigger>
             )}
           </TabsList>
-
-          {isMentor && (
-            <TabsContent value="my-group" className="mt-0">
-              <MyGroupTab />
-            </TabsContent>
-          )}
 
           <TabsContent value="groups" className="mt-0">
             {isLoading ? (
