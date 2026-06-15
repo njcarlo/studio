@@ -3,6 +3,13 @@
  * client can test role-gated screens (Inventory Manager, Ministry Head,
  * Department Head) without using a real staff member's account.
  *
+ * Also enables login for the 5 pre-existing department-head placeholder
+ * Worker rows (one per department: Admin, Discipleship, Operations,
+ * Relationship, Worship) — each is already wired as the `headId` of every
+ * Ministry and DepartmentSetting in its department, so logging in as one
+ * gives a real Ministry Head + Department Head experience for that
+ * department's ministries with zero rewiring.
+ *
  * Idempotent — safe to re-run. Credentials are documented in
  * docs/PLACEHOLDER_ACCOUNTS.md (update that file whenever this list changes).
  *
@@ -69,6 +76,27 @@ const ACCOUNTS: Account[] = [
       ],
     },
   },
+];
+
+// The 5 real department-head placeholder Worker rows already exist in the DB
+// (ids 999995-999999) and are already wired as the `headId` of every Ministry
+// and the matching DepartmentSetting for their department. Giving each of
+// these a login lets the client test the *real* Ministry Head / Department
+// Head approval flow for every ministry under that department — no rewiring
+// needed, since the headId links already exist.
+type DepartmentHeadLogin = {
+  workerId: string; // Worker.id (PK), not the human-readable workerId field
+  email: string;
+  password: string;
+  department: string;
+};
+
+const DEPARTMENT_HEAD_LOGINS: DepartmentHeadLogin[] = [
+  { workerId: '999999', email: 'placeholder.head.a@cogdasma.local', password: 'QaHeadAdmin#2026', department: 'Admin (A)' },
+  { workerId: '999998', email: 'placeholder.head.d@cogdasma.local', password: 'QaHeadDiscipleship#2026', department: 'Discipleship (D)' },
+  { workerId: '999997', email: 'placeholder.head.o@cogdasma.local', password: 'QaHeadOperations#2026', department: 'Operations (O)' },
+  { workerId: '999996', email: 'placeholder.head.r@cogdasma.local', password: 'QaHeadRelationship#2026', department: 'Relationship (R)' },
+  { workerId: '999995', email: 'placeholder.head.w@cogdasma.local', password: 'QaHeadWorship#2026', department: 'Worship (W)' },
 ];
 
 async function ensureAuthUser(email: string, password: string) {
@@ -139,6 +167,19 @@ async function main() {
       create: { workerId: worker.id, roleId: account.role.id },
     });
     console.log(`  ✅ Assigned role "${account.role.name}"`);
+  }
+
+  for (const head of DEPARTMENT_HEAD_LOGINS) {
+    console.log(`\n— ${head.email} (Dept ${head.department}) —`);
+
+    await ensureAuthUser(head.email, head.password);
+    console.log('  ✅ Supabase auth user ready');
+
+    await prisma.worker.update({
+      where: { id: head.workerId },
+      data: { status: 'Active' },
+    });
+    console.log(`  ✅ Worker profile (${head.workerId}) active — already wired as Ministry/Department Head`);
   }
 
   console.log('\n✅ QA placeholder accounts ready. See docs/PLACEHOLDER_ACCOUNTS.md for credentials.');
