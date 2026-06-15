@@ -200,7 +200,7 @@ const allNavItems: NavItem[] = [
   {
     href: "/sermons",
     icon: BookOpen,
-    label: "Sermons",
+    label: "Preaching",
     permissionKey: "canManageContent",
   },
   {

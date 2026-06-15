@@ -22,6 +22,10 @@ export async function listPublicSermons() {
     });
 }
 
+export async function getPublicSermon(id: string) {
+    return prisma.sermon.findFirst({ where: { id, isPublic: true } });
+}
+
 export async function createSermon(createdBy: string, data: SermonInput) {
     return prisma.sermon.create({ data: { ...data, createdBy } });
 }

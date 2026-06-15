@@ -35,6 +35,7 @@ export const createEvent = withPermission(
         endTime?: string;
         location?: string;
         notes?: string;
+        videoUrl?: string;
         createdBy: string;
     }) => {
         const event = await eventsService.createEvent(createEventSchema.parse(data));
@@ -55,7 +56,9 @@ export const updateEvent = withPermission(
         location: string;
         status: string;
         notes: string;
+        videoUrl: string | null;
         scheduleId: string;
+        isPublic: boolean;
     }>) => {
         const event = await eventsService.updateEvent(id, updateEventSchema.parse(data));
         revalidatePath('/events');

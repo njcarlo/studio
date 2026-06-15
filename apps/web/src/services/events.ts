@@ -66,6 +66,7 @@ export async function listPublicEvents() {
             startTime: true,
             endTime: true,
             location: true,
+            videoUrl: true,
         },
         orderBy: { date: 'asc' },
     });

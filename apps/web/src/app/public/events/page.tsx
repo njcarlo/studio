@@ -23,6 +23,7 @@ import {
 import { CalendarHeart, LoaderCircle, CheckCircle2, MapPin, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { getPublicEvents, submitEventSignup } from "@/actions/events";
+import { getYoutubeThumbnail } from "@/lib/youtube";
 
 export default function PublicEventsPage() {
     const { data: events, isLoading } = useQuery({
@@ -93,7 +94,14 @@ export default function PublicEventsPage() {
                 ) : (
                     <div className="space-y-4">
                         {events.map((event) => (
-                            <Card key={event.id} className="shadow-md">
+                            <Card key={event.id} className="shadow-md overflow-hidden">
+                                {getYoutubeThumbnail((event as any).videoUrl) && (
+                                    <img
+                                        src={getYoutubeThumbnail((event as any).videoUrl)!}
+                                        alt={event.title}
+                                        className="w-full aspect-video object-cover"
+                                    />
+                                )}
                                 <CardHeader>
                                     <CardTitle>{event.title}</CardTitle>
                                     <CardDescription className="flex flex-wrap items-center gap-3 mt-1">

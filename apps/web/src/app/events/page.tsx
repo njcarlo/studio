@@ -20,6 +20,7 @@ import { getBranches } from "@/actions/db";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+import { getYoutubeThumbnail } from "@/lib/youtube";
 
 const STATUS_COLORS: Record<string, string> = {
     Planning:  "bg-yellow-100 text-yellow-800",
@@ -37,7 +38,7 @@ export default function EventsPage() {
     const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
     const { events, isLoading, deleteEvent } = useEvents(statusFilter);
     const [createOpen, setCreateOpen] = useState(false);
-    const [form, setForm] = useState({ title: "", date: "", endDate: "", startTime: "", endTime: "", location: "", description: "" });
+    const [form, setForm] = useState({ title: "", date: "", endDate: "", startTime: "", endTime: "", location: "", description: "", videoUrl: "" });
     const [saving, setSaving] = useState(false);
     const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: getBranches, staleTime: 5 * 60_000 });
 
@@ -53,12 +54,13 @@ export default function EventsPage() {
                 startTime: form.startTime || undefined,
                 endTime: form.endTime || undefined,
                 location: form.location || undefined,
+                videoUrl: form.videoUrl || undefined,
                 createdBy: workerProfile?.id || user?.uid || "system",
             });
             if (!res.success) throw new Error(res.error);
             const event = res.data;
             setCreateOpen(false);
-            setForm({ title: "", date: "", endDate: "", startTime: "", endTime: "", location: "", description: "" });
+            setForm({ title: "", date: "", endDate: "", startTime: "", endTime: "", location: "", description: "", videoUrl: "" });
             router.push(`/events/${event.id}`);
         } catch (e: any) {
             toast({ variant: "destructive", title: "Failed to create event", description: e.message });
@@ -103,8 +105,15 @@ export default function EventsPage() {
                     ) : (
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {events.map(event => (
-                                <Card key={event.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                                <Card key={event.id} className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
                                     onClick={() => router.push(`/events/${event.id}`)}>
+                                    {getYoutubeThumbnail((event as any).videoUrl) && (
+                                        <img
+                                            src={getYoutubeThumbnail((event as any).videoUrl)!}
+                                            alt={event.title}
+                                            className="w-full aspect-video object-cover"
+                                        />
+                                    )}
                                     <CardHeader className="pb-2">
                                         <div className="flex items-start justify-between gap-2">
                                             <CardTitle className="text-base leading-tight">{event.title}</CardTitle>
@@ -187,6 +196,20 @@ export default function EventsPage() {
                             <Label>Description</Label>
                             <Input placeholder="Brief description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
                         </div>
+                        <div className="space-y-1.5">
+                            <Label>Video URL (YouTube)</Label>
+                            <Input placeholder="https://www.youtube.com/watch?v=..." value={form.videoUrl} onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))} />
+                        </div>
+                        {getYoutubeThumbnail(form.videoUrl) && (
+                            <div className="space-y-1.5">
+                                <Label>Thumbnail Preview</Label>
+                                <img
+                                    src={getYoutubeThumbnail(form.videoUrl)!}
+                                    alt="Video thumbnail preview"
+                                    className="w-full max-w-xs rounded-md border border-border/50 object-cover aspect-video"
+                                />
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>

@@ -28,6 +28,7 @@ import { useServiceSchedules } from "@/hooks/use-schedule";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+import { getYoutubeEmbedUrl } from "@/lib/youtube";
 
 const STATUS_OPTIONS = ["Planning", "Confirmed", "Ongoing", "Completed", "Cancelled"];
 const STATUS_COLORS: Record<string, string> = {
@@ -77,6 +78,8 @@ export default function EventDetailPage() {
     const [equipForm, setEquipForm] = useState({ itemId: "", quantity: 1, notes: "" });
     const [linkScheduleOpen, setLinkScheduleOpen] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [videoUrlOpen, setVideoUrlOpen] = useState(false);
+    const [videoUrlInput, setVideoUrlInput] = useState("");
 
     // Group assignments by ministry
     const byMinistry = useMemo(() => {
@@ -174,6 +177,40 @@ export default function EventDetailPage() {
                     </Button>
                 )}
             </div>
+
+            {/* Video */}
+            {(event.videoUrl || canManageContent) && (
+                <Card className="mb-6 overflow-hidden">
+                    {getYoutubeEmbedUrl(event.videoUrl) ? (
+                        <div className="aspect-video w-full">
+                            <iframe
+                                src={getYoutubeEmbedUrl(event.videoUrl)!}
+                                title={event.title}
+                                className="w-full h-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        </div>
+                    ) : event.videoUrl ? (
+                        <CardContent className="py-3 px-4 text-sm">
+                            <a href={event.videoUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                Watch video
+                            </a>
+                        </CardContent>
+                    ) : null}
+                    {canManageContent && (
+                        <CardContent className="py-2 px-4 flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">
+                                {event.videoUrl ? "Video linked to this event" : "No video linked yet"}
+                            </span>
+                            <Button variant="outline" size="sm" className="h-7 text-xs"
+                                onClick={() => { setVideoUrlInput(event.videoUrl ?? ""); setVideoUrlOpen(true); }}>
+                                <Link2 className="mr-1 h-3 w-3" /> {event.videoUrl ? "Edit Video" : "Add Video"}
+                            </Button>
+                        </CardContent>
+                    )}
+                </Card>
+            )}
 
             <Tabs defaultValue="manpower">
                 <TabsList className="mb-4">
@@ -572,6 +609,27 @@ export default function EventDetailPage() {
                         ))}
                     </div>
                     <DialogFooter><Button variant="outline" onClick={() => setLinkScheduleOpen(false)}>Cancel</Button></DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Video URL Dialog */}
+            <Dialog open={videoUrlOpen} onOpenChange={setVideoUrlOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Event Video</DialogTitle></DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div className="space-y-1.5">
+                            <Label>Video URL (YouTube)</Label>
+                            <Input placeholder="https://www.youtube.com/watch?v=..." value={videoUrlInput}
+                                onChange={e => setVideoUrlInput(e.target.value)} autoFocus />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setVideoUrlOpen(false)}>Cancel</Button>
+                        <Button onClick={async () => {
+                            await updateEvent({ videoUrl: videoUrlInput || null });
+                            setVideoUrlOpen(false);
+                        }}>Save</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </AppLayout>

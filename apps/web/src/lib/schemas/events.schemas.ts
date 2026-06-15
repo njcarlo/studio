@@ -9,6 +9,7 @@ export const createEventSchema = z.object({
   endTime: z.string().optional(),
   location: z.string().optional(),
   notes: z.string().optional(),
+  videoUrl: z.string().optional(),
   createdBy: z.string().min(1),
 });
 
@@ -22,6 +23,7 @@ export const updateEventSchema = z.object({
   location: z.string().optional(),
   status: z.string().optional(),
   notes: z.string().optional(),
+  videoUrl: z.string().nullable().optional(),
   scheduleId: z.string().optional(),
   isPublic: z.boolean().optional(),
 });

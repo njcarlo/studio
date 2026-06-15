@@ -884,6 +884,7 @@ model ChurchEvent {
   location    String?
   status      String   @default("Planning") // Planning | Confirmed | Ongoing | Completed | Cancelled
   isPublic    Boolean  @default(false) // listed on /public/events for attendee sign-ups
+  videoUrl    String?  // optional YouTube link, embedded on the event detail page
   createdBy   String
   notes       String?
   scheduleId  String?  // optional link to a ServiceSchedule

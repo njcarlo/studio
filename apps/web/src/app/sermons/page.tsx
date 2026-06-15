@@ -52,6 +52,7 @@ import {
 } from "@/actions/sermons";
 import type { Sermon } from "@studio/types";
 import { toJsDate } from "@/lib/utils";
+import { getYoutubeThumbnail } from "@/lib/youtube";
 
 type FormState = {
     title: string;
@@ -113,11 +114,11 @@ export default function SermonsPage() {
             return res.data;
         },
         onSuccess: () => {
-            toast({ title: "Sermon added" });
+            toast({ title: "Preaching added" });
             invalidate();
             setIsDialogOpen(false);
         },
-        onError: () => toast({ variant: "destructive", title: "Could not add sermon" }),
+        onError: () => toast({ variant: "destructive", title: "Could not add preaching" }),
     });
 
     const updateMutation = useMutation({
@@ -137,11 +138,11 @@ export default function SermonsPage() {
             return res.data;
         },
         onSuccess: () => {
-            toast({ title: "Sermon updated" });
+            toast({ title: "Preaching updated" });
             invalidate();
             setIsDialogOpen(false);
         },
-        onError: () => toast({ variant: "destructive", title: "Could not update sermon" }),
+        onError: () => toast({ variant: "destructive", title: "Could not update preaching" }),
     });
 
     const deleteMutation = useMutation({
@@ -150,11 +151,11 @@ export default function SermonsPage() {
             if (!res.success) throw new Error(res.error);
         },
         onSuccess: () => {
-            toast({ title: "Sermon deleted" });
+            toast({ title: "Preaching deleted" });
             invalidate();
             setDeleteTarget(null);
         },
-        onError: () => toast({ variant: "destructive", title: "Could not delete sermon" }),
+        onError: () => toast({ variant: "destructive", title: "Could not delete preaching" }),
     });
 
     const openCreateDialog = () => {
@@ -187,7 +188,7 @@ export default function SermonsPage() {
                     <BookOpen className="h-12 w-12 text-muted-foreground/50" />
                     <h2 className="text-xl font-semibold">Access Denied</h2>
                     <p className="text-muted-foreground text-center max-w-md">
-                        You don't have permission to manage sermons. Contact an administrator to
+                        You don't have permission to manage preaching. Contact an administrator to
                         request access.
                     </p>
                 </div>
@@ -200,23 +201,23 @@ export default function SermonsPage() {
             <div className="flex flex-col space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Sermons</h1>
+                        <h1 className="text-2xl font-bold tracking-tight">Preaching</h1>
                         <p className="text-muted-foreground">
-                            Manage the sermon catalogue shown on the public sermons page.
+                            Manage the preaching catalogue shown on the public sermons page.
                         </p>
                     </div>
                     <Button onClick={openCreateDialog}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> New Sermon
+                        <PlusCircle className="mr-2 h-4 w-4" /> New Preaching
                     </Button>
                 </div>
 
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <BookOpen className="h-5 w-5 text-primary" /> Sermon Catalogue
+                            <BookOpen className="h-5 w-5 text-primary" /> Preaching Catalogue
                         </CardTitle>
                         <CardDescription>
-                            Sermons marked "Public" appear on{" "}
+                            Entries marked "Public" appear on{" "}
                             <code className="text-xs">/public/sermons</code>.
                         </CardDescription>
                     </CardHeader>
@@ -227,7 +228,7 @@ export default function SermonsPage() {
                             </div>
                         ) : sermons.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-8 text-center">
-                                No sermons yet.
+                                No preaching entries yet.
                             </p>
                         ) : (
                             <Table>
@@ -271,7 +272,7 @@ export default function SermonsPage() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>{editingId ? "Edit Sermon" : "New Sermon"}</DialogTitle>
+                        <DialogTitle>{editingId ? "Edit Preaching" : "New Preaching"}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
@@ -320,11 +321,12 @@ export default function SermonsPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="sermon-video">Video URL</Label>
+                                <Label htmlFor="sermon-video">Video URL (YouTube)</Label>
                                 <Input
                                     id="sermon-video"
                                     value={form.videoUrl}
                                     onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                                    placeholder="https://www.youtube.com/watch?v=..."
                                 />
                             </div>
                             <div className="space-y-2">
@@ -336,6 +338,16 @@ export default function SermonsPage() {
                                 />
                             </div>
                         </div>
+                        {getYoutubeThumbnail(form.videoUrl) && (
+                            <div className="space-y-2">
+                                <Label>Thumbnail Preview</Label>
+                                <img
+                                    src={getYoutubeThumbnail(form.videoUrl)!}
+                                    alt="Video thumbnail preview"
+                                    className="w-full max-w-xs rounded-md border border-border/50 object-cover aspect-video"
+                                />
+                            </div>
+                        )}
                         <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
                             <div>
                                 <Label htmlFor="sermon-public">Public</Label>
@@ -359,7 +371,7 @@ export default function SermonsPage() {
                             disabled={!form.title.trim() || isSaving}
                         >
                             {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {editingId ? "Save Changes" : "Add Sermon"}
+                            {editingId ? "Save Changes" : "Add Preaching"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -368,7 +380,7 @@ export default function SermonsPage() {
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Sermon</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Preaching</AlertDialogTitle>
                         <AlertDialogDescription>
                             Are you sure you want to delete "{deleteTarget?.title}"? This cannot be undone.
                         </AlertDialogDescription>

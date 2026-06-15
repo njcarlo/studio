@@ -22,6 +22,12 @@ export const getPublicSermons = withPublicAction(async () => {
     return SermonsService.listPublicSermons();
 });
 
+export const getPublicSermon = withPublicAction(async (id: string) => {
+    const sermon = await SermonsService.getPublicSermon(id);
+    if (!sermon) throw new Error('Sermon not found');
+    return sermon;
+});
+
 export const createSermonAction = withPublicAction(async (data: SermonsService.SermonInput) => {
     const ctx = await resolveCallerCtx();
     if (!ctx) throw new Error('You must be logged in to do this.');
