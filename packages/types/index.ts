@@ -308,6 +308,13 @@ export type C2SGroup = {
     location?: string | null;
     meetingSchedule?: string | null;
     currentModule?: string | null;
+    ageGroupLabel?: string | null;
+    ageRangeMin?: number | null;
+    ageRangeMax?: number | null;
+    meetupDay?: string | null;
+    demographics: string[];
+    mapX?: number | null;
+    mapY?: number | null;
     createdAt: TimestampLike;
     updatedAt: TimestampLike;
 };
@@ -320,6 +327,12 @@ export type C2SJoinRequest = {
     email: string;
     phone?: string | null;
     message?: string | null;
+    birthday?: TimestampLike | Date | null;
+    gender?: string | null;
+    socialMediaLink?: string | null;
+    firstAttendedMonth?: string | null;
+    firstAttendedYear?: number | null;
+    privacyAccepted: boolean;
     status: 'Pending' | 'Approved' | 'Rejected';
     workflowId?: string | null;
     createdAt: TimestampLike;

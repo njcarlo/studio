@@ -422,6 +422,13 @@ model C2SGroup {
   location        String?
   meetingSchedule String?
   currentModule   String?
+  ageGroupLabel   String?
+  ageRangeMin     Int?
+  ageRangeMax     Int?
+  meetupDay       String?
+  demographics    String[]    @default([])
+  mapX            Float?
+  mapY            Float?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   mentees         C2SMentee[]
@@ -437,6 +444,12 @@ model C2SJoinRequest {
   email     String
   phone     String?
   message   String?
+  birthday           DateTime?
+  gender             String?
+  socialMediaLink    String?
+  firstAttendedMonth String?
+  firstAttendedYear  Int?
+  privacyAccepted    Boolean  @default(false)
   status    String   @default("Pending")
   workflowId String?
   createdAt DateTime @default(now())

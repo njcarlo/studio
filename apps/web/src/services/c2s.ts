@@ -38,16 +38,37 @@ export type UpdateGroupProfileInput = {
     location?: string | null;
     meetingSchedule?: string | null;
     currentModule?: string | null;
+    ageGroupLabel?: string | null;
+    ageRangeMin?: number | null;
+    ageRangeMax?: number | null;
+    meetupDay?: string | null;
+    demographics?: string[];
+    mapX?: number | null;
+    mapY?: number | null;
 };
 
 export async function updateGroupProfile(groupId: string, data: UpdateGroupProfileInput) {
     return prisma.c2SGroup.update({ where: { id: groupId }, data });
 }
 
-/** Public group directory for the join-request page — no mentor PII. */
+/** Public group directory for the Group Finder — no mentor PII. */
 export async function listPublicC2SGroups() {
     return prisma.c2SGroup.findMany({
-        select: { id: true, name: true, location: true, meetingSchedule: true, currentModule: true },
+        select: {
+            id: true,
+            name: true,
+            location: true,
+            meetingSchedule: true,
+            currentModule: true,
+            ageGroupLabel: true,
+            ageRangeMin: true,
+            ageRangeMax: true,
+            meetupDay: true,
+            demographics: true,
+            mapX: true,
+            mapY: true,
+            createdAt: true,
+        },
         orderBy: { name: 'asc' },
     });
 }
@@ -59,6 +80,12 @@ export type CreateJoinRequestInput = {
     email: string;
     phone?: string;
     message?: string;
+    birthday?: Date;
+    gender?: string;
+    socialMediaLink?: string;
+    firstAttendedMonth?: string;
+    firstAttendedYear?: number;
+    privacyAccepted: boolean;
 };
 
 /** Anonymous public submission — creates the request and a single-stage approval workflow for the group's mentor. */
@@ -73,6 +100,12 @@ export async function createC2SJoinRequest(input: CreateJoinRequestInput) {
             email: input.email,
             phone: input.phone ?? null,
             message: input.message ?? null,
+            birthday: input.birthday ?? null,
+            gender: input.gender ?? null,
+            socialMediaLink: input.socialMediaLink ?? null,
+            firstAttendedMonth: input.firstAttendedMonth ?? null,
+            firstAttendedYear: input.firstAttendedYear ?? null,
+            privacyAccepted: input.privacyAccepted,
         },
     });
 
