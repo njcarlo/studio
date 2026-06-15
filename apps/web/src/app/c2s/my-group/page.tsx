@@ -6,9 +6,9 @@ import { useUserRole } from "@/hooks/use-user-role";
 import MyGroupTab from "../MyGroupTab";
 
 export default function MyGroupPage() {
-  const { isMentor, isLoading } = useUserRole();
+  const { isMentor, isSuperAdmin, isLoading } = useUserRole();
 
-  if (!isLoading && !isMentor) {
+  if (!isLoading && !isMentor && !isSuperAdmin) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
