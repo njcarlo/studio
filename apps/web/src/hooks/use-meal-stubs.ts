@@ -42,6 +42,7 @@ export function useMealStubs(filters: { workerId?: string; dateFrom?: Date; date
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['meal-stubs'] });
+            queryClient.invalidateQueries({ queryKey: ['meal-stub-logs'] });
         },
     });
 
@@ -79,6 +80,7 @@ export function useMealStubs(filters: { workerId?: string; dateFrom?: Date; date
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['meal-stubs'] });
+            queryClient.invalidateQueries({ queryKey: ['meal-stub-logs'] });
         },
     });
 

@@ -1333,7 +1333,7 @@ export async function getMealStubs(filters: { workerId?: string; dateFrom?: Date
 
 export const createMealStub = withPermission(
     PERMISSIONS.meals.manage,
-    async (_ctx, data: {
+    async (ctx, data: {
         workerId: string;
         workerName: string;
         status: string;
@@ -1343,8 +1343,16 @@ export const createMealStub = withPermission(
         date?: Date;
         scheduleId?: string;
     }) => {
-        return mealsAttendanceService.createMealStub(createMealStubSchema.parse(data));
-    }
+        const stub = await mealsAttendanceService.createMealStub(createMealStubSchema.parse(data));
+        await writeAudit({
+            actor: ctx, module: 'meals', action: 'issue_meal_stub',
+            targetId: data.workerId, targetName: data.workerName,
+            details: `Issued ${data.stubType ?? 'daily'} stub for ${(data.date ? new Date(data.date) : new Date()).toDateString()}`,
+            after: { stubType: data.stubType, date: data.date, status: data.status },
+        });
+        return stub;
+    },
+    { skipAudit: true }
 );
 
 export const updateMealStub = withPermission(
@@ -1358,10 +1366,20 @@ export const updateMealStub = withPermission(
 
 export const deleteMealStub = withPermission(
     PERMISSIONS.meals.manage,
-    async (_ctx, id: string) => {
+    async (ctx, id: string) => {
+        const existing = await prisma.mealStub.findUnique({ where: { id } });
         await mealsAttendanceService.deleteMealStub(id);
+        if (existing) {
+            await writeAudit({
+                actor: ctx, module: 'meals', action: 'remove_meal_stub',
+                targetId: existing.workerId, targetName: existing.workerName,
+                details: `Removed ${existing.stubType ?? 'daily'} stub for ${existing.date.toDateString()}`,
+                before: { stubType: existing.stubType, date: existing.date, status: existing.status },
+            });
+        }
         revalidatePath('/meals');
-    }
+    },
+    { skipAudit: true }
 );
 
 // --- Attendance ---
@@ -1959,6 +1977,15 @@ export async function getTransactionLogs() {
     return await prisma.transactionLog.findMany({
         orderBy: { timestamp: 'desc' },
         take: 200,
+    });
+}
+
+/** Recent meal-stub issue/remove activity, for the lightweight log on /meals. */
+export async function getMealStubTransactionLogs() {
+    return await prisma.transactionLog.findMany({
+        where: { module: 'meals', action: { in: ['issue_meal_stub', 'remove_meal_stub'] } },
+        orderBy: { timestamp: 'desc' },
+        take: 50,
     });
 }
 

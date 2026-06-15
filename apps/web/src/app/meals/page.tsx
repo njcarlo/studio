@@ -47,6 +47,9 @@ import { useSettings } from "@/hooks/use-settings";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import type { WorkerLite } from "@studio/types";
+import { useQuery } from "@tanstack/react-query";
+import { getMealStubTransactionLogs } from "@/actions/db";
+import { History } from "lucide-react";
 
 // ------------------------------------------------------------
 // helpers
@@ -106,6 +109,14 @@ function MealsPageContent() {
   // For admins mealStubs already covers the full 30-day range — skip duplicate fetch
   const { mealStubs: _nonAdminRange } = useMealStubs({ dateFrom: thirtyDaysAgo, enabled: !canManageAllMealStubs });
   const allMealStubsInRange = canManageAllMealStubs ? mealStubs : _nonAdminRange;
+
+  // Lightweight log of recent issue/remove activity, shown on the Reports tab.
+  const { data: mealStubLogs, isLoading: mealStubLogsLoading } = useQuery({
+    queryKey: ['meal-stub-logs'],
+    queryFn: getMealStubTransactionLogs,
+    enabled: isMealStubAssigner || canManageAllMealStubs,
+    staleTime: 30_000,
+  });
 
   // QR Token
   const [localSeed, setLocalSeed] = useState<string | null>(null);
@@ -563,11 +574,18 @@ function MealsPageContent() {
               </div>
             </CardHeader>
             <CardContent>
-              {isSelectedSunday && (
+              {isSelectedSunday ? (
                 <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
                   <span className="text-lg">🌅</span>
                   <div>
                     <span className="font-semibold">Sunday Mode</span> — You can assign <strong>0, 1, or 2 stubs</strong> per worker for this date. Use the buttons in the Action column.
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                  <span className="text-lg">ℹ️</span>
+                  <div>
+                    <span className="font-semibold text-foreground">Weekday Limit</span> — Only <strong>1 meal stub</strong> can be assigned per worker for this date. The 0/1/2 options are only available on Sundays.
                   </div>
                 </div>
               )}
@@ -743,6 +761,40 @@ function MealsPageContent() {
                           return allWorkers?.find(wrk => wrk.id === s.workerId)?.employmentType === t;
                         }).length || 0}
                       </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Recent Activity
+              </CardTitle>
+              <CardDescription>Last 50 meal stub issuances and removals.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader><TableRow><TableHead>When</TableHead><TableHead>By</TableHead><TableHead>Worker</TableHead><TableHead>Action</TableHead><TableHead>Details</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {mealStubLogsLoading ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-6"><LoaderCircle className="h-4 w-4 animate-spin inline-block mr-2" />Loading...</TableCell></TableRow>
+                  ) : !mealStubLogs?.length ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No activity yet.</TableCell></TableRow>
+                  ) : mealStubLogs.map(log => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell>
+                      <TableCell className="text-sm">{log.userEmail}</TableCell>
+                      <TableCell className="text-sm font-medium">{log.targetName || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant={log.action === 'issue_meal_stub' ? 'default' : 'secondary'} className="text-[10px]">
+                          {log.action === 'issue_meal_stub' ? 'Issued' : 'Removed'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{log.details || '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
