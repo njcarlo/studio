@@ -26,6 +26,14 @@ export async function getMentorGroups(workerId: string) {
     });
 }
 
+/** Every C2S group with its mentees — for admins overseeing all groups from "My Group". */
+export async function getAllC2SGroupsWithMentees() {
+    return prisma.c2SGroup.findMany({
+        include: { mentees: true },
+        orderBy: { name: 'asc' },
+    });
+}
+
 export type UpdateGroupProfileInput = {
     location?: string | null;
     meetingSchedule?: string | null;
@@ -151,4 +159,113 @@ export async function getC2SSessionsForGroup(groupId: string) {
         include: { attendance: true },
         orderBy: { date: 'desc' },
     });
+}
+
+export type UpdateSessionInput = {
+    date?: Date;
+    module?: string | null;
+    notes?: string | null;
+    attendance?: { menteeId: string; present: boolean }[];
+};
+
+export async function updateC2SSession(sessionId: string, data: UpdateSessionInput) {
+    const { attendance, ...rest } = data;
+    return prisma.c2SSession.update({
+        where: { id: sessionId },
+        data: {
+            ...rest,
+            ...(attendance
+                ? {
+                    attendance: {
+                        deleteMany: {},
+                        create: attendance.map((a) => ({ menteeId: a.menteeId, present: a.present })),
+                    },
+                }
+                : {}),
+        },
+        include: { attendance: true },
+    });
+}
+
+/** Deletes a session; attendance records cascade. */
+export async function deleteC2SSession(sessionId: string) {
+    await prisma.c2SSession.delete({ where: { id: sessionId } });
+}
+
+export async function getSessionGroupId(sessionId: string): Promise<string> {
+    const session = await prisma.c2SSession.findUniqueOrThrow({ where: { id: sessionId }, select: { groupId: true } });
+    return session.groupId;
+}
+
+// --- Mentee management ---
+
+export type MenteeInput = {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    status: string;
+    notes?: string | null;
+};
+
+export async function createMenteeInGroup(groupId: string, data: MenteeInput) {
+    const group = await prisma.c2SGroup.findUniqueOrThrow({ where: { id: groupId }, select: { mentorId: true } });
+    return prisma.c2SMentee.create({
+        data: { ...data, notes: data.notes ?? null, groupId, mentorId: group.mentorId },
+    });
+}
+
+export async function updateMentee(menteeId: string, data: Partial<MenteeInput>) {
+    return prisma.c2SMentee.update({ where: { id: menteeId }, data });
+}
+
+export async function deleteMentee(menteeId: string) {
+    await prisma.c2SMentee.delete({ where: { id: menteeId } });
+}
+
+export async function getMenteeGroupId(menteeId: string): Promise<string> {
+    const mentee = await prisma.c2SMentee.findUniqueOrThrow({ where: { id: menteeId }, select: { groupId: true } });
+    return mentee.groupId;
+}
+
+// --- Join request inbox ---
+
+export type MentorJoinRequest = {
+    workflowId: string;
+    stageId: string | null;
+    groupId: string;
+    groupName: string;
+    requesterName: string;
+    requesterEmail: string;
+    requesterPhone: string | null;
+    message: string | null;
+    createdAt: Date;
+};
+
+/** Pending C2S join-request workflows actionable by `workerId`, scoped to the groups they mentor. */
+export async function getMentorJoinRequests(workerId: string): Promise<MentorJoinRequest[]> {
+    const groups = await getMentorGroups(workerId);
+    const groupIds = new Set(groups.map((g) => g.id));
+    if (groupIds.size === 0) return [];
+
+    const actionable = await ApprovalEngine.getActionableWorkflows(workerId);
+
+    return actionable
+        .filter((w) => w.type === C2S_JOIN_REQUEST_WORKFLOW_TYPE)
+        .map((workflow) => {
+            const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
+            return { workflow, meta };
+        })
+        .filter(({ meta }) => groupIds.has(meta.groupId as string))
+        .map(({ workflow, meta }) => ({
+            workflowId: workflow.id,
+            stageId: ApprovalEngine.getActiveStages(workflow.stages)[0]?.id ?? null,
+            groupId: meta.groupId as string,
+            groupName: meta.groupName as string,
+            requesterName: meta.requesterName as string,
+            requesterEmail: meta.requesterEmail as string,
+            requesterPhone: (meta.requesterPhone as string | null) ?? null,
+            message: (meta.message as string | null) ?? null,
+            createdAt: workflow.createdAt,
+        }));
 }

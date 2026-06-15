@@ -11,7 +11,12 @@ import * as C2SService from '@/services/c2s';
 export const getMyC2SGroup = withPublicAction(async () => {
     const ctx = await resolveCallerCtx();
     if (!ctx) throw new Error('You must be logged in to do this.');
-    return C2SService.getMentorGroups(ctx.workerId);
+
+    const groups = await C2SService.getMentorGroups(ctx.workerId);
+    if (groups.length === 0 && ctx.isSuperAdmin) {
+        return C2SService.getAllC2SGroupsWithMentees();
+    }
+    return groups;
 });
 
 export const updateMyC2SGroupProfile = withPublicAction(
@@ -50,6 +55,84 @@ export const getC2SSessionsForGroupAction = withPublicAction(async (groupId: str
     if (!allowed) throw new Error('You do not have permission to view sessions for this group.');
 
     return C2SService.getC2SSessionsForGroup(groupId);
+});
+
+export const updateC2SSessionAction = withPublicAction(
+    async (sessionId: string, data: C2SService.UpdateSessionInput) => {
+        const ctx = await resolveCallerCtx();
+        if (!ctx) throw new Error('You must be logged in to do this.');
+
+        const groupId = await C2SService.getSessionGroupId(sessionId);
+        const allowed = await C2SService.canManageC2SGroup(ctx, groupId);
+        if (!allowed) throw new Error('You do not have permission to edit this session.');
+
+        const session = await C2SService.updateC2SSession(sessionId, data);
+        revalidatePath('/c2s');
+        return session;
+    },
+);
+
+export const deleteC2SSessionAction = withPublicAction(async (sessionId: string) => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+
+    const groupId = await C2SService.getSessionGroupId(sessionId);
+    const allowed = await C2SService.canManageC2SGroup(ctx, groupId);
+    if (!allowed) throw new Error('You do not have permission to delete this session.');
+
+    await C2SService.deleteC2SSession(sessionId);
+    revalidatePath('/c2s');
+});
+
+// --- My Group: mentee management ---
+
+export const createMyGroupMenteeAction = withPublicAction(
+    async (groupId: string, data: C2SService.MenteeInput) => {
+        const ctx = await resolveCallerCtx();
+        if (!ctx) throw new Error('You must be logged in to do this.');
+
+        const allowed = await C2SService.canManageC2SGroup(ctx, groupId);
+        if (!allowed) throw new Error('You do not have permission to manage this group.');
+
+        const mentee = await C2SService.createMenteeInGroup(groupId, data);
+        revalidatePath('/c2s');
+        return mentee;
+    },
+);
+
+export const updateMyGroupMenteeAction = withPublicAction(
+    async (menteeId: string, data: Partial<C2SService.MenteeInput>) => {
+        const ctx = await resolveCallerCtx();
+        if (!ctx) throw new Error('You must be logged in to do this.');
+
+        const groupId = await C2SService.getMenteeGroupId(menteeId);
+        const allowed = await C2SService.canManageC2SGroup(ctx, groupId);
+        if (!allowed) throw new Error('You do not have permission to manage this mentee.');
+
+        const mentee = await C2SService.updateMentee(menteeId, data);
+        revalidatePath('/c2s');
+        return mentee;
+    },
+);
+
+export const deleteMyGroupMenteeAction = withPublicAction(async (menteeId: string) => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+
+    const groupId = await C2SService.getMenteeGroupId(menteeId);
+    const allowed = await C2SService.canManageC2SGroup(ctx, groupId);
+    if (!allowed) throw new Error('You do not have permission to manage this mentee.');
+
+    await C2SService.deleteMentee(menteeId);
+    revalidatePath('/c2s');
+});
+
+// --- My Group: join request inbox ---
+
+export const getMyC2SJoinRequestsAction = withPublicAction(async () => {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+    return C2SService.getMentorJoinRequests(ctx.workerId);
 });
 
 // --- Public-facing: join requests ---

@@ -407,6 +407,7 @@ model C2SMentee {
   email     String
   phone     String
   status    String
+  notes     String?
   groupId   String
   mentorId  String
   createdAt DateTime @default(now())

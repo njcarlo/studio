@@ -294,6 +294,7 @@ export type C2SMentee = {
     email: string;
     phone: string;
     status: 'In Progress' | 'Completed' | 'Dropped';
+    notes?: string | null;
     groupId: string;
     mentorId: string;
     createdAt: TimestampLike;
@@ -329,17 +330,17 @@ export type C2SAttendanceRecord = {
     sessionId: string;
     menteeId: string;
     present: boolean;
-    createdAt: TimestampLike;
+    createdAt: TimestampLike | Date;
 };
 
 export type C2SSession = {
     id: string;
     groupId: string;
-    date: TimestampLike;
+    date: TimestampLike | Date;
     module?: string | null;
     notes?: string | null;
     createdBy: string;
-    createdAt: TimestampLike;
+    createdAt: TimestampLike | Date;
     attendance?: C2SAttendanceRecord[];
 };
 
