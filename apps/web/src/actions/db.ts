@@ -374,20 +374,36 @@ export async function getPaginatedWorkers(
         }];
     }
 
-    const sortField = filters.sortField || 'workerId';
+    const sortField = filters.sortField || 'role';
     const sortDir = filters.sortDir || 'asc';
+    const dirSql = sortDir.toUpperCase();
     const offset = (page - 1) * limit;
 
     // Build ORDER BY
     let orderByClause: string;
     if (sortField === 'workerId') {
-        orderByClause = `"workerId" ${sortDir.toUpperCase()} NULLS LAST`;
+        orderByClause = `w."workerId" ${dirSql} NULLS LAST`;
     } else if (sortField === 'name') {
-        orderByClause = `"firstName" ${sortDir.toUpperCase()}, "lastName" ${sortDir.toUpperCase()}`;
+        orderByClause = `w."firstName" ${dirSql}, w."lastName" ${dirSql}`;
     } else if (sortField === 'status') {
-        orderByClause = `"status" ${sortDir.toUpperCase()}`;
+        orderByClause = `w."status" ${dirSql}`;
+    } else if (sortField === 'contact') {
+        orderByClause = `w.email ${dirSql}`;
+    } else if (sortField === 'role') {
+        // Role weight: Senior Pastor (1) > Department Head (2) > Ministry Head (3)
+        // > any other assigned role, sorted alphabetically (4) > base/Viewer/no role (5)
+        orderByClause = `
+            CASE
+                WHEN w."isSeniorPastor" THEN 1
+                WHEN w.id IN (SELECT "headId" FROM "DepartmentSetting" WHERE "headId" IS NOT NULL) THEN 2
+                WHEN w.id IN (SELECT "headId" FROM "Ministry" WHERE "headId" IS NOT NULL) THEN 3
+                WHEN r.name IS NOT NULL AND r.name <> 'Viewer' THEN 4
+                ELSE 5
+            END ${dirSql},
+            CASE WHEN r.name IS NOT NULL AND r.name <> 'Viewer' THEN r.name ELSE NULL END ${dirSql},
+            w."firstName" ${dirSql}, w."lastName" ${dirSql}`;
     } else {
-        orderByClause = `"createdAt" DESC`;
+        orderByClause = `w."createdAt" DESC`;
     }
 
     // Build WHERE conditions for raw query
@@ -399,23 +415,23 @@ export async function getPaginatedWorkers(
         const ids = filters.ministryIds;
         const majorPlaceholders = ids.map(() => `$${paramIdx++}`).join(', ');
         const minorPlaceholders = ids.map(() => `$${paramIdx++}`).join(', ');
-        conditions.push(`("majorMinistryId" IN (${majorPlaceholders}) OR "minorMinistryId" IN (${minorPlaceholders}))`);
+        conditions.push(`(w."majorMinistryId" IN (${majorPlaceholders}) OR w."minorMinistryId" IN (${minorPlaceholders}))`);
         queryParams.push(...ids, ...ids);
     }
 
     if (filters.status) {
-        conditions.push(`"status" = $${paramIdx++}`);
+        conditions.push(`w."status" = $${paramIdx++}`);
         queryParams.push(filters.status);
     }
 
     if (filters.search) {
         const q = `%${filters.search.trim()}%`;
         if (filters.searchMode === 'name') {
-            conditions.push(`("firstName" ILIKE $${paramIdx} OR "lastName" ILIKE $${paramIdx})`);
+            conditions.push(`(w."firstName" ILIKE $${paramIdx} OR w."lastName" ILIKE $${paramIdx})`);
             queryParams.push(q);
             paramIdx++;
         } else {
-            conditions.push(`"workerId" ILIKE $${paramIdx}`);
+            conditions.push(`w."workerId" ILIKE $${paramIdx}`);
             queryParams.push(q);
             paramIdx++;
         }
@@ -426,14 +442,15 @@ export async function getPaginatedWorkers(
     // Run count + paginated fetch in parallel
     const [countResult, workers] = await Promise.all([
         prisma.$queryRawUnsafe<[{ count: bigint }]>(
-            `SELECT COUNT(*) as count FROM "Worker" ${whereClause}`,
+            `SELECT COUNT(*) as count FROM "Worker" w ${whereClause}`,
             ...queryParams
         ),
         prisma.$queryRawUnsafe<any[]>(
-            `SELECT id, "workerId", "firstName", "lastName", email, phone, "roleId", status,
-                    "avatarUrl", "majorMinistryId", "minorMinistryId", "employmentType",
-                    "passwordChangeRequired", "qrToken", "createdAt", "capabilities"
-             FROM "Worker"
+            `SELECT w.id, w."workerId", w."firstName", w."lastName", w.email, w.phone, w."roleId", w.status,
+                    w."avatarUrl", w."majorMinistryId", w."minorMinistryId", w."employmentType",
+                    w."passwordChangeRequired", w."qrToken", w."createdAt", w."capabilities"
+             FROM "Worker" w
+             LEFT JOIN "Role" r ON r.id = w."roleId"
              ${whereClause}
              ORDER BY ${orderByClause}
              LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,

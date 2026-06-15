@@ -123,7 +123,7 @@ export default function WorkersPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMode, setSearchMode] = useState<'workerId' | 'name'>('workerId');
-  const [sortField, setSortField] = useState("workerId");
+  const [sortField, setSortField] = useState("role");
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [ministryFilter, setMinistryFilter] = useState<string>("all");
@@ -1279,12 +1279,16 @@ export default function WorkersPage() {
                 <TableHead className="cursor-pointer select-none" onClick={() => handleSort('workerId')}>
                   <span className="flex items-center gap-1">Worker ID {sortField === 'workerId' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</span>
                 </TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('role')}>
+                  <span className="flex items-center gap-1">Role {sortField === 'role' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</span>
+                </TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead className="cursor-pointer select-none" onClick={() => handleSort('status')}>
                   <span className="flex items-center gap-1">Status {sortField === 'status' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</span>
                 </TableHead>
-                <TableHead>Contact</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('contact')}>
+                  <span className="flex items-center gap-1">Contact {sortField === 'contact' ? (sortDir === 'asc' ? '↑' : '↓') : ''}</span>
+                </TableHead>
                 {canManageWorkers && (
                   <TableHead>
                     <span className="sr-only">Actions</span>
