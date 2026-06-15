@@ -313,8 +313,8 @@ export type C2SGroup = {
     ageRangeMax?: number | null;
     meetupDay?: string | null;
     demographics: string[];
-    mapX?: number | null;
-    mapY?: number | null;
+    mapLng?: number | null;
+    mapLat?: number | null;
     createdAt: TimestampLike;
     updatedAt: TimestampLike;
 };

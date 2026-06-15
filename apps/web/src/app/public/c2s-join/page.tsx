@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@studio/ui";
 import { Button } from "@studio/ui";
@@ -16,8 +17,19 @@ import {
 import { cn } from "@studio/ui";
 import { Search, MapPin, Calendar, Users, LoaderCircle } from "lucide-react";
 import { getPublicC2SGroups } from "@/actions/c2s";
-import { GroupFinderMap } from "./GroupFinderMap";
 import { JoinGroupDialog, type JoinGroup } from "./JoinGroupDialog";
+
+const GroupFinderMap = dynamic(
+  () => import("./GroupFinderMap").then((m) => m.GroupFinderMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-xl border bg-white shadow-sm flex items-center justify-center h-full min-h-[420px]">
+        <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    ),
+  },
+);
 
 const ALL = "all";
 

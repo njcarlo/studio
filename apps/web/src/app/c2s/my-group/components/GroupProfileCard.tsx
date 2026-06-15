@@ -45,8 +45,8 @@ export const GroupProfileCard = ({ group }: { group: GroupWithMentees }) => {
   const [ageRangeMax, setAgeRangeMax] = useState(group.ageRangeMax?.toString() || "");
   const [meetupDay, setMeetupDay] = useState(group.meetupDay || "");
   const [demographics, setDemographics] = useState((group.demographics || []).join(", "));
-  const [mapX, setMapX] = useState(group.mapX?.toString() || "");
-  const [mapY, setMapY] = useState(group.mapY?.toString() || "");
+  const [mapLng, setMapLng] = useState(group.mapLng?.toString() || "");
+  const [mapLat, setMapLat] = useState(group.mapLat?.toString() || "");
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -62,8 +62,8 @@ export const GroupProfileCard = ({ group }: { group: GroupWithMentees }) => {
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
-        mapX: mapX ? parseFloat(mapX) : null,
-        mapY: mapY ? parseFloat(mapY) : null,
+        mapLng: mapLng ? parseFloat(mapLng) : null,
+        mapLat: mapLat ? parseFloat(mapLat) : null,
       });
       if (!res.success) throw new Error(res.error);
       return res.data;
@@ -192,24 +192,22 @@ export const GroupProfileCard = ({ group }: { group: GroupWithMentees }) => {
           </div>
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
-              <MapPinned className="h-3.5 w-3.5" /> Map Position (%)
+              <MapPinned className="h-3.5 w-3.5" /> Map Location (Lat, Lng)
             </Label>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
-                min={0}
-                max={100}
-                value={mapX}
-                onChange={(e) => setMapX(e.target.value)}
-                placeholder="X"
+                step="any"
+                value={mapLat}
+                onChange={(e) => setMapLat(e.target.value)}
+                placeholder="Latitude"
               />
               <Input
                 type="number"
-                min={0}
-                max={100}
-                value={mapY}
-                onChange={(e) => setMapY(e.target.value)}
-                placeholder="Y"
+                step="any"
+                value={mapLng}
+                onChange={(e) => setMapLng(e.target.value)}
+                placeholder="Longitude"
               />
             </div>
           </div>

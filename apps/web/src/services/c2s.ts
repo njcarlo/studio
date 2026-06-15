@@ -43,8 +43,8 @@ export type UpdateGroupProfileInput = {
     ageRangeMax?: number | null;
     meetupDay?: string | null;
     demographics?: string[];
-    mapX?: number | null;
-    mapY?: number | null;
+    mapLng?: number | null;
+    mapLat?: number | null;
 };
 
 export async function updateGroupProfile(groupId: string, data: UpdateGroupProfileInput) {
@@ -65,8 +65,8 @@ export async function listPublicC2SGroups() {
             ageRangeMax: true,
             meetupDay: true,
             demographics: true,
-            mapX: true,
-            mapY: true,
+            mapLng: true,
+            mapLat: true,
             createdAt: true,
         },
         orderBy: { name: 'asc' },
