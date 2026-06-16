@@ -534,11 +534,6 @@ export async function getEligibleWorkers(params: {
 }) {
     const { ministryId, query = '', limit = 50, date } = params;
 
-    const targetMinistry = await prisma.ministry.findUnique({
-        where: { id: ministryId },
-        select: { id: true, departmentCode: true },
-    });
-
     const nameFilter = query
         ? {
               OR: [
@@ -551,51 +546,60 @@ export async function getEligibleWorkers(params: {
 
     const workerSelect = {
         id: true, firstName: true, lastName: true, workerId: true,
-        majorMinistryId: true, minorMinistryId: true, status: true,
+        avatarUrl: true, majorMinistryId: true, minorMinistryId: true, status: true,
     };
 
-    const directMembers = await prisma.worker.findMany({
-        where: { status: 'Active', OR: [{ majorMinistryId: ministryId }, { minorMinistryId: ministryId }], ...nameFilter },
-        select: workerSelect,
-        take: limit,
-    });
+    // Fetch direct members, ministry meta, and unavailability in parallel.
+    const [directMembers, targetMinistry, unavailableIds] = await Promise.all([
+        prisma.worker.findMany({
+            where: { status: 'Active', OR: [{ majorMinistryId: ministryId }, { minorMinistryId: ministryId }], ...nameFilter },
+            select: workerSelect,
+            take: limit,
+        }),
+        prisma.ministry.findUnique({ where: { id: ministryId }, select: { id: true, departmentCode: true } }),
+        date ? getUnavailableWorkerIds(date) : Promise.resolve(new Set<string>()),
+    ]);
+
     const directIds = new Set(directMembers.map(w => w.id));
 
-    let deptMembers: typeof directMembers = [];
-    if (targetMinistry?.departmentCode) {
-        const deptMinistryIds = (await prisma.ministry.findMany({
-            where: { departmentCode: targetMinistry.departmentCode },
-            select: { id: true },
-        })).map(m => m.id);
+    // Fetch dept siblings and (if searching) global results in parallel.
+    const deptMinistryIds = targetMinistry?.departmentCode
+        ? (await prisma.ministry.findMany({
+              where: { departmentCode: targetMinistry.departmentCode },
+              select: { id: true },
+          })).map(m => m.id)
+        : [];
 
-        deptMembers = await prisma.worker.findMany({
-            where: {
-                status: 'Active',
-                OR: [{ majorMinistryId: { in: deptMinistryIds } }, { minorMinistryId: { in: deptMinistryIds } }],
-                id: { notIn: [...directIds] },
-                ...nameFilter,
-            },
-            select: workerSelect,
-            take: limit,
-        });
-    }
-    const knownIds = new Set([...directIds, ...deptMembers.map(w => w.id)]);
+    const [deptMembers, globalMembers] = await Promise.all([
+        deptMinistryIds.length > 0
+            ? prisma.worker.findMany({
+                  where: {
+                      status: 'Active',
+                      OR: [{ majorMinistryId: { in: deptMinistryIds } }, { minorMinistryId: { in: deptMinistryIds } }],
+                      id: { notIn: [...directIds] },
+                      ...nameFilter,
+                  },
+                  select: workerSelect,
+                  take: limit,
+              })
+            : Promise.resolve([] as typeof directMembers),
+        query
+            ? prisma.worker.findMany({
+                  where: { status: 'Active', id: { notIn: [...directIds] }, ...nameFilter },
+                  select: workerSelect,
+                  take: limit,
+              })
+            : Promise.resolve([] as typeof directMembers),
+    ]);
 
-    let globalMembers: typeof directMembers = [];
-    if (query) {
-        globalMembers = await prisma.worker.findMany({
-            where: { status: 'Active', id: { notIn: [...knownIds] }, ...nameFilter },
-            select: workerSelect,
-            take: limit,
-        });
-    }
-
-    const unavailableIds = date ? await getUnavailableWorkerIds(date) : new Set<string>();
+    // Remove dept-level hits that showed up in the global search to avoid duplicates.
+    const deptIds = new Set(deptMembers.map(w => w.id));
+    const filteredGlobal = globalMembers.filter(w => !deptIds.has(w.id));
 
     const withPriority = [
         ...directMembers.map(w => ({ ...w, priority: 3 as const })),
         ...deptMembers.map(w =>   ({ ...w, priority: 2 as const })),
-        ...globalMembers.map(w => ({ ...w, priority: 1 as const })),
+        ...filteredGlobal.map(w => ({ ...w, priority: 1 as const })),
     ].map(w => ({ ...w, unavailable: unavailableIds.has(w.id) }));
 
     // Deprioritize (but don't hide) workers who marked themselves unavailable that day.

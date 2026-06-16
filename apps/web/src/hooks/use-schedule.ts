@@ -241,10 +241,11 @@ export function useServiceTemplates(ministryId?: string) {
     };
 }
 
-export function useScheduleHistory() {
+export function useScheduleHistory(enabled = true) {
     return useQuery({
         queryKey: ['schedule-history'],
         queryFn: () => getScheduleHistory(),
+        enabled,
     });
 }
 

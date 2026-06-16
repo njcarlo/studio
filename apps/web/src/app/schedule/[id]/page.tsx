@@ -43,11 +43,16 @@ export default function ScheduleDetailPage() {
     const { ministries } = useMinistries();
     const { data: workers = [] } = useWorkersLite(); // avatar lookups only — search uses getEligibleWorkers
     const { templates, isLoading: templatesLoading } = useServiceTemplates();
-    const { data: history } = useScheduleHistory();
+    const { data: history } = useScheduleHistory(activeTab === "history");
     const { slots: worshipSlots, createSlot, deleteSlot, addWorker: addWorshipWorker, removeWorker: removeWorshipWorker } = useWorshipSlots(id);
 
+    // O(1) avatar lookup — avoids workers.find() per rendered slot
+    const workerById = useMemo(() => new Map((workers ?? []).map((w: any) => [w.id, w])), [workers]);
+
+    const [activeTab, setActiveTab] = useState("assignments");
     const [expandedMinistries, setExpandedMinistries] = useState<Set<string>>(new Set());
-    const [assignDialog, setAssignDialog] = useState<{ assignmentId: string; ministryId: string; roleName: string; reassign?: boolean } | null>(null);
+    const [assignDialog, setAssignDialog] = useState<{ assignmentId: string; ministryId: string; roleName: string; reassign?: boolean; relatedSlots?: { id: string; workerName: string | null }[] } | null>(null);
+    const [recentlyAssignedIds, setRecentlyAssignedIds] = useState<Set<string>>(new Set());
     const [workerSearch, setWorkerSearch] = useState("");
     const [workerIdSearch, setWorkerIdSearch] = useState("");
     const [workerIdResult, setWorkerIdResult] = useState<any>(null);
@@ -154,9 +159,10 @@ export default function ScheduleDetailPage() {
         placeholderData: (prev) => prev,
     });
 
-    const handleAssign = async (workerId: string | null) => {
+    const handleAssign = async (workerId: string | null, targetSlotIds?: string[]) => {
         if (!assignDialog) return;
-        const worker = workerId ? workers.find((w: any) => w.id === workerId) : null;
+        const worker = workerId ? (workerById.get(workerId) as any) : null;
+        const workerName = worker ? `${worker.firstName} ${worker.lastName}` : null;
 
         // Conflict check — warn if worker already assigned to another ministry
         if (workerId && schedule) {
@@ -164,13 +170,11 @@ export default function ScheduleDetailPage() {
                 (a: any) => a.workerId === workerId && a.ministryId !== assignDialog.ministryId
             );
             if (existingSlot) {
-                const conflictMinistry = getMinistryName(existingSlot.ministryId);
                 toast({
                     variant: "destructive",
                     title: "Conflict detected",
-                    description: `${worker ? `${(worker as any).firstName} ${(worker as any).lastName}` : "This worker"} is already assigned as ${existingSlot.roleName} in ${conflictMinistry} for this service.`,
+                    description: `${workerName ?? "This worker"} is already assigned as ${existingSlot.roleName} in ${getMinistryName(existingSlot.ministryId)} for this service.`,
                 });
-                // Still allow — just warn
             }
         }
 
@@ -180,25 +184,38 @@ export default function ScheduleDetailPage() {
                 await reassignAssignment({
                     assignmentId: assignDialog.assignmentId,
                     newWorkerId: workerId,
-                    newWorkerName: worker ? `${(worker as any).firstName} ${(worker as any).lastName}` : '',
+                    newWorkerName: workerName ?? '',
                 });
                 toast({ title: "Reassigned", description: "The replacement has been notified to confirm." });
                 setAssignDialog(null);
                 return;
             }
 
-            await upsertAssignment({
-                id: assignDialog.assignmentId,
-                scheduleId: id,
-                ministryId: assignDialog.ministryId,
-                roleName: assignDialog.roleName,
-                workerId: workerId ?? null,
-                workerName: worker ? `${(worker as any).firstName} ${(worker as any).lastName}` : null,
-                order: schedule?.assignments.filter(
-                    (a: any) => a.ministryId === assignDialog.ministryId && a.roleName === assignDialog.roleName
-                ).findIndex((a: any) => a.id === assignDialog.assignmentId) ?? 0,
-            });
-            toast({ title: workerId ? "Worker assigned" : "Assignment cleared" });
+            // Multi-slot support: assign to all selected slot IDs, or just the primary one.
+            const slotIds = targetSlotIds?.length ? targetSlotIds : [assignDialog.assignmentId];
+            await Promise.all(slotIds.map(slotId =>
+                upsertAssignment({
+                    id: slotId,
+                    scheduleId: id,
+                    ministryId: assignDialog.ministryId,
+                    roleName: assignDialog.roleName,
+                    workerId: workerId ?? null,
+                    workerName,
+                    order: schedule?.assignments.findIndex((a: any) => a.id === slotId) ?? 0,
+                })
+            ));
+
+            // Flash the assigned slot rows green for 2 seconds.
+            const assigned = new Set(slotIds);
+            setRecentlyAssignedIds(assigned);
+            setTimeout(() => setRecentlyAssignedIds(prev => {
+                const next = new Set(prev);
+                slotIds.forEach(sid => next.delete(sid));
+                return next;
+            }), 2000);
+
+            const label = slotIds.length > 1 ? `${slotIds.length} slots assigned` : workerId ? "Worker assigned" : "Assignment cleared";
+            toast({ title: label });
             setAssignDialog(null);
         } catch {
             toast({ variant: "destructive", title: assignDialog.reassign ? "Failed to reassign" : "Failed to assign" });
@@ -453,7 +470,7 @@ export default function ScheduleDetailPage() {
             )}
 
             {/* Tabs */}
-            <Tabs defaultValue="assignments" className="mt-6">
+            <Tabs defaultValue="assignments" value={activeTab} onValueChange={setActiveTab} className="mt-6">
                 <TabsList>
                     <TabsTrigger value="assignments">Assignments</TabsTrigger>
                     {(canConfirmSchedule || schedule.status === "Published") && (
@@ -555,12 +572,12 @@ export default function ScheduleDetailPage() {
                                                                 const statusDot = status === 'Confirmed' ? 'bg-green-500' : status === 'Not Attending' ? 'bg-red-500' : 'bg-yellow-400';
                                                                 return (
                                                                     <React.Fragment key={slot.id}>
-                                                                        <div className="flex items-center gap-3 rounded-md border px-3 py-2">
+                                                                        <div className={`flex items-center gap-3 rounded-md border px-3 py-2 transition-all duration-500 ${recentlyAssignedIds.has(slot.id) ? "border-green-400 bg-green-50 ring-1 ring-green-300" : ""}`}>
                                                                             {slot.workerId ? (
                                                                                 <>
                                                                                     <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDot}`} title={status} />
                                                                                     <Avatar className="h-6 w-6">
-                                                                                        <AvatarImage src={workers.find((w: any) => w.id === slot.workerId)?.avatarUrl} />
+                                                                                        <AvatarImage src={workerById.get(slot.workerId)?.avatarUrl} />
                                                                                         <AvatarFallback className="text-[10px]">{slot.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}</AvatarFallback>
                                                                                     </Avatar>
                                                                                     <span className="text-sm flex-1">{slot.workerName}</span>
@@ -583,7 +600,7 @@ export default function ScheduleDetailPage() {
                                                                                     <Button variant="ghost" size="icon" className="h-6 w-6" title="Rehearsal" onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
                                                                                         <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
                                                                                     </Button>
-                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
+                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, relatedSlots: (slots as any[]).map(s => ({ id: s.id, workerName: s.workerName })) })}>
                                                                                         <UserPlus className="h-3.5 w-3.5" />
                                                                                     </Button>
                                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteAssignment(slot.id)}>
@@ -597,7 +614,7 @@ export default function ScheduleDetailPage() {
                                                                                     <Button variant="ghost" size="icon" className="h-6 w-6" title="Rehearsal" onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
                                                                                         <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
                                                                                     </Button>
-                                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName })}>
+                                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, relatedSlots: (slots as any[]).map(s => ({ id: s.id, workerName: s.workerName })) })}>
                                                                                         <UserPlus className="mr-1 h-3 w-3" /> Assign
                                                                                     </Button>
                                                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteAssignment(slot.id)}>
@@ -729,7 +746,7 @@ export default function ScheduleDetailPage() {
                 </TabsContent>
             </Tabs>
 
-            <WorkerSearchDropdown open={!!assignDialog} onClose={() => { setAssignDialog(null); setWorkerSearch(""); setWorkerIdSearch(""); setWorkerIdResult(null); }} assignDialog={assignDialog} ministries={ministries} workers={workers} monthlyDuties={monthlyDuties} workerSearch={workerSearch} setWorkerSearch={setWorkerSearch} filteredWorkers={filteredWorkers} handleAssign={handleAssign} workerIdSearch={workerIdSearch} setWorkerIdSearch={setWorkerIdSearch} workerIdResult={workerIdResult} setWorkerIdResult={setWorkerIdResult} handleWorkerIdSearch={handleWorkerIdSearch} workerIdSearching={workerIdSearching} isAssigning={isAssigning} assigningWorkerId={assigningWorkerId} />
+            <WorkerSearchDropdown open={!!assignDialog} onClose={() => { setAssignDialog(null); setWorkerSearch(""); setWorkerIdSearch(""); setWorkerIdResult(null); }} assignDialog={assignDialog} ministries={ministries} monthlyDuties={monthlyDuties} workerSearch={workerSearch} setWorkerSearch={setWorkerSearch} filteredWorkers={filteredWorkers} handleAssign={handleAssign} workerIdSearch={workerIdSearch} setWorkerIdSearch={setWorkerIdSearch} workerIdResult={workerIdResult} setWorkerIdResult={setWorkerIdResult} handleWorkerIdSearch={handleWorkerIdSearch} workerIdSearching={workerIdSearching} isAssigning={isAssigning} assigningWorkerId={assigningWorkerId} />
 
             {/* Apply Template Dialog */}
             <Dialog open={!!applyTemplateDialog} onOpenChange={() => setApplyTemplateDialog(null)}>
