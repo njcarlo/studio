@@ -26,8 +26,12 @@ export default async function DashboardPage() {
   const user = await getServerUser();
   if (!user) redirect("/login");
 
-  // Fetch in parallel: profile lookup by ID first, fall back to email
-  const profile = (await getWorkerById(user.id)) ?? (await getWorkerByEmail(user.email));
+  // Run both lookups in parallel — whichever finds the profile wins
+  const [byId, byEmail] = await Promise.all([
+    getWorkerById(user.id),
+    getWorkerByEmail(user.email),
+  ]);
+  const profile = byId ?? byEmail;
 
   const firstName =
     profile?.firstName || user.email.split("@")[0] || "there";

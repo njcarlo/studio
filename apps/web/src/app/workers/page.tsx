@@ -579,17 +579,18 @@ export default function WorkersPage() {
 
         const toIssue = Math.min(count, remaining);
 
-        for (let i = 0; i < toIssue; i++) {
-          await createMealStubSql({
-            workerId: id as any,
-            workerName: `${w.firstName} ${w.lastName}`,
-            status: "Issued",
-            assignedBy: workerProfile?.id,
-            assignedByName: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
-            stubType: type,
-          });
-          totalIssued++;
-        }
+        const stubPayload = {
+          workerId: id as any,
+          workerName: `${w.firstName} ${w.lastName}`,
+          status: "Issued",
+          assignedBy: workerProfile?.id,
+          assignedByName: `${workerProfile?.firstName} ${workerProfile?.lastName}`,
+          stubType: type,
+        };
+        await Promise.all(
+          Array.from({ length: toIssue }, () => createMealStubSql(stubPayload)),
+        );
+        totalIssued += toIssue;
       });
 
       await Promise.all(promises);

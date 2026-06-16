@@ -181,12 +181,11 @@ export const assignRolesToWorker = withPermission(
         await prisma.workerRole.deleteMany({
             where: { workerId, roleId: { notIn: roleIds } },
         });
-        // Add any new roles
-        for (const roleId of roleIds) {
-            await prisma.workerRole.upsert({
-                where: { workerId_roleId: { workerId, roleId } },
-                update: {},
-                create: { workerId, roleId, assignedBy },
+        // Add any new roles in one batch insert
+        if (roleIds.length > 0) {
+            await prisma.workerRole.createMany({
+                data: roleIds.map((roleId) => ({ workerId, roleId, assignedBy })),
+                skipDuplicates: true,
             });
         }
         // Keep legacy roleId in sync (use first role as primary)
@@ -998,23 +997,26 @@ export const getMajorEventApprovals = withPublicAction(async () => {
             continue;
         }
 
-        for (const stage of active) {
-            const spec = stage.approverSpec as unknown as ApprovalEngine.ApproverSpec;
-            const ministryName = spec.kind === 'ministryRole' ? ministryNameById.get(spec.ministryId) ?? 'Unknown Ministry' : null;
-            const items = spec.kind === 'ministryRole'
-                ? request.items.filter((i) => i.ministryId === spec.ministryId)
-                : request.items;
+        const stageRows = await Promise.all(
+            active.map(async (stage) => {
+                const spec = stage.approverSpec as unknown as ApprovalEngine.ApproverSpec;
+                const ministryName = spec.kind === 'ministryRole' ? ministryNameById.get(spec.ministryId) ?? 'Unknown Ministry' : null;
+                const items = spec.kind === 'ministryRole'
+                    ? request.items.filter((i) => i.ministryId === spec.ministryId)
+                    : request.items;
 
-            rows.push({
-                id: `${workflow.id}:${stage.id}`,
-                ...base,
-                details: ministryName
-                    ? `"${request.title}" — ${ministryName}: ${items.map((i) => i.name).join(', ') || 'no items'}`
-                    : `"${request.title}" — final approval (${itemSummary || 'no items'})`,
-                _stageId: stage.id,
-                _actionable: await ApprovalEngine.canActOnStage(stage, ctx.workerId),
-            });
-        }
+                return {
+                    id: `${workflow.id}:${stage.id}`,
+                    ...base,
+                    details: ministryName
+                        ? `"${request.title}" — ${ministryName}: ${items.map((i) => i.name).join(', ') || 'no items'}`
+                        : `"${request.title}" — final approval (${itemSummary || 'no items'})`,
+                    _stageId: stage.id,
+                    _actionable: await ApprovalEngine.canActOnStage(stage, ctx.workerId),
+                };
+            }),
+        );
+        rows.push(...stageRows);
     }
 
     return rows;

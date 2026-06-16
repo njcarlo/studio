@@ -113,6 +113,7 @@ export function useWorkersLite() {
         queryKey: ['workers-lite'],
         queryFn: getWorkersLite,
         staleTime: 60_000,
+        gcTime: 10 * 60_000,
     });
 }
 
@@ -122,6 +123,7 @@ export function useWorkersForScanner() {
         queryKey: ['workers-scanner'],
         queryFn: getWorkersForScanner,
         staleTime: 60_000,
+        gcTime: 10 * 60_000,
     });
 }
 
@@ -129,6 +131,7 @@ export function useWorkerStats(ministryIds?: string[]) {
     return useQuery({
         queryKey: ['worker-stats', ministryIds],
         queryFn: () => getWorkerStats(ministryIds),
-        staleTime: 60_000, // stats can be slightly stale
+        staleTime: 60_000,
+        gcTime: 15 * 60_000,
     });
 }

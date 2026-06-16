@@ -37,6 +37,7 @@ export function useApprovals(options: { enabled?: boolean } = {}) {
             return [...(legacy as any[]), ...rooms, ...events, ...leave, ...minorMinistry, ...c2sJoins];
         },
         staleTime: 2 * 60_000,
+        gcTime: 10 * 60_000,
         enabled: options?.enabled !== false,
     });
 
