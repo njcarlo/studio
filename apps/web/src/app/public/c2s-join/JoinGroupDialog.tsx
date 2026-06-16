@@ -120,7 +120,7 @@ export function JoinGroupDialog({
             <h2 className="text-xl font-semibold">Request Submitted</h2>
             <p className="text-muted-foreground max-w-sm">
               Your request to join <strong>{group?.name}</strong> has been sent to the mentor for
-              review. You'll receive an email once it's been decided.
+              review. You&apos;ll receive an email once it&apos;s been decided.
             </p>
             <Button onClick={() => handleOpenChange(false)}>Close</Button>
           </div>
@@ -129,7 +129,7 @@ export function JoinGroupDialog({
             <DialogHeader>
               <DialogTitle>Join C2S Group</DialogTitle>
               <DialogDescription>
-                You're signing up for <span className="text-rose-500 font-medium">{group?.name}</span>
+                You&apos;re signing up for <span className="text-rose-500 font-medium">{group?.name}</span>
                 {group?.location ? ` in ${group.location}.` : "."}
               </DialogDescription>
             </DialogHeader>

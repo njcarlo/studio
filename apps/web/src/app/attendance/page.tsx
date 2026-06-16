@@ -101,7 +101,7 @@ export default function AttendancePage() {
                         <CardTitle className="font-headline">Your QR Code</CardTitle>
                         <CardDescription>
                             This QR works for both <strong>Attendance</strong> and <strong>Meal Stubs</strong>.
-                            Regenerate it if you think it's been compromised.
+                            Regenerate it if you think it&apos;s been compromised.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center gap-4">
@@ -135,7 +135,7 @@ export default function AttendancePage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="font-headline">This Week's Personal Log</CardTitle>
+                        <CardTitle className="font-headline">This Week&apos;s Personal Log</CardTitle>
                         <CardDescription>Your clock-in and clock-out records for this week.</CardDescription>
                     </CardHeader>
                     <CardContent>
