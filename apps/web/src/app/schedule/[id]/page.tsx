@@ -614,7 +614,19 @@ export default function ScheduleDetailPage() {
                                                 )}
                                                 {Object.entries(byRole).map(([roleName, slots]) => (
                                                     <div key={roleName}>
-                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{roleName}</p>
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{roleName}</p>
+                                                            {canManageSchedule && (
+                                                                <button
+                                                                    type="button"
+                                                                    title={`Delete all ${roleName} slots`}
+                                                                    onClick={() => Promise.all((slots as any[]).map((s: any) => deleteAssignment(s.id)))}
+                                                                    className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                                                >
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                         <div className="space-y-1.5">
                                                             {(slots as any[]).map((slot: any) => {
                                                                 const status = slot.attendanceStatus || 'Pending';
