@@ -14,7 +14,6 @@ import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import {
-  LoaderCircle,
   Info,
   X,
   LayoutDashboard,
@@ -81,24 +80,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
 
+  // Middleware already redirects unauthenticated users before they reach here,
+  // so this effect is a belt-and-suspenders fallback only — not the primary guard.
   useEffect(() => {
-    // If auth is done loading and there's no user, redirect to login
     if (!isUserLoading && !user) {
       router.push("/login");
     }
   }, [user, isUserLoading, router]);
 
-  // While auth is loading, show a full-screen loader
-  if (isUserLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // If there's no user, we are in the process of redirecting, so don't render the layout
-  if (!user) {
+  // Don't render the authenticated layout shell for a confirmed non-user.
+  // We skip the isUserLoading spinner entirely: middleware guarantees that
+  // anyone who reaches this layout has a valid session cookie, so we can
+  // render the shell immediately and let Zustand hydrate in the background.
+  if (!isUserLoading && !user) {
     return null;
   }
 

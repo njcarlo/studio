@@ -1,59 +1,47 @@
-"use client";
-
-import React from "react";
+import { redirect } from "next/navigation";
+import { getServerUser } from "@/lib/supabase-server";
+import { getWorkerById, getWorkerByEmail } from "@/actions/db";
 import { AppLayout } from "@/components/layout/app-layout";
-import {
-    Card,
-    CardHeader,
-    CardTitle,
-    CardDescription,
-} from "@studio/ui";
-import { useAuthStore } from "@studio/store";
-import { useUserRole } from "@/hooks/use-user-role";
-import { LoaderCircle } from "lucide-react";
-import { ViewerDashboard } from "@/components/dashboard/viewer-dashboard";
-import { ApprovalsWidget } from "@/components/dashboard/approvals-widget";
-import { MinistryDashboard } from "@/components/dashboard/ministry-dashboard";
+import { DashboardClient } from "./DashboardClient";
 
-export default function DashboardPage() {
-    const { user } = useAuthStore();
-    const { workerProfile, isLoading, canManageApprovals, isMinistryHead, isMinistryApprover, isSuperAdmin } = useUserRole();
+const SUPER_ADMIN_EMAILS = new Set(["admin@system.com", "pacleb@gmail.com"]);
 
-    if (isLoading) {
-        return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
-    }
+function hasSuperAdminRole(worker: any): boolean {
+  if (!worker) return false;
+  if (worker.roles?.some((wr: any) => wr.role?.isSuperAdmin)) return true;
+  if (worker.role?.isSuperAdmin) return true;
+  if (worker.role?.id === "admin" || worker.roleId === "admin") return true;
+  return false;
+}
 
-    const userName = workerProfile?.firstName || user?.email?.split('@')[0] || 'User';
+/**
+ * Server Component — renders before any client JS executes.
+ *
+ * Pre-fetches the user's first name and super-admin status so the greeting
+ * and top-level widgets appear in the initial HTML, not after Zustand hydrates.
+ * Middleware already handles the auth redirect, but we still check here as a
+ * belt-and-suspenders guard for edge cases.
+ */
+export default async function DashboardPage() {
+  const user = await getServerUser();
+  if (!user) redirect("/login");
 
-    const showMinistryDashboard = (isMinistryHead || isMinistryApprover) && !isSuperAdmin;
+  // Fetch in parallel: profile lookup by ID first, fall back to email
+  const profile = (await getWorkerById(user.id)) ?? (await getWorkerByEmail(user.email));
 
-    return (
-        <AppLayout>
-            <div className="flex flex-col gap-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <p className="text-muted-foreground mb-1 uppercase tracking-wider text-xs font-semibold">Dashboard</p>
-                        <h1 className="text-3xl font-headline font-bold tracking-tight">
-                            Welcome back, {userName}!
-                        </h1>
-                    </div>
-                </div>
+  const firstName =
+    profile?.firstName || user.email.split("@")[0] || "there";
 
-                {isSuperAdmin && canManageApprovals && (
-                    <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-                        <ApprovalsWidget />
-                    </div>
-                )}
+  const serverIsSuperAdmin =
+    SUPER_ADMIN_EMAILS.has(user.email.toLowerCase()) ||
+    hasSuperAdminRole(profile);
 
-                {showMinistryDashboard && (
-                    <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-                        <MinistryDashboard />
-                    </div>
-                )}
-
-                {/* Everyone gets the core user dashboard widgets (QR code, bookings) */}
-                <ViewerDashboard />
-            </div>
-        </AppLayout>
-    );
+  return (
+    <AppLayout>
+      <DashboardClient
+        firstName={firstName}
+        serverIsSuperAdmin={serverIsSuperAdmin}
+      />
+    </AppLayout>
+  );
 }
