@@ -64,6 +64,7 @@ export default function ScheduleDetailPage() {
     // Ministries added to this view locally (no role yet, so no ScheduleAssignment row exists)
     const [addedMinistryIds, setAddedMinistryIds] = useState<Set<string>>(new Set());
     const [newRoleName, setNewRoleName] = useState("");
+    const [newRoleCount, setNewRoleCount] = useState(1);
     const [newRoleWorkerId, setNewRoleWorkerId] = useState<string | null>(null);
     const [rehearsalDialog, setRehearsalDialog] = useState<{ assignmentId: string, date: string, time: string } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -264,7 +265,7 @@ export default function ScheduleDetailPage() {
         setIsSaving(true);
         try {
             const roleNameStr = newRoleName.trim();
-            const callerId = workerProfile?.id || '';
+            const count = Math.max(1, newRoleCount);
             const existingCategories = await getWorkloadCategories(addRoleDialog);
             if (!existingCategories.some((c: any) => c.name.toLowerCase() === roleNameStr.toLowerCase())) {
                 try {
@@ -274,15 +275,27 @@ export default function ScheduleDetailPage() {
                 }
             }
 
-            await upsertAssignment({
-                scheduleId: id,
-                ministryId: addRoleDialog,
-                roleName: roleNameStr,
-                workerId: newRoleWorkerId ?? null,
-                workerName: newRoleWorkerId ? workers.find((w: any) => w.id === newRoleWorkerId)?.firstName + ' ' + workers.find((w: any) => w.id === newRoleWorkerId)?.lastName : null,
-                order: (byMinistry[addRoleDialog]?.length ?? 0),
-            });
-            toast({ title: "Role slot added" });
+            const baseOrder = byMinistry[addRoleDialog]?.length ?? 0;
+            const workerForSlot = count === 1 ? newRoleWorkerId : null;
+            const workerNameForSlot = workerForSlot
+                ? (workers.find((w: any) => w.id === workerForSlot) as any)?.firstName + ' ' + (workers.find((w: any) => w.id === workerForSlot) as any)?.lastName
+                : null;
+
+            await Promise.all(
+                Array.from({ length: count }, (_, i) =>
+                    upsertAssignment({
+                        scheduleId: id,
+                        ministryId: addRoleDialog,
+                        roleName: roleNameStr,
+                        workerId: workerForSlot,
+                        workerName: workerNameForSlot,
+                        order: baseOrder + i,
+                    })
+                )
+            );
+
+            const label = count > 1 ? `${count} "${roleNameStr}" slots added` : "Role slot added";
+            toast({ title: label });
             setAddedMinistryIds(prev => {
                 if (!prev.has(addRoleDialog)) return prev;
                 const next = new Set(prev);
@@ -291,6 +304,7 @@ export default function ScheduleDetailPage() {
             });
             setAddRoleDialog(null);
             setNewRoleName("");
+            setNewRoleCount(1);
             setNewRoleWorkerId(null);
         } catch {
             toast({ variant: "destructive", title: "Failed to add role" });
@@ -864,7 +878,7 @@ export default function ScheduleDetailPage() {
             </Dialog>
 
             {/* Add Role Dialog */}
-            <Dialog open={!!addRoleDialog} onOpenChange={() => setAddRoleDialog(null)}>
+            <Dialog open={!!addRoleDialog} onOpenChange={() => { setAddRoleDialog(null); setNewRoleName(""); setNewRoleCount(1); setNewRoleWorkerId(null); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Add Role Slot</DialogTitle>
@@ -879,30 +893,57 @@ export default function ScheduleDetailPage() {
                                 placeholder="e.g. Worship Leader, Sound Engineer"
                             />
                         </div>
-                        <div className="space-y-1.5 mt-4 border-t pt-4">
-                            <Label>Assign Worker (Optional)</Label>
-                            <Select value={newRoleWorkerId || 'none'} onValueChange={v => setNewRoleWorkerId(v === 'none' ? null : v)}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a worker" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">None (Leave empty)</SelectItem>
-                                    {workers
-                                        .filter((w: any) => w.status === 'Active' && (w.majorMinistryId === addRoleDialog || w.minorMinistryId === addRoleDialog))
-                                        .map((w: any) => (
-                                            <SelectItem key={w.id} value={w.id}>{w.firstName} {w.lastName}</SelectItem>
-                                        ))
-                                    }
-                                </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground mt-1">You can assign a worker right now, or leave it empty and assign later.</p>
+
+                        <div className="space-y-1.5">
+                            <Label>Number of Slots</Label>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setNewRoleCount(c => Math.max(1, c - 1))}
+                                    className="h-8 w-8 rounded-md border flex items-center justify-center hover:bg-muted text-lg font-medium leading-none disabled:opacity-40"
+                                    disabled={newRoleCount <= 1}
+                                >−</button>
+                                <span className="w-8 text-center font-semibold tabular-nums">{newRoleCount}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setNewRoleCount(c => Math.min(10, c + 1))}
+                                    className="h-8 w-8 rounded-md border flex items-center justify-center hover:bg-muted text-lg font-medium leading-none disabled:opacity-40"
+                                    disabled={newRoleCount >= 10}
+                                >+</button>
+                                {newRoleCount > 1 && (
+                                    <span className="text-xs text-muted-foreground ml-1">
+                                        Creates {newRoleCount} empty slots for this role
+                                    </span>
+                                )}
+                            </div>
                         </div>
+
+                        {newRoleCount === 1 && (
+                            <div className="space-y-1.5 mt-2 border-t pt-3">
+                                <Label>Assign Worker (Optional)</Label>
+                                <Select value={newRoleWorkerId || 'none'} onValueChange={v => setNewRoleWorkerId(v === 'none' ? null : v)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a worker" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">None (Leave empty)</SelectItem>
+                                        {workers
+                                            .filter((w: any) => w.status === 'Active' && (w.majorMinistryId === addRoleDialog || w.minorMinistryId === addRoleDialog))
+                                            .map((w: any) => (
+                                                <SelectItem key={w.id} value={w.id}>{w.firstName} {w.lastName}</SelectItem>
+                                            ))
+                                        }
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground mt-1">You can assign a worker right now, or leave it empty and assign later.</p>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setAddRoleDialog(null)}>Cancel</Button>
+                        <Button variant="outline" onClick={() => { setAddRoleDialog(null); setNewRoleName(""); setNewRoleCount(1); setNewRoleWorkerId(null); }}>Cancel</Button>
                         <Button onClick={handleAddRole} disabled={isSaving || !newRoleName.trim()}>
                             {isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                            Add Role
+                            {newRoleCount > 1 ? `Add ${newRoleCount} Slots` : "Add Role"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
