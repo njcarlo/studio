@@ -34,7 +34,7 @@ jobs:
 
       - name: Build
         working-directory: apps/web
-        run: next build
+        run: npx next build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
