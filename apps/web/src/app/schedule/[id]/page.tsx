@@ -614,19 +614,7 @@ export default function ScheduleDetailPage() {
                                                 )}
                                                 {Object.entries(byRole).map(([roleName, slots]) => (
                                                     <div key={roleName}>
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{roleName}</p>
-                                                            {canManageSchedule && (
-                                                                <button
-                                                                    type="button"
-                                                                    title={`Delete all ${roleName} slots`}
-                                                                    onClick={() => Promise.all((slots as any[]).map((s: any) => deleteAssignment(s.id)))}
-                                                                    className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                                                >
-                                                                    <Trash2 className="h-3 w-3" />
-                                                                </button>
-                                                            )}
-                                                        </div>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{roleName}</p>
                                                         <div className="space-y-1.5">
                                                             {(slots as any[]).map((slot: any) => {
                                                                 const status = slot.attendanceStatus || 'Pending';
@@ -664,9 +652,11 @@ export default function ScheduleDetailPage() {
                                                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, relatedSlots: (slots as any[]).map(s => ({ id: s.id, workerName: s.workerName })) })}>
                                                                                         <UserPlus className="h-3.5 w-3.5" />
                                                                                     </Button>
-                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteAssignment(slot.id)}>
-                                                                                        <X className="h-3.5 w-3.5" />
-                                                                                    </Button>
+                                                                                    {canManageSchedule && (
+                                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" title="Delete slot" onClick={() => deleteAssignment(slot.id)}>
+                                                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                                                        </Button>
+                                                                                    )}
                                                                                 </>
                                                                             ) : (
                                                                                 <>
@@ -678,9 +668,11 @@ export default function ScheduleDetailPage() {
                                                                                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, relatedSlots: (slots as any[]).map(s => ({ id: s.id, workerName: s.workerName })) })}>
                                                                                         <UserPlus className="mr-1 h-3 w-3" /> Assign
                                                                                     </Button>
-                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteAssignment(slot.id)}>
-                                                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                                                    </Button>
+                                                                                    {canManageSchedule && (
+                                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" title="Delete slot" onClick={() => deleteAssignment(slot.id)}>
+                                                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                                                        </Button>
+                                                                                    )}
                                                                                 </>
                                                                             )}
                                                                             {canManageSchedule && (
