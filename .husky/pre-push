@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-push: typecheck → lint → build (blocks push on first failure)
+REPO_ROOT=$(git rev-parse --show-toplevel)
+WEB="$REPO_ROOT/apps/web"
+
+echo "[pre-push] TypeScript typecheck..."
+cd "$WEB" && npx tsc --noEmit || { echo "Push blocked: TypeScript errors."; exit 1; }
+
+echo "[pre-push] ESLint..."
+cd "$WEB" && npm run lint || { echo "Push blocked: ESLint errors."; exit 1; }
+
+echo "[pre-push] Next.js build..."
+cd "$WEB" && npm run build || { echo "Push blocked: Build failed."; exit 1; }
+
+echo "All checks passed — pushing."

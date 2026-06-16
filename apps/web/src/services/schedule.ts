@@ -532,7 +532,7 @@ export async function getEligibleWorkers(params: {
     limit?: number;
     date?: Date;
 }) {
-    const { ministryId, query = '', limit = 50, date } = params;
+    const { ministryId, query = '', limit = 200, date } = params;
 
     const nameFilter = query
         ? {

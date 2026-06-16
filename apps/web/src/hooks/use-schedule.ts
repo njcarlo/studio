@@ -72,7 +72,24 @@ export function useServiceSchedule(id: string) {
             if (!res.success) throw new Error(res.error);
             return res.data;
         },
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
+        onMutate: async (input) => {
+            await qc.cancelQueries({ queryKey: ['service-schedule', id] });
+            const prev = qc.getQueryData(['service-schedule', id]);
+            qc.setQueryData(['service-schedule', id], (old: any) => {
+                if (!old) return old;
+                const assignments = old.assignments.map((a: any) =>
+                    a.id === input.id
+                        ? { ...a, workerId: input.workerId ?? null, workerName: input.workerName ?? null }
+                        : a
+                );
+                return { ...old, assignments };
+            });
+            return { prev };
+        },
+        onError: (_err, _vars, ctx) => {
+            if (ctx?.prev) qc.setQueryData(['service-schedule', id], ctx.prev);
+        },
+        onSettled: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
     });
 
     const deleteMutation = useMutation({

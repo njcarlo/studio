@@ -38,6 +38,7 @@ interface WorkerSearchDropdownProps {
   setWorkerSearch: (v: string) => void;
   filteredWorkers: EligibleWorker[];
   handleAssign: (workerId: string | null, slotIds?: string[]) => void;
+  handleAssignMultiple?: (pairs: Array<{ workerId: string; slotId: string }>) => void;
   workerIdSearch: string;
   setWorkerIdSearch: (v: string) => void;
   workerIdResult: any | null | "not_found";
@@ -46,7 +47,6 @@ interface WorkerSearchDropdownProps {
   workerIdSearching: boolean;
   isAssigning?: boolean;
   assigningWorkerId?: string | null;
-  // legacy prop — kept for API compatibility but no longer used internally
   workers?: any[];
 }
 
@@ -62,6 +62,10 @@ function WorkerCard({
   ministryName,
   isAssigning,
   assigningWorkerId,
+  multiPickMode,
+  checked,
+  disabled: disabledProp,
+  onToggle,
   onAssign,
 }: {
   w: EligibleWorker;
@@ -69,26 +73,40 @@ function WorkerCard({
   ministryName: string;
   isAssigning: boolean;
   assigningWorkerId: string | null | undefined;
-  onAssign: (id: string) => void;
+  multiPickMode: boolean;
+  checked?: boolean;
+  disabled?: boolean;
+  onToggle?: (id: string) => void;
+  onAssign?: (id: string) => void;
 }) {
   const isThisAssigning = isAssigning && assigningWorkerId === w.id;
   const meta = PRIORITY_META[w.priority];
   const dutyVariant = dutyCount >= 3 ? "destructive" : "secondary";
+  const disabled = disabledProp || isAssigning;
+
+  const handleClick = () => {
+    if (multiPickMode) onToggle?.(w.id);
+    else onAssign?.(w.id);
+  };
 
   return (
     <button
       type="button"
-      key={w.id}
-      disabled={isAssigning}
-      onClick={() => onAssign(w.id)}
+      disabled={disabled && !checked}
+      onClick={handleClick}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors",
         "hover:bg-accent hover:border-accent-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         "disabled:opacity-50 disabled:cursor-not-allowed",
-        w.unavailable && "border-amber-200 bg-amber-50/50"
+        w.unavailable && "border-amber-200 bg-amber-50/50",
+        checked && "border-primary bg-primary/5"
       )}
     >
-      {isThisAssigning ? (
+      {multiPickMode && (
+        <Checkbox checked={checked} className="shrink-0 pointer-events-none" />
+      )}
+
+      {!multiPickMode && isThisAssigning ? (
         <div className="h-9 w-9 flex items-center justify-center shrink-0">
           <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
         </div>
@@ -133,6 +151,10 @@ function WorkerSection({
   ministries,
   isAssigning,
   assigningWorkerId,
+  multiPickMode,
+  selectedWorkerIds,
+  maxSelectable,
+  onToggle,
   onAssign,
 }: {
   title: string;
@@ -141,6 +163,10 @@ function WorkerSection({
   ministries: any[];
   isAssigning: boolean;
   assigningWorkerId: string | null | undefined;
+  multiPickMode: boolean;
+  selectedWorkerIds: Set<string>;
+  maxSelectable: number;
+  onToggle: (id: string) => void;
   onAssign: (id: string) => void;
 }) {
   if (workers.length === 0) return null;
@@ -149,17 +175,25 @@ function WorkerSection({
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1">
         {title} · {workers.length}
       </p>
-      {workers.map((w) => (
-        <WorkerCard
-          key={w.id}
-          w={w}
-          dutyCount={dutyMap[w.id] ?? 0}
-          ministryName={ministries.find((m: any) => m.id === w.majorMinistryId)?.name?.replace(/^[WORDA]-/i, "") ?? "—"}
-          isAssigning={isAssigning}
-          assigningWorkerId={assigningWorkerId}
-          onAssign={onAssign}
-        />
-      ))}
+      {workers.map((w) => {
+        const checked = selectedWorkerIds.has(w.id);
+        const atMax = selectedWorkerIds.size >= maxSelectable && !checked;
+        return (
+          <WorkerCard
+            key={w.id}
+            w={w}
+            dutyCount={dutyMap[w.id] ?? 0}
+            ministryName={ministries.find((m: any) => m.id === w.majorMinistryId)?.name?.replace(/^[WORDA]-/i, "") ?? "—"}
+            isAssigning={isAssigning}
+            assigningWorkerId={assigningWorkerId}
+            multiPickMode={multiPickMode}
+            checked={checked}
+            disabled={atMax}
+            onToggle={onToggle}
+            onAssign={onAssign}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -174,6 +208,7 @@ export default function WorkerSearchDropdown({
   setWorkerSearch,
   filteredWorkers,
   handleAssign,
+  handleAssignMultiple,
   workerIdSearch,
   setWorkerIdSearch,
   workerIdResult,
@@ -184,24 +219,16 @@ export default function WorkerSearchDropdown({
   assigningWorkerId = null,
 }: WorkerSearchDropdownProps) {
   const [showIdSearch, setShowIdSearch] = useState(false);
-
-  // Multi-slot selection: default to the primary slot
-  const [selectedSlotIds, setSelectedSlotIds] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    if (assignDialog?.assignmentId) {
-      setSelectedSlotIds(new Set([assignDialog.assignmentId]));
-    }
-  }, [assignDialog?.assignmentId]);
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<string>>(new Set());
 
   const relatedSlots = assignDialog?.relatedSlots ?? [];
-  const showSlotCheckboxes = !assignDialog?.reassign && relatedSlots.length > 1;
+  const emptySlots = relatedSlots.filter(s => !s.workerName);
+  // Multi-pick mode: role has multiple empty slots and this is not a reassign
+  const multiPickMode = !assignDialog?.reassign && emptySlots.length > 1;
 
-  const toggleSlot = (id: string) =>
-    setSelectedSlotIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  useEffect(() => {
+    if (open) setSelectedWorkerIds(new Set());
+  }, [open, assignDialog?.assignmentId]);
 
   const ministryName = useMemo(() => {
     if (!assignDialog?.ministryId) return "";
@@ -222,14 +249,36 @@ export default function WorkerSearchDropdown({
 
   const handleClose = () => {
     setShowIdSearch(false);
-    setSelectedSlotIds(new Set());
+    setSelectedWorkerIds(new Set());
     setWorkerIdResult(null);
     setWorkerIdSearch("");
     onClose();
   };
 
-  const onAssignWorker = (workerId: string) =>
-    handleAssign(workerId, showSlotCheckboxes ? [...selectedSlotIds] : undefined);
+  const toggleWorker = (id: string) => {
+    setSelectedWorkerIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const onAssignWorker = (workerId: string) => handleAssign(workerId);
+
+  const handleMultiAssign = () => {
+    if (selectedWorkerIds.size === 0) return;
+    const workerList = [...selectedWorkerIds];
+    const pairs = workerList.map((workerId, i) => ({
+      workerId,
+      slotId: emptySlots[i]?.id ?? emptySlots[0].id,
+    }));
+    if (handleAssignMultiple) {
+      handleAssignMultiple(pairs);
+    } else {
+      // Fallback: assign one at a time
+      pairs.forEach(({ workerId, slotId }) => handleAssign(workerId, [slotId]));
+    }
+  };
 
   const workerIdResultWorker = workerIdResult && workerIdResult !== "not_found" ? workerIdResult : null;
 
@@ -245,23 +294,21 @@ export default function WorkerSearchDropdown({
           )}
         </DialogHeader>
 
-        {/* Multi-slot checkboxes — only when role has >1 slots and not a reassign */}
-        {showSlotCheckboxes && (
-          <div className="rounded-lg border bg-muted/40 px-3 py-2.5 space-y-1.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Apply to slot{relatedSlots.length > 1 ? "s" : ""} ({selectedSlotIds.size} selected)
-            </p>
-            {relatedSlots.map((s, i) => (
-              <label key={s.id} className="flex items-center gap-2.5 cursor-pointer text-sm select-none">
-                <Checkbox
-                  checked={selectedSlotIds.has(s.id)}
-                  onCheckedChange={() => toggleSlot(s.id)}
-                />
-                <span className={s.workerName ? "text-muted-foreground" : ""}>
-                  Slot {i + 1}{s.workerName ? ` · ${s.workerName}` : " · Unassigned"}
-                </span>
-              </label>
-            ))}
+        {/* Multi-pick info bar */}
+        {multiPickMode && (
+          <div className="rounded-lg border bg-muted/40 px-3 py-2 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium">
+                Select up to {emptySlots.length} worker{emptySlots.length > 1 ? "s" : ""} for this role
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {emptySlots.length} empty slot{emptySlots.length > 1 ? "s" : ""} ·{" "}
+                {relatedSlots.length - emptySlots.length} already filled
+              </p>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {selectedWorkerIds.size} / {emptySlots.length} selected
+            </Badge>
           </div>
         )}
 
@@ -297,6 +344,10 @@ export default function WorkerSearchDropdown({
                 ministries={ministries}
                 isAssigning={isAssigning}
                 assigningWorkerId={assigningWorkerId}
+                multiPickMode={multiPickMode}
+                selectedWorkerIds={selectedWorkerIds}
+                maxSelectable={emptySlots.length}
+                onToggle={toggleWorker}
                 onAssign={onAssignWorker}
               />
               <WorkerSection
@@ -306,6 +357,10 @@ export default function WorkerSearchDropdown({
                 ministries={ministries}
                 isAssigning={isAssigning}
                 assigningWorkerId={assigningWorkerId}
+                multiPickMode={multiPickMode}
+                selectedWorkerIds={selectedWorkerIds}
+                maxSelectable={emptySlots.length}
+                onToggle={toggleWorker}
                 onAssign={onAssignWorker}
               />
               <WorkerSection
@@ -315,6 +370,10 @@ export default function WorkerSearchDropdown({
                 ministries={ministries}
                 isAssigning={isAssigning}
                 assigningWorkerId={assigningWorkerId}
+                multiPickMode={multiPickMode}
+                selectedWorkerIds={selectedWorkerIds}
+                maxSelectable={emptySlots.length}
+                onToggle={toggleWorker}
                 onAssign={onAssignWorker}
               />
             </>
@@ -410,7 +469,23 @@ export default function WorkerSearchDropdown({
               Clear assignment
             </button>
           ) : <span />}
-          <Button variant="outline" size="sm" onClick={handleClose}>Close</Button>
+
+          <div className="flex items-center gap-2">
+            {multiPickMode && selectedWorkerIds.size > 0 && (
+              <Button
+                size="sm"
+                disabled={isAssigning}
+                onClick={handleMultiAssign}
+              >
+                {isAssigning
+                  ? <LoaderCircle className="h-4 w-4 animate-spin mr-1" />
+                  : null
+                }
+                Assign {selectedWorkerIds.size} Worker{selectedWorkerIds.size > 1 ? "s" : ""}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleClose}>Close</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

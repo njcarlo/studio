@@ -224,6 +224,41 @@ export default function ScheduleDetailPage() {
         }
     };
 
+    const handleAssignMultiple = async (pairs: Array<{ workerId: string; slotId: string }>) => {
+        if (!assignDialog || pairs.length === 0) return;
+        setAssigningWorkerId("__multi__");
+        try {
+            await Promise.all(pairs.map(({ workerId, slotId }) => {
+                const worker = workerById.get(workerId) as any;
+                const workerName = worker ? `${worker.firstName} ${worker.lastName}` : null;
+                return upsertAssignment({
+                    id: slotId,
+                    scheduleId: id,
+                    ministryId: assignDialog.ministryId,
+                    roleName: assignDialog.roleName,
+                    workerId,
+                    workerName,
+                    order: schedule?.assignments.findIndex((a: any) => a.id === slotId) ?? 0,
+                });
+            }));
+
+            const assignedIds = new Set(pairs.map(p => p.slotId));
+            setRecentlyAssignedIds(assignedIds);
+            setTimeout(() => setRecentlyAssignedIds(prev => {
+                const next = new Set(prev);
+                pairs.forEach(p => next.delete(p.slotId));
+                return next;
+            }), 2000);
+
+            toast({ title: `${pairs.length} worker${pairs.length > 1 ? "s" : ""} assigned` });
+            setAssignDialog(null);
+        } catch {
+            toast({ variant: "destructive", title: "Failed to assign workers" });
+        } finally {
+            setAssigningWorkerId(null);
+        }
+    };
+
     const handleAddRole = async () => {
         if (!addRoleDialog || !newRoleName.trim()) return;
         setIsSaving(true);
@@ -746,7 +781,7 @@ export default function ScheduleDetailPage() {
                 </TabsContent>
             </Tabs>
 
-            <WorkerSearchDropdown open={!!assignDialog} onClose={() => { setAssignDialog(null); setWorkerSearch(""); setWorkerIdSearch(""); setWorkerIdResult(null); }} assignDialog={assignDialog} ministries={ministries} monthlyDuties={monthlyDuties} workerSearch={workerSearch} setWorkerSearch={setWorkerSearch} filteredWorkers={filteredWorkers} handleAssign={handleAssign} workerIdSearch={workerIdSearch} setWorkerIdSearch={setWorkerIdSearch} workerIdResult={workerIdResult} setWorkerIdResult={setWorkerIdResult} handleWorkerIdSearch={handleWorkerIdSearch} workerIdSearching={workerIdSearching} isAssigning={isAssigning} assigningWorkerId={assigningWorkerId} />
+            <WorkerSearchDropdown open={!!assignDialog} onClose={() => { setAssignDialog(null); setWorkerSearch(""); setWorkerIdSearch(""); setWorkerIdResult(null); }} assignDialog={assignDialog} ministries={ministries} monthlyDuties={monthlyDuties} workerSearch={workerSearch} setWorkerSearch={setWorkerSearch} filteredWorkers={filteredWorkers} handleAssign={handleAssign} handleAssignMultiple={handleAssignMultiple} workerIdSearch={workerIdSearch} setWorkerIdSearch={setWorkerIdSearch} workerIdResult={workerIdResult} setWorkerIdResult={setWorkerIdResult} handleWorkerIdSearch={handleWorkerIdSearch} workerIdSearching={workerIdSearching} isAssigning={isAssigning} assigningWorkerId={assigningWorkerId} />
 
             {/* Apply Template Dialog */}
             <Dialog open={!!applyTemplateDialog} onOpenChange={() => setApplyTemplateDialog(null)}>
@@ -755,7 +790,7 @@ export default function ScheduleDetailPage() {
                         <DialogTitle>Apply Template — {applyTemplateDialog ? getMinistryName(applyTemplateDialog) : ""}</DialogTitle>
                     </DialogHeader>
                     <p className="text-sm text-muted-foreground">
-                        This will replace all current role slots for this ministry with the template's roles.
+                        This will replace all current role slots for this ministry with the template&apos;s roles.
                     </p>
                     <div className="space-y-2 mt-2">
                         {templates

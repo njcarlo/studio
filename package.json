@@ -15,9 +15,11 @@
     "dev:tract-tracker": "turbo run dev --filter=tract-tracker",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "migrate:sql": "tsx scripts/migrate.ts"
+    "migrate:sql": "tsx scripts/migrate.ts",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "prisma": "^5.22.0",
     "tsx": "^4.21.0",
     "turbo": "^2.8.16"
