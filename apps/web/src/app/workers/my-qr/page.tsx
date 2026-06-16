@@ -155,7 +155,7 @@ export default function MyQRCodePage() {
         </div>
       </div>
 
-      <style jsx global>{`
+      <style>{`
         @media print {
           .sidebar-container,
           header,

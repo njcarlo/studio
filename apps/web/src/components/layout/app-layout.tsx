@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   SidebarProvider,
@@ -117,7 +117,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </SidebarHeader>
         <SidebarContent>
-          <Nav pathname={currentPathname} />
+          <Suspense fallback={null}>
+            <Nav pathname={currentPathname} />
+          </Suspense>
         </SidebarContent>
       </Sidebar>
       <SidebarInset className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
