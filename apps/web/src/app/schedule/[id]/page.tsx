@@ -46,7 +46,8 @@ export default function ScheduleDetailPage() {
     const { data: workers = [] } = useWorkersLite(); // avatar lookups only — search uses getEligibleWorkers
     const { templates, isLoading: templatesLoading } = useServiceTemplates();
     const { data: history } = useScheduleHistory(activeTab === "history");
-    const { slots: worshipSlots, createSlot, deleteSlot, addWorker: addWorshipWorker, removeWorker: removeWorshipWorker } = useWorshipSlots(id);
+    // Deferred — worship slots are secondary content; load after main schedule arrives
+    const { slots: worshipSlots, createSlot, deleteSlot, addWorker: addWorshipWorker, removeWorker: removeWorshipWorker } = useWorshipSlots(schedule ? id : '');
 
     // O(1) avatar lookup — avoids workers.find() per rendered slot
     const workerById = useMemo(() => new Map((workers ?? []).map((w: any) => [w.id, w])), [workers]);

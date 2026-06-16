@@ -789,35 +789,23 @@ export async function getMinistrySchedulers() {
 // ── Monthly Duty Caps ─────────────────────────────────────────────────────────
 
 export async function getMonthlyDutyCounts(scheduleId: string) {
-    const schedule = await prisma.serviceSchedule.findUnique({
-        where: { id: scheduleId },
-        select: { date: true }
-    });
-    if (!schedule) return {};
-
-    const targetDate = new Date(schedule.date);
-    const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-    const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
-
-    const assignments = await prisma.scheduleAssignment.findMany({
-        where: {
-            workerId: { not: null },
-            schedule: {
-                date: {
-                    gte: startOfMonth,
-                    lte: endOfMonth,
-                }
-            }
-        },
-        select: { workerId: true }
-    });
+    // Single aggregation query — joins ScheduleAssignment → ServiceSchedule
+    // and uses a subquery for the target month, avoiding a separate round trip.
+    const rows = await prisma.$queryRaw<{ workerId: string; count: bigint }[]>`
+        SELECT sa."workerId", COUNT(*) AS count
+        FROM "ScheduleAssignment" sa
+        JOIN "ServiceSchedule" ss ON ss.id = sa."scheduleId"
+        WHERE sa."workerId" IS NOT NULL
+          AND DATE_TRUNC('month', ss.date) = DATE_TRUNC('month', (
+              SELECT date FROM "ServiceSchedule" WHERE id = ${scheduleId}
+          ))
+        GROUP BY sa."workerId"
+    `;
 
     const counts: Record<string, number> = {};
-    for (const a of assignments) {
-        if (!a.workerId) continue;
-        counts[a.workerId] = (counts[a.workerId] || 0) + 1;
+    for (const row of rows) {
+        counts[row.workerId] = Number(row.count);
     }
-
     return counts;
 }
 
