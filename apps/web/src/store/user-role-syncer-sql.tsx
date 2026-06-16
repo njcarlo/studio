@@ -267,7 +267,9 @@ export function UserRoleSyncerSQL() {
       canChangeWorkerType:
         sa || hasPerm('worker_type:change') || isHR,
       canAccessInventory:
-        sa || hasPerm('inventory:access'),
+        sa || hasPerm('inventory:access') || hasPerm('inventory:manage'),
+      canManageInventory:
+        sa || hasPerm('inventory:manage'),
       canManageMajorEvents:
         sa || hasPerm('major_events:manage_catalog'),
       canManageMasterSchedule:

@@ -73,6 +73,7 @@ export function useUserRole(): UserRoleContextType {
       canConfirmSchedule: s.canConfirmSchedule,
       canAssignSchedulers: s.canAssignSchedulers,
       canAccessInventory: s.canAccessInventory,
+      canManageInventory: s.canManageInventory,
       canChangeWorkerType: s.canChangeWorkerType,
       canManageMajorEvents: s.canManageMajorEvents,
       canManageMasterSchedule: s.canManageMasterSchedule,

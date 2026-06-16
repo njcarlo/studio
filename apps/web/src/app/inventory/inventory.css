@@ -1,0 +1,527 @@
+/* Scoped to .inv-root so these variables don't bleed into the web app's styles */
+.inv-root {
+  --inv-primary: #3b5bdb;
+  --inv-primary-light: #eef2ff;
+  --inv-primary-dark: #2f4ac0;
+
+  --inv-background: #d8dbe0;
+  --inv-surface: #e4e7ec;
+  --inv-border: #c8cbd2;
+
+  --inv-text-main: #1a1a2e;
+  --inv-text-muted: #6b7280;
+
+  --inv-success: #10b981;
+  --inv-success-bg: #d1fae5;
+  --inv-warning: #f59e0b;
+  --inv-warning-bg: #fef3c7;
+  --inv-danger: #ef4444;
+  --inv-danger-bg: #fee2e2;
+
+  --inv-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --inv-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --inv-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+  --inv-radius-sm: 0.25rem;
+  --inv-radius-md: 0.5rem;
+  --inv-radius-lg: 0.75rem;
+  --inv-radius-full: 9999px;
+
+  --inv-transition-fast: 0.15s ease-in-out;
+
+  /* Expose as plain names so component classes work without edits */
+  --primary: var(--inv-primary);
+  --primary-light: var(--inv-primary-light);
+  --primary-dark: var(--inv-primary-dark);
+  --background: var(--inv-background);
+  --surface: var(--inv-surface);
+  --border: var(--inv-border);
+  --text-main: var(--inv-text-main);
+  --text-muted: var(--inv-text-muted);
+  --success: var(--inv-success);
+  --success-bg: var(--inv-success-bg);
+  --warning: var(--inv-warning);
+  --warning-bg: var(--inv-warning-bg);
+  --danger: var(--inv-danger);
+  --danger-bg: var(--inv-danger-bg);
+  --shadow-sm: var(--inv-shadow-sm);
+  --shadow-md: var(--inv-shadow-md);
+  --shadow-lg: var(--inv-shadow-lg);
+  --radius-sm: var(--inv-radius-sm);
+  --radius-md: var(--inv-radius-md);
+  --radius-lg: var(--inv-radius-lg);
+  --radius-full: var(--inv-radius-full);
+  --transition-fast: var(--inv-transition-fast);
+
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text-main);
+  background-color: var(--background);
+  min-height: 100%;
+}
+
+/* ===========================
+   Base Card
+   =========================== */
+.inv-root .card {
+  background-color: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+}
+
+/* ===========================
+   Stat Cards
+   =========================== */
+.inv-root .stat-card {
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 1.125rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.inv-root .stat-card-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.inv-root .stat-card-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-top: 0.25rem;
+}
+
+.inv-root .stat-card-prefix {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-right: 0.1rem;
+}
+
+.inv-root .stat-card-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+/* ===========================
+   Activity Feed Card
+   =========================== */
+.inv-root .activity-feed-card {
+  background-color: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===========================
+   Button System
+   =========================== */
+.inv-root .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  outline: none;
+  font-family: inherit;
+}
+
+.inv-root .btn-primary {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.inv-root .btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.inv-root .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inv-root .btn-outline {
+  background-color: transparent;
+  border-color: var(--border);
+  color: var(--text-main);
+}
+
+.inv-root .btn-outline:hover:not(:disabled) {
+  background-color: var(--background);
+  border-color: #9ca3af;
+}
+
+.inv-root .btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===========================
+   Modal System
+   =========================== */
+.inv-root .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.inv-root .modal-content {
+  background-color: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.inv-root .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.inv-root .modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.inv-root .modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  background-color: var(--background);
+}
+
+/* ===========================
+   Status Badges
+   =========================== */
+.inv-root .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.625rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inv-root .badge-success { background-color: var(--success-bg); color: var(--success); }
+.inv-root .badge-warning { background-color: var(--warning-bg); color: var(--warning); }
+.inv-root .badge-danger  { background-color: var(--danger-bg);  color: var(--danger);  }
+.inv-root .badge-muted   { background-color: var(--border);      color: var(--text-muted); }
+
+/* ===========================
+   Form Inputs
+   =========================== */
+.inv-root .form-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.inv-root .form-control {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--text-main);
+  background-color: var(--surface);
+  transition: border-color var(--transition-fast);
+  outline: none;
+}
+
+.inv-root .form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 91, 219, 0.1);
+}
+
+.inv-root .form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* ===========================
+   Nav Items (inventory sub-nav)
+   =========================== */
+.inv-root .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5625rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.inv-root .nav-item:hover {
+  background-color: #eaecef;
+  color: var(--text-main);
+}
+
+.inv-root .nav-item-active {
+  background-color: #e8eeff !important;
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+/* ===========================
+   Icon Button
+   =========================== */
+.inv-root .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.inv-root .icon-btn:hover {
+  background-color: var(--background);
+  color: var(--text-main);
+}
+
+/* ===========================
+   Dropdown Menu
+   =========================== */
+.inv-root .dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  overflow: hidden;
+  animation: inv-dropdown-in 0.12s ease-out;
+}
+
+.inv-root .dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--background);
+}
+
+.inv-root .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text-main);
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background-color var(--transition-fast);
+  font-family: inherit;
+}
+
+.inv-root .dropdown-item:hover {
+  background-color: var(--background);
+}
+
+/* ===========================
+   Search Input
+   =========================== */
+.inv-root .search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.8125rem;
+  color: var(--text-main);
+  width: 100%;
+  font-family: inherit;
+}
+
+/* ===========================
+   Dashboard Layout
+   =========================== */
+.inv-root .dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.inv-root .dashboard-sidebar {
+  position: sticky;
+  top: 1.25rem;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.inv-root .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.inv-root .stats-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+/* ===========================
+   Action Bar
+   =========================== */
+.inv-root .action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.inv-root .search-container {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--surface);
+  width: 200px;
+  transition: border-color 0.15s;
+}
+
+.inv-root .search-container:focus-within {
+  border-color: var(--primary);
+  background-color: #fff;
+}
+
+.inv-root .action-bar-spacer {
+  margin-left: auto;
+}
+
+/* ===========================
+   Animations
+   =========================== */
+@keyframes inv-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes inv-dropdown-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* let components use the un-prefixed spin name inside .inv-root */
+.inv-root [style*="spin"] {
+  animation-name: inv-spin;
+}
+
+/* ===========================
+   Responsive
+   =========================== */
+@media (max-width: 1200px) {
+  .inv-root .stats-grid,
+  .inv-root .stats-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .inv-root .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+
+  .inv-root .dashboard-sidebar {
+    position: static;
+    max-height: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .inv-root .stats-grid,
+  .inv-root .stats-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .inv-root .modal-content {
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+
+  .inv-root .modal-overlay {
+    padding: 0;
+    align-items: flex-start;
+  }
+
+  .inv-root .form-row-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .inv-root .search-container {
+    width: 100%;
+    order: -1;
+  }
+  .inv-root .action-bar-spacer {
+    display: none;
+  }
+  .inv-root .action-bar {
+    justify-content: flex-start;
+  }
+}

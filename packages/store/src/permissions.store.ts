@@ -68,6 +68,7 @@ export interface PermissionsState {
     canAssignSchedulers: boolean;
     canViewAllSchedules: boolean;
     canAccessInventory: boolean;
+    canManageInventory: boolean;
     canChangeWorkerType: boolean;
     canManageMajorEvents: boolean;
     canManageMasterSchedule: boolean;
@@ -126,6 +127,7 @@ const DEFAULT_STATE: Omit<PermissionsState, '_setPermissions'> = {
     canAssignSchedulers: false,
     canViewAllSchedules: false,
     canAccessInventory: false,
+    canManageInventory: false,
     canChangeWorkerType: false,
     canManageMajorEvents: false,
     canManageMasterSchedule: false,

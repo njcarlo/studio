@@ -234,7 +234,7 @@ const allNavItems: NavItem[] = [
     ],
   },
   {
-    href: "https://cog-inventory.vercel.app/dashboard",
+    href: "/inventory/dashboard",
     icon: Package,
     label: "Inventory",
     permissionKey: "canAccessInventory",
