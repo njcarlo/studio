@@ -10,6 +10,8 @@ echo "[pre-push] ESLint..."
 cd "$WEB" && npm run lint || { echo "Push blocked: ESLint errors."; exit 1; }
 
 echo "[pre-push] Next.js build..."
-cd "$WEB" && npm run build || { echo "Push blocked: Build failed."; exit 1; }
+# Run next build directly — skips prisma generate to avoid file-lock conflicts
+# with a running dev server on Windows. Prisma client is already generated.
+cd "$WEB" && npx next build || { echo "Push blocked: Build failed."; exit 1; }
 
 echo "All checks passed — pushing."
