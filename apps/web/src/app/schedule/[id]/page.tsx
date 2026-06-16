@@ -39,6 +39,8 @@ export default function ScheduleDetailPage() {
     const { user } = useAuthStore();
     const { canManageSchedule, canConfirmSchedule, canAssignSchedulers, canViewAllSchedules, workerProfile } = useUserRole();
 
+    const [activeTab, setActiveTab] = useState("assignments");
+
     const { schedule, isLoading, upsertAssignment, isAssigning, deleteAssignment, applyTemplate, isApplyingTemplate, publishSchedule, isPublishing, confirmAssignment, confirmationStatus, monthlyDuties, conflicts, togglePublic, setAttendanceStatus, reassignAssignment } = useServiceSchedule(id);
     const { ministries } = useMinistries();
     const { data: workers = [] } = useWorkersLite(); // avatar lookups only — search uses getEligibleWorkers
@@ -48,8 +50,6 @@ export default function ScheduleDetailPage() {
 
     // O(1) avatar lookup — avoids workers.find() per rendered slot
     const workerById = useMemo(() => new Map((workers ?? []).map((w: any) => [w.id, w])), [workers]);
-
-    const [activeTab, setActiveTab] = useState("assignments");
     const [expandedMinistries, setExpandedMinistries] = useState<Set<string>>(new Set());
     const [assignDialog, setAssignDialog] = useState<{ assignmentId: string; ministryId: string; roleName: string; reassign?: boolean; relatedSlots?: { id: string; workerName: string | null }[] } | null>(null);
     const [recentlyAssignedIds, setRecentlyAssignedIds] = useState<Set<string>>(new Set());
