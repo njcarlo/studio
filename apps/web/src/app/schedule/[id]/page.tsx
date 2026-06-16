@@ -621,7 +621,13 @@ export default function ScheduleDetailPage() {
                                                                 const statusDot = status === 'Confirmed' ? 'bg-green-500' : status === 'Not Attending' ? 'bg-red-500' : 'bg-yellow-400';
                                                                 return (
                                                                     <React.Fragment key={slot.id}>
-                                                                        <div className={`flex items-center gap-3 rounded-md border px-3 py-2 transition-all duration-500 ${recentlyAssignedIds.has(slot.id) ? "border-green-400 bg-green-50 ring-1 ring-green-300" : ""}`}>
+                                                                        <div className={`flex items-center gap-2 rounded-md border px-2 py-2 transition-all duration-500 ${recentlyAssignedIds.has(slot.id) ? "border-green-400 bg-green-50 ring-1 ring-green-300" : ""}`}>
+                                                                            {/* Delete slot — leftmost */}
+                                                                            {canManageSchedule && (
+                                                                                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Delete slot" onClick={() => deleteAssignment(slot.id)}>
+                                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                                </Button>
+                                                                            )}
                                                                             {slot.workerId ? (
                                                                                 <>
                                                                                     <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDot}`} title={status} />
@@ -629,7 +635,7 @@ export default function ScheduleDetailPage() {
                                                                                         <AvatarImage src={workerById.get(slot.workerId)?.avatarUrl} />
                                                                                         <AvatarFallback className="text-[10px]">{slot.workerName?.split(" ").map((n: string) => n[0]).join("") || "?"}</AvatarFallback>
                                                                                     </Avatar>
-                                                                                    <span className="text-sm flex-1">{slot.workerName}</span>
+                                                                                    <span className="text-sm flex-1 truncate">{slot.workerName}</span>
                                                                                     {canConfirmSchedule && (
                                                                                         <Select value={status} onValueChange={(v: any) => setAttendanceStatus({ assignmentId: slot.id, status: v, updatedBy: workerProfile?.id || user?.uid || 'system' })}>
                                                                                             <SelectTrigger className="h-6 w-32 text-xs border-0 bg-transparent p-0 focus:ring-0"><SelectValue /></SelectTrigger>
@@ -640,39 +646,34 @@ export default function ScheduleDetailPage() {
                                                                                             </SelectContent>
                                                                                         </Select>
                                                                                     )}
-                                                                                    {!canConfirmSchedule && <span className="text-xs text-muted-foreground">{status}</span>}
+                                                                                    {!canConfirmSchedule && <span className="text-xs text-muted-foreground shrink-0">{status}</span>}
                                                                                     {canManageSchedule && status === 'Not Attending' && (
-                                                                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, reassign: true })}>
+                                                                                        <Button variant="outline" size="sm" className="h-7 text-xs shrink-0" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, reassign: true })}>
                                                                                             <UserPlus className="mr-1 h-3 w-3" /> Reassign
                                                                                         </Button>
                                                                                     )}
-                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Rehearsal" onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
-                                                                                        <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
-                                                                                    </Button>
-                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, relatedSlots: (slots as any[]).map(s => ({ id: s.id, workerName: s.workerName })) })}>
-                                                                                        <UserPlus className="h-3.5 w-3.5" />
-                                                                                    </Button>
                                                                                     {canManageSchedule && (
-                                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" title="Delete slot" onClick={() => deleteAssignment(slot.id)}>
-                                                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                                                        <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0 text-muted-foreground hover:text-foreground" title="Unassign worker" onClick={() => upsertAssignment({ id: slot.id, scheduleId: id, ministryId, roleName, workerId: null, workerName: null, order: slot.order ?? 0 })}>
+                                                                                            Unassign
                                                                                         </Button>
                                                                                     )}
+                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" title="Rehearsal" onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
+                                                                                        <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
+                                                                                    </Button>
+                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" title="Reassign" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, relatedSlots: (slots as any[]).map(s => ({ id: s.id, workerName: s.workerName })) })}>
+                                                                                        <UserPlus className="h-3.5 w-3.5" />
+                                                                                    </Button>
                                                                                 </>
                                                                             ) : (
                                                                                 <>
                                                                                     <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
                                                                                     <span className="text-sm text-muted-foreground flex-1">Unassigned</span>
-                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Rehearsal" onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
+                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" title="Rehearsal" onClick={() => setRehearsalDialog({ assignmentId: slot.id, date: slot.rehearsalDate ? new Date(slot.rehearsalDate).toISOString().split('T')[0] : '', time: slot.rehearsalTime || '' })}>
                                                                                         <CalendarClock className={`h-3.5 w-3.5 ${slot.rehearsalDate ? "text-primary" : ""}`} />
                                                                                     </Button>
-                                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, relatedSlots: (slots as any[]).map(s => ({ id: s.id, workerName: s.workerName })) })}>
+                                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" onClick={() => setAssignDialog({ assignmentId: slot.id, ministryId, roleName, relatedSlots: (slots as any[]).map(s => ({ id: s.id, workerName: s.workerName })) })}>
                                                                                         <UserPlus className="mr-1 h-3 w-3" /> Assign
                                                                                     </Button>
-                                                                                    {canManageSchedule && (
-                                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" title="Delete slot" onClick={() => deleteAssignment(slot.id)}>
-                                                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                                                        </Button>
-                                                                                    )}
                                                                                 </>
                                                                             )}
                                                                             {canManageSchedule && (

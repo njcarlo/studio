@@ -93,12 +93,24 @@ export function useServiceSchedule(id: string) {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const res = await deleteAssignment(id);
+        mutationFn: async (slotId: string) => {
+            const res = await deleteAssignment(slotId);
             if (!res.success) throw new Error(res.error);
             return res.data;
         },
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
+        onMutate: async (slotId) => {
+            await qc.cancelQueries({ queryKey: ['service-schedule', id] });
+            const prev = qc.getQueryData(['service-schedule', id]);
+            qc.setQueryData(['service-schedule', id], (old: any) => {
+                if (!old) return old;
+                return { ...old, assignments: old.assignments.filter((a: any) => a.id !== slotId) };
+            });
+            return { prev };
+        },
+        onError: (_err, _vars, ctx) => {
+            if (ctx?.prev) qc.setQueryData(['service-schedule', id], ctx.prev);
+        },
+        onSettled: () => qc.invalidateQueries({ queryKey: ['service-schedule', id] }),
     });
 
     const applyTemplateMutation = useMutation({
@@ -158,22 +170,27 @@ export function useServiceSchedule(id: string) {
         },
     });
 
+    // Deferred — only load after the main schedule is ready; changes rarely
     const { data: confirmationStatus } = useQuery({
         queryKey: ['schedule-confirmation', id],
         queryFn: () => getScheduleConfirmationStatus(id),
-        enabled: !!id,
+        enabled: !!id && !!data,
+        staleTime: 60_000,
     });
 
+    // Deferred — conflicts are a secondary indicator, not needed on first paint
     const { data: conflictsData } = useQuery({
         queryKey: ['schedule-conflicts', id],
         queryFn: () => getWorkerConflicts(id),
-        enabled: !!id,
+        enabled: !!id && !!data,
+        staleTime: 60_000,
     });
 
     const { data: monthlyDutiesData } = useQuery({
         queryKey: ['schedule-monthly-duties', id],
         queryFn: () => getMonthlyDutyCounts(id),
         enabled: !!id,
+        staleTime: 5 * 60_000, // duty counts change only when assignments change
     });
 
     const togglePublicMutation = useMutation({
@@ -214,6 +231,7 @@ export function useServiceTemplates(ministryId?: string) {
     const { data, isLoading } = useQuery({
         queryKey: ['service-templates', ministryId],
         queryFn: () => getServiceTemplates(ministryId),
+        staleTime: 5 * 60_000,
     });
 
     const createMutation = useMutation({
