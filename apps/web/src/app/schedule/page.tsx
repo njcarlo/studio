@@ -12,13 +12,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Textarea } from "@studio/ui";
-import { PlusCircle, CalendarDays, ChevronRight, Trash2, LoaderCircle, LayoutTemplate } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@studio/ui";
+import { PlusCircle, CalendarDays, ChevronRight, Trash2, LoaderCircle, LayoutTemplate, List, CalendarRange } from "lucide-react";
 import { useServiceSchedules } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { upsertAssignment } from "@/actions/schedule";
+import { MonthCalendar, type MonthCalendarEntry } from "@/components/schedule/month-calendar";
 
 const STATUS_COLORS: Record<string, string> = {
     Draft: "secondary",
@@ -95,6 +97,13 @@ export default function SchedulePage() {
         }
     };
 
+    const calendarEntries: MonthCalendarEntry[] = schedules.map((s: any) => ({
+        id: s.id,
+        date: s.date,
+        label: s.title,
+        status: s.status,
+    }));
+
     return (
         <AppLayout>
             <div className="flex items-center justify-between">
@@ -126,57 +135,73 @@ export default function SchedulePage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="rounded-lg border shadow-sm overflow-hidden">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Title</TableHead>
-                                    <TableHead>Assignments</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="w-[80px]" />
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {schedules.map((s: any) => (
-                                    <TableRow
-                                        key={s.id}
-                                        className="cursor-pointer hover:bg-muted/50"
-                                        onClick={() => router.push(`/schedule/${s.id}`)}
-                                    >
-                                        <TableCell className="font-medium">
-                                            {format(new Date(s.date), "EEEE, MMMM d, yyyy")}
-                                        </TableCell>
-                                        <TableCell>{s.title}</TableCell>
-                                        <TableCell>
-                                            <span className="text-sm text-muted-foreground">
-                                                {s.assignments.length} slots
-                                                {" · "}
-                                                {s.assignments.filter((a: any) => a.workerId).length} filled
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={STATUS_COLORS[s.status] as any ?? "secondary"}>
-                                                {s.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-1">
-                                                <Button
-                                                    variant="ghost" size="icon"
-                                                    onClick={(e) => handleDelete(s.id, e)}
-                                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
+                    <Tabs defaultValue="list">
+                        <TabsList>
+                            <TabsTrigger value="list"><List className="mr-1.5 h-4 w-4" /> List</TabsTrigger>
+                            <TabsTrigger value="month"><CalendarRange className="mr-1.5 h-4 w-4" /> Month</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="list">
+                            <div className="rounded-lg border shadow-sm overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Title</TableHead>
+                                            <TableHead>Assignments</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="w-[80px]" />
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {schedules.map((s: any) => (
+                                            <TableRow
+                                                key={s.id}
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() => router.push(`/schedule/${s.id}`)}
+                                            >
+                                                <TableCell className="font-medium">
+                                                    {format(new Date(s.date), "EEEE, MMMM d, yyyy")}
+                                                </TableCell>
+                                                <TableCell>{s.title}</TableCell>
+                                                <TableCell>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {s.assignments.length} slots
+                                                        {" · "}
+                                                        {s.assignments.filter((a: any) => a.workerId).length} filled
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={STATUS_COLORS[s.status] as any ?? "secondary"}>
+                                                        {s.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            variant="ghost" size="icon"
+                                                            onClick={(e) => handleDelete(s.id, e)}
+                                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="month">
+                            <MonthCalendar
+                                entries={calendarEntries}
+                                onSelectEntry={(entry) => router.push(`/schedule/${entry.id}`)}
+                            />
+                        </TabsContent>
+                    </Tabs>
                 )}
             </div>
 

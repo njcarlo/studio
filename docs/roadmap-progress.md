@@ -105,3 +105,9 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 ## Side Tasks
 - [x] In schedules, show feedback when assigning or clicking workers in the assign worker view
 - [x] When applying a schedule template, amend the current schedule instead of replacing it (so multiple templates can be applied to the same ministry), and show a confirmation feedback after adding the template
+- [x] Month-view calendar for schedules: reusable `MonthCalendar` component
+  (`apps/web/src/components/schedule/month-calendar.tsx`); List/Month tabs added to
+  `/schedule`; new worker-facing "Published Schedules" portal at `/my-schedule/published`
+  (logged-in workers browse all `Published` schedules by month, click through to the
+  read-only `/schedule/[id]` view); nav updated with "My Assignments" / "Published Schedules"
+  sub-items under My Schedule

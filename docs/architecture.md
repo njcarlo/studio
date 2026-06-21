@@ -134,7 +134,8 @@ specific insert the action performs is allowed anonymously.
 |---|---|---|
 | `/dashboard` | Landing page after login | any authenticated worker |
 | `/my-schedule` | Worker's own upcoming assignments | any authenticated worker |
-| `/schedule`, `/schedule/[id]`, `/schedule/templates`, `/schedule/schedulers` | Build/publish Sunday service schedules, templates, assign Ministry Schedulers | `canManageSchedule` / `canAssignSchedulers` |
+| `/my-schedule/published` | Worker-facing month-calendar "portal" of all `Published` service schedules; click a date to open the read-only `/schedule/[id]` view | any authenticated worker |
+| `/schedule`, `/schedule/[id]`, `/schedule/templates`, `/schedule/schedulers` | Build/publish Sunday service schedules, templates, assign Ministry Schedulers (`/schedule` has List/Month calendar tabs via shared `MonthCalendar` component) | `canManageSchedule` / `canAssignSchedulers` |
 | `/reservations`, `/reservations/new`, `/reservations/my`, `/reservations/calendar`, `/reservations/all`, `/reservations/masterview`, `/reservations/masterview/daily` | Room reservation request/approval flow + master schedule calendar | mixed — request is open to workers, masterview/all gated |
 | `/meals`, `/mealstub`, `/mealstub/scanner` | Meal stub viewing, assignment, scanning | `canViewMealStubs` / `isMealStubAssigner` / `attendance:scan_meal` |
 | `/c2s` | C2S mentor "My Group" management | `canManageC2S` (mentor flag) |
