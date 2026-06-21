@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
     Search,
     Calendar,
@@ -12,6 +13,7 @@ import {
     Clock,
     XCircle,
     ChevronDown,
+    ChevronLeft,
     MapPin,
     Users,
     Layers,
@@ -268,6 +270,14 @@ export default function PublicScheduleClient({
                     
                     {/* Brand & Navigator */}
                     <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                        <Link
+                            href="/public/services"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 text-sm font-medium transition"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            Portal
+                        </Link>
+
                         <div className="flex items-center gap-2">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 text-white font-bold text-lg">
                                 CD
