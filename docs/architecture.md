@@ -133,8 +133,9 @@ specific insert the action performs is allowed anonymously.
 | Route | Purpose | Gate |
 |---|---|---|
 | `/dashboard` | Landing page after login | any authenticated worker |
-| `/my-schedule` | Worker's own upcoming assignments | any authenticated worker |
-| `/my-schedule/published` | Worker-facing month-calendar "portal" of all `Published` service schedules; click a date to open the read-only `/schedule/[id]` view | any authenticated worker |
+| `/worker/schedule` | Worker's own upcoming assignments (formerly `/my-schedule`, which now redirects here) | any authenticated worker |
+| `/worker/schedule/published` | Worker-facing month-calendar "portal" of all `Published` service schedules; click a date to open the read-only `/schedule/[id]` view (formerly `/my-schedule/published`) | any authenticated worker |
+| `/worker/schedule/[token]` | Public token-based read-only view of a published service schedule (formerly `/public/schedule/[token]`, which now redirects here); exempted from the auth gate in `middleware.ts` via a dedicated regex since it lives under the otherwise-authenticated `/worker/*` prefix | none (token-based) |
 | `/schedule`, `/schedule/[id]`, `/schedule/templates`, `/schedule/schedulers` | Build/publish Sunday service schedules, templates, assign Ministry Schedulers (`/schedule` has List/Month calendar tabs via shared `MonthCalendar` component) | `canManageSchedule` / `canAssignSchedulers` |
 | `/reservations`, `/reservations/new`, `/reservations/my`, `/reservations/calendar`, `/reservations/all`, `/reservations/masterview`, `/reservations/masterview/daily` | Room reservation request/approval flow + master schedule calendar | mixed — request is open to workers, masterview/all gated |
 | `/meals`, `/mealstub`, `/mealstub/scanner` | Meal stub viewing, assignment, scanning | `canViewMealStubs` / `isMealStubAssigner` / `attendance:scan_meal` |
@@ -154,8 +155,7 @@ specific insert the action performs is allowed anonymously.
 | `/settings/*` | Roles, departments, meal-stub allocation, facilities, venue elements, transaction logs, ORS sync, venue assistance config, major events config, master schedule & attendance | various `canManage*` |
 | `/profile`, `/login`, `/signup`, `/auth/update-password` | Account/auth pages | open / authenticated |
 | `/public/sermons` | Public sermon catalogue (Phase 5) | none (anonymous) |
-| `/public/services` | Public list of published service schedules → `/public/schedule/[token]` (Phase 5) | none |
-| `/public/schedule/[token]` | Public read-only view of a published service schedule | none (token-based) |
+| `/public/services` | Public list of published service schedules (List/Month tabs via `PublicServicesView`) → `/worker/schedule/[token]` (Phase 5) | none |
 | `/public/events` | Public upcoming events + sign-up form (Phase 5) | none |
 | `/public/prayer-requests` | Public prayer/counselling request form (Phase 5) | none |
 | `/public/c2s-join` | Public C2S group join-request form (Phase 4) | none |

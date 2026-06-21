@@ -106,8 +106,14 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 - [x] In schedules, show feedback when assigning or clicking workers in the assign worker view
 - [x] When applying a schedule template, amend the current schedule instead of replacing it (so multiple templates can be applied to the same ministry), and show a confirmation feedback after adding the template
 - [x] Month-view calendar for schedules: reusable `MonthCalendar` component
-  (`apps/web/src/components/schedule/month-calendar.tsx`); List/Month tabs added to
-  `/schedule`; new worker-facing "Published Schedules" portal at `/my-schedule/published`
-  (logged-in workers browse all `Published` schedules by month, click through to the
-  read-only `/schedule/[id]` view); nav updated with "My Assignments" / "Published Schedules"
-  sub-items under My Schedule
+  (`apps/web/src/components/schedule/month-calendar.tsx`, now supports `href`-based entries);
+  List/Month tabs added to `/schedule` and to the public `/public/services` directory
+  (anonymous quick-view, via `PublicServicesView`); worker-facing "Published Schedules"
+  portal at `/worker/schedule/published` (logged-in workers browse all `Published`
+  schedules by month, click through to the read-only `/schedule/[id]` view)
+- [x] Worker-facing schedule routes consolidated under `/worker/schedule`:
+  `/my-schedule` → `/worker/schedule`, `/my-schedule/published` → `/worker/schedule/published`,
+  `/public/schedule/[token]` → `/worker/schedule/[token]`; old paths now redirect to the new
+  ones. `middleware.ts` carries a dedicated regex exception so the token view stays
+  reachable without login despite living under the otherwise-authenticated `/worker/*` prefix.
+  Nav updated with "My Assignments" / "Published Schedules" sub-items under My Schedule
