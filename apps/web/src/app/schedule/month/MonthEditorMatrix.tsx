@@ -104,7 +104,7 @@ function CellPicker({
     );
 }
 
-export function MonthEditorMatrix({ schedules, ministries }: { schedules: Schedule[]; ministries: Ministry[] }) {
+export function MonthEditorMatrix({ schedules, ministries, onAddDate }: { schedules: Schedule[]; ministries: Ministry[]; onAddDate?: () => void }) {
     const { toast } = useToast();
     const qc = useQueryClient();
     const [, startTransition] = useTransition();
@@ -231,7 +231,7 @@ export function MonthEditorMatrix({ schedules, ministries }: { schedules: Schedu
                         <thead>
                             <tr>
                                 <th
-                                    colSpan={1 + dateColumns.reduce((n, dc) => n + (section.slotsByDate.get(dc.dateKey)?.length ?? 0), 0)}
+                                    colSpan={2 + dateColumns.reduce((n, dc) => n + (section.slotsByDate.get(dc.dateKey)?.length ?? 0), 0)}
                                     className="bg-blue-600 px-3 py-2 text-left font-semibold text-white"
                                 >
                                     {section.name}
@@ -248,6 +248,11 @@ export function MonthEditorMatrix({ schedules, ministries }: { schedules: Schedu
                                         </th>
                                     );
                                 })}
+                                <th rowSpan={2} className="border-l px-2 align-middle bg-blue-50">
+                                    <button onClick={onAddDate} title="Add date" className="flex items-center justify-center rounded-full p-1.5 hover:bg-blue-100 transition">
+                                        <PlusCircle className="h-4 w-4 text-blue-600" />
+                                    </button>
+                                </th>
                             </tr>
                             <tr className="bg-blue-50/60">
                                 <th className="border-r" />
@@ -291,6 +296,7 @@ export function MonthEditorMatrix({ schedules, ministries }: { schedules: Schedu
                                             );
                                         });
                                     })}
+                                    <td className="border-l border-t" />
                                 </tr>
                             ))}
                         </tbody>

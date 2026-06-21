@@ -5,7 +5,7 @@ import { addMonths, endOfMonth, format, isWithinInterval, startOfMonth, subMonth
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input, Label } from "@studio/ui";
 import { useAuthStore } from "@studio/store";
-import { ChevronLeft, ChevronRight, LoaderCircle, PlusCircle, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, LoaderCircle, RotateCcw } from "lucide-react";
 import { useServiceSchedules } from "@/hooks/use-schedule";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useToast } from "@/hooks/use-toast";
@@ -67,9 +67,6 @@ export default function MonthSchedulingEditorPage() {
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                         <span className="ml-2 text-sm font-medium">{format(refDate, "MMMM yyyy")}</span>
-                        <Button size="sm" className="ml-2" onClick={() => { setNewDate(format(refDate, "yyyy-MM-dd")); setIsAddDateOpen(true); }}>
-                            <PlusCircle className="mr-1.5 h-4 w-4" /> Add Date
-                        </Button>
                     </div>
                 </div>
 
@@ -78,7 +75,11 @@ export default function MonthSchedulingEditorPage() {
                         <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <MonthEditorMatrix schedules={monthSchedules} ministries={ministries ?? []} />
+                    <MonthEditorMatrix
+                        schedules={monthSchedules}
+                        ministries={ministries ?? []}
+                        onAddDate={() => { setNewDate(format(refDate, "yyyy-MM-dd")); setIsAddDateOpen(true); }}
+                    />
                 )}
             </div>
 
