@@ -99,6 +99,7 @@ const allNavItems: NavItem[] = [
     permissionKey: "canManageSchedule",
     subItems: [
       { href: "/schedule", label: "Schedules" },
+      { href: "/schedule/month", label: "Month Editor" },
       { href: "/schedule/templates", label: "Templates" },
       { href: "/schedule/schedulers", label: "Manage Schedulers", permissionKey: "canAssignSchedulers" },
     ],
