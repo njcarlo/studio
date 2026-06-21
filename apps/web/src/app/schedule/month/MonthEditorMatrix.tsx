@@ -238,12 +238,12 @@ export function MonthEditorMatrix({ schedules, ministries }: { schedules: Schedu
                                 </th>
                             </tr>
                             <tr className="bg-blue-50">
-                                <th className="px-3 py-2 text-left font-medium text-gray-700 border-r">Role</th>
+                                <th className="px-3 py-2 text-left font-medium text-gray-700 border-r whitespace-nowrap">Role</th>
                                 {dateColumns.map(({ dateKey }) => {
                                     const slotTypes = section.slotsByDate.get(dateKey) ?? [];
                                     if (!slotTypes.length) return null;
                                     return (
-                                        <th key={dateKey} colSpan={slotTypes.length} className="px-3 py-2 text-center font-medium text-gray-700 border-l">
+                                        <th key={dateKey} colSpan={slotTypes.length} className="px-3 py-2 text-center font-medium text-gray-700 border-l whitespace-nowrap">
                                             {format(new Date(dateKey), "MMM d")}
                                         </th>
                                     );
