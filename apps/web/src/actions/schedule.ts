@@ -291,6 +291,11 @@ export async function getPublicSchedules() {
     return scheduleService.getPublicSchedules();
 }
 
+// public-action: read-only — powers the /public/services Day/Week/Month portal matrix
+export async function getPublicSchedulesWithAssignments() {
+    return scheduleService.getPublicSchedulesWithAssignments();
+}
+
 // ── History ───────────────────────────────────────────────────────────────────
 
 // public-action: read-only, used by schedule history view

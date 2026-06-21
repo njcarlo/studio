@@ -672,6 +672,18 @@ export async function getPublicSchedules() {
     });
 }
 
+// Powers the /public/services Day/Week/Month portal matrix — needs assignment
+// (role + worker) detail across every public schedule, not just the list.
+export async function getPublicSchedulesWithAssignments() {
+    return (prisma.serviceSchedule as any).findMany({
+        where: { isPublic: true },
+        orderBy: { date: 'desc' },
+        include: {
+            assignments: { orderBy: [{ ministryId: 'asc' }, { order: 'asc' }] },
+        },
+    });
+}
+
 // ── History ───────────────────────────────────────────────────────────────────
 
 export async function getScheduleHistory() {
