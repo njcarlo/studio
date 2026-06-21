@@ -7,6 +7,8 @@ notifications, audit log, cron jobs, and the meal-stub reporting ledger, see
 "why"; this doc covers the "where".
 
 For what each module/role can *do*, see [`user-stories.md`](./user-stories.md).
+For a faster-to-skim orientation pass (monorepo layout, key files, known
+gotchas), see [`CODEBASE_GUIDE.md`](./CODEBASE_GUIDE.md).
 
 ## 1. High-level layers & tech stack
 
@@ -155,7 +157,7 @@ specific insert the action performs is allowed anonymously.
 | `/settings/*` | Roles, departments, meal-stub allocation, facilities, venue elements, transaction logs, ORS sync, venue assistance config, major events config, master schedule & attendance | various `canManage*` |
 | `/profile`, `/login`, `/signup`, `/auth/update-password` | Account/auth pages | open / authenticated |
 | `/public/sermons` | Public sermon catalogue (Phase 5) | none (anonymous) |
-| `/public/services` | Public list of published service schedules (List/Month tabs via `PublicServicesView`) → `/worker/schedule/[token]` (Phase 5) | none |
+| `/public/services` | Anonymous Day/Week/Month schedule portal: top-navbar layout (no sidenav, "Log in" button) + per-ministry Role×Date/SlotType matrix (`ScheduleMatrixPortal`), CSV export for logged-in users → schedule detail at `/worker/schedule/[token]` (Phase 5) | none |
 | `/public/events` | Public upcoming events + sign-up form (Phase 5) | none |
 | `/public/prayer-requests` | Public prayer/counselling request form (Phase 5) | none |
 | `/public/c2s-join` | Public C2S group join-request form (Phase 4) | none |

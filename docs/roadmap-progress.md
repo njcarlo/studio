@@ -107,10 +107,16 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 - [x] When applying a schedule template, amend the current schedule instead of replacing it (so multiple templates can be applied to the same ministry), and show a confirmation feedback after adding the template
 - [x] Month-view calendar for schedules: reusable `MonthCalendar` component
   (`apps/web/src/components/schedule/month-calendar.tsx`, now supports `href`-based entries);
-  List/Month tabs added to `/schedule` and to the public `/public/services` directory
-  (anonymous quick-view, via `PublicServicesView`); worker-facing "Published Schedules"
+  List/Month tabs added to `/schedule`; worker-facing "Published Schedules"
   portal at `/worker/schedule/published` (logged-in workers browse all `Published`
   schedules by month, click through to the read-only `/schedule/[id]` view)
+- [x] `/public/services` redesigned as a Day/Week/Month schedule portal (anonymous,
+  top-navbar layout instead of sidenav, "Log in" button): `ScheduleMatrixPortal`
+  renders a per-ministry Role×(Date/SlotType) matrix matching the church's existing
+  spreadsheet template; CSV export available to logged-in users via `useAuthStore`.
+  Backend: `getPublicSchedulesWithAssignments()` (service + action) added since the
+  prior `getPublicSchedules()` only returned title/date/token. Superseded the earlier
+  `PublicServicesView` List/Month-tabs component.
 - [x] Worker-facing schedule routes consolidated under `/worker/schedule`:
   `/my-schedule` → `/worker/schedule`, `/my-schedule/published` → `/worker/schedule/published`,
   `/public/schedule/[token]` → `/worker/schedule/[token]`; old paths now redirect to the new
