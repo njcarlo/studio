@@ -461,7 +461,7 @@ export async function reassignAssignment(
             userId: newWorkerId,
             title: 'New assignment',
             body: `You've been assigned to "${existing.roleName}" for ${existing.schedule.title} on ${existing.schedule.date.toLocaleDateString()}. Please confirm your attendance.`,
-            link: '/my-schedule',
+            link: '/worker/schedule',
         },
     });
 

@@ -16,7 +16,7 @@ export const setRecurringUnavailability = withPublicAction(async (days: number[]
     const ctx = await resolveCallerCtx();
     if (!ctx) throw new Error('You must be logged in to do this.');
     const result = await AvailabilityService.setRecurringUnavailability(ctx.workerId, days);
-    revalidatePath('/my-schedule');
+    revalidatePath('/worker/schedule');
     return result;
 });
 
@@ -24,7 +24,7 @@ export const addOneTimeUnavailability = withPublicAction(async (date: Date, note
     const ctx = await resolveCallerCtx();
     if (!ctx) throw new Error('You must be logged in to do this.');
     const result = await AvailabilityService.addOneTimeUnavailability(ctx.workerId, date, note);
-    revalidatePath('/my-schedule');
+    revalidatePath('/worker/schedule');
     return result;
 });
 
@@ -32,5 +32,5 @@ export const removeUnavailability = withPublicAction(async (id: string) => {
     const ctx = await resolveCallerCtx();
     if (!ctx) throw new Error('You must be logged in to do this.');
     await AvailabilityService.removeUnavailability(ctx.workerId, id);
-    revalidatePath('/my-schedule');
+    revalidatePath('/worker/schedule');
 });

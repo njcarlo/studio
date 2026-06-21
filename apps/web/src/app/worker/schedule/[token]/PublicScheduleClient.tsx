@@ -131,7 +131,7 @@ export default function PublicScheduleClient({
     const handleScheduleChange = (token: string) => {
         setShowScheduleSelector(false);
         startTransition(() => {
-            router.push(`/public/schedule/${token}`);
+            router.push(`/worker/schedule/${token}`);
         });
     };
 

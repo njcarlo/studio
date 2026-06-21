@@ -858,7 +858,7 @@ export const decideApprovalStage = withPublicAction(
             await MinorMinistryAssignmentWorkflow.syncAssignmentFromWorkflow(workflow);
             const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
             if (meta.scheduleId) revalidatePath(`/schedule/${meta.scheduleId}`);
-            revalidatePath('/my-schedule');
+            revalidatePath('/worker/schedule');
         }
 
         if (workflow.type === C2SService.C2S_JOIN_REQUEST_WORKFLOW_TYPE) {

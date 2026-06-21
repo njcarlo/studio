@@ -403,7 +403,7 @@ export default function ScheduleDetailPage() {
             toast({
                 title: (updated as any).isPublic ? "Schedule is now public" : "Schedule is now private",
                 description: (updated as any).isPublic
-                    ? `Public link: ${APP_URL}/public/schedule/${(updated as any).publicToken}`
+                    ? `Public link: ${APP_URL}/worker/schedule/${(updated as any).publicToken}`
                     : undefined,
             });
         } catch {
@@ -493,12 +493,12 @@ export default function ScheduleDetailPage() {
                     <div className="flex-1 min-w-0">
                         <span className="font-medium text-green-800">Public link: </span>
                         <a
-                            href={`${APP_URL}/public/schedule/${(schedule as any).publicToken}`}
+                            href={`${APP_URL}/worker/schedule/${(schedule as any).publicToken}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-green-700 underline truncate"
                         >
-                            {APP_URL}/public/schedule/{(schedule as any).publicToken}
+                            {APP_URL}/worker/schedule/{(schedule as any).publicToken}
                         </a>
                     </div>
                 </div>

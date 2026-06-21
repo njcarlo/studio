@@ -7,9 +7,16 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 // Paths that never require authentication
 const PUBLIC_PREFIXES = ['/login', '/signup', '/auth', '/public', '/privacy', '/api'];
 
+// Token-shareable worker schedule view — must stay reachable without login
+// (anonymous recipients of a shared link), unlike /worker/schedule and
+// /worker/schedule/published which are real worker-authenticated pages.
+const PUBLIC_TOKEN_ROUTE = /^\/worker\/schedule\/(?!published$)[^/]+$/;
+
 function isPublic(pathname: string) {
-  return PUBLIC_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'),
+  return (
+    PUBLIC_PREFIXES.some(
+      (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'),
+    ) || PUBLIC_TOKEN_ROUTE.test(pathname)
   );
 }
 

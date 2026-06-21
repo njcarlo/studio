@@ -96,17 +96,26 @@ export function MonthCalendar({
                                 {format(day, "d")}
                             </div>
                             <div className="flex flex-col gap-1">
-                                {dayEntries.map((entry) => (
-                                    <button
-                                        key={entry.id}
-                                        onClick={() => onSelectEntry?.(entry)}
-                                        className="flex w-full items-center gap-1 truncate rounded bg-muted px-1.5 py-0.5 text-left text-[11px] hover:bg-muted/70"
-                                        title={entry.label}
-                                    >
-                                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", entry.status ? STATUS_DOT[entry.status] ?? "bg-muted-foreground" : "bg-muted-foreground")} />
-                                        <span className="truncate">{entry.label}</span>
-                                    </button>
-                                ))}
+                                {dayEntries.map((entry) => {
+                                    const dot = <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", entry.status ? STATUS_DOT[entry.status] ?? "bg-muted-foreground" : "bg-muted-foreground")} />;
+                                    const className = "flex w-full items-center gap-1 truncate rounded bg-muted px-1.5 py-0.5 text-left text-[11px] hover:bg-muted/70";
+                                    return entry.href ? (
+                                        <a key={entry.id} href={entry.href} className={className} title={entry.label}>
+                                            {dot}
+                                            <span className="truncate">{entry.label}</span>
+                                        </a>
+                                    ) : (
+                                        <button
+                                            key={entry.id}
+                                            onClick={() => onSelectEntry?.(entry)}
+                                            className={className}
+                                            title={entry.label}
+                                        >
+                                            {dot}
+                                            <span className="truncate">{entry.label}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     );

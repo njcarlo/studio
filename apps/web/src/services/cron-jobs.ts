@@ -166,7 +166,7 @@ export async function sendUnconfirmedAssignmentReminders() {
         await notify(assignment.workerId, {
             title: 'Confirm your assignment',
             body: `You're scheduled for ${assignment.roleName} on ${format(assignment.schedule.date, 'PP')}. Please confirm your attendance.`,
-            link: '/my-schedule',
+            link: '/worker/schedule',
         });
 
         await writeAudit({
