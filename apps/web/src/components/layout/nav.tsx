@@ -83,7 +83,15 @@ type NavItem = {
 
 const allNavItems: NavItem[] = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/my-schedule", icon: CalendarDays, label: "My Schedule" },
+  {
+    href: "/my-schedule",
+    icon: CalendarDays,
+    label: "My Schedule",
+    subItems: [
+      { href: "/my-schedule", label: "My Assignments" },
+      { href: "/my-schedule/published", label: "Published Schedules" },
+    ],
+  },
   {
     href: "/schedule",
     icon: CalendarDays,
