@@ -1,9 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, Input, Popover, PopoverContent, PopoverTrigger } from "@studio/ui";
+import { Button, Calendar, Input, Popover, PopoverContent, PopoverTrigger } from "@studio/ui";
 import { LoaderCircle, PlusCircle, Search, Trash2, X } from "lucide-react";
 import { upsertAssignment, deleteAssignment, getEligibleWorkers } from "@/actions/schedule";
 import { useToast } from "@/hooks/use-toast";
@@ -104,12 +105,52 @@ function CellPicker({
     );
 }
 
-export function MonthEditorMatrix({ schedules, ministries, onAddDate }: { schedules: Schedule[]; ministries: Ministry[]; onAddDate?: () => void }) {
+function DatePickerPopover({
+    trigger,
+    selected,
+    onSelect,
+}: {
+    trigger: ReactNode;
+    selected?: Date;
+    onSelect: (date: Date) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+                <Calendar
+                    mode="single"
+                    selected={selected}
+                    onSelect={(date) => {
+                        if (!date) return;
+                        onSelect(date);
+                        setOpen(false);
+                    }}
+                />
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+export function MonthEditorMatrix({
+    schedules,
+    ministries,
+    onAddDate,
+    onRescheduleDate,
+}: {
+    schedules: Schedule[];
+    ministries: Ministry[];
+    onAddDate?: (date: Date) => void;
+    onRescheduleDate?: (scheduleId: string, date: Date) => void;
+}) {
     const { toast } = useToast();
     const qc = useQueryClient();
     const [, startTransition] = useTransition();
     const [addingRoleFor, setAddingRoleFor] = useState<string | null>(null);
     const [newRoleName, setNewRoleName] = useState("");
+    const [addingSlotFor, setAddingSlotFor] = useState<string | null>(null);
+    const [newSlotTypeName, setNewSlotTypeName] = useState("");
     const [busy, setBusy] = useState(false);
 
     const ministryName = (id: string) => ministries.find((m) => m.id === id)?.name || id;
@@ -219,6 +260,40 @@ export function MonthEditorMatrix({ schedules, ministries, onAddDate }: { schedu
         }
     };
 
+    const handleAddSlot = async (ministryId: string) => {
+        const slotType = newSlotTypeName.trim();
+        if (!slotType) return;
+        setBusy(true);
+        try {
+            const section = ministrySections.find((s) => s.ministryId === ministryId);
+            if (!section) return;
+            const tasks = section.roleNames.flatMap((roleName) => {
+                const order = section.rows.find((r) => r.roleName === roleName)?.order ?? 0;
+                return sorted.map((s) =>
+                    upsertAssignment({
+                        scheduleId: s.id,
+                        ministryId,
+                        roleName,
+                        order,
+                        slotType,
+                    }),
+                );
+            });
+            const results: any[] = await Promise.all(tasks);
+            const failed = results.find((r) => !r?.success);
+            if (failed) {
+                toast({ title: "Failed to add slot", description: failed.error, variant: "destructive" });
+                return;
+            }
+            toast({ title: `Added "${slotType}" slot across ${sorted.length} date(s)` });
+            setNewSlotTypeName("");
+            setAddingSlotFor(null);
+            qc.invalidateQueries({ queryKey: ["service-schedules"] });
+        } finally {
+            setBusy(false);
+        }
+    };
+
     if (sorted.length === 0) {
         return <div className="bg-white rounded-xl shadow-md p-8 text-center text-muted-foreground">No schedules exist for this month yet.</div>;
     }
@@ -239,19 +314,33 @@ export function MonthEditorMatrix({ schedules, ministries, onAddDate }: { schedu
                             </tr>
                             <tr className="bg-blue-50">
                                 <th className="px-3 py-2 text-left font-medium text-gray-700 border-r whitespace-nowrap">Role</th>
-                                {dateColumns.map(({ dateKey }) => {
+                                {dateColumns.map(({ dateKey, scheduleId }) => {
                                     const slotTypes = section.slotsByDate.get(dateKey) ?? [];
                                     if (!slotTypes.length) return null;
+                                    const dateObj = new Date(dateKey);
                                     return (
                                         <th key={dateKey} colSpan={slotTypes.length} className="px-3 py-2 text-center font-medium text-gray-700 border-l whitespace-nowrap">
-                                            {format(new Date(dateKey), "MMM d")}
+                                            <DatePickerPopover
+                                                selected={dateObj}
+                                                onSelect={(date) => onRescheduleDate?.(scheduleId, date)}
+                                                trigger={
+                                                    <button className="rounded px-1.5 py-0.5 hover:bg-blue-100 transition" title="Click to change date">
+                                                        {format(dateObj, "MMM d")}
+                                                    </button>
+                                                }
+                                            />
                                         </th>
                                     );
                                 })}
                                 <th rowSpan={2} className="border-l px-2 align-middle bg-blue-50">
-                                    <button onClick={onAddDate} title="Add date" className="flex items-center justify-center rounded-full p-1.5 hover:bg-blue-100 transition">
-                                        <PlusCircle className="h-4 w-4 text-blue-600" />
-                                    </button>
+                                    <DatePickerPopover
+                                        onSelect={(date) => onAddDate?.(date)}
+                                        trigger={
+                                            <button title="Add date" className="flex items-center justify-center rounded-full p-1.5 hover:bg-blue-100 transition">
+                                                <PlusCircle className="h-4 w-4 text-blue-600" />
+                                            </button>
+                                        }
+                                    />
                                 </th>
                             </tr>
                             <tr className="bg-blue-50/60">
@@ -290,7 +379,7 @@ export function MonthEditorMatrix({ schedules, ministries, onAddDate }: { schedu
                                                             onAssigned={(workerId, workerName) => handleAssign(assignment, workerId, workerName)}
                                                         />
                                                     ) : (
-                                                        <span className="text-gray-300 text-xs">n/a</span>
+                                                        <span className="text-gray-300 text-xs">assign worker</span>
                                                     )}
                                                 </td>
                                             );
@@ -302,7 +391,7 @@ export function MonthEditorMatrix({ schedules, ministries, onAddDate }: { schedu
                         </tbody>
                     </table>
 
-                    <div className="border-t bg-gray-50 px-3 py-2">
+                    <div className="border-t bg-gray-50 px-3 py-2 flex flex-wrap items-center gap-2">
                         {addingRoleFor === section.ministryId ? (
                             <div className="flex items-center gap-2">
                                 <Input
@@ -321,6 +410,27 @@ export function MonthEditorMatrix({ schedules, ministries, onAddDate }: { schedu
                         ) : (
                             <Button size="sm" variant="outline" onClick={() => setAddingRoleFor(section.ministryId)}>
                                 <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add role (applies to all {sorted.length} dates)
+                            </Button>
+                        )}
+
+                        {addingSlotFor === section.ministryId ? (
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    value={newSlotTypeName}
+                                    onChange={(e) => setNewSlotTypeName(e.target.value)}
+                                    placeholder="New slot name (e.g. Late)"
+                                    className="h-8 max-w-[220px] text-sm"
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === "Enter" && handleAddSlot(section.ministryId)}
+                                />
+                                <Button size="sm" disabled={busy} onClick={() => handleAddSlot(section.ministryId)}>
+                                    {busy && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Add
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => { setAddingSlotFor(null); setNewSlotTypeName(""); }}>Cancel</Button>
+                            </div>
+                        ) : (
+                            <Button size="sm" variant="outline" onClick={() => setAddingSlotFor(section.ministryId)}>
+                                <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add slot (applies to all roles & dates)
                             </Button>
                         )}
                     </div>

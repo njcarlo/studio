@@ -19,6 +19,8 @@ export function useServiceSchedules() {
     const { data, isLoading } = useQuery({
         queryKey: ['service-schedules'],
         queryFn: () => getServiceSchedules(),
+        staleTime: 60_000,
+        gcTime: 5 * 60_000,
     });
 
     const createMutation = useMutation({
