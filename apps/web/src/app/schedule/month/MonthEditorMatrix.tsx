@@ -105,6 +105,72 @@ function CellPicker({
     );
 }
 
+function AddRoleOrSlotPopover({
+    dateLabel,
+    busy,
+    onAddRole,
+    onAddSlot,
+}: {
+    dateLabel: string;
+    busy: boolean;
+    onAddRole: (name: string) => void;
+    onAddSlot: (name: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [mode, setMode] = useState<"role" | "slot" | null>(null);
+    const [value, setValue] = useState("");
+
+    const reset = () => {
+        setMode(null);
+        setValue("");
+    };
+
+    const submit = () => {
+        if (!value.trim()) return;
+        if (mode === "role") onAddRole(value.trim());
+        if (mode === "slot") onAddSlot(value.trim());
+        reset();
+        setOpen(false);
+    };
+
+    return (
+        <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+            <PopoverTrigger asChild>
+                <button title={`Add role or slot for ${dateLabel}`} className="flex items-center justify-center rounded-full p-1 hover:bg-blue-100 transition">
+                    <PlusCircle className="h-3.5 w-3.5 text-blue-600" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-2" align="center">
+                {!mode ? (
+                    <div className="space-y-0.5">
+                        <div className="px-1 pb-1 text-xs font-medium text-gray-500">For {dateLabel} only</div>
+                        <button onClick={() => setMode("role")} className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-blue-50">
+                            Add role
+                        </button>
+                        <button onClick={() => setMode("slot")} className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-blue-50">
+                            Add slot
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <Input
+                            autoFocus
+                            value={value}
+                            onChange={(e) => setValue(e.target.value)}
+                            placeholder={mode === "role" ? "Role name" : "Slot name (e.g. Late)"}
+                            className="h-8 text-sm"
+                            onKeyDown={(e) => e.key === "Enter" && submit()}
+                        />
+                        <Button size="sm" disabled={busy} onClick={submit}>
+                            {busy && <LoaderCircle className="mr-1 h-3.5 w-3.5 animate-spin" />} Add
+                        </Button>
+                    </div>
+                )}
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 function DatePickerPopover({
     trigger,
     selected,
@@ -147,10 +213,6 @@ export function MonthEditorMatrix({
     const { toast } = useToast();
     const qc = useQueryClient();
     const [, startTransition] = useTransition();
-    const [addingRoleFor, setAddingRoleFor] = useState<string | null>(null);
-    const [newRoleName, setNewRoleName] = useState("");
-    const [addingSlotFor, setAddingSlotFor] = useState<string | null>(null);
-    const [newSlotTypeName, setNewSlotTypeName] = useState("");
     const [busy, setBusy] = useState(false);
 
     const ministryName = (id: string) => ministries.find((m) => m.id === id)?.name || id;
@@ -230,20 +292,15 @@ export function MonthEditorMatrix({
         });
     };
 
-    const handleAddRole = async (ministryId: string) => {
-        if (!newRoleName.trim()) return;
+    const handleAddRoleForDate = async (scheduleId: string, ministryId: string, dateKey: string, roleName: string, dateLabel: string) => {
         setBusy(true);
         try {
-            const nextOrder = Math.max(0, ...sorted.map((s) => s.assignments.filter((a) => a.ministryId === ministryId).length)) + 1;
+            const section = ministrySections.find((s) => s.ministryId === ministryId);
+            const slotTypes = section?.slotsByDate.get(dateKey) ?? ["Standard"];
+            const nextOrder = Math.max(0, ...(section?.rows.map((r) => r.order) ?? [])) + 1;
             const results: any[] = await Promise.all(
-                sorted.map((s) =>
-                    upsertAssignment({
-                        scheduleId: s.id,
-                        ministryId,
-                        roleName: newRoleName.trim(),
-                        order: nextOrder,
-                        slotType: "Standard",
-                    }),
+                slotTypes.map((slotType) =>
+                    upsertAssignment({ scheduleId, ministryId, roleName, order: nextOrder, slotType }),
                 ),
             );
             const failed = results.find((r) => !r?.success);
@@ -251,33 +308,24 @@ export function MonthEditorMatrix({
                 toast({ title: "Failed to add role", description: failed.error, variant: "destructive" });
                 return;
             }
-            toast({ title: `Added "${newRoleName.trim()}" across ${sorted.length} date(s)` });
-            setNewRoleName("");
-            setAddingRoleFor(null);
+            toast({ title: `Added "${roleName}" for ${dateLabel}` });
             qc.invalidateQueries({ queryKey: ["service-schedules"] });
         } finally {
             setBusy(false);
         }
     };
 
-    const handleAddSlot = async (ministryId: string) => {
-        const slotType = newSlotTypeName.trim();
-        if (!slotType) return;
+    const handleAddSlotForDate = async (scheduleId: string, ministryId: string, slotType: string, dateLabel: string) => {
         setBusy(true);
         try {
             const section = ministrySections.find((s) => s.ministryId === ministryId);
-            if (!section) return;
-            const tasks = section.roleNames.flatMap((roleName) => {
+            if (!section || section.roleNames.length === 0) {
+                toast({ title: "Add a role first", description: "This ministry has no roles yet to attach the slot to.", variant: "destructive" });
+                return;
+            }
+            const tasks = section.roleNames.map((roleName) => {
                 const order = section.rows.find((r) => r.roleName === roleName)?.order ?? 0;
-                return sorted.map((s) =>
-                    upsertAssignment({
-                        scheduleId: s.id,
-                        ministryId,
-                        roleName,
-                        order,
-                        slotType,
-                    }),
-                );
+                return upsertAssignment({ scheduleId, ministryId, roleName, order, slotType });
             });
             const results: any[] = await Promise.all(tasks);
             const failed = results.find((r) => !r?.success);
@@ -285,9 +333,7 @@ export function MonthEditorMatrix({
                 toast({ title: "Failed to add slot", description: failed.error, variant: "destructive" });
                 return;
             }
-            toast({ title: `Added "${slotType}" slot across ${sorted.length} date(s)` });
-            setNewSlotTypeName("");
-            setAddingSlotFor(null);
+            toast({ title: `Added "${slotType}" slot for ${dateLabel}` });
             qc.invalidateQueries({ queryKey: ["service-schedules"] });
         } finally {
             setBusy(false);
@@ -306,7 +352,7 @@ export function MonthEditorMatrix({
                         <thead>
                             <tr>
                                 <th
-                                    colSpan={2 + dateColumns.reduce((n, dc) => n + (section.slotsByDate.get(dc.dateKey)?.length ?? 0), 0)}
+                                    colSpan={2 + dateColumns.reduce((n, dc) => n + (section.slotsByDate.get(dc.dateKey)?.length ?? 0) + 1, 0)}
                                     className="bg-blue-600 px-3 py-2 text-left font-semibold text-white"
                                 >
                                     {section.name}
@@ -316,10 +362,9 @@ export function MonthEditorMatrix({
                                 <th className="px-3 py-2 text-left font-medium text-gray-700 border-r whitespace-nowrap">Role</th>
                                 {dateColumns.map(({ dateKey, scheduleId }) => {
                                     const slotTypes = section.slotsByDate.get(dateKey) ?? [];
-                                    if (!slotTypes.length) return null;
                                     const dateObj = new Date(dateKey);
                                     return (
-                                        <th key={dateKey} colSpan={slotTypes.length} className="px-3 py-2 text-center font-medium text-gray-700 border-l whitespace-nowrap">
+                                        <th key={dateKey} colSpan={slotTypes.length + 1} className="px-3 py-2 text-center font-medium text-gray-700 border-l whitespace-nowrap">
                                             <DatePickerPopover
                                                 selected={dateObj}
                                                 onSelect={(date) => onRescheduleDate?.(scheduleId, date)}
@@ -345,13 +390,25 @@ export function MonthEditorMatrix({
                             </tr>
                             <tr className="bg-blue-50/60">
                                 <th className="border-r" />
-                                {dateColumns.flatMap(({ dateKey }) => {
+                                {dateColumns.flatMap(({ dateKey, scheduleId }) => {
                                     const slotTypes = section.slotsByDate.get(dateKey) ?? [];
-                                    return slotTypes.map((slotType) => (
-                                        <th key={`${dateKey}-${slotType}`} className="px-3 py-1.5 text-center text-xs font-medium text-gray-500 border-l">
-                                            {slotType}
-                                        </th>
-                                    ));
+                                    const dateObj = new Date(dateKey);
+                                    const dateLabel = format(dateObj, "MMM d");
+                                    return [
+                                        ...slotTypes.map((slotType) => (
+                                            <th key={`${dateKey}-${slotType}`} className="px-3 py-1.5 text-center text-xs font-medium text-gray-500 border-l">
+                                                {slotType}
+                                            </th>
+                                        )),
+                                        <th key={`${dateKey}-add`} rowSpan={1 + section.roleNames.length} className="border-l px-1 align-middle bg-blue-50/60">
+                                            <AddRoleOrSlotPopover
+                                                dateLabel={dateLabel}
+                                                busy={busy}
+                                                onAddRole={(name) => handleAddRoleForDate(scheduleId, section.ministryId, dateKey, name, dateLabel)}
+                                                onAddSlot={(name) => handleAddSlotForDate(scheduleId, section.ministryId, name, dateLabel)}
+                                            />
+                                        </th>,
+                                    ];
                                 })}
                             </tr>
                         </thead>
@@ -390,50 +447,6 @@ export function MonthEditorMatrix({
                             ))}
                         </tbody>
                     </table>
-
-                    <div className="border-t bg-gray-50 px-3 py-2 flex flex-wrap items-center gap-2">
-                        {addingRoleFor === section.ministryId ? (
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    value={newRoleName}
-                                    onChange={(e) => setNewRoleName(e.target.value)}
-                                    placeholder="New role name"
-                                    className="h-8 max-w-[220px] text-sm"
-                                    autoFocus
-                                    onKeyDown={(e) => e.key === "Enter" && handleAddRole(section.ministryId)}
-                                />
-                                <Button size="sm" disabled={busy} onClick={() => handleAddRole(section.ministryId)}>
-                                    {busy && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Add
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => { setAddingRoleFor(null); setNewRoleName(""); }}>Cancel</Button>
-                            </div>
-                        ) : (
-                            <Button size="sm" variant="outline" onClick={() => setAddingRoleFor(section.ministryId)}>
-                                <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add role (applies to all {sorted.length} dates)
-                            </Button>
-                        )}
-
-                        {addingSlotFor === section.ministryId ? (
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    value={newSlotTypeName}
-                                    onChange={(e) => setNewSlotTypeName(e.target.value)}
-                                    placeholder="New slot name (e.g. Late)"
-                                    className="h-8 max-w-[220px] text-sm"
-                                    autoFocus
-                                    onKeyDown={(e) => e.key === "Enter" && handleAddSlot(section.ministryId)}
-                                />
-                                <Button size="sm" disabled={busy} onClick={() => handleAddSlot(section.ministryId)}>
-                                    {busy && <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Add
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => { setAddingSlotFor(null); setNewSlotTypeName(""); }}>Cancel</Button>
-                            </div>
-                        ) : (
-                            <Button size="sm" variant="outline" onClick={() => setAddingSlotFor(section.ministryId)}>
-                                <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Add slot (applies to all roles & dates)
-                            </Button>
-                        )}
-                    </div>
                 </div>
             ))}
         </div>
