@@ -54,6 +54,12 @@ const MIRRORED_MODELS: Record<string, PathResolver> = {
         if (!session) return null; // session gone/unavailable — skip rather than write an orphaned doc
         return ['c2sGroups', session.groupId, 'sessions', row.sessionId, 'attendance', row.menteeId];
     },
+    // Events domain (§9)
+    ChurchEvent: (row) => ['churchEvents', row.id],
+    EventSignup: (row) => ['churchEvents', row.eventId, 'signups', row.id],
+    EventRoomBooking: (row) => ['churchEvents', row.eventId, 'roomBookings', row.id],
+    EventAssignment: (row) => ['churchEvents', row.eventId, 'assignments', row.id],
+    EventEquipment: (row) => ['churchEvents', row.eventId, 'equipment', row.id],
 };
 
 function docRef(db: FirebaseFirestore.Firestore, path: string[]) {
