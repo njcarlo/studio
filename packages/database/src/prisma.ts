@@ -69,6 +69,12 @@ const MIRRORED_MODELS: Record<string, PathResolver> = {
     MajorEventRequest: (row) => ['majorEventRequests', row.id],
     MajorEventRequestItem: (row) => ['majorEventRequests', row.requestId, 'items', row.id],
     MajorEventSetting: (row) => ['majorEventSettings', row.id], // singleton — id is always "global"
+    // Leave / Training domain (§5)
+    LeaveRequest: (row) => ['leaveRequests', row.id],
+    // Composite doc ID per the plan — preserves @@unique([workerId, type, year])
+    // as a natural doc-ID uniqueness guarantee.
+    LeaveBalance: (row) => ['leaveBalances', `${row.workerId}_${row.type}_${row.year}`],
+    TrainingRecord: (row) => ['trainingRecords', row.id],
 };
 
 // Re-reads a workflow with its stages and writes it as one Firestore doc
