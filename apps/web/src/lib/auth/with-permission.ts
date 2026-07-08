@@ -1,6 +1,6 @@
 import { cache } from 'react';
 import { prisma } from '@studio/database/prisma';
-import { getServerUser } from '@/lib/supabase-server';
+import { getServerUser } from '@/lib/firebase-auth-server';
 import { ok, err, toErrorMessage, type ActionResponse } from './action-response';
 
 // ── Cached permission resolver ─────────────────────────────────────────────────

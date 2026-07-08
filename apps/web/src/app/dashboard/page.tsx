@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getServerUser } from "@/lib/supabase-server";
+import { getServerUser } from "@/lib/firebase-auth-server";
 import { getWorkerById, getWorkerByEmail } from "@/actions/db";
 import { AppLayout } from "@/components/layout/app-layout";
 import { DashboardClient } from "./DashboardClient";

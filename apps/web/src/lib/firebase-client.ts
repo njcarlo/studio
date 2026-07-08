@@ -3,11 +3,9 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Browser Firebase SDK singleton. Not wired into any auth/data flow yet —
-// Phase 0 scaffolding only (migration plan §11). Auth cutover happens in
-// Phase 1, replacing supabase-browser.ts / packages/database's
-// supabase-client.ts / SupabaseProvider (see plan §11 Phase 0 — client
-// consolidation).
+// Browser Firebase SDK singleton — replaces packages/database's
+// supabase-client.ts / SupabaseProvider as of the Phase 1 auth cutover
+// (migration plan §11).
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

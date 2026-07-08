@@ -35,6 +35,16 @@ vi.mock('@studio/database', () => ({
     supabase: { auth: { resetPasswordForEmail: vi.fn() } },
 }));
 
+// Mock Firebase client SDK — WorkersPage imports firebaseAuth at module scope
+// for admin-triggered password resets; without this, getAuth() throws
+// auth/invalid-api-key in tests (no real Firebase project configured here).
+vi.mock('@/lib/firebase-client', () => ({
+    firebaseAuth: {},
+}));
+vi.mock('firebase/auth', () => ({
+    sendPasswordResetEmail: vi.fn(),
+}));
+
 // Mock @tanstack/react-query
 vi.mock('@tanstack/react-query', () => ({
     useQuery: () => ({ data: undefined, isLoading: false }),

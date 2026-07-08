@@ -1,18 +1,18 @@
 'use client';
 
 import { ReactNode, useEffect } from "react";
-import { SupabaseProvider, useSupabase } from "@studio/database";
+import { FirebaseAuthProvider, useFirebaseAuth } from "@/lib/firebase-provider";
 import { UserRoleSyncerSQL } from "@/store/user-role-syncer-sql";
 import { useAuthStore } from "@studio/store";
 
-// Bridge Supabase auth state into the Zustand auth store.
-// Normalizes Supabase User (id) → uid so existing code using user?.uid keeps working.
-function SupabaseAuthBridge() {
-    const { user, isLoading } = useSupabase();
+// Bridge Firebase auth state into the Zustand auth store. Firebase's User
+// already exposes `.uid`/`.email` natively (unlike Supabase's, which used
+// `.id`), so no normalization is needed for existing code reading `user?.uid`.
+function FirebaseAuthBridge() {
+    const { user, isLoading } = useFirebaseAuth();
 
     useEffect(() => {
-        const normalized = user ? { ...user, uid: user.id } : null;
-        useAuthStore.getState()._setAuthState(normalized, isLoading, null);
+        useAuthStore.getState()._setAuthState(user, isLoading, null);
     }, [user, isLoading]);
 
     return null;
@@ -20,10 +20,10 @@ function SupabaseAuthBridge() {
 
 export function AuthSync({ children }: { children: ReactNode }) {
     return (
-        <SupabaseProvider>
-            <SupabaseAuthBridge />
+        <FirebaseAuthProvider>
+            <FirebaseAuthBridge />
             <UserRoleSyncerSQL />
             {children}
-        </SupabaseProvider>
+        </FirebaseAuthProvider>
     );
 }

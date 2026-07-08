@@ -12,7 +12,8 @@ import { format } from "date-fns";
 import { CheckCircle2, Clock, LoaderCircle } from "lucide-react";
 import { getWorkerById, updateWorker as updateWorkerSql, createApproval as createApprovalSql, assignRolesToWorker } from "@/actions/db";
 import { useAuditLog } from "@/hooks/use-audit-log";
-import { supabase } from "@studio/database";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase-client";
 import type { Worker } from "@studio/types";
 
 export default function EditWorkerPage() {
@@ -136,10 +137,9 @@ export default function EditWorkerPage() {
     }
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(w.email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+      await sendPasswordResetEmail(firebaseAuth, w.email, {
+        url: `${window.location.origin}/auth/update-password`,
       });
-      if (error) throw error;
       toast({
         title: "Reset link sent",
         description: `A password reset link has been sent to ${w.email}.`,

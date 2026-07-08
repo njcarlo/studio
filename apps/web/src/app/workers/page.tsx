@@ -70,7 +70,8 @@ import { Label } from "@studio/ui";
 import { Input } from "@studio/ui";
 import type { Worker, Role, Ministry } from "@studio/types";
 import { useAuthStore } from "@studio/store";
-import { supabase } from "@studio/database";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase-client";
 import { useWorkers, useWorkerStats } from "@/hooks/use-workers";
 import { useRoles } from "@/hooks/use-roles";
 import { useMinistries } from "@/hooks/use-ministries";
@@ -379,14 +380,9 @@ export default function WorkersPage() {
     }
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        worker.email,
-        {
-          redirectTo: `${window.location.origin}/auth/update-password`,
-        },
-      );
-
-      if (error) throw error;
+      await sendPasswordResetEmail(firebaseAuth, worker.email, {
+        url: `${window.location.origin}/auth/update-password`,
+      });
 
       toast({
         title: "Reset link sent",

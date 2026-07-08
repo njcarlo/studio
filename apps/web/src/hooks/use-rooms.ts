@@ -2,10 +2,10 @@
 
 import { Room, Area, Branch, RoomDisplayDevice } from '@studio/types'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { settingsClient } from '@/lib/studio-client'
 import {
-  createRooms, updateArea, deleteArea, createAreas,
-  updateBranch, deleteBranch,
+  getRooms, createRoom, updateRoom, deleteRoom,
+  getAreas, createArea, createRooms, updateArea, deleteArea, createAreas,
+  getBranches, createBranch, updateBranch, deleteBranch,
   getRoomDisplayDevices, createRoomDisplayDevice, updateRoomDisplayDevice,
   deleteRoomDisplayDevice, regenerateRoomDisplayDeviceToken,
 } from '@/actions/db'
@@ -13,20 +13,32 @@ import {
 export function useRooms() {
   const queryClient = useQueryClient()
 
-  const roomsQuery    = useQuery({ queryKey: ['rooms'],    queryFn: () => settingsClient.getRooms() })
-  const areasQuery    = useQuery({ queryKey: ['areas'],    queryFn: () => settingsClient.getAreas() })
-  const branchesQuery = useQuery({ queryKey: ['branches'], queryFn: () => settingsClient.getBranches() })
+  const roomsQuery    = useQuery({ queryKey: ['rooms'],    queryFn: () => getRooms() })
+  const areasQuery    = useQuery({ queryKey: ['areas'],    queryFn: () => getAreas() })
+  const branchesQuery = useQuery({ queryKey: ['branches'], queryFn: () => getBranches() })
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => settingsClient.createRoom(data),
+    mutationFn: async (data: any) => {
+      const res = await createRoom(data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   })
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => settingsClient.updateRoom(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await updateRoom(id, data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   })
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => settingsClient.deleteRoom(id),
+    mutationFn: async (id: string) => {
+      const res = await deleteRoom(id);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   })
   const createRoomsMutation = useMutation({
@@ -38,7 +50,11 @@ export function useRooms() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rooms'] }),
   })
   const createAreaMutation = useMutation({
-    mutationFn: (data: any) => settingsClient.createArea(data),
+    mutationFn: async (data: any) => {
+      const res = await createArea(data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['areas'] }),
   })
   const updateAreaMutation = useMutation({
@@ -66,7 +82,11 @@ export function useRooms() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['areas'] }),
   })
   const createBranchMutation = useMutation({
-    mutationFn: (data: any) => settingsClient.createBranch(data),
+    mutationFn: async (data: any) => {
+      const res = await createBranch(data);
+      if (!res.success) throw new Error(res.error);
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['branches'] }),
   })
   const updateBranchMutation = useMutation({
