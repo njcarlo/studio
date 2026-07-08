@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Studio Firestore Security Rules — Phase 0 skeleton.
+// Studio Firestore Security Rules.
 //
 // Design decision (migration plan §4.2): permission checks stay server-side,
 // in Next.js Server Actions / Cloud Functions using the Firebase Admin SDK
@@ -9,9 +9,10 @@ rules_version = '2';
 // per-collection scoping — mirroring today's `requirePermission()` model
 // instead of re-implementing the full RBAC matrix in rules language.
 //
-// No collections are migrated yet (Phase 3 has not started), so everything
-// defaults to deny. Add one block per collection as it's cut over, rather
-// than opening this up broadly ahead of the data actually landing.
+// No domain collections are migrated yet (Phase 3 has not started), so
+// everything defaults to deny except roomDisplayPings (Phase 2, §7) — add
+// one block per collection as each is cut over, rather than opening this up
+// broadly ahead of the data actually landing.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -24,6 +25,15 @@ service cloud.firestore {
     // domain is migrated (migration plan §3, §11 Phase 3).
     match /{document=**} {
       allow read, write: if false;
+    }
+
+    // Content-free ping doc (roomId + timestamp only) that the unauthenticated
+    // kiosk display (rooms/display/page.tsx) listens to — mirrors the old
+    // RoomDisplayPing table's anon-readable RLS policy. Only written via the
+    // Admin SDK (pingRoomDisplay()), which bypasses these rules entirely.
+    match /roomDisplayPings/{roomId} {
+      allow read: if true;
+      allow write: if false;
     }
 
     // Example shape for a future collection once migrated:

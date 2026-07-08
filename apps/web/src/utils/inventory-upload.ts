@@ -1,15 +1,17 @@
-import { supabaseBrowser } from '@/lib/supabase-browser';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { firebaseStorage } from '@/lib/firebase-client';
 
 export async function uploadItemPhoto(file: File, itemId = 'general'): Promise<string> {
     const ext = file.name.split('.').pop() ?? 'jpg';
     const path = `items/${itemId}/${Date.now()}.${ext}`;
 
-    const { error } = await supabaseBrowser.storage
-        .from('inventory-photos')
-        .upload(path, file, { upsert: true });
+    const storageRef = ref(firebaseStorage, path);
 
-    if (error) throw new Error(`Upload failed: ${error.message}`);
+    try {
+        await uploadBytes(storageRef, file);
+    } catch (error: any) {
+        throw new Error(`Upload failed: ${error.message}`);
+    }
 
-    const { data } = supabaseBrowser.storage.from('inventory-photos').getPublicUrl(path);
-    return data.publicUrl;
+    return getDownloadURL(storageRef);
 }

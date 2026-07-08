@@ -22,6 +22,7 @@ import { NotificationService } from '@/services/notification-service';
 import { writeAudit } from '@/lib/audit/log';
 import * as ApprovalEngine from '@/services/approval-engine';
 import * as RoomReservationWorkflow from '@/services/room-reservation-workflow';
+import { pingRoomDisplay } from '@/lib/room-display-ping';
 import * as MajorEventWorkflow from '@/services/major-event-workflow';
 import * as mealsAttendanceService from '@/services/meals-attendance';
 import * as MasterScheduleService from '@/services/master-schedule';
@@ -694,12 +695,14 @@ export async function respondToApproval(
                 });
             }
             if (updated.type === 'Room Booking' && updated.reservationId) {
-                await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Approved' } });
+                const booking = await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Approved' } });
+                void pingRoomDisplay(booking.roomId);
             }
         }
 
         if (nextStatus === 'Rejected' && updated.type === 'Room Booking' && updated.reservationId) {
-            await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Rejected' } });
+            const booking = await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Rejected' } });
+            void pingRoomDisplay(booking.roomId);
         }
 
         return updated;
@@ -1223,6 +1226,7 @@ export const createBooking = withPermission(
             revalidatePath('/reservations');
             revalidatePath('/dashboard');
             revalidatePath('/approvals');
+            void pingRoomDisplay(booking.roomId);
             return booking;
         } catch (err: any) {
             console.error('[createBooking] Prisma error:', err);
@@ -1240,6 +1244,7 @@ export const updateBooking = withPermission(
         });
         revalidatePath('/reservations');
         revalidatePath('/dashboard');
+        void pingRoomDisplay(booking.roomId);
         return booking;
     }
 );
@@ -1247,9 +1252,10 @@ export const updateBooking = withPermission(
 export const deleteBooking = withPermission(
     PERMISSIONS.venues.delete,
     async (_ctx, id: string) => {
-        await prisma.booking.delete({ where: { id } });
+        const booking = await prisma.booking.delete({ where: { id } });
         revalidatePath('/reservations');
         revalidatePath('/dashboard');
+        void pingRoomDisplay(booking.roomId);
     }
 );
 

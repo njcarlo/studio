@@ -14,7 +14,8 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@studio/database";
+import { doc, onSnapshot } from "firebase/firestore";
+import { firebaseFirestore } from "@/lib/firebase-client";
 import { toJsDate } from "@/lib/utils";
 import {
   getAreas,
@@ -26,11 +27,13 @@ import {
 } from "@/actions/db";
 import { handleBookingCheckIn } from "@/actions/venue-assistance";
 
-// Realtime updates: a Postgres trigger on Booking upserts a `RoomDisplayPing`
-// row (roomId + timestamp only, no booking content) which is readable by
-// `anon` and added to the realtime publication — the kiosk subscribes to
-// that ping and refetches booking details on change. This polling interval
-// is kept as a fallback in case the realtime connection drops.
+// Realtime updates: every Booking mutation (createBooking/updateBooking/
+// deleteBooking/respondToApproval/syncBookingStatusFromWorkflow in
+// actions/db.ts + room-reservation-workflow.ts) also writes a
+// `roomDisplayPings/{roomId}` Firestore doc (id + timestamp only, no booking
+// content, still Postgres-resident) — the kiosk listens via onSnapshot and
+// refetches booking details on change. This polling interval is kept as a
+// fallback in case the realtime connection drops.
 const DISPLAY_REFRESH_INTERVAL_MS = 60_000;
 // How often a registered device reports a heartbeat (lastSeenAt).
 const DEVICE_HEARTBEAT_INTERVAL_MS = 60_000;
@@ -92,23 +95,20 @@ function RoomDisplayContent() {
   });
 
   // Realtime: refetch this room's bookings the moment a Booking row changes,
-  // signalled via RoomDisplayPing (anon-readable, content-free).
+  // signalled via the roomDisplayPings/{roomId} Firestore doc (public,
+  // content-free — just an updatedAt timestamp).
   const queryClient = useQueryClient();
   useEffect(() => {
     if (!roomId) return;
-    const channel = supabase
-      .channel(`room-display-ping-${roomId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "RoomDisplayPing", filter: `roomId=eq.${roomId}` },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["bookings", { roomId, status: "Approved" }] });
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    let isFirstSnapshot = true;
+    const unsubscribe = onSnapshot(doc(firebaseFirestore, "roomDisplayPings", roomId), () => {
+      if (isFirstSnapshot) {
+        isFirstSnapshot = false;
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["bookings", { roomId, status: "Approved" }] });
+    });
+    return unsubscribe;
   }, [roomId, queryClient]);
 
   const todaysBookings =
