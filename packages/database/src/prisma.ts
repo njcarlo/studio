@@ -14,13 +14,14 @@ const basePrisma =
         log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     });
 
-// Phase 3 dual-write mirror (migration plan §11): for the 7 low-risk "Misc"
-// models, every write also mirrors to Firestore so the collections stay
-// populated during the verification/soak window — reads stay on Postgres
-// until that soak period is done. Scoped to exactly these models/collections
-// (see docs/FIRESTORE_SCHEMA_PLAN.md §13) rather than a blanket mirror,
-// since the rest of the schema hasn't been designed for Firestore yet.
+// Phase 3 dual-write mirror (migration plan §11): for each low-risk domain,
+// every write also mirrors to Firestore so the collections stay populated
+// during the verification/soak window — reads stay on Postgres until that
+// soak period is done. Scoped to exactly these models/collections (see
+// docs/FIRESTORE_SCHEMA_PLAN.md) rather than a blanket mirror, since the
+// rest of the schema hasn't been designed for Firestore yet.
 const MIRRORED_MODELS: Record<string, { collection: string; idField: string }> = {
+    // Misc domain (§13)
     Sermon: { collection: 'sermons', idField: 'id' },
     PrayerRequest: { collection: 'prayerRequests', idField: 'id' },
     Setting: { collection: 'settings', idField: 'id' },
@@ -28,6 +29,9 @@ const MIRRORED_MODELS: Record<string, { collection: string; idField: string }> =
     ScanLog: { collection: 'scanLogs', idField: 'id' },
     InAppNotification: { collection: 'inAppNotifications', idField: 'id' },
     NotificationPreference: { collection: 'notificationPreferences', idField: 'workerId' },
+    // Meals domain (§7)
+    MealStub: { collection: 'mealStubs', idField: 'id' },
+    MealStubLedger: { collection: 'mealStubLedger', idField: 'id' },
 };
 
 function getMirrorFirestore() {
