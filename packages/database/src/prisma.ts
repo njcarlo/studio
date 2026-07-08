@@ -80,6 +80,10 @@ const MIRRORED_MODELS: Record<string, PathResolver> = {
     Ministry: (row) => ['ministries', row.id],
     Area: (row) => ['areas', row.id],
     Branch: (row) => ['branches', row.id],
+    // Identity/RBAC domain (§1) — reference catalog only; Worker/WorkerRole/
+    // Role/RolePermission use CUSTOM_MIRRORS (embedded role assignment and
+    // permissions map).
+    Permission: (row) => ['permissions', row.id],
 };
 
 // Re-reads a workflow with its stages and writes it as one Firestore doc
@@ -132,7 +136,82 @@ const CUSTOM_MIRRORS: Record<
         write: (db, row) => syncDepartment(db, row.id),
         remove: (db, row) => syncDepartment(db, row.id),
     },
+    // Identity/RBAC (§1): worker doc folds WorkerRole into a roleAssignment
+    // map; role doc embeds the RolePermission join as a permissions map.
+    Worker: {
+        write: (db, row) => syncWorker(db, row.id),
+        remove: async (db, row) => {
+            await db.collection('workers').doc(String(row.id)).delete();
+        },
+    },
+    WorkerRole: {
+        write: (db, row) => syncWorker(db, row.workerId),
+        remove: (db, row) => syncWorker(db, row.workerId),
+    },
+    Role: {
+        write: (db, row) => syncRole(db, row.id),
+        remove: async (db, row) => {
+            await db.collection('roles').doc(String(row.id)).delete();
+        },
+    },
+    RolePermission: {
+        write: (db, row) => syncRole(db, row.roleId),
+        remove: (db, row) => syncRole(db, row.roleId),
+    },
 };
+
+// §1: workers/{id} carries every Worker field except legacyPasswordHash
+// (credentials must not be mirrored into Firestore) plus the WorkerRole join
+// folded in as roleAssignment (most recent) and roleIds (all, in case
+// multi-role turns out to be real).
+async function syncWorker(db: FirebaseFirestore.Firestore, workerId: string) {
+    const worker = await basePrisma.worker.findUnique({
+        where: { id: workerId },
+        include: { roles: { orderBy: { assignedAt: 'desc' } } },
+    });
+    const ref = db.collection('workers').doc(String(workerId));
+    if (!worker) {
+        await ref.delete();
+        return;
+    }
+    const { legacyPasswordHash, roles, ...fields } = worker as any;
+    const doc = {
+        ...fields,
+        roleAssignment: roles[0]
+            ? { roleId: roles[0].roleId, assignedBy: roles[0].assignedBy, assignedAt: roles[0].assignedAt }
+            : null,
+        roleIds: roles.map((r: any) => r.roleId),
+    };
+    await ref.set(toFirestoreValue(doc) as Record<string, unknown>, { merge: false });
+}
+
+// §1: roles/{id} embeds the RolePermission join as a { module: action[] }
+// map (permission checks read this doc directly via Admin SDK); the old
+// string[] column is kept as legacyPermissions during the migration.
+async function syncRole(db: FirebaseFirestore.Firestore, roleId: string) {
+    const role = await basePrisma.role.findUnique({
+        where: { id: roleId },
+        include: { rolePermissions: { include: { permission: true } } },
+    });
+    const ref = db.collection('roles').doc(String(roleId));
+    if (!role) {
+        await ref.delete();
+        return;
+    }
+    const permMap: Record<string, string[]> = {};
+    for (const rp of role.rolePermissions) {
+        (permMap[rp.permission.module] ??= []).push(rp.permission.action);
+    }
+    const doc = {
+        id: role.id,
+        name: role.name,
+        isSuperAdmin: role.isSuperAdmin,
+        isSystemRole: role.isSystemRole,
+        legacyPermissions: role.permissions,
+        permissions: permMap,
+    };
+    await ref.set(toFirestoreValue(doc) as Record<string, unknown>, { merge: false });
+}
 
 // §2: DepartmentSetting merges into departments/{code} as nested fields
 // (renamed settingDescription to avoid clashing with any future Department
@@ -301,26 +380,45 @@ const extendedPrisma = basePrisma.$extends({
             // major-event-workflow) — without these hooks those writes would
             // silently skip the mirror. createMany stays unmirrored (no way
             // to learn the generated IDs); heal via backfill re-run.
+            // Custom-mirror models re-read Postgres themselves, so their bulk
+            // hooks just need the key fields off the pre-captured rows —
+            // which also sidesteps WorkerRole/RolePermission's composite PKs.
+            async createMany({ model, args, query }) {
+                const result = await query(args);
+                if (model in CUSTOM_MIRRORS) {
+                    const data = (args as any)?.data;
+                    const rows = Array.isArray(data) ? data : data ? [data] : [];
+                    if (rows.length > 0) void mirrorWrite(model, rows);
+                }
+                // Path-resolver models can't be mirrored here (generated IDs
+                // unknowable from a count result) — heal via backfill re-run.
+                return result;
+            },
             async updateMany({ model, args, query }) {
-                const mirrored = model in MIRRORED_MODELS || model in CUSTOM_MIRRORS;
+                const custom = model in CUSTOM_MIRRORS;
+                const mirrored = custom || model in MIRRORED_MODELS;
                 const pk = pkField(model);
-                let ids: any[] = [];
+                let captured: any[] = [];
                 if (mirrored) {
                     try {
-                        const rows = await delegateFor(model).findMany({
+                        captured = await delegateFor(model).findMany({
                             where: (args as any)?.where,
-                            select: { [pk]: true },
+                            ...(custom ? {} : { select: { [pk]: true } }),
                         });
-                        ids = rows.map((r: any) => r[pk]);
                     } catch (e) {
                         console.error(`[prisma-firestore-mirror] updateMany pre-capture failed for ${model}:`, e);
                     }
                 }
                 const result = await query(args);
-                if (mirrored && ids.length > 0) {
+                if (mirrored && captured.length > 0) {
                     void (async () => {
                         try {
+                            if (custom) {
+                                await mirrorWrite(model, captured);
+                                return;
+                            }
                             await settle();
+                            const ids = captured.map((r: any) => r[pk]);
                             const rows = await delegateFor(model).findMany({ where: { [pk]: { in: ids } } });
                             await mirrorWrite(model, rows);
                         } catch (e) {
