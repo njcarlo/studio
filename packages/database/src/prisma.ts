@@ -20,19 +20,52 @@ const basePrisma =
 // soak period is done. Scoped to exactly these models/collections (see
 // docs/FIRESTORE_SCHEMA_PLAN.md) rather than a blanket mirror, since the
 // rest of the schema hasn't been designed for Firestore yet.
-const MIRRORED_MODELS: Record<string, { collection: string; idField: string }> = {
+//
+// Each resolver returns the full Firestore doc path as alternating
+// [collection, docId, collection, docId, ...] segments — plain arrays for
+// flat collections, longer ones for the C2S domain's nested subcollections
+// (§8). A resolver may be async where the row itself doesn't carry enough
+// to build the path (C2SAttendanceRecord only has sessionId, not the
+// group's id, so it looks the parent session up).
+type PathResolver = (row: any) => Promise<string[] | null> | string[] | null;
+
+const MIRRORED_MODELS: Record<string, PathResolver> = {
     // Misc domain (§13)
-    Sermon: { collection: 'sermons', idField: 'id' },
-    PrayerRequest: { collection: 'prayerRequests', idField: 'id' },
-    Setting: { collection: 'settings', idField: 'id' },
-    TransactionLog: { collection: 'transactionLogs', idField: 'id' },
-    ScanLog: { collection: 'scanLogs', idField: 'id' },
-    InAppNotification: { collection: 'inAppNotifications', idField: 'id' },
-    NotificationPreference: { collection: 'notificationPreferences', idField: 'workerId' },
+    Sermon: (row) => ['sermons', row.id],
+    PrayerRequest: (row) => ['prayerRequests', row.id],
+    Setting: (row) => ['settings', row.id],
+    TransactionLog: (row) => ['transactionLogs', row.id],
+    ScanLog: (row) => ['scanLogs', row.id],
+    InAppNotification: (row) => ['inAppNotifications', row.id],
+    NotificationPreference: (row) => ['notificationPreferences', row.workerId],
     // Meals domain (§7)
-    MealStub: { collection: 'mealStubs', idField: 'id' },
-    MealStubLedger: { collection: 'mealStubLedger', idField: 'id' },
+    MealStub: (row) => ['mealStubs', row.id],
+    MealStubLedger: (row) => ['mealStubLedger', row.id],
+    // C2S / mentorship domain (§8)
+    C2SGroup: (row) => ['c2sGroups', row.id],
+    C2SMentee: (row) => ['c2sGroups', row.groupId, 'mentees', row.id],
+    C2SJoinRequest: (row) => ['c2sGroups', row.groupId, 'joinRequests', row.id],
+    C2SSession: (row) => ['c2sGroups', row.groupId, 'sessions', row.id],
+    C2SAttendanceRecord: async (row) => {
+        const session = await basePrisma.c2SSession.findUnique({
+            where: { id: row.sessionId },
+            select: { groupId: true },
+        });
+        if (!session) return null; // session gone/unavailable — skip rather than write an orphaned doc
+        return ['c2sGroups', session.groupId, 'sessions', row.sessionId, 'attendance', row.menteeId];
+    },
 };
+
+function docRef(db: FirebaseFirestore.Firestore, path: string[]) {
+    let ref: FirebaseFirestore.CollectionReference | FirebaseFirestore.DocumentReference = db.collection(path[0]);
+    for (let i = 1; i < path.length; i++) {
+        ref =
+            i % 2 === 1
+                ? (ref as FirebaseFirestore.CollectionReference).doc(String(path[i]))
+                : (ref as FirebaseFirestore.DocumentReference).collection(path[i]);
+    }
+    return ref as FirebaseFirestore.DocumentReference;
+}
 
 function getMirrorFirestore() {
     if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
@@ -73,30 +106,29 @@ function toFirestoreValue(v: unknown): unknown {
 }
 
 async function mirrorWrite(model: string, result: any) {
-    const spec = MIRRORED_MODELS[model];
+    const resolvePath = MIRRORED_MODELS[model];
     const db = firestore();
-    if (!spec || !db || !result) return;
-    try {
-        const rows = Array.isArray(result) ? result : [result];
-        for (const row of rows) {
-            const id = row?.[spec.idField];
-            if (!id) continue;
-            await db
-                .collection(spec.collection)
-                .doc(String(id))
-                .set(toFirestoreValue(row) as Record<string, unknown>, { merge: false });
+    if (!resolvePath || !db || !result) return;
+    const rows = Array.isArray(result) ? result : [result];
+    for (const row of rows) {
+        try {
+            const path = await resolvePath(row);
+            if (!path) continue;
+            await docRef(db, path).set(toFirestoreValue(row) as Record<string, unknown>, { merge: false });
+        } catch (e) {
+            console.error(`[prisma-firestore-mirror] mirror write failed for ${model}:`, e);
         }
-    } catch (e) {
-        console.error(`[prisma-firestore-mirror] mirror write failed for ${model}:`, e);
     }
 }
 
-async function mirrorDelete(model: string, whereId: string | undefined) {
-    const spec = MIRRORED_MODELS[model];
+async function mirrorDelete(model: string, row: any) {
+    const resolvePath = MIRRORED_MODELS[model];
     const db = firestore();
-    if (!spec || !db || !whereId) return;
+    if (!resolvePath || !db || !row) return;
     try {
-        await db.collection(spec.collection).doc(String(whereId)).delete();
+        const path = await resolvePath(row);
+        if (!path) return;
+        await docRef(db, path).delete();
     } catch (e) {
         console.error(`[prisma-firestore-mirror] mirror delete failed for ${model}:`, e);
     }
@@ -122,8 +154,7 @@ const extendedPrisma = basePrisma.$extends({
             },
             async delete({ model, args, query }) {
                 const result = await query(args);
-                const whereId = (args as any)?.where?.id ?? (args as any)?.where?.workerId;
-                void mirrorDelete(model, whereId);
+                void mirrorDelete(model, result);
                 return result;
             },
         },
