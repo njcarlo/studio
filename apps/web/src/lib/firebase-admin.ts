@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -17,8 +19,9 @@ function getAdminApp(): App {
 
   const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (credentialsPath) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const serviceAccount = require(credentialsPath);
+    // Reading + JSON.parse instead of require() — a dynamic require() path
+    // can't be statically resolved by Turbopack/webpack at build time.
+    const serviceAccount = JSON.parse(readFileSync(resolve(credentialsPath), 'utf-8'));
     return initializeApp({ credential: cert(serviceAccount) });
   }
 

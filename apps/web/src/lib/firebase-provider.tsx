@@ -57,10 +57,15 @@ export const FirebaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       firebaseAuth,
       (firebaseUser) => {
         setUser(firebaseUser);
-        setIsLoading(false);
         setError(null);
-        // Fire-and-forget — the cookie write shouldn't block UI state.
-        void syncSessionCookie(firebaseUser);
+        // isLoading goes true for the duration of the cookie sync — not just
+        // at mount — otherwise client code (e.g. the login page's
+        // redirect-on-auth effect) can navigate to a protected route before
+        // middleware has any cookie to read, bouncing the user right back to
+        // /login. Without this, isLoading stays false from the initial
+        // (logged-out) check straight through a later sign-in.
+        setIsLoading(true);
+        void syncSessionCookie(firebaseUser).finally(() => setIsLoading(false));
       },
       (err) => {
         setError(err);
