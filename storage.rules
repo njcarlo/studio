@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Studio Firebase Storage rules — Phase 0 skeleton.
+// Migration plan §8: the only bucket in scope today is inventory item
+// photos (currently Supabase Storage's `inventory-photos` bucket, path
+// scheme `items/{itemId}/{timestamp}.{ext}`). Deny-by-default until that
+// migration lands in Phase 2.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Example shape once migrated:
+    // match /items/{itemId}/{fileName} {
+    //   allow read: if true; // public photo URLs, matches today's getPublicUrl() behavior
+    //   allow write: if request.auth != null; // tighten to requirePermission-equivalent check
+    // }
+  }
+}
