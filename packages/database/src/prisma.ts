@@ -64,6 +64,11 @@ const MIRRORED_MODELS: Record<string, PathResolver> = {
     // ApprovalWorkflow/ApprovalStage use CUSTOM_MIRRORS below instead since
     // stages embed into the workflow doc as an array of maps.
     ApprovalRequest: (row) => ['approvalRequests', row.id],
+    // Major Events domain (§11)
+    MajorEventServiceCatalogItem: (row) => ['majorEventServiceCatalog', row.id],
+    MajorEventRequest: (row) => ['majorEventRequests', row.id],
+    MajorEventRequestItem: (row) => ['majorEventRequests', row.requestId, 'items', row.id],
+    MajorEventSetting: (row) => ['majorEventSettings', row.id], // singleton — id is always "global"
 };
 
 // Re-reads a workflow with its stages and writes it as one Firestore doc
