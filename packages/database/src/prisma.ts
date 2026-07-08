@@ -60,6 +60,50 @@ const MIRRORED_MODELS: Record<string, PathResolver> = {
     EventRoomBooking: (row) => ['churchEvents', row.eventId, 'roomBookings', row.id],
     EventAssignment: (row) => ['churchEvents', row.eventId, 'assignments', row.id],
     EventEquipment: (row) => ['churchEvents', row.eventId, 'equipment', row.id],
+    // Approvals domain (§10) — the ad-hoc ApprovalRequest model maps 1:1;
+    // ApprovalWorkflow/ApprovalStage use CUSTOM_MIRRORS below instead since
+    // stages embed into the workflow doc as an array of maps.
+    ApprovalRequest: (row) => ['approvalRequests', row.id],
+};
+
+// Re-reads a workflow with its stages and writes it as one Firestore doc
+// with stages embedded (§10's array-of-maps deviation). Called for writes to
+// either model — a stage decision re-syncs the whole parent doc, which also
+// makes it self-healing under out-of-order async mirrors.
+async function syncApprovalWorkflow(db: FirebaseFirestore.Firestore, workflowId: string) {
+    const wf = await basePrisma.approvalWorkflow.findUnique({
+        where: { id: workflowId },
+        include: { stages: { orderBy: { stageOrder: 'asc' } } },
+    });
+    const ref = db.collection('approvalWorkflows').doc(String(workflowId));
+    if (!wf) {
+        await ref.delete(); // workflow gone by the time the mirror ran
+        return;
+    }
+    await ref.set(toFirestoreValue(wf) as Record<string, unknown>, { merge: false });
+}
+
+// Models whose mirror isn't a 1:1 row→doc copy. `write` runs after
+// create/update/upsert, `remove` after delete, each getting the Prisma
+// result row.
+const CUSTOM_MIRRORS: Record<
+    string,
+    {
+        write: (db: FirebaseFirestore.Firestore, row: any) => Promise<void>;
+        remove: (db: FirebaseFirestore.Firestore, row: any) => Promise<void>;
+    }
+> = {
+    ApprovalWorkflow: {
+        write: (db, row) => syncApprovalWorkflow(db, row.id),
+        remove: async (db, row) => {
+            // Postgres cascades stage deletes; here stages live inside the doc
+            await db.collection('approvalWorkflows').doc(String(row.id)).delete();
+        },
+    },
+    ApprovalStage: {
+        write: (db, row) => syncApprovalWorkflow(db, row.workflowId),
+        remove: (db, row) => syncApprovalWorkflow(db, row.workflowId),
+    },
 };
 
 function docRef(db: FirebaseFirestore.Firestore, path: string[]) {
@@ -112,13 +156,18 @@ function toFirestoreValue(v: unknown): unknown {
 }
 
 async function mirrorWrite(model: string, result: any) {
+    const custom = CUSTOM_MIRRORS[model];
     const resolvePath = MIRRORED_MODELS[model];
     const db = firestore();
-    if (!resolvePath || !db || !result) return;
+    if ((!custom && !resolvePath) || !db || !result) return;
     const rows = Array.isArray(result) ? result : [result];
     for (const row of rows) {
         try {
-            const path = await resolvePath(row);
+            if (custom) {
+                await custom.write(db, row);
+                continue;
+            }
+            const path = await resolvePath!(row);
             if (!path) continue;
             await docRef(db, path).set(toFirestoreValue(row) as Record<string, unknown>, { merge: false });
         } catch (e) {
@@ -128,11 +177,16 @@ async function mirrorWrite(model: string, result: any) {
 }
 
 async function mirrorDelete(model: string, row: any) {
+    const custom = CUSTOM_MIRRORS[model];
     const resolvePath = MIRRORED_MODELS[model];
     const db = firestore();
-    if (!resolvePath || !db || !row) return;
+    if ((!custom && !resolvePath) || !db || !row) return;
     try {
-        const path = await resolvePath(row);
+        if (custom) {
+            await custom.remove(db, row);
+            return;
+        }
+        const path = await resolvePath!(row);
         if (!path) return;
         await docRef(db, path).delete();
     } catch (e) {
