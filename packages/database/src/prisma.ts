@@ -206,11 +206,36 @@ function toFirestoreValue(v: unknown): unknown {
     return v === undefined ? null : v;
 }
 
+// Mirror tasks are fire-and-forget and several of them re-read Postgres
+// (syncApprovalWorkflow, syncDepartment, C2SAttendanceRecord's session
+// lookup, the updateMany re-fetch). Writes made inside prisma.$transaction
+// (e.g. approval-engine's decide()) aren't visible to those re-reads until
+// the transaction commits, so every mirror task waits a beat first. Not a
+// hard guarantee — a >1s transaction can still race — but the mirror is a
+// soak-window aid, and periodic backfill re-runs heal any misses.
+const MIRROR_SETTLE_MS = 1000;
+const settle = () => new Promise((resolve) => setTimeout(resolve, MIRROR_SETTLE_MS));
+
+// Primary-key field per mirrored model, for the updateMany/deleteMany
+// pre-capture. Everything uses `id` except these two.
+function pkField(model: string) {
+    if (model === 'NotificationPreference') return 'workerId';
+    if (model === 'Department') return 'code';
+    return 'id';
+}
+
+// Prisma client property for a model name: first letter lowercased
+// (MealStub -> mealStub, C2SGroup -> c2SGroup).
+function delegateFor(model: string) {
+    return (basePrisma as any)[model.charAt(0).toLowerCase() + model.slice(1)];
+}
+
 async function mirrorWrite(model: string, result: any) {
     const custom = CUSTOM_MIRRORS[model];
     const resolvePath = MIRRORED_MODELS[model];
     const db = firestore();
     if ((!custom && !resolvePath) || !db || !result) return;
+    await settle();
     const rows = Array.isArray(result) ? result : [result];
     for (const row of rows) {
         try {
@@ -232,6 +257,7 @@ async function mirrorDelete(model: string, row: any) {
     const resolvePath = MIRRORED_MODELS[model];
     const db = firestore();
     if ((!custom && !resolvePath) || !db || !row) return;
+    await settle();
     try {
         if (custom) {
             await custom.remove(db, row);
@@ -266,6 +292,62 @@ const extendedPrisma = basePrisma.$extends({
             async delete({ model, args, query }) {
                 const result = await query(args);
                 void mirrorDelete(model, result);
+                return result;
+            },
+            // Bulk ops return counts, not rows, so the affected rows are
+            // captured around the query instead. Live call sites exist
+            // (mealStub.updateMany in cron-jobs, mealStub.deleteMany in
+            // meal-stub-engine, majorEventRequestItem.updateMany in
+            // major-event-workflow) — without these hooks those writes would
+            // silently skip the mirror. createMany stays unmirrored (no way
+            // to learn the generated IDs); heal via backfill re-run.
+            async updateMany({ model, args, query }) {
+                const mirrored = model in MIRRORED_MODELS || model in CUSTOM_MIRRORS;
+                const pk = pkField(model);
+                let ids: any[] = [];
+                if (mirrored) {
+                    try {
+                        const rows = await delegateFor(model).findMany({
+                            where: (args as any)?.where,
+                            select: { [pk]: true },
+                        });
+                        ids = rows.map((r: any) => r[pk]);
+                    } catch (e) {
+                        console.error(`[prisma-firestore-mirror] updateMany pre-capture failed for ${model}:`, e);
+                    }
+                }
+                const result = await query(args);
+                if (mirrored && ids.length > 0) {
+                    void (async () => {
+                        try {
+                            await settle();
+                            const rows = await delegateFor(model).findMany({ where: { [pk]: { in: ids } } });
+                            await mirrorWrite(model, rows);
+                        } catch (e) {
+                            console.error(`[prisma-firestore-mirror] updateMany mirror failed for ${model}:`, e);
+                        }
+                    })();
+                }
+                return result;
+            },
+            async deleteMany({ model, args, query }) {
+                const mirrored = model in MIRRORED_MODELS || model in CUSTOM_MIRRORS;
+                let rows: any[] = [];
+                if (mirrored) {
+                    try {
+                        // Full rows, captured before they're gone — path
+                        // resolvers need more than the PK (groupId, eventId…).
+                        rows = await delegateFor(model).findMany({ where: (args as any)?.where });
+                    } catch (e) {
+                        console.error(`[prisma-firestore-mirror] deleteMany pre-capture failed for ${model}:`, e);
+                    }
+                }
+                const result = await query(args);
+                if (rows.length > 0) {
+                    void (async () => {
+                        for (const row of rows) await mirrorDelete(model, row);
+                    })();
+                }
                 return result;
             },
         },
