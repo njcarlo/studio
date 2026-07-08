@@ -75,6 +75,11 @@ const MIRRORED_MODELS: Record<string, PathResolver> = {
     // as a natural doc-ID uniqueness guarantee.
     LeaveBalance: (row) => ['leaveBalances', `${row.workerId}_${row.type}_${row.year}`],
     TrainingRecord: (row) => ['trainingRecords', row.id],
+    // Org structure domain (§2) — Department/DepartmentSetting use
+    // CUSTOM_MIRRORS below since the setting merges into the department doc.
+    Ministry: (row) => ['ministries', row.id],
+    Area: (row) => ['areas', row.id],
+    Branch: (row) => ['branches', row.id],
 };
 
 // Re-reads a workflow with its stages and writes it as one Firestore doc
@@ -115,7 +120,42 @@ const CUSTOM_MIRRORS: Record<
         write: (db, row) => syncApprovalWorkflow(db, row.workflowId),
         remove: (db, row) => syncApprovalWorkflow(db, row.workflowId),
     },
+    Department: {
+        write: (db, row) => syncDepartment(db, row.code),
+        remove: async (db, row) => {
+            await db.collection('departments').doc(String(row.code)).delete();
+        },
+    },
+    // DepartmentSetting is keyed 1:1 by Department.code (its id IS the code);
+    // any write re-syncs the merged department doc.
+    DepartmentSetting: {
+        write: (db, row) => syncDepartment(db, row.id),
+        remove: (db, row) => syncDepartment(db, row.id),
+    },
 };
+
+// §2: DepartmentSetting merges into departments/{code} as nested fields
+// (renamed settingDescription to avoid clashing with any future Department
+// description) — one fewer collection for a 1:1 config extension.
+async function syncDepartment(db: FirebaseFirestore.Firestore, code: string) {
+    const [dept, setting] = await Promise.all([
+        basePrisma.department.findUnique({ where: { code } }),
+        basePrisma.departmentSetting.findUnique({ where: { id: code } }),
+    ]);
+    const ref = db.collection('departments').doc(String(code));
+    if (!dept) {
+        await ref.delete(); // department gone by the time the mirror ran
+        return;
+    }
+    const merged = {
+        ...dept,
+        headId: setting?.headId ?? null,
+        settingDescription: setting?.description ?? null,
+        mealStubWeekdayAllocation: setting?.mealStubWeekdayAllocation ?? 0,
+        mealStubSundayAllocation: setting?.mealStubSundayAllocation ?? 0,
+    };
+    await ref.set(toFirestoreValue(merged) as Record<string, unknown>, { merge: false });
+}
 
 function docRef(db: FirebaseFirestore.Firestore, path: string[]) {
     let ref: FirebaseFirestore.CollectionReference | FirebaseFirestore.DocumentReference = db.collection(path[0]);
