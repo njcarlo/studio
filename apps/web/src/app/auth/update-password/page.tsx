@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Church, LoaderCircle } from "lucide-react";
 import {
@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase-client";
 
-export default function UpdatePasswordPage() {
+function UpdatePasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -147,5 +147,21 @@ export default function UpdatePasswordPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// useSearchParams() forces client-side rendering, so the page must sit behind a
+// Suspense boundary or Next.js 15 static generation bails out at build time.
+export default function UpdatePasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+          <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <UpdatePasswordForm />
+    </Suspense>
   );
 }
