@@ -20,7 +20,9 @@ import { inventory } from './routes/inventory';
 const DATABASE_URL = defineSecret('DATABASE_URL');
 const DIRECT_URL = defineSecret('DIRECT_URL');
 const CRON_SECRET = defineSecret('CRON_SECRET');
-const APP_BASE_URL = defineString('APP_BASE_URL');
+// Empty default so `firebase deploy` never prompts. Set it to the App Hosting
+// URL once the backend exists (env/param); until then the cron calls no-op.
+const APP_BASE_URL = defineString('APP_BASE_URL', { default: '' });
 
 adminApp();
 
