@@ -2,6 +2,7 @@ node_modules/
 lib/
 *.log
 .env
+.env.*
 # Schema is copied from ../prisma at generate-time so the Prisma client ships
 # self-contained in the deploy bundle. Source of truth stays at ../prisma.
 prisma/
