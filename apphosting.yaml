@@ -6,11 +6,12 @@ runConfig:
   maxInstances: 4
 
 scripts:
-  # App Hosting already runs `npm ci` at the monorepo root (with workspace
-  # hoisting) before this command, so we must NOT re-run `npm install` inside
-  # apps/web — doing so rebuilds a partial node_modules and breaks resolution
-  # of workspace transitive deps (zustand, @supabase/ssr, @tanstack/react-query…).
-  buildCommand: "npx prisma generate --schema=prisma/schema.prisma && cd apps/web && npm run build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static && cp -r ../../node_modules/.prisma .next/standalone/node_modules/ && cp -r ../../node_modules/@prisma .next/standalone/node_modules/ && mkdir -p .next/standalone/prisma && cp ../../prisma/schema.prisma .next/standalone/prisma/schema.prisma"
+  # Run a full workspace install at the monorepo ROOT (as Vercel did) so npm
+  # hoists next + all workspace transitive deps (zustand, @supabase/ssr,
+  # @tanstack/react-query, @studio/*) into the root node_modules/.bin the
+  # apps/web build resolves against. Installing inside apps/web instead builds
+  # a partial tree and breaks module/binary resolution.
+  buildCommand: "npm install && npx prisma generate --schema=prisma/schema.prisma && cd apps/web && npm run build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static && cp -r ../../node_modules/.prisma .next/standalone/node_modules/ && cp -r ../../node_modules/@prisma .next/standalone/node_modules/ && mkdir -p .next/standalone/prisma && cp ../../prisma/schema.prisma .next/standalone/prisma/schema.prisma"
   runCommand: "cd apps/web/.next/standalone && HOSTNAME=0.0.0.0 node apps/web/server.js"
 
 env:
