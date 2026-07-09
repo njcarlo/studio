@@ -1,6 +1,7 @@
 import express from 'express';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { defineSecret, defineString } from 'firebase-functions/params';
 import { adminApp } from './lib/firebase';
 import { requireAuth } from './lib/http';
 import { workers } from './routes/workers';
@@ -13,6 +14,13 @@ import { settings } from './routes/settings';
 import { schedule } from './routes/schedule';
 import { venue } from './routes/venue';
 import { inventory } from './routes/inventory';
+
+// Runtime config. On deploy these bind to Secret Manager / env params and are
+// injected into process.env; in the emulator they come from functions/.env.
+const DATABASE_URL = defineSecret('DATABASE_URL');
+const DIRECT_URL = defineSecret('DIRECT_URL');
+const CRON_SECRET = defineSecret('CRON_SECRET');
+const APP_BASE_URL = defineString('APP_BASE_URL');
 
 adminApp();
 
@@ -53,14 +61,17 @@ app.use((_req, res) => { res.status(404).json({ error: 'Route not found' }); });
  * Single HTTPS function fronting the whole REST API (replaces the 10 separate
  * Supabase Edge Functions). Deployed at https://<region>-<project>.cloudfunctions.net/api
  */
-export const api = onRequest({ region: 'us-central1', memory: '512MiB' }, app);
+export const api = onRequest(
+  { region: 'us-central1', memory: '512MiB', secrets: [DATABASE_URL, DIRECT_URL] },
+  app,
+);
 
 // ── Scheduled jobs (replace vercel.json crons) ────────────────────────────
 // Trigger the Next.js cron endpoints (served by Firebase App Hosting) using
 // the same CRON_SECRET bearer contract they already enforce. Times are UTC to
 // match the previous Vercel cron schedules.
 async function callCron(path: string): Promise<void> {
-  const base = process.env.APP_BASE_URL;
+  const base = APP_BASE_URL.value() || process.env.APP_BASE_URL;
   const secret = process.env.CRON_SECRET;
   if (!base || !secret) {
     console.error(`[cron] APP_BASE_URL or CRON_SECRET not set — skipping ${path}`);
@@ -73,11 +84,11 @@ async function callCron(path: string): Promise<void> {
 }
 
 export const dailyJobs = onSchedule(
-  { schedule: '0 16 * * *', timeZone: 'Etc/UTC', region: 'us-central1' },
+  { schedule: '0 16 * * *', timeZone: 'Etc/UTC', region: 'us-central1', secrets: [CRON_SECRET] },
   async () => { await callCron('/api/cron/daily-jobs'); },
 );
 
 export const venueAssistance = onSchedule(
-  { schedule: '0 8 * * *', timeZone: 'Etc/UTC', region: 'us-central1' },
+  { schedule: '0 8 * * *', timeZone: 'Etc/UTC', region: 'us-central1', secrets: [CRON_SECRET] },
   async () => { await callCron('/api/cron/venue-assistance'); },
 );
