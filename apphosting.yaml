@@ -6,12 +6,11 @@ runConfig:
   maxInstances: 4
 
 scripts:
-  # Run a full workspace install at the monorepo ROOT (as Vercel did) so npm
-  # hoists next + all workspace transitive deps (zustand, @supabase/ssr,
-  # @tanstack/react-query, @studio/*) into the root node_modules/.bin the
-  # apps/web build resolves against. Installing inside apps/web instead builds
-  # a partial tree and breaks module/binary resolution.
-  buildCommand: "npm install && npx prisma generate --schema=prisma/schema.prisma && cd apps/web && npm run build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static && cp -r ../../node_modules/.prisma .next/standalone/node_modules/ && cp -r ../../node_modules/@prisma .next/standalone/node_modules/ && mkdir -p .next/standalone/prisma && cp ../../prisma/schema.prisma .next/standalone/prisma/schema.prisma"
+  # Full workspace install at the monorepo ROOT (as Vercel did) hoists next +
+  # all workspace transitive deps into the root node_modules. The App Hosting
+  # build env doesn't expose the workspace .bin on PATH, so invoke next via its
+  # module path directly (avoids 'next: not found') instead of `npm run build`.
+  buildCommand: "npm install && npx prisma generate --schema=prisma/schema.prisma && cd apps/web && node ../../node_modules/next/dist/bin/next build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static && cp -r ../../node_modules/.prisma .next/standalone/node_modules/ && cp -r ../../node_modules/@prisma .next/standalone/node_modules/ && mkdir -p .next/standalone/prisma && cp ../../prisma/schema.prisma .next/standalone/prisma/schema.prisma"
   runCommand: "cd apps/web/.next/standalone && HOSTNAME=0.0.0.0 node apps/web/server.js"
 
 env:
