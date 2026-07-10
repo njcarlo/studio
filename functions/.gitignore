@@ -1,5 +1,6 @@
 node_modules/
-lib/
+# tsc outDir (functions/lib) — do not ignore src/lib/
+/lib/
 *.log
 .env
 .env.*
