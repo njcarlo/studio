@@ -11,7 +11,10 @@ scripts:
   # `workspaces` field, which then fails with `npm error No workspaces found!`
   # (firebase/apphosting-adapters#569). Keep the build in package.json as
   # `apphosting:build` instead — the buildpack picks that up without rewriting.
-  runCommand: "cd apps/web/.next/standalone && HOSTNAME=0.0.0.0 node apps/web/server.js"
+  #
+  # runCommand is exec'd directly (not via a shell), so `cd` / env assignments
+  # must be wrapped in `sh -c`. Cloud Run sets PORT=8080; Next listens on it.
+  runCommand: "sh -c 'cd apps/web/.next/standalone && HOSTNAME=0.0.0.0 node apps/web/server.js'"
 
 env:
   # ── Database (Prisma → Postgres; source of truth during dual-write) ──
