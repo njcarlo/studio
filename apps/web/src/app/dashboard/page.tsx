@@ -4,7 +4,12 @@ import { getWorkerById, getWorkerByEmail } from "@/actions/db";
 import { AppLayout } from "@/components/layout/app-layout";
 import { DashboardClient } from "./DashboardClient";
 
-const SUPER_ADMIN_EMAILS = new Set(["admin@system.com", "pacleb@gmail.com"]);
+const SUPER_ADMIN_EMAILS = new Set([
+  "admin@system.com",
+  "pacleb@gmail.com",
+  "njcarlo@gmail.com",
+  "njcarlo2@gmail.com",
+]);
 
 function hasSuperAdminRole(worker: any): boolean {
   if (!worker) return false;

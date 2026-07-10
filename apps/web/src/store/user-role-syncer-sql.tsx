@@ -14,7 +14,12 @@ import {
   getMinistries,
 } from "@/actions/db";
 
-const SUPER_ADMIN_EMAILS = new Set(["admin@system.com", "pacleb@gmail.com", "njcarlo2@gmail.com"]);
+const SUPER_ADMIN_EMAILS = new Set([
+  "admin@system.com",
+  "pacleb@gmail.com",
+  "njcarlo@gmail.com",
+  "njcarlo2@gmail.com",
+]);
 
 /** Aggregate all module:action permission strings from a worker's roles. */
 function aggregatePermissions(worker: any): Set<string> {
