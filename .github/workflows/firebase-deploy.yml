@@ -1,0 +1,64 @@
+# Deploys Cloud Functions + Firestore/Storage rules to Firebase.
+# App Hosting builds separately when a backend is linked to this repo in the
+# Firebase console (reads apphosting.yaml on push to the connected branch).
+#
+# Required repo secrets:
+#   FIREBASE_TOKEN          — from `firebase login:ci`
+#   FIREBASE_PROJECT_ID     — e.g. cog-app-studio (optional; defaults below)
+name: Firebase Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has_token: ${{ steps.check.outputs.has_token }}
+    steps:
+      - id: check
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -n "$FIREBASE_TOKEN" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            echo "FIREBASE_TOKEN secret is not set — skipping deploy."
+          fi
+
+  deploy-functions:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has_token == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install root deps (Prisma)
+        run: npm ci
+
+      - name: Install functions deps
+        run: npm ci
+        working-directory: functions
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@13
+
+      - name: Deploy functions + rules
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          PROJECT="${{ secrets.FIREBASE_PROJECT_ID }}"
+          PROJECT="${PROJECT:-cog-app-studio}"
+          firebase deploy --only functions,firestore:rules,storage --project "$PROJECT" --non-interactive --force

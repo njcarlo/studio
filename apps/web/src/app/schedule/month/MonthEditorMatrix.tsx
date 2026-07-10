@@ -105,6 +105,70 @@ function CellPicker({
     );
 }
 
+function EmptyCellPicker({
+    ministryId,
+    onAssigned,
+}: {
+    ministryId: string;
+    onAssigned: (workerId: string, workerName: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState<EligibleWorker[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const search = async (q: string) => {
+        setQuery(q);
+        setLoading(true);
+        try {
+            const workers = await getEligibleWorkers({ ministryId, query: q, limit: 20 });
+            setResults(workers as any);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Popover open={open} onOpenChange={(v) => { setOpen(v); if (v) search(""); }}>
+            <PopoverTrigger asChild>
+                <button className="w-full min-w-[110px] rounded px-2 py-1.5 text-center text-xs text-gray-300 hover:bg-blue-50 hover:text-blue-600 transition">
+                    assign worker
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2">
+                <div className="relative mb-2">
+                    <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                    <Input
+                        value={query}
+                        onChange={(e) => search(e.target.value)}
+                        placeholder="Search worker..."
+                        className="pl-7 h-8 text-sm"
+                        autoFocus
+                    />
+                </div>
+                {loading ? (
+                    <div className="flex justify-center py-3"><LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                ) : (
+                    <div className="max-h-56 overflow-y-auto space-y-0.5">
+                        {results.length === 0 && !loading && (
+                            <div className="px-2 py-3 text-sm text-gray-400 italic">No workers found</div>
+                        )}
+                        {results.map((w) => (
+                            <button
+                                key={w.id}
+                                onClick={() => { onAssigned(w.id, `${w.firstName} ${w.lastName}`); setOpen(false); }}
+                                className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-blue-50"
+                            >
+                                {w.firstName} {w.lastName}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 function AddRoleOrSlotPopover({
     dateLabel,
     busy,
@@ -174,10 +238,12 @@ function AddRoleOrSlotPopover({
 function DatePickerPopover({
     trigger,
     selected,
+    defaultMonth,
     onSelect,
 }: {
     trigger: ReactNode;
     selected?: Date;
+    defaultMonth?: Date;
     onSelect: (date: Date) => void;
 }) {
     const [open, setOpen] = useState(false);
@@ -188,6 +254,7 @@ function DatePickerPopover({
                 <Calendar
                     mode="single"
                     selected={selected}
+                    defaultMonth={defaultMonth ?? selected}
                     onSelect={(date) => {
                         if (!date) return;
                         onSelect(date);
@@ -204,11 +271,13 @@ export function MonthEditorMatrix({
     ministries,
     onAddDate,
     onRescheduleDate,
+    defaultMonth,
 }: {
     schedules: Schedule[];
     ministries: Ministry[];
     onAddDate?: (date: Date) => void;
     onRescheduleDate?: (scheduleId: string, date: Date) => void;
+    defaultMonth?: Date;
 }) {
     const { toast } = useToast();
     const qc = useQueryClient();
@@ -239,16 +308,9 @@ export function MonthEditorMatrix({
 
         return Array.from(byMinistry.entries())
             .map(([ministryId, rows]) => {
-                const dateKeyByScheduleId = new Map(dateColumns.map((d) => [d.scheduleId, d.dateKey]));
-                const slotsByDate = new Map<string, string[]>();
-                for (const { dateKey } of dateColumns) {
-                    const slotTypes = Array.from(new Set(
-                        rows.filter((r) => dateKeyByScheduleId.get(r.scheduleId) === dateKey).map((r) => r.slotType || "Standard"),
-                    ));
-                    if (slotTypes.length) slotsByDate.set(dateKey, slotTypes);
-                }
+                const slotTypes = Array.from(new Set(rows.map((r) => r.slotType || "Standard")));
                 const roleNames = Array.from(new Set(rows.map((r) => r.roleName)));
-                return { ministryId, name: ministryName(ministryId), rows, slotsByDate, roleNames };
+                return { ministryId, name: ministryName(ministryId), rows, slotTypes, roleNames };
             })
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [sorted, dateColumns]);
@@ -277,6 +339,34 @@ export function MonthEditorMatrix({
         });
     };
 
+    const handleCreateAssignment = (
+        section: typeof ministrySections[number],
+        scheduleId: string,
+        roleName: string,
+        slotType: string,
+        workerId: string,
+        workerName: string,
+    ) => {
+        startTransition(async () => {
+            const order = section.rows.find((r) => r.roleName === roleName)?.order ?? 0;
+            const res: any = await upsertAssignment({
+                scheduleId,
+                ministryId: section.ministryId,
+                roleName,
+                workerId,
+                workerName,
+                order,
+                slotType: slotType === "Standard" ? undefined : slotType,
+            });
+            if (!res?.success) {
+                toast({ title: "Failed to assign", description: res?.error, variant: "destructive" });
+                return;
+            }
+            toast({ title: "Assigned" });
+            qc.invalidateQueries({ queryKey: ["service-schedules"] });
+        });
+    };
+
     const handleRemoveRole = (section: typeof ministrySections[number], roleName: string) => {
         const ids = section.rows.filter((r) => r.roleName === roleName).map((r) => r.id);
         if (!confirm(`Remove "${roleName}" from all ${ids.length} date(s) this month?`)) return;
@@ -296,7 +386,7 @@ export function MonthEditorMatrix({
         setBusy(true);
         try {
             const section = ministrySections.find((s) => s.ministryId === ministryId);
-            const slotTypes = section?.slotsByDate.get(dateKey) ?? ["Standard"];
+            const slotTypes = section?.slotTypes.length ? section.slotTypes : ["Standard"];
             const nextOrder = Math.max(0, ...(section?.rows.map((r) => r.order) ?? [])) + 1;
             const results: any[] = await Promise.all(
                 slotTypes.map((slotType) =>
@@ -352,7 +442,7 @@ export function MonthEditorMatrix({
                         <thead>
                             <tr>
                                 <th
-                                    colSpan={2 + dateColumns.reduce((n, dc) => n + (section.slotsByDate.get(dc.dateKey)?.length ?? 0) + 1, 0)}
+                                    colSpan={2 + dateColumns.length * (section.slotTypes.length + 1)}
                                     className="bg-blue-600 px-3 py-2 text-left font-semibold text-white"
                                 >
                                     {section.name}
@@ -361,10 +451,9 @@ export function MonthEditorMatrix({
                             <tr className="bg-blue-50">
                                 <th className="px-3 py-2 text-left font-medium text-gray-700 border-r whitespace-nowrap">Role</th>
                                 {dateColumns.map(({ dateKey, scheduleId }) => {
-                                    const slotTypes = section.slotsByDate.get(dateKey) ?? [];
                                     const dateObj = new Date(dateKey);
                                     return (
-                                        <th key={dateKey} colSpan={slotTypes.length + 1} className="px-3 py-2 text-center font-medium text-gray-700 border-l whitespace-nowrap">
+                                        <th key={dateKey} colSpan={section.slotTypes.length + 1} className="px-3 py-2 text-center font-medium text-gray-700 border-l whitespace-nowrap">
                                             <DatePickerPopover
                                                 selected={dateObj}
                                                 onSelect={(date) => onRescheduleDate?.(scheduleId, date)}
@@ -379,6 +468,7 @@ export function MonthEditorMatrix({
                                 })}
                                 <th rowSpan={2} className="border-l px-2 align-middle bg-blue-50">
                                     <DatePickerPopover
+                                        defaultMonth={defaultMonth}
                                         onSelect={(date) => onAddDate?.(date)}
                                         trigger={
                                             <button title="Add date" className="flex items-center justify-center rounded-full p-1.5 hover:bg-blue-100 transition">
@@ -391,13 +481,12 @@ export function MonthEditorMatrix({
                             <tr className="bg-blue-50/60">
                                 <th className="border-r" />
                                 {dateColumns.flatMap(({ dateKey, scheduleId }) => {
-                                    const slotTypes = section.slotsByDate.get(dateKey) ?? [];
                                     const dateObj = new Date(dateKey);
                                     const dateLabel = format(dateObj, "MMM d");
                                     return [
-                                        ...slotTypes.map((slotType) => (
+                                        ...section.slotTypes.map((slotType) => (
                                             <th key={`${dateKey}-${slotType}`} className="px-3 py-1.5 text-center text-xs font-medium text-gray-500 border-l">
-                                                {slotType}
+                                                {slotType === "Standard" ? "Whole day slot" : slotType}
                                             </th>
                                         )),
                                         <th key={`${dateKey}-add`} rowSpan={1 + section.roleNames.length} className="border-l px-1 align-middle bg-blue-50/60">
@@ -424,8 +513,7 @@ export function MonthEditorMatrix({
                                         </div>
                                     </td>
                                     {dateColumns.flatMap(({ dateKey, scheduleId }) => {
-                                        const slotTypes = section.slotsByDate.get(dateKey) ?? [];
-                                        return slotTypes.map((slotType) => {
+                                        return section.slotTypes.map((slotType) => {
                                             const assignment = findAssignment(section, roleName, scheduleId, slotType);
                                             return (
                                                 <td key={`${dateKey}-${slotType}`} className="p-0 text-center border-l border-t">
@@ -436,7 +524,12 @@ export function MonthEditorMatrix({
                                                             onAssigned={(workerId, workerName) => handleAssign(assignment, workerId, workerName)}
                                                         />
                                                     ) : (
-                                                        <span className="text-gray-300 text-xs">assign worker</span>
+                                                        <EmptyCellPicker
+                                                            ministryId={section.ministryId}
+                                                            onAssigned={(workerId, workerName) =>
+                                                                handleCreateAssignment(section, scheduleId, roleName, slotType, workerId, workerName)
+                                                            }
+                                                        />
                                                     )}
                                                 </td>
                                             );

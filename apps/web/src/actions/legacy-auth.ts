@@ -2,7 +2,18 @@
 
 import crypto from "crypto";
 import { prisma } from "@studio/database/prisma";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { firebaseAdminAuth } from "@/lib/firebase-admin";
+
+/** Firebase Admin has no `listUsers().find(...)` need — getUserByEmail throws
+ * `auth/user-not-found` instead of returning null, so this normalizes that. */
+async function findFirebaseUserByEmail(email: string) {
+  try {
+    return await firebaseAdminAuth.getUserByEmail(email);
+  } catch (error: any) {
+    if (error?.code === "auth/user-not-found") return null;
+    throw error;
+  }
+}
 
 type LegacyLoginResult = {
   success: boolean;
@@ -184,27 +195,21 @@ export async function legacyWorkerIdLogin(
       return { success: false, error: genericError };
     }
 
-    // Look up Supabase auth user by email to get the real UUID
-    const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
-    const authUser = authList?.users?.find(u => u.email === worker.email);
+    // Look up Firebase auth user by email
+    const authUser = await findFirebaseUserByEmail(worker.email);
 
     if (!authUser) {
-      // No Supabase auth user yet — create one
-      const { error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: worker.email,
-        password,
-        email_confirm: true,
-      });
-      if (createError) {
+      // No Firebase auth user yet — create one
+      try {
+        await firebaseAdminAuth.createUser({ email: worker.email, password, emailVerified: true });
+      } catch (createError: any) {
         await logLegacyAuthEvent("legacy_login_failed", `Failed to create auth user for worker #${workerId}: ${createError.message}`, workerId);
         return { success: false, error: genericError };
       }
     } else {
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
-        password,
-        email_confirm: true,
-      });
-      if (error) {
+      try {
+        await firebaseAdminAuth.updateUser(authUser.uid, { password, emailVerified: true });
+      } catch (error: any) {
         await logLegacyAuthEvent("legacy_login_failed", `Failed legacy login for worker #${workerId}: ${error.message}`, workerId);
         return { success: false, error: genericError };
       }
@@ -336,31 +341,29 @@ export async function completeFirstLoginPasswordChange(
 
     const finalEmail = updatedEmail || workerRecord.email;
 
-    // 3. Update Supabase User (Email & Password)
+    // 3. Update Firebase User (Email & Password)
 
-    // Look up the Supabase auth user by email to get the real UUID
-    const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
-    const authUser = authList?.users?.find(u => u.email === workerRecord.email);
+    const authUser = await findFirebaseUserByEmail(workerRecord.email);
 
     if (authUser) {
-      // Update existing Supabase auth user
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
-        email: finalEmail,
-        password: newPassword,
-        email_confirm: true,
-      });
-      if (error) {
+      try {
+        await firebaseAdminAuth.updateUser(authUser.uid, {
+          email: finalEmail,
+          password: newPassword,
+          emailVerified: true,
+        });
+      } catch (error: any) {
         return { success: false, error: `Failed to update account: ${error.message}` };
       }
     } else {
-      // No Supabase auth user yet — create one using the worker's DB id as the UUID if valid, else generate
-      const { error } = await supabaseAdmin.auth.admin.createUser({
-        email: finalEmail,
-        password: newPassword,
-        email_confirm: true,
-        user_metadata: { workerId: workerRecord.id },
-      });
-      if (error) {
+      // No Firebase auth user yet — create one
+      try {
+        await firebaseAdminAuth.createUser({
+          email: finalEmail,
+          password: newPassword,
+          emailVerified: true,
+        });
+      } catch (error: any) {
         return { success: false, error: `Failed to create account: ${error.message}` };
       }
     }

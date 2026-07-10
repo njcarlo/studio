@@ -53,15 +53,18 @@ next-env.d.ts
 # mobile signing & secrets
 *.jks
 *.keystore
-<<<<<<< HEAD
 
 /generated/prisma
 service-account.json
 /tmp/
 .env*.local
 package-lock.json
-=======
 ios/App/App/GoogleService-Info.plist
 android/app/google-services.json
 studio.code-workspace
->>>>>>> d0036a5 (chore: ignore studio.code-workspace in git repository)
+
+# firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

@@ -1,9 +1,9 @@
 import { prisma } from "@studio/database/prisma";
-import { getServerUser } from "@/lib/supabase-server";
+import { getServerUser } from "@/lib/firebase-auth-server";
 
 /**
- * Resolves the current caller from the request's Supabase session cookie
- * (via lib/supabase-server.ts) and confirms their Worker has the given
+ * Resolves the current caller from the request's Firebase session cookie
+ * (via lib/firebase-auth-server.ts) and confirms their Worker has the given
  * permission (or is a super-admin).
  *
  * Throws if there's no session, the worker can't be found, or the caller

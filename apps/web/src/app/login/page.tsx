@@ -23,8 +23,9 @@ import {
 } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@studio/store";
-import { supabase } from "@studio/database";
-import { 
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase-client";
+import {
   legacyWorkerIdLogin, 
   getWorkerAuthStatus, 
   completeFirstLoginPasswordChange 
@@ -124,12 +125,7 @@ export default function LoginPage() {
         loginEmail = result.email;
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: password,
-      });
-      
-      if (error) throw error;
+      await signInWithEmailAndPassword(firebaseAuth, loginEmail, password);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -186,12 +182,7 @@ export default function LoginPage() {
       }
 
       // Now sign in with the NEW password and NEW email
-      const { error } = await supabase.auth.signInWithPassword({
-        email: result.email,
-        password: newPassword,
-      });
-
-      if (error) throw error;
+      await signInWithEmailAndPassword(firebaseAuth, result.email, newPassword);
 
       toast({
         title: "Account Migrated",
@@ -218,10 +209,9 @@ export default function LoginPage() {
     }
     setIsResetting(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+      await sendPasswordResetEmail(firebaseAuth, resetEmail, {
+        url: `${window.location.origin}/auth/update-password`,
       });
-      if (error) throw error;
       toast({
         title: "Reset Email Sent",
         description: `Instructions sent to ${resetEmail}`,

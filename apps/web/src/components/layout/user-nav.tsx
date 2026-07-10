@@ -13,7 +13,8 @@ import {
 } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { supabase } from "@studio/database";
+import { signOut, sendPasswordResetEmail } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase-client";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useImpersonation } from "@/hooks/use-impersonation";
@@ -30,16 +31,15 @@ export function UserNav() {
       stopImpersonation();
       return;
     }
-    await supabase.auth.signOut();
+    await signOut(firebaseAuth);
   };
 
   const handleChangePassword = async () => {
     if (!user?.email) return;
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+      await sendPasswordResetEmail(firebaseAuth, user.email, {
+        url: `${window.location.origin}/auth/update-password`,
       });
-      if (error) throw error;
       toast({
         title: "Password Reset Email Sent",
         description: "Please check your inbox to reset your password.",

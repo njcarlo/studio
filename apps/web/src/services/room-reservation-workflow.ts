@@ -1,6 +1,7 @@
 import { prisma } from '@studio/database/prisma';
 import type { Booking } from '@prisma/client';
 import { WORKER_FLAGS } from '@/lib/permissions/registry';
+import { pingRoomDisplay } from '@/lib/room-display-ping';
 import * as ApprovalEngine from './approval-engine';
 import type { ApproverSpec, WorkflowWithStages } from './approval-engine';
 
@@ -61,8 +62,9 @@ export function bookingStatusForWorkflow(workflow: WorkflowWithStages): string {
 
 export async function syncBookingStatusFromWorkflow(workflow: WorkflowWithStages): Promise<void> {
     if (workflow.type !== ROOM_BOOKING_WORKFLOW_TYPE) return;
-    await prisma.booking.update({
+    const booking = await prisma.booking.update({
         where: { id: workflow.subjectId },
         data: { status: bookingStatusForWorkflow(workflow) },
     });
+    void pingRoomDisplay(booking.roomId);
 }

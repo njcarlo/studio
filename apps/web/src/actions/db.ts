@@ -1,6 +1,7 @@
 "use server";
 
 import { randomBytes } from 'crypto';
+import type { Booking } from '@prisma/client';
 import { prisma } from '@studio/database/prisma';
 import { unstable_cache } from 'next/cache';
 import {
@@ -21,6 +22,7 @@ import { NotificationService } from '@/services/notification-service';
 import { writeAudit } from '@/lib/audit/log';
 import * as ApprovalEngine from '@/services/approval-engine';
 import * as RoomReservationWorkflow from '@/services/room-reservation-workflow';
+import { pingRoomDisplay } from '@/lib/room-display-ping';
 import * as MajorEventWorkflow from '@/services/major-event-workflow';
 import * as mealsAttendanceService from '@/services/meals-attendance';
 import * as MasterScheduleService from '@/services/master-schedule';
@@ -353,111 +355,26 @@ export async function getPaginatedWorkers(
         sortDir?: 'asc' | 'desc';
     } = {}
 ) {
-    const where: any = {};
-    if (filters.ministryIds && filters.ministryIds.length > 0) {
-        where.OR = [
-            { majorMinistryId: { in: filters.ministryIds } },
-            { minorMinistryId: { in: filters.ministryIds } }
-        ];
-    }
-    if (filters.search) {
-        const q = filters.search.trim();
-        const mode = filters.searchMode || 'workerId';
-        where.AND = [{
-            OR: mode === 'workerId'
-                ? [{ workerId: { contains: q, mode: 'insensitive' } }]
-                : [
-                    { firstName: { contains: q, mode: 'insensitive' } },
-                    { lastName: { contains: q, mode: 'insensitive' } },
-                ]
-        }];
-    }
-
-    const sortField = filters.sortField || 'role';
-    const sortDir = filters.sortDir || 'asc';
-    const dirSql = sortDir.toUpperCase();
     const offset = (page - 1) * limit;
 
-    // Build ORDER BY
-    let orderByClause: string;
-    if (sortField === 'workerId') {
-        orderByClause = `w."workerId" ${dirSql} NULLS LAST`;
-    } else if (sortField === 'name') {
-        orderByClause = `w."firstName" ${dirSql}, w."lastName" ${dirSql}`;
-    } else if (sortField === 'status') {
-        orderByClause = `w."status" ${dirSql}`;
-    } else if (sortField === 'contact') {
-        orderByClause = `w.email ${dirSql}`;
-    } else if (sortField === 'role') {
-        // Role weight: Senior Pastor (1) > Department Head (2) > Ministry Head (3)
-        // > any other assigned role, sorted alphabetically (4) > base/Viewer/no role (5)
-        orderByClause = `
-            CASE
-                WHEN w."isSeniorPastor" THEN 1
-                WHEN w.id IN (SELECT "headId" FROM "DepartmentSetting" WHERE "headId" IS NOT NULL) THEN 2
-                WHEN w.id IN (SELECT "headId" FROM "Ministry" WHERE "headId" IS NOT NULL) THEN 3
-                WHEN r.name IS NOT NULL AND r.name <> 'Viewer' THEN 4
-                ELSE 5
-            END ${dirSql},
-            CASE WHEN r.name IS NOT NULL AND r.name <> 'Viewer' THEN r.name ELSE NULL END ${dirSql},
-            w."firstName" ${dirSql}, w."lastName" ${dirSql}`;
-    } else {
-        orderByClause = `w."createdAt" DESC`;
-    }
+    // fn_workers_search (supabase/migrations/20260628110920_booking_worker_perf.sql)
+    // runs count + select as one query (COUNT(*) OVER()) and routes the
+    // search filter through trigram indexes instead of a seq scan — needed
+    // once Worker passes ~20k rows.
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT * FROM fn_workers_search($1, $2, $3, $4, $5, $6, $7, $8)`,
+        filters.search?.trim() || null,
+        filters.searchMode || 'workerId',
+        filters.ministryIds && filters.ministryIds.length > 0 ? filters.ministryIds : null,
+        filters.status || null,
+        filters.sortField || 'role',
+        filters.sortDir || 'asc',
+        limit,
+        offset,
+    );
 
-    // Build WHERE conditions for raw query
-    const conditions: string[] = [];
-    const queryParams: any[] = [];
-    let paramIdx = 1;
-
-    if (filters.ministryIds && filters.ministryIds.length > 0) {
-        const ids = filters.ministryIds;
-        const majorPlaceholders = ids.map(() => `$${paramIdx++}`).join(', ');
-        const minorPlaceholders = ids.map(() => `$${paramIdx++}`).join(', ');
-        conditions.push(`(w."majorMinistryId" IN (${majorPlaceholders}) OR w."minorMinistryId" IN (${minorPlaceholders}))`);
-        queryParams.push(...ids, ...ids);
-    }
-
-    if (filters.status) {
-        conditions.push(`w."status" = $${paramIdx++}`);
-        queryParams.push(filters.status);
-    }
-
-    if (filters.search) {
-        const q = `%${filters.search.trim()}%`;
-        if (filters.searchMode === 'name') {
-            conditions.push(`(w."firstName" ILIKE $${paramIdx} OR w."lastName" ILIKE $${paramIdx})`);
-            queryParams.push(q);
-            paramIdx++;
-        } else {
-            conditions.push(`w."workerId" ILIKE $${paramIdx}`);
-            queryParams.push(q);
-            paramIdx++;
-        }
-    }
-
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-    // Run count + paginated fetch in parallel
-    const [countResult, workers] = await Promise.all([
-        prisma.$queryRawUnsafe<[{ count: bigint }]>(
-            `SELECT COUNT(*) as count FROM "Worker" w ${whereClause}`,
-            ...queryParams
-        ),
-        prisma.$queryRawUnsafe<any[]>(
-            `SELECT w.id, w."workerId", w."firstName", w."lastName", w.email, w.phone, w."roleId", w.status,
-                    w."avatarUrl", w."majorMinistryId", w."minorMinistryId", w."employmentType",
-                    w."passwordChangeRequired", w."qrToken", w."createdAt", w."capabilities"
-             FROM "Worker" w
-             LEFT JOIN "Role" r ON r.id = w."roleId"
-             ${whereClause}
-             ORDER BY ${orderByClause}
-             LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
-            ...queryParams, limit, offset
-        ),
-    ]);
-
-    const total = Number(countResult[0]?.count ?? 0);
+    const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
+    const workers = rows.map(({ total_count, ...rest }) => rest);
     return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
@@ -778,12 +695,14 @@ export async function respondToApproval(
                 });
             }
             if (updated.type === 'Room Booking' && updated.reservationId) {
-                await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Approved' } });
+                const booking = await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Approved' } });
+                void pingRoomDisplay(booking.roomId);
             }
         }
 
         if (nextStatus === 'Rejected' && updated.type === 'Room Booking' && updated.reservationId) {
-            await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Rejected' } });
+            const booking = await tx.booking.update({ where: { id: updated.reservationId }, data: { status: 'Rejected' } });
+            void pingRoomDisplay(booking.roomId);
         }
 
         return updated;
@@ -1273,16 +1192,9 @@ export async function getBookings(filters: {
 }
 
 export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-    return prisma.booking.findMany({
-        where: {
-            roomId,
-            start: { gte: startOfDay, lte: endOfDay },
-        },
-    });
+    // fn_room_bookings_for_date (supabase/migrations/20260628110920_booking_worker_perf.sql)
+    // does the day-boundary math in SQL and is backed by idx_booking_room_start.
+    return prisma.$queryRaw<Booking[]>`SELECT * FROM fn_room_bookings_for_date(${roomId}, ${date}::date)`;
 }
 
 export const createBooking = withPermission(
@@ -1314,6 +1226,7 @@ export const createBooking = withPermission(
             revalidatePath('/reservations');
             revalidatePath('/dashboard');
             revalidatePath('/approvals');
+            void pingRoomDisplay(booking.roomId);
             return booking;
         } catch (err: any) {
             console.error('[createBooking] Prisma error:', err);
@@ -1331,6 +1244,7 @@ export const updateBooking = withPermission(
         });
         revalidatePath('/reservations');
         revalidatePath('/dashboard');
+        void pingRoomDisplay(booking.roomId);
         return booking;
     }
 );
@@ -1338,9 +1252,10 @@ export const updateBooking = withPermission(
 export const deleteBooking = withPermission(
     PERMISSIONS.venues.delete,
     async (_ctx, id: string) => {
-        await prisma.booking.delete({ where: { id } });
+        const booking = await prisma.booking.delete({ where: { id } });
         revalidatePath('/reservations');
         revalidatePath('/dashboard');
+        void pingRoomDisplay(booking.roomId);
     }
 );
 

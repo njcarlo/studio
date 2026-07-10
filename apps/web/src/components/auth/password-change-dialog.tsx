@@ -10,7 +10,8 @@ import {
   AlertDialogTitle,
 } from '@studio/ui';
 import { Button, Input, Label } from '@studio/ui';
-import { supabase } from '@studio/database';
+import { updatePassword } from 'firebase/auth';
+import { firebaseAuth } from '@/lib/firebase-client';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useToast } from '@/hooks/use-toast';
 import { updateWorker } from '@/actions/db';
@@ -37,8 +38,8 @@ export function PasswordChangeDialog() {
     }
     setSaving(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+      if (!firebaseAuth.currentUser) throw new Error('Not signed in.');
+      await updatePassword(firebaseAuth.currentUser, newPassword);
 
       if (workerProfile?.id) {
         await updateWorker(workerProfile.id, { passwordChangeRequired: false });

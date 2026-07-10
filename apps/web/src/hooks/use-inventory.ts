@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { supabaseBrowser } from '@/lib/supabase-browser';
 import {
-    getDashboardStats, getLogs, getItems, getCategories,
+    getDashboardStats, getLogs, getItems, getCategories, getLocations,
     adjustStock, createItem as apiCreateItem, updateItem as apiUpdateItem, deleteItem as apiDeleteItem,
     getBorrowings, createBorrowing, returnBorrowing,
+    bulkUpdateItems as apiBulkUpdate, bulkDeleteItems as apiBulkDelete, bulkImportItems as apiBulkImport,
 } from '@/services/inventory-api';
 
 export function useInventory(ministryId?: string | null) {
@@ -74,13 +74,8 @@ export function useInventory(ministryId?: string | null) {
     const fetchLocations = useCallback(async () => {
         if (!ministryId) return;
         try {
-            const { data } = await supabaseBrowser
-                .from('InventoryItem')
-                .select('location')
-                .eq('group', ministryId)
-                .not('location', 'is', null);
-            const unique = [...new Set((data ?? []).map((d: any) => d.location).filter(Boolean))];
-            setLocations(unique.map((name: string) => ({ id: name, name })));
+            const data = await getLocations(ministryId);
+            setLocations(data);
         } catch (e) {
             console.error('Failed to fetch locations', e);
         }
@@ -131,19 +126,19 @@ export function useInventory(ministryId?: string | null) {
     };
 
     const bulkUpdateItems = async (ids: string[], payload: any) => {
-        await supabaseBrowser.from('InventoryItem').update(payload).in('id', ids);
+        await apiBulkUpdate(ids, payload);
         fetchItems();
     };
 
     const bulkDeleteItems = async (ids: string[]) => {
-        await supabaseBrowser.from('InventoryItem').delete().in('id', ids);
+        await apiBulkDelete(ids);
         fetchItems();
         fetchStats();
     };
 
     const bulkImportItems = async (rows: any[]) => {
         const tagged = rows.map(r => ({ ...r, group: ministryId }));
-        await supabaseBrowser.from('InventoryItem').insert(tagged);
+        await apiBulkImport(tagged);
         fetchItems();
         fetchStats();
     };

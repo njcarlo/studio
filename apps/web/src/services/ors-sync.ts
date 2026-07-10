@@ -1,5 +1,5 @@
 import { prisma } from '@studio/database/prisma';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { firebaseAdminAuth } from '@/lib/firebase-admin';
 
 const ORS_BASE = 'https://cogdasma.com/ors-reader/public';
 
@@ -322,29 +322,23 @@ async function logBatchSummary(action: string, label: string, result: ImportResu
 }
 
 /**
- * Repoints the Supabase Auth account from `oldEmail` to `newEmail` so an ORS
+ * Repoints the Firebase Auth account from `oldEmail` to `newEmail` so an ORS
  * email change doesn't orphan the worker's login. Refuses to proceed if
  * `newEmail` already belongs to a different auth user (collision), or if no
  * auth user exists yet for `oldEmail` (nothing to repoint — the Prisma email
  * write would otherwise desync from `legacy-auth.ts`'s lookup-by-email).
  * Returns true only when it's safe for the caller to also update Prisma.
  */
-async function syncSupabaseAuthEmail(oldEmail: string, newEmail: string): Promise<boolean> {
+async function syncFirebaseAuthEmail(oldEmail: string, newEmail: string): Promise<boolean> {
     try {
-        const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
-        const users = authList?.users ?? [];
-
-        const collision = users.find(u => u.email === newEmail);
+        const collision = await firebaseAdminAuth.getUserByEmail(newEmail).catch(() => null);
         if (collision) return false;
 
-        const authUser = users.find(u => u.email === oldEmail);
+        const authUser = await firebaseAdminAuth.getUserByEmail(oldEmail).catch(() => null);
         if (!authUser) return false;
 
-        const { error } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
-            email: newEmail,
-            email_confirm: true,
-        });
-        return !error;
+        await firebaseAdminAuth.updateUser(authUser.uid, { email: newEmail, emailVerified: true });
+        return true;
     } catch {
         return false;
     }
@@ -787,7 +781,7 @@ export async function syncOrsUpdatedWorkers(
             if (wants('First Name')) data.firstName = w.first_name || existing.firstName;
             if (wants('Last Name')) data.lastName = w.last_name || existing.lastName;
             if (wants('Email') && w.email && w.email !== existing.email) {
-                const emailUpdated = await syncSupabaseAuthEmail(existing.email, w.email);
+                const emailUpdated = await syncFirebaseAuthEmail(existing.email, w.email);
                 if (emailUpdated) {
                     data.email = w.email;
                 } else {

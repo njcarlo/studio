@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { User, Building2, Shield, Save, Package, UserCog, Search, CheckCircle, X } from 'lucide-react';
 import { useInventoryAuth } from '@/hooks/use-inventory-auth';
-import { supabaseBrowser } from '@/lib/supabase-browser';
+import {
+  getMinistrySummary,
+  searchWorkersForInventory,
+  toggleInventoryWorkerPerm,
+} from '@/services/inventory-api';
 
 const INVENTORY_ROLES = [
   { key: 'inventory:manage', label: 'Inventory Officer', description: 'Full CRUD — create, edit, delete items and manage stock' },
@@ -26,10 +30,12 @@ export function Settings() {
 
   useEffect(() => {
     if (!ministryId) return;
-    supabaseBrowser.from('Ministry').select('id, name, description, departmentCode').eq('id', ministryId).maybeSingle()
-      .then(({ data }) => setMinistry(data));
-    supabaseBrowser.from('InventoryItem').select('id', { count: 'exact', head: true }).eq('group', ministryId)
-      .then(({ count }) => setItemCount(count ?? 0));
+    getMinistrySummary(ministryId)
+      .then(({ ministry: m, itemCount: count }) => {
+        setMinistry(m);
+        setItemCount(count);
+      })
+      .catch((e) => console.error(e));
   }, [ministryId]);
 
   const handleSave = async () => {
@@ -44,19 +50,15 @@ export function Settings() {
     if (!workerSearch.trim()) return;
     setSearching(true);
     setSearchResults([]);
-    const q = workerSearch.trim();
-    const { data } = await supabaseBrowser
-      .from('Worker')
-      .select(`
-        id, firstName, lastName, email, majorMinistryId,
-        roles:WorkerRole(
-          role:Role(id, name, rolePermissions:RolePermission(permission:Permission(module, action)))
-        )
-      `)
-      .or(`email.ilike.%${q}%,firstName.ilike.%${q}%,lastName.ilike.%${q}%`)
-      .limit(10);
-    setSearchResults(data ?? []);
-    setSearching(false);
+    try {
+      const data = await searchWorkersForInventory(workerSearch.trim());
+      setSearchResults(data ?? []);
+    } catch (e) {
+      console.error(e);
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
   };
 
   const getWorkerInventoryPerms = (worker: any): string[] => {
@@ -74,31 +76,13 @@ export function Settings() {
     setAssigningId(worker.id + permKey);
     setAssignMsg('');
     try {
-      const [module, action] = permKey.split(':');
-      let { data: perm } = await supabaseBrowser.from('Permission').select('id').eq('module', module).eq('action', action).maybeSingle();
-      if (!perm) {
-        const { data: newPerm } = await supabaseBrowser.from('Permission').insert({ module, action, description: INVENTORY_ROLES.find(r => r.key === permKey)?.description }).select('id').single();
-        perm = newPerm;
-      }
-      if (!perm) throw new Error('Permission not found');
-
-      const roleName = INVENTORY_ROLES.find(r => r.key === permKey)?.label ?? permKey;
-      let { data: role } = await supabaseBrowser.from('Role').select('id').eq('name', roleName).maybeSingle();
-      if (!role) {
-        const { data: newRole } = await supabaseBrowser.from('Role').insert({ name: roleName, permissions: [], isSuperAdmin: false, isSystemRole: false }).select('id').single();
-        role = newRole;
-        if (role) await supabaseBrowser.from('RolePermission').insert({ roleId: role.id, permissionId: perm.id });
-      }
-      if (!role) throw new Error('Could not find or create role');
-
-      if (currentlyHas) {
-        await supabaseBrowser.from('WorkerRole').delete().eq('workerId', worker.id).eq('roleId', role.id);
-        setAssignMsg(`Removed ${roleName} from ${worker.firstName}`);
-      } else {
-        await supabaseBrowser.from('WorkerRole').upsert({ workerId: worker.id, roleId: role.id }, { onConflict: 'workerId,roleId' });
-        setAssignMsg(`Granted ${roleName} to ${worker.firstName}`);
-      }
-
+      const result = await toggleInventoryWorkerPerm(worker.id, permKey, currentlyHas);
+      const roleName = result.roleName;
+      setAssignMsg(
+        result.removed
+          ? `Removed ${roleName} from ${worker.firstName}`
+          : `Granted ${roleName} to ${worker.firstName}`,
+      );
       await handleWorkerSearch();
     } catch (e: any) {
       setAssignMsg(`Error: ${e.message}`);

@@ -1,12 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/venue-assistance",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/daily-jobs",
-      "schedule": "0 16 * * *"
-    }
-  ]
+  "ignoreCommand": "exit 1"
 }

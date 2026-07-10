@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Church, LoaderCircle } from "lucide-react";
 import {
   Card,
@@ -14,43 +14,40 @@ import {
   Label,
 } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@studio/database";
+import { verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase-client";
 
-export default function UpdatePasswordPage() {
+function UpdatePasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [hasRecoverySession, setHasRecoverySession] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  // Firebase's password-reset email links to this page with
+  // ?mode=resetPassword&oobCode=... appended (the `url` passed to
+  // sendPasswordResetEmail) — there is no session to detect, unlike
+  // Supabase's PASSWORD_RECOVERY event flow this replaces.
+  const oobCode = searchParams.get("oobCode");
+
+  const [isValidCode, setIsValidCode] = useState(false);
+  const [isCheckingCode, setIsCheckingCode] = useState(true);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Supabase exchanges the recovery link's token for a session and emits
-    // a PASSWORD_RECOVERY event; fall back to checking for any active
-    // session in case the event already fired before this mounted.
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        setHasRecoverySession(true);
-        setIsCheckingSession(false);
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setHasRecoverySession(true);
-      }
-      setIsCheckingSession(false);
-    });
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+    if (!oobCode) {
+      setIsCheckingCode(false);
+      return;
+    }
+    verifyPasswordResetCode(firebaseAuth, oobCode)
+      .then(() => setIsValidCode(true))
+      .catch(() => setIsValidCode(false))
+      .finally(() => setIsCheckingCode(false));
+  }, [oobCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!oobCode) return;
 
     if (password.length < 6) {
       toast({
@@ -71,14 +68,12 @@ export default function UpdatePasswordPage() {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      await confirmPasswordReset(firebaseAuth, oobCode, password);
 
       toast({
         title: "Password Updated",
         description: "Your password has been changed. Please sign in with your new password.",
       });
-      await supabase.auth.signOut();
       router.push("/login");
     } catch (error: any) {
       toast({
@@ -100,19 +95,19 @@ export default function UpdatePasswordPage() {
           </div>
           <CardTitle>Set a New Password</CardTitle>
           <CardDescription>
-            {isCheckingSession
+            {isCheckingCode
               ? "Verifying your reset link…"
-              : hasRecoverySession
+              : isValidCode
                 ? "Enter and confirm your new password below."
                 : "This password reset link is invalid or has expired. Please request a new one from the login page."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isCheckingSession ? (
+          {isCheckingCode ? (
             <div className="flex justify-center py-6">
               <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : hasRecoverySession ? (
+          ) : isValidCode ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
@@ -152,5 +147,21 @@ export default function UpdatePasswordPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// useSearchParams() forces client-side rendering, so the page must sit behind a
+// Suspense boundary or Next.js 15 static generation bails out at build time.
+export default function UpdatePasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+          <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <UpdatePasswordForm />
+    </Suspense>
   );
 }
