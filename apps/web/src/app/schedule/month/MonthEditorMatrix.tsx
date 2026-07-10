@@ -339,6 +339,34 @@ export function MonthEditorMatrix({
         });
     };
 
+    const handleCreateAssignment = (
+        section: typeof ministrySections[number],
+        scheduleId: string,
+        roleName: string,
+        slotType: string,
+        workerId: string,
+        workerName: string,
+    ) => {
+        startTransition(async () => {
+            const order = section.rows.find((r) => r.roleName === roleName)?.order ?? 0;
+            const res: any = await upsertAssignment({
+                scheduleId,
+                ministryId: section.ministryId,
+                roleName,
+                workerId,
+                workerName,
+                order,
+                slotType: slotType === "Standard" ? undefined : slotType,
+            });
+            if (!res?.success) {
+                toast({ title: "Failed to assign", description: res?.error, variant: "destructive" });
+                return;
+            }
+            toast({ title: "Assigned" });
+            qc.invalidateQueries({ queryKey: ["service-schedules"] });
+        });
+    };
+
     const handleRemoveRole = (section: typeof ministrySections[number], roleName: string) => {
         const ids = section.rows.filter((r) => r.roleName === roleName).map((r) => r.id);
         if (!confirm(`Remove "${roleName}" from all ${ids.length} date(s) this month?`)) return;

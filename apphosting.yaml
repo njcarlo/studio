@@ -1,11 +1,21 @@
+# Firebase App Hosting — canonical deploy target for the COG web app.
+# Replaces Vercel (vercel.json removed). App Hosting builds and runs the
+# Next.js standalone server; the Admin SDK authenticates via the backend's
+# Application Default Credentials (no service-account file needed on-platform).
 runConfig:
   maxInstances: 4
+
 scripts:
-  buildCommand: "npx prisma generate --schema=prisma/schema.prisma && cd apps/web && npm install && npm run build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static && cp -r ../../node_modules/.prisma .next/standalone/node_modules/ && cp -r ../../node_modules/@prisma .next/standalone/node_modules/ && mkdir -p .next/standalone/prisma && cp ../../prisma/schema.prisma .next/standalone/prisma/schema.prisma"
+  # App Hosting's default install skips workspaces (installs only the root
+  # package's ~34 deps), so next/react/etc. from apps/web never land in
+  # node_modules. Force a full workspace install so everything hoists into the
+  # root node_modules, then invoke next via its module path (the build env
+  # doesn't put workspace .bin on PATH).
+  buildCommand: "npm install --workspaces --include-workspace-root && npx prisma generate --schema=prisma/schema.prisma && cd apps/web && node ../../node_modules/next/dist/bin/next build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static && cp -r ../../node_modules/.prisma .next/standalone/node_modules/ && cp -r ../../node_modules/@prisma .next/standalone/node_modules/ && mkdir -p .next/standalone/prisma && cp ../../prisma/schema.prisma .next/standalone/prisma/schema.prisma"
   runCommand: "cd apps/web/.next/standalone && HOSTNAME=0.0.0.0 node apps/web/server.js"
 
-
 env:
+  # ── Database (Prisma → Postgres; source of truth during dual-write) ──
   - variable: DATABASE_URL
     secret: DATABASE_URL
     availability:
@@ -16,6 +26,47 @@ env:
     availability:
       - BUILD
       - RUNTIME
+
+  # ── Firebase web SDK config (public client config; inlined at build) ──
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: NEXT_PUBLIC_FIREBASE_APP_ID
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ── Scheduled jobs (Cloud Functions call the /api/cron/* endpoints) ──
+  - variable: CRON_SECRET
+    secret: CRON_SECRET
+    availability:
+      - RUNTIME
+
+  # ── Legacy Supabase (still used by the Inventory browser module until
+  #    it is cut over to Firebase; remove once that migration lands) ──
   - variable: NEXT_PUBLIC_SUPABASE_URL
     secret: NEXT_PUBLIC_SUPABASE_URL
     availability:
