@@ -17,7 +17,7 @@
     "typecheck": "turbo run typecheck",
     "migrate:sql": "tsx scripts/migrate.ts",
     "prepare": "husky || true",
-    "apphosting:build": "HUSKY=0 npm install --workspaces --include-workspace-root && npx prisma generate --schema=prisma/schema.prisma && cd apps/web && node ../../node_modules/next/dist/bin/next build && cp -r public .next/standalone/apps/web/public && cp -r .next/static .next/standalone/apps/web/.next/static && cp -r ../../node_modules/.prisma .next/standalone/node_modules/ && cp -r ../../node_modules/@prisma .next/standalone/node_modules/ && mkdir -p .next/standalone/prisma && cp ../../prisma/schema.prisma .next/standalone/prisma/schema.prisma"
+    "apphosting:build": "sh scripts/apphosting-build.sh"
   },
   "devDependencies": {
     "husky": "^9.1.7",

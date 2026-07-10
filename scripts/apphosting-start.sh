@@ -17,4 +17,10 @@ if [ ! -f "$SERVER" ]; then
   exit 1
 fi
 
+# Verify static assets exist (ChunkLoadError if missing after a bad copy).
+if [ ! -d "apps/web/.next/standalone/apps/web/.next/static/chunks" ]; then
+  echo "apphosting-start: missing standalone static/chunks — rebuild required" >&2
+  exit 1
+fi
+
 exec node "$SERVER"

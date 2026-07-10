@@ -25,6 +25,7 @@ export const viewport: Viewport = {
 
 import { AuthSync } from "./auth-sync";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
+import { ChunkLoadRecovery } from "@/components/chunk-load-recovery";
 
 export default function RootLayout({
   children,
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <ReactQueryProvider>
           <AuthSync>
+            <ChunkLoadRecovery />
             {children}
             <Toaster />
           </AuthSync>
