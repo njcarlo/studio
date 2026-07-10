@@ -357,24 +357,101 @@ export async function getPaginatedWorkers(
 ) {
     const offset = (page - 1) * limit;
 
-    // fn_workers_search (supabase/migrations/20260628110920_booking_worker_perf.sql)
-    // runs count + select as one query (COUNT(*) OVER()) and routes the
-    // search filter through trigram indexes instead of a seq scan — needed
-    // once Worker passes ~20k rows.
-    const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM fn_workers_search($1, $2, $3, $4, $5, $6, $7, $8)`,
-        filters.search?.trim() || null,
-        filters.searchMode || 'workerId',
-        filters.ministryIds && filters.ministryIds.length > 0 ? filters.ministryIds : null,
-        filters.status || null,
-        filters.sortField || 'role',
-        filters.sortDir || 'asc',
-        limit,
-        offset,
-    );
+    // Prefer fn_workers_search when present (trigram + COUNT(*) OVER for large
+    // Worker tables). Fall back to Prisma when the SQL function has not been
+    // applied to the target DB (common on App Hosting / fresh Postgres).
+    try {
+        const rows = await prisma.$queryRawUnsafe<any[]>(
+            `SELECT * FROM fn_workers_search($1, $2, $3, $4, $5, $6, $7, $8)`,
+            filters.search?.trim() || null,
+            filters.searchMode || 'workerId',
+            filters.ministryIds && filters.ministryIds.length > 0 ? filters.ministryIds : null,
+            filters.status || null,
+            filters.sortField || 'role',
+            filters.sortDir || 'asc',
+            limit,
+            offset,
+        );
 
-    const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
-    const workers = rows.map(({ total_count, ...rest }) => rest);
+        const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
+        const workers = rows.map(({ total_count, ...rest }) => rest);
+        return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
+    } catch (err) {
+        console.warn('[getPaginatedWorkers] fn_workers_search unavailable; Prisma fallback', err);
+    }
+
+    const and: any[] = [];
+    if (filters.ministryIds?.length) {
+        and.push({
+            OR: [
+                { majorMinistryId: { in: filters.ministryIds } },
+                { minorMinistryId: { in: filters.ministryIds } },
+            ],
+        });
+    }
+    if (filters.status) and.push({ status: filters.status });
+    const q = filters.search?.trim();
+    if (q) {
+        and.push(
+            filters.searchMode === 'name'
+                ? {
+                      OR: [
+                          { firstName: { contains: q, mode: 'insensitive' } },
+                          { lastName: { contains: q, mode: 'insensitive' } },
+                      ],
+                  }
+                : { workerId: { contains: q, mode: 'insensitive' } },
+        );
+    }
+    const where = and.length ? { AND: and } : {};
+    const dir = filters.sortDir === 'desc' ? 'desc' : 'asc';
+
+    let orderBy: any;
+    switch (filters.sortField) {
+        case 'workerId':
+            orderBy = { workerId: dir };
+            break;
+        case 'name':
+            orderBy = [{ firstName: dir }, { lastName: dir }];
+            break;
+        case 'status':
+            orderBy = { status: dir };
+            break;
+        case 'contact':
+            orderBy = { email: dir };
+            break;
+        default:
+            orderBy = [{ role: { name: dir } }, { firstName: 'asc' }, { lastName: 'asc' }];
+    }
+
+    const [total, workers] = await prisma.$transaction([
+        prisma.worker.count({ where }),
+        prisma.worker.findMany({
+            where,
+            orderBy,
+            skip: offset,
+            take: limit,
+            select: {
+                id: true,
+                workerId: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                roleId: true,
+                status: true,
+                avatarUrl: true,
+                majorMinistryId: true,
+                minorMinistryId: true,
+                employmentType: true,
+                passwordChangeRequired: true,
+                qrToken: true,
+                createdAt: true,
+                capabilities: true,
+            },
+        }),
+    ]);
+
     return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
