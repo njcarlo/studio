@@ -2,57 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { Download, AlertTriangle, TrendingUp, BarChart3, PieChart, Activity } from 'lucide-react';
-import { supabaseBrowser } from '@/lib/supabase-browser';
+import { getReportsData } from '@/services/inventory-api';
 import { useInventoryAuth } from '@/hooks/use-inventory-auth';
 
 interface AnalyticsData {
   mostUsed: { item: any; count: number }[];
   stockByCategory: { name: string; count: number }[];
   lowStockItems: any[];
-}
-
-async function fetchAnalytics(ministryId: string | null): Promise<AnalyticsData> {
-  // Most-used items: count borrowings per item
-  let borrowQuery = supabaseBrowser
-    .from('InventoryBorrowing')
-    .select('itemId, item:InventoryItem!inner(id, name, group)');
-  if (ministryId) borrowQuery = borrowQuery.eq('item.group', ministryId);
-  const { data: borrowings } = await borrowQuery;
-
-  const countMap = new Map<string, { item: any; count: number }>();
-  for (const b of borrowings ?? []) {
-    const key = b.itemId;
-    if (!countMap.has(key)) countMap.set(key, { item: b.item, count: 0 });
-    countMap.get(key)!.count += 1;
-  }
-  const mostUsed = Array.from(countMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8);
-
-  // Stock by category
-  let itemQuery = supabaseBrowser
-    .from('InventoryItem')
-    .select('categoryId, quantity, minQuantity, status, name, inventoryCode, category:InventoryCategory(id,name)');
-  if (ministryId) itemQuery = itemQuery.eq('group', ministryId);
-  const { data: items } = await itemQuery;
-
-  const catMap = new Map<string, { name: string; count: number }>();
-  for (const item of items ?? []) {
-    const cat = (item as any).category;
-    const key = cat?.id ?? 'uncategorized';
-    const label = cat?.name ?? 'Uncategorized';
-    if (!catMap.has(key)) catMap.set(key, { name: label, count: 0 });
-    catMap.get(key)!.count += 1;
-  }
-  const stockByCategory = Array.from(catMap.values()).sort((a, b) => b.count - a.count);
-
-  // Low-stock items
-  const lowStockItems = (items ?? [])
-    .filter((i: any) => (i.minQuantity ?? 0) > 0 && (i.quantity ?? 0) <= (i.minQuantity ?? 0))
-    .map((i: any) => ({ ...i, stock: i.quantity, minStock: i.minQuantity }))
-    .sort((a: any, b: any) => a.stock - b.stock);
-
-  return { mostUsed, stockByCategory, lowStockItems };
 }
 
 export function Reports() {
@@ -62,7 +18,7 @@ export function Reports() {
 
   useEffect(() => {
     if (ministryId === undefined) return;
-    fetchAnalytics(ministryId ?? null)
+    getReportsData(ministryId ?? null)
       .then(d => { setData(d); setLoading(false); })
       .catch(err => { console.error(err); setLoading(false); });
   }, [ministryId]);

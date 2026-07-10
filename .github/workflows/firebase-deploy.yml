@@ -1,0 +1,47 @@
+# Deploys Cloud Functions + Firestore/Storage rules to Firebase.
+# App Hosting builds separately when a backend is linked to this repo in the
+# Firebase console (reads apphosting.yaml on push).
+#
+# Required repo secrets:
+#   FIREBASE_TOKEN          — from `firebase login:ci`
+#   FIREBASE_PROJECT_ID     — e.g. cog-app-studio (optional; defaults below)
+name: Firebase Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-functions:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.FIREBASE_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install root deps (Prisma)
+        run: npm ci
+
+      - name: Install functions deps
+        run: npm ci
+        working-directory: functions
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@13
+
+      - name: Deploy functions + rules
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          PROJECT="${{ secrets.FIREBASE_PROJECT_ID }}"
+          PROJECT="${PROJECT:-cog-app-studio}"
+          firebase deploy --only functions,firestore:rules,storage --project "$PROJECT" --non-interactive --force

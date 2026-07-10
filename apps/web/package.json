@@ -51,7 +51,6 @@
     "@studio/store": "file:../../packages/store",
     "@studio/types": "file:../../packages/types",
     "@studio/ui": "file:../../packages/ui",
-    "@supabase/ssr": "^0.10.3",
     "@tanstack/react-query": "^5.90.21",
     "@types/leaflet": "^1.9.21",
     "@types/qrcode": "^1.5.6",

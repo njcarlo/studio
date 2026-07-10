@@ -10,13 +10,11 @@ import React, {
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { firebaseAuth } from "./firebase-client";
 
-// Replaces packages/database's SupabaseProvider/useSupabase/useSupabaseUser
-// as of the Phase 1 auth cutover (migration plan §11).
-//
-// Also keeps the httpOnly session cookie (read server-side by
-// lib/firebase-auth-server.ts) in sync with the client SDK's auth state —
-// Firebase's web SDK only persists tokens in IndexedDB/memory, so without
-// this, Server Actions/middleware would never see a signed-in user.
+// Firebase Auth provider for the web app. Keeps the httpOnly session cookie
+// (read server-side by lib/firebase-auth-server.ts) in sync with the client
+// SDK's auth state — Firebase's web SDK only persists tokens in
+// IndexedDB/memory, so without this, Server Actions/middleware would never
+// see a signed-in user.
 
 interface FirebaseAuthContextState {
   user: User | null;

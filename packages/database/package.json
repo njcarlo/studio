@@ -5,8 +5,6 @@
   "main": "./index.ts",
   "dependencies": {
     "@studio/types": "*",
-    "@supabase/supabase-js": "^2.45.4",
-    "@supabase/ssr": "^0.10.3",
     "@prisma/client": "^5.20.0",
     "firebase-admin": "^14.1.0"
   },

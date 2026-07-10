@@ -3,9 +3,7 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
-// Browser Firebase SDK singleton — replaces packages/database's
-// supabase-client.ts / SupabaseProvider as of the Phase 1 auth cutover
-// (migration plan §11).
+// Browser Firebase SDK singleton (auth, Firestore, Storage).
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

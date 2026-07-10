@@ -2,14 +2,12 @@ import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { firebaseAdminAuth } from './firebase-admin';
 
-// Firebase equivalent of the old lib/supabase-server.ts. Session state lives
-// in an httpOnly cookie holding a Firebase session cookie (not a raw ID
-// token — session cookies support revocation checks and a longer lifetime,
-// matching how the Supabase SSR cookie flow behaved).
+// Firebase session cookie helpers. Session state lives in an httpOnly cookie
+// holding a Firebase session cookie (not a raw ID token — session cookies
+// support revocation checks and a longer lifetime).
 //
 // The cookie itself is minted by POST /api/auth/session after client-side
-// sign-in (Firebase's web SDK only manages tokens in IndexedDB/memory, it
-// has no cookie of its own — unlike @supabase/ssr).
+// sign-in (Firebase's web SDK only manages tokens in IndexedDB/memory).
 export const SESSION_COOKIE_NAME = 'fb_session';
 export const SESSION_COOKIE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 

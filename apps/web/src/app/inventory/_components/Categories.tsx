@@ -5,7 +5,6 @@ import { Plus, Pencil, Trash2, X, Save, Tags } from 'lucide-react';
 import { useInventory } from '@/hooks/use-inventory';
 import { useInventoryAuth } from '@/hooks/use-inventory-auth';
 import { createCategory, updateCategory } from '@/services/inventory-api';
-import { supabaseBrowser } from '@/lib/supabase-browser';
 
 const COLOR_OPTIONS = [
     '#3b5bdb', '#2f9e44', '#e67700', '#c92a2a', '#862e9c',
@@ -77,7 +76,7 @@ export function Categories() {
         if (!confirm('Delete this category? Items using it will lose their category.')) return;
         setDeletingId(id);
         try {
-            await supabaseBrowser.from('InventoryCategory').update({ isActive: false }).eq('id', id);
+            await updateCategory(id, { isActive: false });
             await fetchCategories();
         } finally {
             setDeletingId(null);

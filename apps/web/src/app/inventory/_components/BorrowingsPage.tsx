@@ -9,8 +9,7 @@ import {
 import { QRModal } from './QRModal';
 import { ScannerModal } from './ScannerModal';
 import { uploadItemPhoto } from '@/utils/inventory-upload';
-import { getBorrowings, createBorrowing, returnBorrowing, getItems, lookupItemByQR } from '@/services/inventory-api';
-import { supabaseBrowser } from '@/lib/supabase-browser';
+import { getBorrowings, createBorrowing, returnBorrowing, getItems, lookupItemByQR, getBorrowing, getActiveBorrowingForItem } from '@/services/inventory-api';
 import { useInventoryAuth } from '@/hooks/use-inventory-auth';
 
 interface Borrowing {
@@ -28,7 +27,7 @@ interface Borrowing {
   returnNotes?: string;
   returnCondition?: string;
   returnPhotos?: string[];
-  item: { id: string; name: string; inventoryCode?: string; status: string; imageUrl?: string };
+  item: { id: string; name: string; inventoryCode?: string; status?: string; imageUrl?: string | null; group?: string | null };
   borrower?: { id: string; firstName: string; lastName: string; email: string };
 }
 
@@ -75,7 +74,7 @@ export function BorrowingsPage() {
     setLoading(true);
     try {
       const data = await getBorrowings(ministryId ?? null, statusFilter ? { status: statusFilter } : {});
-      setBorrowings(data as Borrowing[]);
+      setBorrowings(data as unknown as Borrowing[]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -476,12 +475,9 @@ function ReturnModal({ borrowingId, onClose, onSuccess }: {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    supabaseBrowser
-      .from('InventoryBorrowing')
-      .select('*, item:InventoryItem!inner(id,name,imageUrl,group), borrower:Worker(id,firstName,lastName,email)')
-      .eq('id', borrowingId)
-      .single()
-      .then(({ data }) => { if (data) setBorrowing(data as any); });
+    getBorrowing(borrowingId)
+      .then((data) => { if (data) setBorrowing(data as any); })
+      .catch(() => {});
   }, [borrowingId]);
 
   const handleReturn = async () => {
@@ -613,13 +609,7 @@ function BorrowScanModal({ onClose, onCheckout, onReturn }: {
     setScanResult(null);
     try {
       const data = await lookupItemByQR(payload.trim());
-      // Also look up active borrowing
-      const { data: activeBorrow } = await supabaseBrowser
-        .from('InventoryBorrowing')
-        .select('id, borrowerName, borrowerId, dueDate, borrower:Worker(firstName,lastName)')
-        .eq('itemId', data.item.id)
-        .eq('status', 'BORROWED')
-        .maybeSingle();
+      const activeBorrow = await getActiveBorrowingForItem(data.item.id);
       setScanResult({ item: data.item, activeBorrowing: activeBorrow });
     } catch (e: any) {
       setError(e.message || 'Item not found');

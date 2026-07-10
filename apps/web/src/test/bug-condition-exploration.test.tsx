@@ -30,9 +30,9 @@ vi.mock('@studio/store', () => ({
     useAuthStore: () => ({ user: { email: 'test@example.com', id: 'user-1' } }),
 }));
 
-// Mock @studio/database
+// Mock @studio/database (client barrel — query client only)
 vi.mock('@studio/database', () => ({
-    supabase: { auth: { resetPasswordForEmail: vi.fn() } },
+    queryClient: { invalidateQueries: vi.fn() },
 }));
 
 // Mock Firebase client SDK — WorkersPage imports firebaseAuth at module scope

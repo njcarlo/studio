@@ -64,16 +64,3 @@ env:
     secret: CRON_SECRET
     availability:
       - RUNTIME
-
-  # ── Legacy Supabase (still used by the Inventory browser module until
-  #    it is cut over to Firebase; remove once that migration lands) ──
-  - variable: NEXT_PUBLIC_SUPABASE_URL
-    secret: NEXT_PUBLIC_SUPABASE_URL
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
-    secret: NEXT_PUBLIC_SUPABASE_ANON_KEY
-    availability:
-      - BUILD
-      - RUNTIME

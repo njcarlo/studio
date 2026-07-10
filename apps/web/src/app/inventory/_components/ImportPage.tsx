@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, X, Download, Loader } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useInventoryAuth } from '@/hooks/use-inventory-auth';
-import { supabaseBrowser } from '@/lib/supabase-browser';
+import { importInventoryRows } from '@/services/inventory-api';
 
 interface ParsedRow {
   weight?: number;
@@ -153,63 +153,21 @@ export function ImportPage() {
   const handleImport = async () => {
     if (!ministryId && !profile?.isSuperAdmin) return;
     setImporting(true);
-    const res: ImportResult = { total: preview.length, imported: 0, skipped: 0, errors: [] };
-
-    const { data: existingCats } = await supabaseBrowser.from('InventoryCategory').select('id, name');
-    const catMap = new Map((existingCats ?? []).map((c: any) => [c.name.toLowerCase(), c.id]));
-
-    for (const row of preview) {
-      try {
-        const catKey = row.category.toLowerCase();
-        let categoryId = catMap.get(catKey);
-        if (!categoryId) {
-          const { data: newCat } = await supabaseBrowser
-            .from('InventoryCategory')
-            .insert({ name: row.category, isActive: true })
-            .select('id')
-            .single();
-          if (newCat) { categoryId = newCat.id; catMap.set(catKey, categoryId); }
-        }
-        if (!categoryId) { res.skipped++; res.errors.push(`No category for: ${row.name}`); continue; }
-
-        if (row.inventoryCode) {
-          const { data: existing } = await supabaseBrowser
-            .from('InventoryItem')
-            .select('id')
-            .eq('inventoryCode', row.inventoryCode)
-            .maybeSingle();
-          if (existing) { res.skipped++; continue; }
-        }
-
-        const statusText = row.status || (row.statusCode ? STATUS_CODE_MAP[row.statusCode] : 'Good Condition');
-
-        await supabaseBrowser.from('InventoryItem').insert({
-          name: row.name,
-          categoryId,
-          inventoryCode: row.inventoryCode || null,
-          group: ministryId,
-          role: row.role || null,
-          location: row.location || null,
-          assignedTo: row.assignedTo || null,
-          purchaseDate: row.purchaseDate || null,
-          statusCode: row.statusCode || null,
-          status: statusText,
-          statusDetails: row.statusDetails || null,
-          recommendation: row.recommendation || null,
-          weight: row.weight || null,
-          quantity: 1,
-          type: 'EQUIPMENT',
-        });
-        res.imported++;
-      } catch (e: any) {
-        res.skipped++;
-        res.errors.push(`${row.name}: ${e.message}`);
-      }
+    try {
+      const res = await importInventoryRows(ministryId ?? null, preview);
+      setResult(res);
+      setStep('done');
+    } catch (e: any) {
+      setResult({
+        total: preview.length,
+        imported: 0,
+        skipped: preview.length,
+        errors: [e.message || 'Import failed'],
+      });
+      setStep('done');
+    } finally {
+      setImporting(false);
     }
-
-    setResult(res);
-    setStep('done');
-    setImporting(false);
   };
 
   const reset = () => {

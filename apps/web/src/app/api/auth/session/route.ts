@@ -5,21 +5,13 @@ import { firebaseAdminAuth } from '@/lib/firebase-admin';
 import { SESSION_COOKIE_NAME, SESSION_COOKIE_MAX_AGE_MS } from '@/lib/firebase-auth-server';
 
 // Bridges the Firebase client SDK (which only holds tokens in memory/IndexedDB)
-// into an httpOnly session cookie the server can read — mirrors the role
-// @supabase/ssr's cookie handling played before this migration.
+// into an httpOnly session cookie the server can read.
 
 /**
- * Replaces supabase/migrations/20260613070000_custom_access_token_hook.sql's
- * Postgres-side JWT claims hook. That hook ran at token-mint time on every
- * login, keyed by email; this does the same lookup (Worker/Role are still
- * Postgres-resident during Phase 1 — data migration is Phase 3) at session-
- * cookie-creation time instead, using the same `app_*` claim names so
- * anything already reading them client-side needs no changes.
- *
- * Staleness note (migration plan §4.1): claims now only refresh on the next
- * sign-in/session creation, not continuously like the SQL hook did per
- * token mint — acceptable since session cookies already have a fixed
- * lifetime here, but a role change won't take effect until next login.
+ * Looks up Worker/Role claims at session-cookie creation time and attaches
+ * `app_*` claim names so anything already reading them client-side needs no
+ * changes. Claims only refresh on the next sign-in/session creation — a role
+ * change won't take effect until next login.
  */
 async function computeCustomClaims(email: string) {
   const worker = await prisma.worker.findFirst({

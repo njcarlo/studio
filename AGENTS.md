@@ -3,12 +3,16 @@
 ## Cursor Cloud specific instructions
 
 Turborepo + npm-workspaces monorepo (`apps/web` is the flagship Next.js app;
-`apps/inventory`, `apps/tract-tracker`; shared `packages/*`). This repo is
-mid-migration **Supabase → Firebase**: on the `firebase-migration` line, Auth is
-cut over to **Firebase Auth**, writes dual-write to **Firestore**, and
-**Postgres (via Prisma) is still the source of truth**. Deployment/hosting is
-**Firebase App Hosting** (`apphosting.yaml`); the former Supabase Edge Functions
-are now **Firebase Cloud Functions** in `functions/`.
+`apps/inventory`, `apps/tract-tracker`; shared `packages/*`).
+
+**`apps/web` is on Firebase end-to-end:** Auth is **Firebase Auth**, hosting is
+**Firebase App Hosting** (`apphosting.yaml`), background jobs / HTTP API are
+**Firebase Cloud Functions** (`functions/`), uploads use **Firebase Storage**,
+and writes dual-write to **Firestore**. **Postgres (via Prisma) remains the
+source of truth** during the dual-write soak. Vercel config and Supabase client
+code have been removed from the web deploy path (inventory now uses Prisma
+server actions). `apps/inventory` / `apps/tract-tracker` are separate apps and
+may still reference Supabase until migrated.
 
 The update script already runs `npm install` + `npx prisma generate` (root). The
 notes below are the non-obvious bits.
