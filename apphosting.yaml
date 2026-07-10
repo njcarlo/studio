@@ -4,6 +4,9 @@
 # Application Default Credentials (no service-account file needed on-platform).
 runConfig:
   maxInstances: 4
+  # Next.js standalone + Prisma needs more than the default 512MiB on cold start.
+  memoryMiB: 1024
+  cpu: 1
 
 scripts:
   # IMPORTANT: Do NOT set buildCommand here. App Hosting's Node buildpack
@@ -12,9 +15,10 @@ scripts:
   # (firebase/apphosting-adapters#569). Keep the build in package.json as
   # `apphosting:build` instead — the buildpack picks that up without rewriting.
   #
-  # runCommand is exec'd directly (not via a shell), so `cd` / env assignments
-  # must be wrapped in `sh -c`. Cloud Run sets PORT=8080; Next listens on it.
-  runCommand: "sh -c 'cd apps/web/.next/standalone && HOSTNAME=0.0.0.0 node apps/web/server.js'"
+  # Cloud Run injects HOSTNAME=<pod hostname>. Next's standalone server binds to
+  # that value, so the PORT=8080 probe fails unless we force 0.0.0.0. The start
+  # script handles that (and is a real executable — no shell needed in runCommand).
+  runCommand: "sh scripts/apphosting-start.sh"
 
 env:
   # ── Database (Prisma → Postgres; source of truth during dual-write) ──
@@ -59,6 +63,13 @@ env:
     secret: NEXT_PUBLIC_FIREBASE_APP_ID
     availability:
       - BUILD
+      - RUNTIME
+
+  # Force Next standalone to bind on all interfaces (Cloud Run sets HOSTNAME
+  # to the container hostname otherwise, which breaks the startup probe).
+  - variable: HOSTNAME
+    value: "0.0.0.0"
+    availability:
       - RUNTIME
 
   # ── Scheduled jobs (Cloud Functions call the /api/cron/* endpoints) ──
