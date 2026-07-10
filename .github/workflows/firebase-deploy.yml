@@ -1,6 +1,6 @@
 # Deploys Cloud Functions + Firestore/Storage rules to Firebase.
 # App Hosting builds separately when a backend is linked to this repo in the
-# Firebase console (reads apphosting.yaml on push).
+# Firebase console (reads apphosting.yaml on push to the connected branch).
 #
 # Required repo secrets:
 #   FIREBASE_TOKEN          — from `firebase login:ci`
@@ -17,9 +17,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy-functions:
+  check-secrets:
     runs-on: ubuntu-latest
-    if: ${{ secrets.FIREBASE_TOKEN != '' }}
+    outputs:
+      has_token: ${{ steps.check.outputs.has_token }}
+    steps:
+      - id: check
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -n "$FIREBASE_TOKEN" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            echo "FIREBASE_TOKEN secret is not set — skipping deploy."
+          fi
+
+  deploy-functions:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has_token == 'true'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 

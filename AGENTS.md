@@ -64,4 +64,18 @@ client must be generated for it: `npm run prisma:generate` writes to the nearest
 deploy bundle, generate the client into `functions/node_modules` (Firebase's
 `predeploy` in `firebase.json` runs `prisma:generate` + `build`). Auth is a
 Firebase ID token (`Authorization: Bearer <token>`); the `api` HTTP function
-mounts one router per domain under `/<domain>`.
+mounts one router per domain under `/<domain>`. Shared helpers live in
+`functions/src/lib/` (`firebase.ts`, `http.ts`, `prisma.ts`).
+
+### Production deploy
+
+1. **App Hosting** — link a backend in the Firebase console to this GitHub repo
+   (project `cog-app-studio`). It builds from `apphosting.yaml`. Populate Secret
+   Manager with `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_FIREBASE_*`, and
+   `CRON_SECRET`.
+2. **Cloud Functions** — set GitHub Actions secret `FIREBASE_TOKEN`
+   (`firebase login:ci`) so `.github/workflows/firebase-deploy.yml` can run on
+   `main`, or deploy locally with
+   `firebase deploy --only functions,firestore:rules,storage`.
+3. Set the Cloud Functions `APP_BASE_URL` param to the App Hosting URL so the
+   scheduled jobs can call `/api/cron/*`.
