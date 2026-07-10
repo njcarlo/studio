@@ -70,9 +70,11 @@ mounts one router per domain under `/<domain>`. Shared helpers live in
 ### Production deploy
 
 1. **App Hosting** — link a backend in the Firebase console to this GitHub repo
-   (project `cog-app-studio`). It builds from `apphosting.yaml`. Populate Secret
-   Manager with `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_FIREBASE_*`, and
-   `CRON_SECRET`.
+   (project `cog-app-studio`). Root directory must be `/` (repo root). It reads
+   `apphosting.yaml` + the root `apphosting:build` script in `package.json`.
+   Do **not** put `buildCommand` in `apphosting.yaml` — that strips npm
+   `workspaces` (see firebase/apphosting-adapters#569). Populate Secret Manager
+   with `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_FIREBASE_*`, and `CRON_SECRET`.
 2. **Cloud Functions** — set GitHub Actions secret `FIREBASE_TOKEN`
    (`firebase login:ci`) so `.github/workflows/firebase-deploy.yml` can run on
    `main`, or deploy locally with
