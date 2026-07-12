@@ -120,10 +120,11 @@ No multi-DB yet — single tenant from env (`TENANT_ID`, `NEXT_PUBLIC_BRAND_NAME
 
 ### Phase 1 exit criteria
 
-- [ ] `@studio/core-engine` builds in the monorepo
-- [ ] `apps/web` uses it for `withPermission` + approval engine
-- [ ] No behavior change on `/approvals` or C2S join approve/reject
-- [ ] `npm run typecheck` passes
+- [x] `@studio/core-engine` builds in the monorepo
+- [x] `apps/web` uses it for `withPermission` + approval engine
+- [x] No behavior change on `/approvals` or C2S join approve/reject
+- [x] `npm run typecheck` passes
+- [x] Package unit coverage for `getActiveStages` + permission-shaped responses (via web vitest) + `moduleAppUrl`
 
 **Risks:** Circular imports (`core-engine` → `database` only; never → `apps/web`). Email/Resend env must remain available wherever `createWorkflow` notifies.
 
