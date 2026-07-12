@@ -273,7 +273,8 @@ Do **not** put `buildCommand` in `apphosting.yaml` (it strips npm workspaces). D
 |---|---|
 | **This file** | Day 1 setup + pick a module |
 | [`AGENTS.md`](../AGENTS.md) | Cloud/agent + local gotchas |
-| [`architecture.md`](./architecture.md) | Route map & file locations (stack diagram may be outdated) |
+| [`architecture.md`](./architecture.md) | Route map & file locations |
+| [`CORE_ENGINE_C2S_PLAN.md`](./CORE_ENGINE_C2S_PLAN.md) | Phased plan: core-engine → C2S module → white-label |
 | [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md) | Approvals, notifications, audit, RBAC layers |
 | [`user-stories.md`](./user-stories.md) | What each role can do |
 | [`WORKER_RBAC_PLAN.md`](./WORKER_RBAC_PLAN.md) | Worker/role design notes |

@@ -120,15 +120,10 @@ No multi-DB yet — single tenant from env (`TENANT_ID`, `NEXT_PUBLIC_BRAND_NAME
 
 ### Phase 1 exit criteria
 
-- [x] `@studio/core-engine` builds in the monorepo *(Slice A: package + re-exports)*
-- [x] `apps/web` uses it for approval engine *(via `@/services/approval-engine` re-export)*
-- [x] `apps/web` uses it for `withPermission` *(Slice B — injectable `configureAuthUserGetter`)*
-- [ ] No behavior change on `/approvals` or C2S join approve/reject *(smoke after deploy)*
-- [x] `npm run typecheck` passes
-
-**Slice A landed:** `packages/core-engine` owns `action-response`, `EmailService`, approval `engine`, and `TenantConfig` stub. Web keeps thin re-export shims.
-
-**Slice B landed:** `resolveCallerCtx` / `withPermission` / `withPublicAction` / worker-management helpers live in core-engine. Web configures Firebase via `configureAuthUserGetter(getServerUser)`.
+- [ ] `@studio/core-engine` builds in the monorepo
+- [ ] `apps/web` uses it for `withPermission` + approval engine
+- [ ] No behavior change on `/approvals` or C2S join approve/reject
+- [ ] `npm run typecheck` passes
 
 **Risks:** Circular imports (`core-engine` → `database` only; never → `apps/web`). Email/Resend env must remain available wherever `createWorkflow` notifies.
 
@@ -172,14 +167,10 @@ Recommend **M1 first**, then **M2** only if product/ops wants a separate mentor 
 
 ### Phase 2 exit criteria
 
-- [x] `@studio/c2s` owns domain logic; web only pages/actions wrappers *(service moved; actions still in web)*
-- [x] Public Group Finder deployable without Studio nav — `apps/c2s-public` (port 9004)
-- [x] Join → approval → mentee creation path unchanged (shared `@studio/c2s` + approval engine)
-- [x] ORS import still works from Studio settings *(untouched)*
-- [x] Mentor UI stays in Studio (**M1**) importing `@studio/c2s`
-- [x] Studio `/public/c2s-join` redirects when `NEXT_PUBLIC_C2S_PUBLIC_URL` is set; otherwise branded in-app finder
-
-**Phase 2A landed:** `packages/c2s` + `apps/c2s-public`. Optional later: M2 `apps/c2s` mentor app.
+- [ ] `@studio/c2s` owns domain logic; web only pages/actions wrappers
+- [ ] Public Group Finder deployable without Studio nav
+- [ ] Join → approval → mentee creation unchanged
+- [ ] ORS import still works from Studio settings
 
 ---
 

@@ -8,6 +8,9 @@ notifications, audit log, cron jobs, and the meal-stub reporting ledger, see
 
 **New developers:** start with [`ONBOARDING.md`](./ONBOARDING.md).
 
+**Platform evolution:** [`CORE_ENGINE_C2S_PLAN.md`](./CORE_ENGINE_C2S_PLAN.md) —
+phased plan for `packages/core-engine`, C2S as a separate module, then white-label.
+
 For what each module/role can *do*, see [`user-stories.md`](./user-stories.md).
 For a faster-to-skim orientation pass, see [`CODEBASE_GUIDE.md`](./CODEBASE_GUIDE.md).
 
