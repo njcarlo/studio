@@ -3,7 +3,12 @@
 ## Cursor Cloud specific instructions
 
 Turborepo + npm-workspaces monorepo (`apps/web` is the flagship Next.js app;
-`apps/inventory`, `apps/tract-tracker`; shared `packages/*`).
+`apps/c2s-public` Group Finder; `apps/inventory`, `apps/tract-tracker`; shared
+`packages/*` including `@studio/core-engine` and `@studio/c2s`).
+
+**Module URLs** use `https://[module].[domain].app` via `NEXT_PUBLIC_ROOT_DOMAIN`
+(default `cogdasma.app`) — e.g. `c2s.cogdasma.app`, `studio.cogdasma.app`.
+Helpers: `moduleAppUrl` / `c2sPublicUrl` in `@studio/core-engine/tenant`.
 
 **`apps/web` is on Firebase end-to-end:** Auth is **Firebase Auth**, hosting is
 **Firebase App Hosting** (`apphosting.yaml`), background jobs / HTTP API are

@@ -42,5 +42,9 @@ export {
 export {
   DEFAULT_TENANT,
   getTenantConfig,
+  moduleAppUrl,
+  c2sPublicUrl,
+  studioAppUrl,
   type TenantConfig,
+  type ModuleSlug,
 } from './src/tenant';

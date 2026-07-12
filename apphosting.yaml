@@ -73,6 +73,14 @@ env:
     availability:
       - RUNTIME
 
+  # Module URLs: https://[module].[domain].app (default domain cogdasma.app)
+  # Studio redirects /public/c2s-join → https://c2s.cogdasma.app unless embedded.
+  - variable: NEXT_PUBLIC_ROOT_DOMAIN
+    value: cogdasma.app
+    availability:
+      - BUILD
+      - RUNTIME
+
   # ── Scheduled jobs (Cloud Functions call the /api/cron/* endpoints) ──
   - variable: CRON_SECRET
     secret: CRON_SECRET

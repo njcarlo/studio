@@ -1,12 +1,11 @@
-# Optional second App Hosting backend for the public C2S Group Finder.
-# In Firebase console, create a backend with root directory `apps/c2s-public`
-# (or repo root with a dedicated build that filters c2s-public).
+# Firebase App Hosting backend for the public C2S Group Finder.
+# Custom domain (required for the product URL scheme):
+#   https://c2s.{NEXT_PUBLIC_ROOT_DOMAIN}  → default https://c2s.cogdasma.app
 #
-# For a monorepo-root build similar to Studio, prefer linking a backend that
-# runs: npm ci && npx prisma generate && npm run build --workspace=c2s-public
-# and starts the Next standalone server for apps/c2s-public.
-#
-# Env / secrets: DATABASE_URL, DIRECT_URL, NEXT_PUBLIC_BRAND_*, RESEND_* (for join emails via approvals)
+# All module apps use: https://[module].[domain].app
+#   studio.cogdasma.app     → apps/web
+#   c2s.cogdasma.app        → apps/c2s-public
+#   inventory.cogdasma.app  → apps/inventory (when migrated)
 
 runConfig:
   maxInstances: 2
@@ -20,14 +19,15 @@ env:
   - variable: DIRECT_URL
     secret: DIRECT_URL
     availability: [BUILD, RUNTIME]
-  - variable: NEXT_PUBLIC_BRAND_NAME
-    secret: NEXT_PUBLIC_BRAND_NAME
+  - variable: NEXT_PUBLIC_ROOT_DOMAIN
+    value: cogdasma.app
     availability: [BUILD, RUNTIME]
-  - variable: NEXT_PUBLIC_BRAND_LOGO_URL
-    secret: NEXT_PUBLIC_BRAND_LOGO_URL
-    availability: [BUILD, RUNTIME]
+  # Optional brand overrides (code defaults to COG Dasma):
+  # - variable: NEXT_PUBLIC_BRAND_NAME
+  #   value: Church of God Dasmariñas
+  #   availability: [BUILD, RUNTIME]
   - variable: TENANT_ID
-    secret: TENANT_ID
+    value: cog-dasma
     availability: [BUILD, RUNTIME]
   - variable: RESEND_API_KEY
     secret: RESEND_API_KEY

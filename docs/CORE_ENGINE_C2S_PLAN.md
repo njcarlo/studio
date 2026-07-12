@@ -266,8 +266,9 @@ flowchart LR
 |---|---|---|
 | Mentor C2S deploy | M1 package-in-Studio / M2 `apps/c2s` | _TBD after 2A_ |
 | Tenancy model | Shared DB + `tenantId` / DB-per-tenant | _TBD Phase 3_ |
-| Public C2S domain | Subdomain vs path on Studio | _TBD 2A_ |
-| Keep `/public/c2s-join` redirect | Yes / temporary dual | _TBD 2A_ |
+| Public C2S domain | Subdomain vs path on Studio | **`https://c2s.{rootDomain}`** (default `c2s.cogdasma.app`) |
+| Root domain | — | `NEXT_PUBLIC_ROOT_DOMAIN` default **`cogdasma.app`** → `[module].[domain].app` |
+| Keep `/public/c2s-join` redirect | Yes / temporary dual | **Yes** — redirect to `c2sPublicUrl()` unless `NEXT_PUBLIC_C2S_EMBEDDED=true` |
 
 ---
 
