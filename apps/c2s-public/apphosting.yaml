@@ -22,9 +22,12 @@ env:
   - variable: NEXT_PUBLIC_ROOT_DOMAIN
     value: cogdasma.app
     availability: [BUILD, RUNTIME]
-  # Optional brand overrides (code defaults to COG Dasma):
+  # Optional brand overrides (defaults in @studio/core-engine/tenant):
   # - variable: NEXT_PUBLIC_BRAND_NAME
   #   value: Church of God Dasmariñas
+  #   availability: [BUILD, RUNTIME]
+  # - variable: NEXT_PUBLIC_BRAND_PRIMARY
+  #   value: "#f43f5e"
   #   availability: [BUILD, RUNTIME]
   - variable: TENANT_ID
     value: cog-dasma

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@studio/ui";
 import { IBM_Plex_Sans } from "next/font/google";
+import { getTenantConfig, tenantBrandStyle, tenantDisplayName } from "@studio/core-engine/tenant";
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -10,9 +11,11 @@ const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",
 });
 
+const tenant = getTenantConfig();
+
 export const metadata: Metadata = {
-  title: "COG App",
-  description: "Church Operations and Governance App",
+  title: tenantDisplayName(tenant),
+  description: `${tenant.brandName} operations studio`,
 };
 
 export const viewport: Viewport = {
@@ -34,7 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={ibmPlexSans.variable} suppressHydrationWarning>
-      <body className="font-body antialiased">
+      <body className="font-body antialiased" style={tenantBrandStyle(tenant) as React.CSSProperties}>
         <ReactQueryProvider>
           <AuthSync>
             <ChunkLoadRecovery />

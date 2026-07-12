@@ -24,6 +24,8 @@
     --input: 240 16% 93%;
     --ring: 237 46% 53%;
     --radius: 0.25rem;
+    /* Tenant accent (hex/rgb). Overridden at runtime via tenantBrandStyle(). */
+    --brand: #f43f5e;
 
     --chart-1: 237 46% 53%; /* #5156be */
     --chart-2: 157 62% 44%; /* #2ab57d */

@@ -1,8 +1,17 @@
+export type FeatureFlag =
+  | 'c2s'
+  | 'reservations'
+  | 'schedule'
+  | 'inventory'
+  | 'meals'
+  | (string & {});
+
 export type TenantConfig = {
   id: string;
   brandName: string;
   shortName?: string;
   logoUrl?: string;
+  /** Accent color as CSS color (hex/rgb). Applied as `--brand`. */
   primaryColor?: string;
   /**
    * Apex / root domain for module apps.
@@ -12,31 +21,62 @@ export type TenantConfig = {
   rootDomain: string;
   /** Staff Studio hostname module slug (default `studio`). */
   studioModule: string;
-  featureFlags: Record<string, boolean>;
+  featureFlags: Record<FeatureFlag, boolean>;
 };
 
 /** Known product module slugs that get their own `https://{slug}.{rootDomain}` app. */
 export type ModuleSlug = 'studio' | 'c2s' | 'inventory' | (string & {});
 
-/** Default tenant — Church of God Dasmariñas (single-tenant until Phase 3). */
+/** Default brand accent when `NEXT_PUBLIC_BRAND_PRIMARY` is unset (C2S rose). */
+export const DEFAULT_BRAND_COLOR = '#f43f5e';
+
+function envFlag(name: string, defaultValue = true): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return defaultValue;
+  return !['0', 'false', 'off', 'no'].includes(raw.trim().toLowerCase());
+}
+
+/** Default tenant — Church of God Dasmariñas (single-tenant until full multi-tenancy). */
 export const DEFAULT_TENANT: TenantConfig = {
   id: process.env.TENANT_ID || 'cog-dasma',
   brandName: process.env.NEXT_PUBLIC_BRAND_NAME || 'Church of God Dasmariñas',
   shortName: process.env.NEXT_PUBLIC_BRAND_SHORT || 'COG Dasma',
   logoUrl: process.env.NEXT_PUBLIC_BRAND_LOGO_URL || '/cog-logo.png',
-  primaryColor: process.env.NEXT_PUBLIC_BRAND_PRIMARY || undefined,
+  primaryColor: process.env.NEXT_PUBLIC_BRAND_PRIMARY || DEFAULT_BRAND_COLOR,
   rootDomain: process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cogdasma.app',
   studioModule: process.env.NEXT_PUBLIC_STUDIO_MODULE || 'studio',
   featureFlags: {
-    c2s: true,
-    reservations: true,
-    schedule: true,
-    inventory: true,
+    c2s: envFlag('NEXT_PUBLIC_FEATURE_C2S', true),
+    reservations: envFlag('NEXT_PUBLIC_FEATURE_RESERVATIONS', true),
+    schedule: envFlag('NEXT_PUBLIC_FEATURE_SCHEDULE', true),
+    inventory: envFlag('NEXT_PUBLIC_FEATURE_INVENTORY', true),
+    meals: envFlag('NEXT_PUBLIC_FEATURE_MEALS', true),
   },
 };
 
 export function getTenantConfig(): TenantConfig {
   return DEFAULT_TENANT;
+}
+
+/** Short label for chrome (sidebar, login, metadata). */
+export function tenantDisplayName(tenant: TenantConfig = getTenantConfig()): string {
+  return tenant.shortName || tenant.brandName;
+}
+
+/** True when the tenant has enabled `flag` (missing key → false). */
+export function isFeatureEnabled(
+  flag: FeatureFlag,
+  tenant: TenantConfig = getTenantConfig(),
+): boolean {
+  return tenant.featureFlags[flag] === true;
+}
+
+/** Inline style for `<body>` / shell roots — sets `--brand` for Tailwind `brand` color. */
+export function tenantBrandStyle(
+  tenant: TenantConfig = getTenantConfig(),
+): Record<string, string> {
+  const color = tenant.primaryColor || DEFAULT_BRAND_COLOR;
+  return { '--brand': color };
 }
 
 /**

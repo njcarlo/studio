@@ -20,12 +20,16 @@ DIRECT_URL=...
 # White-label / module hosts  →  https://[module].[domain].app
 NEXT_PUBLIC_ROOT_DOMAIN=cogdasma.app
 NEXT_PUBLIC_BRAND_NAME="Church of God Dasmariñas"
+NEXT_PUBLIC_BRAND_SHORT="COG Dasma"
 NEXT_PUBLIC_BRAND_LOGO_URL=/cog-logo.png
+NEXT_PUBLIC_BRAND_PRIMARY=#f43f5e
 TENANT_ID=cog-dasma
 
 # Local only
 # NEXT_PUBLIC_MODULE_URL_C2S=http://localhost:9004
 ```
+
+Accent color is applied as CSS `--brand` (Tailwind `bg-brand` / `text-brand`).
 
 ## DNS / App Hosting
 

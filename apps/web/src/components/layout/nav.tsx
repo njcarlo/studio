@@ -51,6 +51,11 @@ import {
 } from "@studio/ui";
 import { cn } from "@/lib/utils";
 import { useUserRole, type UserRoleContextType } from "@/hooks/use-user-role";
+import {
+  getTenantConfig,
+  isFeatureEnabled,
+  type FeatureFlag,
+} from "@studio/core-engine/tenant";
 
 type NavSubItem = {
   href: string;
@@ -70,6 +75,8 @@ type NavItem = {
   href: string;
   icon: React.ElementType;
   label: string;
+  /** When set, item is hidden if the tenant feature flag is off. */
+  featureFlag?: FeatureFlag;
   permissionKey?: keyof Omit<
     UserRoleContextType,
     "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
@@ -87,6 +94,7 @@ const allNavItems: NavItem[] = [
     href: "/worker/schedule",
     icon: CalendarDays,
     label: "My Schedule",
+    featureFlag: "schedule",
     subItems: [
       { href: "/worker/schedule", label: "My Assignments" },
       { href: "/worker/schedule/published", label: "Published Schedules" },
@@ -96,6 +104,7 @@ const allNavItems: NavItem[] = [
     href: "/schedule",
     icon: CalendarDays,
     label: "Service Schedule",
+    featureFlag: "schedule",
     permissionKey: "canManageSchedule",
     subItems: [
       { href: "/schedule", label: "Schedules" },
@@ -108,6 +117,7 @@ const allNavItems: NavItem[] = [
     href: "/reservations",
     icon: CalendarDays,
     label: "Room Reservations",
+    featureFlag: "reservations",
     subItems: [
       {
         href: "/reservations/masterview",
@@ -133,6 +143,7 @@ const allNavItems: NavItem[] = [
     href: "/meals",
     icon: UtensilsCrossed,
     label: "Meal Stubs",
+    featureFlag: "meals",
     permissionKey: "canViewMealStubs",
     subItems: [
       { href: "/meals?tab=view", label: "View Meal Stub" },
@@ -147,6 +158,7 @@ const allNavItems: NavItem[] = [
     href: "/c2s",
     icon: HeartHandshake,
     label: "Connect 2 Souls",
+    featureFlag: "c2s",
     anyPermissionKeys: ["canManageC2S", "canViewC2SAnalytics", "isMentor"],
     subItems: [
       {
@@ -246,6 +258,7 @@ const allNavItems: NavItem[] = [
     href: "/inventory/dashboard",
     icon: Package,
     label: "Inventory",
+    featureFlag: "inventory",
     permissionKey: "canAccessInventory",
   },
   {
@@ -355,7 +368,13 @@ export function Nav({
 
   const navItems = allNavItems.filter((item) => {
     if (isLoading) return false;
-    if (isSuperAdmin) return true; // super admin sees all nav items
+
+    // Tenant feature flags hide modules even for super admins.
+    if (item.featureFlag && !isFeatureEnabled(item.featureFlag, getTenantConfig())) {
+      return false;
+    }
+
+    if (isSuperAdmin) return true; // super admin sees all enabled modules
 
     // Settings: show only if user has access to at least one sub-item
     if (item.href === "/settings") {

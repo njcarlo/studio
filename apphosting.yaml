@@ -81,6 +81,10 @@ env:
       - BUILD
       - RUNTIME
 
+  # Optional white-label overrides (defaults in @studio/core-engine/tenant):
+  # NEXT_PUBLIC_BRAND_NAME / SHORT / LOGO_URL / PRIMARY
+  # NEXT_PUBLIC_FEATURE_C2S=false  (etc.) hides modules from Studio nav
+
   # ── Scheduled jobs (Cloud Functions call the /api/cron/* endpoints) ──
   - variable: CRON_SECRET
     secret: CRON_SECRET

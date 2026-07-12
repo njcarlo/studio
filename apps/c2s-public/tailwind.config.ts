@@ -21,6 +21,11 @@ export default {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        /** Tenant accent from `--brand` (set via TenantConfig.primaryColor). */
+        brand: {
+          DEFAULT: 'var(--brand)',
+          foreground: '#ffffff',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

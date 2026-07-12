@@ -28,6 +28,11 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@studio/ui";
 import { useSidebar } from "@studio/ui";
 import { PasswordChangeDialog } from "@/components/auth/password-change-dialog";
+import {
+  getTenantConfig,
+  isFeatureEnabled,
+  tenantDisplayName,
+} from "@studio/core-engine/tenant";
 
 const MobileSidebarTrigger = () => {
   const { setOpenMobile } = useSidebar();
@@ -79,6 +84,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
+  const tenant = getTenantConfig();
+  const brand = tenantDisplayName(tenant);
+  const logoSrc = tenant.logoUrl || "/cog-logo.png";
+  const showRooms = isFeatureEnabled("reservations", tenant);
 
   // Middleware already redirects unauthenticated users before they reach here,
   // so this effect is a belt-and-suspenders fallback only — not the primary guard.
@@ -103,14 +112,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
               <Image
-                src="/cog-logo.png"
-                alt="COG Logo"
+                src={logoSrc}
+                alt={brand}
                 width={32}
                 height={32}
                 className="w-8 h-8"
               />
               <span className="text-lg font-semibold font-headline">
-                COG App
+                {brand}
               </span>
             </div>
             <SidebarTrigger className="flex" />
@@ -127,13 +136,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="flex h-14 md:h-[70px] items-center gap-4 border-b bg-card px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content">
           <div className="md:hidden flex items-center gap-2">
             <Image
-              src="/cog-logo.png"
-              alt="COG Logo"
+              src={logoSrc}
+              alt={brand}
               width={24}
               height={24}
               className="w-6 h-6"
             />
-            <span className="text-sm font-semibold font-headline">COG App</span>
+            <span className="text-sm font-semibold font-headline">{brand}</span>
           </div>
           <div className="w-full flex-1" />
           <NotificationBell />
@@ -165,15 +174,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Users className="h-5 w-5" />
           <span className="text-[10px] font-medium leading-none">Workers</span>
         </Button>
-        <Button
-          variant="ghost"
-          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary"
-          data-active={currentPathname.startsWith("/reservations")}
-          onClick={() => router.push("/reservations/calendar")}
-        >
-          <CalendarIcon className="h-5 w-5" />
-          <span className="text-[10px] font-medium leading-none">Rooms</span>
-        </Button>
+        {showRooms && (
+          <Button
+            variant="ghost"
+            className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary"
+            data-active={currentPathname.startsWith("/reservations")}
+            onClick={() => router.push("/reservations/calendar")}
+          >
+            <CalendarIcon className="h-5 w-5" />
+            <span className="text-[10px] font-medium leading-none">Rooms</span>
+          </Button>
+        )}
 
         {/* Connects with Sidebar to open the side menu */}
         <MobileSidebarTrigger />

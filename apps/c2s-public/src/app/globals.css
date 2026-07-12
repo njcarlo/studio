@@ -24,6 +24,8 @@
     --input: 240 16% 93%;
     --ring: 237 46% 53%;
     --radius: 0.5rem;
+    /* Tenant accent (hex/rgb). Overridden at runtime via tenantBrandStyle(). */
+    --brand: #f43f5e;
   }
 
   * {

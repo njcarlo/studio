@@ -115,7 +115,7 @@ export default function C2SPublicHomePage() {
           <Badge className="bg-teal-100 text-teal-700 border-transparent">Find your community</Badge>
           <h1 className="text-4xl font-extrabold text-gray-900 flex items-center gap-2 flex-wrap">
             <span className="flex items-baseline">
-              <span className="text-rose-500">C</span>
+              <span className="text-brand">C</span>
               <span className="text-teal-500">2</span>
               <span className="text-amber-500">S</span>
             </span>
@@ -256,7 +256,7 @@ export default function C2SPublicHomePage() {
                           <div className="flex items-center justify-between pt-2">
                             <Button
                               size="sm"
-                              className="bg-rose-500 hover:bg-rose-600"
+                              className="bg-brand text-brand-foreground hover:opacity-90"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setJoinGroup({ id: group.id, name: group.name, location: group.location });

@@ -30,6 +30,7 @@ import {
   getWorkerAuthStatus, 
   completeFirstLoginPasswordChange 
 } from "@/actions/legacy-auth";
+import { tenantDisplayName } from "@studio/core-engine/tenant";
 
 export default function LoginPage() {
   const [loginStep, setLoginStep] = useState<"identifier" | "password" | "migration">("identifier");
@@ -237,7 +238,7 @@ export default function LoginPage() {
             <Church className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="font-headline text-2xl">
-            COG App Login
+            {tenantDisplayName()} Login
           </CardTitle>
           <CardDescription>
             {loginStep === "identifier" && (mode === "email" ? "Enter your email to continue" : "Enter your Worker ID to continue")}
