@@ -14,9 +14,8 @@ Helpers: `moduleAppUrl` / `c2sPublicUrl` in `@studio/core-engine/tenant`.
 **Firebase App Hosting** (`apphosting.yaml`), background jobs / HTTP API are
 **Firebase Cloud Functions** (`functions/`), uploads use **Firebase Storage**,
 and writes dual-write to **Firestore**. **Postgres (via Prisma) remains the
-source of truth** during the dual-write soak. Vercel config and Supabase client
-code have been removed from the web deploy path (inventory now uses Prisma
-server actions). `apps/inventory` / `apps/tract-tracker` are separate apps and
+source of truth** during the dual-write soak. Hosting is Firebase App Hosting
+only (no Vercel). `apps/inventory` / `apps/tract-tracker` are separate apps and
 may still reference Supabase until migrated.
 
 The update script already runs `npm install` + `npx prisma generate` (root). The
@@ -86,7 +85,5 @@ mounts one router per domain under `/<domain>`. Shared helpers live in
    `firebase deploy --only functions,firestore:rules,storage`.
 3. Set the Cloud Functions `APP_BASE_URL` param to the App Hosting URL so the
    scheduled jobs can call `/api/cron/*`.
-4. **Vercel** — root `vercel.json` skips all builds via
-   `scripts/vercel-ignore.sh`. PR checks come from `.github/workflows/firebase-pr.yml`
-   (“Firebase”). Disconnect the Vercel GitHub app under
-   GitHub → Settings → Integrations if it still posts on PRs.
+4. **PR checks** — `.github/workflows/firebase-pr.yml` (“Firebase”) validates
+   App Hosting config. There is no Vercel config in this repo.

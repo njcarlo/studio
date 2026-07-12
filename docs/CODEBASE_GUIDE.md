@@ -93,4 +93,5 @@ Project: `cog-app-studio`
 ## Corrections from older guides
 
 Older copies of this file claimed Supabase Auth / Vercel for `apps/web`. That
-path has been removed. Treat Firebase + Prisma + App Hosting as current.
+path has been removed (no `vercel.json` in the repo). Treat Firebase + Prisma +
+App Hosting as current.

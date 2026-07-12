@@ -3,7 +3,8 @@
 > **Stack update (current):** `apps/web` runs on **Firebase Auth**, **Firebase
 > App Hosting**, **Postgres via Prisma**, **Firebase Cloud Functions**, Storage,
 > and Firestore dual-write soak. Sections below that say Supabase Auth / Vercel /
-> Supabase Edge Functions are **historical product-vision text**. Prefer
+> Supabase Edge Functions are **historical product-vision text** (Vercel config
+> has been deleted from this repo). Prefer
 > [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./architecture.md), and
 > [`AGENTS.md`](../AGENTS.md) for how the repo actually works today.
 > `apps/inventory` / `apps/tract-tracker` may still use Supabase.

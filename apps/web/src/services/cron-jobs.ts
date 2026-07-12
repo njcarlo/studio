@@ -6,9 +6,9 @@ import { getEffectiveSchedule } from '@/services/master-schedule';
 import { weekOf, getSundayConfirmationSettings, isWithinConfirmationWindow } from '@/services/meal-stub-engine';
 
 /**
- * Scheduled jobs (Layer 5). Run daily via `/api/cron/daily-jobs` (Vercel
- * Cron). Each job is idempotent — safe to re-run if a cron invocation is
- * retried or missed and run late.
+ * Scheduled jobs (Layer 5). Run daily via `/api/cron/daily-jobs` (triggered by
+ * Firebase Cloud Functions schedulers). Each job is idempotent — safe to
+ * re-run if a cron invocation is retried or missed and run late.
  */
 
 const STUB_COST_PHP = 45;

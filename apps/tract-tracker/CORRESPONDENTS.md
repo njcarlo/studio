@@ -52,7 +52,7 @@ This screen is designed to be shown on a **projector or big monitor** during the
 **How to open it on a monitor:**
 
 1. Open a web browser (Chrome, Edge, etc.) on the monitor or laptop connected to the screen.
-2. Go to this address: **`https://tract-tracker.vercel.app/news-feed`**
+2. Go to this address: **`https://tracttracker.app/news-feed`**
 3. Press **F11** on the keyboard to go full screen.
 4. That's it! The screen will update automatically every 30 seconds. No need to touch anything.
 

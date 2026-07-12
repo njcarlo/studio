@@ -59,7 +59,8 @@ Unless someone assigns you inventory/tract-tracker, **ignore those apps** and fo
 | Background / API | Firebase Cloud Functions (`functions/`) |
 | Dual-write (soak) | Firestore (optional path; Postgres is still SoT) |
 
-**Not used on the web deploy path anymore:** Supabase Auth client, Vercel for `apps/web`.
+**Not used on the web deploy path anymore:** Supabase Auth client. Hosting is
+Firebase App Hosting only (Vercel has been removed from this repo).
 
 Live app: `https://studio--cog-app-studio.asia-southeast1.hosted.app`  
 Firebase project: `cog-app-studio`
