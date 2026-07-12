@@ -2,10 +2,14 @@ import { getPublicSchedulesWithAssignments } from "@/actions/schedule";
 import { getMinistries } from "@/actions/db";
 import { PortalTopNav } from "./PortalTopNav";
 import { ScheduleMatrixPortal } from "./ScheduleMatrixPortal";
+import { getTenantConfig, tenantDisplayName } from "@studio/core-engine/tenant";
+
+const tenant = getTenantConfig();
+const brand = tenantDisplayName(tenant);
 
 export const metadata = {
-    title: "Service Schedules - COG Dasma",
-    description: "Browse published service schedules for COG Dasma.",
+    title: `Service Schedules - ${brand}`,
+    description: `Browse published service schedules for ${brand}.`,
 };
 
 export default async function PublicServicesPage() {

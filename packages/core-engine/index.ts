@@ -44,6 +44,8 @@ export {
   DEFAULT_BRAND_COLOR,
   getTenantConfig,
   tenantDisplayName,
+  tenantInitials,
+  tenantFileSlug,
   isFeatureEnabled,
   tenantBrandStyle,
   moduleAppUrl,

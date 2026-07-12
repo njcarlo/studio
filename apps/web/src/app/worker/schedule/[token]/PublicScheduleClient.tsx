@@ -20,6 +20,12 @@ import {
     Info,
     RefreshCw
 } from "lucide-react";
+import {
+    getTenantConfig,
+    tenantDisplayName,
+    tenantFileSlug,
+    tenantInitials,
+} from "@studio/core-engine/tenant";
 
 interface Assignment {
     id: string;
@@ -66,6 +72,11 @@ export default function PublicScheduleClient({
 }: PublicScheduleClientProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const tenant = getTenantConfig();
+    const brand = tenantDisplayName(tenant);
+    const brandUpper = brand.toUpperCase();
+    const brandInitials = tenantInitials(tenant);
+    const fileSlug = tenantFileSlug(tenant);
 
     // Search and Filter States
     const [searchQuery, setSearchQuery] = useState("");
@@ -181,7 +192,7 @@ export default function PublicScheduleClient({
         
         const dateStr = format(new Date(schedule.date), "yyyy-MM-dd");
         const csv = convertToCSV(data, headers);
-        triggerDownload(csv, `COG_Dasma_Schedule_${dateStr}_Whole.csv`);
+        triggerDownload(csv, `${fileSlug}_Schedule_${dateStr}_Whole.csv`);
         setShowDownloadMenu(false);
     };
 
@@ -202,7 +213,7 @@ export default function PublicScheduleClient({
         const dateStr = format(new Date(schedule.date), "yyyy-MM-dd");
         const formattedMinistryName = ministryName.replace(/\s+/g, "_");
         const csv = convertToCSV(data, headers);
-        triggerDownload(csv, `COG_Dasma_Schedule_${dateStr}_${formattedMinistryName}.csv`);
+        triggerDownload(csv, `${fileSlug}_Schedule_${dateStr}_${formattedMinistryName}.csv`);
         setShowDownloadMenu(false);
     };
 
@@ -218,7 +229,7 @@ export default function PublicScheduleClient({
         
         const dateStr = format(new Date(schedule.date), "yyyy-MM-dd");
         const csv = convertToCSV(data, headers);
-        triggerDownload(csv, `COG_Dasma_Schedule_${dateStr}_Slots.csv`);
+        triggerDownload(csv, `${fileSlug}_Schedule_${dateStr}_Slots.csv`);
         setShowDownloadMenu(false);
     };
 
@@ -279,11 +290,19 @@ export default function PublicScheduleClient({
                         </Link>
 
                         <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 text-white font-bold text-lg">
-                                CD
-                            </div>
+                            {tenant.logoUrl ? (
+                                <img
+                                    src={tenant.logoUrl}
+                                    alt={brand}
+                                    className="w-10 h-10 rounded-xl object-contain shadow-md"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 text-white font-bold text-lg">
+                                    {brandInitials}
+                                </div>
+                            )}
                             <div>
-                                <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block leading-none mb-0.5">COG DASMA</span>
+                                <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block leading-none mb-0.5">{brandUpper}</span>
                                 <h1 className="text-lg font-bold text-slate-800 tracking-tight leading-none">Service Schedule</h1>
                             </div>
                         </div>
@@ -418,7 +437,7 @@ export default function PublicScheduleClient({
             <div className="hidden print:block max-w-6xl mx-auto px-4 py-6 border-b-2 border-slate-800">
                 <div className="flex items-center justify-between">
                     <div>
-                        <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">COG DASMA</span>
+                        <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">{brandUpper}</span>
                         <h1 className="text-2xl font-bold text-slate-900 mt-1">{schedule.title}</h1>
                         <p className="text-slate-500 mt-1 font-medium">
                             {format(new Date(schedule.date), "EEEE, MMMM d, yyyy")}
@@ -687,10 +706,10 @@ export default function PublicScheduleClient({
                 {/* Footer Brand Info */}
                 <footer className="mt-16 text-center border-t border-slate-200/80 pt-8">
                     <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                        This schedule is shared publicly by **COG Dasma**. Last updated on {format(new Date(schedule.updatedAt), "PPpp")}.
+                        This schedule is shared publicly by {brand}. Last updated on {format(new Date(schedule.updatedAt), "PPpp")}.
                     </p>
                     <p className="text-[10px] text-slate-300 mt-1 font-semibold tracking-wider uppercase no-print">
-                        © {new Date().getFullYear()} Church of God Dasmariñas. All rights reserved.
+                        © {new Date().getFullYear()} {tenant.brandName}. All rights reserved.
                     </p>
                 </footer>
             </main>

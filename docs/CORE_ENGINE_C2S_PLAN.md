@@ -1,6 +1,6 @@
 # Plan: Core Engine → C2S Module → White-Label Platform
 
-**Status:** Phase 1–2B M1 complete; **Phase 3A white-label branding + feature flags** in progress (env-driven brand chrome / nav gating; no multi-tenant DB yet)  
+**Status:** Phase 1–2B M1 complete; **Phase 3A+3B white-label** (brand chrome, feature flags, public portal copy); multi-tenant DB/auth still deferred  
 **Priority order:** (1) `packages/core-engine` → (2) C2S as a separate module → (3) white-label / selective apps  
 **Non-goal for early phases:** Splitting every Studio sidebar item into `apps/[module]`.
 
@@ -181,12 +181,12 @@ Recommend **M1 first**, then **M2** only if product/ops wants a separate mentor 
 
 | Task | Detail |
 |---|---|
-| Branding | ✅ CSS `--brand` + logo/name from `TenantConfig` (Studio shell, login, C2S public/embedded) |
+| Branding | ✅ CSS `--brand` + logo/name from `TenantConfig` (Studio shell, login, C2S, **public schedule/sermons portals**) |
 | Feature flags | ✅ `NEXT_PUBLIC_FEATURE_*` → `featureFlags` gate Studio nav + mobile Rooms |
 | Data tenancy | Add `tenantId` to core tables **or** one DB per tenant (decide per cost/compliance) |
 | Auth tenancy | Firebase multi-tenancy **or** single project + custom claims `tenantId` |
 | Admin console | Later `apps/admin-console` to provision tenants / brands |
-| Slice B (copy) | Public schedule / sermons portals still have some hard-coded COG copy |
+| Slice B (copy) | ✅ Public services/sermons/schedule token pages + schedule emails use tenant brand |
 
 **Exit:** One codebase, two brands (staging tenant + COG) smoke-tested via App Hosting env.
 
@@ -277,7 +277,7 @@ flowchart LR
 ## What to do next
 
 1. Smoke-test a second brand via App Hosting env (`NEXT_PUBLIC_BRAND_*` + `NEXT_PUBLIC_FEATURE_RESERVATIONS=false`).  
-2. Phase 3 Slice B: public schedule/sermons portal copy.  
-3. Decide data/auth tenancy before onboarding a second live org.  
-4. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
-5. Owner ops: attach `c2s.cogdasma.app` (+ optional `studio.cogdasma.app`) in Firebase App Hosting.
+2. Decide data/auth tenancy before onboarding a second live org.  
+3. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
+4. Owner ops: attach `c2s.cogdasma.app` (+ optional `studio.cogdasma.app`) in Firebase App Hosting.  
+5. Optional: staff print pages / Capacitor native app names remain COG-specific until product asks.

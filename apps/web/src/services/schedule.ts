@@ -7,6 +7,7 @@ import { createMinorMinistryAssignmentWorkflow } from '@/services/minor-ministry
 import { getUnavailableWorkerIds } from '@/services/availability';
 import { canManageWorkersInMinistries, type CallerCtx } from '@/lib/auth/with-permission';
 import { writeAudit } from '@/lib/audit/log';
+import { tenantDisplayName } from '@studio/core-engine/tenant';
 import type {
     CreateServiceScheduleInput,
     UpdateServiceScheduleInput,
@@ -297,6 +298,8 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
     });
 
     let notifiedCount = 0;
+    const appName = tenantDisplayName();
+    const appBase = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_STUDIO_URL || 'http://localhost:9002';
 
     for (const worker of workers) {
         if (worker.email) {
@@ -325,21 +328,21 @@ export async function publishScheduleAndNotify(scheduleId: string, publishedBy: 
                                     <p style="margin: 8px 0; color: #4b5563;"><strong>Date:</strong> ${formattedDate}</p>
                                 </div>
 
-                                <p style="font-size: 16px;">Please log in to the COG App to view your specific roles, rehearsal times, and confirm your attendance.</p>
+                                <p style="font-size: 16px;">Please log in to ${appName} to view your specific roles, rehearsal times, and confirm your attendance.</p>
 
                                 <div style="text-align: center; margin-top: 32px;">
-                                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/schedule/${scheduleId}"
+                                    <a href="${appBase}/schedule/${scheduleId}"
                                        style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
                                         View Schedule
                                     </a>
                                 </div>
                             </div>
                             <div style="background-color: #f9fafb; padding: 16px; text-align: center; color: #6b7280; font-size: 12px; border-top: 1px solid #eaeaea;">
-                                This is an automated message from the COG App. Please do not reply.
+                                This is an automated message from ${appName}. Please do not reply.
                             </div>
                         </div>
                     `,
-                    text: `Hello ${worker.firstName},\n\nYou have been assigned to duties in the upcoming service: ${schedule.title} on ${formattedDate}.\n\nPlease log in to the COG App to view your specific roles and confirm your attendance.\n\nLink: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/schedule/${scheduleId}`
+                    text: `Hello ${worker.firstName},\n\nYou have been assigned to duties in the upcoming service: ${schedule.title} on ${formattedDate}.\n\nPlease log in to ${appName} to view your specific roles and confirm your attendance.\n\nLink: ${appBase}/schedule/${scheduleId}`
                 });
                 notifiedCount++;
             } catch (err) {

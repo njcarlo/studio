@@ -4,20 +4,22 @@ import { getMinistries } from "@/actions/db";
 // notFound removed; using custom placeholder UI
 import { format } from "date-fns";
 import PublicScheduleClient from "./PublicScheduleClient";
+import { getTenantConfig, tenantDisplayName } from "@studio/core-engine/tenant";
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }) {
     const { token } = await params;
+    const brand = tenantDisplayName(getTenantConfig());
     const schedule = await getPublicSchedule(token);
     if (!schedule) {
         // No published schedule; render a placeholder page allowing navigation or showing info
         return {
-            title: "Schedule Unpublished - COG Dasma",
+            title: `Schedule Unpublished - ${brand}`,
             description: "Public schedule not yet published for this token.",
         };
     }
     return {
-        title: `${schedule.title} - COG Dasma`,
-        description: `Public service schedule for COG Dasma on ${format(new Date(schedule.date), "EEEE, MMMM d, yyyy")}.`,
+        title: `${schedule.title} - ${brand}`,
+        description: `Public service schedule for ${brand} on ${format(new Date(schedule.date), "EEEE, MMMM d, yyyy")}.`,
     };
 }
 
