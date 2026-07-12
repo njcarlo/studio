@@ -16,7 +16,7 @@ import {
 } from "@studio/ui";
 import { cn } from "@studio/ui";
 import { Search, MapPin, Calendar, Users, LoaderCircle } from "lucide-react";
-import { getTenantConfig } from "@studio/core-engine";
+import { getTenantConfig } from "@studio/core-engine/tenant";
 import { getPublicC2SGroups } from "@/actions/c2s";
 import { JoinGroupDialog, type JoinGroup } from "./JoinGroupDialog";
 
