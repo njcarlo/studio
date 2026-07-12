@@ -1,10 +1,13 @@
 # Studio Monorepo — Quick Reference / Navigation Guide
 
-> Migrated from the repo-root `CODEBASE_GUIDE.txt` and corrected against the
-> current codebase (that file had drifted — see "Corrections" below). For the
-> authoritative, actively-maintained architecture map, see
-> [architecture.md](./architecture.md); this file is a faster-to-skim
-> orientation companion.
+> **Outdated in places.** `apps/web` now uses **Firebase Auth + App Hosting +
+> Prisma/Postgres** (not Supabase Auth / Vercel). For day-1 setup and “pick one
+> module” guidance, use **[ONBOARDING.md](./ONBOARDING.md)**. For agent/deploy
+> gotchas, see [`../AGENTS.md`](../AGENTS.md).
+>
+> Migrated from the repo-root `CODEBASE_GUIDE.txt`. For the architecture map, see
+> [architecture.md](./architecture.md); this file remains a faster-to-skim
+> orientation companion but several auth/hosting claims below are historical.
 
 ## Monorepo structure
 

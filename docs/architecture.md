@@ -6,9 +6,14 @@ notifications, audit log, cron jobs, and the meal-stub reporting ledger, see
 [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md) — that doc covers the
 "why"; this doc covers the "where".
 
+**New developers:** start with [`ONBOARDING.md`](./ONBOARDING.md) (current stack
++ local setup + pick-one-module workflow). Some diagrams below still say
+Supabase Auth / Vercel; runtime for `apps/web` is **Firebase Auth + App Hosting
++ Prisma/Postgres**.
+
 For what each module/role can *do*, see [`user-stories.md`](./user-stories.md).
-For a faster-to-skim orientation pass (monorepo layout, key files, known
-gotchas), see [`CODEBASE_GUIDE.md`](./CODEBASE_GUIDE.md).
+For a faster-to-skim orientation pass, see [`CODEBASE_GUIDE.md`](./CODEBASE_GUIDE.md)
+(partially historical).
 
 ## 1. High-level layers & tech stack
 

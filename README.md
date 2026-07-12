@@ -1,77 +1,73 @@
-# 🌿 Branching Strategy: GitHub Flow
+# Studio Monorepo
 
-This repository follows the **GitHub Flow** branching strategy. This lightweight workflow ensures our `main` branch is always stable and ready for deployment, while allowing for rapid, continuous development of features and bug fixes.
+Church operations platform for **Church of God Dasmariñas** (COG App).
 
-## 🌳 Branch Architecture
+## New developers — start here
+
+**[docs/ONBOARDING.md](./docs/ONBOARDING.md)** — local setup, current stack (Firebase + Prisma), and how to pick **one module** and ship a change.
+
+Also useful:
+
+- [AGENTS.md](./AGENTS.md) — environment gotchas and deploy notes
+- [docs/architecture.md](./docs/architecture.md) — routes and file map
+- [docs/PLATFORM_ARCHITECTURE.md](./docs/PLATFORM_ARCHITECTURE.md) — RBAC, approvals, notifications
+
+## What’s in this repo
+
+| Path | Description |
+|---|---|
+| `apps/web` | Flagship Next.js app (Firebase App Hosting) |
+| `apps/inventory` | Standalone inventory app (legacy Supabase path) |
+| `apps/tract-tracker` | Expo tract-distribution mobile app |
+| `packages/*` | Shared UI, Prisma client, types, store |
+| `functions/` | Firebase Cloud Functions |
+| `prisma/` | Postgres schema (source of truth for `apps/web`) |
+
+## Quick start
+
+```bash
+npm install
+npx prisma generate
+# configure apps/web/.env.local — see docs/ONBOARDING.md
+npm run dev:web
+```
+
+## Branching
+
+This repository follows **GitHub Flow**. Work on short-lived feature branches and merge to `main` via Pull Request.
 
 ### `main`
-* **Purpose:** The production-ready state of the application. 
-* **Rules:**
-  * **NEVER** commit directly to `main`.
-  * All code in `main` must be tested, reviewed, and deployable.
-  * Changes are only integrated into `main` via approved Pull Requests (PRs).
 
-### Feature & Fix Branches
-* **Purpose:** All active development happens here. 
-* **Rules:**
-  * Created by branching off `main`.
-  * Keep branches short-lived and focused on a single task or issue.
-  * Delete the branch locally and remotely once merged.
+* Production-ready branch. Do not commit directly.
+* Changes land only through reviewed PRs.
 
----
+### Feature & fix branches
 
-## 🔄 The Workflow
+```bash
+git checkout main && git pull
+git checkout -b feature/<short-description>
+```
 
-1. **Update your local `main`:**
-   Always start from the latest production code to prevent merge conflicts.
-   `git checkout main`
-   `git pull origin main`
+| Prefix | Use | Example |
+|---|---|---|
+| `feature/` / `feat/` | New feature | `feature/c2s-join-filters` |
+| `fix/` / `bugfix/` | Bug fix | `fix/workers-search` |
+| `docs/` | Documentation | `docs/onboarding` |
+| `refactor/` | Restructure without behavior change | `refactor/schedule-service` |
 
-2. **Create a new branch:**
-   Name it according to our conventions (see below).
-   `git checkout -b feature/user-authentication`
+### Commits
 
-3. **Make changes and commit:**
-   Write clear, semantic commit messages. Commit often to save your progress.
-   `git add .`
-   `git commit -m "feat: add JWT authentication to LoginController.cs"`
+Semantic commits: `<type>(optional-scope): <description>`
 
-4. **Push your branch to the remote repository:**
-   `git push -u origin feature/user-authentication`
+```
+feat(c2s): add barangay filter defaults
+fix(workers): fall back when SQL search fn missing
+docs: add developer onboarding guide
+```
 
-5. **Open a Pull Request (PR):**
-   * Go to the repository on GitHub and open a PR against the `main` branch.
-   * Fill out the PR template, linking any relevant tracking tickets or issues.
-   * Request a code review from at least one other team member.
+### PR workflow
 
-6. **Review, Approve, and Merge:**
-   * Address any feedback from the code review. 
-   * Once approved, merge the PR into `main`.
-   * **Clean up:** Delete your feature branch after merging to keep the repository tidy.
-
----
-
-## 🏷️ Naming Conventions
-
-To keep our repository organized, please use the following prefixes for your branch names:
-
-| Prefix | Use Case | Example |
-| :--- | :--- | :--- |
-| `feature/` or `feat/` | Developing a new feature | `feature/commission-calculator` |
-| `fix/` or `bugfix/` | Fixing an issue or bug | `fix/sql-timeout-error` |
-| `docs/` | Updating documentation | `docs/api-endpoints` |
-| `refactor/` | Restructuring existing code without changing behavior | `refactor/database-context` |
-
----
-
-## 💬 Commit Message Guidelines
-
-We use **Semantic Commit Messages** to make our repository history easy to read and understand at a glance. 
-
-**Format:** `<type>: <description>`
-
-**Examples:**
-* `feat: create stored procedure for monthly sales totals`
-* `fix: resolve null reference exception in DataGrid binding`
-* `docs: update setup instructions in README`
-* `style: format C# files to standard spacing`
+1. Push your branch
+2. Open a PR against `main`
+3. Request review, address feedback, merge
+4. Delete the branch after merge
