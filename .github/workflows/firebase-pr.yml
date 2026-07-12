@@ -1,0 +1,80 @@
+# Firebase status check on pull requests.
+# Replaces the Vercel GitHub bot as the hosting signal on PRs.
+# App Hosting itself deploys from the linked branch in the Firebase console;
+# this workflow validates repo Firebase config and posts a PR comment.
+name: Firebase
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: firebase-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  firebase-check:
+    name: Firebase App Hosting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Firebase / App Hosting config
+        id: validate
+        run: |
+          set -e
+          test -f apphosting.yaml
+          test -f firebase.json
+          test -f .firebaserc
+          test -f scripts/apphosting-build.sh
+          test -f scripts/apphosting-start.sh
+          test -f package.json
+          grep -q '"apphosting:build"' package.json
+          PROJECT=$(node -p "require('./.firebaserc').projects.default || 'cog-app-studio'")
+          echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
+          echo "Validated App Hosting + Firebase config for project $PROJECT"
+
+      - name: Comment Firebase deploy target on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- firebase-pr-status -->';
+            const project = '${{ steps.validate.outputs.project }}';
+            const body = [
+              marker,
+              '## Firebase',
+              '',
+              `This repo deploys **apps/web** with **Firebase App Hosting** (not Vercel).`,
+              '',
+              `| | |`,
+              `| --- | --- |`,
+              `| Project | \`${project}\` |`,
+              `| Config | \`apphosting.yaml\` + \`npm run apphosting:build\` |`,
+              `| Production | https://studio--cog-app-studio.asia-southeast1.hosted.app |`,
+              `| Functions / rules | \`.github/workflows/firebase-deploy.yml\` on \`main\` (needs \`FIREBASE_TOKEN\`) |`,
+              '',
+              'Vercel builds are skipped via \`scripts/vercel-ignore.sh\`.',
+              'Disconnect the Vercel GitHub app from this repository if it still posts checks.',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find(c => c.user?.type === 'Bot' && c.body?.includes(marker))
+              || comments.find(c => c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }
