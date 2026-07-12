@@ -2,26 +2,34 @@
 
 Standalone Next.js app for the anonymous Connect2Souls Group Finder.
 
-- Port: **9004** (`npm run dev:c2s-public`)
+**Canonical URL:** `https://c2s.{NEXT_PUBLIC_ROOT_DOMAIN}`  
+Default: **`https://c2s.cogdasma.app`**
+
+- Local: `npm run dev:c2s-public` → http://localhost:9004  
+  (`NEXT_PUBLIC_MODULE_URL_C2S=http://localhost:9004`)
 - Domain logic: `@studio/c2s`
-- Platform: `@studio/core-engine` (public actions + `getTenantConfig` branding)
+- Platform: `@studio/core-engine` (`moduleAppUrl('c2s')`, tenant branding)
 - UI: `@studio/ui`
 
 ## Env
 
-Same Postgres as Studio:
-
 ```bash
 DATABASE_URL=...
 DIRECT_URL=...
-# optional white-label
+
+# White-label / module hosts  →  https://[module].[domain].app
+NEXT_PUBLIC_ROOT_DOMAIN=cogdasma.app
 NEXT_PUBLIC_BRAND_NAME="Church of God Dasmariñas"
 NEXT_PUBLIC_BRAND_LOGO_URL=/cog-logo.png
 TENANT_ID=cog-dasma
+
+# Local only
+# NEXT_PUBLIC_MODULE_URL_C2S=http://localhost:9004
 ```
 
-## Deploy
+## DNS / App Hosting
 
-Create a second Firebase App Hosting backend pointing at this app (or run behind
-your reverse proxy). Studio can redirect `/public/c2s-join` when
-`NEXT_PUBLIC_C2S_PUBLIC_URL` is set.
+Point **`c2s.cogdasma.app`** (or your root domain) at the Firebase App Hosting
+backend for this app (`apphosting.yaml` in this folder). Studio redirects
+`/public/c2s-join` → `https://c2s.{rootDomain}` unless
+`NEXT_PUBLIC_C2S_EMBEDDED=true`.
