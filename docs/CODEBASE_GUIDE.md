@@ -1,131 +1,96 @@
 # Studio Monorepo — Quick Reference / Navigation Guide
 
-> **Outdated in places.** `apps/web` now uses **Firebase Auth + App Hosting +
-> Prisma/Postgres** (not Supabase Auth / Vercel). For day-1 setup and “pick one
-> module” guidance, use **[ONBOARDING.md](./ONBOARDING.md)**. For agent/deploy
-> gotchas, see [`../AGENTS.md`](../AGENTS.md).
->
-> Migrated from the repo-root `CODEBASE_GUIDE.txt`. For the architecture map, see
-> [architecture.md](./architecture.md); this file remains a faster-to-skim
-> orientation companion but several auth/hosting claims below are historical.
+Companion to [`ONBOARDING.md`](./ONBOARDING.md) and [`architecture.md`](./architecture.md).
+Stack for **`apps/web`**: Firebase Auth + Firebase App Hosting + Prisma/Postgres
+(+ Cloud Functions, Storage, Firestore dual-write soak).
 
 ## Monorepo structure
 
 ```
 /
 ├── apps/
-│   ├── web/              → Next.js 15 web app (COG App - church management)
-│   └── tract-tracker/    → Expo React Native app (COG Nation Tracts Giving Day)
+│   ├── web/              → Next.js 15 (COG App) — Firebase App Hosting
+│   ├── inventory/        → Separate Next.js app (legacy Supabase client)
+│   └── tract-tracker/    → Expo React Native (legacy Supabase)
 ├── packages/
-│   ├── database/         → Supabase client + Prisma providers
+│   ├── database/         → Prisma client export (@studio/database)
 │   ├── graphql/          → GraphQL schema + resolvers
-│   ├── store/            → Zustand stores (auth, permissions, impersonation)
+│   ├── store/            → Zustand (auth permissions, impersonation)
 │   ├── types/            → Shared TypeScript types
-│   └── ui/                → Shared UI components (shadcn/ui based)
-└── turbo.json            → Turborepo config
+│   ├── ui/               → Shared UI (shadcn/ui)
+│   └── client/           → Apollo/GraphQL client (limited consumers)
+├── functions/            → Firebase Cloud Functions (HTTP API + schedulers)
+├── prisma/schema.prisma  → Postgres schema (SoT for apps/web)
+├── apphosting.yaml       → App Hosting config
+├── firebase.json         → Functions, Firestore, Storage, emulators
+└── supabase/migrations/  → Historical SQL (indexes/functions) — not web Auth
 ```
 
 ## apps/web — COG App (Next.js)
 
-**Purpose:** Church management system for COG Dasmariñas — worker profiles,
-roles/ministries, scheduling, room reservations, meal stubs, attendance, QR
-scanning, approvals, C2S discipleship groups, public attendee-facing module,
-ORS legacy data sync, inventory.
+**Purpose:** Church management for COG Dasmariñas — workers/RBAC, scheduling,
+reservations, meals/attendance, approvals, C2S, public pages, ORS sync, inventory.
 
 **Key files:**
+
 | File | Purpose |
 |---|---|
 | `apps/web/src/app/layout.tsx` | Root layout, fonts, providers |
 | `apps/web/src/app/page.tsx` | Redirects to `/login` |
-| `apps/web/src/app/auth-sync.tsx` | Auth bootstrap component (Supabase session → Zustand) |
-| `apps/web/src/middleware.ts` | Edge auth gate — redirects unauthenticated requests to `/login` except for `PUBLIC_PREFIXES` and the token-shareable `/worker/schedule/[token]` route |
-| `apps/web/src/actions/db.ts` | Large grab-bag of Prisma server actions (workers, ministries, rooms, etc.) |
-| `apps/web/src/actions/*.ts` | One file per domain area — thin auth-check-then-call-service wrappers (see [architecture.md](./architecture.md)) |
-| `apps/web/src/services/*.ts` | Actual business logic + Prisma queries |
-| `apps/web/src/store/user-role-syncer-sql.tsx` | Syncs Supabase user → Prisma worker → permissions |
-| `apps/web/.env` | Env vars (Supabase DB + API, Resend) — **note:** Next.js reads this file, not the repo-root `.env`; keep both in sync if you maintain a root copy |
-| `prisma/schema.prisma` | Prisma schema (repo root, not `packages/database`) |
+| `apps/web/src/middleware.ts` | Cookie session gate; public prefixes + schedule token route |
+| `apps/web/src/lib/firebase-client.ts` | Browser Firebase Auth/SDK (emulator flag) |
+| `apps/web/src/lib/firebase-auth-server.ts` | Server `getServerUser()` |
+| `apps/web/src/lib/auth/with-permission.ts` | `resolveCallerCtx`, `withPermission`, `withPublicAction` |
+| `apps/web/src/actions/*.ts` | Domain server actions |
+| `apps/web/src/services/*.ts` | Business logic + Prisma |
+| `apps/web/src/store/user-role-syncer-sql.tsx` | Firebase user → Worker → Zustand permissions |
+| `apps/web/.env.local` | Local env (Next loads this; not root `.env` alone) |
+| `prisma/schema.prisma` | Prisma schema (repo root) |
 
-**Auth: Supabase Auth** (not Firebase — the old guide was wrong on this).
-- Login/signup via `supabase.auth.signInWithPassword` (`@studio/database` client).
-- `middleware.ts` reads the session cookie at the edge and redirects unauthenticated
-  requests before they reach a serverless function.
-- `UserRoleSyncerSQL` reads the Supabase user to fetch the worker profile from Prisma
-  and compute permissions into the Zustand store.
+**Auth: Firebase Auth**
 
-**Database:** Supabase PostgreSQL via Prisma.
-- `DATABASE_URL` — pooled connection (pgbouncer, port 6543) for app queries.
-- `DIRECT_URL` — direct connection (port 5432) for migrations.
-- Both must be updated in **three places** when the password rotates:
-  repo-root `.env`, `apps/web/.env` (the one Next.js actually loads at build/runtime —
-  easy to miss), and Vercel project env vars (Production/Preview/Development).
+- Login via `signInWithEmailAndPassword` (Firebase web SDK).
+- Middleware checks session cookie; unauthenticated users → `/login`.
+- `UserRoleSyncerSQL` loads Worker by email and derives `can*` flags.
 
-**Routes:** see the full table in [architecture.md](./architecture.md)
-— it's kept current; don't duplicate it here.
+**Database: Postgres via Prisma**
 
-## apps/tract-tracker — Tracts Giving Day (Expo React Native)
+- `DATABASE_URL` / `DIRECT_URL` in App Hosting secrets and local `.env.local`.
+- Fresh local DB: `npx prisma db push` (do not rely on incomplete `migrate deploy`).
+- Optional performance SQL still lives under `supabase/migrations/` (apply manually to Postgres).
 
-**Purpose:** Mobile app for tracking gospel tract distribution — log in,
-select region/barangay, tap +1 to record tracts given; regional + personal
-counts; map view; admin dashboard.
+**Deploy:** Firebase App Hosting from `main`  
+URL: `https://studio--cog-app-studio.asia-southeast1.hosted.app`  
+Project: `cog-app-studio`
 
-**Key files:**
-| File | Purpose |
-|---|---|
-| `apps/tract-tracker/src/supabase.ts` | Supabase client + admin client |
-| `apps/tract-tracker/src/context/AuthContext.tsx` | Auth state, signIn/signUp/signOut |
-| `apps/tract-tracker/src/AppNavigator.tsx` | Navigation (Stack + BottomTabs) |
-| `apps/tract-tracker/src/screens/ActionScreen.tsx` | Main screen (counter + +1 button) |
-| `apps/tract-tracker/src/screens/MapScreen.tsx` | Leaflet map (OpenStreetMap, no API key) |
-| `apps/tract-tracker/src/screens/AdminDashboardScreen.tsx` | Admin user management |
-| `apps/tract-tracker/supabase/migrations/001_create_tract_users.sql` | DB schema |
+**Routes:** full table in [`architecture.md`](./architecture.md) §4.
 
-**Auth:** Supabase Auth (`signInWithPassword`/`signUp`); session persisted via
-the Supabase client. `AppNavigator` swaps screens based on session state —
-**do not** call `navigation.replace()` after login/signup, the session change
-triggers the swap automatically.
+## Firebase Cloud Functions (`functions/`)
 
-**Database:** Same Supabase project as `apps/web`.
-- Table `tract_users`: `id, user_id, name, email, region, sub_region, barangay, tracts_given`
-- RPC `increment_tracts(uid)` — increments `tracts_given` by 1.
+- Standalone package (own `package.json`).
+- HTTP `api` function mounts domain routers under `/<domain>`.
+- Auth: `Authorization: Bearer <Firebase ID token>`.
+- Schedulers call App Hosting `/api/cron/*` using `APP_BASE_URL` + `CRON_SECRET`.
+- Deploy: GitHub Actions `.github/workflows/firebase-deploy.yml` (needs `FIREBASE_TOKEN`) or `firebase deploy --only functions,firestore:rules,storage`.
 
-**Map:** `react-native-webview` + Leaflet.js + OpenStreetMap tiles — no Google
-Maps API key required. Barangay coordinates are hardcoded in `MapScreen.tsx`.
+## apps/tract-tracker — Tracts Giving Day (Expo)
 
-**Build:** EAS project `@jace29/tract-tracker`; bundle ID `com.cognation.tracks`
-(both platforms).
+**Still on Supabase Auth/DB** for this app only. See `apps/tract-tracker/`. Not part of the Firebase App Hosting cutover.
 
-## Supabase project
+## apps/inventory — standalone inventory
 
-One Supabase project backs **both** apps:
-- `apps/web` uses it as a PostgreSQL database via Prisma, plus Supabase Auth
-  (`@supabase/ssr` in middleware, `@studio/database` client elsewhere).
-- `apps/tract-tracker` uses the Supabase client SDK directly for auth and
-  table queries (no Prisma).
+**Still Supabase-oriented** as a separate app. The **inventory UI inside `apps/web`** (`/inventory`) uses Prisma server actions.
 
-Region: `ap-northeast-1` (AWS).
+## Known gotchas
 
-## Known issues / watch out for
+1. **`.env` location**: Next.js reads `apps/web/.env.local` (and `.env`), not only the repo root.
+2. **Dev vs build**: never `next build` while `npm run dev:web` is running (shared `.next`).
+3. **App Hosting**: do not put `buildCommand` in `apphosting.yaml` — it strips npm workspaces.
+4. **SQL functions**: `fn_workers_search` / `fn_room_bookings_for_date` may be missing on App Hosting Postgres; workers has a Prisma fallback.
+5. **Signup phone**: `Worker.phone` required in schema — signup payload bugs may still exist.
+6. **Email**: Resend may still be sandbox (`onboarding@resend.dev`) unless a domain is verified.
 
-1. **Metro cache** in tract-tracker: run `npx expo start --clear` after file
-   changes to avoid stale cache.
-2. **`.env` duplication**: the repo-root `.env` and `apps/web/.env` both hold
-   `DATABASE_URL`/`DIRECT_URL` — Next.js only reads the one in `apps/web/`.
-   Forgetting to update both after a password rotation causes the pre-push
-   build to fail with a Prisma auth error even though the root `.env` looks correct.
-3. **Email sender** is Resend sandbox (`onboarding@resend.dev`) unless a
-   verified domain has since been configured — check before relying on
-   production email delivery.
+## Corrections from older guides
 
-## Corrections from the original `CODEBASE_GUIDE.txt`
-
-The repo-root version (dated "March 15, 2026") had drifted from reality by the
-time this was migrated:
-- Claimed **Firebase Auth** — the app actually runs on **Supabase Auth** end to end
-  (login page, middleware, `UserRoleSyncerSQL`). No Firebase code remains in the auth path.
-- Claimed `ignoreBuildErrors: true` in `next.config.ts` — it's `false`.
-- Referenced `/api/debug-prisma` and `/api/debug-workers` debug routes and a
-  root-level `service-account.json` — neither exists in the current tree.
-- Listed a much shorter route table and hook list than what exists today —
-  defer to [architecture.md](./architecture.md), which is updated alongside
-  feature work, rather than maintaining a second route list here.
+Older copies of this file claimed Supabase Auth / Vercel for `apps/web`. That
+path has been removed. Treat Firebase + Prisma + App Hosting as current.

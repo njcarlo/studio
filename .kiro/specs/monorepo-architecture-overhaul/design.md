@@ -1,5 +1,13 @@
 # Design Document: Monorepo Architecture Overhaul
 
+> **Superseded direction for `apps/web`:** This spec targeted Supabase Edge
+> Functions. The shipped architecture uses **Firebase Auth**, **Firebase App
+> Hosting**, **Prisma/Postgres**, and **Firebase Cloud Functions** (`functions/`).
+> Keep useful module-boundary ideas; do **not** implement new Supabase Edge
+> Functions for the web app. See `docs/ONBOARDING.md` and `docs/architecture.md`.
+> `apps/inventory` / `apps/tract-tracker` may still be on Supabase.
+
+
 ## Overview
 
 This document describes the architectural transformation of the Studio monorepo from a monolithic server-actions architecture to a distributed Edge Functions + typed SDK architecture. All business logic is extracted from `apps/web` (`src/actions/db.ts` and related action files) and `apps/inventory` (`src/lib/inventory-api.ts`) into 10 independent Supabase Edge Functions. A unified `@studio/client` SDK package wraps all Edge Function HTTP calls with TypeScript types derived from shared Zod schemas. The apps become thin presentation layers. Migration is module-by-module.

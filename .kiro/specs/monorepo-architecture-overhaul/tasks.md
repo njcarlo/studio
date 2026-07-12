@@ -1,5 +1,13 @@
 # Implementation Plan: Monorepo Architecture Overhaul
 
+> **Superseded direction for `apps/web`:** This spec targeted Supabase Edge
+> Functions. The shipped architecture uses **Firebase Auth**, **Firebase App
+> Hosting**, **Prisma/Postgres**, and **Firebase Cloud Functions** (`functions/`).
+> Keep useful module-boundary ideas; do **not** implement new Supabase Edge
+> Functions for the web app. See `docs/ONBOARDING.md` and `docs/architecture.md`.
+> `apps/inventory` / `apps/tract-tracker` may still be on Supabase.
+
+
 ## Migration Status Tracker
 
 | Module | Edge Function | @studio/client | apps/web migrated | Server Actions removed |

@@ -5,6 +5,11 @@ This doc explains **how the 6 platform layers fit together**, the request/data
 flow through them, and gives a worked end-to-end example (Sunday attendance →
 meal stub) so new feature work has a concrete pattern to follow.
 
+**Runtime for `apps/web`:** Firebase Auth + Firebase App Hosting + Prisma/Postgres
+(source of truth), with Cloud Functions for HTTP API/schedulers and Firestore as
+a dual-write soak. See [`ONBOARDING.md`](./ONBOARDING.md) and
+[`architecture.md`](./architecture.md).
+
 ---
 
 ## 1. Layer stack
@@ -23,17 +28,18 @@ graph TB
     end
 
     subgraph "Platform Layers"
-        L1["Layer 1 — RBAC\nrole + flags + JWT claims"]
+        L1["Layer 1 — RBAC\nrole + flags + Firebase session"]
         L2["Layer 2 — Approval Workflow Engine\nApprovalWorkflow / ApprovalStage"]
         L3["Layer 3 — Notifications\nin-app + push + email, outbox"]
-        L4["Layer 4 — Audit Log\nAuditLog (insert-only)"]
-        L5["Layer 5 — Scheduled Jobs\npg_cron Edge Functions"]
+        L4["Layer 4 — Audit Log\nAuditLog / TransactionLog"]
+        L5["Layer 5 — Scheduled Jobs\nCloud Functions → /api/cron"]
         L6["Layer 6 — Reporting Ledger\nMealStubLedger + SQL views"]
     end
 
     subgraph "Data & Enforcement"
-        RLS["Postgres RLS\nhas_permission() / is_super_admin()"]
-        DB[(Postgres / Supabase)]
+        AuthGate["withPermission / resolveCallerCtx"]
+        DB[(Postgres via Prisma)]
+        FS[(Firestore dual-write soak)]
     end
 
     F1 --> L1
@@ -54,7 +60,7 @@ graph TB
     F4 --> L1
     F4 --> L3
 
-    L1 --> RLS
+    L1 --> AuthGate
     L2 --> L3
     L2 --> L4
     L5 --> L2
@@ -65,15 +71,16 @@ graph TB
     L3 --> DB
     L4 --> DB
     L6 --> DB
-    RLS --> DB
+    AuthGate --> DB
+    L2 -.-> FS
 ```
 
 **Reading it:** a feature like "Major Event Request" (Phase 2) doesn't write its
 own approval state machine or notification code — it calls Layer 2
 (`approval-engine.ts`) to create/advance a workflow, which itself calls Layer 3
 (`notify()`) on every state change and Layer 4 (`writeAudit()`) on every
-decision. Layer 1 (RBAC/JWT) gates who can call any of this in the first place,
-with RLS as the non-bypassable backstop.
+decision. Layer 1 (RBAC via Firebase session → Worker permissions) gates who can
+call any of this in the first place.
 
 ---
 
@@ -86,18 +93,19 @@ sequenceDiagram
     participant Auth as withPermission()
     participant Svc as Service (services/*.ts)
     participant Prisma as Prisma Client
-    participant PG as Postgres (RLS)
+    participant PG as Postgres
+    participant FB as Firebase Auth
 
     UI->>SA: call action(args)
     SA->>Auth: resolveCallerCtx()
-    Auth->>Auth: getServerUser() — verify JWT locally (ES256/JWKS)
+    Auth->>FB: getServerUser() — session / ID token
     Auth->>Prisma: Worker + roles + permissions lookup (cached per request)
     Auth-->>SA: CallerCtx { workerId, isSuperAdmin, permissions, flags }
     SA->>SA: check ctx.isSuperAdmin || ctx.permissions.has(key)
     alt allowed
         SA->>Svc: handler(ctx, ...args)
         Svc->>Prisma: read/write
-        Prisma->>PG: SQL (service-role bypasses RLS for app writes)
+        Prisma->>PG: SQL
         PG-->>Prisma: rows
         Svc-->>SA: result
         SA->>Prisma: TransactionLog / AuditLog write (Layer 4)
@@ -107,11 +115,10 @@ sequenceDiagram
     end
 ```
 
-**Defense in depth:** `withPermission()` is the *fast, primary* check (in-process,
-cached). RLS policies (`has_permission()`, `is_super_admin()`) are the
-*backstop* — they protect any path that bypasses Server Actions (direct
-Supabase client calls from the browser, Edge Functions, future mobile app
-calling Supabase directly).
+**Primary enforcement:** `withPermission()` / `resolveCallerCtx()` (in-process,
+React `cache()` per request). Cloud Functions verify Firebase ID tokens separately.
+Historical Postgres RLS policies may still exist from the Supabase era; `apps/web`
+does not rely on browser Supabase clients.
 
 ### 2.1 `withPublicAction` — self-service exceptions to the rule above
 
@@ -232,7 +239,7 @@ sequenceDiagram
     participant Caller as Any service (approval-engine, schedule, etc.)
     participant Notif as notification-service.notify()
     participant DB as Notification table
-    participant Cron as Outbox-drain Edge Function (Layer 5, every 1 min)
+    participant Cron as Outbox-drain cron (Layer 5, Cloud Functions → /api/cron)
     participant Push as Expo Push
     participant Email as Email sender
 
@@ -278,7 +285,7 @@ fire-and-forget afterthought for these specific actions (unlike the lighter
 gantt
     dateFormat HH:mm
     axisFormat %H:%M
-    title Weekly cron timeline (Supabase pg_cron Edge Functions)
+    title Weekly cron timeline (Firebase Cloud Functions → App Hosting /api/cron)
     section Sunday
     Void unused FT/OC weekday stubs (EOD)      :a1, 00:00, 1h
     section Monday 00:00
@@ -372,7 +379,7 @@ replacement, who then runs this same confirm flow.
 | Multi-stage approval | `approval-engine.ts` — `createWorkflow()` / `decide()` |
 | Tell a user something happened | `notification-service.notify(workerId, type, payload)` |
 | Record a sensitive change | `writeAudit(actor, module, action, subjectType, subjectId, before, after, reason)` |
-| Time-based reset/sweep | New function in `supabase/functions/cron-jobs/`, registered via `pg_cron` |
+| Time-based reset/sweep | Handler in `services/cron-jobs.ts` + `/api/cron/*`, triggered by Cloud Functions scheduler |
 | Stub/financial reporting | Write to `MealStubLedger`, read via `v_meal_stub_*` views |
 | New table | Migration includes RLS policy using `has_permission()` / `is_super_admin()` in the same file |
 
@@ -427,7 +434,7 @@ satisfied by the layers it references, the layer is missing something.
 | # | Story | Phase | Layers exercised |
 |---|---|---|---|
 | RRM1 | As a Room Reservation Manager, I want to be the final-stage approver on room reservations regardless of which ministry/department submitted them. | 2 | §1 RBAC (flag-scoped permission), §4 Approval engine |
-| RRM2 | As a Room Reservation Manager, I want to assign display devices to rooms and see bookings update in real time on those displays without a page refresh. | 2 | §1 RBAC, real-time via Supabase Realtime (not a named layer — direct DB subscription) |
+| RRM2 | As a Room Reservation Manager, I want to assign display devices to rooms and see bookings update in real time on those displays without a page refresh. | 2 | §1 RBAC; room displays use Firestore pings / polling (not Supabase Realtime) |
 
 ### HR (`flags` includes `hr`)
 

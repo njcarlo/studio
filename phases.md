@@ -1,3 +1,5 @@
+> **Note:** Prefer `docs/PLATFORM_ARCHITECTURE.md` (Firebase-updated). This file may lag.
+
 # COG App — Platform Architecture & Layer Interaction
 
 Companion to the implementation roadmap (`.claude/plans/precious-popping-treehouse.md`).
@@ -27,13 +29,13 @@ graph TB
         L2["Layer 2 — Approval Workflow Engine\nApprovalWorkflow / ApprovalStage"]
         L3["Layer 3 — Notifications\nin-app + push + email, outbox"]
         L4["Layer 4 — Audit Log\nAuditLog (insert-only)"]
-        L5["Layer 5 — Scheduled Jobs\npg_cron Edge Functions"]
+        L5["Layer 5 — Scheduled Jobs\nCloud Functions → /api/cron"]
         L6["Layer 6 — Reporting Ledger\nMealStubLedger + SQL views"]
     end
 
     subgraph "Data & Enforcement"
         RLS["Postgres RLS\nhas_permission() / is_super_admin()"]
-        DB[(Postgres / Supabase)]
+        DB[(Postgres via Prisma)]
     end
 
     F1 --> L1
@@ -110,8 +112,7 @@ sequenceDiagram
 **Defense in depth:** `withPermission()` is the *fast, primary* check (in-process,
 cached). RLS policies (`has_permission()`, `is_super_admin()`) are the
 *backstop* — they protect any path that bypasses Server Actions (direct
-Supabase client calls from the browser, Edge Functions, future mobile app
-calling Supabase directly).
+paths that bypass Server Actions. Primary enforcement is Firebase Auth + `withPermission`.
 
 ### 2.1 `withPublicAction` — self-service exceptions to the rule above
 
@@ -278,7 +279,7 @@ fire-and-forget afterthought for these specific actions (unlike the lighter
 gantt
     dateFormat HH:mm
     axisFormat %H:%M
-    title Weekly cron timeline (Supabase pg_cron Edge Functions)
+    title Weekly cron timeline (Firebase Cloud Functions → /api/cron)
     section Sunday
     Void unused FT/OC weekday stubs (EOD)      :a1, 00:00, 1h
     section Monday 00:00
@@ -372,7 +373,7 @@ replacement, who then runs this same confirm flow.
 | Multi-stage approval | `approval-engine.ts` — `createWorkflow()` / `decide()` |
 | Tell a user something happened | `notification-service.notify(workerId, type, payload)` |
 | Record a sensitive change | `writeAudit(actor, module, action, subjectType, subjectId, before, after, reason)` |
-| Time-based reset/sweep | New function in `supabase/functions/cron-jobs/`, registered via `pg_cron` |
+| Time-based reset/sweep | Handler in `services/cron-jobs.ts` + `/api/cron/*` via Cloud Functions |
 | Stub/financial reporting | Write to `MealStubLedger`, read via `v_meal_stub_*` views |
 | New table | Migration includes RLS policy using `has_permission()` / `is_super_admin()` in the same file |
 
@@ -427,7 +428,7 @@ satisfied by the layers it references, the layer is missing something.
 | # | Story | Phase | Layers exercised |
 |---|---|---|---|
 | RRM1 | As a Room Reservation Manager, I want to be the final-stage approver on room reservations regardless of which ministry/department submitted them. | 2 | §1 RBAC (flag-scoped permission), §4 Approval engine |
-| RRM2 | As a Room Reservation Manager, I want to assign display devices to rooms and see bookings update in real time on those displays without a page refresh. | 2 | §1 RBAC, real-time via Supabase Realtime (not a named layer — direct DB subscription) |
+| RRM2 | As a Room Reservation Manager, I want to assign display devices to rooms and see bookings update in real time on those displays without a page refresh. | 2 | §1 RBAC, room display pings / refresh (Firestore or client polling) |
 
 ### HR (`flags` includes `hr`)
 

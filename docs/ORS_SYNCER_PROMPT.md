@@ -1,10 +1,16 @@
 # ORS Syncer — Development Prompt
 
+> **Auth update:** modern login for `apps/web` is **Firebase Auth**, not
+> Supabase Auth. Worker sync still targets Prisma/Postgres. Where this prompt
+> says “Supabase Auth account/session”, read **Firebase Auth user / session**
+> and use the Firebase Admin SDK (or existing ORS password-sync helpers) instead
+> of `supabaseAdmin`. See `/settings/ors-sync` and `services/ors-sync.ts`.
+
 ## Overview
 
-Build the **ORS Syncer** module — an enhanced version of the existing ORS sync system (`/settings/ors-sync`) that focuses specifically on **Worker synchronization** between the legacy ORS system (CodeIgniter 3 / MySQL `cogdasma_db`) and the new COG App (Next.js / Prisma / Supabase).
+Build the **ORS Syncer** module — an enhanced version of the existing ORS sync system (`/settings/ors-sync`) that focuses specifically on **Worker synchronization** between the legacy ORS system (CodeIgniter 3 / MySQL `cogdasma_db`) and the new COG App (Next.js / Prisma / **Firebase Auth** + Postgres).
 
-The key goal is to **keep the legacy login working** during the migration period: workers log in using their **Worker ID** (`worker.id` in the legacy DB — an integer) and their **password** (stored as an MD5 hash in the legacy `worker.password` column). The new system must support this legacy login flow alongside the modern Supabase Auth flow.
+The key goal is to **keep the legacy login working** during the migration period: workers log in using their **Worker ID** (`worker.id` in the legacy DB — an integer) and their **password** (stored as an MD5 hash in the legacy `worker.password` column). The new system must support this legacy login flow alongside the modern Firebase Auth email/password flow.
 
 ---
 
@@ -74,13 +80,13 @@ CREATE TABLE `department` (
 );
 ```
 
-### New System (Prisma / Supabase)
+### New System (Prisma / Postgres + Firebase Auth)
 
 The new `Worker` model in Prisma:
 
 ```prisma
 model Worker {
-  id                     String    @id @default(uuid())   -- Supabase Auth UID
+  id                     String    @id @default(uuid())   -- Worker PK (often UUID; not always Firebase uid)
   workerId               String?                          -- Legacy worker.id (stored as string)
   workerNumber           Int?      @unique                -- Numeric login ID (legacy worker.id as int)
   firstName              String
@@ -110,7 +116,7 @@ model Worker {
 
 ### Current Login Flow
 
-The new system currently uses **Supabase Auth** with email + password via `supabase.auth.signInWithPassword()`. The login page is at `/login` and accepts email/password only.
+The new system currently uses **Firebase Auth** with email + password via the Firebase web SDK. The login page is at `/login` and accepts email/password.
 
 ### Existing ORS Sync Code
 
@@ -147,19 +153,19 @@ Use this as a non-negotiable alignment checklist while implementing:
    - Input field: **Password** (plaintext, submitted securely over HTTPS)
 3. On submit, a **server action** handles the legacy auth flow:
    - Look up the worker in Prisma by `workerNumber` (the legacy integer ID)
-   - If found and the worker has a linked Supabase Auth account:
+   - If found and the worker has a linked Firebase Auth account:
      - **MD5-hash** the submitted password server-side (`crypto.createHash('md5').update(password).digest('hex')`)
      - Compare the hash against the stored legacy password hash (see storage below)
-     - If match → sign the worker into Supabase Auth programmatically (use `supabaseAdmin.auth.admin.generateLink()` or a custom JWT approach)
+     - If match → sign the worker into Firebase Auth programmatically (custom token / Admin SDK sign-in bridge)
    - If the worker is not yet imported → show a clear error: "Worker not found. Please contact your administrator."
-4. After successful legacy login, the session is a standard Supabase session — all downstream auth (RLS, middleware, role syncer) works identically
+4. After successful legacy login, the session is a standard Firebase session — middleware and role syncer work identically
 
 #### Password Hash Storage
 
 - **Add a new column** to the Prisma `Worker` model: `legacyPasswordHash String?` — stores the MD5 hash from the legacy system
 - During ORS import, copy the MD5 hash from the legacy `worker.password` into `legacyPasswordHash`
 - The hash is **never sent to the client** — it's only used server-side for authentication
-- Once a worker resets their password or logs in via email, the `legacyPasswordHash` can optionally be cleared (since they now have a proper Supabase Auth password)
+- Once a worker resets their password or logs in via email, the `legacyPasswordHash` can optionally be cleared (since they now have a proper Firebase Auth password)
 
 #### Security Considerations
 
@@ -167,7 +173,7 @@ Use this as a non-negotiable alignment checklist while implementing:
 - The legacy hash comparison happens **server-side only** (in a server action)
 - Rate-limit login attempts to prevent brute-force attacks against MD5 hashes
 - Log all legacy login attempts for audit purposes
-- Flag workers who haven't migrated to Supabase Auth after a configurable grace period (e.g., 90 days)
+- Flag workers who haven't migrated to Firebase Auth after a configurable grace period (e.g., 90 days)
 - Eventually deprecate Worker ID login once all workers have migrated
 
 ---
@@ -252,7 +258,7 @@ For workers that exist in Legacy but not in New:
 1. Select one or more workers from the diff table
 2. Click "Import Selected" or "Import All New"
 3. For each worker:
-   - Create a **Supabase Auth account** with the worker's email and a temp random password
+   - Create a **Firebase Auth account** with the worker's email and a temp random password
    - Create a **Prisma Worker record** with all mapped fields
    - Store the **MD5 password hash** in `legacyPasswordHash` for legacy login support
    - Set `workerNumber` to the legacy `worker.id` (integer)
@@ -281,7 +287,7 @@ A focused action for updating just the password hash:
 2. Click "Sync Passwords"
 3. Server action re-fetches the worker from ORS API to get the current password hash
 4. Updates `legacyPasswordHash` in Prisma
-5. **Never** touches the Supabase Auth password — that's the worker's modern password
+5. **Never** touches the Firebase Auth password — that's the worker's modern password
 
 ---
 
@@ -350,7 +356,7 @@ Add a tab or toggle for Worker ID login:
 
 import crypto from 'crypto';
 import { prisma } from '@studio/database/prisma';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+// use Firebase Admin Auth (existing admin helpers / Admin SDK)
 
 export async function legacyWorkerIdLogin(workerId: number, password: string) {
   // 1. Find worker by workerNumber
@@ -373,7 +379,7 @@ export async function legacyWorkerIdLogin(workerId: number, password: string) {
     return { error: 'Invalid Worker ID or password.' };
   }
 
-  // 3. Generate a magic link or sign-in token for Supabase Auth
+  // 3. Generate a Firebase custom token / sign-in bridge
   // Use admin API to generate a sign-in link
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',
@@ -393,12 +399,12 @@ export async function legacyWorkerIdLogin(workerId: number, password: string) {
 }
 ```
 
-> **Note**: The exact Supabase sign-in mechanism may vary. Options include:
+> **Note**: The exact Firebase sign-in bridge may vary. Options include:
 > - `generateLink({ type: 'magiclink' })` + `verifyOtp()` on the client
-> - Setting the Supabase Auth password to the legacy password during import (less secure but simpler)
-> - A custom JWT-based approach if Supabase supports custom token exchange
+> - Setting the Firebase Auth password to the legacy password during import (less secure but simpler)
+> - Firebase Admin `createCustomToken` exchanged on the client
 >
-> Choose the approach that best fits your Supabase configuration. The critical requirement is that after legacy auth succeeds, the worker gets a valid Supabase session.
+> Choose the approach that best fits Firebase Admin. The critical requirement is that after legacy auth succeeds, the worker gets a valid Firebase session.
 
 ---
 
@@ -483,7 +489,7 @@ Implement in small, safe phases to avoid auth and sync regressions:
 
 - Add Worker ID login tab in `/login`.
 - Implement `legacy-auth.ts` server action with server-only MD5 comparison.
-- Bridge successful auth into a valid Supabase session.
+- Bridge successful auth into a valid Firebase session.
 - Add rate limiting and consistent generic error responses.
 
 #### Phase 5 — Audit + Hardening
@@ -503,7 +509,7 @@ The module is considered complete only if all items below pass:
 3. Worker import writes `workerId`, `workerNumber`, and `legacyPasswordHash`.
 4. Worker diff table includes `orphan` status and direction filtering.
 5. Password column shows sync-state badges, never raw hash values.
-6. "Sync Passwords" updates only `legacyPasswordHash` and never Supabase password.
+6. "Sync Passwords" updates only `legacyPasswordHash` and never Firebase password.
 7. Worker sync can update required profile fields without breaking existing worker-role relations.
 8. ORS sync access works for super admin and `system:manage_ors_sync` permission holders.
 9. All import/sync/login operations create `TransactionLog` entries.
@@ -513,15 +519,15 @@ The module is considered complete only if all items below pass:
 
 ### 11. Important Notes
 
-- **MD5 is a transitional bridge** — not a permanent auth solution. Plan to deprecate Worker ID login after all workers have migrated to email-based Supabase Auth.
+- **MD5 is a transitional bridge** — not a permanent auth solution. Plan to deprecate Worker ID login after all workers have migrated to email-based Firebase Auth.
 - **Password hashes stay server-side** — never expose MD5 hashes to the client. The UI only shows flag badges.
 - **The ORS Reader API is read-only** — syncing is one-directional (Legacy → New). The new system does not write back to the legacy MySQL database.
 - **Ministry mapping uses name matching** — the existing `getOrsMinistryMap()` function handles this. Ministry names must match between legacy and new system.
-- **Workers without email** cannot be imported (Supabase Auth requires email). These should be flagged in the UI with a clear message.
+- **Workers without email** cannot be imported (Firebase Auth email/password flows need an email). These should be flagged in the UI with a clear message.
 - **Rate limiting** on the Worker ID login endpoint is critical since MD5 hashes are vulnerable to brute-force attacks.
 
 ### 12. Explicit Non-Goals (for this iteration)
 
 - Writing updates back to legacy MySQL / CodeIgniter database.
-- Replacing Supabase Auth as the primary auth system.
+- Replacing Firebase Auth as the primary auth system.
 - Migrating every legacy module in ORS; this scope is worker sync + worker login continuity.

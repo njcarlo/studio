@@ -1,12 +1,22 @@
 # Server Action Authorization & Layering Plan
 
+> **Superseded auth transport:** Phase 0 below targeted `@supabase/ssr`.
+> `apps/web` now uses **Firebase Auth** (`getServerUser`, session cookies,
+> `withPermission` / `resolveCallerCtx`). Keep the *layering* lessons
+> (action → permission → Zod → service → Prisma). Treat Supabase Edge Function
+> operational checklists as historical unless you are on `apps/inventory` /
+> `apps/tract-tracker`. Privileged non-Next HTTP work belongs in Firebase
+> Cloud Functions (`functions/`).
+
 ## Context
 
-A security review of `apps/web` (2026-06-07) found that ~120 Server Actions in `actions/*.ts` perform privileged Prisma writes with **no server-side session or permission checks** — authorization was implicitly delegated to the UI and to Postgres RLS. The root cause: the app has no cookie-based session (Supabase Auth lives only in browser `localStorage`), so Server Actions have no way to know who's calling.
+A security review of `apps/web` (2026-06-07) found that many Server Actions in
+`actions/*.ts` performed privileged Prisma writes with insufficient server-side
+session or permission checks. Authorization was too often delegated to the UI.
 
-As a first patch, `lib/auth/require-permission.ts` (`requirePermission(accessToken, permissionKey)`) was added and wired into the highest-risk role/permission/worker-deletion actions, with the client manually fetching and passing its access token (`getAccessToken()` in `lib/studio-client.ts`).
-
-This document lays out how to evolve that patch into a proper layered architecture across the rest of the codebase, phase by phase.
+**Current state:** Firebase Auth + `withPermission` / `resolveCallerCtx` is the
+server-side gate for `apps/web`. Continue wrapping remaining privileged actions
+and prefer domain `actions/*.ts` + `services/*.ts` over growing `db.ts`.
 
 **Target layering (outside → in):**
 ```
@@ -52,7 +62,7 @@ Server Action (boundary)
 
 3. **Blind overwrite in `syncOrsUpdatedWorkers` — no "is the legacy data actually newer" check.** The function lets the client choose which fields to sync per worker (`item.fields`), but once a field is selected, the legacy value is written unconditionally — there's no comparison against `updatedAt` or any local-edit marker. A sync run against stale ORS data can silently clobber recent in-app edits (name corrections, ministry reassignment, status changes) with old legacy values. The only trail is a free-text `logOrsSyncEvent` entry — there's no diff snapshot or undo.
 
-4. **Email overwrite can break Supabase Auth linkage.** `data.email = w.email` ([ors-sync.ts:716](../apps/web/src/actions/ors-sync.ts#L716)) changes the very field used to match the worker to their Supabase Auth account and to look them up in `requirePermission`/login flows — but nothing updates the corresponding Supabase Auth user. A legacy email change synced into Prisma can orphan the account (user can no longer log in with either address) without any error surfacing at sync time.
+4. **Email overwrite can break Firebase Auth linkage.** `data.email = w.email` ([ors-sync.ts:716](../apps/web/src/actions/ors-sync.ts#L716)) changes the very field used to match the worker to their Firebase Auth account and to look them up in `requirePermission`/login flows — but nothing updates the corresponding Firebase Auth user. A legacy email change synced into Prisma can orphan the account (user can no longer log in with either address) without any error surfacing at sync time.
 
 5. **`syncOrsWorkerPasswords` can resurrect the legacy login path on already-migrated accounts.** It overwrites `legacyPasswordHash` regardless of whether the worker has already completed migration (`legacyMigratedAt` set, `passwordChangeRequired: false`). Since `legacy-auth.ts` checks `legacyPasswordHash` as a fallback login path, re-populating it on a migrated account re-opens an authentication route that was supposed to be retired for that user.
 
@@ -68,7 +78,7 @@ No — not a rewrite. The per-row skip-if-exists checks, the diff-preview (`getW
 - [x] Gate every mutating export with `requirePermission`/`withPermission`, closing finding #1. **Landed:** every export in `actions/ors-sync.ts` (mutating *and* read-only/preview) now calls `requirePermission(PERMISSIONS.system.manage_ors_sync)` — `system:manage_ors_sync` was already registered in `lib/permissions/registry.ts`.
 - [x] Whitelist `defaultRoleId` against a small fixed set, closing #2. **Landed:** `importOrsNewWorkersOptionsSchema` (Zod, `lib/schemas/ors-sync.schemas.ts`) restricts it to `'viewer' | 'worker'`, enforced again defensively inside `services/ors-sync.ts#importOrsNewWorkers`.
 - [x] Add an `updatedAt` recency check in `syncOrsUpdatedWorkers`, closing #3. **Landed:** `services/ors-sync.ts#syncOrsUpdatedWorkers` skips (and logs) any worker whose local `updatedAt` is within the last 24h, since ORS doesn't expose its own modification timestamp to compare against.
-- [x] Pair an email change with a Supabase Auth update and re-validate for collisions, closing #4. **Landed:** `services/ors-sync.ts#syncSupabaseAuthEmail` looks up the legacy-auth user by old email, refuses if the new address collides with a different auth user, and calls `supabaseAdmin.auth.admin.updateUserById(...)`; the Prisma `email` write is skipped (with an error logged to the batch result) if the auth-side repoint can't be done safely.
+- [x] Pair an email change with a Firebase Auth update and re-validate for collisions, closing #4. **Landed:** ORS sync email updates must also update the Firebase Auth user (Admin SDK); refuse if the new address collides with another Auth user; the Prisma `email` write is skipped (with an error logged to the batch result) if the auth-side repoint can't be done safely.
 - [x] Make `syncOrsWorkerPasswords` skip already-migrated workers, closing #5. **Landed:** skips when `legacyMigratedAt` is set or `passwordChangeRequired === false`.
 - [x] Persist a batch-level audit snapshot, addressing #6. **Landed (2026-06-07):** added a private `logBatchSummary()` helper in `services/ors-sync.ts` that writes one `TransactionLog` row (`{success, skipped, failed, errors}` counts + joined error list) at the end of each run; wired into `importOrsNewWorkers` (`batch_import_completed`) and `syncOrsUpdatedWorkers` (`batch_sync_completed`). **Deliberately not** a full `prisma.$transaction(...)` around the whole batch — these loops are intentionally partially-recoverable (re-running skips already-processed rows per their own per-row skip-if-exists checks), so an all-or-nothing transaction would *replace* that recovery model rather than harden it. The summary row gives operators the missing "did this batch run cleanly" signal without sacrificing per-row resilience.
 - [x] Backfill missing `head_id` mappings as `null` instead of `''`, addressing #7. **Landed:** `importOrsMinistries` now writes `leaderId: headId || null`.
@@ -77,7 +87,7 @@ No — not a rewrite. The per-row skip-if-exists checks, the diff-preview (`getW
 
 ---
 
-## Phase 0 — Foundation: real sessions (`@supabase/ssr`)
+## Phase 0 — Foundation: real sessions (`@supabase/ssr`) *(historical — superseded by Firebase Auth)*
 
 **Why first:** every later phase assumes "the action knows who's calling" is cheap and automatic. Right now it requires manually threading an access token through every call site — that doesn't scale to 120 actions and is easy to get wrong.
 
@@ -99,7 +109,7 @@ No — not a rewrite. The per-row skip-if-exists checks, the diff-preview (`getW
 
 **Scope decision — mobile build stays on the old flow:** `next.config.ts` builds with `output: 'export'` when `BUILD_MOBILE=true` for the Capacitor app, and `@supabase/ssr`'s cookie/middleware model requires a server runtime that static export doesn't have. Server Actions don't run under static export either, so the mobile build was never exercising this code path — it continues to work via the existing token-based Supabase client calls (`studio-client.ts`'s `getToken`/edge-function clients), untouched by this migration.
 
-**Performance angle:** `auth.getUser()` from a cookie-based server client is a network call to Supabase Auth on every invocation. Wrap the per-request user resolution in React's `cache()` so it runs once per request regardless of how many actions/components call it — this is the same mechanism Next.js recommends for `getServerSession`-style helpers, and it removes redundant auth round-trips before they ever get added.
+**Performance angle:** Firebase `getServerUser()` / token verification should be wrapped in React's `cache()` so it runs once per request regardless of how many actions/components call it — this removes redundant auth round-trips.
 
 ---
 
@@ -189,7 +199,7 @@ No — not a rewrite. The per-row skip-if-exists checks, the diff-preview (`getW
 
 ---
 
-## Edge Functions — Deployment & Health Status (verified 2026-06-07)
+## Edge Functions — Deployment & Health Status (verified 2026-06-07) *(historical Supabase; use `functions/` for Firebase)*
 
 **Why this section exists:** commit `1e33f28` ("remove exposed service-role key, move privileged DB ops to edge functions") moved a meaningful slice of privileged DB logic for the `studio` app out of Next.js and into Supabase edge functions (`supabase/functions/*`). Phase 4 above documents the *architectural* decision; this section is the **operational snapshot** — so a future session can answer "are the edge functions actually up?" without re-running CLI/curl checks from scratch.
 

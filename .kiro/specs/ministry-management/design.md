@@ -24,7 +24,7 @@ UI (React / Next.js App Router)
   └── React Query hooks  (apps/web/src/hooks/)
         └── Server Actions  (apps/web/src/actions/)
               └── Prisma ORM  (packages/database/)
-                    └── PostgreSQL (Supabase)
+                    └── PostgreSQL (Prisma / App Hosting)
 ```
 
 No new routes are introduced. All new UI lives inside the existing `/settings/ministries` page via Sheet panels. The scheduling module integration is additive — existing `roleName` text inputs are replaced with a smart `WorkloadCategorySelect` component that falls back to free-text when no categories exist.

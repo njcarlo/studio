@@ -6,14 +6,10 @@ notifications, audit log, cron jobs, and the meal-stub reporting ledger, see
 [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md) — that doc covers the
 "why"; this doc covers the "where".
 
-**New developers:** start with [`ONBOARDING.md`](./ONBOARDING.md) (current stack
-+ local setup + pick-one-module workflow). Some diagrams below still say
-Supabase Auth / Vercel; runtime for `apps/web` is **Firebase Auth + App Hosting
-+ Prisma/Postgres**.
+**New developers:** start with [`ONBOARDING.md`](./ONBOARDING.md).
 
 For what each module/role can *do*, see [`user-stories.md`](./user-stories.md).
-For a faster-to-skim orientation pass, see [`CODEBASE_GUIDE.md`](./CODEBASE_GUIDE.md)
-(partially historical).
+For a faster-to-skim orientation pass, see [`CODEBASE_GUIDE.md`](./CODEBASE_GUIDE.md).
 
 ## 1. High-level layers & tech stack
 
@@ -22,68 +18,78 @@ graph TB
     subgraph Client["Browser"]
         UI["UI Pages & Components<br/>Next.js App Router, React 19<br/>shadcn/ui + Radix + Tailwind"]
         Hooks["Hooks & Client State<br/>React Query (TanStack)<br/>Zustand (@studio/store)"]
+        FAuth["Firebase Auth SDK<br/>lib/firebase-client.ts"]
     end
 
-    subgraph Server["Next.js Server (Vercel)"]
+    subgraph Server["Next.js on Firebase App Hosting"]
         Actions["Server Actions<br/>apps/web/src/actions/*<br/>withPermission / withPublicAction"]
-        AuthGate["Auth Gate<br/>resolveCallerCtx()<br/>apps/web/src/lib/auth/with-permission.ts"]
-        Services["Domain Services<br/>apps/web/src/services/*<br/>approval engine, scheduling, meals,<br/>notifications, sermons, prayer requests, ..."]
-        Cron["Cron Jobs<br/>app/api/cron/daily-jobs<br/>app/api/cron/venue-assistance"]
-        GraphQL["GraphQL API<br/>app/api/graphql<br/>packages/graphql"]
+        AuthGate["Auth Gate<br/>getServerUser → resolveCallerCtx<br/>lib/firebase-auth-server.ts"]
+        Services["Domain Services<br/>apps/web/src/services/*"]
+        Cron["Cron routes<br/>app/api/cron/*<br/>CRON_SECRET"]
+        GraphQL["GraphQL API<br/>app/api/graphql"]
     end
 
-    subgraph Data["Supabase (Postgres)"]
-        Prisma["Prisma ORM<br/>packages/database<br/>prisma/schema.prisma"]
-        RLS["Row-Level Security<br/>supabase/migrations/*.sql"]
-        DB[("Postgres tables")]
+    subgraph Firebase["Firebase project cog-app-studio"]
+        AuthSvc["Firebase Auth"]
+        FS["Firestore dual-write soak"]
+        Storage["Firebase Storage"]
+        CF["Cloud Functions<br/>functions/"]
+        AH["App Hosting"]
+    end
+
+    subgraph Data["Postgres SoT"]
+        Prisma["Prisma ORM<br/>@studio/database<br/>prisma/schema.prisma"]
+        DB[("Postgres")]
     end
 
     subgraph Shared["Shared packages"]
         Types["@studio/types"]
         UIComp["@studio/ui"]
         Store["@studio/store"]
-        Client["@studio/client (Apollo)"]
     end
 
-    subgraph OtherApps["Other apps in the monorepo"]
-        Inventory["apps/inventory<br/>standalone Next.js app<br/>cog-inventory.vercel.app"]
-        Mobile["apps/tract-tracker<br/>Expo / React Native"]
+    subgraph OtherApps["Other monorepo apps"]
+        Inventory["apps/inventory<br/>legacy Supabase path"]
+        Mobile["apps/tract-tracker<br/>Expo + Supabase"]
     end
 
     UI --> Hooks
+    UI --> FAuth
+    FAuth --> AuthSvc
     Hooks -->|"server action calls"| Actions
-    Hooks -->|"queries/mutations"| GraphQL
     Actions --> AuthGate
+    AuthGate --> AuthSvc
     AuthGate --> Services
     Services --> Prisma
     Prisma --> DB
-    RLS -.->|"defense in depth"| DB
+    Services -.->|"dual-write"| FS
     Cron --> Services
+    CF -->|"scheduled → APP_BASE_URL"| Cron
+    AH --> Server
     GraphQL --> Prisma
-
     UI -.uses.-> UIComp
-    UI -.types.-> Types
     Hooks -.state.-> Store
-    Inventory -.shares.-> Types
-    Inventory -.shares.-> Prisma
-    Mobile -.uses.-> Client
 ```
 
-**Tech stack (verified against `package.json`):**
+**Tech stack:**
 
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 15 (App Router), React 19, TypeScript 5 |
-| UI | `@studio/ui` (shadcn/ui on Radix primitives), Tailwind CSS, lucide-react icons |
+| UI | `@studio/ui` (shadcn/ui on Radix), Tailwind CSS, lucide-react |
 | Client state / data fetching | TanStack React Query 5, Zustand 5 (`@studio/store`) |
 | Forms / validation | React Hook Form, Zod |
-| ORM / DB | Prisma 5.22 → Supabase Postgres, with Row-Level Security as a second line of defense |
-| Auth | Supabase Auth (session via `resolveCallerCtx()`) |
-| Notifications | In-app `InAppNotification` centre + Resend (`EmailService`) |
-| Scheduled work | Vercel Cron → `app/api/cron/*`, secured by `CRON_SECRET` |
-| GraphQL | `packages/graphql` (schema) + `packages/client` (Apollo client), used by mobile/other consumers |
-| Other apps | `apps/inventory` (separate Next.js app, deployed at cog-inventory.vercel.app, shares `@studio/database`/`@studio/types`); `apps/tract-tracker` (Expo/React Native mobile app, own Supabase project/migrations) |
-| Deployment | Vercel (`apps/web` → cog-app-v2.vercel.app) |
+| ORM / DB | Prisma 5.22 → **Postgres** (source of truth). Schema: root `prisma/schema.prisma` |
+| Auth | **Firebase Auth** — browser SDK + session cookie; server via `getServerUser()` / `resolveCallerCtx()` |
+| Storage / dual-write | Firebase Storage; Firestore dual-write during soak |
+| Notifications | In-app `InAppNotification` + Resend (`EmailService`) |
+| Scheduled work | Firebase Cloud Functions schedulers → `app/api/cron/*` (`CRON_SECRET`) |
+| HTTP API | Firebase Cloud Functions (`functions/src/routes/*`) — Firebase ID token auth |
+| GraphQL | `packages/graphql` + `packages/client` (limited / mobile consumers) |
+| Other apps | `apps/inventory`, `apps/tract-tracker` — **still Supabase-oriented**, not on App Hosting |
+| Deployment | **Firebase App Hosting** (`apphosting.yaml`, `npm run apphosting:build`) — live: `studio--cog-app-studio.asia-southeast1.hosted.app` |
+
+Historical SQL under `supabase/migrations/` may still be applied to Postgres for indexes/functions; it is **not** a live Supabase Auth/hosting path for `apps/web`.
 
 ## 2. Request flow (typical authenticated write)
 
@@ -93,13 +99,15 @@ sequenceDiagram
     participant Hook as useQuery/useMutation
     participant Action as Server Action (actions/*.ts)
     participant Gate as resolveCallerCtx + withPermission
+    participant FB as Firebase Auth
     participant Svc as Service (services/*.ts)
     participant DB as Prisma / Postgres
 
     Page->>Hook: user interaction
     Hook->>Action: call server action
     Action->>Gate: resolveCallerCtx()
-    Gate->>Gate: check Worker, role, permissions, flags
+    Gate->>FB: verify session / ID token
+    Gate->>Gate: Worker + roles + permissions
     Gate->>Svc: invoke domain logic
     Svc->>DB: prisma.* read/write (+ writeAudit, notify)
     DB-->>Svc: result
@@ -109,85 +117,74 @@ sequenceDiagram
 ```
 
 Public-facing flows (e.g. `/public/events`, `/public/prayer-requests`,
-`/public/c2s-join`) use `withPublicAction` — no `resolveCallerCtx()`/Worker
-required, but the underlying tables are locked down via RLS so only the
-specific insert the action performs is allowed anonymously.
+`/public/c2s-join`) use `withPublicAction` — no Worker permission required.
+Authorization for privileged self-service fields still happens inside helpers
+in `with-permission.ts`.
 
 ## 3. File map — where logic lives
 
 | Logic layer | Directory / files | What's there | Notes |
 |---|---|---|---|
-| **Routes / pages** | `apps/web/src/app/**/page.tsx` | One folder per route (App Router). Admin pages wrap content in `AppLayout`; public pages (`app/public/**`) render standalone with a gradient background, no nav. | See §4 for the full route list. |
-| **Layout / nav** | `apps/web/src/components/layout/` | `app-layout.tsx`, `nav.tsx` (sidebar nav tree + `permissionKey` gating per item) | New admin pages get a nav entry here. |
-| **Shared UI components** | `packages/ui/src/` | shadcn/Radix-based components (`Button`, `Dialog`, `Table`, `Switch`, `Card`, etc.) re-exported as `@studio/ui` | Add new primitives here, not per-app. |
-| **Hooks** | `apps/web/src/hooks/` (29 files) | `use-user-role.tsx` (permission flags), `use-toast.ts`, feature hooks (`use-*-data` style) | `use-user-role` is the main gate for client-side `can*` checks. |
-| **Client state / permissions store** | `packages/store/src/permissions.store.ts` | Zustand store holding `canManage*` booleans (`PermissionsState`/`DEFAULT_STATE`) | New permission flags are added here first. |
-| **Permission sync** | `apps/web/src/store/user-role-syncer-sql.tsx` | Derives the `permissionsPayload` (e.g. `canManageContent = isSuperAdmin \|\| hasPerm('content:manage')`) and feeds the Zustand store | Wire new flags here. |
-| **Permission registry** | `apps/web/src/lib/permissions/registry.ts` | `PERMISSIONS`, `ALL_PERMISSIONS` (seed list), `WORKER_FLAGS`, `LEGACY_PERMISSION_MAP` | Source of truth for `module:action` strings; seeded via `actions/seed-permissions.ts`. |
-| **Auth gate** | `apps/web/src/lib/auth/with-permission.ts` | `resolveCallerCtx()`, `withPermission`, `withPublicAction` | Every authenticated server action is wrapped here. |
-| **Server actions** | `apps/web/src/actions/*.ts` (18 files) | Thin wrappers: auth check → call a service → return `{ success, data \| error }`. One file per domain area (`schedule.ts`, `events.ts`, `sermons.ts`, `prayer-requests.ts`, `leave.ts`, `training.ts`, `c2s.ts`, `venue-assistance.ts`, `major-events.ts`, `availability.ts`, `ors-sync.ts`, `notifications.ts`, `ministry-categories.ts`, `db.ts`, `auth.ts`, `legacy-auth.ts`, `seed-permissions.ts`) | This is the boundary client code calls into. |
-| **Domain services** | `apps/web/src/services/*.ts` (24 files) | Actual business logic + Prisma queries. Notable: `approval-engine.ts` (generic workflow engine), `notification-center.ts`/`notification-service.ts`, `email-service.ts`, `cron-jobs.ts`, `schedule.ts`/`master-schedule.ts`, `meal-stub-engine.ts`/`meal-stub-service.ts`/`meals-attendance.ts`, `leave-workflow.ts`, `room-reservation-workflow.ts`, `major-event-workflow.ts`, `minor-ministry-assignment-workflow.ts`, `c2s.ts`, `sermons.ts`, `prayer-requests.ts`, `events.ts`, `training.ts`, `roles.ts`, `workers.ts`, `availability.ts`, `ors-sync.ts`, `venue-assistance*.ts` | New features get a new service file here; this is "where the logic is". |
-| **Database schema** | `packages/database/prisma/schema.prisma` (Prisma) + `supabase/migrations/*.sql` | Models for Workers, Roles/Permissions, Schedule, Approvals, Notifications, Audit (`TransactionLog`), Meal stubs/ledger, Leave, Training, C2S, Sermons, EventSignup, PrayerRequest, Inventory, Venue/Reservations, Major Events | Each migration also adds RLS policies; Prisma-only tables get deny-all RLS (locked down to server-role access). |
-| **Shared types** | `packages/types/src/` | TS types mirroring Prisma models + DTOs shared between `apps/web`, `apps/inventory`, and mobile | Add new model types here when adding a Prisma model. |
-| **Cron jobs** | `apps/web/src/app/api/cron/daily-jobs/`, `.../venue-assistance/` | Vercel Cron endpoints, `CRON_SECRET`-gated, call into `services/cron-jobs.ts` and `services/venue-assistance-notifications.ts` | Idempotent + audit-logged (Layer 5 in PLATFORM_ARCHITECTURE.md). |
-| **GraphQL API** | `apps/web/src/app/api/graphql/`, `packages/graphql/src/schema.ts`, `packages/client/src/` | Schema + Apollo client used for cross-app/mobile data access | Smaller surface than server actions; extend only if a non-web consumer needs it. |
-| **Inventory app** | `apps/inventory/src/app/**`, `.../components`, `.../hooks`, `.../lib`, `.../utils` | Separate Next.js app, deployed independently (cog-inventory.vercel.app), linked from the main nav under "Inventory" (`canAccessInventory`) | Shares `@studio/database` + `@studio/types` with `apps/web`. |
-| **Mobile app (Tract Tracker)** | `apps/tract-tracker/src/{screens,components,context}`, own `supabase/migrations` | Expo/React Native app, separate Supabase project | Unrelated to the COG App roadmap's "Mobile app (6.1)" item — pre-existing app in the monorepo. |
-| **Docs** | `docs/` | `PLATFORM_ARCHITECTURE.md` (layer design + Mermaid diagrams + Phase 1-4 user stories), `roadmap-progress.md` (checklist of shipped work), `user-stories.md` / `architecture.md` (this pair), schema dump, plans | Start here when onboarding. |
+| **Routes / pages** | `apps/web/src/app/**/page.tsx` | One folder per route. Admin pages use `AppLayout`; `app/public/**` is anonymous. | See §4. |
+| **Layout / nav** | `apps/web/src/components/layout/` | `app-layout.tsx`, `nav.tsx` (`permissionKey` gating) | New admin pages get a nav entry here. |
+| **Shared UI** | `packages/ui/src/` | shadcn/Radix primitives as `@studio/ui` | Add primitives here, not per-app. |
+| **Hooks** | `apps/web/src/hooks/` | React Query hooks; `use-user-role.tsx` for `can*` flags | |
+| **Client permissions store** | `packages/store/src/permissions.store.ts` | Zustand `canManage*` booleans | |
+| **Permission sync** | `apps/web/src/store/user-role-syncer-sql.tsx` | Firebase user → Worker → `permissionsPayload` → Zustand | Wire new flags here. |
+| **Permission registry** | `apps/web/src/lib/permissions/registry.ts` | `PERMISSIONS`, `ALL_PERMISSIONS` | Seed via `actions/seed-permissions.ts`. |
+| **Auth (client)** | `apps/web/src/lib/firebase-client.ts`, login/signup pages | Firebase web SDK; emulator when `NEXT_PUBLIC_FIREBASE_USE_EMULATOR=true` | |
+| **Auth (server)** | `apps/web/src/lib/firebase-auth-server.ts`, `lib/auth/with-permission.ts` | `getServerUser()`, `resolveCallerCtx()`, `withPermission`, `withPublicAction` | |
+| **Middleware** | `apps/web/src/middleware.ts` | Cookie session gate; public prefixes `/login`, `/signup`, `/auth`, `/public`, `/privacy`, `/api` | |
+| **Server actions** | `apps/web/src/actions/*.ts` | Thin auth → service wrappers per domain | Prefer domain files over growing `db.ts`. |
+| **Domain services** | `apps/web/src/services/*.ts` | Business logic + Prisma | New features get a service file here. |
+| **Database schema** | **`prisma/schema.prisma`** (repo root) | Workers, RBAC, Schedule, Approvals, C2S, Inventory, etc. | Apply with `npx prisma db push` locally. Optional SQL: `supabase/migrations/*.sql` for indexes/fns. |
+| **Cloud Functions** | `functions/src/` | HTTP API routers + scheduled jobs | Auth: `Authorization: Bearer <Firebase ID token>`. |
+| **App Hosting** | `apphosting.yaml`, `scripts/apphosting-*.sh` | Build/start for Cloud Run-backed hosting | Do not set `buildCommand` in YAML (strips workspaces). |
+| **Cron jobs** | `apps/web/src/app/api/cron/*` | `CRON_SECRET`-gated; invoked by Cloud Functions schedulers | |
+| **Inventory app** | `apps/inventory/` | Separate Next.js app; **still Supabase client** | Not the App Hosting web path. |
+| **Tract Tracker** | `apps/tract-tracker/` | Expo app; **still Supabase** | Separate product surface. |
+| **Docs** | `docs/` | Onboarding, architecture, platform layers, plans | Start at `ONBOARDING.md`. |
 
 ## 4. Route map (apps/web)
 
 | Route | Purpose | Gate |
 |---|---|---|
 | `/dashboard` | Landing page after login | any authenticated worker |
-| `/worker/schedule` | Worker's own upcoming assignments (formerly `/my-schedule`, which now redirects here) | any authenticated worker |
-| `/worker/schedule/published` | Worker-facing month-calendar "portal" of all `Published` service schedules; click a date to open the read-only `/schedule/[id]` view (formerly `/my-schedule/published`) | any authenticated worker |
-| `/worker/schedule/[token]` | Public token-based read-only view of a published service schedule (formerly `/public/schedule/[token]`, which now redirects here); exempted from the auth gate in `middleware.ts` via a dedicated regex since it lives under the otherwise-authenticated `/worker/*` prefix | none (token-based) |
-| `/schedule`, `/schedule/[id]`, `/schedule/templates`, `/schedule/schedulers` | Build/publish Sunday service schedules, templates, assign Ministry Schedulers (`/schedule` has List/Month calendar tabs via shared `MonthCalendar` component) | `canManageSchedule` / `canAssignSchedulers` |
-| `/reservations`, `/reservations/new`, `/reservations/my`, `/reservations/calendar`, `/reservations/all`, `/reservations/masterview`, `/reservations/masterview/daily` | Room reservation request/approval flow + master schedule calendar | mixed — request is open to workers, masterview/all gated |
-| `/meals`, `/mealstub`, `/mealstub/scanner` | Meal stub viewing, assignment, scanning | `canViewMealStubs` / `isMealStubAssigner` / `attendance:scan_meal` |
-| `/c2s` | C2S mentor "My Group" management | `canManageC2S` (mentor flag) |
-| `/approvals` | Unified inbox for all approval-engine workflow types | `canManageApprovals` |
-| `/workers`, `/workers/[id]`, `/workers/my-qr` | Worker directory/profile management, personal QR code | `canManageWorkers` (directory) / any worker (`my-qr`) |
-| `/ministries`, `/ministries/[id]` | Ministry/department management | `canManageMinistries` |
-| `/attendance`, `/attendance/scanner`, `/scan` | Attendance logs + scanner kiosks | `canViewAttendance` / `attendance:scan_*` |
+| `/worker/schedule` | Worker's own upcoming assignments | any authenticated worker |
+| `/worker/schedule/published` | Month calendar of published service schedules | any authenticated worker |
+| `/worker/schedule/[token]` | Public token schedule view | none (token-based; middleware exempt) |
+| `/schedule`, `/schedule/[id]`, `/schedule/templates`, `/schedule/schedulers` | Build/publish Sunday schedules | `canManageSchedule` / `canAssignSchedulers` |
+| `/reservations/*` | Room reservation request/approval + calendars | mixed |
+| `/meals`, `/mealstub`, `/mealstub/scanner` | Meal stubs | meal stub / scan permissions |
+| `/c2s`, `/c2s/my-group` | C2S mentor group management | `canManageC2S` |
+| `/approvals` | Unified approval inbox | `canManageApprovals` |
+| `/workers`, `/workers/[id]`, `/workers/my-qr` | Worker directory / QR | `canManageWorkers` / any worker |
+| `/ministries`, `/ministries/[id]` | Ministry management | `canManageMinistries` |
+| `/attendance`, `/attendance/scanner`, `/scan` | Attendance + scanners | attendance permissions |
 | `/reports` | System reports | `canViewReports` |
-| `/events`, `/events/[id]` | Church event management, incl. "Make Public" toggle + sign-up list | event management permission; public toggle gated by `canManageContent` |
-| `/major-events` | Major Event Request module | `major_events:*` |
-| `/leave` | Worker leave/request filing, balances, history | any FT worker (HR/Admin manage via approvals) |
-| `/training` | Training records (self-view + manager view) | any worker (self) / `canManageTraining` (manager section) |
-| `/sermons` | Sermon catalogue admin (CRUD + public toggle) | `canManageContent` |
-| `/pastoral` | Prayer/counselling request inbox | `canManagePastoral` |
-| `/venue`, `/venue/[bookingId]`, `/venue/command-center`, `/venue/my` | Venue assistance requests + command center | `venue_assistance:*` |
-| `/settings/*` | Roles, departments, meal-stub allocation, facilities, venue elements, transaction logs, ORS sync, venue assistance config, major events config, master schedule & attendance | various `canManage*` |
-| `/profile`, `/login`, `/signup`, `/auth/update-password` | Account/auth pages | open / authenticated |
-| `/public/sermons` | Public sermon catalogue (Phase 5) | none (anonymous) |
-| `/public/services` | Anonymous Day/Week/Month schedule portal: top-navbar layout (no sidenav, "Log in" button) + per-ministry Role×Date/SlotType matrix (`ScheduleMatrixPortal`), CSV export for logged-in users → schedule detail at `/worker/schedule/[token]` (Phase 5) | none |
-| `/public/events` | Public upcoming events + sign-up form (Phase 5) | none |
-| `/public/prayer-requests` | Public prayer/counselling request form (Phase 5) | none |
-| `/public/c2s-join` | Public C2S group join-request form (Phase 4) | none |
+| `/events`, `/events/[id]` | Church events | event / content permissions |
+| `/major-events` | Major Event Requests | `major_events:*` |
+| `/leave` | Leave requests / balances | FT workers (+ HR via approvals) |
+| `/training` | Training records | self / `canManageTraining` |
+| `/sermons` | Sermon catalogue admin | `canManageContent` |
+| `/pastoral` | Prayer/counselling inbox | `canManagePastoral` |
+| `/venue/*` | Venue assistance | `venue_assistance:*` |
+| `/inventory` | Inventory (web Prisma path) | inventory permissions |
+| `/settings/*` | Roles, facilities, ORS sync, attendance, etc. | various `canManage*` |
+| `/profile`, `/login`, `/signup`, `/auth/update-password` | Account/auth | open / authenticated |
+| `/public/sermons` | Public sermon catalogue | none |
+| `/public/services` | Public schedule portal | none |
+| `/public/events` | Public events + signup | none |
+| `/public/prayer-requests` | Public prayer form | none |
+| `/public/c2s-join` | Public C2S group finder + join | none |
 
 ## 5. Where recent logic changes live
 
-- **Phase 5 (Sermons, Public Events/Sign-ups, Prayer Requests, Public Service Directory)**:
-  `services/sermons.ts`, `services/prayer-requests.ts`, `services/events.ts` (public-events
-  additions), `actions/sermons.ts`, `actions/prayer-requests.ts`, `actions/events.ts`
-  (`getPublicEvents`/`submitEventSignup`/`getEventSignupsAction`), pages
-  `app/sermons`, `app/pastoral`, `app/public/sermons`, `app/public/services`,
-  `app/public/events`, `app/public/prayer-requests`, plus the `content:manage`
-  and `pastoral:manage` permissions (registry → store → syncer → nav).
-- **Phase 4 (C2S completion)**: `services/c2s.ts`, `actions/c2s.ts`, `app/c2s`
-  "My Group" tab, `app/public/c2s-join`, wired into `approval-engine.ts` via
-  `getC2SJoinRequestApprovals`.
-- **Phase 3 (HR & Time Tracking, Training)**: `services/master-schedule.ts`,
-  `services/leave-workflow.ts`, `services/training.ts`, `actions/leave.ts`,
-  `actions/training.ts`, `app/leave`, `app/training`, `app/settings/attendance`.
-- **Phase 1-2 (attendance, meal stubs, approvals, room reservations, major events)**:
-  `services/meal-stub-engine.ts`, `services/room-reservation-workflow.ts`,
-  `services/major-event-workflow.ts`, `services/minor-ministry-assignment-workflow.ts`,
-  `services/approval-engine.ts`, `app/approvals`, `app/reservations/*`,
-  `app/major-events`.
+- **Firebase cutover**: Auth (`firebase-client` / `firebase-auth-server`), App Hosting scripts, Cloud Functions under `functions/`, inventory web path on Prisma.
+- **Phase 5 (public content)**: `services/sermons.ts`, `prayer-requests.ts`, `events.ts` + matching actions/pages under `app/public/*`.
+- **Phase 4 (C2S)**: `services/c2s.ts`, `actions/c2s.ts`, `app/c2s`, `app/public/c2s-join`.
+- **Phase 3 (HR / training)**: `leave-workflow.ts`, `training.ts`, `master-schedule.ts`.
+- **Phase 1–2**: meal stubs, room reservation workflow, major events, `approval-engine.ts`.
 
-For the underlying architectural patterns (approval engine state machine,
-notification fan-out, audit log shape, cron schedule), see
-[`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md) §§2-9.
+For approval/notification/audit/cron patterns, see
+[`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md).
