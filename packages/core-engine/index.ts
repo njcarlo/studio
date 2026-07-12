@@ -1,9 +1,6 @@
 /**
  * @studio/core-engine — shared platform primitives for Studio apps.
  *
- * Slice A: action response envelope, email notify, approval workflow engine,
- * tenant config stub. Auth gate (`withPermission`) lands in the next slice.
- *
  * See docs/CORE_ENGINE_C2S_PLAN.md
  */
 
@@ -15,6 +12,17 @@ export {
   type ActionError,
   type ActionResponse,
 } from './src/auth/action-response';
+
+export type { AuthUser, AuthUserGetter, CallerCtx } from './src/auth/types';
+export { configureAuthUserGetter, getConfiguredAuthUser } from './src/auth/configure';
+export { resolveCallerCtx } from './src/auth/resolve-caller';
+export {
+  withPermission,
+  withPublicAction,
+  canManageWorkersInMinistries,
+  canManageWorker,
+  isHRWorker,
+} from './src/auth/with-permission';
 
 export { EmailService } from './src/notify/email';
 

@@ -8,20 +8,17 @@
     ".": "./index.ts",
     "./approvals": "./src/approvals/engine.ts",
     "./action-response": "./src/auth/action-response.ts",
+    "./auth": "./src/auth/with-permission.ts",
     "./tenant": "./src/tenant/index.ts",
     "./email": "./src/notify/email.ts"
-  },
-  "dependencies": {
-    "@prisma/client": "^5.20.0",
-    "@studio/database": "*",
-    "resend": "^6.9.3"
   },
   "peerDependencies": {
     "react": "^19.0.0"
   },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "@studio/database": "*",
+    "resend": "^6.9.3",
+    "react": "^19.2.1"
   }
 }

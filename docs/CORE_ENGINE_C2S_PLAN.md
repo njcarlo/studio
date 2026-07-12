@@ -122,11 +122,13 @@ No multi-DB yet — single tenant from env (`TENANT_ID`, `NEXT_PUBLIC_BRAND_NAME
 
 - [x] `@studio/core-engine` builds in the monorepo *(Slice A: package + re-exports)*
 - [x] `apps/web` uses it for approval engine *(via `@/services/approval-engine` re-export)*
-- [ ] `apps/web` uses it for `withPermission` *(Slice B)*
+- [x] `apps/web` uses it for `withPermission` *(Slice B — injectable `configureAuthUserGetter`)*
 - [ ] No behavior change on `/approvals` or C2S join approve/reject *(smoke after deploy)*
 - [x] `npm run typecheck` passes
 
 **Slice A landed:** `packages/core-engine` owns `action-response`, `EmailService`, approval `engine`, and `TenantConfig` stub. Web keeps thin re-export shims.
+
+**Slice B landed:** `resolveCallerCtx` / `withPermission` / `withPublicAction` / worker-management helpers live in core-engine. Web configures Firebase via `configureAuthUserGetter(getServerUser)`.
 
 **Risks:** Circular imports (`core-engine` → `database` only; never → `apps/web`). Email/Resend env must remain available wherever `createWorkflow` notifies.
 
