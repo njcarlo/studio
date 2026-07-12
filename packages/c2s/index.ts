@@ -1,6 +1,6 @@
 /**
- * @deprecated Import from `@studio/c2s` instead.
- * Re-export shim — C2S domain lives in packages/c2s.
+ * @studio/c2s — Connect2Souls domain logic (groups, mentees, sessions, join requests).
+ * UI stays in apps/web (and later apps/c2s-public). See docs/CORE_ENGINE_C2S_PLAN.md.
  */
 export {
   C2S_JOIN_REQUEST_WORKFLOW_TYPE,
@@ -27,4 +27,4 @@ export {
   type UpdateSessionInput,
   type MenteeInput,
   type MentorJoinRequest,
-} from '@studio/c2s';
+} from './src/service';

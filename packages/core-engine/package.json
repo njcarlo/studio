@@ -1,0 +1,24 @@
+{
+  "name": "@studio/core-engine",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./approvals": "./src/approvals/engine.ts",
+    "./action-response": "./src/auth/action-response.ts",
+    "./auth": "./src/auth/with-permission.ts",
+    "./tenant": "./src/tenant/index.ts",
+    "./email": "./src/notify/email.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "@studio/database": "*",
+    "resend": "^6.9.3",
+    "react": "^19.2.1"
+  }
+}

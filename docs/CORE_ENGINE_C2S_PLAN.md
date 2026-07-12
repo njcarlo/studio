@@ -1,6 +1,6 @@
 # Plan: Core Engine → C2S Module → White-Label Platform
 
-**Status:** Planning (no code migration yet)  
+**Status:** Phase 1 complete; Phase 2A complete (`@studio/c2s` + `apps/c2s-public`); white-label tenant stub live; mentor UI remains in Studio (M1)  
 **Priority order:** (1) `packages/core-engine` → (2) C2S as a separate module → (3) white-label / selective apps  
 **Non-goal for early phases:** Splitting every Studio sidebar item into `apps/[module]`.
 

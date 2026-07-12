@@ -1,0 +1,37 @@
+# Optional second App Hosting backend for the public C2S Group Finder.
+# In Firebase console, create a backend with root directory `apps/c2s-public`
+# (or repo root with a dedicated build that filters c2s-public).
+#
+# For a monorepo-root build similar to Studio, prefer linking a backend that
+# runs: npm ci && npx prisma generate && npm run build --workspace=c2s-public
+# and starts the Next standalone server for apps/c2s-public.
+#
+# Env / secrets: DATABASE_URL, DIRECT_URL, NEXT_PUBLIC_BRAND_*, RESEND_* (for join emails via approvals)
+
+runConfig:
+  maxInstances: 2
+  memoryMiB: 512
+  cpu: 1
+
+env:
+  - variable: DATABASE_URL
+    secret: DATABASE_URL
+    availability: [BUILD, RUNTIME]
+  - variable: DIRECT_URL
+    secret: DIRECT_URL
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_BRAND_NAME
+    secret: NEXT_PUBLIC_BRAND_NAME
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_BRAND_LOGO_URL
+    secret: NEXT_PUBLIC_BRAND_LOGO_URL
+    availability: [BUILD, RUNTIME]
+  - variable: TENANT_ID
+    secret: TENANT_ID
+    availability: [BUILD, RUNTIME]
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
+    availability: [RUNTIME]
+  - variable: RESEND_FROM_EMAIL
+    secret: RESEND_FROM_EMAIL
+    availability: [RUNTIME]
