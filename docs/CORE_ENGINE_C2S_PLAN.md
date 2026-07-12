@@ -1,6 +1,6 @@
 # Plan: Core Engine → C2S Module → White-Label Platform
 
-**Status:** Phase 1 Slice A+B landed; Phase 2A started (`@studio/c2s` domain package)  
+**Status:** Phase 1 complete; Phase 2A complete (`@studio/c2s` + `apps/c2s-public`); white-label tenant stub live; mentor UI remains in Studio (M1)  
 **Priority order:** (1) `packages/core-engine` → (2) C2S as a separate module → (3) white-label / selective apps  
 **Non-goal for early phases:** Splitting every Studio sidebar item into `apps/[module]`.
 
@@ -173,11 +173,13 @@ Recommend **M1 first**, then **M2** only if product/ops wants a separate mentor 
 ### Phase 2 exit criteria
 
 - [x] `@studio/c2s` owns domain logic; web only pages/actions wrappers *(service moved; actions still in web)*
-- [ ] Public Group Finder deployable without Studio nav
-- [ ] Join → approval → mentee creation unchanged
-- [ ] ORS import still works from Studio settings
+- [x] Public Group Finder deployable without Studio nav — `apps/c2s-public` (port 9004)
+- [x] Join → approval → mentee creation path unchanged (shared `@studio/c2s` + approval engine)
+- [x] ORS import still works from Studio settings *(untouched)*
+- [x] Mentor UI stays in Studio (**M1**) importing `@studio/c2s`
+- [x] Studio `/public/c2s-join` redirects when `NEXT_PUBLIC_C2S_PUBLIC_URL` is set; otherwise branded in-app finder
 
-**Phase 2A progress:** `packages/c2s` extracted; `apps/web/src/services/c2s.ts` is a re-export. Next: `apps/c2s-public`.
+**Phase 2A landed:** `packages/c2s` + `apps/c2s-public`. Optional later: M2 `apps/c2s` mentor app.
 
 ---
 

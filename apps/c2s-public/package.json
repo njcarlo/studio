@@ -1,0 +1,35 @@
+{
+  "name": "c2s-public",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 9004",
+    "build": "cd ../.. && npx prisma generate && cd apps/c2s-public && next build",
+    "start": "next start -p 9004",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@studio/c2s": "file:../../packages/c2s",
+    "@studio/core-engine": "file:../../packages/core-engine",
+    "@studio/database": "file:../../packages/database",
+    "@studio/ui": "file:../../packages/ui",
+    "@tanstack/react-query": "^5.90.21",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.475.0",
+    "next": "^15.5.12",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-leaflet": "^5.0.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^20",
+    "@types/react": "^19.2.1",
+    "@types/react-dom": "^19.2.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}

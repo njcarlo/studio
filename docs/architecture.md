@@ -142,6 +142,7 @@ in `with-permission.ts`.
 | **App Hosting** | `apphosting.yaml`, `scripts/apphosting-*.sh` | Build/start for Cloud Run-backed hosting | Do not set `buildCommand` in YAML (strips workspaces). |
 | **Cron jobs** | `apps/web/src/app/api/cron/*` | `CRON_SECRET`-gated; invoked by Cloud Functions schedulers | |
 | **Inventory app** | `apps/inventory/` | Separate Next.js app; **still Supabase client** | Not the App Hosting web path. |
+| **C2S public app** | `apps/c2s-public/` | Standalone Group Finder (`@studio/c2s` + `@studio/core-engine`) | Port 9004; optional App Hosting backend. |
 | **Tract Tracker** | `apps/tract-tracker/` | Expo app; **still Supabase** | Separate product surface. |
 | **Docs** | `docs/` | Onboarding, architecture, platform layers, plans | Start at `ONBOARDING.md`. |
 

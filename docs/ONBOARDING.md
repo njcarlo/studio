@@ -23,9 +23,12 @@ Welcome. This guide gets you from zero to shipping a change in **one module** of
 ```
 studio/
 ├── apps/web/              ← YOU WORK HERE (Next.js 15 App Router)
+├── apps/c2s-public/       ← Public C2S Group Finder (port 9004)
 ├── apps/inventory/        ← separate Next.js app (still Supabase-oriented)
 ├── apps/tract-tracker/    ← Expo mobile app (still Supabase)
 ├── packages/
+│   ├── core-engine/       ← authz, approvals, tenant branding (@studio/core-engine)
+│   ├── c2s/               ← C2S domain logic (@studio/c2s)
 │   ├── database/          ← Prisma client export (@studio/database)
 │   ├── ui/                ← shared shadcn/ui (@studio/ui)
 │   ├── store/             ← Zustand permissions store
@@ -201,7 +204,7 @@ Choose **one row**. Stay inside that file set until you understand the flow end-
 
 | Module | Routes | Actions | Services | Prisma models (approx.) | Good first task |
 |---|---|---|---|---|---|
-| **C2S** | `/c2s`, `/c2s/my-group`, `/public/c2s-join` | `actions/c2s.ts` (+ some `db.ts`) | `services/c2s.ts` | `C2SGroup`, `C2SMentee`, `C2SJoinRequest`, `C2SSession` | Fix join form validation; improve public group filters |
+| **C2S** | `/c2s`, `/c2s/my-group`, `/public/c2s-join` (+ standalone `apps/c2s-public`) | `actions/c2s.ts` (+ some `db.ts`) | `@studio/c2s` / `services/c2s` re-export | `C2SGroup`, `C2SMentee`, `C2SJoinRequest`, `C2SSession` | Public finder filters; mentor My Group |
 | **Workers** | `/workers`, `/workers/[id]` | `actions/db.ts` (`getPaginatedWorkers`, CRUD) | `services/workers.ts` | `Worker`, `WorkerRole`, `Role` | Improve search/sort; profile field UX |
 | **Schedule** | `/schedule/*`, `/worker/schedule/*` | `actions/schedule.ts` | `services/schedule.ts`, `master-schedule.ts` | `ServiceSchedule`, `ScheduleAssignment`, `WorshipSlot*` | Template bugfix; publish flow |
 | **Reservations** | `/reservations/*`, `/rooms/*` | mostly `actions/db.ts` | `room-reservation-workflow.ts` | `Booking`, `Room` | Calendar UX; approval stage copy |
