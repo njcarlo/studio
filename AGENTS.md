@@ -81,3 +81,7 @@ mounts one router per domain under `/<domain>`. Shared helpers live in
    `firebase deploy --only functions,firestore:rules,storage`.
 3. Set the Cloud Functions `APP_BASE_URL` param to the App Hosting URL so the
    scheduled jobs can call `/api/cron/*`.
+4. **Vercel** — root `vercel.json` skips all builds via
+   `scripts/vercel-ignore.sh`. PR checks come from `.github/workflows/firebase-pr.yml`
+   (“Firebase”). Disconnect the Vercel GitHub app under
+   GitHub → Settings → Integrations if it still posts on PRs.
