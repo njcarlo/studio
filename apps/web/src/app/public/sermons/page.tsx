@@ -3,10 +3,14 @@ import { getPublicSermons } from "@/actions/sermons";
 import { format } from "date-fns";
 import { BookOpen, Calendar, PlayCircle, Headphones } from "lucide-react";
 import { getYoutubeThumbnail } from "@/lib/youtube";
+import { getTenantConfig, tenantDisplayName } from "@studio/core-engine/tenant";
+
+const tenant = getTenantConfig();
+const brand = tenantDisplayName(tenant);
 
 export const metadata = {
-    title: "Preaching - COG Dasma",
-    description: "Browse recent preaching from COG Dasma.",
+    title: `Preaching - ${brand}`,
+    description: `Browse recent preaching from ${brand}.`,
 };
 
 export default async function PublicSermonsPage() {
@@ -22,7 +26,7 @@ export default async function PublicSermonsPage() {
                     </div>
                     <h1 className="text-3xl font-bold text-gray-800">Preaching</h1>
                     <p className="text-gray-600 mt-1">
-                        Catch up on recent messages from COG Dasma.
+                        Catch up on recent messages from {tenant.brandName}.
                     </p>
                 </div>
 

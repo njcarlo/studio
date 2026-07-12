@@ -12,6 +12,7 @@ Shared platform primitives for Studio apps (Firebase + Prisma stack).
 | `EmailService` | Resend email helper |
 | `createWorkflow` / `decide` / … | Generic multi-stage approval engine |
 | `getTenantConfig` / `tenantDisplayName` / `isFeatureEnabled` | White-label tenant + module flags |
+| `tenantInitials` / `tenantFileSlug` | Monogram + CSV/download filename prefix |
 | `tenantBrandStyle` / `DEFAULT_BRAND_COLOR` | Sets CSS `--brand` for Tailwind `brand` |
 | `moduleAppUrl(module)` | `https://{module}.{rootDomain}` → `[module].[domain].app` |
 | `c2sPublicUrl()` / `studioAppUrl()` | Shortcuts for `c2s` / `studio` |

@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   isFeatureEnabled,
   tenantDisplayName,
+  tenantInitials,
+  tenantFileSlug,
   tenantBrandStyle,
   DEFAULT_BRAND_COLOR,
   getTenantConfig,
@@ -72,6 +74,24 @@ describe('tenantDisplayName / brand style', () => {
     ).toBe('Acme Church');
   });
 
+  it('builds initials from shortName', () => {
+    expect(
+      tenantInitials({
+        ...getTenantConfig(),
+        shortName: 'COG Dasma',
+        brandName: 'Church of God Dasmariñas',
+      }),
+    ).toBe('CD');
+  });
+
+  it('builds file slug from shortName', () => {
+    expect(
+      tenantFileSlug({
+        ...getTenantConfig(),
+        shortName: 'COG Dasma',
+      }),
+    ).toBe('COG_Dasma');
+  });
   it('sets --brand from primaryColor', () => {
     expect(
       tenantBrandStyle({

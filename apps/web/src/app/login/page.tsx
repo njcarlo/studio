@@ -353,7 +353,7 @@ export default function LoginPage() {
                         <Input
                           id="first-name"
                           type="text"
-                          placeholder="Exactly as in COG records"
+                          placeholder={`Exactly as in ${tenantDisplayName()} records`}
                           required
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}

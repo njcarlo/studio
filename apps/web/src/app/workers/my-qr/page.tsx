@@ -16,6 +16,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { useUserRole } from "@/hooks/use-user-role";
 import { updateWorker as updateWorkerSql } from "@/actions/db";
 import { useToast } from "@/hooks/use-toast";
+import { tenantDisplayName } from "@studio/core-engine/tenant";
 
 export default function MyQRCodePage() {
   const { user } = useAuthStore();
@@ -23,6 +24,7 @@ export default function MyQRCodePage() {
   const { toast } = useToast();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [localToken, setLocalToken] = useState<string | null>(null);
+  const brand = tenantDisplayName();
 
   const activeUserId = workerProfile?.id || user?.uid;
   const activeToken =
@@ -104,7 +106,7 @@ export default function MyQRCodePage() {
               <QrCode className="h-12 w-12 text-primary" />
             </div>
             <CardTitle className="text-3xl font-bold font-headline">
-              COG App Identification
+              {brand} Identification
             </CardTitle>
             <CardDescription className="text-lg mt-2 font-medium">
               {workerProfile?.firstName} {workerProfile?.lastName}
@@ -136,8 +138,8 @@ export default function MyQRCodePage() {
 
           <div className="mt-12 space-y-4 max-w-sm mx-auto">
             <p className="text-base text-muted-foreground leading-relaxed">
-              Use this QR code for all identification purposes within the COG
-              App ecosystem:
+              Use this QR code for all identification purposes within the {brand}{" "}
+              ecosystem:
             </p>
             <div className="grid grid-cols-2 gap-3 text-sm font-semibold">
               <div className="p-3 bg-secondary/50 rounded-lg flex items-center justify-center gap-2">

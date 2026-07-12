@@ -63,6 +63,22 @@ export function tenantDisplayName(tenant: TenantConfig = getTenantConfig()): str
   return tenant.shortName || tenant.brandName;
 }
 
+/** 1–2 letter monogram from shortName / brandName (e.g. "COG Dasma" → "CD"). */
+export function tenantInitials(tenant: TenantConfig = getTenantConfig()): string {
+  const name = (tenant.shortName || tenant.brandName).trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase() || 'OR';
+}
+
+/** Safe filename prefix from shortName / id (e.g. "COG Dasma" → "COG_Dasma"). */
+export function tenantFileSlug(tenant: TenantConfig = getTenantConfig()): string {
+  const base = tenant.shortName || tenant.id || 'org';
+  return base.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'org';
+}
+
 /** True when the tenant has enabled `flag` (missing key → false). */
 export function isFeatureEnabled(
   flag: FeatureFlag,
