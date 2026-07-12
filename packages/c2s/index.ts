@@ -1,6 +1,6 @@
 /**
  * @studio/c2s — Connect2Souls domain logic (groups, mentees, sessions, join requests).
- * UI stays in apps/web (and later apps/c2s-public). See docs/CORE_ENGINE_C2S_PLAN.md.
+ * UI stays in apps/web (M1) and apps/c2s-public. See docs/CORE_ENGINE_C2S_PLAN.md.
  */
 export {
   C2S_JOIN_REQUEST_WORKFLOW_TYPE,
@@ -21,10 +21,25 @@ export {
   deleteMentee,
   getMenteeGroupId,
   getMentorJoinRequests,
+  listAdminC2SGroups,
+  listAdminC2SMentees,
+  createAdminC2SGroup,
+  updateAdminC2SGroup,
+  deleteAdminC2SGroup,
+  createAdminC2SMentee,
+  updateAdminC2SMentee,
+  deleteAdminC2SMentee,
+  toC2SKanbanApprovalRow,
+  listC2SJoinRequestKanbanRows,
   type UpdateGroupProfileInput,
   type CreateJoinRequestInput,
   type CreateSessionInput,
   type UpdateSessionInput,
   type MenteeInput,
   type MentorJoinRequest,
+  type AdminCreateGroupInput,
+  type AdminUpdateGroupInput,
+  type AdminMenteeInput,
+  type AdminUpdateMenteeInput,
+  type C2SKanbanApprovalRow,
 } from './src/service';

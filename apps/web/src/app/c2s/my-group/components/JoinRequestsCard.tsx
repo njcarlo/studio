@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { toJsDate } from "@/lib/utils";
 import { getMyC2SJoinRequestsAction } from "@/actions/c2s";
 import { decideApprovalStage } from "@/actions/db";
-import type { MentorJoinRequest } from "@/services/c2s";
+import type { MentorJoinRequest } from "@studio/c2s";
 import type { GroupWithMentees } from "./types";
 
 const JoinRequestRow = ({ request }: { request: MentorJoinRequest }) => {

@@ -204,7 +204,7 @@ Choose **one row**. Stay inside that file set until you understand the flow end-
 
 | Module | Routes | Actions | Services | Prisma models (approx.) | Good first task |
 |---|---|---|---|---|---|
-| **C2S** | `/c2s`, `/c2s/my-group`, `/public/c2s-join` (+ standalone `apps/c2s-public`) | `actions/c2s.ts` (+ some `db.ts`) | `@studio/c2s` / `services/c2s` re-export | `C2SGroup`, `C2SMentee`, `C2SJoinRequest`, `C2SSession` | Public finder filters; mentor My Group |
+| **C2S** | `/c2s`, `/c2s/my-group`, `/public/c2s-join` (+ standalone `apps/c2s-public`) | `actions/c2s.ts` (+ thin `db.ts` admin wrappers) | `@studio/c2s` | `C2SGroup`, `C2SMentee`, `C2SJoinRequest`, `C2SSession` | Public finder filters; mentor My Group |
 | **Workers** | `/workers`, `/workers/[id]` | `actions/db.ts` (`getPaginatedWorkers`, CRUD) | `services/workers.ts` | `Worker`, `WorkerRole`, `Role` | Improve search/sort; profile field UX |
 | **Schedule** | `/schedule/*`, `/worker/schedule/*` | `actions/schedule.ts` | `services/schedule.ts`, `master-schedule.ts` | `ServiceSchedule`, `ScheduleAssignment`, `WorshipSlot*` | Template bugfix; publish flow |
 | **Reservations** | `/reservations/*`, `/rooms/*` | mostly `actions/db.ts` | `room-reservation-workflow.ts` | `Booking`, `Room` | Calendar UX; approval stage copy |
@@ -223,7 +223,7 @@ Full route table: [`architecture.md` §4](./architecture.md).
 C2S is a clean, modern module with both public and authenticated surfaces.
 
 1. Open `/public/c2s-join` (no login) — list groups, open Join dialog.
-2. Read `apps/web/src/app/public/c2s-join/page.tsx` → `getPublicC2SGroups` in `actions/c2s.ts` → `listPublicC2SGroups` in `services/c2s.ts`.
+2. Read `apps/c2s-public/src/app/page.tsx` → `getPublicC2SGroups` → `listPublicC2SGroups` in `@studio/c2s`. Studio `/public/c2s-join` redirects to `c2sPublicUrl()`.
 3. Log in and open `/c2s` / `/c2s/my-group` — mentor group, mentees, sessions, join requests.
 4. Trace a join request into `approval-engine.ts` (workflow type for C2S joins).
 5. Make a tiny change (copy, filter default, empty state) and verify locally.

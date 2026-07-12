@@ -1,6 +1,6 @@
 # Plan: Core Engine → C2S Module → White-Label Platform
 
-**Status:** Phase 1 complete; Phase 2A complete (`@studio/c2s` + `apps/c2s-public`); white-label tenant stub live; mentor UI remains in Studio (M1)  
+**Status:** Phase 1 complete; Phase 2A complete; **Phase 2B M1 complete** (mentor UI in Studio, all domain in `@studio/c2s`); white-label tenant stub + `[module].[domain].app` URLs live  
 **Priority order:** (1) `packages/core-engine` → (2) C2S as a separate module → (3) white-label / selective apps  
 **Non-goal for early phases:** Splitting every Studio sidebar item into `apps/[module]`.
 
@@ -167,10 +167,10 @@ Recommend **M1 first**, then **M2** only if product/ops wants a separate mentor 
 
 ### Phase 2 exit criteria
 
-- [ ] `@studio/c2s` owns domain logic; web only pages/actions wrappers
-- [ ] Public Group Finder deployable without Studio nav
-- [ ] Join → approval → mentee creation unchanged
-- [ ] ORS import still works from Studio settings
+- [x] `@studio/c2s` owns domain logic; web only pages/actions wrappers
+- [x] Public Group Finder deployable without Studio nav
+- [x] Join → approval → mentee creation unchanged (covered by `c2s-domain` tests)
+- [x] ORS import still works from Studio settings (left in `ors-sync.ts`)
 
 ---
 
@@ -264,7 +264,7 @@ flowchart LR
 
 | Decision | Options | Choice |
 |---|---|---|
-| Mentor C2S deploy | M1 package-in-Studio / M2 `apps/c2s` | _TBD after 2A_ |
+| Mentor C2S deploy | M1 package-in-Studio / M2 `apps/c2s` | **M1** — mentor UI stays in `apps/web`; domain in `@studio/c2s` |
 | Tenancy model | Shared DB + `tenantId` / DB-per-tenant | _TBD Phase 3_ |
 | Public C2S domain | Subdomain vs path on Studio | **`https://c2s.{rootDomain}`** (default `c2s.cogdasma.app`) |
 | Root domain | — | `NEXT_PUBLIC_ROOT_DOMAIN` default **`cogdasma.app`** → `[module].[domain].app` |
@@ -274,8 +274,6 @@ flowchart LR
 
 ## What to do next
 
-1. Review this plan and lock Phase 0 decisions (especially mentor M1 vs M2).  
-2. Start **Slice A** (`packages/core-engine` scaffold + approval-engine move).  
-3. After core-engine is green, start **Slice C** (`packages/c2s` + public app).
-
-Say when to begin Slice A and whether mentor C2S should target **M1 (package only)** or **M2 (separate app)** after the public split.
+1. Phase 3 white-label hardening (CSS brand tokens, feature-flag nav, tenancy decision).  
+2. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
+3. Owner ops: attach `c2s.cogdasma.app` (+ optional `studio.cogdasma.app`) in Firebase App Hosting.

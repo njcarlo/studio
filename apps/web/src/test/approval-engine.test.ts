@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getActiveStages } from '@/services/approval-engine';
+import { getActiveStages } from '@studio/core-engine';
 import type { ApprovalStage } from '@prisma/client';
 
 /**
