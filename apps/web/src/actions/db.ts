@@ -28,7 +28,7 @@ import * as mealsAttendanceService from '@/services/meals-attendance';
 import * as MasterScheduleService from '@/services/master-schedule';
 import * as LeaveWorkflow from '@/services/leave-workflow';
 import * as MinorMinistryAssignmentWorkflow from '@/services/minor-ministry-assignment-workflow';
-import * as C2SService from '@/services/c2s';
+import * as C2SService from '@studio/c2s';
 import {
     createMealStubSchema,
     updateMealStubSchema,
@@ -1734,44 +1734,20 @@ export const createScanLog = withPermission(
     }
 );
 
-// --- C2S ---
+// --- C2S (domain in @studio/c2s; auth + cache here) ---
 
 export async function getC2SGroups() {
-    return await prisma.c2SGroup.findMany({
-        include: {
-            mentees: true,
-        },
-        orderBy: {
-            createdAt: 'desc',
-        },
-    });
+    return C2SService.listAdminC2SGroups();
 }
 
 export async function getC2SMentees() {
-    return await prisma.c2SMentee.findMany({
-        include: {
-            group: true,
-        },
-        orderBy: {
-            createdAt: 'desc',
-        },
-    });
+    return C2SService.listAdminC2SMentees();
 }
 
 export const createC2SGroup = withPermission(
     PERMISSIONS.mentorship.manage,
-    async (_ctx, data: {
-        name: string;
-        mentorId: string;
-        menteeIds?: string[];
-    }) => {
-        const group = await prisma.c2SGroup.create({
-            data: {
-                name: data.name,
-                mentorId: data.mentorId,
-                menteeIds: data.menteeIds ?? [],
-            },
-        });
+    async (_ctx, data: C2SService.AdminCreateGroupInput) => {
+        const group = await C2SService.createAdminC2SGroup(data);
         revalidatePath('/c2s');
         return group;
     }
@@ -1779,11 +1755,8 @@ export const createC2SGroup = withPermission(
 
 export const updateC2SGroup = withPermission(
     PERMISSIONS.mentorship.manage,
-    async (_ctx, id: string, data: { name?: string; mentorId?: string; menteeIds?: string[] }) => {
-        const group = await prisma.c2SGroup.update({
-            where: { id },
-            data,
-        });
+    async (_ctx, id: string, data: C2SService.AdminUpdateGroupInput) => {
+        const group = await C2SService.updateAdminC2SGroup(id, data);
         revalidatePath('/c2s');
         return group;
     }
@@ -1792,23 +1765,15 @@ export const updateC2SGroup = withPermission(
 export const deleteC2SGroup = withPermission(
     PERMISSIONS.mentorship.manage,
     async (_ctx, id: string) => {
-        await prisma.c2SGroup.delete({ where: { id } });
+        await C2SService.deleteAdminC2SGroup(id);
         revalidatePath('/c2s');
     }
 );
 
 export const createC2SMentee = withPermission(
     PERMISSIONS.mentorship.manage,
-    async (_ctx, data: {
-        firstName: string;
-        lastName: string;
-        email: string;
-        phone: string;
-        status: string;
-        groupId: string;
-        mentorId: string;
-    }) => {
-        const mentee = await prisma.c2SMentee.create({ data });
+    async (_ctx, data: C2SService.AdminMenteeInput) => {
+        const mentee = await C2SService.createAdminC2SMentee(data);
         revalidatePath('/c2s');
         return mentee;
     }
@@ -1816,19 +1781,8 @@ export const createC2SMentee = withPermission(
 
 export const updateC2SMentee = withPermission(
     PERMISSIONS.mentorship.manage,
-    async (_ctx, id: string, data: {
-        firstName?: string;
-        lastName?: string;
-        email?: string;
-        phone?: string;
-        status?: string;
-        groupId?: string;
-        mentorId?: string;
-    }) => {
-        const mentee = await prisma.c2SMentee.update({
-            where: { id },
-            data,
-        });
+    async (_ctx, id: string, data: C2SService.AdminUpdateMenteeInput) => {
+        const mentee = await C2SService.updateAdminC2SMentee(id, data);
         revalidatePath('/c2s');
         return mentee;
     }
@@ -1837,7 +1791,7 @@ export const updateC2SMentee = withPermission(
 export const deleteC2SMentee = withPermission(
     PERMISSIONS.mentorship.manage,
     async (_ctx, id: string) => {
-        await prisma.c2SMentee.delete({ where: { id } });
+        await C2SService.deleteAdminC2SMentee(id);
         revalidatePath('/c2s');
     }
 );

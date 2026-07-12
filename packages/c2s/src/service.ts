@@ -306,3 +306,133 @@ export async function getMentorJoinRequests(workerId: string): Promise<MentorJoi
             createdAt: workflow.createdAt,
         }));
 }
+
+// --- Admin dashboard CRUD (mentorship:manage — auth enforced by callers) ---
+
+export async function listAdminC2SGroups() {
+    return prisma.c2SGroup.findMany({
+        include: { mentees: true },
+        orderBy: { createdAt: 'desc' },
+    });
+}
+
+export async function listAdminC2SMentees() {
+    return prisma.c2SMentee.findMany({
+        include: { group: true },
+        orderBy: { createdAt: 'desc' },
+    });
+}
+
+export type AdminCreateGroupInput = {
+    name: string;
+    mentorId: string;
+    menteeIds?: string[];
+};
+
+export async function createAdminC2SGroup(data: AdminCreateGroupInput) {
+    return prisma.c2SGroup.create({
+        data: {
+            name: data.name,
+            mentorId: data.mentorId,
+            menteeIds: data.menteeIds ?? [],
+        },
+    });
+}
+
+export type AdminUpdateGroupInput = {
+    name?: string;
+    mentorId?: string;
+    menteeIds?: string[];
+};
+
+export async function updateAdminC2SGroup(id: string, data: AdminUpdateGroupInput) {
+    return prisma.c2SGroup.update({ where: { id }, data });
+}
+
+export async function deleteAdminC2SGroup(id: string) {
+    await prisma.c2SGroup.delete({ where: { id } });
+}
+
+export type AdminMenteeInput = {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    status: string;
+    groupId: string;
+    mentorId: string;
+};
+
+export async function createAdminC2SMentee(data: AdminMenteeInput) {
+    return prisma.c2SMentee.create({ data });
+}
+
+export type AdminUpdateMenteeInput = Partial<AdminMenteeInput>;
+
+export async function updateAdminC2SMentee(id: string, data: AdminUpdateMenteeInput) {
+    return prisma.c2SMentee.update({ where: { id }, data });
+}
+
+export async function deleteAdminC2SMentee(id: string) {
+    await prisma.c2SMentee.delete({ where: { id } });
+}
+
+// --- Approvals Kanban adapter ---
+
+/** Legacy ApprovalRequest-shaped row for Studio `/approvals` Kanban. */
+export type C2SKanbanApprovalRow = {
+    id: string;
+    requester: string;
+    type: string;
+    details: string;
+    date: Date;
+    status: string;
+    workerId: null;
+    requestId: string;
+    worker: null;
+    _workflowId: string;
+    _stageId: string | null;
+    _actionable: boolean;
+};
+
+/** Pure mapper — unit-testable without Prisma. */
+export function toC2SKanbanApprovalRow(
+    workflow: WorkflowWithStages,
+    actionableIds: Set<string>,
+): C2SKanbanApprovalRow {
+    const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
+    const active = getActiveStages(workflow.stages);
+    const groupName = (meta.groupName as string) ?? 'Unknown group';
+    const email = (meta.requesterEmail as string) ?? '';
+    const message = meta.message as string | undefined;
+
+    return {
+        id: workflow.id,
+        requester: (meta.requesterName as string) ?? 'Unknown',
+        type: C2S_JOIN_REQUEST_WORKFLOW_TYPE,
+        details: `Join request for "${groupName}" — ${email}${message ? `: ${message}` : ''}`,
+        date: workflow.createdAt,
+        status: workflow.status,
+        workerId: null,
+        requestId: workflow.subjectId,
+        worker: null,
+        _workflowId: workflow.id,
+        _stageId: active[0]?.id ?? null,
+        _actionable: actionableIds.has(workflow.id),
+    };
+}
+
+/** All C2S join-request workflows as Kanban rows for `workerId`. */
+export async function listC2SJoinRequestKanbanRows(workerId: string): Promise<C2SKanbanApprovalRow[]> {
+    const [workflows, actionable] = await Promise.all([
+        prisma.approvalWorkflow.findMany({
+            where: { type: C2S_JOIN_REQUEST_WORKFLOW_TYPE },
+            include: { stages: { orderBy: { stageOrder: 'asc' } } },
+            orderBy: { createdAt: 'desc' },
+        }),
+        getActionableWorkflows(workerId),
+    ]);
+
+    const actionableIds = new Set(actionable.map((w) => w.id));
+    return workflows.map((workflow) => toC2SKanbanApprovalRow(workflow, actionableIds));
+}

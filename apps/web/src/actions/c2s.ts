@@ -1,10 +1,8 @@
 "use server";
 
-import { prisma } from '@studio/database/prisma';
 import { revalidatePath } from 'next/cache';
 import { withPublicAction, resolveCallerCtx } from '@/lib/auth/with-permission';
-import * as ApprovalEngine from '@/services/approval-engine';
-import * as C2SService from '@/services/c2s';
+import * as C2SService from '@studio/c2s';
 
 // --- Mentor-facing: "My Group" ---
 
@@ -151,41 +149,10 @@ export const submitC2SJoinRequest = withPublicAction(async (input: C2SService.Cr
 /**
  * C2S join request approval workflows, normalized into the legacy
  * ApprovalRequest shape so the existing Kanban UI on /approvals can render
- * them alongside other request types. Requester has no Worker record, so
- * `requester`/`worker` come from `workflow.metadata`.
+ * them alongside other request types.
  */
 export const getC2SJoinRequestApprovals = withPublicAction(async () => {
     const ctx = await resolveCallerCtx();
     if (!ctx) throw new Error('You must be logged in to do this.');
-
-    const [workflows, actionable] = await Promise.all([
-        prisma.approvalWorkflow.findMany({
-            where: { type: C2SService.C2S_JOIN_REQUEST_WORKFLOW_TYPE },
-            include: { stages: { orderBy: { stageOrder: 'asc' } } },
-            orderBy: { createdAt: 'desc' },
-        }),
-        ApprovalEngine.getActionableWorkflows(ctx.workerId),
-    ]);
-
-    const actionableIds = new Set(actionable.map((w) => w.id));
-
-    return workflows.map((workflow) => {
-        const meta = (workflow.metadata as Record<string, unknown> | null) ?? {};
-        const active = ApprovalEngine.getActiveStages(workflow.stages);
-
-        return {
-            id: workflow.id,
-            requester: (meta.requesterName as string) ?? 'Unknown',
-            type: C2SService.C2S_JOIN_REQUEST_WORKFLOW_TYPE,
-            details: `Join request for "${meta.groupName ?? 'Unknown group'}" — ${meta.requesterEmail ?? ''}${meta.message ? `: ${meta.message}` : ''}`,
-            date: workflow.createdAt,
-            status: workflow.status,
-            workerId: null,
-            requestId: workflow.subjectId,
-            worker: null,
-            _workflowId: workflow.id,
-            _stageId: active[0]?.id ?? null,
-            _actionable: actionableIds.has(workflow.id),
-        };
-    });
+    return C2SService.listC2SJoinRequestKanbanRows(ctx.workerId);
 });

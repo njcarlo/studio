@@ -186,7 +186,7 @@ in `with-permission.ts`.
 
 - **Firebase cutover**: Auth (`firebase-client` / `firebase-auth-server`), App Hosting scripts, Cloud Functions under `functions/`, inventory web path on Prisma.
 - **Phase 5 (public content)**: `services/sermons.ts`, `prayer-requests.ts`, `events.ts` + matching actions/pages under `app/public/*`.
-- **Phase 4 (C2S)**: `services/c2s.ts`, `actions/c2s.ts`, `app/c2s`, `app/public/c2s-join`.
+- **Phase 4 (C2S)**: `@studio/c2s`, `actions/c2s.ts`, `app/c2s`, `apps/c2s-public`, redirect at `app/public/c2s-join`.
 - **Phase 3 (HR / training)**: `leave-workflow.ts`, `training.ts`, `master-schedule.ts`.
 - **Phase 1–2**: meal stubs, room reservation workflow, major events, `approval-engine.ts`.
 
