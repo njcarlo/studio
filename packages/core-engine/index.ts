@@ -41,10 +41,15 @@ export {
 
 export {
   DEFAULT_TENANT,
+  DEFAULT_BRAND_COLOR,
   getTenantConfig,
+  tenantDisplayName,
+  isFeatureEnabled,
+  tenantBrandStyle,
   moduleAppUrl,
   c2sPublicUrl,
   studioAppUrl,
   type TenantConfig,
   type ModuleSlug,
+  type FeatureFlag,
 } from './src/tenant';

@@ -109,7 +109,7 @@ export function GroupFinderMap({
                         <Users className="h-3.5 w-3.5" /> Ages {g.ageRangeMin ?? "?"}-{g.ageRangeMax ?? "?"}
                       </p>
                     )}
-                    <Button size="sm" className="w-full bg-rose-500 hover:bg-rose-600" onClick={() => onJoin(g)}>
+                    <Button size="sm" className="w-full bg-brand text-brand-foreground hover:opacity-90" onClick={() => onJoin(g)}>
                       Join C2S Group
                     </Button>
                   </div>

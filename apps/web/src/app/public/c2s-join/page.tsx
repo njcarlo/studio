@@ -42,7 +42,7 @@ export default function PublicC2SJoinEntry() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-2 text-muted-foreground">
       <p>Redirecting to C2S Group Finder…</p>
-      <a className="text-sm text-rose-500 hover:underline" href={target}>
+      <a className="text-sm text-brand hover:underline" href={target}>
         {host}
       </a>
     </div>

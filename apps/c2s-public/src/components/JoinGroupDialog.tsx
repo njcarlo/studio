@@ -24,6 +24,7 @@ import {
 } from "@studio/ui";
 import { LoaderCircle, CheckCircle2 } from "lucide-react";
 import { submitC2SJoinRequest } from "@/actions/c2s";
+import { getTenantConfig } from "@studio/core-engine/tenant";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -42,6 +43,7 @@ export function JoinGroupDialog({
   group: JoinGroup | null;
   onOpenChange: (open: boolean) => void;
 }) {
+  const tenant = getTenantConfig();
   const queryClient = useQueryClient();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -129,7 +131,7 @@ export function JoinGroupDialog({
             <DialogHeader>
               <DialogTitle>Join C2S Group</DialogTitle>
               <DialogDescription>
-                You&apos;re signing up for <span className="text-rose-500 font-medium">{group?.name}</span>
+                You&apos;re signing up for <span className="text-brand font-medium">{group?.name}</span>
                 {group?.location ? ` in ${group.location}.` : "."}
               </DialogDescription>
             </DialogHeader>
@@ -225,10 +227,10 @@ export function JoinGroupDialog({
                 />
                 <span>
                   I agree to the{" "}
-                  <a href="/privacy" target="_blank" className="text-rose-500 hover:underline">
+                  <a href="/privacy" target="_blank" className="text-brand hover:underline">
                     Data Privacy Policy
                   </a>{" "}
-                  of this church.
+                  of {tenant.brandName}.
                 </span>
               </label>
 
@@ -240,7 +242,7 @@ export function JoinGroupDialog({
             <DialogFooter>
               <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
               <Button
-                className="bg-rose-500 hover:bg-rose-600"
+                className="bg-brand text-brand-foreground hover:opacity-90"
                 disabled={!isValid || submitMutation.isPending}
                 onClick={() => submitMutation.mutate()}
               >
