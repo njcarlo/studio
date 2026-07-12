@@ -1,6 +1,6 @@
 # Plan: Core Engine → C2S Module → White-Label Platform
 
-**Status:** Phase 1 Slice A in progress (`@studio/core-engine` scaffolded — approval engine + email + action-response + tenant stub)  
+**Status:** Phase 1 Slice A+B landed; Phase 2A started (`@studio/c2s` domain package)  
 **Priority order:** (1) `packages/core-engine` → (2) C2S as a separate module → (3) white-label / selective apps  
 **Non-goal for early phases:** Splitting every Studio sidebar item into `apps/[module]`.
 
@@ -172,10 +172,12 @@ Recommend **M1 first**, then **M2** only if product/ops wants a separate mentor 
 
 ### Phase 2 exit criteria
 
-- [ ] `@studio/c2s` owns domain logic; web only pages/actions wrappers
+- [x] `@studio/c2s` owns domain logic; web only pages/actions wrappers *(service moved; actions still in web)*
 - [ ] Public Group Finder deployable without Studio nav
 - [ ] Join → approval → mentee creation unchanged
 - [ ] ORS import still works from Studio settings
+
+**Phase 2A progress:** `packages/c2s` extracted; `apps/web/src/services/c2s.ts` is a re-export. Next: `apps/c2s-public`.
 
 ---
 
