@@ -2,7 +2,7 @@
 
 Welcome. This guide gets you from zero to shipping a change in **one module** of the flagship web app.
 
-> **Start here.** Older docs (`CODEBASE_GUIDE.md`, parts of `architecture.md`) still mention Supabase Auth / Vercel. Treat **this file + `AGENTS.md`** as the current source of truth for stack and local setup.
+> **Start here.** Companion docs: `AGENTS.md`, `architecture.md`, `CODEBASE_GUIDE.md`, `PLATFORM_ARCHITECTURE.md`. Stack for `apps/web` is Firebase + Prisma/Postgres.
 
 ---
 

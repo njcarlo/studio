@@ -1,5 +1,13 @@
 # Requirements Document
 
+> **Superseded direction for `apps/web`:** This spec targeted Supabase Edge
+> Functions. The shipped architecture uses **Firebase Auth**, **Firebase App
+> Hosting**, **Prisma/Postgres**, and **Firebase Cloud Functions** (`functions/`).
+> Keep useful module-boundary ideas; do **not** implement new Supabase Edge
+> Functions for the web app. See `docs/ONBOARDING.md` and `docs/architecture.md`.
+> `apps/inventory` / `apps/tract-tracker` may still be on Supabase.
+
+
 ## Introduction
 
 This document defines the requirements for a full architectural overhaul of the Studio monorepo. The current system has all business logic locked inside `apps/web` (a ~1100-line `db.ts` server actions monolith) and `apps/inventory`, making it impossible for mobile apps and future clients to reuse that logic. The overhaul extracts all business logic into Supabase Edge Functions (one per domain module), introduces a new `@studio/client` typed SDK package that all clients consume, and reduces `apps/web` and `apps/inventory` to thin presentation layers. Migration is performed module by module to avoid breaking existing functionality.

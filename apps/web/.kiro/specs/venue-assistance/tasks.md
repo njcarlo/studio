@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implement the Venue Assistance module as a standalone Supabase-backed feature within `apps/web`. Tasks follow the existing patterns: Prisma schema → server actions → notification service → UI components → cron job.
+Implement the Venue Assistance module as a standalone Prisma/Postgres-backed feature within `apps/web`. Tasks follow the existing patterns: Prisma schema → server actions → notification service → UI components → cron job.
 
 ## Tasks
 
@@ -64,7 +64,7 @@ Implement the Venue Assistance module as a standalone Supabase-backed feature wi
   - Call `fulfillCompletedBookings()` to handle `In_Progress` → `Fulfilled` transitions
   - Query all `Pending` `AssistanceRequest` records where `createdAt < now - slaDays` and `slaEscalatedAt IS NULL`; for each, call `notifySlaEscalation` and set `slaEscalatedAt = now`
   - Query all `VenueBooking` records where `start` is within 3 days and associated requests are not `Approved` or `Partial`; call `notifyPreEventReminder` for each
-  - Register the route in `vercel.json` crons config with schedule `0 8 * * *`
+  - Ensure Cloud Functions scheduler / cron wiring calls the route on schedule `0 8 * * *` with `CRON_SECRET`
   - _Requirements: 4.4, 4.5, 7.2, 7.3, 7.5, 9.2_
 
   - [ ]* 8.1 Write unit tests for cron SLA query logic

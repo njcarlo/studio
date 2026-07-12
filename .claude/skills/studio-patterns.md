@@ -1,14 +1,21 @@
 ---
 name: studio-patterns
 description: Coding patterns, conventions, and workflows extracted from the studio monorepo
-version: 2.0.0
+version: 3.0.0
 source: local-git-analysis
 analyzed_commits: 200
 ---
 
 # Studio Monorepo Patterns
 
-A church/ministry operations platform (worker management, scheduling, events, meals, inventory, reservations) built as a Next.js 15 + Supabase Edge Functions monorepo.
+Church/ministry operations platform (workers, scheduling, events, meals,
+inventory, reservations, C2S) built as a **Next.js 15 + Firebase + Prisma**
+monorepo. Flagship app: `apps/web` on **Firebase App Hosting**. Auth is
+**Firebase Auth**. Postgres via Prisma is the source of truth; Firestore is a
+dual-write soak. Cloud Functions live under `functions/`.
+
+`apps/inventory` and `apps/tract-tracker` may still use Supabase — do not copy
+those patterns into `apps/web`.
 
 ---
 
@@ -17,26 +24,31 @@ A church/ministry operations platform (worker management, scheduling, events, me
 ```
 studio/
 ├── apps/
-│   └── web/                    # Next.js 15 App Router (main app)
+│   └── web/                         # Next.js 15 App Router (main app)
 │       └── src/
-│           ├── app/            # Pages (route segments)
-│           ├── actions/db.ts   # Server Actions — Prisma calls
-│           ├── actions/schedule.ts  # Schedule-specific server actions
-│           ├── hooks/          # React Query hooks (use-*.ts)
-│           ├── components/     # Shared UI components
-│           ├── lib/permissions/registry.ts  # Permission key registry
-│           └── store/user-role-syncer-sql.tsx  # Permission derivation
-├── supabase/
-│   ├── functions/              # Deno Edge Functions (REST API)
-│   │   ├── _shared/            # cors, auth, router, response, logger
-│   │   └── <module>/index.ts   # One function per domain module
-│   └── migrations/             # SQL migration files (timestamped)
+│           ├── app/                 # Pages (route segments)
+│           ├── actions/             # Server Actions (domain files + db.ts)
+│           ├── services/            # Business logic + Prisma
+│           ├── hooks/               # React Query hooks (use-*.ts)
+│           ├── components/          # Shared UI components
+│           ├── lib/firebase-client.ts
+│           ├── lib/firebase-auth-server.ts
+│           ├── lib/auth/with-permission.ts
+│           ├── lib/permissions/registry.ts
+│           └── store/user-role-syncer-sql.tsx
+├── functions/                       # Firebase Cloud Functions (HTTP + cron)
+│   └── src/routes/<module>.ts
+├── prisma/schema.prisma             # Postgres schema (SoT)
+├── apphosting.yaml                  # App Hosting
+├── firebase.json                    # Functions / Firestore / Storage / emulators
+├── supabase/migrations/             # Optional SQL indexes/functions (historical)
 └── packages/
-    ├── client/                 # @studio/client — typed SDK wrapping Edge Functions
-    ├── database/               # Prisma client export
-    ├── store/                  # Zustand store (permissions, impersonation)
-    ├── types/                  # Shared TypeScript types
-    └── ui/                     # Shared shadcn/ui component library
+    ├── database/                    # Prisma client export
+    ├── store/                       # Zustand permissions store
+    ├── types/
+    ├── ui/
+    ├── client/                      # GraphQL/Apollo (limited)
+    └── graphql/
 ```
 
 ---
@@ -54,68 +66,59 @@ feat(schedule):    Module-scoped variant (preferred)
 
 ---
 
-## Data Layer: Two Parallel Patterns
+## Data Layer: preferred pattern for apps/web
 
-### Pattern A — Server Actions + Prisma (complex / paginated queries)
-
-`apps/web/src/actions/db.ts` — `"use server"` file, direct Prisma.
+### Server Actions + Services + Prisma (default for new work)
 
 ```ts
+// actions/my-module.ts
 "use server";
+import { withPermission } from '@/lib/auth/with-permission';
+import { PERMISSIONS } from '@/lib/permissions/registry';
+import * as MyService from '@/services/my-module';
+
+export const listItems = withPermission(PERMISSIONS.myModule.view, async (_ctx) => {
+  return MyService.listItems();
+});
+```
+
+```ts
+// services/my-module.ts
 import { prisma } from '@studio/database/prisma';
 
-export async function getPaginatedWorkers(page = 1, limit = 25, filters: {...}) {
-  const [data, total] = await Promise.all([
-    prisma.worker.findMany({ where, skip: (page-1)*limit, take: limit }),
-    prisma.worker.count({ where }),
-  ]);
-  return { data, total, page, totalPages: Math.ceil(total / limit) };
+export async function listItems() {
+  return prisma.myModel.findMany({ orderBy: { createdAt: 'desc' } });
 }
 ```
 
-### Pattern B — @studio/client SDK → Supabase Edge Functions (preferred for new modules)
+Public/anonymous endpoints use `withPublicAction`. Self-service worker edits
+may use `withPublicAction` plus internal `canManageWorker` checks.
 
-Add client class in `packages/client/src/index.ts`:
+### Cloud Functions HTTP API (non-Next / mobile / schedulers)
 
-```ts
-export class MyModuleClient extends BaseClient {
-  list  = (p?: Record<string, string>) => this.request('GET', `/my-module${p ? '?' + new URLSearchParams(p) : ''}`)
-  create  = (b: any)                   => this.request('POST', '/my-module', b)
-  update  = (id: string, b: any)       => this.request('PUT', `/my-module/${id}`, b)
-  remove  = (id: string)               => this.request('DELETE', `/my-module/${id}`)
-}
-```
+Prefer extending `functions/src/routes/<module>.ts` when the caller is outside
+Next.js. Verify Firebase ID tokens (`Authorization: Bearer …`). Do **not** add
+new Supabase Edge Functions for `apps/web`.
 
-Edge Function (`supabase/functions/<module>/index.ts`):
+### Legacy Pattern — do not use for web
 
-```ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { handleCors }  from '../_shared/cors.ts'
-import { verifyAuth }  from '../_shared/auth.ts'
-import { matchRoute, RouteMap } from '../_shared/router.ts'
-import { jsonOk, jsonError }    from '../_shared/response.ts'
-import { logError }             from '../_shared/logger.ts'
+`@studio/client` → Supabase Edge Functions under `supabase/functions/` is
+**legacy**. Inventory/tract-tracker may still use Supabase clients.
 
-const MODULE = 'my-module'
-const routes: RouteMap = [
-  { method: 'GET',    pattern: '/my-module',     handler: list },
-  { method: 'POST',   pattern: '/my-module',     handler: create },
-  { method: 'GET',    pattern: '/my-module/:id', handler: getById },
-  { method: 'PUT',    pattern: '/my-module/:id', handler: update },
-  { method: 'DELETE', pattern: '/my-module/:id', handler: remove },
-]
+---
 
-serve(async (req: Request) => {
-  const cors = handleCors(req); if (cors) return cors
-  const auth = await verifyAuth(req); if (auth instanceof Response) return auth
-  const url = new URL(req.url)
-  const pathname = url.pathname.replace(`/${MODULE}`, '') || '/'
-  const match = matchRoute(routes, req.method, pathname)
-  if (!match) return jsonError('Route not found', 404)
-  try   { return await match.handler(req, auth, match.params, url) }
-  catch (err) { logError(MODULE, req.method, pathname, err); return jsonError('Internal server error', 500) }
-})
-```
+## Auth (Firebase)
+
+| Surface | Entry |
+|---|---|
+| Browser | `lib/firebase-client.ts` — `signInWithEmailAndPassword`, etc. |
+| Emulator | `NEXT_PUBLIC_FIREBASE_USE_EMULATOR=true` + `FIREBASE_AUTH_EMULATOR_HOST` |
+| Server | `getServerUser()` in `lib/firebase-auth-server.ts` |
+| Actions | `resolveCallerCtx()` / `withPermission` in `lib/auth/with-permission.ts` |
+| Middleware | Cookie session; public prefixes in `middleware.ts` |
+| Permissions UI | `user-role-syncer-sql.tsx` → Zustand `@studio/store` |
+
+Worker is matched by **email** (case-insensitive) to the Firebase Auth user.
 
 ---
 
@@ -131,15 +134,15 @@ export function useWorkers(params: { page?: number; search?: string } = {}) {
   const { data, isLoading } = useQuery({
     queryKey: ['workers', params],
     queryFn: () => getPaginatedWorkers(params.page, 25, params),
-    staleTime: 60_000,               // always set — prevents refetch-on-focus
-    placeholderData: (prev) => prev, // keeps previous data during pagination
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 
   const createMutation = useMutation({
     mutationFn: createWorker,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workers'] });
-      queryClient.invalidateQueries({ queryKey: ['worker-stats'] }); // invalidate related keys
+      queryClient.invalidateQueries({ queryKey: ['worker-stats'] });
     },
   });
 
@@ -148,101 +151,44 @@ export function useWorkers(params: { page?: number; search?: string } = {}) {
 ```
 
 **Rules:**
-- Always set `staleTime`. Minimum `30_000`; roles/departments/static data: `5 * 60_000`.
-- Always add `placeholderData: (prev) => prev` for paginated queries.
-- Invalidate all related query keys after mutations.
+- Always set `staleTime` (min `30_000`; static data `5 * 60_000`).
+- Use `placeholderData: (prev) => prev` for paginated queries.
+- Invalidate related keys after mutations.
 
 ---
 
 ## Large Table Performance (6000+ rows)
 
-Workers table has 6000+ rows. **Never** fetch all rows client-side.
-
 - Server-side pagination via `getPaginatedWorkers(page, limit, filters)`.
-- DB-level sorting using raw SQL for numeric fields.
-- Stats run separate aggregate queries — not derived from the data array.
-- Worker IDs displayed as 6-digit zero-padded strings: `String(id).padStart(6, '0')`.
-- **Schedule worker search**: use `getEligibleWorkers({ ministryId, query })` server action — NOT a client-side filter over a large array. Returns priority-scored results (3 = ministry match, 2 = dept match, 1 = global).
+- Prefer SQL fn `fn_workers_search` when present; otherwise Prisma fallback.
+- Stats = separate aggregate queries.
+- Schedule search: `getEligibleWorkers({ ministryId, query })` — not client filter.
 
 ---
 
-## RBAC / Permissions System
+## RBAC / Permissions
 
-### Architecture
+1. **Role-based**: `module:action` in DB → Roles → `WorkerRole`
+2. **Ministry-based**: `Ministry.headId` / `approverId` implicit authority
 
-Two layers work together:
-1. **Role-based**: `module:action` permission strings in DB → assigned to Roles → assigned to Workers via `WorkerRole`
-2. **Ministry-based**: `Ministry.headId` and `Ministry.approverId` fields grant implicit authority
-
-Both feed into `UserRoleSyncerSQL` (`apps/web/src/store/user-role-syncer-sql.tsx`) which derives boolean flags stored in Zustand.
-
-### Permission Key Format
-
-`module:action` — defined in `apps/web/src/lib/permissions/registry.ts`.
-
-```ts
-import { PERMISSIONS } from '@/lib/permissions/registry';
-// e.g. PERMISSIONS.approvals.manage === 'approvals:manage'
-```
-
-### Using Permissions in Components
-
-```ts
-import { usePermissionsStore } from '@studio/store';
-const { hasPermission } = usePermissionsStore();
-// OR via hook:
-import { useUserRole } from '@/hooks/use-user-role';
-const { canManageApprovals, canApproveEvents, isSuperAdmin } = useUserRole();
-```
+Both feed `UserRoleSyncerSQL` → Zustand.
 
 ### Adding a New Permission
 
-1. Add to `PERMISSIONS` object and `ALL_PERMISSIONS` array in `registry.ts`
-2. Add derived boolean flag in `user-role-syncer-sql.tsx` `permissionsPayload`
-3. Add field to `PermissionsState` interface and defaults in `packages/store/src/permissions.store.ts`
-4. Add to `useUserRole` hook's `useShallow` selector
-5. Run `seedPermissions()` to upsert new keys into DB
-
-### Current Approval Permissions
-
-| Flag | Permission Key | Who Gets It |
-|---|---|---|
-| `canManageApprovals` | `approvals:manage` | Super admin, ministry heads/approvers |
-| `canApproveAllRequests` | `approvals:approve_all` | Super admin only (explicit grant) |
-| `canApproveRoomReservation` | `venues:approve` | Ministry heads/approvers |
-| `canApproveEvents` | `events:approve` | Super admin + explicit grant |
-| `canManageEvents` | `events:create/update/delete` | Explicit grant |
+1. `PERMISSIONS` + `ALL_PERMISSIONS` in `registry.ts`
+2. Derived flag in `user-role-syncer-sql.tsx`
+3. `PermissionsState` + defaults in `packages/store`
+4. `useUserRole` selector
+5. `seedPermissions()` / Role Management UI
+6. Nav `permissionKey` + `withPermission` on actions
 
 ---
 
 ## Approval System
 
-### Approval Types & State Machines
-
-| Type | Flow |
-|---|---|
-| **New Worker** | `Pending` → `Approved`/`Rejected` → auto-activates `Worker.status = Active` |
-| **Profile Update** | `Pending` → `Approved`/`Rejected` |
-| **Room Booking** | `Pending` → `Pending Admin Approval` → `Approved`/`Rejected` → syncs `Booking.status` |
-| **Ministry Change** | `Pending Outgoing Approval` → `Pending Incoming Approval` → `Approved` → updates worker ministries |
-| **Event** | `Pending` → `Approved`/`Rejected` |
-
-### Key Rules
-
-- **Always use `respondToApproval(id, 'approve' | 'reject')`** — never call `updateApproval` with a raw status string for normal flows. The state machine lives server-side.
-- Side-effects (activate worker, sync booking, update ministry) run inside a `prisma.$transaction` — they are atomic.
-- `getApprovals(scope)` accepts `{ workerId, ministryIds, isSuperAdmin }` to scope results — ministry users only see their own requests.
-- `useApprovals()` hook automatically passes scope from the permissions store.
-
-### Hook Usage
-
-```ts
-// In approvals page — worker data is joined in the query, no separate useWorkers call needed
-const { approvals } = useApprovals(); // auto-scoped
-const { respond, isUpdating } = useApprovalMutations();
-
-respond({ id: request.id, action: 'approve' }); // server decides next state
-```
+Use `respondToApproval` / approval-engine workflows — do not invent ad-hoc
+status strings. Side-effects run in transactions. Scope lists with
+`{ workerId, ministryIds, isSuperAdmin }`.
 
 ---
 
@@ -250,68 +196,58 @@ respond({ id: request.id, action: 'approve' }); // server decides next state
 
 | Responsibility | Client | Server |
 |---|---|---|
-| Logic & Math | Pure UI display | Grouping, scoring, sorting, date calculation |
-| Search & Filter | Debounced input trigger | SQL/Prisma matching, pagination |
-| Relational Joins | Receives pre-joined objects | Joins resolved before returning |
-| Mutations | Fires React Query actions, optimistic UI | Validation, auth checks, DB writes |
+| Logic & Math | Display | Grouping, scoring, sorting, dates |
+| Search & Filter | Debounced input | Prisma/SQL + pagination |
+| Joins | Pre-joined objects | Resolve before return |
+| Mutations | React Query + optimistic UI | Auth, validation, DB writes |
 
 ---
 
-## Database Indexes
+## Database
 
-Key performance indexes in `supabase/migrations/20260531000002_performance_indexes.sql`:
-
-```sql
--- Worker lookup by ministry + status (schedule assignment, eligible worker search)
-CREATE INDEX idx_worker_ministry_status ON "Worker" ("status", "majorMinistryId", "minorMinistryId");
-
--- Inventory item category filtering
-CREATE INDEX idx_inventory_item_category ON "InventoryItem" ("categoryId", "status");
-
--- Venue booking overlap checks
-CREATE INDEX idx_booking_time_room ON "Booking" ("roomId", "startDate", "endDate") WHERE "status" != 'Cancelled';
-```
-
----
-
-## Database Migrations
-
-```
-supabase/migrations/YYYYMMDDHHMMSS_description.sql
-```
-
-```bash
-npx supabase db push
-```
-
-After Prisma schema changes: `npx prisma generate`
+- Schema: **`prisma/schema.prisma`** (repo root)
+- Local apply: `npx prisma db push` then `npx prisma generate`
+- Optional indexes/functions: `supabase/migrations/*.sql` applied to the same Postgres (not via Supabase Auth)
+- App Hosting secrets: `DATABASE_URL`, `DIRECT_URL`
 
 ---
 
 ## Adding a New Module — Checklist
 
-1. **Migration** — `supabase/migrations/YYYYMMDDHHMMSS_<name>.sql`
-2. **Prisma model** — update `prisma/schema.prisma`, run `prisma generate`
-3. **Edge Function** — `supabase/functions/<name>/index.ts` using `_shared/` helpers
-4. **SDK Client** — add `<Name>Client` class to `packages/client/src/index.ts`
-5. **Server Actions** (complex queries) — add to `apps/web/src/actions/db.ts`
-6. **React Query Hook** — `apps/web/src/hooks/use-<name>.ts`
-7. **Page** — `apps/web/src/app/<name>/page.tsx` inside `<AppLayout>`
-8. **Permission keys** — add to `registry.ts` + `ALL_PERMISSIONS` + syncer + store + hook
-9. **Nav entry** — add with permission gate
-10. **If module has approvals** — add approval type to `resolveNextApprovalStatus` in `db.ts`
+1. **Prisma model** — `prisma/schema.prisma` → `db push` / `generate`
+2. **Service** — `apps/web/src/services/<name>.ts`
+3. **Server actions** — `apps/web/src/actions/<name>.ts` with `withPermission` / `withPublicAction`
+4. **React Query hook** — `apps/web/src/hooks/use-<name>.ts`
+5. **Page** — `apps/web/src/app/<name>/page.tsx` inside `<AppLayout>` (or `app/public/` if anonymous)
+6. **Permission keys** — registry → syncer → store → hook → nav
+7. **Optional Cloud Function route** — `functions/src/routes/<name>.ts` if needed outside Next
+8. **Approvals** — wire `approval-engine.ts` if the module needs workflows
+9. **Firestore dual-write** — only if the domain already participates in soak/backfill scripts
+
+---
+
+## Deploy reminders
+
+| Surface | Mechanism |
+|---|---|
+| Web | App Hosting on `main` (`apphosting:build`) |
+| Functions / rules | `FIREBASE_TOKEN` CI or local `firebase deploy` |
+| Cron | Cloud Functions → `APP_BASE_URL` + `/api/cron/*` |
+
+Never put `buildCommand` in `apphosting.yaml` (strips npm workspaces).
 
 ---
 
 ## Key Dependencies
 
-| Purpose | Package |
+| Purpose | Package / service |
 |---|---|
-| UI components | `@studio/ui` (shadcn/ui) |
+| UI | `@studio/ui` |
 | Data fetching | `@tanstack/react-query` |
 | State | `zustand` (`@studio/store`) |
 | ORM | Prisma (`@studio/database`) |
-| Edge Functions | Supabase Deno runtime |
+| Auth | Firebase Auth |
+| Hosting | Firebase App Hosting |
+| Background API | Firebase Cloud Functions |
 | Forms | react-hook-form + zod |
 | Tables | `@tanstack/react-table` |
-| CSV export | `papaparse` |

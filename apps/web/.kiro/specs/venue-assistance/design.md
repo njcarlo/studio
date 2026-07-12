@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Venue Assistance module is a standalone Supabase-backed feature within `apps/web` that coordinates ministry support for room bookings. It follows the same architectural patterns already established in the app: Next.js server actions, Prisma ORM, React Query for client-side data fetching, Zustand for auth state, and Resend for email notifications.
+The Venue Assistance module is a standalone Prisma/Postgres-backed feature within `apps/web` that coordinates ministry support for room bookings. It follows the same architectural patterns already established in the app: Next.js server actions, Prisma ORM, React Query for client-side data fetching, Zustand for auth state, and Resend for email notifications.
 
 ---
 
@@ -39,7 +39,7 @@ apps/web/src/
 
 ## Data Model
 
-All new tables are added to the existing Prisma schema and Supabase database.
+All new tables are added to the existing Prisma schema / Postgres database.
 
 ### New Prisma Models
 
@@ -279,7 +279,7 @@ model InAppNotification {
 
 ## SLA & Escalation Mechanism
 
-Uses a **Supabase Edge Function** scheduled via `pg_cron` (or a Next.js API route called by an external cron like Vercel Cron Jobs).
+Uses a Next.js API route under `/api/cron/*` invoked by Firebase Cloud Functions schedulers (`CRON_SECRET`).
 
 **Cron schedule:** Daily at 08:00
 

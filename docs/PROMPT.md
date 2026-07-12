@@ -1,5 +1,13 @@
 # COG App v2 — Development Prompt
 
+> **Stack update (current):** `apps/web` runs on **Firebase Auth**, **Firebase
+> App Hosting**, **Postgres via Prisma**, **Firebase Cloud Functions**, Storage,
+> and Firestore dual-write soak. Sections below that say Supabase Auth / Vercel /
+> Supabase Edge Functions are **historical product-vision text**. Prefer
+> [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./architecture.md), and
+> [`AGENTS.md`](../AGENTS.md) for how the repo actually works today.
+> `apps/inventory` / `apps/tract-tracker` may still use Supabase.
+
 ## Project Overview
 
 Build **COG App v2** (`cogapp-v2`) — a modern Next.js web application that consolidates and replaces two legacy CodeIgniter 3 systems:
@@ -7,7 +15,8 @@ Build **COG App v2** (`cogapp-v2`) — a modern Next.js web application that con
 1. **C2S** (Connect 2 Souls) — Mentorship & discipleship management
 2. **ORS** (Online Reservation System) — Organizational resource management (service requests, venue/equipment reservations, training, meals, worker management)
 
-Both legacy systems share a single MySQL database: **`cogdasma_db`**. The legacy database will be fully migrated to Supabase (PostgreSQL) — MySQL will not be retained.
+Both legacy systems share a single MySQL database: **`cogdasma_db`**. Legacy data
+is migrated into **Postgres** (Prisma schema) — MySQL is not retained for the new app.
 
 This app is designed to be **scalable and extensible** — C2S and ORS are the initial feature sets, but new modules will be added over time. The architecture must support clean module boundaries and easy feature additions.
 
@@ -25,25 +34,25 @@ This app is designed to be **scalable and extensible** — C2S and ORS are the i
 | Styling    | Tailwind CSS             |
 | Path Alias | `@/*` → `./src/*`        |
 
-### Backend & Infrastructure
+### Backend & Infrastructure (current)
 
-| Concern        | Technology              | Notes                                                |
-| -------------- | ----------------------- | ---------------------------------------------------- |
-| Database       | Supabase (PostgreSQL)   | Replaces legacy MySQL — clean schema, not 1:1 copy   |
-| Auth           | Supabase Auth           | Replaces MD5 sessions — JWT, RLS, social login ready |
-| Realtime       | Supabase Realtime       | Approval notifications, live status updates          |
-| File Storage   | Supabase Storage        | Profile images, attachments                          |
-| Hosting        | Vercel                  | Serverless functions, edge middleware                |
-| Cron Jobs      | Vercel Cron             | 90-day deactivation trigger, scheduled tasks         |
-| Edge Functions | Supabase Edge Functions | Background processing, webhooks                      |
+| Concern        | Technology                 | Notes                                                |
+| -------------- | -------------------------- | ---------------------------------------------------- |
+| Database       | Postgres via Prisma        | Replaces legacy MySQL — clean schema, not 1:1 copy   |
+| Auth           | Firebase Auth              | Email/password; session cookie + `resolveCallerCtx`  |
+| Dual-write     | Firestore                  | Soak path; Postgres remains source of truth          |
+| File Storage   | Firebase Storage           | Profile images, attachments                          |
+| Hosting        | Firebase App Hosting       | `apphosting.yaml` + `apphosting:build`               |
+| Cron Jobs      | Cloud Functions schedulers | Call App Hosting `/api/cron/*` with `CRON_SECRET`    |
+| HTTP API       | Firebase Cloud Functions   | `functions/` — Bearer Firebase ID token              |
 
 ### Notifications
 
 | Channel | Technology                     | Notes                                                   |
 | ------- | ------------------------------ | ------------------------------------------------------- |
 | Email   | Resend                         | Transactional email — replaces legacy `email_job` queue |
-| Push    | Supabase Realtime + Web Push   | Cross-platform push path for web + future mobile        |
-| In-App  | Supabase Realtime              | Live approval/status notifications                      |
+| Push    | Web Push / FCM (as implemented)| Prefer existing notification center patterns            |
+| In-App  | `InAppNotification` + polling/subscriptions | Live approval/status notifications             |
 
 ### UI & Libraries
 
@@ -66,7 +75,7 @@ This app is designed to be **scalable and extensible** — C2S and ORS are the i
   - Same codebase as web — no separate mobile project to maintain
   - Access to native APIs (push notifications, camera, biometrics, haptics) via Capacitor plugins
   - `npx cap sync` to push web changes to native shells
-- Both web and native share the same Supabase backend, auth, and API layer
+- Both web and native should share the same Postgres backend and Firebase Auth / API layer where possible
 - The legacy C2S mobile app will NOT be maintained — it will be replaced entirely
 
 ### Architecture Principles
@@ -74,7 +83,7 @@ This app is designed to be **scalable and extensible** — C2S and ORS are the i
 - **Modular**: Each feature domain is a fully self-contained module (see Module Architecture below)
 - **Extensible**: New modules can be added without touching existing ones — the app will grow into an ERP-like system
 - **Shared core**: Common concerns (auth, layout, navigation, notifications, approvals) live in shared directories
-- **API layer**: All data access goes through Supabase client hooks — no direct DB calls in components
+- **API layer**: All data access goes through server actions / Cloud Functions — no direct DB calls in components
 
 ---
 
@@ -101,7 +110,7 @@ src/modules/{module-name}/
 ├── routes.ts                   # Route definitions (optional, if not using file-based routing)
 ├── types/                      # TypeScript types & Zod schemas
 │   └── index.ts
-├── hooks/                      # React Query hooks (Supabase data access)
+├── hooks/                      # React Query hooks (server actions / API)
 │   ├── use-groups.ts
 │   └── use-group-detail.ts
 ├── components/                 # Module-specific UI components
@@ -248,7 +257,7 @@ These are NOT modules — they are shared infrastructure used by all modules:
 ```
 src/
 ├── lib/
-│   ├── supabase/                # Supabase client, auth helpers
+│   ├── lib/firebase-*.ts        # Firebase client/server auth helpers
 │   ├── modules/                 # Module system (defineModule, registry loader)
 │   ├── permissions/             # RBAC engine, usePermission, <Can>
 │   ├── navigation/              # Sidebar builder (reads from module configs)
@@ -277,7 +286,7 @@ When creating or modifying a module, follow these rules:
 1. **No cross-module imports**: Module A must NOT import from Module B. If two modules need to share logic, extract it to `src/lib/` or `src/components/common/`
 2. **Permissions first**: Define permissions in `permissions.ts` before building UI. Every page and action must have a permission
 3. **Types in module**: Module-specific types live in `modules/{name}/types/`, not in the global `src/types/`
-4. **Hooks wrap Supabase**: All data access goes through hooks in `modules/{name}/hooks/`. No raw Supabase calls in components
+4. **Hooks wrap server actions**: All data access goes through hooks in `modules/{name}/hooks/`. No raw DB clients in components
 5. **Thin route files**: `src/app/` route files only import and re-export from modules — no business logic in route files
 6. **Self-documenting**: Each module's `index.ts` exports a complete config — reading it tells you everything the module does
 
@@ -312,8 +321,8 @@ Replaces the legacy CodeIgniter + XAMPP-per-room setup. Each of the **13 rooms**
 **New approach**:
 
 - Each room: mini computer with a **browser in kiosk/fullscreen mode** pointing to a URL
-- URL: `https://cogapp.vercel.app/signage/[room-id]` (public, no auth required)
-- **Supabase Realtime** subscription — instant updates, no polling
+- URL: `https://studio--cog-app-studio.asia-southeast1.hosted.app/rooms/display (public room display)` (public, no auth required)
+- Live subscription / refresh — instant updates where implemented, no legacy ORS polling
 - Zero server software per room — just a browser
 - Can run on anything: Raspberry Pi, Fire TV Stick, old tablet, Chromebox, any PC
 
@@ -360,7 +369,7 @@ A **public route** (no authentication) — this is a kiosk display, not an admin
 | **Day timeline**     | Horizontal row of time blocks showing today's schedule — filled blocks = reserved, empty = free                                                                               |
 | **Clock**            | Current date and time, bottom center, updates every second                                                                                                                    |
 | **Church logo**      | Bottom-right corner, low opacity (10%), with continuous hue-rotation animation (20s cycle) — subtle visual flourish. Configurable in admin.                                   |
-| **Heartbeat dot**    | Tiny circle in bottom-left corner — **green** = connected to Supabase Realtime, **orange** = disconnected / stale data. Always visible.                                       |
+| **Heartbeat dot**    | Tiny circle in bottom-left corner — **green** = connected / fresh data, **orange** = disconnected / stale data. Always visible.                                       |
 | **Version label**    | Small text next to heartbeat dot showing app version (e.g., `v2.0.0`). Useful for debugging which version a room is running.                                                  |
 | **"ON-GOING" label** | When room is occupied, an `ON-GOING` label appears above the event name with a **flicker/blink animation** to draw attention. Hidden when available.                          |
 | **Background**       | Rotating background images (4 images cycling via CSS animation, ~300s loop) with a dark semi-transparent overlay for text readability. Images configurable per room in admin. |
@@ -386,7 +395,7 @@ This is carried over from the legacy DRS — it ensures the most important info 
 
 **Real-time updates**:
 
-- Subscribes to `venue_reservations` table changes via **Supabase Realtime**, filtered to the specific room
+- Room displays refresh via Firestore pings / client refresh patterns for the specific room
 - Status updates **instantly** when a reservation starts, ends, is cancelled, or is created
 - No polling — WebSocket connection stays open
 - Auto-reconnects if connection drops (with visual indicator during reconnection)
@@ -530,7 +539,7 @@ Real-time overview of meal operations for the selected meal event.
 **Dashboard cards**:
 
 - **Total eligible**: Number of workers with stubs for this event
-- **Redeemed**: Count + percentage (live-updating via Supabase Realtime)
+- **Redeemed**: Count + percentage (live-updating via notification / refresh patterns)
 - **Remaining**: Count of unredeemed stubs
 - **By canteen**: Breakdown per canteen station (e.g., Tent A: 85, Tent B: 57)
 
@@ -817,7 +826,7 @@ A **command-palette-style** global search accessible from the header. Searches a
 - **Keyboard navigation**: Arrow keys to navigate, Enter to open, Escape to close
 - **Category limits**: Show top 3 results per category, with a "View all N results" link per category
 - **Empty state**: "No results found for '[query]'" with suggestions
-- **Implementation**: `<GlobalSearch>` component in `src/components/layout/GlobalSearch.tsx`, using a Supabase full-text search function or a dedicated search Edge Function
+- **Implementation**: `<GlobalSearch>` component in `src/components/layout/GlobalSearch.tsx`, using a Postgres full-text / trigram search via Prisma or a Cloud Function
 - **Module registration**: Modules register their searchable entities via a `searchableEntities` config in their module definition:
 
 ```typescript
@@ -897,7 +906,7 @@ The notification bell icon (`🔔`) in the top-right header is the entry point t
 
 **Real-time delivery**:
 
-- **Supabase Realtime**: Subscribes to the `notifications` table for the current worker. New rows trigger an instant UI update (badge count increments, toast appears).
+- **In-app notifications**: `InAppNotification` centre updates for the current worker (badge count, toasts).
 - **Toast**: When a new notification arrives while the app is open, show a brief toast in the bottom-right (auto-dismiss after 5s, clickable)
 - **Browser push**: FCM service worker shows OS-level notifications when the tab is not focused
 - **Sound**: Optional subtle notification sound (configurable in user preferences)
@@ -1133,7 +1142,7 @@ CREATE TRIGGER trg_org_node_path
 CREATE TABLE workers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   worker_number INT NOT NULL UNIQUE,         -- legacy worker ID (used for login)
-  auth_user_id UUID UNIQUE REFERENCES auth.users(id), -- Supabase Auth link
+  auth_user_id TEXT UNIQUE, -- optional Firebase Auth uid link
 
   -- Personal info
   first_name TEXT NOT NULL,
@@ -1636,7 +1645,7 @@ Conditions control whether a step is skipped, required, or whether an auto-rule 
 | Step `require_condition` | Step only **runs** if condition is `true` (otherwise skipped)                                    |
 | Auto-rule `condition`    | If condition is `true`, the auto-rule fires (auto-approve, auto-reject, or skip entire workflow) |
 
-The condition engine is evaluated server-side (in an Edge Function or server action) at workflow start and at each step transition.
+The condition engine is evaluated server-side (in a Cloud Function or server action) at workflow start and at each step transition.
 
 ### Step Modes (Multi-Approver Support)
 
@@ -1672,7 +1681,7 @@ Each step can have an **escalation rule** — what happens when the approver doe
 | `auto_approve` | Automatically approves the step and advances the workflow. Logs as `auto_approved`.                          |
 | `auto_reject`  | Automatically rejects. Logs as `auto_rejected`.                                                              |
 
-Escalation is processed by a **Vercel Cron Job** that runs every hour, checking `approval_workflow_instances` for steps that have exceeded their `escalation_hours` with no action.
+Escalation is processed by a **Cloud Functions scheduler / cron** that runs every hour, checking `approval_workflow_instances` for steps that have exceeded their `escalation_hours` with no action.
 
 ### Delegation
 
@@ -1720,7 +1729,7 @@ Hooks let modules **react to workflow events** without the engine knowing anythi
 | --------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `status_update` | Updates a field on the originating record         | `{ "table": "venue_requests", "field": "status", "value": "approved" }`                               |
 | `notification`  | Sends a notification to specific workers or roles | `{ "to": "requester", "message": "Your {{module}} request was approved" }`                            |
-| `edge_function` | Calls a Supabase Edge Function for custom logic   | `{ "function_name": "on-venue-approved", "payload": "instance" }`                                     |
+| `cloud_function` | Calls a Firebase Cloud Function for custom logic | `{ "function_name": "on-venue-approved", "payload": "instance" }`                                     |
 | `field_update`  | Updates multiple fields on the record             | `{ "table": "venue_requests", "updates": { "approved_at": "NOW()", "approved_by": "{{acted_by}}" } }` |
 
 Hooks support **template variables** (`{{requester_name}}`, `{{module}}`, `{{record_id}}`, `{{acted_by}}`, `{{step_name}}`, `{{comments}}`) that are interpolated at runtime.
@@ -1964,7 +1973,7 @@ A dedicated page (`/approvals`) shows all pending approvals for the current user
 
 When a workflow step is activated (approval needed) or completed (approved/rejected):
 
-- **In-app**: Supabase Realtime pushes a notification to the approver's browser
+- **In-app**: notification centre pushes/updates for the approver's browser
 - **Push**: FCM push notification (mobile/desktop)
 - **Email**: Resend sends an email with request summary and a deep link to approve/reject
 - **Escalation reminders**: Additional notifications when escalation timer is approaching (at 75% of time elapsed)
@@ -2125,8 +2134,8 @@ Five apps, interconnected:
 │                      NEW ARCHITECTURE                           │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────┐       │
-│  │              Supabase (PostgreSQL)                   │       │
-│  │   Auth, RLS, Realtime, Storage, Edge Functions       │       │
+│  │         Postgres (Prisma) + Firebase                 │       │
+│  │   Auth, Storage, Cloud Functions, Firestore soak     │       │
 │  └──────────────────────┬───────────────────────────────┘       │
 │                         │                                       │
 │                         ▼                                       │
@@ -2140,7 +2149,7 @@ Five apps, interconnected:
 │  │                                                      │       │
 │  │   DRS ──→  Signage module                             │       │
 │  │            Public route: /signage/[room-id]           │       │
-│  │            Supabase Realtime (no polling)              │       │
+│  │     In-app notifications / display pings (no ORS poll) │       │
 │  │            Browser kiosk (no XAMPP)                    │       │
 │  │                                                      │       │
 │  │   CloudQR → Meals module                              │       │
@@ -2179,12 +2188,12 @@ Five apps, interconnected:
 | Legacy                                                            | New                                              |
 | ----------------------------------------------------------------- | ------------------------------------------------ |
 | 5 separate apps, 4 frameworks (CI3, CI3, CI3, CI4, Ionic/Cordova) | 1 app (Next.js 15)                               |
-| MySQL (`cogdasma_db`) + 13 local SQLite/MySQL caches              | Supabase PostgreSQL (single source of truth)     |
-| Cross-app HTTP calls (`file_get_contents`)                        | Direct Supabase queries + Realtime subscriptions |
-| XAMPP on 13 room computers                                        | Browser kiosk → Vercel URL                       |
+| MySQL (`cogdasma_db`) + 13 local SQLite/MySQL caches              | Postgres via Prisma (single source of truth)     |
+| Cross-app HTTP calls (`file_get_contents`)                        | Prisma server actions + Cloud Functions          |
+| XAMPP on 13 room computers                                        | Browser kiosk → App Hosting URL                  |
 | No mobile app (C2S had a basic REST API)                          | Capacitor native shells (iOS + Android)          |
-| Hardcoded roles, per-app auth                                     | Unified Supabase Auth + RBAC + RLS               |
-| No real-time updates (polling)                                    | Supabase Realtime (WebSocket) everywhere         |
+| Hardcoded roles, per-app auth                                     | Unified Firebase Auth + RBAC                     |
+| No real-time updates (polling)                                    | Targeted live updates (notifications / displays) |
 | C2S Mobile: Ionic 1 + Cordova, Android only, hardcoded API key    | Same Next.js web app wrapped in Capacitor        |
 
 ### Shared Database: `cogdasma_db` (MySQL, 113 tables)
@@ -2274,14 +2283,14 @@ The database contains core tables, view tables (materialized/virtual), and sessi
 - Worker status check (Active/Inactive/Pending)
 - Password expiration enforcement (ORS)
 
-### New Authentication (Supabase Auth)
+### New Authentication (Firebase Auth)
 
-Migrate to Supabase Auth while preserving the Worker ID login experience:
+Migrate to Firebase Auth while preserving the Worker ID login experience:
 
-1. **Worker ID as login identifier**: Workers are accustomed to logging in with their numeric Worker ID. Preserve this UX — use Worker ID as the username/identifier when authenticating against Supabase Auth.
-2. **Password migration**: During the data migration, import existing MD5 password hashes into Supabase Auth. On first login, Supabase will verify against the imported hash and transparently re-hash to bcrypt. Workers do NOT need to reset their passwords.
-3. **Supabase Auth user ↔ Worker profile**: Each Supabase Auth user is linked to a `workers` row via the `worker_id` stored in `auth.users.user_metadata` or a `workers.auth_user_id` foreign key.
-4. **Session management**: JWT-based sessions via Supabase Auth (replaces CodeIgniter sessions)
+1. **Worker ID as login identifier**: Workers are accustomed to logging in with their numeric Worker ID. Preserve this UX — use Worker ID as the username/identifier when authenticating against Firebase Auth (or via legacy Worker ID bridge).
+2. **Password migration**: During the data migration, import or bridge existing MD5 password hashes via ORS sync / Admin SDK. Prefer creating Firebase Auth users with a controlled password migration path. Workers should not need a mass forced reset if the bridge is in place.
+3. **Firebase Auth user ↔ Worker profile**: Match Worker by email (and optional `authUserId` / uid metadata).
+4. **Session management**: Firebase Auth sessions / cookies (replaces CodeIgniter sessions)
 5. **RLS enforcement**: Row Level Security policies on all tables using the authenticated user's worker profile
 
 ### Access Levels
@@ -2615,7 +2624,7 @@ The sidebar component iterates this config and **only renders items the current 
 
 Every authenticated route is protected by middleware that:
 
-1. Checks if the user is authenticated (via Supabase Auth)
+1. Checks if the user is authenticated (via Firebase Auth)
 2. Loads the user's roles and permissions (cached in session/context)
 3. Checks the route's required permission against the user's permission set
 4. If denied: redirects to a "403 Forbidden" page or the dashboard
@@ -2645,14 +2654,14 @@ const canApprove = usePermission("venues:approve");
 
 ### Data-Level Access (RLS)
 
-Supabase Row Level Security (RLS) policies reference the worker's roles to restrict data access at the database level — even if the UI is bypassed:
+Server-side permission checks (`withPermission` / `resolveCallerCtx`) reference the worker's roles. Do not rely on browser DB clients:
 
 - **User-level**: Workers see only their own data (own groups, own connections)
 - **Ministry-level**: Ministry heads see all data in their ministry
 - **Department-level**: Department heads see all data in their department
 - **Admin-level**: Super admins see everything
 
-RLS policies query the `worker_roles` and `role_permissions` tables via a Supabase function (e.g., `auth.has_permission('mentorship:view')`) to enforce access.
+Permission checks query `WorkerRole` / `RolePermission` via `resolveCallerCtx` / `withPermission` (e.g., `auth.has_permission('mentorship:view')`) to enforce access.
 
 ### Admin UI for Roles & Privileges
 
@@ -2704,7 +2713,7 @@ interface ImpersonationState {
 ```
 
 - **Auth context**: When impersonating, the `useAuth()` / `useCurrentWorker()` hooks return the impersonated worker's profile, roles, and permissions — not the admin's
-- **RLS bypass**: Impersonation uses a Supabase service role client scoped to the impersonated worker's ID, so RLS policies apply as if the real worker is logged in
+- **RLS bypass**: Impersonation is enforced in app code (super-admin only); server actions must honor the impersonated worker context
 - **Audit trail**: All impersonation sessions are logged in `audit_logs` with: who impersonated, who was impersonated, start/end timestamps, and whether any write actions were taken
 
 #### Permissions During Impersonation
@@ -2728,7 +2737,7 @@ interface ImpersonationState {
 
 ## Legacy API Endpoints (Reference Only)
 
-These legacy API contracts are listed for **reference only** — they will NOT be maintained. The mobile app will be fully rewritten to use Supabase directly. Use these to understand the data contracts and business logic that need to be replicated.
+These legacy API contracts are listed for **reference only** — they will NOT be maintained. The mobile app should use Firebase Auth + shared API (Cloud Functions / GraphQL) rather than legacy ORS HTTP. Use these to understand the data contracts and business logic that need to be replicated.
 
 ### C2S REST API
 
@@ -2848,11 +2857,11 @@ When implementing any feature, always reference the legacy source code for busin
 
 ### Security Improvements Over Legacy
 
-- MD5 passwords migrated to Supabase Auth (auto-rehashed to bcrypt on first login)
+- MD5 passwords bridged/migrated into Firebase Auth (ORS sync / Admin SDK)
 - Use environment variables for all secrets (no hardcoded credentials)
-- Row Level Security (RLS) on all Supabase tables
-- Supabase Auth JWT sessions (replaces CodeIgniter sessions)
-- Parameterized queries via Supabase client (no raw SQL injection risk)
+- Server-side authorization on all privileged Server Actions / Cloud Functions
+- Firebase Auth sessions (replaces CodeIgniter sessions)
+- Parameterized queries via Prisma (no string-concatenated SQL)
 - Rate limiting on authentication endpoints
 
 ---
@@ -2865,7 +2874,7 @@ When implementing any feature, always reference the legacy source code for busin
 | -------- | ------------------------------ | ------------------------------------- |
 | **Unit** | Vitest + React Testing Library | Business logic, utilities, components |
 | **E2E**  | Playwright                     | Critical user flows, cross-browser    |
-| **DB**   | pgTAP (via Supabase)           | RLS policies, database functions      |
+| **DB**   | Postgres tests / EXPLAIN         | Indexes, database functions            |
 
 ### Unit Tests (Vitest)
 
@@ -2881,7 +2890,7 @@ Vitest for all unit and component tests — fast, native ESM, first-class TypeSc
 **Skip**:
 
 - Snapshot tests (brittle with Tailwind class changes)
-- Testing Supabase client internals (trust the SDK)
+- Testing Firebase Auth SDK internals (trust the platform)
 - Testing third-party library behavior (shadcn/ui, TanStack, etc.)
 - 100% coverage targets — focus on critical paths
 
@@ -2899,7 +2908,7 @@ src/modules/meals/
 
 **Mock boundaries**:
 
-- Mock Supabase client at the module boundary (never test against real Supabase in unit tests)
+- Mock Firebase Auth / Prisma at the module boundary (never hit production in unit tests)
 - Mock `next/navigation` for component tests that use router
 - Use factory functions for test data (e.g., `createMockWorker()`, `createMockMealEvent()`)
 
@@ -2939,7 +2948,7 @@ e2e/
 
 **E2E guidelines**:
 
-- Run against a dedicated Supabase test project (seeded before each test suite)
+- Run against a dedicated Postgres test database (seeded before each test suite)
 - Use Playwright's `storageState` to avoid re-logging in for every test
 - Test across Chromium and WebKit (covers Chrome + Safari — the two browsers workers will use)
 - No Firefox unless specifically needed
@@ -2948,7 +2957,7 @@ e2e/
 
 ### Database Tests (pgTAP)
 
-Test RLS policies and database functions directly in PostgreSQL using pgTAP (Supabase supports this natively).
+Test database functions/indexes directly in PostgreSQL (EXPLAIN / integration fixtures).
 
 **What to test**:
 
@@ -2960,7 +2969,7 @@ Test RLS policies and database functions directly in PostgreSQL using pgTAP (Sup
 
 ### What NOT to Test
 
-- Supabase Auth internals (sign-up, JWT refresh, etc.) — trust the platform
+- Firebase Auth internals (sign-up, token refresh, etc.) — trust the platform
 - shadcn/ui component rendering — trust the library
 - CSS / visual regression — not worth the maintenance cost for an internal admin app
 - Performance benchmarks — premature for initial build
@@ -2980,16 +2989,16 @@ push → lint + type-check → unit tests (Vitest) → build → E2E tests (Play
 
 ---
 
-## Migration Strategy: MySQL → Supabase (PostgreSQL)
+## Migration Strategy: MySQL → Postgres (Prisma) + Firebase
 
 ### Approach: Clean Schema + Phased Data Migration
 
-Do NOT 1:1 copy the legacy MySQL schema. Design a clean, normalized PostgreSQL schema in Supabase that leverages RLS, proper foreign keys, and modern patterns. Migrate data module-by-module.
+Do NOT 1:1 copy the legacy MySQL schema. Design a clean, normalized PostgreSQL schema (Prisma) with proper foreign keys and modern patterns. Auth is Firebase Auth. Migrate data module-by-module.
 
 ### Why This Approach
 
 - Legacy schema has 113 tables — many are redundant views, session tables, and temp tables
-- Supabase features (Auth, RLS, Realtime, Storage) only work with PostgreSQL
+- Firebase Auth/Storage/Functions pair with Postgres via Prisma as the data SoT
 - Clean break — MySQL will NOT be retained after migration
 - Opportunity to normalize and improve the schema design
 
@@ -2997,7 +3006,7 @@ Do NOT 1:1 copy the legacy MySQL schema. Design a clean, normalized PostgreSQL s
 
 | Phase                   | Scope                        | What Happens                                                                                                                                                                                                                      |
 | ----------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Foundation**       | Org structure + Auth         | Design clean PostgreSQL schema for `departments`, `ministries`, `workers`. Migrate worker data. Create Supabase Auth users with imported MD5 password hashes (Worker ID as identifier). Workers can log into COG App immediately. |
+| **1. Foundation**       | Org structure + Auth         | Design clean PostgreSQL schema for `departments`, `ministries`, `workers`. Migrate worker data. Create Firebase Auth users (email) with password migration/bridge from MD5 where needed. Workers can log into COG App immediately. |
 | **2. Mentorship**       | C2S modules                  | Migrate groups, mentees, registrations, schedules. Build COG App mentorship UI. Retire C2S web + mobile app.                                                                                                                      |
 | **3. Reservations**     | Venue + Equipment            | Migrate venues, areas, equipment, requests. Build reservation calendar with conflict detection. Retire ORS venue module.                                                                                                          |
 | **4. Service Requests** | SR system                    | Migrate SR type hierarchy, work orders, approval workflows. Retire ORS SR module.                                                                                                                                                 |
@@ -3008,7 +3017,7 @@ Do NOT 1:1 copy the legacy MySQL schema. Design a clean, normalized PostgreSQL s
 
 For each module:
 
-1. Design PostgreSQL tables in Supabase (with RLS policies)
+1. Design PostgreSQL tables in Prisma (`prisma/schema.prisma`)
 2. Build the COG App UI + API against the new schema
 3. Write a one-time data migration script (MySQL → PostgreSQL)
 4. Run migration, validate data integrity
@@ -3018,9 +3027,9 @@ For each module:
 ### Data Migration Scripts
 
 - Located in: `scripts/migrations/` (per module)
-- Read from legacy MySQL `cogdasma_db`, write to Supabase PostgreSQL
+- Read from legacy MySQL `cogdasma_db`, write to Postgres via Prisma / ORS sync
 - Handle data transformations:
-  - MD5 password hashes → Supabase Auth users (with Worker ID as identifier)
+  - MD5 password hashes → Firebase Auth users / legacy Worker ID bridge
   - Legacy auto-increment IDs → preserved where needed for continuity
   - Data cleanup and normalization
 - Include validation/checksum steps
@@ -3031,7 +3040,7 @@ For each module:
 ## Notes
 
 - The `worker` table is the central entity shared across both systems — it represents staff, mentors, and system users
-- Many `*_view` tables in the schema are database views (not physical tables) used for reporting — these will be replaced by Supabase views or application-level queries
+- Many `*_view` tables in the schema are database views (not physical tables) used for reporting — replace with Postgres views or application-level queries
 - The legacy MySQL database schema (`cogdasma_db-schema.sql`) is the source of truth for understanding current data structures — use it when designing the new PostgreSQL schema
 - Reference legacy controller/model code for business rules, but implement them cleanly in the new stack
 - The legacy C2S mobile app will be fully replaced — no backward-compatible API layer needed

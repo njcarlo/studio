@@ -9,7 +9,7 @@ Checkboxes reflect what has actually shipped to the live DB / codebase, not just
 - [x] **Layer 2 — Generic Approval Workflow engine** (`approval-engine.ts`; Room Booking 3-stage + Major Event parallel-then-sequential migrated)
 - [x] **Layer 3 — Notification system** (`InAppNotification` centre + bell UI, `NotificationPreference`, `notification-center.ts#notify()` with email fan-out via `EmailService`)
 - [x] **Layer 4 — Generic Audit Log** (`TransactionLog` extended with before/after/reason; `writeAudit()` helper)
-- [x] **Layer 5 — Scheduled jobs (cron)** (`/api/cron/daily-jobs`, Vercel Cron + `CRON_SECRET`: void stale meal stubs, no-show sweep, unconfirmed-assignment reminders — each idempotent + audit-logged)
+- [x] **Layer 5 — Scheduled jobs (cron)** (`/api/cron/daily-jobs`, Cloud Functions scheduler → `/api/cron/*` + `CRON_SECRET`: void stale meal stubs, no-show sweep, unconfirmed-assignment reminders — each idempotent + audit-logged)
 - [x] **Layer 6 — Reporting ledger** (`MealStubLedger` append-only table + cap aggregation; report views not yet built)
 
 ## Feature Phases

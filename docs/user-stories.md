@@ -343,7 +343,7 @@ scanner (`attendance:scan_meal`) and weekday time-in/out scanner
 
 ### Inventory Officer
 Not previously documented:
-- Logs into the separate Inventory app (`cog-inventory.vercel.app`, linked
+- Logs into the separate Inventory app (`apps/inventory (separate app; web also has /inventory on Prisma)`, linked
   from the main nav under "Inventory", gated by `canAccessInventory`).
 - With `inventory:manage`, creates/edits/deletes items, adjusts stock, and
   (with `inventory:set_code`) assigns custom item codes.

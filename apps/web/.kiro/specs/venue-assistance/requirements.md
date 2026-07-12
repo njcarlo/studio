@@ -2,14 +2,14 @@
 
 ## Introduction
 
-The Venue Assistance module extends the church management app's room reservation system by coordinating ministry support for booked rooms. When a room is booked, the relevant ministries (e.g. Technology, Audio, Facilities) are automatically notified to provide their pre-configured assistance items (e.g. projector, microphone, chairs). Ministry heads can review, adjust, and approve or decline their assistance commitments. An admin command center provides a unified view of all assistance requests and their statuses. This module is fully Supabase-based and standalone — it manages its own bookings in Supabase and does not bridge with any external reservation system.
+The Venue Assistance module extends the church management app's room reservation system by coordinating ministry support for booked rooms. When a room is booked, the relevant ministries (e.g. Technology, Audio, Facilities) are automatically notified to provide their pre-configured assistance items (e.g. projector, microphone, chairs). Ministry heads can review, adjust, and approve or decline their assistance commitments. An admin command center provides a unified view of all assistance requests and their statuses. This module is Prisma/Postgres-based inside `apps/web` and standalone — it manages its own bookings in the app database and does not bridge with any external reservation system.
 
 ---
 
 ## Glossary
 
-- **Venue_Assistance_Module**: The Supabase-based system described in this document. It is standalone and does not integrate with any external reservation system.
-- **Booking**: A room reservation managed within the Venue_Assistance_Module's Supabase database. Bookings may be one-time or recurring.
+- **Venue_Assistance_Module**: The Prisma/Postgres-backed system described in this document. It is standalone and does not integrate with any external reservation system.
+- **Booking**: A room reservation managed within the Venue_Assistance_Module's Postgres database. Bookings may be one-time or recurring.
 - **Recurring_Booking**: A Booking that repeats on a defined schedule (e.g. every Sunday). Each occurrence is treated as an individual Booking instance linked to a parent Recurring_Booking record.
 - **Room**: A physical space in the church that can be reserved.
 - **Ministry**: An organizational unit (e.g. Technology, Audio, Facilities) that provides assistance for room bookings. Each Ministry has a single designated head identified by the `headId` field on the Ministry record.
