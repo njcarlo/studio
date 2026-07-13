@@ -17,14 +17,15 @@ Also useful:
 
 | Path | Description |
 |---|---|
-| `apps/web` | Flagship Next.js Studio (Firebase App Hosting) |
+| `apps/web` | Flagship Next.js Studio (Firebase App Hosting), including `/inventory` |
 | `apps/c2s-public` | Public C2S Group Finder (`c2s.[domain].app`) |
-| `apps/inventory` | Standalone inventory product (separate module) |
 | `packages/*` | Shared UI, Prisma client, core-engine, c2s, types, store |
 | `functions/` | Firebase Cloud Functions |
 | `prisma/` | Postgres schema (source of truth for `apps/web`) |
 
-> **Sunset:** `apps/tract-tracker` was removed from this monorepo (NTGD Expo app). Do not restore it without a new product decision.
+> **Sunset:** `apps/tract-tracker` and the standalone `apps/inventory` app were
+> removed. Inventory lives in Studio at `/inventory` (Prisma). Do not restore
+> those apps without a new product decision.
 
 ## Quick start
 

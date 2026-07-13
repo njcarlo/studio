@@ -6,9 +6,8 @@ Studio and module apps resolve URLs via `NEXT_PUBLIC_ROOT_DOMAIN`
 
 | Host | App | App Hosting backend |
 |---|---|---|
-| `studio.cogdasma.app` (optional) | `apps/web` | Root `apphosting.yaml` |
+| `studio.cogdasma.app` (optional) | `apps/web` (includes `/inventory`) | Root `apphosting.yaml` |
 | `c2s.cogdasma.app` | `apps/c2s-public` | `apps/c2s-public/apphosting.yaml` |
-| `inventory.cogdasma.app` (later) | `apps/inventory` | Add when inventory gets App Hosting |
 
 Current default Studio URL until DNS is attached:  
 `https://studio--cog-app-studio.asia-southeast1.hosted.app`
@@ -67,20 +66,11 @@ Studio `/public/c2s-join` redirects to `c2sPublicUrl()` unless
 
 1. `https://c2s.cogdasma.app` → Group Finder
 2. From Studio, open `/public/c2s-join` → redirects to `c2s.cogdasma.app`
-3. Optional: `https://studio.cogdasma.app` → Studio login
+3. Optional: `https://studio.cogdasma.app` → Studio login (inventory at `/inventory`)
 
 ---
 
-## Inventory as a separate module?
+## Inventory
 
-**Yes — keep `apps/inventory` separate.** It already is a distinct app with its
-own port/deploy story. That matches the platform rule: split when audience or
-deploy cadence differs.
-
-Recommended path:
-
-1. Keep Studio `/inventory` (Prisma) for staff who live in Studio, **or** deep-link
-   to the inventory app once branded.
-2. Evolve `apps/inventory` onto Prisma + `@studio/core-engine` (authz/tenant).
-3. When ready, host it at `inventory.cogdasma.app` via `moduleAppUrl('inventory')`.
-4. Do **not** merge inventory back into the Studio monolith.
+Inventory is a **Studio module** (`apps/web` → `/inventory`, Prisma). The
+standalone `apps/inventory` app was sunset and removed from the monorepo.

@@ -52,7 +52,6 @@ graph TB
     end
 
     subgraph OtherApps["Other monorepo apps"]
-        Inventory["apps/inventory<br/>separate product module"]
         C2SPublic["apps/c2s-public<br/>Group Finder"]
     end
 
@@ -89,7 +88,7 @@ graph TB
 | Scheduled work | Firebase Cloud Functions schedulers → `app/api/cron/*` (`CRON_SECRET`) |
 | HTTP API | Firebase Cloud Functions (`functions/src/routes/*`) — Firebase ID token auth |
 | GraphQL | `packages/graphql` + `packages/client` (limited / mobile consumers) |
-| Other apps | `apps/inventory` (separate product), `apps/c2s-public` (Group Finder) |
+| Other apps | `apps/c2s-public` (Group Finder); inventory lives in Studio `/inventory` |
 | Deployment | **Firebase App Hosting** (`apphosting.yaml`, `npm run apphosting:build`) — live: `studio--cog-app-studio.asia-southeast1.hosted.app` |
 
 Historical SQL under `supabase/migrations/` may still be applied to Postgres for indexes/functions; it is **not** a live Supabase Auth/hosting path for `apps/web`.
@@ -144,7 +143,7 @@ in `with-permission.ts`.
 | **Cloud Functions** | `functions/src/` | HTTP API routers + scheduled jobs | Auth: `Authorization: Bearer <Firebase ID token>`. |
 | **App Hosting** | `apphosting.yaml`, `scripts/apphosting-*.sh` | Build/start for Cloud Run-backed hosting | Do not set `buildCommand` in YAML (strips workspaces). |
 | **Cron jobs** | `apps/web/src/app/api/cron/*` | `CRON_SECRET`-gated; invoked by Cloud Functions schedulers | |
-| **Inventory app** | `apps/inventory/` | Separate product module; migrate toward Prisma + core-engine | Keep separate — do not fold into Studio |
+| **Inventory** | `apps/web` `/inventory/**` | Prisma Studio module | Stay in Studio — standalone `apps/inventory` sunset |
 | **C2S public app** | `apps/c2s-public/` | Standalone Group Finder (`@studio/c2s` + `@studio/core-engine`) | `c2s.[domain].app`; port 9004 |
 | **Docs** | `docs/` | Onboarding, architecture, platform layers, plans | Start at `ONBOARDING.md`. |
 

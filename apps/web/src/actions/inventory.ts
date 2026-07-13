@@ -2,7 +2,7 @@
 
 import { requirePermission } from '@/lib/auth/require-permission';
 import { PERMISSIONS } from '@/lib/permissions/registry';
-import * as svc from '@/services/inventory';
+import * as svc from '@studio/inventory';
 
 // ── Reads ─────────────────────────────────────────────────────────────────────
 

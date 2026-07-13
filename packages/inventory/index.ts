@@ -1,6 +1,6 @@
 /**
- * @deprecated Import from `@studio/inventory` instead.
- * Re-export shim — inventory domain lives in packages/inventory.
+ * @studio/inventory — inventory domain (categories, items, stock, borrowings).
+ * UI stays in apps/web `/inventory`. See docs/CORE_ENGINE_C2S_PLAN.md.
  */
 export {
   getCategories,
@@ -30,4 +30,4 @@ export {
   toggleInventoryWorkerPerm,
   getReportsData,
   listItemsForPicker,
-} from '@studio/inventory';
+} from './src/service';

@@ -15,7 +15,7 @@ Welcome. This guide gets you from zero to shipping a change in **one module** of
 - Room reservations & venue assistance
 - C2S (Connect2Souls) discipleship groups
 - Events, sermons, pastoral requests
-- Inventory (also exposed inside `apps/web`)
+- Inventory (Studio module at `/inventory`)
 - ORS legacy data sync
 
 ### Monorepo layout
@@ -24,10 +24,10 @@ Welcome. This guide gets you from zero to shipping a change in **one module** of
 studio/
 ├── apps/web/              ← YOU WORK HERE (Next.js 15 App Router)
 ├── apps/c2s-public/       ← Public C2S Group Finder (port 9004)
-├── apps/inventory/        ← separate inventory product module
 ├── packages/
 │   ├── core-engine/       ← authz, approvals, tenant branding (@studio/core-engine)
 │   ├── c2s/               ← C2S domain logic (@studio/c2s)
+│   ├── inventory/         ← Inventory domain (@studio/inventory)
 │   ├── database/          ← Prisma client export (@studio/database)
 │   ├── ui/                ← shared shadcn/ui (@studio/ui)
 │   ├── store/             ← Zustand permissions store
@@ -40,9 +40,10 @@ studio/
 └── docs/                  ← this folder
 ```
 
-> **Sunset:** Tract Tracker (`apps/tract-tracker`) was removed from this monorepo.
+> **Sunset:** Tract Tracker (`apps/tract-tracker`) and the standalone
+> `apps/inventory` app were removed. Inventory SoT is Studio `/inventory`.
 
-Unless someone assigns you inventory, **ignore `apps/inventory`** and focus on `apps/web`.
+Unless someone assigns you `apps/c2s-public`, **focus on `apps/web`**.
 
 ---
 
@@ -292,7 +293,7 @@ Do **not** put `buildCommand` in `apphosting.yaml` (it strips npm workspaces). D
 4. Using Supabase client patterns from old docs — **web uses Firebase Auth + Prisma**.
 5. Relying on `fn_workers_search` / `fn_room_bookings_for_date` — they may be missing on App Hosting Postgres; workers already has a Prisma fallback.
 6. Building while Turbopack is running (corrupts `.next`).
-7. Touching `apps/inventory` when the task is for the hosted Studio web app.
+7. Working in `apps/c2s-public` when the task is for Studio staff features (or vice versa).
 
 ---
 
