@@ -6,7 +6,9 @@ notifications, audit log, cron jobs, and the meal-stub reporting ledger, see
 [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md) — that doc covers the
 "why"; this doc covers the "where".
 
-**New developers:** start with [`ONBOARDING.md`](./ONBOARDING.md).
+**New developers:** start with [`ONBOARDING.md`](./ONBOARDING.md) and the
+canonical overview [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md)
+(includes open task backlog).
 
 **Platform evolution:** [`CORE_ENGINE_C2S_PLAN.md`](./CORE_ENGINE_C2S_PLAN.md) —
 phased plan for `packages/core-engine`, C2S as a separate module, then white-label.
