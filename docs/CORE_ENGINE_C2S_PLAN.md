@@ -3,8 +3,9 @@
 **Status:** Phase 1–2B M1 complete; **Phase 3A+3B white-label** (brand chrome, feature flags, public portal copy); multi-tenant DB/auth still deferred  
 **Priority order:** (1) `packages/core-engine` → (2) C2S as a separate module → (3) white-label / selective apps  
 **Non-goal for early phases:** Splitting every Studio sidebar item into `apps/[module]`.
+Tract Tracker has been **sunset** (removed from the monorepo).
 
-Related reading: [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./architecture.md), [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md).
+Related reading: [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./architecture.md), [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md), [`CUSTOM_DOMAINS.md`](./CUSTOM_DOMAINS.md).
 
 ---
 
@@ -19,7 +20,7 @@ Related reading: [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./archi
 
 - One App Hosting backend per sidebar module
 - Separate Postgres per module
-- Rewriting inventory/tract-tracker onto core-engine in phase 1–2
+- Rewriting inventory onto core-engine in phase 1–2 (inventory stays a separate app)
 - Full multi-tenant Auth isolation on day one (can follow branding)
 
 ---
@@ -35,12 +36,10 @@ packages/
 
 apps/
   web/                  # Studio shell — most staff modules stay here
-  c2s/                  # Optional: mentor/admin C2S app (phase 2B)
-  c2s-public/           # Optional: public Group Finder only (phase 2A)
-  inventory/            # existing separate product
-  tract-tracker/        # existing mobile product
+  c2s/                  # Optional: mentor/admin C2S app (phase 2B / M2)
+  c2s-public/           # Public Group Finder (phase 2A) — c2s.[domain].app
+  inventory/            # Separate product module — keep separate
 ```
-
 **Rule:** packages hold logic; apps hold routing + deployables. Core-engine never imports `apps/*`.
 
 ---
@@ -200,8 +199,7 @@ Promote to `apps/[product]` only when audience or deploy cadence differs:
 |---|---|
 | `apps/c2s-public` | Done in 2A |
 | `apps/c2s` | Mentors need standalone PWA / separate domain |
-| `apps/inventory` | Already separate |
-| `apps/tract-tracker` | Already separate |
+| `apps/inventory` | **Keep separate** — different product; target `inventory.[domain].app` |
 | Schedule / workers / reservations | **Stay in Studio** unless a clear product split appears |
 
 Do **not** auto-create `apps/meals`, `apps/schedule`, etc.
@@ -276,8 +274,10 @@ flowchart LR
 
 ## What to do next
 
-1. Smoke-test a second brand via App Hosting env (`NEXT_PUBLIC_BRAND_*` + `NEXT_PUBLIC_FEATURE_RESERVATIONS=false`).  
-2. Decide data/auth tenancy before onboarding a second live org.  
-3. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
-4. Owner ops: attach `c2s.cogdasma.app` (+ optional `studio.cogdasma.app`) in Firebase App Hosting.  
-5. Optional: staff print pages / Capacitor native app names remain COG-specific until product asks.
+1. **Owner:** attach custom domains — see [`CUSTOM_DOMAINS.md`](./CUSTOM_DOMAINS.md)  
+   (`c2s.cogdasma.app`, optional `studio.cogdasma.app`).  
+2. Smoke-test a second brand via App Hosting env (`NEXT_PUBLIC_BRAND_*`).  
+3. Decide data/auth tenancy before onboarding a second live org.  
+4. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
+5. Inventory: keep as separate module; migrate to Prisma + core-engine when ready.  
+6. Optional: staff print pages / Capacitor native app names remain COG-specific until product asks.

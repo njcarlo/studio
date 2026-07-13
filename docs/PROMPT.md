@@ -7,7 +7,7 @@
 > has been deleted from this repo). Prefer
 > [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./architecture.md), and
 > [`AGENTS.md`](../AGENTS.md) for how the repo actually works today.
-> `apps/inventory` / `apps/tract-tracker` may still use Supabase.
+> `apps/inventory` may still use Supabase until migrated. Tract Tracker has been sunset.
 
 ## Project Overview
 

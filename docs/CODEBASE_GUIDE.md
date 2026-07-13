@@ -10,9 +10,11 @@ Stack for **`apps/web`**: Firebase Auth + Firebase App Hosting + Prisma/Postgres
 /
 ├── apps/
 │   ├── web/              → Next.js 15 (COG App) — Firebase App Hosting
-│   ├── inventory/        → Separate Next.js app (legacy Supabase client)
-│   └── tract-tracker/    → Expo React Native (legacy Supabase)
+│   ├── c2s-public/       → Public C2S Group Finder
+│   └── inventory/        → Separate inventory product module
 ├── packages/
+│   ├── core-engine/      → Authz, approvals, tenant (@studio/core-engine)
+│   ├── c2s/              → C2S domain (@studio/c2s)
 │   ├── database/         → Prisma client export (@studio/database)
 │   ├── graphql/          → GraphQL schema + resolvers
 │   ├── store/            → Zustand (auth permissions, impersonation)
@@ -73,13 +75,15 @@ Project: `cog-app-studio`
 - Schedulers call App Hosting `/api/cron/*` using `APP_BASE_URL` + `CRON_SECRET`.
 - Deploy: GitHub Actions `.github/workflows/firebase-deploy.yml` (needs `FIREBASE_TOKEN`) or `firebase deploy --only functions,firestore:rules,storage`.
 
-## apps/tract-tracker — Tracts Giving Day (Expo)
+## apps/inventory — standalone inventory module
 
-**Still on Supabase Auth/DB** for this app only. See `apps/tract-tracker/`. Not part of the Firebase App Hosting cutover.
+**Keep as a separate app** (`apps/inventory`). Different product cadence / audience
+from Studio staff ops. Domain URL target: `inventory.cogdasma.app` via
+`moduleAppUrl('inventory')` when App Hosting is wired.
 
-## apps/inventory — standalone inventory
-
-**Still Supabase-oriented** as a separate app. The **inventory UI inside `apps/web`** (`/inventory`) uses Prisma server actions.
+There is also an **inventory UI inside `apps/web`** (`/inventory`) on Prisma —
+do not confuse the two. Prefer evolving `apps/inventory` toward `@studio/core-engine`
++ Prisma over merging it back into the Studio monolith.
 
 ## Known gotchas
 
