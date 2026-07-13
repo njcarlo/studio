@@ -20,7 +20,7 @@ Related reading: [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./archi
 
 - One App Hosting backend per sidebar module
 - Separate Postgres per module
-- Rewriting inventory onto core-engine in phase 1–2 (inventory stays a separate app)
+- Rewriting every Studio sidebar module into `apps/[module]` in phase 1–2
 - Full multi-tenant Auth isolation on day one (can follow branding)
 
 ---
@@ -35,12 +35,10 @@ packages/
   c2s/                  # C2S domain service + types (no Next pages)
 
 apps/
-  web/                  # Studio shell — most staff modules stay here
+  web/                  # Studio shell — inventory, workers, schedule, etc. stay here
   c2s/                  # Optional: mentor/admin C2S app (phase 2B / M2)
   c2s-public/           # Public Group Finder (phase 2A) — c2s.[domain].app
-  inventory/            # Separate product module — keep separate
-```
-**Rule:** packages hold logic; apps hold routing + deployables. Core-engine never imports `apps/*`.
+```**Rule:** packages hold logic; apps hold routing + deployables. Core-engine never imports `apps/*`.
 
 ---
 
@@ -199,7 +197,7 @@ Promote to `apps/[product]` only when audience or deploy cadence differs:
 |---|---|
 | `apps/c2s-public` | Done in 2A |
 | `apps/c2s` | Mentors need standalone PWA / separate domain |
-| `apps/inventory` | **Keep separate** — different product; target `inventory.[domain].app` |
+| Inventory | **Stays in Studio** (`/inventory`) — standalone `apps/inventory` sunset |
 | Schedule / workers / reservations | **Stay in Studio** unless a clear product split appears |
 
 Do **not** auto-create `apps/meals`, `apps/schedule`, etc.
@@ -279,5 +277,5 @@ flowchart LR
 2. Smoke-test a second brand via App Hosting env (`NEXT_PUBLIC_BRAND_*`).  
 3. Decide data/auth tenancy before onboarding a second live org.  
 4. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
-5. Inventory: keep as separate module; migrate to Prisma + core-engine when ready.  
+5. Inventory stays in Studio (`/inventory`); standalone app removed.  
 6. Optional: staff print pages / Capacitor native app names remain COG-specific until product asks.

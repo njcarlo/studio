@@ -119,7 +119,7 @@ often predate Auth accounts).
 ### Cleanup remaining (not blocking)
 
 - Remove stale Supabase client comments from shared packages if any remain
-- Keep `apps/inventory` / `apps/tract-tracker` Supabase usage isolated from web patterns
+- Keep legacy Supabase usage (if any remains outside Studio) isolated from web patterns
 
 ---
 

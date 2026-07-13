@@ -12,10 +12,9 @@ Church/ministry operations platform (workers, scheduling, events, meals,
 inventory, reservations, C2S) built as a **Next.js 15 + Firebase + Prisma**
 monorepo. Flagship app: `apps/web` on **Firebase App Hosting**. Auth is
 **Firebase Auth**. Postgres via Prisma is the source of truth; Firestore is a
-dual-write soak. Cloud Functions live under `functions/`.
-
-`apps/inventory` and may still use Supabase — do not copy
-those patterns into `apps/web`.
+dual-write soak. Cloud Functions live under `functions/`. Inventory is the
+Studio `/inventory` module (Prisma) — the standalone `apps/inventory` app was
+sunset.
 
 ---
 
@@ -103,7 +102,7 @@ new Supabase Edge Functions for `apps/web`.
 ### Legacy Pattern — do not use for web
 
 `@studio/client` → Supabase Edge Functions under `supabase/functions/` is
-**legacy**. Inventory may still use Supabase clients.
+**legacy**. Prefer Prisma + Firebase patterns in `apps/web`.
 
 ---
 

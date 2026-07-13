@@ -12,7 +12,6 @@
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter=web",
     "dev:c2s-public": "turbo run dev --filter=c2s-public",
-    "dev:inventory": "turbo run dev --filter=inventory",
     "build:c2s-public": "turbo run build --filter=c2s-public",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
