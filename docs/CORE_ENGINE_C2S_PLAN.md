@@ -272,10 +272,9 @@ flowchart LR
 
 ## What to do next
 
-1. **Owner:** attach custom domains — see [`CUSTOM_DOMAINS.md`](./CUSTOM_DOMAINS.md)  
-   (`c2s.cogdasma.app`, optional `studio.cogdasma.app`).  
-2. Smoke-test a second brand via App Hosting env (`NEXT_PUBLIC_BRAND_*`).  
-3. Decide data/auth tenancy before onboarding a second live org.  
-4. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
-5. Inventory domain extracted to `@studio/inventory`; UI stays in Studio `/inventory`.  
+1. Smoke-test a second brand via App Hosting env (`NEXT_PUBLIC_BRAND_*`) when needed.  
+2. Decide data/auth tenancy before onboarding a second live org.  
+3. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
+4. Inventory domain is in `@studio/inventory`; UI stays in Studio `/inventory`.  
+5. **Deferred:** custom domains (`c2s.cogdasma.app` / `studio.cogdasma.app`) — keep using App Hosting default URLs for now; see [`CUSTOM_DOMAINS.md`](./CUSTOM_DOMAINS.md) when ready.  
 6. Optional: staff print pages / Capacitor native app names remain COG-specific until product asks.
