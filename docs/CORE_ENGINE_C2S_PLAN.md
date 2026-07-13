@@ -5,7 +5,7 @@
 **Non-goal for early phases:** Splitting every Studio sidebar item into `apps/[module]`.
 Tract Tracker has been **sunset** (removed from the monorepo).
 
-Related reading: [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./architecture.md), [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md), [`CUSTOM_DOMAINS.md`](./CUSTOM_DOMAINS.md).
+Related reading: [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md), [`ONBOARDING.md`](./ONBOARDING.md), [`architecture.md`](./architecture.md), [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md), [`CUSTOM_DOMAINS.md`](./CUSTOM_DOMAINS.md).
 
 ---
 

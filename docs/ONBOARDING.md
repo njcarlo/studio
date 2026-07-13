@@ -2,7 +2,7 @@
 
 Welcome. This guide gets you from zero to shipping a change in **one module** of the flagship web app.
 
-> **Start here.** Companion docs: `AGENTS.md`, `architecture.md`, `CODEBASE_GUIDE.md`, `PLATFORM_ARCHITECTURE.md`. Stack for `apps/web` is Firebase + Prisma/Postgres.
+> **Start here.** Companion docs: `AGENTS.md`, [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md) (architecture + open tasks), `architecture.md`, `CODEBASE_GUIDE.md`, `PLATFORM_ARCHITECTURE.md`. Stack for `apps/web` is Firebase + Prisma/Postgres.
 
 ---
 

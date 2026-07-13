@@ -7,8 +7,8 @@ meal stub) so new feature work has a concrete pattern to follow.
 
 **Runtime for `apps/web`:** Firebase Auth + Firebase App Hosting + Prisma/Postgres
 (source of truth), with Cloud Functions for HTTP API/schedulers and Firestore as
-a dual-write soak. See [`ONBOARDING.md`](./ONBOARDING.md) and
-[`architecture.md`](./architecture.md).
+a dual-write soak. Start with [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md),
+then [`ONBOARDING.md`](./ONBOARDING.md) and [`architecture.md`](./architecture.md).
 
 ---
 

@@ -6,12 +6,14 @@ Church operations platform for **Church of God Dasmariñas** (COG App).
 
 **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** — local setup, current stack (Firebase + Prisma), and how to pick **one module** and ship a change.
 
+**[docs/SYSTEM_ARCHITECTURE.md](./docs/SYSTEM_ARCHITECTURE.md)** — system architecture, package boundaries, deploy, and **open task backlog**.
+
 Also useful:
 
 - [AGENTS.md](./AGENTS.md) — environment gotchas and deploy notes
 - [docs/architecture.md](./docs/architecture.md) — routes and file map
 - [docs/PLATFORM_ARCHITECTURE.md](./docs/PLATFORM_ARCHITECTURE.md) — RBAC, approvals, notifications
-- [docs/CUSTOM_DOMAINS.md](./docs/CUSTOM_DOMAINS.md) — `c2s` / `studio` Firebase custom domains
+- [docs/CUSTOM_DOMAINS.md](./docs/CUSTOM_DOMAINS.md) — branded hosts (**deferred**)
 
 ## What’s in this repo
 
