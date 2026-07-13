@@ -1,12 +1,12 @@
 TRACT TRACKER — SYSTEM WALKTHROUGH
 National Tracts Giving Day (NTGD) | June 12, Philippines
-tract-tracker.vercel.app
+tracttracker.app
 =========================================================
 
 
 WHAT IS THIS?
 -------------
-Tract Tracker is a web app (React Native / Expo, deployed to Vercel) that lets
+Tract Tracker is a web/mobile app (React Native / Expo) that lets
 participants of NTGD share photos of their tract distributions. There is a live
 NewsFeed that acts like a public slideshow, and a Correspondent/Photos tab where
 users can upload pictures.

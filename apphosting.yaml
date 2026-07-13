@@ -1,5 +1,4 @@
 # Firebase App Hosting — canonical deploy target for the COG web app.
-# Replaces Vercel. Root vercel.json always skips builds (scripts/vercel-ignore.sh).
 # App Hosting builds and runs the Next.js standalone server; the Admin SDK
 # authenticates via the backend's Application Default Credentials (no
 # service-account file needed on-platform).

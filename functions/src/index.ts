@@ -68,10 +68,9 @@ export const api = onRequest(
   app,
 );
 
-// ── Scheduled jobs (replace vercel.json crons) ────────────────────────────
+// ── Scheduled jobs (Firebase Cloud Scheduler → App Hosting cron routes) ──
 // Trigger the Next.js cron endpoints (served by Firebase App Hosting) using
-// the same CRON_SECRET bearer contract they already enforce. Times are UTC to
-// match the previous Vercel cron schedules.
+// the same CRON_SECRET bearer contract they already enforce. Times are UTC.
 async function callCron(path: string): Promise<void> {
   const base = APP_BASE_URL.value() || process.env.APP_BASE_URL;
   const secret = process.env.CRON_SECRET;

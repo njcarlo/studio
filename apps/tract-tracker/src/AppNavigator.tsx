@@ -118,7 +118,12 @@ const styles = StyleSheet.create({
 });
 
 const linking: LinkingOptions<RootStackParamList> = {
-    prefixes: ['tracttracker://', 'https://tracttracker.app', 'https://tract-tracker.vercel.app'],
+    prefixes: [
+      'tracttracker://',
+      'https://tracttracker.app',
+      // Legacy universal-link host (Vercel retired; keep for old installs).
+      'https://tract-tracker.vercel.app',
+    ],
     config: {
         screens: {
             Auth: 'auth',

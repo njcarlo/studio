@@ -1,5 +1,4 @@
 # Firebase status check on pull requests.
-# Replaces the Vercel GitHub bot as the hosting signal on PRs.
 # App Hosting itself deploys from the linked branch in the Firebase console;
 # this workflow validates repo Firebase config and posts a PR comment.
 name: Firebase
@@ -34,6 +33,9 @@ jobs:
           test -f scripts/apphosting-start.sh
           test -f package.json
           grep -q '"apphosting:build"' package.json
+          # Vercel is retired — these must not return.
+          test ! -f vercel.json
+          test ! -f scripts/vercel-ignore.sh
           PROJECT=$(node -p "require('./.firebaserc').projects.default || 'cog-app-studio'")
           echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
           echo "Validated App Hosting + Firebase config for project $PROJECT"
@@ -48,7 +50,7 @@ jobs:
               marker,
               '## Firebase',
               '',
-              `This repo deploys **apps/web** with **Firebase App Hosting** (not Vercel).`,
+              `This repo deploys **apps/web** with **Firebase App Hosting**.`,
               '',
               `| | |`,
               `| --- | --- |`,
@@ -56,9 +58,6 @@ jobs:
               `| Config | \`apphosting.yaml\` + \`npm run apphosting:build\` |`,
               `| Production | https://studio--cog-app-studio.asia-southeast1.hosted.app |`,
               `| Functions / rules | \`.github/workflows/firebase-deploy.yml\` on \`main\` (needs \`FIREBASE_TOKEN\`) |`,
-              '',
-              'Vercel builds are skipped via \`scripts/vercel-ignore.sh\`.',
-              'Disconnect the Vercel GitHub app from this repository if it still posts checks.',
             ].join('\n');
 
             const { owner, repo } = context.repo;

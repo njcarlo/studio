@@ -19,7 +19,7 @@ function isPublic(pathname: string) {
 }
 
 /**
- * Runs at the Vercel Edge (no cold start).
+ * Next.js middleware (runs on the Edge runtime).
  *
  * 1. Redirects unauthenticated users to /login before they ever reach a
  *    serverless function — saves 1-2 cold-start round trips per session.
