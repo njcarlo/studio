@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: false,
   },
   serverExternalPackages: ["@apollo/server"],
-  transpilePackages: ["@studio/ui", "@studio/database", "@studio/store", "@studio/types", "@studio/graphql", "@studio/client", "@studio/core-engine", "@studio/c2s"],
+  transpilePackages: ["@studio/ui", "@studio/database", "@studio/store", "@studio/types", "@studio/graphql", "@studio/client", "@studio/core-engine", "@studio/c2s", "@studio/inventory"],
   outputFileTracingRoot: monorepoRoot,
   images: {
     unoptimized: true,

@@ -197,7 +197,7 @@ Promote to `apps/[product]` only when audience or deploy cadence differs:
 |---|---|
 | `apps/c2s-public` | Done in 2A |
 | `apps/c2s` | Mentors need standalone PWA / separate domain |
-| Inventory | **Stays in Studio** (`/inventory`) — standalone `apps/inventory` sunset |
+| Inventory | **Stays in Studio** (`/inventory`); domain in `@studio/inventory`; standalone app sunset |
 | Schedule / workers / reservations | **Stay in Studio** unless a clear product split appears |
 
 Do **not** auto-create `apps/meals`, `apps/schedule`, etc.
@@ -277,5 +277,5 @@ flowchart LR
 2. Smoke-test a second brand via App Hosting env (`NEXT_PUBLIC_BRAND_*`).  
 3. Decide data/auth tenancy before onboarding a second live org.  
 4. Consider M2 (`apps/c2s` mentor host) only if mentors need a separate PWA / domain.  
-5. Inventory stays in Studio (`/inventory`); standalone app removed.  
+5. Inventory domain extracted to `@studio/inventory`; UI stays in Studio `/inventory`.  
 6. Optional: staff print pages / Capacitor native app names remain COG-specific until product asks.

@@ -48,6 +48,7 @@
     "@studio/client": "file:../../packages/client",
     "@studio/core-engine": "file:../../packages/core-engine",
     "@studio/c2s": "file:../../packages/c2s",
+    "@studio/inventory": "file:../../packages/inventory",
     "@studio/database": "file:../../packages/database",
     "@studio/graphql": "file:../../packages/graphql",
     "@studio/store": "file:../../packages/store",

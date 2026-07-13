@@ -1,4 +1,5 @@
 import { prisma } from '@studio/database/prisma';
+import { listItemsForPicker } from '@studio/inventory';
 import type {
     CreateEventInput,
     UpdateEventInput,
@@ -150,9 +151,5 @@ export async function removeEventEquipment(id: string) {
 // ─── Inventory lookup for equipment picker ──────────────────────────────────
 
 export async function getInventoryItemsForPicker() {
-    return prisma.inventoryItem.findMany({
-        select: { id: true, name: true, unit: true, quantity: true, category: { select: { name: true } } },
-        orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
-        take: 500,
-    });
+    return listItemsForPicker();
 }

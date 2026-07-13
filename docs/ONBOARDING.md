@@ -27,6 +27,7 @@ studio/
 ├── packages/
 │   ├── core-engine/       ← authz, approvals, tenant branding (@studio/core-engine)
 │   ├── c2s/               ← C2S domain logic (@studio/c2s)
+│   ├── inventory/         ← Inventory domain (@studio/inventory)
 │   ├── database/          ← Prisma client export (@studio/database)
 │   ├── ui/                ← shared shadcn/ui (@studio/ui)
 │   ├── store/             ← Zustand permissions store

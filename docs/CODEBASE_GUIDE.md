@@ -14,6 +14,7 @@ Stack for **`apps/web`**: Firebase Auth + Firebase App Hosting + Prisma/Postgres
 ├── packages/
 │   ├── core-engine/      → Authz, approvals, tenant (@studio/core-engine)
 │   ├── c2s/              → C2S domain (@studio/c2s)
+│   ├── inventory/        → Inventory domain (@studio/inventory)
 │   ├── database/         → Prisma client export (@studio/database)
 │   ├── graphql/          → GraphQL schema + resolvers
 │   ├── store/            → Zustand (auth permissions, impersonation)
@@ -76,9 +77,9 @@ Project: `cog-app-studio`
 
 ## Inventory (Studio module)
 
-Lives in **`apps/web`** at `/inventory` (Prisma, `inventory:access` /
-`inventory:manage`). The standalone `apps/inventory` app was **sunset** and
-removed — do not recreate it without a product decision.
+Lives in **`apps/web`** at `/inventory` (UI + actions). Domain logic is
+`@studio/inventory` (Prisma). Permissions: `inventory:access` /
+`inventory:manage`. The standalone `apps/inventory` app was **sunset**.
 
 ## Known gotchas
 
