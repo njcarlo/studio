@@ -1,20 +1,30 @@
 # Custom domains — `[module].[domain].app`
 
-Studio and module apps resolve URLs via `NEXT_PUBLIC_ROOT_DOMAIN`
-(default **`cogdasma.app`**). Helpers live in `@studio/core-engine/tenant`
-(`moduleAppUrl`, `c2sPublicUrl`, `studioAppUrl`).
+**Status: deferred.** Keep using Firebase App Hosting default URLs for now
+(e.g. `https://studio--cog-app-studio.asia-southeast1.hosted.app`). Revisit when
+you want branded hosts.
 
-| Host | App | App Hosting backend |
+Studio and module apps still resolve URLs via `NEXT_PUBLIC_ROOT_DOMAIN`
+(default **`cogdasma.app`**). Helpers live in `@studio/core-engine/tenant`
+(`moduleAppUrl`, `c2sPublicUrl`, `studioAppUrl`). Until DNS is attached, set
+overrides:
+
+```bash
+# Local / staging without custom DNS
+NEXT_PUBLIC_MODULE_URL_C2S=http://localhost:9004
+# or the App Hosting URL for c2s-public once deployed
+# NEXT_PUBLIC_C2S_PUBLIC_URL=https://<c2s-public-backend>.hosted.app
+NEXT_PUBLIC_STUDIO_URL=https://studio--cog-app-studio.asia-southeast1.hosted.app
+```
+
+| Host (when ready) | App | App Hosting backend |
 |---|---|---|
 | `studio.cogdasma.app` (optional) | `apps/web` (includes `/inventory`) | Root `apphosting.yaml` |
 | `c2s.cogdasma.app` | `apps/c2s-public` | `apps/c2s-public/apphosting.yaml` |
 
-Current default Studio URL until DNS is attached:  
-`https://studio--cog-app-studio.asia-southeast1.hosted.app`
-
 ---
 
-## Owner steps (Firebase console)
+## Owner steps (Firebase console) — when you un-defer
 
 These cannot be done from the repo alone — they need DNS + Firebase project access
 (`cog-app-studio`).
@@ -23,8 +33,7 @@ These cannot be done from the repo alone — they need DNS + Firebase project ac
 
 1. Firebase console → **App Hosting** → project `cog-app-studio`
 2. Backend for Studio: linked to this GitHub repo, root `/`, uses root `apphosting.yaml`
-3. Backend for C2S public: separate backend with root `apps/c2s-public` (or monorepo
-   build that targets that package — match how you created it)
+3. Backend for C2S public: separate backend with root `apps/c2s-public`
 
 ### 2. Attach custom domains
 
@@ -45,13 +54,9 @@ studio.cogdasma.app   CNAME   <firebase-provided-target>
 
 Wait for TLS provisioning (Firebase marks the domain **Connected**).
 
-### 4. Env already in repo
+### 4. Env
 
-Both App Hosting configs set:
-
-```yaml
-NEXT_PUBLIC_ROOT_DOMAIN: cogdasma.app
-```
+Both App Hosting configs set `NEXT_PUBLIC_ROOT_DOMAIN: cogdasma.app`.
 
 Overrides if needed:
 
@@ -72,5 +77,5 @@ Studio `/public/c2s-join` redirects to `c2sPublicUrl()` unless
 
 ## Inventory
 
-Inventory is a **Studio module** (`apps/web` → `/inventory`, Prisma). The
-standalone `apps/inventory` app was sunset and removed from the monorepo.
+Inventory is a **Studio module** (`apps/web` → `/inventory`, domain in
+`@studio/inventory`). The standalone `apps/inventory` app was sunset and removed.
