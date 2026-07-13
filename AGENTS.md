@@ -3,8 +3,8 @@
 ## Cursor Cloud specific instructions
 
 Turborepo + npm-workspaces monorepo (`apps/web` is the flagship Next.js app;
-`apps/c2s-public` Group Finder; `apps/inventory`, `apps/tract-tracker`; shared
-`packages/*` including `@studio/core-engine` and `@studio/c2s`).
+`apps/c2s-public` Group Finder; `apps/inventory`; shared `packages/*` including
+`@studio/core-engine` and `@studio/c2s`).
 
 **Module URLs** use `https://[module].[domain].app` via `NEXT_PUBLIC_ROOT_DOMAIN`
 (default `cogdasma.app`) — e.g. `c2s.cogdasma.app`, `studio.cogdasma.app`.
@@ -15,8 +15,9 @@ Helpers: `moduleAppUrl` / `c2sPublicUrl` in `@studio/core-engine/tenant`.
 **Firebase Cloud Functions** (`functions/`), uploads use **Firebase Storage**,
 and writes dual-write to **Firestore**. **Postgres (via Prisma) remains the
 source of truth** during the dual-write soak. Hosting is Firebase App Hosting
-only (no Vercel). `apps/inventory` / `apps/tract-tracker` are separate apps and
-may still reference Supabase until migrated.
+only (no Vercel). `apps/inventory` is a separate product app (may still
+reference Supabase until migrated). Tract Tracker has been **sunset** and
+removed from this repo.
 
 The update script already runs `npm install` + `npx prisma generate` (root). The
 notes below are the non-obvious bits.

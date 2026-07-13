@@ -24,8 +24,7 @@ Welcome. This guide gets you from zero to shipping a change in **one module** of
 studio/
 ├── apps/web/              ← YOU WORK HERE (Next.js 15 App Router)
 ├── apps/c2s-public/       ← Public C2S Group Finder (port 9004)
-├── apps/inventory/        ← separate Next.js app (still Supabase-oriented)
-├── apps/tract-tracker/    ← Expo mobile app (still Supabase)
+├── apps/inventory/        ← separate inventory product module
 ├── packages/
 │   ├── core-engine/       ← authz, approvals, tenant branding (@studio/core-engine)
 │   ├── c2s/               ← C2S domain logic (@studio/c2s)
@@ -41,7 +40,9 @@ studio/
 └── docs/                  ← this folder
 ```
 
-Unless someone assigns you inventory/tract-tracker, **ignore those apps** and focus on `apps/web`.
+> **Sunset:** Tract Tracker (`apps/tract-tracker`) was removed from this monorepo.
+
+Unless someone assigns you inventory, **ignore `apps/inventory`** and focus on `apps/web`.
 
 ---
 
@@ -291,7 +292,7 @@ Do **not** put `buildCommand` in `apphosting.yaml` (it strips npm workspaces). D
 4. Using Supabase client patterns from old docs — **web uses Firebase Auth + Prisma**.
 5. Relying on `fn_workers_search` / `fn_room_bookings_for_date` — they may be missing on App Hosting Postgres; workers already has a Prisma fallback.
 6. Building while Turbopack is running (corrupts `.next`).
-7. Touching `apps/inventory` / `apps/tract-tracker` when the task is for the hosted web app.
+7. Touching `apps/inventory` when the task is for the hosted Studio web app.
 
 ---
 

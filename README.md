@@ -11,17 +11,20 @@ Also useful:
 - [AGENTS.md](./AGENTS.md) — environment gotchas and deploy notes
 - [docs/architecture.md](./docs/architecture.md) — routes and file map
 - [docs/PLATFORM_ARCHITECTURE.md](./docs/PLATFORM_ARCHITECTURE.md) — RBAC, approvals, notifications
+- [docs/CUSTOM_DOMAINS.md](./docs/CUSTOM_DOMAINS.md) — `c2s` / `studio` Firebase custom domains
 
 ## What’s in this repo
 
 | Path | Description |
 |---|---|
-| `apps/web` | Flagship Next.js app (Firebase App Hosting) |
-| `apps/inventory` | Standalone inventory app (legacy Supabase path) |
-| `apps/tract-tracker` | Expo tract-distribution mobile app |
-| `packages/*` | Shared UI, Prisma client, types, store |
+| `apps/web` | Flagship Next.js Studio (Firebase App Hosting) |
+| `apps/c2s-public` | Public C2S Group Finder (`c2s.[domain].app`) |
+| `apps/inventory` | Standalone inventory product (separate module) |
+| `packages/*` | Shared UI, Prisma client, core-engine, c2s, types, store |
 | `functions/` | Firebase Cloud Functions |
 | `prisma/` | Postgres schema (source of truth for `apps/web`) |
+
+> **Sunset:** `apps/tract-tracker` was removed from this monorepo (NTGD Expo app). Do not restore it without a new product decision.
 
 ## Quick start
 

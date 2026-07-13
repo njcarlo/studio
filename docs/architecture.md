@@ -52,8 +52,8 @@ graph TB
     end
 
     subgraph OtherApps["Other monorepo apps"]
-        Inventory["apps/inventory<br/>legacy Supabase path"]
-        Mobile["apps/tract-tracker<br/>Expo + Supabase"]
+        Inventory["apps/inventory<br/>separate product module"]
+        C2SPublic["apps/c2s-public<br/>Group Finder"]
     end
 
     UI --> Hooks
@@ -89,7 +89,7 @@ graph TB
 | Scheduled work | Firebase Cloud Functions schedulers → `app/api/cron/*` (`CRON_SECRET`) |
 | HTTP API | Firebase Cloud Functions (`functions/src/routes/*`) — Firebase ID token auth |
 | GraphQL | `packages/graphql` + `packages/client` (limited / mobile consumers) |
-| Other apps | `apps/inventory`, `apps/tract-tracker` — **still Supabase-oriented**, not on App Hosting |
+| Other apps | `apps/inventory` (separate product), `apps/c2s-public` (Group Finder) |
 | Deployment | **Firebase App Hosting** (`apphosting.yaml`, `npm run apphosting:build`) — live: `studio--cog-app-studio.asia-southeast1.hosted.app` |
 
 Historical SQL under `supabase/migrations/` may still be applied to Postgres for indexes/functions; it is **not** a live Supabase Auth/hosting path for `apps/web`.
@@ -144,9 +144,8 @@ in `with-permission.ts`.
 | **Cloud Functions** | `functions/src/` | HTTP API routers + scheduled jobs | Auth: `Authorization: Bearer <Firebase ID token>`. |
 | **App Hosting** | `apphosting.yaml`, `scripts/apphosting-*.sh` | Build/start for Cloud Run-backed hosting | Do not set `buildCommand` in YAML (strips workspaces). |
 | **Cron jobs** | `apps/web/src/app/api/cron/*` | `CRON_SECRET`-gated; invoked by Cloud Functions schedulers | |
-| **Inventory app** | `apps/inventory/` | Separate Next.js app; **still Supabase client** | Not the App Hosting web path. |
-| **C2S public app** | `apps/c2s-public/` | Standalone Group Finder (`@studio/c2s` + `@studio/core-engine`) | Port 9004; optional App Hosting backend. |
-| **Tract Tracker** | `apps/tract-tracker/` | Expo app; **still Supabase** | Separate product surface. |
+| **Inventory app** | `apps/inventory/` | Separate product module; migrate toward Prisma + core-engine | Keep separate — do not fold into Studio |
+| **C2S public app** | `apps/c2s-public/` | Standalone Group Finder (`@studio/c2s` + `@studio/core-engine`) | `c2s.[domain].app`; port 9004 |
 | **Docs** | `docs/` | Onboarding, architecture, platform layers, plans | Start at `ONBOARDING.md`. |
 
 ## 4. Route map (apps/web)
