@@ -7,8 +7,11 @@
 
 This is the **canonical architecture overview**. Use it first; dig into the linked docs for depth.
 
+**Offline / shareable copy:** [`SYSTEM_ARCHITECTURE.docx`](./SYSTEM_ARCHITECTURE.docx) (same content, Word format).
+
 | Doc | Use when |
 |---|---|
+| [`BUILD_AN_APP_STEP_BY_STEP.md`](./BUILD_AN_APP_STEP_BY_STEP.md) | Beginner: install → run → add a feature or new app |
 | [`ONBOARDING.md`](./ONBOARDING.md) | Day-1 setup, first PR |
 | [`architecture.md`](./architecture.md) | “Where do I change X?” route/file map |
 | [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md) | RBAC / approvals / notify / audit / cron “why” |

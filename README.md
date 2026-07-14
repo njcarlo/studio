@@ -4,6 +4,8 @@ Church operations platform for **Church of God Dasmariñas** (COG App).
 
 ## New developers — start here
 
+**[docs/BUILD_AN_APP_STEP_BY_STEP.md](./docs/BUILD_AN_APP_STEP_BY_STEP.md)** — **beginner path**: install → run Studio → add a feature or a new app.
+
 **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** — local setup, current stack (Firebase + Prisma), and how to pick **one module** and ship a change.
 
 **[docs/SYSTEM_ARCHITECTURE.md](./docs/SYSTEM_ARCHITECTURE.md)** — system architecture, package boundaries, deploy, and **open task backlog**.
@@ -34,7 +36,7 @@ Also useful:
 ```bash
 npm install
 npx prisma generate
-# configure apps/web/.env.local — see docs/ONBOARDING.md
+# configure apps/web/.env.local — see docs/BUILD_AN_APP_STEP_BY_STEP.md
 npm run dev:web
 ```
 
