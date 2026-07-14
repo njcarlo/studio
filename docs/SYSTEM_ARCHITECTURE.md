@@ -7,6 +7,8 @@
 
 This is the **canonical architecture overview**. Use it first; dig into the linked docs for depth.
 
+**Offline / shareable copy:** [`SYSTEM_ARCHITECTURE.docx`](./SYSTEM_ARCHITECTURE.docx) (same content, Word format).
+
 | Doc | Use when |
 |---|---|
 | [`ONBOARDING.md`](./ONBOARDING.md) | Day-1 setup, first PR |
