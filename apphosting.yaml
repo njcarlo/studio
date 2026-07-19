@@ -72,9 +72,10 @@ env:
     availability:
       - RUNTIME
 
-  # Module URLs: https://[module].[domain].app (default domain cogdasma.app)
-  # Custom DNS is deferred — serve the public C2S Group Finder inside Studio
-  # at /public/c2s-join until apps/c2s-public has its own App Hosting backend.
+  # ── One hosting / one domain (current product decision) ──
+  # Everything public + staff runs on this Studio App Hosting backend.
+  # Public C2S Group Finder: /public/c2s-join on the same host.
+  # Separate apps/c2s-public deploy + c2s.cogdasma.app DNS stay optional later.
   - variable: NEXT_PUBLIC_ROOT_DOMAIN
     value: cogdasma.app
     availability:

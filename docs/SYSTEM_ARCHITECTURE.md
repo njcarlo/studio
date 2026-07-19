@@ -27,7 +27,7 @@ This is the **canonical architecture overview**. Use it first; dig into the link
 
 Staff work in **one Studio app** (`apps/web`): workers, schedule, reservations, meals, C2S mentor UI, inventory, approvals, settings, etc.
 
-Public surfaces that need a different deploy/audience are **separate apps** (today: C2S Group Finder).
+**Hosting decision (current):** one Firebase App Hosting backend / one domain for Studio **and** the public C2S Group Finder (`/public/c2s-join`). `apps/c2s-public` is optional for local/future split only.
 
 ---
 
@@ -233,8 +233,8 @@ See [`PLATFORM_ARCHITECTURE.md`](./PLATFORM_ARCHITECTURE.md) for detail.
 
 | Piece | How |
 |---|---|
-| Studio hosting | Firebase App Hosting — repo root, `apphosting.yaml`, `npm run apphosting:build` |
-| C2S public hosting | Separate App Hosting backend — `apps/c2s-public/apphosting.yaml` |
+| Studio + public C2S | **One** Firebase App Hosting backend — repo root `apphosting.yaml`, `npm run apphosting:build`. Public finder at `/public/c2s-join`. |
+| `apps/c2s-public` | Optional local/future split only (not required in prod while embedded) |
 | Functions / rules | `.github/workflows/firebase-deploy.yml` on `main` (`FIREBASE_TOKEN`) |
 | PR check | `.github/workflows/firebase-pr.yml` validates App Hosting config |
 | Vercel | **Removed** from this repo |
@@ -281,7 +281,7 @@ Prioritized for contributors. Check GitHub issues/PRs before starting.
 
 | ID | Task | Notes |
 |---|---|---|
-| T5 | Deploy / smoke `apps/c2s-public` on its own App Hosting backend | Interim: Studio serves finder at `/public/c2s-join` (`NEXT_PUBLIC_C2S_EMBEDDED=true`). Flip to dedicated host when backend exists |
+| T5 | (Optional) Split `apps/c2s-public` onto its own App Hosting backend | Not required — production is one-host embed at `/public/c2s-join` |
 | T6 | Local C2S workflow | `NEXT_PUBLIC_MODULE_URL_C2S=http://localhost:9004` and/or `NEXT_PUBLIC_C2S_EMBEDDED=true` |
 | T7 | Second-brand smoke test | Different `NEXT_PUBLIC_BRAND_*` + `NEXT_PUBLIC_FEATURE_*=false` on a staging backend |
 | T8 | Multi-tenant data/auth decision | Required before a second live org |

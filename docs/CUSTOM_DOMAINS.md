@@ -1,44 +1,45 @@
-# Custom domains — `[module].[domain].app`
+# Hosting & domains
 
-**Status: deferred.** Keep using Firebase App Hosting default URLs for now
-(e.g. `https://studio--cog-app-studio.asia-southeast1.hosted.app`). Revisit when
-you want branded hosts.
+## Current setup: one hosting, one domain
 
-### Public C2S right now
+**Decision:** run Studio + public C2S on a **single** Firebase App Hosting backend.
 
-Until `apps/c2s-public` has its own App Hosting backend + DNS, the Group Finder
-is served **inside Studio**:
+| What | URL |
+|---|---|
+| Studio (staff) | https://studio--cog-app-studio.asia-southeast1.hosted.app |
+| Public C2S Group Finder | https://studio--cog-app-studio.asia-southeast1.hosted.app/public/c2s-join |
 
-**https://studio--cog-app-studio.asia-southeast1.hosted.app/public/c2s-join**
+Same deploy (`apphosting.yaml` at repo root), same Postgres secrets, same Firebase project (`cog-app-studio`).
 
-Production `apphosting.yaml` sets `NEXT_PUBLIC_C2S_EMBEDDED=true` and points
-`NEXT_PUBLIC_MODULE_URL_C2S` at that path so redirects/links stay on a live host.
+Production sets:
 
-Studio and module apps still resolve URLs via `NEXT_PUBLIC_ROOT_DOMAIN`
-(default **`cogdasma.app`**). Helpers live in `@studio/core-engine/tenant`
-(`moduleAppUrl`, `c2sPublicUrl`, `studioAppUrl`). Until DNS is attached, set
-overrides:
+- `NEXT_PUBLIC_C2S_EMBEDDED=true` — render the finder inside Studio (no redirect)
+- `NEXT_PUBLIC_MODULE_URL_C2S=…/public/c2s-join` — links resolve on this host
+- `NEXT_PUBLIC_STUDIO_URL=https://studio--cog-app-studio.asia-southeast1.hosted.app`
+
+`apps/c2s-public` remains in the monorepo for **local** standalone work (`npm run dev:c2s-public` on `:9004`) and a possible future split. It is **not** required for production while embedded mode is on.
+
+## Local overrides
 
 ```bash
-# Local standalone c2s-public
+# Default: use Studio embed (or open Studio /public/c2s-join)
+
+# Optional: run standalone c2s-public locally
 NEXT_PUBLIC_MODULE_URL_C2S=http://localhost:9004
 NEXT_PUBLIC_C2S_EMBEDDED=false
-
-# Or keep the finder inside Studio (production default)
-# NEXT_PUBLIC_C2S_EMBEDDED=true
-# NEXT_PUBLIC_MODULE_URL_C2S=https://studio--cog-app-studio.asia-southeast1.hosted.app/public/c2s-join
-NEXT_PUBLIC_STUDIO_URL=https://studio--cog-app-studio.asia-southeast1.hosted.app
 ```
 
-| Host (when ready) | App | App Hosting backend |
-|---|---|---|
-| `studio.cogdasma.app` (optional) | `apps/web` (includes `/inventory`) | Root `apphosting.yaml` |
-| `c2s.cogdasma.app` | `apps/c2s-public` | `apps/c2s-public/apphosting.yaml` |
+## Future (optional): branded / split hosts
 
-Full attach steps (Firebase console + DNS) are optional until this is un-deferred.
-See git history or ask the team before changing production DNS.
+**Status: deferred.** Only if you later want separate hosts:
+
+| Host | App | Notes |
+|---|---|---|
+| `studio.cogdasma.app` | `apps/web` | Custom domain on current backend |
+| `c2s.cogdasma.app` | `apps/c2s-public` | Needs its own App Hosting backend first |
+
+Helpers still support `https://[module].[domain].app` via `NEXT_PUBLIC_ROOT_DOMAIN` and `@studio/core-engine/tenant` (`moduleAppUrl`, `c2sPublicUrl`, `studioAppUrl`). Do not attach DNS until product asks for it.
 
 ## Inventory
 
-Inventory is a **Studio module** (`apps/web` → `/inventory`, domain in
-`@studio/inventory`). The standalone `apps/inventory` app was sunset and removed.
+Inventory is a **Studio module** (`apps/web` → `/inventory`), not a separate host.
