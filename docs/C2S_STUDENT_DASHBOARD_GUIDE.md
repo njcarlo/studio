@@ -165,10 +165,14 @@ npx firebase emulators:start --only auth,firestore,storage --project cog-app-stu
 
 ### Step 5 — Log in and open C2S
 
-1. Open http://localhost:9002/login  
-2. Use a test account that is a **mentor** or has **mentorship:manage**  
+1. Open http://localhost:9002/login (or the live Studio URL)  
+2. Use a QA account from [`PLACEHOLDER_ACCOUNTS.md`](./PLACEHOLDER_ACCOUNTS.md), e.g.:
+   - Mentor: `qa.c2s.mentor@cogdasma.local` / `QaC2sMentor#2026`
+   - C2S Admin: `qa.c2s.admin@cogdasma.local` / `QaC2sAdmin#2026`
 3. Open sidebar → **Connect 2 Souls**  
-4. Also open http://localhost:9002/public/c2s-join (Group Finder)
+4. Also open `/public/c2s-join` (Group Finder)  
+
+If login works in Firebase but Studio shows no C2S access, the Worker seed was not run — ask a mentor to run `npx tsx prisma/seed-qa-accounts.ts` with production `DATABASE_URL`.
 
 ### Step 6 — Branching rule for the team
 

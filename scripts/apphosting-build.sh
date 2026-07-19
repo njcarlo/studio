@@ -63,4 +63,15 @@ cp -a node_modules/@prisma apps/web/.next/standalone/node_modules/
 mkdir -p apps/web/.next/standalone/prisma
 cp prisma/schema.prisma apps/web/.next/standalone/prisma/schema.prisma
 
+# Idempotent C2S QA account seed (Workers + roles + demo groups).
+# Gated by QA_SEED_ON_DEPLOY=true in apphosting.yaml — turn off after first success.
+if [ "${QA_SEED_ON_DEPLOY:-}" = "true" ]; then
+  echo "[apphosting-build] seeding C2S QA accounts (QA_SEED_ON_DEPLOY=true)"
+  if npx tsx scripts/seed-qa-accounts-core.ts; then
+    echo "[apphosting-build] QA seed ok"
+  else
+    echo "[apphosting-build] WARNING: QA seed failed (deploy continues)" >&2
+  fi
+fi
+
 echo "[apphosting-build] done"
