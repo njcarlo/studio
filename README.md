@@ -6,6 +6,8 @@ Church operations platform for **Church of God Dasmariñas** (COG App).
 
 **[docs/BUILD_AN_APP_STEP_BY_STEP.md](./docs/BUILD_AN_APP_STEP_BY_STEP.md)** — **beginner path**: install → run Studio → add a feature or a new app.
 
+**[docs/C2S_STUDENT_DASHBOARD_GUIDE.md](./docs/C2S_STUDENT_DASHBOARD_GUIDE.md)** ([`.docx`](./docs/C2S_STUDENT_DASHBOARD_GUIDE.docx)) — student team guide for the C2S dashboard (+ what’s done in Group Finder).
+
 **[docs/ONBOARDING.md](./docs/ONBOARDING.md)** — local setup, current stack (Firebase + Prisma), and how to pick **one module** and ship a change.
 
 **[docs/SYSTEM_ARCHITECTURE.md](./docs/SYSTEM_ARCHITECTURE.md)** — system architecture, package boundaries, deploy, and **open task backlog**.

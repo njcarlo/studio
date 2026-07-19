@@ -3,6 +3,7 @@
 Welcome. This guide gets you from zero to shipping a change in **one module** of the flagship web app.
 
 > **Start here.** Absolute beginner? Follow [`BUILD_AN_APP_STEP_BY_STEP.md`](./BUILD_AN_APP_STEP_BY_STEP.md) first.  
+> Working on **C2S dashboard** as a student team? See [`C2S_STUDENT_DASHBOARD_GUIDE.md`](./C2S_STUDENT_DASHBOARD_GUIDE.md) (also [`.docx`](./C2S_STUDENT_DASHBOARD_GUIDE.docx)).  
 > Companion docs: `AGENTS.md`, [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md) (architecture + open tasks), `architecture.md`, `CODEBASE_GUIDE.md`, `PLATFORM_ARCHITECTURE.md`. Stack for `apps/web` is Firebase + Prisma/Postgres.
 
 ---
