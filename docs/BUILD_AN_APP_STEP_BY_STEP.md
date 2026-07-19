@@ -13,8 +13,8 @@ This is a **monorepo**. Almost everything staff use lives in **one** Next.js app
 
 | Thing | Path | When you use it |
 |---|---|---|
-| **Studio** (main product) | `apps/web` | Default. Add pages, features, modules here. |
-| **Public mini-app** | `apps/c2s-public` | Separate site for people who don’t log into Studio. |
+| **Studio** (main product) | `apps/web` | Default. Add pages, features, modules here. **One production host** — public C2S is `/public/c2s-join` on the same domain. |
+| **Public mini-app** | `apps/c2s-public` | Optional local/future split. Production uses Studio embed. |
 | **Shared logic** | `packages/*` | Code reused by Studio and/or public apps. |
 
 **Rule of thumb**

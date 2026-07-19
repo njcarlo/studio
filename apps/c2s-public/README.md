@@ -33,7 +33,9 @@ Accent color is applied as CSS `--brand` (Tailwind `bg-brand` / `text-brand`).
 
 ## DNS / App Hosting
 
-Point **`c2s.cogdasma.app`** (or your root domain) at the Firebase App Hosting
-backend for this app (`apphosting.yaml` in this folder). Studio redirects
-`/public/c2s-join` → `https://c2s.{rootDomain}` unless
-`NEXT_PUBLIC_C2S_EMBEDDED=true`.
+**Production (one hosting):** public Group Finder lives on Studio’s domain:
+
+https://studio--cog-app-studio.asia-southeast1.hosted.app/public/c2s-join  
+
+(`NEXT_PUBLIC_C2S_EMBEDDED=true`). This app is for local/dev or a future
+optional split — see `docs/CUSTOM_DOMAINS.md`.

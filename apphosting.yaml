@@ -72,10 +72,27 @@ env:
     availability:
       - RUNTIME
 
-  # Module URLs: https://[module].[domain].app (default domain cogdasma.app)
-  # Studio redirects /public/c2s-join → https://c2s.cogdasma.app unless embedded.
+  # ── One hosting / one domain (current product decision) ──
+  # Everything public + staff runs on this Studio App Hosting backend.
+  # Public C2S Group Finder: /public/c2s-join on the same host.
+  # Separate apps/c2s-public deploy + c2s.cogdasma.app DNS stay optional later.
   - variable: NEXT_PUBLIC_ROOT_DOMAIN
     value: cogdasma.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_STUDIO_URL
+    value: "https://studio--cog-app-studio.asia-southeast1.hosted.app"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_C2S_EMBEDDED
+    value: "true"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_MODULE_URL_C2S
+    value: "https://studio--cog-app-studio.asia-southeast1.hosted.app/public/c2s-join"
     availability:
       - BUILD
       - RUNTIME
