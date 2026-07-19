@@ -101,12 +101,12 @@ env:
   # NEXT_PUBLIC_BRAND_NAME / SHORT / LOGO_URL / PRIMARY
   # NEXT_PUBLIC_FEATURE_C2S=false  (etc.) hides modules from Studio nav
 
-  # One-time / ops: seed QA accounts via POST /api/qa/seed
-  # Authorization: Bearer <QA_SEED_TOKEN>. Rotate or remove after seeding.
-  - variable: QA_SEED_TOKEN
-    value: "cog-qa-seed-2026-c2s-04d9"
+  # When true, apphosting-build.sh seeds C2S QA accounts (idempotent).
+  # Turn off after first successful deploy that includes the seeder.
+  - variable: QA_SEED_ON_DEPLOY
+    value: "true"
     availability:
-      - RUNTIME
+      - BUILD
 
   # ── Scheduled jobs (Cloud Functions call the /api/cron/* endpoints) ──
   - variable: CRON_SECRET
