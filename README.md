@@ -12,6 +12,8 @@ Church operations platform for **Church of God Dasmariñas** (COG App).
 
 **[docs/SYSTEM_ARCHITECTURE.md](./docs/SYSTEM_ARCHITECTURE.md)** — system architecture, package boundaries, deploy, and **open task backlog**.
 
+**[docs/APPHOSTING_DEPLOY.md](./docs/APPHOSTING_DEPLOY.md)** — App Hosting settings, secrets, and how to roll out Studio (+ QA seed).
+
 Also useful:
 
 - [AGENTS.md](./AGENTS.md) — environment gotchas and deploy notes
