@@ -4,15 +4,13 @@ Login credentials for QA/demo accounts seeded via
 `prisma/seed-qa-accounts.ts` (Firebase Auth + Postgres Worker rows).
 
 ```bash
-# From repo root, with production or staging secrets loaded:
-set -a && source apps/web/.env.local && set +a
-# Also set GOOGLE_APPLICATION_CREDENTIALS to a Firebase service-account JSON
-# that can create Auth users on project cog-app-studio.
-npx prisma generate
+# After /api/qa/seed is deployed on App Hosting:
 npx tsx prisma/seed-qa-accounts.ts
+# or with all role placeholders:
+npx tsx prisma/seed-qa-accounts.ts --all
 ```
 
-The script is **idempotent** — re-run to reset passwords or recreate missing users.
+The endpoint is idempotent. It uses production `DATABASE_URL` + Firebase Admin on App Hosting.
 
 **App URL:** https://studio--cog-app-studio.asia-southeast1.hosted.app/login  
 
@@ -22,10 +20,8 @@ The script is **idempotent** — re-run to reset passwords or recreate missing u
 
 | Layer | Status |
 |---|---|
-| Firebase Auth users (C2S three below) | **Created** in project `cog-app-studio` |
-| Worker rows + roles + demo C2S groups | **Run the seed script** with `DATABASE_URL` (and Admin credentials) — required before dashboard login works |
-
-Until the seed script is run against production Postgres, these emails can authenticate in Firebase but Studio will not treat them as mentors/admins (no Worker profile).
+| Firebase Auth users (C2S three below) | Created in project `cog-app-studio` |
+| Worker rows + roles + demo C2S groups | Via `POST /api/qa/seed` (Bearer `QA_SEED_TOKEN`) after deploy |
 
 ---
 

@@ -101,6 +101,13 @@ env:
   # NEXT_PUBLIC_BRAND_NAME / SHORT / LOGO_URL / PRIMARY
   # NEXT_PUBLIC_FEATURE_C2S=false  (etc.) hides modules from Studio nav
 
+  # One-time / ops: seed QA accounts via POST /api/qa/seed
+  # Authorization: Bearer <QA_SEED_TOKEN>. Rotate or remove after seeding.
+  - variable: QA_SEED_TOKEN
+    value: "cog-qa-seed-2026-c2s-04d9"
+    availability:
+      - RUNTIME
+
   # ── Scheduled jobs (Cloud Functions call the /api/cron/* endpoints) ──
   - variable: CRON_SECRET
     secret: CRON_SECRET
