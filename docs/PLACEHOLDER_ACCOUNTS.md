@@ -33,6 +33,11 @@ npx tsx scripts/seed-qa-accounts-core.ts
 
 ### Suggested C2S QA script
 
+Full manual checklist with pass/fail steps:  
+**[`C2S_MANUAL_QA_USER_STORIES.md`](./C2S_MANUAL_QA_USER_STORIES.md)** ([Word](./C2S_MANUAL_QA_USER_STORIES.docx))
+
+Short path:
+
 1. Open Group Finder (no login) → find **QA Demo C2S Group** → submit a join request.  
 2. Log in as **C2S Mentor** → **My Group** → Approve / Reject.  
 3. Confirm mentee appears; create a session + attendance.  
