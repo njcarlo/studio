@@ -281,7 +281,7 @@ Prioritized for contributors. Check GitHub issues/PRs before starting.
 
 | ID | Task | Notes |
 |---|---|---|
-| T5 | Deploy / smoke `apps/c2s-public` on App Hosting | Point Studio redirect via `NEXT_PUBLIC_C2S_PUBLIC_URL` or module URL override until custom DNS |
+| T5 | Deploy / smoke `apps/c2s-public` on its own App Hosting backend | Interim: Studio serves finder at `/public/c2s-join` (`NEXT_PUBLIC_C2S_EMBEDDED=true`). Flip to dedicated host when backend exists |
 | T6 | Local C2S workflow | `NEXT_PUBLIC_MODULE_URL_C2S=http://localhost:9004` and/or `NEXT_PUBLIC_C2S_EMBEDDED=true` |
 | T7 | Second-brand smoke test | Different `NEXT_PUBLIC_BRAND_*` + `NEXT_PUBLIC_FEATURE_*=false` on a staging backend |
 | T8 | Multi-tenant data/auth decision | Required before a second live org |
