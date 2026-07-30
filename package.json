@@ -6,6 +6,10 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "@types/react": "18.2.0",
+    "@types/react-dom": "18.2.0"
+  },
   "scripts": {
     "build": "turbo run build",
     "build:web": "turbo run build --filter=web",
@@ -13,6 +17,7 @@
     "dev:web": "turbo run dev --filter=web",
     "dev:inventory": "turbo run dev --filter=inventory",
     "dev:tract-tracker": "turbo run dev --filter=tract-tracker",
+    "dev:c2s": "turbo run dev --filter=c2s",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "migrate:sql": "tsx scripts/migrate.ts"

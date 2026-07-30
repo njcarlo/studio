@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
+
+/* Custom C2S popup style */
+.c2s-popup .leaflet-popup-content-wrapper {
+    border-radius: 12px !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.13) !important;
+    padding: 0 !important;
+    border: none !important;
+}
+.c2s-popup .leaflet-popup-content {
+    margin: 12px 14px !important;
+}
+.c2s-popup .leaflet-popup-tip {
+    background: white !important;
+}
+.c2s-popup .leaflet-popup-tip-container {
+    margin-top: -1px;
+}
+
+@layer base {
+  :root {
+    --teal:       #2dc7be;
+    --teal-dark:  #1fa89f;
+    --coral:      #f03e5f;
+    --coral-dark: #d42f52;
+    --navy:       #0f172a;
+    --card-bg:    #f8f9fc;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 400;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+  }
+}
+
+@layer utilities {
+  .btn-teal {
+    @apply bg-[#2dc7be] hover:bg-[#1fa89f] text-white font-semibold transition-colors;
+  }
+  .btn-coral {
+    @apply bg-[#f03e5f] hover:bg-[#d42f52] text-white font-semibold transition-colors;
+  }
+  .btn-outline {
+    @apply border border-gray-300 hover:border-[#2dc7be] text-gray-700 hover:text-[#2dc7be] font-semibold transition-colors;
+  }
+}
