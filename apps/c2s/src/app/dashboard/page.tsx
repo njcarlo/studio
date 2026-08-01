@@ -19,10 +19,11 @@ import EndorsedViewMembersModal from '@/components/EndorsedViewMembersModal';
 import EndorsedEditGroupModal from '@/components/EndorsedEditGroupModal';
 import EndorsedCreateGroupModal from '@/components/EndorsedCreateGroupModal';
 import MentorProfileModal from '@/components/MentorProfileModal';
+import SettingsModal from '@/components/SettingsModal';
 import ClusterHeadDashboard from '@/components/ClusterHeadDashboard';
 import { CH_MENTOR_REPORT_DATA, CH_COORD_REPORT_DATA, CH_BARANGAY_DATA, CH_GROWTH_DATA } from '@/components/ClusterHeadDashboard';
 import CoordinatorDashboard from '@/components/CoordinatorDashboard';
-import MinistryHeadDashboard from '@/components/MinistryHeadDashboard';
+import DepartmentHeadDashboard from '@/components/MinistryHeadDashboard';
 
 /* â”€â”€ Shared data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const DEPT_WORKERS = [
@@ -45,14 +46,17 @@ const TOTAL_MENTORS = DEPT_MENTORS.reduce((s, d) => s + d.value, 0);
 /* â”€â”€ Shared Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function DashNav({ onLogout }: { onLogout: () => void }) {
     const { user } = useAuth();
+    const [showSettings, setShowSettings] = useState(false);
     if (!user) return null;
     const isHead = user.role === 'ministry_head';
     const isCluster = user.role === 'cluster_head';
     const isCoord = user.role === 'c2s_coordinator';
     const roleColor = isHead ? '#0b9b8a' : isCluster ? '#6741d9' : isCoord ? '#0b9b8a' : '#e91e8c';
-    const roleLabel = isHead ? 'Ministry Head' : isCluster ? 'Cluster Head' : isCoord ? 'C2S Coordinator' : 'Mentor';
+    const roleLabel = isHead ? 'Department Head' : isCluster ? 'Cluster Head' : isCoord ? 'C2S Coordinator' : 'Mentor';
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
+        <>
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
             <div className="w-full px-6 flex items-center justify-between h-16">
                 <Link href="/" className="flex items-center gap-2.5">
                     <div className="w-9 h-9 relative shrink-0">
@@ -74,13 +78,25 @@ function DashNav({ onLogout }: { onLogout: () => void }) {
                             {roleLabel}
                         </p>
                     </div>
+                        {/* Settings / Font Size button */}
+                        <button
+                            onClick={() => setShowSettings(true)}
+                            aria-label="Settings"
+                            title="Text Size and Settings"
+                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors"
+                        >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                            </svg>
+                        </button>
                     <button onClick={onLogout}
-                        className="ml-3 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-full transition-colors">
+                        className="ml-1 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-full transition-colors">
                         Sign Out
                     </button>
                 </div>
             </div>
         </nav>
+        </>
     );
 }
 
@@ -139,55 +155,139 @@ const C2S_GROUPS_BY_DEPT = [
     { dept: 'Administration', community:  7, church:  6, total: 13 },
 ];
 
-/* ── DonutCard ──────────────────────────────────────────────────────────────── */
-function DonutCard({ title, total, data }: {
-    title: string;
-    total: number;
-    data: { name: string; value: number; color: string }[];
-}) {
+/* ─── WorkersMentorsChart ────────────────────────────────────────────────── */
+const DEPT_COMBINED = [
+    { dept: 'Worship',        workers: DEPT_WORKERS[0].value, mentors: DEPT_MENTORS[0].value, color: '#4DA6F5' },
+    { dept: 'Outreach',       workers: DEPT_WORKERS[1].value, mentors: DEPT_MENTORS[1].value, color: '#F5C842' },
+    { dept: 'Relationship',   workers: DEPT_WORKERS[2].value, mentors: DEPT_MENTORS[2].value, color: '#5CB85C' },
+    { dept: 'Discipleship',   workers: DEPT_WORKERS[3].value, mentors: DEPT_MENTORS[3].value, color: '#E05C5C' },
+    { dept: 'Administration', workers: DEPT_WORKERS[4].value, mentors: DEPT_MENTORS[4].value, color: '#C5A3E0' },
+];
+const COMBINED_TOTAL_WORKERS = DEPT_COMBINED.reduce((s, d) => s + d.workers, 0);
+const COMBINED_TOTAL_MENTORS = DEPT_COMBINED.reduce((s, d) => s + d.mentors, 0);
+const COMBINED_GRAND_TOTAL   = COMBINED_TOTAL_WORKERS + COMBINED_TOTAL_MENTORS;
+
+const DONUT_DATA = DEPT_COMBINED.map((d) => ({ name: d.dept, value: d.workers + d.mentors, color: d.color }));
+
+function WorkersMentorsChart() {
+    const W = 320;
+    const H = 300;
+    const CX = 160;
+    const CY = 150;
+    const OR = 110;
+    const IR = 68;
+    const RADIAN = Math.PI / 180;
+
+    const total = DONUT_DATA.reduce((s, d) => s + d.value, 0);
+
+    // Compute slices starting at top (-90 deg)
+    type SliceInfo = { name: string; color: string; percent: number; startDeg: number; endDeg: number };
+    const slices: SliceInfo[] = [];
+    let cum = -90;
+    for (const d of DONUT_DATA) {
+        const sweep = (d.value / total) * 360;
+        slices.push({ name: d.name, color: d.color, percent: d.value / total, startDeg: cum, endDeg: cum + sweep });
+        cum += sweep;
+    }
+
+    function arc(cx: number, cy: number, r: number, startDeg: number, endDeg: number, inner: number): string {
+        const s = startDeg * RADIAN;
+        const e = endDeg   * RADIAN;
+        const large = (endDeg - startDeg) > 180 ? 1 : 0;
+        const x1 = cx + r     * Math.cos(s); const y1 = cy + r     * Math.sin(s);
+        const x2 = cx + r     * Math.cos(e); const y2 = cy + r     * Math.sin(e);
+        const ix1= cx + inner * Math.cos(s); const iy1= cy + inner * Math.sin(s);
+        const ix2= cx + inner * Math.cos(e); const iy2= cy + inner * Math.sin(e);
+        return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${inner} ${inner} 0 ${large} 0 ${ix1} ${iy1} Z`;
+    }
+
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            <h2 className="font-bold text-gray-900 text-base mb-0.5">{title}</h2>
-            <p className="text-xs text-gray-400 mb-4">Total Workers: <span className="font-bold text-gray-700">{total.toLocaleString()}</span></p>
-            <div className="flex items-center gap-4">
-                <div className="shrink-0" style={{ width: 160, height: 160 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie data={data} cx="50%" cy="50%" innerRadius={48} outerRadius={72} dataKey="value" paddingAngle={2}>
-                                {data.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
-                            </Pie>
-                            <Tooltip
-                                contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontSize: '12px' }}
-                                formatter={(v: number) => [v.toLocaleString(), '']}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    {data.map((d) => (
-                        <div key={d.name} className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
-                                <span className="text-xs text-gray-600 truncate">{d.name}</span>
-                            </div>
-                            <span className="text-xs font-semibold text-gray-800 shrink-0">{d.value.toLocaleString()}</span>
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <h2 className="font-bold text-gray-900 text-base mb-0.5">Workers by Department</h2>
+            <p className="text-xs text-gray-400 mb-4">Worker and mentor distribution by department.</p>
+
+            <div className="flex items-center justify-center gap-8 mb-8">
+                {/* Pure SVG donut — overflow visible so labels never clip */}
+                <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', flexShrink: 0 }}>
+                    {/* Slices */}
+                    {slices.map((s) => (
+                        <path
+                            key={s.name}
+                            d={arc(CX, CY, OR, s.startDeg, s.endDeg, IR)}
+                            fill={s.color}
+                            stroke="white"
+                            strokeWidth={2}
+                        />
+                    ))}
+                    {/* Labels with leader lines */}
+                    {slices.map((s) => {
+                        if (s.percent < 0.04) return null;
+                        const midDeg = (s.startDeg + s.endDeg) / 2;
+                        const midRad = midDeg * RADIAN;
+                        const lx1 = CX + (OR + 5)  * Math.cos(midRad);
+                        const ly1 = CY + (OR + 5)  * Math.sin(midRad);
+                        const lx2 = CX + (OR + 20) * Math.cos(midRad);
+                        const ly2 = CY + (OR + 20) * Math.sin(midRad);
+                        const tx  = CX + (OR + 26) * Math.cos(midRad);
+                        const ty  = CY + (OR + 26) * Math.sin(midRad);
+                        const anchor = tx >= CX ? 'start' : 'end';
+                        return (
+                            <g key={`lbl-${s.name}`}>
+                                <line x1={lx1} y1={ly1} x2={lx2} y2={ly2} stroke="#9ca3af" strokeWidth={1} />
+                                <text
+                                    x={tx} y={ty}
+                                    fill="#6b7280"
+                                    textAnchor={anchor}
+                                    dominantBaseline="central"
+                                    fontSize={11}
+                                    fontFamily="Inter, system-ui, sans-serif"
+                                >
+                                    {`${(s.percent * 100).toFixed(0)}%`}
+                                </text>
+                            </g>
+                        );
+                    })}
+                </svg>
+
+                {/* Legend */}
+                <div className="flex flex-col gap-3.5">
+                    {DONUT_DATA.map((d) => (
+                        <div key={d.name} className="flex items-center gap-2.5">
+                            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: d.color }} />
+                            <span className="text-sm text-gray-600">{d.name}</span>
                         </div>
                     ))}
                 </div>
             </div>
+
             {/* Table */}
-            <div className="mt-5 border-t border-gray-100 pt-4">
-                <div className="grid grid-cols-2 gap-x-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
-                    <span>Department</span><span className="text-right">Workers</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                    {data.map((d) => (
-                        <div key={d.name} className="grid grid-cols-2 gap-x-4 text-xs">
-                            <span className="text-gray-600">{d.name}</span>
-                            <span className="text-right font-semibold text-gray-800">{d.value.toLocaleString()}</span>
-                        </div>
-                    ))}
-                </div>
+            <div className="rounded-xl overflow-hidden border border-gray-100">
+                <table className="w-full">
+                    <thead>
+                        <tr style={{ background: '#f8f9fc', borderBottom: '1px solid #e5e7eb' }}>
+                            <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Workers</th>
+                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mentors</th>
+                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {DEPT_COMBINED.map((row, i) => (
+                            <tr key={row.dept} style={{ borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
+                                <td className="px-5 py-4 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{row.workers.toLocaleString()}</td>
+                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{row.mentors.toLocaleString()}</td>
+                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{(row.workers + row.mentors).toLocaleString()}</td>
+                            </tr>
+                        ))}
+                        <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
+                            <td className="px-5 py-4 text-sm font-black text-gray-800">Total</td>
+                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{COMBINED_TOTAL_WORKERS.toLocaleString()}</td>
+                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{COMBINED_TOTAL_MENTORS.toLocaleString()}</td>
+                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{COMBINED_GRAND_TOTAL.toLocaleString()}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -457,6 +557,7 @@ function EndorsedTab() {
 function MentorDashboard() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'my-groups' | 'potential-mentees' | 'mentees' | 'endorsed'>('dashboard');
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [viewingGroup, setViewingGroup] = useState<C2SGroup | null>(null);
     const [editingGroup, setEditingGroup] = useState<C2SGroup | null>(null);
     const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -555,7 +656,7 @@ function MentorDashboard() {
             )}
 
             {/* â”€â”€ Left Sidebar â”€â”€ */}
-            <aside className="w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40">
+            <aside className={`w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 {/* MENU label */}
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
 
@@ -644,7 +745,7 @@ function MentorDashboard() {
             </aside>
 
             {/* â”€â”€ Main content â”€â”€ */}
-            <div className="ml-56 flex-1 pt-6 px-6 pb-16">
+            <div className="md:ml-56 flex-1 pt-6 px-4 sm:px-6 pb-16">
 
                 {/* Title â€” only shown on dashboard tab */}
                 {activeTab === 'dashboard' && (
@@ -680,7 +781,7 @@ function MentorDashboard() {
                             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
                                 <div className="text-4xl mb-3">ðŸ‘¥</div>
                                 <p className="font-semibold text-gray-700 text-sm">No groups assigned yet</p>
-                                <p className="text-xs text-gray-400 mt-1">Contact the ministry head to get assigned to a group.</p>
+                                <p className="text-xs text-gray-400 mt-1">Contact the department head to get assigned to a group.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -826,11 +927,8 @@ function MentorDashboard() {
                     ))}
                 </div>
 
-                {/* Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-                    <DonutCard title="Workers by Department"  total={TOTAL_WORKERS} data={DEPT_WORKERS} />
-                    <DonutCard title="Mentors by Department"  total={TOTAL_MENTORS} data={DEPT_MENTORS} />
-                </div>
+                {/* Combined Workers + Mentors chart */}
+                <WorkersMentorsChart />
 
                 {/* Mentees by Department */}
                 <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -1183,7 +1281,7 @@ export default function DashboardPage() {
             <>
                 <DashNav onLogout={handleLogout} />
                 <div className="pt-16">
-                    <MinistryHeadDashboard />
+                    <DepartmentHeadDashboard />
                 </div>
             </>
         );

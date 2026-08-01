@@ -115,7 +115,7 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
 
                 <form onSubmit={handleSubmit} className="p-7">
                     {/* Header */}
-                    <h2 className="text-xl font-black text-gray-900 mb-1">Join C2S Group</h2>
+                    <h2 className="text-xl font-black text-gray-900 mb-1">Sign Up</h2>
                     <p className="text-sm text-gray-500 mb-6">
                         You&apos;re signing up for{' '}
                         <span style={{ color: '#e91e8c' }} className="font-semibold">{group.name}</span>
@@ -250,7 +250,7 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                         <button type="submit" disabled={!agreed}
                             className="px-8 py-2.5 rounded-full text-sm font-bold text-white transition-colors"
                             style={{ background: agreed ? '#e91e8c' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}>
-                            Sign Me Up
+                            Sign Up
                         </button>
                     </div>
                 </form>

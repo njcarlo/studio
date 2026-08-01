@@ -6,6 +6,7 @@ import {
     MH_ACTIVE_MENTEES_LIST, MH_NOTIFICATIONS,
     type OutreachCluster,
 } from '@/lib/data';
+import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
 import ClusterMap, { DASMARIÑAS_GROUPS, type ClusterMapGroup } from './ClusterMap';
 import {
     ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -45,196 +46,130 @@ const MH_NAV: { key: NavKey; label: string; icon: string }[] = [
     { key: 'reports',       label: 'Reports',             icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
 ];
 
-// ─── Dashboard Tab ─────────────────────────────────────────────────────────────
-const GROWTH_DATA = [
-    { month: 'Feb', mentees: 22, mentors: 9  },
-    { month: 'Mar', mentees: 27, mentors: 10 },
-    { month: 'Apr', mentees: 30, mentors: 11 },
-    { month: 'May', mentees: 33, mentors: 11 },
-    { month: 'Jun', mentees: 38, mentors: 12 },
-    { month: 'Jul', mentees: 42, mentors: 12 },
-];
-const COMMUNITY_VS_CHURCH = [
-    { name: 'Community-based', value: 9, color: '#5b50d6' },
-    { name: 'Church-based',    value: 3, color: '#0b9b8a' },
-];
-
-function DashboardTab() {
-    const totalClusters    = MH_CLUSTERS.length;
-    const totalCoordinators = MH_COORDINATORS.length;
-    const totalMentors     = MH_ALL_MENTORS.length;
-    const totalPotential   = MH_POTENTIAL_MENTEES.length;
-    const totalActive      = MH_ACTIVE_MENTEES_LIST.length;
-    const totalCommunity   = MH_CLUSTERS.reduce((s, c) => s + c.communityBased, 0);
-    const totalChurch      = MH_CLUSTERS.reduce((s, c) => s + c.churchBased, 0);
-
-    const widgets = [
-        { label: 'Total Clusters',          value: totalClusters,     color: '#5b50d6', bg: '#ede9fe',
-          icon: 'M20 6h-2.18c.07-.44.18-.86.18-1a3 3 0 1 0-6 0c0 .14.11.56.18 1H6c-1.11 0-2 .9-2 2v11c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-8-3a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm2 16H6v-2h8v2zm6-4H6v-6h14v6z' },
-        { label: 'Total Coordinators',      value: totalCoordinators, color: '#e91e8c', bg: '#fde8ef',
-          icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-        { label: 'Total Mentors',           value: totalMentors,      color: '#0b9b8a', bg: '#e0f7f5',
-          icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
-        { label: 'Total Potential Mentees', value: totalPotential,    color: '#e67700', bg: '#fff3e0',
-          icon: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
-        { label: 'Total Active Mentees',    value: totalActive,       color: '#1971c2', bg: '#e0f0ff',
-          icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-    ];
-
+// ─── Dashboard Notifications panel ───────────────────────────────────────────
+function MHDashboardNotifications() {
+    const [notifs, setNotifs] = useState(MH_NOTIFICATIONS);
+    const unread = notifs.filter(n => !n.read).length;
+    const NOTIF_ICON: Record<string, { bg: string; dot: string }> = {
+        worker:      { bg: '#ede9fe', dot: '#5b50d6' },
+        worker_id:   { bg: '#fde8ef', dot: '#e91e8c' },
+        coordinator: { bg: '#d3f9f0', dot: '#0b9b8a' },
+        mentor:      { bg: '#fef3c7', dot: '#e67700' },
+    };
     return (
-        <div>
-            <div className="mb-5">
-                <h1 className="text-2xl font-black text-gray-900">Outreach Ministry</h1>
-                <p className="text-sm text-gray-400 mt-0.5">Overall monitoring of the Outreach Ministry across all clusters.</p>
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+                <div>
+                    <h2 className="font-bold text-gray-900 text-base">Dashboard Notifications</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">{unread > 0 ? `${unread} unread` : 'All caught up'}</p>
+                </div>
+                {unread > 0 && (
+                    <button onClick={() => setNotifs(prev => prev.map(n => ({ ...n, read: true })))}
+                        className="text-xs font-semibold text-[#5b50d6] hover:underline">Mark all as read</button>
+                )}
             </div>
-
-            {/* Stat widgets */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-                {widgets.map((w) => (
-                    <div key={w.label} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <div className="flex items-start justify-between mb-3">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-snug">{w.label}</span>
-                            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: w.bg }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill={w.color}><path d={w.icon}/></svg>
+            <div className="divide-y divide-gray-50">
+                {notifs.map(n => {
+                    const ic = NOTIF_ICON[n.type] ?? { bg: '#f3f4f6', dot: '#9ca3af' };
+                    return (
+                        <div key={n.id} onClick={() => setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
+                            className={`flex items-start gap-4 px-6 py-4 cursor-pointer transition-colors hover:bg-gray-50 ${!n.read ? 'bg-[#faf8ff]' : ''}`}>
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: ic.bg }}>
+                                <div className="w-3 h-3 rounded-full" style={{ background: ic.dot }} />
                             </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={`text-sm leading-snug ${n.read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{n.text}</p>
+                                <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                            </div>
+                            {!n.read && <div className="w-2 h-2 rounded-full bg-[#5b50d6] shrink-0 mt-1.5" />}
                         </div>
-                        <p className="text-[2.2rem] font-normal text-gray-900 leading-none">{w.value}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Charts row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
-                {/* Growth chart */}
-                <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                    <h2 className="font-bold text-gray-900 text-base mb-0.5">Ministry Growth</h2>
-                    <p className="text-xs text-gray-400 mb-5">Active mentees and mentors across all clusters.</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={GROWTH_DATA} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false}/>
-                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                            <Tooltip contentStyle={TOOLTIP_STYLE}/>
-                            <Legend iconType="plainline" iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}/>
-                            <Line type="monotone" dataKey="mentees" name="Active Mentees" stroke="#5b50d6" strokeWidth={2} dot={{ r: 3, fill: '#5b50d6', strokeWidth: 0 }}/>
-                            <Line type="monotone" dataKey="mentors" name="Mentors"        stroke="#0b9b8a" strokeWidth={2} dot={{ r: 3, fill: '#0b9b8a', strokeWidth: 0 }}/>
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Community vs Church */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                    <h2 className="font-bold text-gray-900 text-base mb-0.5">Community vs Church-Based</h2>
-                    <p className="text-xs text-gray-400 mb-3">Group type breakdown across all clusters.</p>
-                    <ResponsiveContainer width="100%" height={150}>
-                        <PieChart>
-                            <Pie data={COMMUNITY_VS_CHURCH} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value" paddingAngle={3}>
-                                {COMMUNITY_VS_CHURCH.map((e) => <Cell key={e.name} fill={e.color}/>)}
-                            </Pie>
-                            <Tooltip contentStyle={TOOLTIP_STYLE}/>
-                            <Legend iconSize={10} wrapperStyle={{ fontSize: '11px' }}/>
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div className="mt-auto grid grid-cols-2 gap-2">
-                        <div className="rounded-xl bg-[#f8f9fc] px-3 py-2 text-center">
-                            <p className="text-xl font-black text-[#5b50d6]">{totalCommunity}</p>
-                            <p className="text-[10px] text-gray-400">Community</p>
-                        </div>
-                        <div className="rounded-xl bg-[#f8f9fc] px-3 py-2 text-center">
-                            <p className="text-xl font-black text-[#0b9b8a]">{totalChurch}</p>
-                            <p className="text-[10px] text-gray-400">Church-Based</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Cluster summary table */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <h2 className="font-bold text-gray-900 text-base mb-0.5">Cluster Summary</h2>
-                <p className="text-xs text-gray-400 mb-5">Overview of all Outreach Clusters.</p>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="border-b border-gray-100">
-                                {['Cluster','Cluster Head','Coordinator','Groups','Mentors','Potential','Active'].map(h => (
-                                    <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest pb-3 pr-6">{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {MH_CLUSTERS.map((c) => (
-                                <tr key={c.id}>
-                                    <td className="py-3 pr-6 font-semibold text-gray-900">{c.name}</td>
-                                    <td className="py-3 pr-6 text-gray-600">{c.clusterHead}</td>
-                                    <td className="py-3 pr-6 text-gray-600">{c.coordinator}</td>
-                                    <td className="py-3 pr-6 font-semibold text-gray-900">{c.totalGroups}</td>
-                                    <td className="py-3 pr-6 font-semibold text-gray-900">{c.totalMentors}</td>
-                                    <td className="py-3 pr-6 font-semibold text-[#e67700]">{c.totalPotentialMentees}</td>
-                                    <td className="py-3 pr-6 font-semibold text-[#0b9b8a]">{c.totalActiveMentees}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
 
+function DashboardTab() {
+    return (
+        <div>
+            <div className="mb-5">
+                <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
+                <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
+            </div>
+            <SharedDashboardTab data={CHURCH_WIDE_DATA} />
+        </div>
+    );
+}
+
+
 // ─── Clusters Tab ─────────────────────────────────────────────────────────────
-function ClusterDetailPanel({ cluster, onClose }: { cluster: OutreachCluster; onClose: () => void }) {
+function MentorProfileView({ mentor, cluster, onClose }: { mentor: typeof MH_ALL_MENTORS[0]; cluster: OutreachCluster; onClose: () => void }) {
+    const mentees = MH_ACTIVE_MENTEES_LIST.filter(m => m.mentor === mentor.name);
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose}/>
-            <div className="fixed top-0 right-0 bottom-0 z-[101] w-[440px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
-                <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
-                    <div><h2 className="text-lg font-semibold text-gray-900">{cluster.name}</h2><p className="text-xs text-gray-400 mt-0.5">Cluster Details</p></div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1"><svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
-                </div>
-                <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-                    <div className="grid grid-cols-2 gap-3">
+            {/* Backdrop */}
+            <div className="fixed inset-0 z-[200] bg-black/40" onClick={onClose} />
+            {/* Modal */}
+            <div className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto pointer-events-auto" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
+                    {/* Header */}
+                    <div className="flex items-start justify-between px-6 pt-6 pb-4">
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900">{mentor.name}</h2>
+                            <p className="text-sm text-gray-400 mt-0.5">Outreach · {cluster.name}</p>
+                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 rounded-full border border-gray-200 transition-colors">
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </button>
+                    </div>
+
+                    {/* Info Cards */}
+                    <div className="px-6 pb-4 grid grid-cols-2 gap-3">
                         {[
-                            { label: 'Cluster Head', name: cluster.clusterHead, color: cluster.clusterHeadColor, initials: cluster.clusterHeadInitials },
-                            { label: 'C2S Coordinator', name: cluster.coordinator, color: cluster.coordinatorColor, initials: cluster.coordinatorInitials },
-                        ].map((r) => (
-                            <div key={r.label} className="rounded-xl border border-gray-100 bg-[#f8f9fc] px-4 py-3">
-                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2">{r.label}</p>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: r.color }}>{r.initials}</div>
-                                    <p className="text-xs font-semibold text-gray-800">{r.name}</p>
+                            { label: 'Contact',        value: mentor.phone },
+                            { label: 'Department',     value: 'Outreach' },
+                            { label: 'Cluster',        value: cluster.name },
+                            { label: 'Date Assigned',  value: mentor.dateAssigned },
+                            { label: 'Status',         value: mentor.status },
+                            { label: 'Active Mentees', value: String(mentor.activeMentees) },
+                        ].map((f) => (
+                            <div key={f.label} className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                                <p className="text-xs text-gray-400 mb-1">{f.label}</p>
+                                <p className="text-sm font-bold text-gray-900">{f.value}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* My Mentees */}
+                    <div className="px-6 pb-6">
+                        <h3 className="font-bold text-gray-900 text-sm mb-3">My Mentees</h3>
+                        {mentees.length === 0 ? (
+                            <p className="text-sm text-gray-400">No active mentees assigned.</p>
+                        ) : (
+                            <div className="rounded-xl border border-gray-200 overflow-hidden">
+                                {/* Table Header */}
+                                <div className="grid grid-cols-12 px-4 py-2 bg-[#f8f9fc] border-b border-gray-100">
+                                    <p className="col-span-4 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Name</p>
+                                    <p className="col-span-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Module</p>
+                                    <p className="col-span-5 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Progress</p>
+                                </div>
+                                <div className="divide-y divide-gray-50">
+                                    {mentees.map((mt) => (
+                                        <div key={mt.id} className="grid grid-cols-12 items-center px-4 py-3">
+                                            <p className="col-span-4 text-sm font-semibold text-gray-900">{mt.name}</p>
+                                            <p className="col-span-3 text-xs text-gray-500">{mt.module}</p>
+                                            <div className="col-span-5 flex items-center gap-2">
+                                                <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                                                    <div className="h-1.5 rounded-full" style={{ width: `${mt.progress}%`, background: '#5b50d6' }} />
+                                                </div>
+                                                <span className="text-xs font-semibold text-gray-600 w-8 text-right shrink-0">{mt.progress}%</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-4 gap-3">
-                        {[
-                            { label: 'Groups',    value: cluster.totalGroups,           color: '#5b50d6' },
-                            { label: 'Mentors',   value: cluster.totalMentors,          color: '#0b9b8a' },
-                            { label: 'Potential', value: cluster.totalPotentialMentees, color: '#e67700' },
-                            { label: 'Active',    value: cluster.totalActiveMentees,    color: '#1971c2' },
-                        ].map((s) => (
-                            <div key={s.label} className="rounded-xl bg-[#f8f9fc] px-2 py-3 text-center">
-                                <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
-                                <p className="text-[9px] text-gray-400 mt-0.5">{s.label}</p>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
-                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Group Types</p>
-                        {[{ label: 'Community-based', value: cluster.communityBased }, { label: 'Church-based', value: cluster.churchBased }].map((r) => (
-                            <div key={r.label} className="flex items-center justify-between px-4 py-2.5 border-t border-gray-100">
-                                <span className="text-xs text-gray-500">{r.label}</span>
-                                <span className="text-xs font-bold text-gray-800">{r.value}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
-                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Barangays Covered</p>
-                        <div className="flex flex-wrap gap-1.5 px-4 pb-4 pt-1">
-                            {cluster.barangays.map((b) => (
-                                <span key={b} className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#ede9fe] text-[#6741d9]">{b}</span>
-                            ))}
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -242,11 +177,81 @@ function ClusterDetailPanel({ cluster, onClose }: { cluster: OutreachCluster; on
     );
 }
 
+function ClusterDetailPanel({ cluster, onClose }: { cluster: OutreachCluster; onClose: () => void }) {
+    const [viewingMentor, setViewingMentor] = useState<typeof MH_ALL_MENTORS[0] | null>(null);
+    const mentors = MH_ALL_MENTORS.filter(m => m.cluster === cluster.name);
+    const totalMembers = cluster.totalActiveMentees + cluster.totalPotentialMentees;
+
+    return (
+        <div className="flex flex-col gap-6">
+            {/* Mentor Profile Modal */}
+            {viewingMentor && (
+                <MentorProfileView mentor={viewingMentor} cluster={cluster} onClose={() => setViewingMentor(null)} />
+            )}
+            {/* Header */}
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-2xl font-black text-gray-900">{cluster.name}</h1>
+                    <p className="text-sm text-gray-400 mt-0.5">Led by {cluster.clusterHead}</p>
+                </div>
+                <button onClick={onClose} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-2 bg-white transition-colors">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                    All Clusters
+                </button>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 gap-3">
+                {[
+                    { label: 'Mentors',  value: cluster.totalMentors,   color: '#0b9b8a', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+                    { label: 'Mentees',  value: totalMembers,           color: '#5b50d6', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                ].map((s) => (
+                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 px-5 py-4 flex items-center gap-4" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: s.color + '18' }}>
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill={s.color}><path d={s.icon}/></svg>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-black leading-none" style={{ color: s.color }}>{s.value}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Mentor Directory */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                <div className="px-6 py-4 border-b border-gray-50">
+                    <h2 className="font-bold text-gray-900 text-base">Mentor Directory</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">All mentors currently assigned to this cluster</p>
+                </div>
+                <div className="p-4 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {mentors.map((m) => (
+                        <div key={m.id} className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex flex-col gap-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                            <div>
+                                <p className="text-sm font-bold text-gray-900">{m.name}</p>
+                                <p className="text-xs text-gray-400">{cluster.name}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Mentees</p>
+                                <p className="text-sm font-bold text-gray-800 mt-0.5">{m.activeMentees}</p>
+                            </div>
+                            <button onClick={() => setViewingMentor(m)} className="text-xs font-semibold text-white py-2.5 rounded-xl w-full transition-colors" style={{ background: '#5b50d6' }}>View Profile</button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+        </div>
+    );
+}
+
 function ClustersTab() {
     const [viewing, setViewing] = useState<OutreachCluster | null>(null);
+    if (viewing) {
+        return <ClusterDetailPanel cluster={viewing} onClose={() => setViewing(null)} />;
+    }
     return (
         <div>
-            {viewing && <ClusterDetailPanel cluster={viewing} onClose={() => setViewing(null)}/>}
             <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Clusters</h1><p className="text-sm text-gray-400 mt-1">All Outreach Clusters under the ministry.</p></div>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
                 {MH_CLUSTERS.map((c) => (
@@ -254,10 +259,7 @@ function ClustersTab() {
                         <div className="flex items-start justify-between">
                             <div>
                                 <h3 className="font-bold text-gray-900 text-lg leading-tight">{c.name}</h3>
-                                <div className="flex gap-2 mt-1.5">
-                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ede9fe] text-[#6741d9]">{c.communityBased} Community</span>
-                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#e0f7f5] text-[#0b9b8a]">{c.churchBased} Church</span>
-                                </div>
+
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -276,15 +278,15 @@ function ClustersTab() {
                                 </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-4 gap-2">
-                            {[{ label: 'Groups', value: c.totalGroups, color: '#5b50d6' }, { label: 'Mentors', value: c.totalMentors, color: '#0b9b8a' }, { label: 'Potential', value: c.totalPotentialMentees, color: '#e67700' }, { label: 'Active', value: c.totalActiveMentees, color: '#1971c2' }].map((s) => (
+                        <div className="grid grid-cols-3 gap-2">
+                            {[{ label: 'Members', value: c.totalGroups, color: '#5b50d6' }, { label: 'Mentors', value: c.totalMentors, color: '#0b9b8a' }, { label: 'Active', value: c.totalActiveMentees, color: '#1971c2' }].map((s) => (
                                 <div key={s.label} className="bg-[#f8f9fc] rounded-xl px-2 py-3 text-center">
                                     <p className="text-lg font-black" style={{ color: s.color }}>{s.value}</p>
                                     <p className="text-[9px] text-gray-400 mt-0.5">{s.label}</p>
                                 </div>
                             ))}
                         </div>
-                        <button onClick={() => setViewing(c)} className="text-xs font-semibold text-white px-4 py-2.5 rounded-xl transition-colors w-full" style={{ background: '#5b50d6' }}>View Details</button>
+                        <button onClick={() => setViewing(c)} className="text-xs font-semibold text-white px-4 py-2.5 rounded-xl transition-colors w-full" style={{ background: '#5b50d6' }}>View Cluster</button>
                     </div>
                 ))}
             </div>
@@ -770,24 +772,37 @@ function NotificationsTab() {
 }
 
 // ─── Main Component — uses same shell/layout as MentorDashboard ───────────────
-export default function MinistryHeadDashboard() {
+export default function DepartmentHeadDashboard() {
     const [activeNav, setActiveNav] = useState<NavKey>('dashboard');
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const unreadCount = MH_NOTIFICATIONS.filter((n) => !n.read).length;
+
+    function navigate(key: NavKey) {
+        setActiveNav(key);
+        setSidebarOpen(false);
+    }
 
     return (
         <div className="flex min-h-screen" style={{ background: '#EEF2F7' }}>
 
-            {/* ── Left Sidebar — matches Mentor shell exactly ── */}
-            <aside className="w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40">
-                {/* Logo + COG App */}
+            {/* Mobile overlay */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/40 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
 
+            {/* ── Left Sidebar ── */}
+            <aside className={`w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40 transition-transform duration-200
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 {/* MENU label */}
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
 
                 {/* Nav items */}
                 <nav className="px-3 flex flex-col gap-1 overflow-y-auto flex-1">
                     {MH_NAV.map((item) => (
-                        <button key={item.key} onClick={() => setActiveNav(item.key)}
+                        <button key={item.key} onClick={() => navigate(item.key)}
                             className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeNav === item.key ? 'text-gray-800 bg-white shadow-sm' : 'text-gray-500 hover:bg-white/60'}`}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill={activeNav === item.key ? '#5b50d6' : '#aaa'}><path d={item.icon}/></svg>
                             {item.label}
@@ -808,8 +823,19 @@ export default function MinistryHeadDashboard() {
                 </nav>
             </aside>
 
-            {/* ── Main content — matches Mentor shell exactly ── */}
-            <div className="ml-56 flex-1 pt-6 px-6 pb-16">
+            {/* ── Main content ── */}
+            <div className="md:ml-56 flex-1 pt-6 px-4 sm:px-6 pb-16">
+                {/* Mobile hamburger */}
+                <button
+                    className="md:hidden mb-4 flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
+                    onClick={() => setSidebarOpen(true)}
+                    aria-label="Open menu"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                    Menu
+                </button>
                 {activeNav === 'dashboard'    && <DashboardTab/>}
                 {activeNav === 'clusters'     && <ClustersTab/>}
                 {activeNav === 'coordinators' && <CoordinatorsTab/>}

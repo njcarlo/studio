@@ -122,6 +122,7 @@ export default function GroupFinderPage() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [joiningGroup, setJoiningGroup] = useState<C2SGroup | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [showMobileMap, setShowMobileMap] = useState(false);
 
     const filtered = useMemo(() => C2S_GROUPS.filter((g) => {
         const q = search.toLowerCase();
@@ -160,6 +161,55 @@ export default function GroupFinderPage() {
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                         </svg>
                         Welcome! You&apos;ve signed up for <span className="font-black ml-1">{successMsg}</span>. We&apos;ll be in touch soon.
+                    </div>
+                </div>
+            )}
+
+            {/* ── Mobile Map Overlay ── */}
+            {showMobileMap && (
+                <div className="fixed inset-0 z-[9999] flex flex-col lg:hidden">
+                    {/* Map header */}
+                    <div className="bg-white px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0 pt-[calc(1rem+env(safe-area-inset-top))]" style={{ paddingTop: '4rem' }}>
+                        <div>
+                            <p className="font-bold text-gray-900 text-sm">Dasmariñas City</p>
+                            <p className="text-xs text-gray-400">{filtered.length} C2S groups nearby</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1.5 text-xs text-[#0b9b8a] font-semibold">
+                                <span className="w-2 h-2 rounded-full bg-[#0b9b8a] inline-block" />
+                                Live Map
+                            </span>
+                            <button
+                                onClick={() => setShowMobileMap(false)}
+                                className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs px-3 py-1.5 rounded-full transition-colors"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Close Map
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Map fills screen */}
+                    <div className="flex-1 overflow-hidden">
+                        <GroupFinderMap
+                            groups={filtered}
+                            selectedId={selectedId}
+                            onSelect={(id) => setSelectedId(id === selectedId ? null : id)}
+                        />
+                    </div>
+
+                    {/* Legend */}
+                    <div className="bg-white px-4 py-2 border-t border-gray-100 flex items-center gap-6 text-xs text-gray-500 shrink-0">
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#e91e8c' }} />
+                            Available
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#0b9b8a' }} />
+                            Selected
+                        </span>
                     </div>
                 </div>
             )}
@@ -211,7 +261,17 @@ export default function GroupFinderPage() {
                             {/* Hint row */}
                             <div className="flex items-center justify-between mb-3">
                                 <p className="text-xs font-semibold text-gray-700">{filtered.length} groups found</p>
-                                <p className="text-xs text-gray-400">Tap a card to see it on the map</p>
+                                {/* Desktop hint / Mobile View Map button */}
+                                <span className="hidden lg:block text-xs text-gray-400">Tap a card to see it on the map</span>
+                                <button
+                                    onClick={() => setShowMobileMap(true)}
+                                    className="lg:hidden flex items-center gap-1.5 bg-[#2dc7be] hover:bg-[#25b0a8] text-white font-semibold text-xs px-3 py-1.5 rounded-full transition-colors shadow-sm"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                    </svg>
+                                    View Map
+                                </button>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {filtered.length > 0
@@ -235,7 +295,7 @@ export default function GroupFinderPage() {
                         </div>
                     </div>
 
-                    {/* Right panel — Map */}
+                    {/* Right panel — Map (desktop only) */}
                     <div className="hidden lg:flex lg:w-[45%] flex-col overflow-hidden">
                         {/* Map header */}
                         <div className="bg-white px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">

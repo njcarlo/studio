@@ -7,6 +7,7 @@ import {
     type CoordPotentialMentee, type CoordMentor, type CoordGroup,
 } from '@/lib/data';
 import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
+import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
 import type { ReactNode } from 'react';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar,
@@ -1070,6 +1071,7 @@ function PotentialC2SGroupsTab() {
 export default function CoordinatorDashboard({ onLogout, reportsContent }: { onLogout: () => void; reportsContent?: ReactNode }) {
     const { user } = useAuth();
     const [activeNav, setActiveNav] = useState('dashboard');
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const clusterName = user?.cluster ?? 'Outreach Cluster 4';
 
     // local state for mutations
@@ -1116,12 +1118,21 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
     return (
         <div className="flex min-h-screen" style={{ background: '#EEF2F7' }}>
 
+            {/* Mobile overlay */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/40 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
             {/* ── Left Sidebar ── */}
-            <aside className="w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40">
+            <aside className={`w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40 transition-transform duration-200
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
                 <nav className="px-3 flex flex-col gap-1 flex-1 overflow-y-auto">
                     {COORD_NAV.map(item => (
-                        <button key={item.key} onClick={() => setActiveNav(item.key)}
+                        <button key={item.key} onClick={() => { setActiveNav(item.key); setSidebarOpen(false); }}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left relative ${activeNav === item.key ? 'text-gray-800 bg-white shadow-sm' : 'text-gray-500 hover:bg-white/60'}`}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill={activeNav === item.key ? '#0b9b8a' : '#aaa'}>
                                 <path d={item.icon} />
@@ -1142,157 +1153,30 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
             </aside>
 
             {/* ── Main ── */}
-            <div className="ml-56 flex-1 flex flex-col min-h-screen">
+            <div className="md:ml-56 flex-1 pt-6 px-4 sm:px-6 pb-16">
 
-                {/* Page body */}
-                <div className="flex-1 overflow-y-auto px-7 pt-6 pb-14">
+                    {/* Mobile hamburger */}
+                    <button
+                        className="md:hidden mb-4 flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open menu"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
+                        Menu
+                    </button>
 
-                    {/* ── Dashboard ── */}
+                    {/* -- Dashboard -- */}
                     {activeNav === 'dashboard' && (
                         <div>
-                            <div className="mb-6">
-                                <h2 className="text-2xl font-black text-gray-900">Overview</h2>
-                                <p className="text-sm text-gray-400 mt-0.5">{clusterName} · C2S Coordinator</p>
+                            <div className="mb-5">
+                                <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
+                                <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
                             </div>
-
-                            {/* Stat cards row 1 */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
-                                {[
-                                    { label: 'New Potential Mentees',  value: newCount,      sub: 'Not yet processed',    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#e91e8c"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> },
-                                    { label: 'Waiting for Assignment', value: waitingCount,  sub: 'Pending mentor match',  icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#e67700"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg> },
-                                    { label: 'Assigned to Mentor',     value: assignedToday, sub: 'Successfully matched',  icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#0b9b8a"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> },
-                                    { label: 'Active Mentors',         value: activeMentors, sub: 'Available for mentees', icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#5b50d6"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg> },
-                                ].map(s => (
-                                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                        <div className="flex items-start justify-between mb-4">
-                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
-                                            <span className="opacity-80">{s.icon}</span>
-                                        </div>
-                                        <p className="text-[2.4rem] font-normal text-gray-900 leading-none mb-2">{s.value}</p>
-                                        <p className="text-xs text-gray-400">{s.sub}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Stat cards row 2 */}
-                            <div className="grid grid-cols-3 gap-4 mb-5">
-                                {[
-                                    { label: 'Available Groups', value: openGroups,     sub: 'Accepting new mentees',   icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#22c55e"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> },
-                                    { label: 'Community-based', value: communityCount, sub: 'Barangay groups',          icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#0b9b8a"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> },
-                                    { label: 'Church-based',    value: churchCount,    sub: 'Within church premises',   icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#1971c2"><path d="M10.5 2h3v4.5H10.5zm5.5 2.5l2 2L15.5 9 13 6.5zm-8 0L10.5 7 8 9.5 6 7.5zM12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm-7 9h4v4h2v-4h2v4h2v-4h4v-2.5c0-2.8-2.2-5-5-5H10c-2.8 0-5 2.2-5 5V18z"/></svg> },
-                                ].map(s => (
-                                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                        <div className="flex items-start justify-between mb-4">
-                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
-                                            <span className="opacity-80">{s.icon}</span>
-                                        </div>
-                                        <p className="text-[2.4rem] font-normal text-gray-900 leading-none mb-2">{s.value}</p>
-                                        <p className="text-xs text-gray-400">{s.sub}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* ── Charts row ── */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-                                <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                    <h2 className="font-bold text-gray-900 text-base mb-0.5">Potential Mentee Pipeline</h2>
-                                    <p className="text-xs text-gray-400 mb-5">Status breakdown across the cluster.</p>
-                                    <ResponsiveContainer width="100%" height={200}>
-                                        <BarChart data={[
-                                            { status: 'New',       count: resolvedMentees.filter(m => m.status === 'New').length },
-                                            { status: 'Waiting',   count: resolvedMentees.filter(m => m.status === 'Waiting for Assignment').length },
-                                            { status: 'Assigned',  count: resolvedMentees.filter(m => m.status === 'Assigned to Mentor').length },
-                                            { status: 'Interview', count: resolvedMentees.filter(m => m.status === 'Interview Scheduled' || m.status === 'Interview Completed').length },
-                                            { status: 'Accepted',  count: resolvedMentees.filter(m => m.status === 'Accepted').length },
-                                        ]} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false}/>
-                                            <XAxis dataKey="status" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false}/>
-                                            <Tooltip contentStyle={TOOLTIP_STYLE}/>
-                                            <Bar dataKey="count" name="Count" fill="#0b9b8a" radius={[4, 4, 0, 0]}/>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                    <h2 className="font-bold text-gray-900 text-base mb-0.5">Group Types</h2>
-                                    <p className="text-xs text-gray-400 mb-3">Community vs Church-based.</p>
-                                    <ResponsiveContainer width="100%" height={150}>
-                                        <PieChart>
-                                            <Pie data={[{ name: 'Community', value: communityCount }, { name: 'Church-based', value: churchCount }]} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value" paddingAngle={3}>
-                                                <Cell fill="#0b9b8a"/><Cell fill="#1971c2"/>
-                                            </Pie>
-                                            <Tooltip contentStyle={TOOLTIP_STYLE}/>
-                                            <Legend iconSize={10} wrapperStyle={{ fontSize: '11px' }}/>
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                    <div className="mt-auto grid grid-cols-2 gap-2">
-                                        <div className="rounded-xl bg-[#f8f9fc] px-3 py-2 text-center">
-                                            <p className="text-xl font-black text-[#0b9b8a]">{communityCount}</p>
-                                            <p className="text-[10px] text-gray-400">Community</p>
-                                        </div>
-                                        <div className="rounded-xl bg-[#f8f9fc] px-3 py-2 text-center">
-                                            <p className="text-xl font-black text-[#1971c2]">{churchCount}</p>
-                                            <p className="text-[10px] text-gray-400">Church-Based</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ── Mentor Capacity Chart ── */}
-                            <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                <h2 className="font-bold text-gray-900 text-base mb-0.5">Mentor Capacity</h2>
-                                <p className="text-xs text-gray-400 mb-5">Active mentees vs available slots per mentor.</p>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <BarChart data={COORD_MENTORS.map(m => ({ name: m.name.split(' ')[0], active: m.activeMentees, slots: m.availableSlots }))} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false}/>
-                                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                                        <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false}/>
-                                        <Tooltip contentStyle={TOOLTIP_STYLE}/>
-                                        <Legend iconSize={10} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}/>
-                                        <Bar dataKey="active" name="Active Mentees" fill="#0b9b8a" radius={[4, 4, 0, 0]}/>
-                                        <Bar dataKey="slots" name="Available Slots" fill="#5b50d6" radius={[4, 4, 0, 0]}/>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-
-                            {/* ── Recent Potential Mentees ── */}
-                            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-                                    <h2 className="font-bold text-gray-900 text-base">Recent Potential Mentees</h2>
-                                    <button onClick={() => setActiveNav('potential')} className="text-xs font-semibold text-[#0b9b8a] hover:underline">View All</button>
-                                </div>
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
-                                            {['Name', 'Barangay', 'Preferred Group', 'Status', ''].map(h => (
-                                                <th key={h} className="px-5 py-3 text-left font-semibold">{h}</th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {resolvedMentees.slice(0, 6).map(m => (
-                                            <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                                <td className="px-5 py-3.5">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
-                                                        <span className="text-xs font-semibold text-gray-900">{m.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-3.5 text-xs text-gray-500">{m.barangay}</td>
-                                                <td className="px-5 py-3.5 text-xs text-gray-600">{m.preferredGroups[0]}</td>
-                                                <td className="px-5 py-3.5"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_STYLE[m.status]}`}>{m.status}</span></td>
-                                                <td className="px-5 py-3.5"><button onClick={() => setActiveNav('potential')} className="text-[11px] text-[#0b9b8a] hover:underline font-medium">Manage</button></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* ── Dashboard Notifications ── */}
-                            <CoordDashboardNotifications />
+                            <SharedDashboardTab data={CHURCH_WIDE_DATA} />
                         </div>
                     )}
-
                     {/* ── Potential Mentees Tab ── */}
                     {activeNav === 'potential' && (
                         <PotentialMenteesTab
@@ -1320,7 +1204,6 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                     {/* ── Notifications Tab ── */}
                     {activeNav === 'notifs' && <CoordNotifsTab />}
 
-                </div>
             </div>
         </div>
     );
