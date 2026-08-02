@@ -1252,6 +1252,68 @@ export async function getBookings(filters: {
     });
 }
 
+/**
+ * Cursor (keyset) pagination for the "All Reservations" admin view. Ordered by
+ * `start` + `id` so pages stay stable under concurrent inserts (no OFFSET drift).
+ *
+ * Search matches booking title, requester name, or requestId (case-insensitive).
+ * Status filter accepts 'pending' (any `Pending*` status), 'approved', or
+ * 'rejected'. Pass `cursor: null` for the first page; feed the returned
+ * `nextCursor` back for each subsequent page (`null` means the last page).
+ */
+export async function getPaginatedBookings(
+    cursor: string | null = null,
+    limit: number = 25,
+    filters: {
+        search?: string;
+        status?: string;
+        sortDir?: 'asc' | 'desc';
+    } = {}
+) {
+    const and: any[] = [];
+
+    const status = filters.status?.toLowerCase();
+    if (status && status !== 'all') {
+        and.push(
+            status === 'pending'
+                ? { status: { startsWith: 'Pending' } }
+                : { status: { equals: status === 'approved' ? 'Approved' : 'Rejected' } },
+        );
+    }
+
+    const q = filters.search?.trim();
+    if (q) {
+        and.push({
+            OR: [
+                { title: { contains: q, mode: 'insensitive' } },
+                { name: { contains: q, mode: 'insensitive' } },
+                { requestId: { contains: q, mode: 'insensitive' } },
+            ],
+        });
+    }
+
+    const sortField = 'start';
+    const { orderBy, cursorWhere, take, limit: pageSize } = keysetQuery({
+        sortField,
+        sortDir: filters.sortDir ?? 'desc',
+        limit,
+        cursor,
+    });
+
+    const rows = await prisma.booking.findMany({
+        where: { AND: [...and, cursorWhere] },
+        orderBy,
+        take,
+        include: {
+            room: true,
+            worker: true,
+        },
+    });
+
+    const page = buildPage(rows as any[], { sortField, limit: pageSize });
+    return { bookings: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore, limit: page.limit };
+}
+
 export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
     // fn_room_bookings_for_date (supabase/migrations/20260628110920_booking_worker_perf.sql)
     // does the day-boundary math in SQL and is backed by idx_booking_room_start.
@@ -1381,6 +1443,61 @@ export const deleteMealStub = withPermission(
 
 export async function getAttendanceRecords(filters: { workerProfileId?: string; dateFrom?: Date; dateTo?: Date } = {}) {
     return mealsAttendanceService.getAttendanceRecords(filters);
+}
+
+/**
+ * Cursor (keyset) pagination for attendance records. Ordered by `time` + `id`
+ * (newest first by default). Search matches the worker's first/last name;
+ * `workerProfileId` and `dateFrom`/`dateTo` narrow the range. Includes the
+ * related worker for display.
+ */
+export async function getPaginatedAttendanceRecords(
+    cursor: string | null = null,
+    limit: number = 25,
+    filters: {
+        search?: string;
+        workerProfileId?: string;
+        dateFrom?: Date;
+        dateTo?: Date;
+        sortDir?: 'asc' | 'desc';
+    } = {}
+) {
+    const and: any[] = [];
+    if (filters.workerProfileId) and.push({ workerProfileId: filters.workerProfileId });
+    if (filters.dateFrom || filters.dateTo) {
+        and.push({
+            time: {
+                ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+                ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+            },
+        });
+    }
+    const q = filters.search?.trim();
+    if (q) {
+        and.push({
+            worker: {
+                OR: [
+                    { firstName: { contains: q, mode: 'insensitive' } },
+                    { lastName: { contains: q, mode: 'insensitive' } },
+                ],
+            },
+        });
+    }
+
+    const sortField = 'time';
+    const { orderBy, cursorWhere, take, limit: pageSize } = keysetQuery({
+        sortField, sortDir: filters.sortDir ?? 'desc', limit, cursor,
+    });
+
+    const rows = await prisma.attendanceRecord.findMany({
+        where: { AND: [...and, cursorWhere] },
+        orderBy,
+        take,
+        include: { worker: true },
+    });
+
+    const page = buildPage(rows as any[], { sortField, limit: pageSize });
+    return { records: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore, limit: page.limit };
 }
 
 export const createAttendanceRecord = withPermission(
@@ -1706,6 +1823,44 @@ export async function getScanLogs(limit: number = 100) {
     });
 }
 
+/**
+ * Cursor (keyset) pagination for the scan-log stream. Ordered by `timestamp` +
+ * `id` (newest first by default). Search matches scanner/target name, scan type,
+ * or details. Replaces the old fixed `take: 100` cap.
+ */
+export async function getPaginatedScanLogs(
+    cursor: string | null = null,
+    limit: number = 25,
+    filters: { search?: string; sortDir?: 'asc' | 'desc' } = {}
+) {
+    const and: any[] = [];
+    const q = filters.search?.trim();
+    if (q) {
+        and.push({
+            OR: [
+                { scannerName: { contains: q, mode: 'insensitive' } },
+                { targetUserName: { contains: q, mode: 'insensitive' } },
+                { scanType: { contains: q, mode: 'insensitive' } },
+                { details: { contains: q, mode: 'insensitive' } },
+            ],
+        });
+    }
+
+    const sortField = 'timestamp';
+    const { orderBy, cursorWhere, take, limit: pageSize } = keysetQuery({
+        sortField, sortDir: filters.sortDir ?? 'desc', limit, cursor,
+    });
+
+    const rows = await prisma.scanLog.findMany({
+        where: { AND: [...and, cursorWhere] },
+        orderBy,
+        take,
+    });
+
+    const page = buildPage(rows as any[], { sortField, limit: pageSize });
+    return { logs: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore, limit: page.limit };
+}
+
 export const createScanLog = withPermission(
     PERMISSIONS.attendance.scan,
     async (_ctx, data: any) => {
@@ -1927,6 +2082,48 @@ export async function getTransactionLogs() {
         orderBy: { timestamp: 'desc' },
         take: 200,
     });
+}
+
+/**
+ * Cursor (keyset) pagination for the transaction/audit log. Ordered by
+ * `timestamp` + `id` (newest first by default). Search matches user name,
+ * action, module, target name, or details. Optional `module`/`action` filters
+ * narrow to a specific audit stream. Replaces the old fixed `take: 200` cap.
+ */
+export async function getPaginatedTransactionLogs(
+    cursor: string | null = null,
+    limit: number = 25,
+    filters: { search?: string; module?: string; action?: string; sortDir?: 'asc' | 'desc' } = {}
+) {
+    const and: any[] = [];
+    if (filters.module) and.push({ module: filters.module });
+    if (filters.action) and.push({ action: filters.action });
+    const q = filters.search?.trim();
+    if (q) {
+        and.push({
+            OR: [
+                { userName: { contains: q, mode: 'insensitive' } },
+                { action: { contains: q, mode: 'insensitive' } },
+                { module: { contains: q, mode: 'insensitive' } },
+                { targetName: { contains: q, mode: 'insensitive' } },
+                { details: { contains: q, mode: 'insensitive' } },
+            ],
+        });
+    }
+
+    const sortField = 'timestamp';
+    const { orderBy, cursorWhere, take, limit: pageSize } = keysetQuery({
+        sortField, sortDir: filters.sortDir ?? 'desc', limit, cursor,
+    });
+
+    const rows = await prisma.transactionLog.findMany({
+        where: { AND: [...and, cursorWhere] },
+        orderBy,
+        take,
+    });
+
+    const page = buildPage(rows as any[], { sortField, limit: pageSize });
+    return { logs: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore, limit: page.limit };
 }
 
 /** Recent meal-stub issue/remove activity, for the lightweight log on /meals. */

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { Button } from "@studio/ui";
@@ -26,7 +26,8 @@ import { Input } from "@studio/ui";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useQuery } from "@tanstack/react-query";
-import { getBookings, getRooms, getVenueElements } from "@/actions/db";
+import { getRooms, getVenueElements } from "@/actions/db";
+import { useAllReservations } from "@/hooks/use-reservations";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useBookingMutations } from "@/hooks/use-booking-mutations";
@@ -41,9 +42,24 @@ export default function AllReservationsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
 
-    const { data: allBookings, isLoading: bookingsLoading } = useQuery({
-        queryKey: ["bookings"],
-        queryFn: () => getBookings(),
+    // Debounce the search box so each keystroke doesn't fire a new keyset query.
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
+
+    // Server-side keyset search/pagination — see useAllReservations / getPaginatedBookings.
+    const {
+        bookings: filteredBookings,
+        isLoading: bookingsLoading,
+        hasNextPage,
+        fetchNextPage,
+        isFetchingNextPage,
+    } = useAllReservations({
+        search: debouncedSearch,
+        status: statusFilter,
+        sortDir: "desc",
     });
 
     const { data: rooms } = useQuery({
@@ -55,23 +71,6 @@ export default function AllReservationsPage() {
         queryKey: ["venue-elements"],
         queryFn: getVenueElements,
     });
-
-    const filteredBookings = useMemo(() => {
-        if (!allBookings) return [];
-        return allBookings
-            .filter((b: any) => {
-                const matchesSearch =
-                    b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (b.requestId && b.requestId.toLowerCase().includes(searchTerm.toLowerCase()));
-
-                const matchesStatus = statusFilter === "all" ||
-                    (statusFilter === 'pending' ? b.status.toLowerCase().startsWith('pending') : b.status.toLowerCase() === statusFilter.toLowerCase());
-
-                return matchesSearch && matchesStatus;
-            })
-            .sort((a: any, b: any) => new Date(b.start).getTime() - new Date(a.start).getTime());
-    }, [allBookings, searchTerm, statusFilter]);
 
     const getRoomName = (roomId: string) => {
         return (rooms as any[])?.find((r: any) => r.id === roomId)?.name || "Unknown Room";
@@ -285,6 +284,25 @@ export default function AllReservationsPage() {
                         </TableBody>
                     </Table>
                 </div>
+
+                {hasNextPage && (
+                    <div className="flex justify-center">
+                        <Button
+                            variant="outline"
+                            onClick={() => fetchNextPage()}
+                            disabled={isFetchingNextPage}
+                        >
+                            {isFetchingNextPage ? (
+                                <>
+                                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                    Loading…
+                                </>
+                            ) : (
+                                "Load more"
+                            )}
+                        </Button>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );

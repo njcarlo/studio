@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import {
     Card,
@@ -19,9 +19,9 @@ import {
 } from "@studio/ui";
 import { Badge } from "@studio/ui";
 import { Input } from "@studio/ui";
+import { Button } from "@studio/ui";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useQuery } from "@tanstack/react-query";
-import { getTransactionLogs } from "@/actions/db";
+import { useTransactionLogs } from "@/hooks/use-transaction-logs";
 import { format } from "date-fns";
 import { LoaderCircle, Search, ShieldAlert } from "lucide-react";
 
@@ -29,25 +29,25 @@ export default function TransactionLogsPage() {
     const { isSuperAdmin, isLoading: isRoleLoading } = useUserRole();
     const [searchTerm, setSearchTerm] = useState("");
 
-    const { data: logs, isLoading: isLogsLoading } = useQuery({
-        queryKey: ["transaction-logs"],
-        queryFn: getTransactionLogs,
+    // Debounce the search box so each keystroke doesn't fire a new keyset query.
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
+
+    // Server-side keyset search/pagination — see useTransactionLogs / getPaginatedTransactionLogs.
+    const {
+        logs: filteredLogs,
+        isLoading: isLogsLoading,
+        hasNextPage,
+        fetchNextPage,
+        isFetchingNextPage,
+    } = useTransactionLogs({
+        search: debouncedSearch,
+        sortDir: "desc",
         enabled: isSuperAdmin,
     });
-
-    const filteredLogs = React.useMemo(() => {
-        if (!logs) return [];
-        if (!searchTerm) return logs;
-        const lower = searchTerm.toLowerCase();
-        return logs.filter((log) =>
-            (log.userName || '').toLowerCase().includes(lower) ||
-            (log.targetName || '').toLowerCase().includes(lower) ||
-            (log.action || '').toLowerCase().includes(lower) ||
-            (log.module || '').toLowerCase().includes(lower) ||
-            (log.details || '').toLowerCase().includes(lower) ||
-            (log.reason || '').toLowerCase().includes(lower)
-        );
-    }, [logs, searchTerm]);
 
     if (isRoleLoading) {
         return (
@@ -159,6 +159,24 @@ export default function TransactionLogsPage() {
                             </TableBody>
                         </Table>
                     </div>
+                    {hasNextPage && (
+                        <div className="flex justify-center py-4 border-t border-border/50">
+                            <Button
+                                variant="outline"
+                                onClick={() => fetchNextPage()}
+                                disabled={isFetchingNextPage}
+                            >
+                                {isFetchingNextPage ? (
+                                    <>
+                                        <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                        Loading…
+                                    </>
+                                ) : (
+                                    "Load more"
+                                )}
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </AppLayout>
