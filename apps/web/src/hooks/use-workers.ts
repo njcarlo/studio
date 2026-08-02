@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     getWorkers,
     createWorker,
@@ -14,7 +14,6 @@ import {
 } from '@/actions/db';
 
 export function useWorkers(params: {
-    page?: number;
     limit?: number;
     search?: string;
     searchMode?: 'workerId' | 'name';
@@ -26,18 +25,30 @@ export function useWorkers(params: {
 } = {}) {
     const queryClient = useQueryClient();
 
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['workers', params],
-        queryFn: () => getPaginatedWorkers(params.page, params.limit, {
-            search: params.search,
-            searchMode: params.searchMode,
-            ministryIds: params.ministryIds,
-            status: params.status,
-            sortField: params.sortField,
-            sortDir: params.sortDir,
-        }),
+    // Keyset/cursor pagination: each page carries a `nextCursor`; the table
+    // loads more by appending pages rather than jumping to an offset.
+    const filters = {
+        search: params.search,
+        searchMode: params.searchMode,
+        ministryIds: params.ministryIds,
+        status: params.status,
+        sortField: params.sortField,
+        sortDir: params.sortDir,
+    };
+
+    const {
+        data,
+        isLoading,
+        error,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useInfiniteQuery({
+        queryKey: ['workers', params.limit ?? 25, filters],
+        queryFn: ({ pageParam }) => getPaginatedWorkers(pageParam, params.limit, filters),
+        initialPageParam: null as string | null,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
         staleTime: 60_000,
-        placeholderData: (prev) => prev,
         enabled: params.enabled ?? true,
     });
 
@@ -89,14 +100,15 @@ export function useWorkers(params: {
         },
     });
 
+    const workers = data?.pages.flatMap((p) => p.workers) ?? [];
+
     return {
-        workers: data?.workers || [],
-        pagination: {
-            total: data?.total || 0,
-            page: data?.page || 1,
-            limit: data?.limit || 50,
-            totalPages: data?.totalPages || 0,
-        },
+        workers,
+        // Cursor pagination — no total/page count; consumers use these to load more.
+        hasNextPage: hasNextPage ?? false,
+        fetchNextPage,
+        isFetchingNextPage,
+        loadedCount: workers.length,
         isLoading,
         error,
         createWorker: createMutation.mutateAsync,

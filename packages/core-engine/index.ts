@@ -27,6 +27,27 @@ export {
 export { EmailService } from './src/notify/email';
 
 export {
+  notify,
+  notifyOne,
+  type NotificationChannel,
+  type NotificationRecipient,
+  type NotificationInput,
+  type NotificationResult,
+} from './src/notify/engine';
+
+export {
+  keysetQuery,
+  buildPage,
+  encodeCursor,
+  decodeCursor,
+  clampLimit,
+  type SortDir,
+  type Cursor,
+  type KeysetParams,
+  type PageResult,
+} from './src/search/keyset';
+
+export {
   getActiveStages,
   createWorkflow,
   decide,
