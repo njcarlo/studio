@@ -36,6 +36,7 @@ import {
 } from "@studio/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { Badge } from "@studio/ui";
+import { Popover, PopoverTrigger, PopoverContent } from "@studio/ui";
 import {
   MoreHorizontal,
   PlusCircle,
@@ -1359,17 +1360,49 @@ export default function WorkersPage() {
                         : getRoleName(worker.roleId)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {getPermissions(worker.roleId).map((p: string) => (
-                          <Badge
-                            key={p}
-                            variant="outline"
-                            className="text-[10px] px-1 py-0 h-4 normal-case font-normal border-primary/20 bg-primary/5"
-                          >
-                            {p.replace(/_/g, " ")}
-                          </Badge>
-                        ))}
-                      </div>
+                      {(() => {
+                        const permissions = getPermissions(worker.roleId);
+                        if (permissions.length === 0) {
+                          return (
+                            <span className="text-xs text-muted-foreground">
+                              No permissions
+                            </span>
+                          );
+                        }
+                        return (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Badge
+                                variant="outline"
+                                className="cursor-pointer normal-case font-normal border-primary/20 bg-primary/5 hover:bg-primary/10"
+                              >
+                                {permissions.length}{" "}
+                                {permissions.length === 1
+                                  ? "permission"
+                                  : "permissions"}
+                              </Badge>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64">
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium">
+                                  Permissions ({permissions.length})
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {permissions.map((p: string) => (
+                                    <Badge
+                                      key={p}
+                                      variant="outline"
+                                      className="text-[10px] px-1 py-0 h-4 normal-case font-normal border-primary/20 bg-primary/5"
+                                    >
+                                      {p.replace(/_/g, " ")}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Badge
