@@ -10,7 +10,9 @@
     "./action-response": "./src/auth/action-response.ts",
     "./auth": "./src/auth/with-permission.ts",
     "./tenant": "./src/tenant/index.ts",
-    "./email": "./src/notify/email.ts"
+    "./email": "./src/notify/email.ts",
+    "./notify": "./src/notify/engine.ts",
+    "./search": "./src/search/keyset.ts"
   },
   "peerDependencies": {
     "react": "^19.0.0"

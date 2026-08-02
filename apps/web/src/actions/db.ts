@@ -18,6 +18,7 @@ import { RolesService } from '@/services/roles';
 import { WorkersService } from '@/services/workers';
 import { PERMISSIONS } from '@/lib/permissions/registry';
 import { revalidatePath } from 'next/cache';
+import { keysetQuery, buildPage } from '@studio/core-engine/search';
 import { NotificationService } from '@/services/notification-service';
 import { writeAudit } from '@/lib/audit/log';
 import * as ApprovalEngine from '@/services/approval-engine';
@@ -343,8 +344,29 @@ export async function getWorkersForScanner() {
     });
 }
 
+// Sort fields exposed by the workers table → the scalar Worker column keyset
+// pagination orders by. Keyset needs a single scalar column (plus `id` as a
+// stable tiebreaker), so the `role` sort falls back to `roleId` and `name`
+// orders by `firstName` (relation-name / multi-column sorts can't be keyset-
+// paginated cleanly).
+const WORKER_SORT_COLUMNS: Record<string, string> = {
+    workerId: 'workerId',
+    name: 'firstName',
+    status: 'status',
+    contact: 'email',
+    role: 'roleId',
+    createdAt: 'createdAt',
+};
+
+/**
+ * Cursor (keyset) pagination for the workers table. Ordered by a scalar column
+ * + `id`, so pages stay stable under concurrent inserts (no OFFSET drift).
+ *
+ * Pass `cursor: null` for the first page; feed the returned `nextCursor` back
+ * for each subsequent page. `nextCursor === null` means the last page.
+ */
 export async function getPaginatedWorkers(
-    page: number = 1,
+    cursor: string | null = null,
     limit: number = 25,
     filters: {
         search?: string;
@@ -355,31 +377,6 @@ export async function getPaginatedWorkers(
         sortDir?: 'asc' | 'desc';
     } = {}
 ) {
-    const offset = (page - 1) * limit;
-
-    // Prefer fn_workers_search when present (trigram + COUNT(*) OVER for large
-    // Worker tables). Fall back to Prisma when the SQL function has not been
-    // applied to the target DB (common on App Hosting / fresh Postgres).
-    try {
-        const rows = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM fn_workers_search($1, $2, $3, $4, $5, $6, $7, $8)`,
-            filters.search?.trim() || null,
-            filters.searchMode || 'workerId',
-            filters.ministryIds && filters.ministryIds.length > 0 ? filters.ministryIds : null,
-            filters.status || null,
-            filters.sortField || 'role',
-            filters.sortDir || 'asc',
-            limit,
-            offset,
-        );
-
-        const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
-        const workers = rows.map(({ total_count, ...rest }) => rest);
-        return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
-    } catch (err) {
-        console.warn('[getPaginatedWorkers] fn_workers_search unavailable; Prisma fallback', err);
-    }
-
     const and: any[] = [];
     if (filters.ministryIds?.length) {
         and.push({
@@ -403,56 +400,43 @@ export async function getPaginatedWorkers(
                 : { workerId: { contains: q, mode: 'insensitive' } },
         );
     }
-    const where = and.length ? { AND: and } : {};
-    const dir = filters.sortDir === 'desc' ? 'desc' : 'asc';
 
-    let orderBy: any;
-    switch (filters.sortField) {
-        case 'workerId':
-            orderBy = { workerId: dir };
-            break;
-        case 'name':
-            orderBy = [{ firstName: dir }, { lastName: dir }];
-            break;
-        case 'status':
-            orderBy = { status: dir };
-            break;
-        case 'contact':
-            orderBy = { email: dir };
-            break;
-        default:
-            orderBy = [{ role: { name: dir } }, { firstName: 'asc' }, { lastName: 'asc' }];
-    }
+    const sortField = WORKER_SORT_COLUMNS[filters.sortField ?? ''] ?? 'createdAt';
+    const { orderBy, cursorWhere, take, limit: pageSize } = keysetQuery({
+        sortField,
+        sortDir: filters.sortDir,
+        limit,
+        cursor,
+    });
 
-    const [total, workers] = await prisma.$transaction([
-        prisma.worker.count({ where }),
-        prisma.worker.findMany({
-            where,
-            orderBy,
-            skip: offset,
-            take: limit,
-            select: {
-                id: true,
-                workerId: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true,
-                roleId: true,
-                status: true,
-                avatarUrl: true,
-                majorMinistryId: true,
-                minorMinistryId: true,
-                employmentType: true,
-                passwordChangeRequired: true,
-                qrToken: true,
-                createdAt: true,
-                capabilities: true,
-            },
-        }),
-    ]);
+    const where = { AND: [...and, cursorWhere] };
 
-    return { total, workers, page, limit, totalPages: Math.ceil(total / limit) };
+    const rows = await prisma.worker.findMany({
+        where,
+        orderBy,
+        take,
+        select: {
+            id: true,
+            workerId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            roleId: true,
+            status: true,
+            avatarUrl: true,
+            majorMinistryId: true,
+            minorMinistryId: true,
+            employmentType: true,
+            passwordChangeRequired: true,
+            qrToken: true,
+            createdAt: true,
+            capabilities: true,
+        },
+    });
+
+    const page = buildPage(rows as any[], { sortField, limit: pageSize });
+    return { workers: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore, limit: page.limit };
 }
 
 export async function getWorkerStats(ministryIds?: string[]) {

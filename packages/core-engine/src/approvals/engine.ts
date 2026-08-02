@@ -1,6 +1,6 @@
 import { prisma } from '@studio/database/prisma';
 import type { ApprovalStage, ApprovalWorkflow } from '@prisma/client';
-import { EmailService } from '../notify/email';
+import { notify, notifyOne } from '../notify/engine';
 
 /**
  * Generic, multi-stage approval workflow engine (Layer 2).
@@ -312,34 +312,26 @@ async function resolveStageApprovers(stage: ApprovalStage): Promise<{ id: string
 }
 
 async function notifyActiveStageApprovers(workflow: WorkflowWithStages): Promise<void> {
-    try {
-        const active = getActiveStages(workflow.stages);
-        const recipients = new Map<string, string>();
-        for (const stage of active) {
-            for (const w of await resolveStageApprovers(stage)) {
-                if (w.email) recipients.set(w.id, w.email);
-            }
+    const active = getActiveStages(workflow.stages);
+    const recipients = new Map<string, { userId: string; email?: string }>();
+    for (const stage of active) {
+        for (const w of await resolveStageApprovers(stage)) {
+            recipients.set(w.id, { userId: w.id, email: w.email || undefined });
         }
-        if (recipients.size === 0) return;
+    }
+    if (recipients.size === 0) return;
 
-        await prisma.inAppNotification.createMany({
-            data: [...recipients.keys()].map((userId) => ({
-                userId,
-                title: `Approval needed: ${workflow.type}`,
-                body: `A ${workflow.type} request requires your review.`,
-                link: '/approvals',
-            })),
-        });
-
-        await EmailService.sendEmail({
-            to: [...recipients.values()],
+    await notify({
+        recipients: [...recipients.values()],
+        title: `Approval needed: ${workflow.type}`,
+        body: `A ${workflow.type} request requires your review.`,
+        link: '/approvals',
+        email: {
             subject: `[Approval Required] ${workflow.type} request`,
             html: `<p>A <strong>${workflow.type}</strong> request requires your review.</p>`,
             text: `A ${workflow.type} request requires your review.`,
-        });
-    } catch (error) {
-        console.error('Failed to notify approval stage approvers:', error);
-    }
+        },
+    });
 }
 
 /**
@@ -357,60 +349,36 @@ function getAnonymousRequesterInfo(workflow: WorkflowWithStages): { email: strin
 
 /** Notifies the requester that one stage of a parallel group was declined, without waiting for the workflow's terminal outcome. */
 async function notifyStageRejected(workflow: WorkflowWithStages, stage: ApprovalStage): Promise<void> {
-    try {
-        const requester = await prisma.worker.findUnique({ where: { id: workflow.requesterId } });
+    const requester = await prisma.worker.findUnique({ where: { id: workflow.requesterId } });
 
-        const title = `${workflow.type} request: part declined`;
-        const body = stage.reason
-            ? `One part of your ${workflow.type} request was declined: ${stage.reason}`
-            : `One part of your ${workflow.type} request was declined.`;
+    const title = `${workflow.type} request: part declined`;
+    const body = stage.reason
+        ? `One part of your ${workflow.type} request was declined: ${stage.reason}`
+        : `One part of your ${workflow.type} request was declined.`;
 
-        if (requester) {
-            await prisma.inAppNotification.create({
-                data: { userId: requester.id, title, body, link: '/approvals' },
-            });
-        }
-
-        const email = requester?.email ?? getAnonymousRequesterInfo(workflow)?.email;
-        if (email) {
-            await EmailService.sendEmail({
-                to: email,
-                subject: `[Studio] ${title}`,
-                html: `<p>${body}</p>`,
-                text: body,
-            });
-        }
-    } catch (error) {
-        console.error('Failed to notify approval requester of stage rejection:', error);
-    }
+    await notifyOne(
+        {
+            userId: requester?.id,
+            email: requester?.email ?? getAnonymousRequesterInfo(workflow)?.email,
+        },
+        { title, body, link: '/approvals' },
+    );
 }
 
 async function notifyRequester(workflow: WorkflowWithStages): Promise<void> {
-    try {
-        const requester = await prisma.worker.findUnique({ where: { id: workflow.requesterId } });
+    const requester = await prisma.worker.findUnique({ where: { id: workflow.requesterId } });
 
-        const title = `${workflow.type} request ${workflow.status.toLowerCase()}`;
-        const rejectedStage = workflow.stages.find((s) => s.status === 'Rejected');
-        const body = workflow.status === 'Rejected' && rejectedStage?.reason
-            ? `Your ${workflow.type} request was rejected: ${rejectedStage.reason}`
-            : `Your ${workflow.type} request has been ${workflow.status.toLowerCase()}.`;
+    const title = `${workflow.type} request ${workflow.status.toLowerCase()}`;
+    const rejectedStage = workflow.stages.find((s) => s.status === 'Rejected');
+    const body = workflow.status === 'Rejected' && rejectedStage?.reason
+        ? `Your ${workflow.type} request was rejected: ${rejectedStage.reason}`
+        : `Your ${workflow.type} request has been ${workflow.status.toLowerCase()}.`;
 
-        if (requester) {
-            await prisma.inAppNotification.create({
-                data: { userId: requester.id, title, body, link: '/approvals' },
-            });
-        }
-
-        const email = requester?.email ?? getAnonymousRequesterInfo(workflow)?.email;
-        if (email) {
-            await EmailService.sendEmail({
-                to: email,
-                subject: `[Studio] ${title}`,
-                html: `<p>${body}</p>`,
-                text: body,
-            });
-        }
-    } catch (error) {
-        console.error('Failed to notify approval requester:', error);
-    }
+    await notifyOne(
+        {
+            userId: requester?.id,
+            email: requester?.email ?? getAnonymousRequesterInfo(workflow)?.email,
+        },
+        { title, body, link: '/approvals' },
+    );
 }

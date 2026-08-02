@@ -182,7 +182,10 @@ export default function WorkersPage() {
 
   const {
     workers: allWorkers,
-    pagination,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    loadedCount,
     isLoading: workersLoading,
     updateWorker: updateWorkerSql,
     createWorker: createWorkerSql,
@@ -190,7 +193,6 @@ export default function WorkersPage() {
     deleteWorkers: deleteWorkersSql,
     error: workersError,
   } = useWorkers({
-    page: currentPage,
     limit: itemsPerPage,
     search: searchQuery,
     searchMode,
@@ -1455,64 +1457,21 @@ export default function WorkersPage() {
           </Table>
         </div>
 
-        {/* Pagination Controls */}
-        {pagination && pagination.total > 0 && (
+        {/* Cursor pagination — keyset "load more" (no total/page count). */}
+        {loadedCount > 0 && (
           <div className="flex items-center justify-between px-2 py-4 border-t bg-muted/20 rounded-b-lg">
             <p className="text-sm text-muted-foreground">
-              Showing{" "}
-              <span className="font-medium">
-                {(currentPage - 1) * itemsPerPage + 1}
-              </span>{" "}
-              to{" "}
-              <span className="font-medium">
-                {Math.min(currentPage * itemsPerPage, pagination.total)}
-              </span>{" "}
-              of <span className="font-medium">{pagination.total.toLocaleString()}</span> workers
+              Showing <span className="font-medium">{loadedCount.toLocaleString()}</span> worker{loadedCount === 1 ? "" : "s"}
+              {hasNextPage ? "" : " (all loaded)"}
             </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              <div className="flex items-center gap-1 mx-2">
-                {Array.from(
-                  { length: Math.min(5, pagination.totalPages) },
-                  (_, i) => {
-                    let pageNum = i + 1;
-                    if (pagination.totalPages > 5 && currentPage > 3) {
-                      pageNum = currentPage - 3 + i;
-                      if (pageNum + (5 - i) > pagination.totalPages) {
-                        pageNum = pagination.totalPages - 4 + i;
-                      }
-                    }
-                    if (pageNum <= 0 || pageNum > pagination.totalPages) return null;
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={currentPage === pageNum ? "default" : "outline"}
-                        size="sm"
-                        className="w-8 h-8 p-0"
-                        onClick={() => setCurrentPage(pageNum)}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  },
-                )}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-                disabled={currentPage === pagination.totalPages}
-              >
-                Next
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchNextPage()}
+              disabled={!hasNextPage || isFetchingNextPage}
+            >
+              {isFetchingNextPage ? "Loading…" : hasNextPage ? "Load more" : "No more"}
+            </Button>
           </div>
         )}
       </div>
