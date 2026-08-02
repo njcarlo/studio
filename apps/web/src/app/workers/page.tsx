@@ -1353,11 +1353,54 @@ export default function WorkersPage() {
                       {formatWorkerId(worker.workerId)}
                     </TableCell>
                     <TableCell>
-                      {(worker as any).roles?.length > 0
-                        ? (worker as any).roles
-                            .map((wr: any) => wr.role?.name ?? wr.roleId)
-                            .join(", ")
-                        : getRoleName(worker.roleId)}
+                      {(() => {
+                        const roleNames: string[] =
+                          (worker as any).roles?.length > 0
+                            ? (worker as any).roles.map(
+                                (wr: any) => wr.role?.name ?? wr.roleId,
+                              )
+                            : [getRoleName(worker.roleId)].filter(Boolean);
+                        if (roleNames.length === 0) {
+                          return (
+                            <span className="text-xs text-muted-foreground">
+                              No roles
+                            </span>
+                          );
+                        }
+                        if (roleNames.length === 1) {
+                          return <span>{roleNames[0]}</span>;
+                        }
+                        return (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Badge
+                                variant="outline"
+                                className="cursor-pointer normal-case font-normal border-primary/20 bg-primary/5 hover:bg-primary/10"
+                              >
+                                {roleNames.length} roles
+                              </Badge>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64">
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium">
+                                  Roles ({roleNames.length})
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {roleNames.map((r: string) => (
+                                    <Badge
+                                      key={r}
+                                      variant="outline"
+                                      className="text-[10px] px-1 py-0 h-4 normal-case font-normal border-primary/20 bg-primary/5"
+                                    >
+                                      {r}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       {(() => {
