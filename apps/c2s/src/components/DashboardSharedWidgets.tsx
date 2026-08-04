@@ -108,13 +108,13 @@ export function DashboardSummaryCards({ data }: { data: DashboardData }) {
     return (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
             {cards.map((s) => (
-                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                    <div className="flex items-start justify-between mb-4">
+                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                    <div className="flex items-start justify-between mb-3 sm:mb-4">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
-                        <span className="opacity-80">{s.icon}</span>
+                        <span className="opacity-80 hidden sm:block">{s.icon}</span>
                     </div>
-                    <p className="text-[2.4rem] font-normal text-gray-900 leading-none mb-2">{s.value.toLocaleString()}</p>
-                    <p className="text-xs text-gray-400">{s.sub}</p>
+                    <p className="text-[1.8rem] sm:text-[2.4rem] font-normal text-gray-900 leading-none mb-1 sm:mb-2">{s.value.toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 leading-snug">{s.sub}</p>
                 </div>
             ))}
         </div>
@@ -159,12 +159,13 @@ export function WorkersByDepartment({ data }: { data: DashboardData }) {
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <h2 className="font-bold text-gray-900 text-base mb-0.5">Workers by Department</h2>
             <p className="text-xs text-gray-400 mb-4">Worker and mentor distribution by department.</p>
 
-            <div className="flex items-center justify-center gap-8 mb-8">
-                <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', flexShrink: 0 }}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
+                <div className="overflow-x-auto flex justify-center">
+                    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', flexShrink: 0 }}>
                     {slices.map((s) => (
                         <path key={s.name} d={arc(CX, CY, OR, s.startDeg, s.endDeg, IR)} fill={s.color} stroke="white" strokeWidth={2} />
                     ))}
@@ -184,8 +185,9 @@ export function WorkersByDepartment({ data }: { data: DashboardData }) {
                             </g>
                         );
                     })}
-                </svg>
-                <div className="flex flex-col gap-3.5">
+                    </svg>
+                </div>
+                <div className="flex flex-row flex-wrap sm:flex-col gap-2 sm:gap-3.5 justify-center sm:justify-start">
                     {donutData.map((d) => (
                         <div key={d.name} className="flex items-center gap-2.5">
                             <span className="w-3 h-3 rounded-full shrink-0" style={{ background: d.color }} />
@@ -195,30 +197,30 @@ export function WorkersByDepartment({ data }: { data: DashboardData }) {
                 </div>
             </div>
 
-            <div className="rounded-xl overflow-hidden border border-gray-100">
-                <table className="w-full">
+            <div className="rounded-xl overflow-x-auto border border-gray-100">
+                <table className="w-full min-w-[360px]">
                     <thead>
                         <tr style={{ background: '#f8f9fc', borderBottom: '1px solid #e5e7eb' }}>
-                            <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Workers</th>
-                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mentors</th>
-                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                            <th className="px-4 sm:px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Workers</th>
+                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mentors</th>
+                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map((row, i) => (
                             <tr key={row.dept} style={{ borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
-                                <td className="px-5 py-4 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{row.workers.toLocaleString()}</td>
-                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{row.mentors.toLocaleString()}</td>
-                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{(row.workers + row.mentors).toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm text-gray-500 text-right">{row.workers.toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm text-gray-500 text-right">{row.mentors.toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm text-gray-500 text-right">{(row.workers + row.mentors).toLocaleString()}</td>
                             </tr>
                         ))}
                         <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                            <td className="px-5 py-4 text-sm font-black text-gray-800">Total</td>
-                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{totalWorkers.toLocaleString()}</td>
-                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{totalMentors.toLocaleString()}</td>
-                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{grandTotal.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-black text-gray-800">Total</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-bold text-gray-700 text-right">{totalWorkers.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-bold text-gray-700 text-right">{totalMentors.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-bold text-gray-700 text-right">{grandTotal.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -234,7 +236,7 @@ export function MenteesByDepartment({ data }: { data: DashboardData }) {
     const totalAll = data.totalF2F + data.totalOnline;
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <h2 className="font-bold text-gray-900 text-base mb-0.5">Mentees by Department</h2>
             <p className="text-xs text-gray-400 mb-6">Mentee delivery mode across departments.</p>
 
@@ -269,30 +271,30 @@ export function MenteesByDepartment({ data }: { data: DashboardData }) {
             </div>
 
             {/* Department table */}
-            <div className="rounded-xl overflow-hidden border border-gray-100">
-                <table className="w-full">
+            <div className="rounded-xl overflow-x-auto border border-gray-100">
+                <table className="w-full min-w-[360px]">
                     <thead>
                         <tr style={{ background: '#EEF2F7' }}>
-                            <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                            <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Face-to-Face</th>
-                            <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
-                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                            <th className="px-4 sm:px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                            <th className="px-4 sm:px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Face-to-Face</th>
+                            <th className="px-4 sm:px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
+                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.deptMentees.map((row) => (
                             <tr key={row.dept} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                <td className="px-5 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                <td className="px-5 py-3.5 text-sm text-gray-500 text-center">{row.f2f.toLocaleString()}</td>
-                                <td className="px-5 py-3.5 text-sm text-gray-500 text-center">{row.online.toLocaleString()}</td>
-                                <td className="px-5 py-3.5 text-sm text-gray-500 text-right">{row.total.toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-center">{row.f2f.toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-center">{row.online.toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-right">{row.total.toLocaleString()}</td>
                             </tr>
                         ))}
                         <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                            <td className="px-5 py-3.5 text-sm font-black text-gray-800">Total</td>
-                            <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalF2F.toLocaleString()}</td>
-                            <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalOnline.toLocaleString()}</td>
-                            <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-right">{totalAll.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-black text-gray-800">Total</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalF2F.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalOnline.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-right">{totalAll.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -308,14 +310,14 @@ export function C2SGroupsSection({ data }: { data: DashboardData }) {
     const totalAll = data.totalChurch + data.totalCommunity;
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <h2 className="font-bold text-gray-900 text-base mb-0.5">C2S Groups</h2>
             <p className="text-xs text-gray-400 mb-6">Where discipleship groups meet.</p>
 
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Church-based */}
-                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7">
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.05 8.74-7 9.93-3.95-1.19-7-5.41-7-9.93V6.3l7-3.12z"/>
@@ -328,7 +330,7 @@ export function C2SGroupsSection({ data }: { data: DashboardData }) {
                     </div>
                 </div>
                 {/* Community-based */}
-                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#5cb85c">
                             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
@@ -343,30 +345,30 @@ export function C2SGroupsSection({ data }: { data: DashboardData }) {
             </div>
 
             {/* Department table */}
-            <div className="rounded-xl overflow-hidden border border-gray-100">
-                <table className="w-full">
+            <div className="rounded-xl overflow-x-auto border border-gray-100">
+                <table className="w-full min-w-[360px]">
                     <thead>
                         <tr style={{ background: '#EEF2F7' }}>
-                            <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                            <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church-based</th>
-                            <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community-based</th>
-                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                            <th className="px-4 sm:px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                            <th className="px-4 sm:px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church-based</th>
+                            <th className="px-4 sm:px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community-based</th>
+                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.deptGroups.map((row) => (
                             <tr key={row.dept} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                <td className="px-5 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                <td className="px-5 py-3.5 text-sm text-gray-500 text-center">{row.church.toLocaleString()}</td>
-                                <td className="px-5 py-3.5 text-sm text-gray-500 text-center">{row.community.toLocaleString()}</td>
-                                <td className="px-5 py-3.5 text-sm text-gray-500 text-right">{row.total.toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-center">{row.church.toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-center">{row.community.toLocaleString()}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-right">{row.total.toLocaleString()}</td>
                             </tr>
                         ))}
                         <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                            <td className="px-5 py-3.5 text-sm font-black text-gray-800">Total</td>
-                            <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalChurch.toLocaleString()}</td>
-                            <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalCommunity.toLocaleString()}</td>
-                            <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-right">{totalAll.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-black text-gray-800">Total</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalChurch.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalCommunity.toLocaleString()}</td>
+                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-right">{totalAll.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>

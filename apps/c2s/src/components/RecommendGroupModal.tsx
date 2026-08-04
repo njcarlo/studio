@@ -33,7 +33,7 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
     const [showBrgyList, setShowBrgyList] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<typeof SUGGESTED_GROUPS[0] | null>(null);
 
-    const canNext1 = reason !== '';
+    const canNext1 = reason !== '' && (reason !== 'Other' || otherText.trim() !== '');
     const canNext2 = barangay !== '';
 
     const displayReason = reason === 'Other' ? otherText || 'Other' : reason;
@@ -86,7 +86,7 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
                                 {/* "Other" textarea */}
                                 {reason === 'Other' && (
                                     <div className="flex flex-col gap-1.5">
-                                        <label className="text-xs font-semibold text-gray-600">Please specify</label>
+                                        <label className="text-xs font-semibold text-gray-600">Please specify <span className="text-red-500">*</span></label>
                                         <textarea
                                             value={otherText}
                                             onChange={(e) => setOtherText(e.target.value)}

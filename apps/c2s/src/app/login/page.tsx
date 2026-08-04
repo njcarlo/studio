@@ -55,16 +55,16 @@ export default function LoginPage() {
             </div>
 
             {/* Page content */}
-            <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-18 py-30">
+            <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
 
                 {/* Logo above card */}
-                <div className="mb-10 flex flex-col items-center">
-                    <div className="w-40 h-40 rounded-full bg-white shadow-lg flex items-center justify-center overflow-hidden">
+                <div className="mb-6 flex flex-col items-center">
+                    <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-white shadow-lg flex items-center justify-center overflow-hidden">
                         <Image
                             src="/c2s.png"
                             alt="Connect2Souls Logo"
-                            width={136}
-                            height={136}
+                            width={120}
+                            height={120}
                             className="object-contain"
                             priority
                         />
@@ -72,7 +72,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Login card */}
-                <div className="w-full max-w-md bg-white rounded-2xl shadow-xl px-8 py-8">
+                <div className="w-full max-w-sm sm:max-w-md bg-white rounded-2xl shadow-xl px-5 sm:px-8 py-7 sm:py-8">
                     <h2 className="text-xl font-bold text-gray-900 text-center mb-1">Login to your account</h2>
                     <p className="text-sm text-gray-500 text-center mb-6">Enter your Worker ID and password to continue</p>
 
@@ -94,7 +94,7 @@ export default function LoginPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="e.g 145021"
-                                    className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                    className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
                                 />
                             </div>
                         </div>
@@ -116,7 +116,7 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter your password"
-                                    className="w-full border border-gray-200 rounded-xl pl-9 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                    className="w-full border border-gray-200 rounded-xl pl-9 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
                                 />
                                 <button
                                     type="button"
@@ -143,9 +143,9 @@ export default function LoginPage() {
                                 type="checkbox"
                                 checked={keepSigned}
                                 onChange={(e) => setKeepSigned(e.target.checked)}
-                                className="w-3.5 h-3.5 rounded border-gray-300 accent-[#2dc7be]"
+                                className="w-4 h-4 rounded border-gray-300 accent-[#2dc7be]"
                             />
-                            <span className="text-xs text-gray-500">Keep me signed in on this device</span>
+                            <span className="text-sm text-gray-500">Keep me signed in on this device</span>
                         </label>
 
                         {/* Error */}
@@ -159,7 +159,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 rounded-xl text-white font-bold text-sm transition-opacity disabled:opacity-70"
+                            className="w-full py-3.5 rounded-xl text-white font-bold text-base transition-opacity disabled:opacity-70"
                             style={{ background: '#2dc7be' }}
                         >
                             {loading ? 'Logging in...' : 'Login'}
@@ -180,11 +180,11 @@ export default function LoginPage() {
                 </div>
 
                 {/* App download card */}
-                <div className="w-full max-w-md mt-4 bg-white rounded-2xl shadow-xl px-6 py-5 flex items-center justify-between gap-4">
+                <div className="w-full max-w-sm sm:max-w-md mt-4 bg-white rounded-2xl shadow-xl px-5 sm:px-6 py-5 flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-gray-900">Get the connect2souls app</p>
                         <p className="text-xs text-gray-500 mb-3">Scan the QR code or download from your store.</p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             {/* App Store badge */}
                             <a
                                 href="#"
@@ -214,7 +214,7 @@ export default function LoginPage() {
                         </div>
                     </div>
                     {/* QR Code placeholder */}
-                    <div className="w-20 h-20 shrink-0 border-2 border-[#2dc7be] rounded-xl flex items-center justify-center bg-white overflow-hidden p-1">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 border-2 border-[#2dc7be] rounded-xl flex items-center justify-center bg-white overflow-hidden p-1">
                         <svg viewBox="0 0 100 100" className="w-full h-full">
                             {/* Simple QR-like pattern */}
                             <rect x="5" y="5" width="38" height="38" fill="none" stroke="#000" strokeWidth="5" />
@@ -236,7 +236,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-5 flex flex-col items-center gap-1">
+                <div className="mt-5 flex flex-col items-center gap-1.5 pb-4">
                     <p className="text-xs text-white/60 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />

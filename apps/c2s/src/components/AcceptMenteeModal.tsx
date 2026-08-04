@@ -25,8 +25,7 @@ export default function AcceptMenteeModal({ menteeName, groupName, onCancel, onC
                     {/* Body text */}
                     <p className="text-sm text-gray-600 leading-relaxed">
                         Are you sure you want to accept <span className="font-bold text-gray-900">{menteeName}</span> into
-                        your C2S Group <span className="font-bold text-gray-900">{groupName}</span>? A Devotional Progress
-                        record will be created starting at Module 1 · Lesson 1.
+                        your C2S Group <span className="font-bold text-gray-900">{groupName}</span>?
                     </p>
 
                     {/* Reminder banner */}

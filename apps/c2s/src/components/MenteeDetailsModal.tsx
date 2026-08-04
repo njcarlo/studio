@@ -91,35 +91,7 @@ export default function MenteeDetailsModal({ mentee, onClose, onAccept, onRecomm
                         </div>
                     </section>
 
-                    {/* Devotional Timeline */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] px-4 py-3">
-                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Devotional Timeline</p>
 
-                        <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs text-gray-500">Overall progress</span>
-                            <span className="text-xs font-semibold text-[#5b50d6]">{mentee.progress}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
-                            <div className="h-full rounded-full" style={{ width: `${mentee.progress}%`, background: '#5b50d6' }} />
-                        </div>
-
-                        <p className="text-[10px] text-gray-400 mb-0.5">Current</p>
-                        <p className="text-sm font-semibold text-gray-800">{mentee.currentModule}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{mentee.currentLesson}</p>
-                    </section>
-
-                    {/* Trainings Attended */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
-                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Trainings Attended</p>
-                        <div className="divide-y divide-gray-100">
-                            {mentee.trainings.map((t) => (
-                                <div key={t.label} className="flex items-center justify-between px-4 py-2.5">
-                                    <span className="text-xs text-gray-700">{t.label}</span>
-                                    <span className="text-xs text-gray-500">{t.year}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
                 </div>
 
                 {/* Footer actions */}

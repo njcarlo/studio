@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -364,16 +364,7 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                     <button
                         onClick={() => setShowDetails(true)}
                         className="text-xs font-semibold text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-                    >Details</button>
-                    <button
-                        onClick={() => setShowRecommend(true)}
-                        className="text-xs font-semibold text-[#5b50d6] px-3 py-2 rounded-lg border border-[#5b50d6] hover:bg-[#f5f3ff] transition-colors"
-                    >Recommend</button>
-                    <button
-                        onClick={() => setShowAccept(true)}
-                        className="flex-1 text-xs font-semibold text-white px-3 py-2 rounded-lg transition-colors"
-                        style={{ background: '#5b50d6' }}
-                    >Accept</button>
+                    >View</button>
                 </div>
             </div>
         </>
@@ -494,6 +485,22 @@ function EndorsedTab() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                         New Group
                     </button>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">Total Endorsed</p>
+                        <p className="text-4xl font-black text-[#e05c5c]">{ENDORSED_GROUPS.reduce((s, g) => s + g.members, 0) + ENDORSED_WORKERS.length}</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">Mentor Groups</p>
+                        <p className="text-4xl font-black text-[#4DA6F5]">{ENDORSED_GROUPS.length}</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">Individual Mentors</p>
+                        <p className="text-4xl font-black text-[#5CB85C]">{ENDORSED_WORKERS.length}</p>
+                    </div>
                 </div>
 
                 {/* Groups */}
@@ -773,7 +780,7 @@ function MentorDashboard() {
                                 className="flex items-center gap-1.5 bg-[#e53e3e] hover:bg-[#c53030] text-white font-bold px-4 py-2 rounded-md text-sm transition-colors shadow-sm shrink-0 ml-6"
                             >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                                + Create Group
+                                Create Group
                             </button>
                         </div>
 

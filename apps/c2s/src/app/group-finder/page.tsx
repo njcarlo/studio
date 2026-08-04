@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import JoinGroupModal from '@/components/JoinGroupModal';
 import { C2S_GROUPS, AGE_GROUPS, MEETUP_DAYS, BARANGAYS, type C2SGroup } from '@/lib/data';
@@ -219,12 +220,23 @@ export default function GroupFinderPage() {
 
                 {/* ── Header strip ── */}
                 <div className="bg-white px-6 py-4 border-b border-gray-100 shrink-0">
-                    <div className="inline-flex items-center bg-[#e0f7f5] text-[#0b9b8a] text-xs font-semibold px-3 py-1 rounded-full mb-2">
-                        Find your community
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="inline-flex items-center bg-[#e0f7f5] text-[#0b9b8a] text-xs font-semibold px-3 py-1 rounded-full">
+                            Find your community
+                        </div>
+                        <Link
+                            href="/c2s-finder"
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-full border-2 border-gray-300 hover:border-[#0b9b8a] text-gray-400 hover:text-[#0b9b8a] transition-colors"
+                            title="Back to Find your community"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </Link>
                     </div>
                     <div className="flex items-center gap-3 mb-0.5">
-                        <img src="/c2s.png" alt="C2S" style={{ width: 40, height: 40, objectFit: 'contain' }} />
-                        <h1 className="text-2xl font-black text-gray-900">Group Finder</h1>
+                        <img src="/c2s.png" alt="C2S" style={{ width: 56, height: 56, objectFit: 'contain' }} />
+                        <h1 className="text-4xl font-black text-gray-900">Group Finder</h1>
                     </div>
                     <p className="text-sm text-gray-400 ml-1">
                         Discover a Connect2Souls group near you in Dasmariñas City — built for real friendships, growth in faith, and a place to belong.

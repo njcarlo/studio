@@ -47,9 +47,61 @@ const COORD_NAV = [
     { key: 'reports',          label: 'Reports',                icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
 ];
 
+// ─── Schedule Interview Modal ─────────────────────────────────────────────────
+function InterviewModal({ name, onClose }: { name: string; onClose: () => void }) {
+    const [date, setDate] = useState('');
+    const [time, setTime] = useState('10:00');
+    const [notes, setNotes] = useState('');
+    const [done, setDone] = useState(false);
+    return (
+        <>
+            <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose} />
+            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" onClick={onClose}>
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-7 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-900">Schedule Interview</h2>
+                            <p className="text-xs text-gray-400 mt-0.5">For {name}</p>
+                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1">
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </button>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Interview Date</label>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b9b8a]" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Interview Time</label>
+                            <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b9b8a]" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
+                            <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
+                                placeholder="Interview notes or preparation..."
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b9b8a] resize-none" />
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={onClose} className="flex-1 text-sm font-semibold text-gray-600 border border-gray-200 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button
+                            onClick={() => { setDone(true); setTimeout(onClose, 900); }}
+                            className="flex-1 text-sm font-semibold text-white px-4 py-2.5 rounded-lg transition-colors"
+                            style={{ background: done ? '#22c55e' : '#0b9b8a' }}>
+                            {done ? 'Scheduled!' : 'Schedule Interview'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
+
 // ─── Assign to Mentor Modal ───────────────────────────────────────────────────
-function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {
-    mentee: CoordPotentialMentee;
+function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {    mentee: CoordPotentialMentee;
     mentors: CoordMentor[];
     onClose: () => void;
     onAssign: (menteeId: string, mentorName: string) => void;
@@ -264,6 +316,7 @@ function PotentialMenteesTab({
     const [viewingMentee, setViewingMentee] = useState<CoordPotentialMentee | null>(null);
     const [assigningMentee, setAssigningMentee] = useState<CoordPotentialMentee | null>(null);
     const [recommendingMentee, setRecommendingMentee] = useState<CoordPotentialMentee | null>(null);
+    const [interviewMentee, setInterviewMentee] = useState<CoordPotentialMentee | null>(null);
 
     const STATUS_FILTERS = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Interview Completed', 'Accepted'];
 
@@ -283,6 +336,9 @@ function PotentialMenteesTab({
                     onAssign={() => { setViewingMentee(null); setAssigningMentee(viewingMentee); }}
                     onRecommend={() => { setViewingMentee(null); setRecommendingMentee(viewingMentee); }}
                 />
+            )}
+            {interviewMentee && (
+                <InterviewModal name={interviewMentee.name} onClose={() => setInterviewMentee(null)} />
             )}
             {assigningMentee && (
                 <AssignMentorModal
@@ -307,11 +363,11 @@ function PotentialMenteesTab({
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap items-center gap-2 mb-5">
-                <div className="relative">
+            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 mb-5">
+                <div className="relative w-full sm:w-auto">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                     <input type="text" placeholder="Search name, barangay, group..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b9b8a] w-56 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b9b8a] w-full sm:w-56 bg-white" />
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                     {STATUS_FILTERS.map(f => (
@@ -323,9 +379,43 @@ function PotentialMenteesTab({
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <table className="w-full text-sm">
+            {/* Mobile cards */}
+            <div className="flex flex-col gap-3 sm:hidden">
+                {filtered.map(m => (
+                    <div key={m.id} className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-sm">{m.name}</p>
+                                <p className="text-[11px] text-gray-400">{m.age} · {m.gender} · {m.barangay}</p>
+                            </div>
+                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${STATUS_STYLE[m.status]}`}>{m.status}</span>
+                        </div>
+                        <div className="text-xs text-gray-600">
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Preferred Groups</p>
+                            {m.preferredGroups.map((g, i) => <p key={i}><span className="text-gray-400">{i + 1}.</span> {g}</p>)}
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px]">
+                            <span className={`font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#d3f9f0] text-[#0c8a6e]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{m.groupType}</span>
+                            <span className="text-gray-400">{m.dateSubmitted}</span>
+                        </div>
+                        <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
+                            <button onClick={() => setViewingMentee(m)} className="text-xs font-semibold text-[#0b9b8a] hover:underline">View</button>
+                            <span className="text-gray-200">|</span>
+                            <button onClick={() => setInterviewMentee(m)} className="text-xs font-semibold text-[#6741d9] hover:underline">Schedule Interview</button>
+                        </div>
+                    </div>
+                ))}
+                {filtered.length === 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+                        <p className="text-sm text-gray-400">No potential mentees found</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-x-auto">
+                <table className="w-full text-sm min-w-[700px]">
                     <thead>
                         <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
                             {['Name', 'Preferred Group (max 2)', 'Barangay', 'Type', 'Date Submitted', 'Status', 'Actions'].map(h => (
@@ -368,9 +458,7 @@ function PotentialMenteesTab({
                                     <div className="flex items-center gap-1.5 flex-nowrap">
                                         <button onClick={() => setViewingMentee(m)} className="text-[11px] font-semibold text-[#0b9b8a] hover:underline whitespace-nowrap">View</button>
                                         <span className="text-gray-200">|</span>
-                                        <button onClick={() => setAssigningMentee(m)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline whitespace-nowrap">Assign</button>
-                                        <span className="text-gray-200">|</span>
-                                        <button onClick={() => setRecommendingMentee(m)} className="text-[11px] font-semibold text-gray-500 hover:underline whitespace-nowrap">Recommend</button>
+                                        <button onClick={() => setInterviewMentee(m)} className="text-[11px] font-semibold text-[#6741d9] hover:underline whitespace-nowrap">Schedule Interview</button>
                                     </div>
                                 </td>
                             </tr>
@@ -400,11 +488,11 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                 <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentors</h1>
                 <p className="text-sm text-gray-400 mt-1">All mentors within the cluster.</p>
             </div>
-            <div className="flex items-center gap-3 mb-6">
-                <div className="relative">
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+                <div className="relative flex-1 max-w-xs">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                     <input type="text" placeholder="Search mentors..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b9b8a] w-52 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0b9b8a] w-full bg-white" />
                 </div>
                 {(['All', 'Active', 'Inactive'] as const).map(f => (
                     <button key={f} onClick={() => setFilter(f)}
@@ -886,8 +974,8 @@ function PotentialC2SGroupsTab() {
                                 </h3>
                                 <p className="text-sm text-gray-500">
                                     {confirm.action === 'Approved'
-                                        ? <>Are you sure you want to <span className="font-semibold text-[#0b9b8a]">approve</span> the hub application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
-                                        : <>Are you sure you want to <span className="font-semibold text-[#e6184d]">reject</span> the hub application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
+                                        ? <>Are you sure you want to <span className="font-semibold text-[#0b9b8a]">approve</span> the C2S home application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
+                                        : <>Are you sure you want to <span className="font-semibold text-[#e6184d]">reject</span> the C2S home application of <span className="font-semibold text-gray-700">{confirm.name}</span>?</>
                                     }
                                 </p>
                             </div>
@@ -915,7 +1003,7 @@ function PotentialC2SGroupsTab() {
                     <div className="fixed top-0 right-0 bottom-0 z-[101] w-[420px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
                         <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
                             <div>
-                                <h2 className="text-lg font-semibold text-gray-900">Hub Application</h2>
+                                <h2 className="text-lg font-semibold text-gray-900">C2S Home Applicants</h2>
                                 <p className="text-xs text-gray-400 mt-0.5">Submitted {viewing.submitted}</p>
                             </div>
                             <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-gray-700 p-1">
@@ -1011,7 +1099,7 @@ function PotentialC2SGroupsTab() {
                 <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
                     <svg className="w-12 h-12 text-gray-200 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                     <p className="text-sm text-gray-400 font-medium">No applications yet</p>
-                    <p className="text-xs text-gray-300 mt-1">Hub applications from C2S Finder will appear here.</p>
+                    <p className="text-xs text-gray-300 mt-1">C2S Home Applicants from C2S Finder will appear here.</p>
                 </div>
             ) : (
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -1047,14 +1135,6 @@ function PotentialC2SGroupsTab() {
                                     <td className="px-4 py-3.5">
                                         <div className="flex items-center gap-1.5 flex-nowrap">
                                             <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#0b9b8a] hover:underline whitespace-nowrap">View</button>
-                                            {a.status === 'Pending' && (
-                                                <>
-                                                    <span className="text-gray-200">|</span>
-                                                    <button onClick={() => requestAction(a, 'Approved')} className="text-[11px] font-semibold text-[#166534] hover:underline whitespace-nowrap">Approve</button>
-                                                    <span className="text-gray-200">|</span>
-                                                    <button onClick={() => requestAction(a, 'Rejected')} className="text-[11px] font-semibold text-[#e6184d] hover:underline whitespace-nowrap">Reject</button>
-                                                </>
-                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -1153,20 +1233,26 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
             </aside>
 
             {/* ── Main ── */}
-            <div className="md:ml-56 flex-1 pt-6 px-4 sm:px-6 pb-16">
+            <div className="md:ml-56 flex-1 pb-16">
 
-                    {/* Mobile hamburger */}
-                    <button
-                        className="md:hidden mb-4 flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
-                        onClick={() => setSidebarOpen(true)}
-                        aria-label="Open menu"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                        </svg>
-                        Menu
-                    </button>
+                    {/* Mobile sticky menu bar */}
+                    <div className="md:hidden sticky top-16 z-20 bg-[#EEF2F7] border-b border-gray-200 px-4 py-2.5 flex items-center gap-2">
+                        <button
+                            className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
+                            onClick={() => setSidebarOpen(true)}
+                            aria-label="Open menu"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                            </svg>
+                            <span>Menu</span>
+                        </button>
+                        <span className="text-xs text-gray-400 ml-1">
+                            {COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                        </span>
+                    </div>
 
+                    <div className="pt-5 px-4 sm:px-6">
                     {/* -- Dashboard -- */}
                     {activeNav === 'dashboard' && (
                         <div>
@@ -1204,6 +1290,7 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                     {/* ── Notifications Tab ── */}
                     {activeNav === 'notifs' && <CoordNotifsTab />}
 
+                </div>{/* end inner pt-5 div */}
             </div>
         </div>
     );

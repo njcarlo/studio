@@ -302,9 +302,9 @@ function CoordinatorsTab() {
         <div>
             <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">C2S Coordinators</h1><p className="text-sm text-gray-400 mt-1">All coordinators across the Outreach Ministry.</p></div>
             <div className="flex items-center gap-3 mb-5">
-                <div className="relative">
+                <div className="relative flex-1 max-w-xs">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" placeholder="Search coordinators..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-56 bg-white"/>
+                    <input type="text" placeholder="Search coordinators..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white"/>
                 </div>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -341,9 +341,9 @@ function MentorsTab() {
         <div>
             <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentors</h1><p className="text-sm text-gray-400 mt-1">All mentors across the Outreach Ministry.</p></div>
             <div className="flex flex-wrap items-center gap-3 mb-5">
-                <div className="relative">
+                <div className="relative flex-1 max-w-xs">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" placeholder="Search mentors..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-52 bg-white"/>
+                    <input type="text" placeholder="Search mentors..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white"/>
                 </div>
                 {(['All','Active','Inactive'] as const).map((f) => (
                     <button key={f} onClick={() => setFilter(f)} className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{f}</button>
@@ -414,7 +414,32 @@ function PotentialMenteesTab() {
                 <Sel label="Barangay"    val={barangayFilter} opts={barangays}    onChange={setBarangayFilter}/>
                 <Sel label="Status"      val={statusFilter}   opts={statuses}     onChange={setStatusFilter}/>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            {/* Mobile cards */}
+            <div className="flex flex-col gap-3 sm:hidden">
+                {filtered.map((m) => (
+                    <div key={m.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-sm truncate">{m.name}</p>
+                                <p className="text-[11px] text-gray-400">{m.age} · {m.gender} · {m.barangay}</p>
+                            </div>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${STATUS_STYLE[m.status] ?? ''}`}>{m.status}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                            <div><span className="text-gray-400">Cluster: </span><span className="font-medium text-gray-700">{m.cluster}</span></div>
+                            <div><span className="text-gray-400">Mentor: </span><span className="font-medium text-gray-700">{m.mentor || '—'}</span></div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#e0f7f5] text-[#0b9b8a]' : 'bg-[#ede9fe] text-[#6741d9]'}`}>{m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}</span>
+                            <span className="text-[11px] text-gray-400">{m.dateSubmitted}</span>
+                        </div>
+                    </div>
+                ))}
+                {filtered.length === 0 && <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center"><p className="text-sm font-semibold text-gray-600">No potential mentees match the selected filters</p></div>}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                         <thead className="bg-[#f8f9fc]">
@@ -458,7 +483,36 @@ function ActiveMenteesTab() {
                     <button key={c} onClick={() => setClusterFilter(c)} className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${clusterFilter === c ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{c}</button>
                 ))}
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            {/* Mobile cards */}
+            <div className="flex flex-col gap-3 sm:hidden">
+                {filtered.map((m) => (
+                    <div key={m.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-sm truncate">{m.name}</p>
+                                <p className="text-[11px] text-gray-400 truncate">{m.cluster} · {m.barangay}</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                            <div><span className="text-gray-400">Mentor: </span><span className="font-medium text-gray-700">{m.mentor}</span></div>
+                            <div><span className="text-gray-400">Module: </span><span className="font-medium text-gray-700">{m.module}</span></div>
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-gray-400">Progress</span>
+                                <span className="text-[11px] font-semibold text-gray-600">{m.progress}%</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+                {filtered.length === 0 && <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center"><p className="text-sm font-semibold text-gray-600">No active mentees found</p></div>}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-x-auto" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                         <thead className="bg-[#f8f9fc]">
@@ -824,18 +878,26 @@ export default function DepartmentHeadDashboard() {
             </aside>
 
             {/* ── Main content ── */}
-            <div className="md:ml-56 flex-1 pt-6 px-4 sm:px-6 pb-16">
-                {/* Mobile hamburger */}
-                <button
-                    className="md:hidden mb-4 flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
-                    onClick={() => setSidebarOpen(true)}
-                    aria-label="Open menu"
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                    </svg>
-                    Menu
-                </button>
+            <div className="md:ml-56 flex-1 pb-16">
+
+                {/* Mobile sticky menu bar */}
+                <div className="md:hidden sticky top-16 z-20 bg-[#EEF2F7] border-b border-gray-200 px-4 py-2.5 flex items-center gap-2">
+                    <button
+                        className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open menu"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
+                        <span>Menu</span>
+                    </button>
+                    <span className="text-xs text-gray-400 ml-1">
+                        {MH_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                    </span>
+                </div>
+
+                <div className="pt-5 px-4 sm:px-6">
                 {activeNav === 'dashboard'    && <DashboardTab/>}
                 {activeNav === 'clusters'     && <ClustersTab/>}
                 {activeNav === 'coordinators' && <CoordinatorsTab/>}
@@ -844,6 +906,7 @@ export default function DepartmentHeadDashboard() {
                 {activeNav === 'mentees'      && <ActiveMenteesTab/>}
                 {activeNav === 'reports'      && <ReportsTab/>}
                 {activeNav === 'notifications'&& <NotificationsTab/>}
+                </div>
             </div>
         </div>
     );

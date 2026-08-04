@@ -263,7 +263,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                         onChange={(e) => setBarangay(e.target.value)}
                                         className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8"
                                     >
-                                        <option value="">Select barangay</option>
+                                        <option value="" disabled hidden>Select barangay</option>
                                         {BARANGAYS.map((b) => (
                                             <option key={b} value={b}>{b}</option>
                                         ))}
@@ -306,7 +306,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                             required
                                             className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8"
                                         >
-                                            <option value="">yes or no</option>
+                                            <option value="" disabled hidden>Select yes or no</option>
                                             <option value="yes">Yes</option>
                                             <option value="no">No</option>
                                         </select>
@@ -323,9 +323,10 @@ export default function C2SHubModal({ onClose }: Props) {
                                         required
                                         type="number"
                                         min={0}
-                                        value={potential}
+                                        value={potential === 0 ? '' : potential}
                                         onChange={(e) => setPotential(Number(e.target.value))}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]"
+                                        placeholder="0"
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] placeholder:text-gray-300"
                                     />
                                 </div>
                             </div>
@@ -342,7 +343,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                             onChange={(e) => setDay(e.target.value)}
                                             className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8"
                                         >
-                                            <option value="">e.g monday, tuesday</option>
+                                            <option value="" disabled hidden>e.g Monday, Tuesday</option>
                                             {DAYS.map((d) => (
                                                 <option key={d} value={d}>{d}</option>
                                             ))}
@@ -363,7 +364,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                             onChange={(e) => setTime(e.target.value)}
                                             className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white pr-8"
                                         >
-                                            <option value=""></option>
+                                            <option value="" disabled hidden>Select time</option>
                                             {TIMES.map((t) => (
                                                 <option key={t} value={t}>{t}</option>
                                             ))}

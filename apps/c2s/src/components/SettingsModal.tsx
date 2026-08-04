@@ -11,26 +11,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     const { fontSize, setFontSize } = useFontSize();
     const { user } = useAuth();
 
-    const sizeLabels: Record<number, string> = {
-        12: 'XS',
-        14: 'S',
-        16: 'M',
-        18: 'L',
-        20: 'XL',
-        22: 'XXL',
-        24: 'XXXL',
-    };
-
-    const presets = [12, 14, 16, 18, 20, 22, 24];
-
-    function getLabel(size: number) {
-        // Find the closest preset label
-        const closest = presets.reduce((prev, curr) =>
-            Math.abs(curr - size) < Math.abs(prev - size) ? curr : prev
-        );
-        return sizeLabels[closest] ?? `${size}px`;
-    }
-
     return (
         <div
             className="fixed inset-0 z-[200] flex items-center justify-center p-4"
@@ -76,13 +56,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 {/* Font Size Slider */}
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <p className="font-semibold text-gray-900 text-sm">Text Size</p>
-                            <p className="text-xs text-gray-400 mt-0.5"></p>
-                        </div>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#ede9fe] text-[#5b50d6]">
-                            {getLabel(fontSize)} — {fontSize}px
-                        </span>
+                        <p className="font-semibold text-gray-900 text-sm">Text Size</p>
                     </div>
 
                     {/* Preview text */}
@@ -114,22 +88,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                         <span className="text-base text-gray-400 font-bold w-4 shrink-0 text-right">A</span>
                     </div>
 
-                    {/* Preset buttons */}
-                    <div className="grid grid-cols-7 gap-1">
-                        {presets.map((size) => (
-                            <button
-                                key={size}
-                                onClick={() => setFontSize(size)}
-                                className={`text-[10px] font-bold py-1.5 rounded-lg transition-colors ${
-                                    fontSize === size
-                                        ? 'bg-[#5b50d6] text-white'
-                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                }`}
-                            >
-                                {sizeLabels[size]}
-                            </button>
-                        ))}
-                    </div>
+
                 </div>
 
                 {/* Reset */}
@@ -138,7 +97,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                         onClick={() => setFontSize(FONT_SIZE_DEFAULT)}
                         className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors text-center"
                     >
-                    Default ({FONT_SIZE_DEFAULT}px)
+                    Default
                     </button>
                 )}
 
