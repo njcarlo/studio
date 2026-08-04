@@ -18,7 +18,7 @@ import DevotionalProgressModal from '@/components/DevotionalProgressModal';
 import EndorsedViewMembersModal from '@/components/EndorsedViewMembersModal';
 import EndorsedEditGroupModal from '@/components/EndorsedEditGroupModal';
 import EndorsedCreateGroupModal from '@/components/EndorsedCreateGroupModal';
-import MentorProfileModal from '@/components/MentorProfileModal';
+import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
 import SettingsModal from '@/components/SettingsModal';
 import ClusterHeadDashboard from '@/components/ClusterHeadDashboard';
 import { CH_MENTOR_REPORT_DATA, CH_COORD_REPORT_DATA, CH_BARANGAY_DATA, CH_GROWTH_DATA } from '@/components/ClusterHeadDashboard';
@@ -298,9 +298,9 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
     mentee: PotentialMentee;
     onAccepted: (pm: PotentialMentee) => void;
 }) {
-    const [showAccept, setShowAccept]     = useState(false);
+    const [showAccept, setShowAccept]       = useState(false);
     const [showRecommend, setShowRecommend] = useState(false);
-    const [showDetails, setShowDetails]   = useState(false);
+    const [showDetails, setShowDetails]     = useState(false);
 
     return (
         <>
@@ -328,55 +328,114 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                 />
             )}
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
-                {/* Source badge */}
-                <span className={`self-start text-[10px] font-bold px-2.5 py-1 rounded-full ${mentee.sourceColor}`}>
-                    {mentee.source}
-                </span>
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-4">
 
-                {/* Identity */}
-                <div className="flex items-center gap-3">
+                {/* Row 1: Avatar + name/info + Pending badge */}
+                <div className="flex items-start gap-3">
                     <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
                         style={{ background: '#5b50d6' }}>
                         {mentee.initials}
                     </div>
-                    <div>
-                        <p className="font-bold text-gray-900">{mentee.name}</p>
-                        <p className="text-xs text-gray-400">{mentee.age} · {mentee.gender} · {mentee.phone}</p>
+                    <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 leading-tight">{mentee.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{mentee.age} · {mentee.gender} · {mentee.phone}</p>
                     </div>
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#fff3cd] text-[#92400e] shrink-0 border border-[#fde68a]">
+                        Pending
+                    </span>
                 </div>
 
-                {/* Requested group */}
-                <div className="flex items-center gap-2 text-xs text-gray-600">
-                    <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                    </svg>
-                    {mentee.requestedGroup}
+                {/* Row 2: Source badge */}
+                <div>
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${mentee.sourceColor}`}>
+                        {mentee.source === 'Recommended' ? (
+                            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+                        ) : (
+                            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                        )}
+                        {mentee.source}
+                    </span>
                 </div>
 
-                {/* Notes */}
-                {mentee.notes && <p className="text-xs text-gray-500 leading-relaxed">{mentee.notes}</p>}
+                {/* Row 3: Requested Group */}
+                <div>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Requested Group</p>
+                    <p className="font-bold text-gray-900 text-base">{mentee.requestedGroup}</p>
+                </div>
 
-                <hr className="border-gray-100" />
+                {/* Row 4: Notes box */}
+                {mentee.notes && (
+                    <div className="bg-[#f8f9fc] rounded-xl px-4 py-3">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Notes</p>
+                        <p className="text-xs text-gray-600 leading-relaxed">{mentee.notes}</p>
+                    </div>
+                )}
 
-                {/* Actions */}
-                <div className="flex items-center gap-2">
+                {/* Row 5: Action buttons */}
+                <div className="flex items-center gap-2 pt-1">
+                    {/* Accept — purple filled, takes most space */}
+                    <button
+                        onClick={() => setShowAccept(true)}
+                        className="flex items-center justify-center gap-1.5 flex-1 text-xs font-bold text-white py-2 rounded-lg transition-colors"
+                        style={{ background: '#5b50d6' }}
+                    >
+                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        Accept
+                    </button>
+
+                    {/* Recommend — outlined */}
+                    <button
+                        onClick={() => setShowRecommend(true)}
+                        className="flex items-center justify-center gap-1.5 flex-1 text-xs font-semibold text-gray-700 py-2 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                    >
+                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                        Recommend
+                    </button>
+
+                    {/* Details — outlined with eye icon */}
                     <button
                         onClick={() => setShowDetails(true)}
-                        className="text-xs font-semibold text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-                    >View</button>
+                        className="flex items-center justify-center gap-1.5 flex-1 text-xs font-semibold text-gray-700 py-2 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                    >
+                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        Details
+                    </button>
                 </div>
             </div>
         </>
     );
 }
 
+/* ── Avatar color helper (shared with MenteesTab) ────────────────────────────── */
+const MENTOR_AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9'];
+function mentorAvatarColor(id: string) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
+    return MENTOR_AVATAR_COLORS[Math.abs(h) % MENTOR_AVATAR_COLORS.length];
+}
+
 /* ── MenteesTab ──────────────────────────────────────────────────────────────── */
 function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Mentee[] }) {
     const [viewing, setViewing] = useState<import('@/lib/data').Mentee | null>(null);
     const [showDevotional, setShowDevotional] = useState<import('@/lib/data').Mentee | null>(null);
+    const [activeSearch, setActiveSearch] = useState('');
+    const [inactiveList] = useState(() => INACTIVE_MENTEES.map(m => ({ ...m })));
 
-    const allMentees = [...activeMentees, ...INACTIVE_MENTEES];
+    const totalMentees   = activeMentees.length + inactiveList.filter(m => m.reason !== 'Transferred').length;
+    const activeCnt      = activeMentees.length;
+    const inactiveCnt    = inactiveList.filter(m => m.reason === 'Inactive').length;
+    const transferredCnt = inactiveList.filter(m => m.reason === 'Transferred').length;
+    const activePct      = totalMentees > 0 ? Math.round((activeCnt / totalMentees) * 100) : 0;
+
+    const filteredActive = activeMentees.filter(m =>
+        m.name.toLowerCase().includes(activeSearch.toLowerCase())
+    );
+
+    const reasonBadge = (r: string) => {
+        if (r === 'Completed')   return 'bg-[#dcfce7] text-[#166534]';
+        if (r === 'Transferred') return 'bg-[#ede9fe] text-[#6741d9]';
+        return 'bg-gray-100 text-gray-500';
+    };
 
     return (
         <>
@@ -386,74 +445,155 @@ function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Men
             <div>
                 <div className="mb-6">
                     <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentees</h1>
-                    <p className="text-sm text-gray-400 mt-1">Your active and inactive mentees.</p>
+                    <p className="text-sm text-gray-400 mt-1">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
                 </div>
 
-                {/* Active */}
-                <h2 className="text-sm font-bold text-gray-700 mb-3">Active Mentees <span className="text-gray-400 font-normal">({activeMentees.length})</span></h2>
-                {activeMentees.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center mb-6">
-                        <p className="text-sm text-gray-500">No active mentees yet.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-                        {activeMentees.map((m) => (
-                            <div key={m.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: '#5b50d6' }}>{m.initials}</div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-gray-900 truncate">{m.name}</p>
-                                        <p className="text-xs text-gray-400">{m.assignedGroup} · Since {m.connectedSince}</p>
-                                    </div>
-                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#dcfce7] text-[#166534] shrink-0">Active</span>
-                                </div>
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-[11px] text-gray-500">{m.currentModule}</span>
-                                        <span className="text-[11px] font-semibold text-gray-700">{m.progress}%</span>
-                                    </div>
-                                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                        <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => setViewing(m)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-gray-300 transition-colors">View Profile</button>
-                                    <button onClick={() => setShowDevotional(m)} className="text-xs font-semibold text-[#5b50d6] border border-[#5b50d6] px-3 py-1.5 rounded-lg hover:bg-[#f5f3ff] transition-colors">Devotional</button>
-                                </div>
+                {/* ── Stats row ── */}
+                <div className="flex gap-4 mb-8 items-stretch">
+                    {/* Donut card */}
+                    <div className="bg-white rounded-2xl border border-gray-200 px-6 py-6 flex items-center gap-6 shrink-0">
+                        <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-800 leading-tight">Mentee Status</p>
+                            <p className="text-[11px] text-gray-400 mb-4">Active vs Inactive</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-700 mb-2">
+                                <span className="w-3 h-3 rounded-full bg-[#3b82f6] shrink-0" />
+                                Active&nbsp;<span className="font-bold">{activeCnt}</span>
                             </div>
-                        ))}
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                                <span className="w-3 h-3 rounded-full bg-gray-200 shrink-0" />
+                                Inactive&nbsp;<span className="font-bold">{inactiveList.length}</span>
+                            </div>
+                        </div>
+                        <div className="relative shrink-0 w-[140px] h-[140px]">
+                            <svg width="140" height="140" viewBox="0 0 140 140">
+                                <circle cx="70" cy="70" r="52" fill="none" stroke="#e5e7eb" strokeWidth="14" />
+                                <circle cx="70" cy="70" r="52" fill="none" stroke="#3b82f6" strokeWidth="14"
+                                    strokeDasharray={`${(activePct / 100) * (2 * Math.PI * 52)} ${(2 * Math.PI * 52) - (activePct / 100) * (2 * Math.PI * 52)}`}
+                                    strokeLinecap="butt"
+                                    transform="rotate(-90 70 70)" />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-2xl font-black text-gray-900 leading-none">{activePct}%</span>
+                                <span className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">ACTIVE</span>
+                            </div>
+                        </div>
                     </div>
-                )}
 
-                {/* Inactive */}
-                <h2 className="text-sm font-bold text-gray-700 mb-3">Inactive Mentees <span className="text-gray-400 font-normal">({INACTIVE_MENTEES.length})</span></h2>
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc]">
-                            <tr>
-                                {['Name','Group','Date Inactive','Last Module','Reason'].map((h) => (
-                                    <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-5 py-3">{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {INACTIVE_MENTEES.map((m) => (
-                                <tr key={m.id} className="hover:bg-[#fafbff]">
-                                    <td className="px-5 py-3 font-semibold text-gray-900">{m.name}</td>
-                                    <td className="px-5 py-3 text-gray-600">{m.assignedGroup}</td>
-                                    <td className="px-5 py-3 text-gray-500">{m.dateInactive}</td>
-                                    <td className="px-5 py-3 text-gray-500">{m.lastModule}</td>
-                                    <td className="px-5 py-3">
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                            m.reason === 'Completed'  ? 'bg-[#dcfce7] text-[#166534]' :
-                                            m.reason === 'Transferred'? 'bg-[#ede9fe] text-[#6741d9]' :
-                                            'bg-gray-100 text-gray-500'
-                                        }`}>{m.reason}</span>
-                                    </td>
-                                </tr>
+                    {/* Stat cards */}
+                    {[
+                        { label: 'Total Mentees', value: totalMentees,   color: '#111827' },
+                        { label: 'Active',        value: activeCnt,      color: '#ef4444' },
+                        { label: 'Inactive',      value: inactiveCnt,    color: '#3b82f6' },
+                        { label: 'Transferred',   value: transferredCnt, color: '#111827' },
+                    ].map(s => (
+                        <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-7 py-5 flex flex-col justify-center flex-1">
+                            <p className="text-sm font-semibold text-gray-600 mb-2 whitespace-nowrap">{s.label}</p>
+                            <p className="font-black leading-none" style={{ color: s.color, fontSize: '2.75rem' }}>{s.value}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* ── Active Mentees cards ── */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-sm font-bold text-gray-700">Active Mentees <span className="text-gray-400 font-normal">({filteredActive.length})</span></h2>
+                        <div className="relative">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
+                            <input type="text" placeholder="Search mentees..." value={activeSearch} onChange={e => setActiveSearch(e.target.value)}
+                                className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-white w-52" />
+                        </div>
+                    </div>
+                    {filteredActive.length === 0 ? (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+                            <p className="text-sm text-gray-400">No active mentees found.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {filteredActive.map((m) => (
+                                <div key={m.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
+                                            style={{ background: mentorAvatarColor(m.id) }}>{m.initials}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-gray-900 truncate">{m.name}</p>
+                                            <p className="text-xs text-gray-400">{m.assignedGroup} · Since {m.connectedSince}</p>
+                                        </div>
+                                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#dcfce7] text-[#166534] shrink-0">Active</span>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[11px] text-gray-500">{m.currentModule}</span>
+                                            <span className="text-[11px] font-semibold text-gray-700">{m.progress}%</span>
+                                        </div>
+                                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                            <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setViewing(m)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-gray-300 transition-colors">View Profile</button>
+                                        <button onClick={() => setShowDevotional(m)} className="text-xs font-semibold text-[#5b50d6] border border-[#5b50d6] px-3 py-1.5 rounded-lg hover:bg-[#f5f3ff] transition-colors">Devotional</button>
+                                    </div>
+                                </div>
                             ))}
-                        </tbody>
-                    </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Inactive Mentees table ── */}
+                <div>
+                    <h2 className="text-sm font-bold text-gray-700 mb-3">Inactive Mentees <span className="text-gray-400 font-normal">({inactiveList.length})</span></h2>
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
+                        <table className="w-full text-sm min-w-[600px]">
+                            <thead>
+                                <tr className="border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
+                                    {['Name', 'Assigned Group', 'Date Became Inactive', 'Last Devotional Manual', 'Reason', 'Actions'].map(h => (
+                                        <th key={h} className="px-5 py-3.5 text-left font-semibold whitespace-nowrap">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {inactiveList.map((m) => (
+                                    <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
+                                        <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap">{m.name}</td>
+                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.assignedGroup}</td>
+                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.dateInactive}</td>
+                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.lastModule}</td>
+                                        <td className="px-5 py-4">
+                                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${reasonBadge(m.reason)}`}>{m.reason}</span>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <button
+                                                onClick={() => {
+                                                    const fake: import('@/lib/data').Mentee = {
+                                                        id: m.id,
+                                                        initials: m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+                                                        name: m.name,
+                                                        assignedGroup: m.assignedGroup,
+                                                        connectedSince: m.dateInactive,
+                                                        module: m.lastModule.split(',')[0]?.trim() ?? 'Module 1',
+                                                        lesson: m.lastModule.split(',')[1]?.trim() ?? 'Lesson 1',
+                                                        progress: 0,
+                                                        email: '—', phone: '—', age: 0,
+                                                        birthday: '—', gender: '—', facebook: '—',
+                                                        firstAttended: '—',
+                                                        currentModule: m.lastModule,
+                                                        currentLesson: '',
+                                                        mentorNotes: '',
+                                                        trainings: [],
+                                                    };
+                                                    setViewing(fake);
+                                                }}
+                                                className="text-xs text-gray-500 hover:underline font-medium whitespace-nowrap"
+                                            >View Profile</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {inactiveList.length === 0 && (
+                            <div className="p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
+                        )}
+                    </div>
                 </div>
             </div>
         </>
@@ -561,9 +701,176 @@ function EndorsedTab() {
 
 /* ════════════════════════════════════════════════════════════ */
 
+/* ── Potential C2S Groups Tab (Mentor view) ──────────────────────────────────── */
+interface MentorHubApplication {
+    id: string;
+    name: string;
+    barangay: string;
+    phone: string;
+    schedule: string;
+    potential: number;
+    submitted: string;
+    status: 'Pending' | 'Approved' | 'Rejected';
+}
+
+const HUB_STATUS_STYLE_MENTOR: Record<string, string> = {
+    'Pending':  'bg-[#fef9c3] text-[#92400e]',
+    'Approved': 'bg-[#dcfce7] text-[#166534]',
+    'Rejected': 'bg-[#fee2e2] text-[#991b1b]',
+};
+
+function MentorPotentialC2STab() {
+    const [apps, setApps] = useState<MentorHubApplication[]>([]);
+    const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
+    const [viewing, setViewing] = useState<MentorHubApplication | null>(null);
+
+    function load() {
+        try {
+            const stored = JSON.parse(localStorage.getItem(HUB_APPLICATIONS_KEY) ?? '[]') as MentorHubApplication[];
+            setApps(stored);
+        } catch { setApps([]); }
+    }
+
+    useEffect(() => {
+        load();
+        const handler = () => load();
+        window.addEventListener('storage', handler);
+        return () => window.removeEventListener('storage', handler);
+    }, []);
+
+    const filtered = apps.filter(a => {
+        const s = search.toLowerCase();
+        return (filter === 'All' || a.status === filter) &&
+            (a.name.toLowerCase().includes(s) || a.barangay.toLowerCase().includes(s));
+    });
+
+    return (
+        <div>
+            {/* Detail slide-over */}
+            {viewing && (
+                <>
+                    <div className="fixed inset-0 z-[100] bg-black/40" onClick={() => setViewing(null)} />
+                    <div className="fixed top-0 right-0 bottom-0 z-[101] w-[420px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
+                        <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">C2S Home Applicants</h2>
+                                <p className="text-xs text-gray-400 mt-0.5">Submitted {viewing.submitted}</p>
+                            </div>
+                            <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-gray-700 p-1">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] font-black text-lg shrink-0">
+                                    {viewing.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold text-gray-900 text-base">{viewing.name}</p>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${HUB_STATUS_STYLE_MENTOR[viewing.status]}`}>{viewing.status}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5">{viewing.barangay} · {viewing.phone}</p>
+                                </div>
+                            </div>
+                            <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Application Details</p>
+                                <div className="divide-y divide-gray-100">
+                                    {[
+                                        { label: 'Preferred Schedule',    value: viewing.schedule },
+                                        { label: 'Potential C2S Members', value: String(viewing.potential) },
+                                        { label: 'Date Submitted',        value: viewing.submitted },
+                                    ].map(r => (
+                                        <div key={r.label} className="flex items-center justify-between px-4 py-2.5">
+                                            <span className="text-xs text-gray-500">{r.label}</span>
+                                            <span className="text-xs font-medium text-gray-800">{r.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            <div className="mb-6">
+                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Potential C2S Groups</h1>
+                <p className="text-sm text-gray-400 mt-1">Applications to host a Connect2Souls devotion hub.</p>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-2 mb-5">
+                <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" placeholder="Search name or barangay..." value={search} onChange={e => setSearch(e.target.value)}
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-56 bg-white" />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                    {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => (
+                        <button key={f} onClick={() => setFilter(f)}
+                            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                            {f}
+                        </button>
+                    ))}
+                </div>
+                <span className="ml-auto text-xs text-gray-400">{filtered.length} application{filtered.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            {/* Table */}
+            {filtered.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
+                    <svg className="w-12 h-12 text-gray-200 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                    <p className="text-sm text-gray-400 font-medium">No applications yet</p>
+                    <p className="text-xs text-gray-300 mt-1">C2S Home Applicants from C2S Finder will appear here.</p>
+                </div>
+            ) : (
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
+                                {['Applicant', 'Barangay', 'Schedule', 'Potential Members', 'Date Submitted', 'Status', 'Actions'].map(h => (
+                                    <th key={h} className="px-4 py-3 text-left font-semibold whitespace-nowrap">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {filtered.map(a => (
+                                <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                                {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-gray-900 text-xs">{a.name}</p>
+                                                <p className="text-[10px] text-gray-400">{a.phone}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3.5 text-xs text-gray-600">{a.barangay}</td>
+                                    <td className="px-4 py-3.5 text-xs text-gray-600">{a.schedule}</td>
+                                    <td className="px-4 py-3.5 text-xs text-gray-600 text-center">{a.potential}</td>
+                                    <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{a.submitted}</td>
+                                    <td className="px-4 py-3.5">
+                                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline whitespace-nowrap">View</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function MentorDashboard() {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'my-groups' | 'potential-mentees' | 'mentees' | 'endorsed'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'my-groups' | 'potential-mentees' | 'mentees' | 'endorsed' | 'potential-c2s-groups'>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [viewingGroup, setViewingGroup] = useState<C2SGroup | null>(null);
     const [editingGroup, setEditingGroup] = useState<C2SGroup | null>(null);
@@ -748,6 +1055,19 @@ function MentorDashboard() {
                             {ENDORSED_WORKERS.length + ENDORSED_GROUPS.reduce((s,g)=>s+g.members,0)}
                         </span>
                     </button>
+                    <button
+                        onClick={() => setActiveTab('potential-c2s-groups')}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${
+                            activeTab === 'potential-c2s-groups'
+                                ? 'text-gray-800 bg-white shadow-sm'
+                                : 'text-gray-500 hover:bg-white/60'
+                        }`}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'potential-c2s-groups' ? '#5b50d6' : '#aaa'}>
+                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                        </svg>
+                        Potential C2S Groups
+                    </button>
                 </nav>
             </aside>
 
@@ -911,6 +1231,11 @@ function MentorDashboard() {
                 {/* â”€â”€ Endorsed Tab â”€â”€ */}
                 {activeTab === 'endorsed' && (
                     <EndorsedTab />
+                )}
+
+                {/* Potential C2S Groups Tab */}
+                {activeTab === 'potential-c2s-groups' && (
+                    <MentorPotentialC2STab />
                 )}
 
                 {/* â”€â”€ Dashboard Tab â”€â”€ */}

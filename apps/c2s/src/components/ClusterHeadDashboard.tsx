@@ -1051,54 +1051,50 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                 ))}
                             </div>
 
-                            {/* ── Active Mentees table ── */}
+                            {/* ── Active Mentees cards ── */}
                             <div className="mb-8">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h2 className="text-lg font-bold text-gray-900">Active Mentees</h2>
+                                    <h2 className="text-sm font-bold text-gray-700">Active Mentees <span className="text-gray-400 font-normal">({filteredActiveMentees.length})</span></h2>
                                     <div className="relative">
                                         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                                         <input type="text" placeholder="Search mentees..." value={activeMenteeSearch} onChange={e => setActiveMenteeSearch(e.target.value)}
                                             className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6741d9] bg-white w-52" />
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-                                    <table className="w-full text-sm min-w-[700px]">
-                                        <thead>
-                                            <tr className="border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
-                                                {['Name', 'Assigned Group', 'Connected Since', 'Devotional Manual Status', 'Progress', 'Actions'].map(h => (
-                                                    <th key={h} className="px-5 py-3.5 text-left font-semibold whitespace-nowrap">{h}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {filteredActiveMentees.map(m => (
-                                                <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                                    <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap">{m.name}</td>
-                                                    <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.assignedGroup}</td>
-                                                    <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.connectedSince}</td>
-                                                    <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.module}, {m.lesson}</td>
-                                                    <td className="px-5 py-4">
-                                                        <div className="flex items-center gap-2.5">
-                                                            <div className="w-28 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                                <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#6741d9' }} />
-                                                            </div>
-                                                            <span className="text-xs text-gray-400 whitespace-nowrap">{m.progress}%</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <button onClick={() => setViewingActiveMentee(m)} className="text-xs text-gray-600 hover:underline font-medium whitespace-nowrap">View Profile</button>
-                                                            <button onClick={() => { setUpdatingMentee(m); }} className="text-xs font-bold text-white px-3 py-1.5 rounded-lg whitespace-nowrap" style={{ background: '#6741d9' }}>Update</button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    {filteredActiveMentees.length === 0 && (
-                                        <div className="p-10 text-center text-sm text-gray-400">No active mentees found.</div>
-                                    )}
-                                </div>
+                                {filteredActiveMentees.length === 0 ? (
+                                    <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+                                        <p className="text-sm text-gray-400">No active mentees found.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        {filteredActiveMentees.map(m => (
+                                            <div key={m.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
+                                                        style={{ background: avatarColor(m.id) }}>{m.initials}</div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-bold text-gray-900 truncate">{m.name}</p>
+                                                        <p className="text-xs text-gray-400">{m.assignedGroup} · Since {m.connectedSince}</p>
+                                                    </div>
+                                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#dcfce7] text-[#166534] shrink-0">Active</span>
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="text-[11px] text-gray-500">{m.currentModule}</span>
+                                                        <span className="text-[11px] font-semibold text-gray-700">{m.progress}%</span>
+                                                    </div>
+                                                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#6741d9' }} />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => setViewingActiveMentee(m)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-gray-300 transition-colors">View Profile</button>
+                                                    <button onClick={() => setUpdatingMentee(m)} className="text-xs font-semibold text-[#6741d9] border border-[#6741d9] px-3 py-1.5 rounded-lg hover:bg-[#f5f3ff] transition-colors">Devotional</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* ── Inactive Mentees table ── */}
@@ -1106,9 +1102,8 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                 const filtered = inactiveMenteesList.filter(m => m.name.toLowerCase().includes(inactiveMenteeSearch.toLowerCase()));
                                 return (
                                 <div>
-                                    <div className="mb-3">
-                                        <h2 className="text-lg font-bold text-gray-900">Inactive Mentees</h2>
-                                        <p className="text-sm text-gray-400 mt-0.5">Completed, archived, transferred, or inactive records.</p>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h2 className="text-sm font-bold text-gray-700">Inactive Mentees <span className="text-gray-400 font-normal">({filtered.length})</span></h2>
                                     </div>
                                     <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
                                         <table className="w-full text-sm min-w-[700px]">
