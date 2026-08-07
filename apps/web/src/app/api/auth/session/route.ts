@@ -4,6 +4,9 @@ import { prisma } from '@studio/database/prisma';
 import { firebaseAdminAuth } from '@/lib/firebase-admin';
 import { SESSION_COOKIE_NAME, SESSION_COOKIE_MAX_AGE_MS } from '@/lib/firebase-auth-server';
 
+// Always server-render — never statically pre-built (requires live Firebase Admin SDK).
+export const dynamic = 'force-dynamic';
+
 // Bridges the Firebase client SDK (which only holds tokens in memory/IndexedDB)
 // into an httpOnly session cookie the server can read.
 
