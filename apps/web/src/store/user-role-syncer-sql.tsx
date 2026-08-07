@@ -216,8 +216,13 @@ export function UserRoleSyncerSQL() {
       canManageFacilities:
         sa || hasPerm('facilities:manage') || hasPerm('manage_facilities') ||
         isMinistryApprover || isMinistryHead,
+      // Any authenticated worker with a profile can submit a reservation request.
+      // The 3-stage approval workflow (Ministry Head → Dept Head → Room
+      // Reservation Manager) is the actual gate — not this permission flag.
+      // venues:create / create_room_reservation are kept for admins who skip the
+      // workflow or manage reservations on behalf of others.
       canCreateRoomReservation:
-        sa || hasPerm('venues:create') || hasPerm('create_room_reservation'),
+        !!effectiveProfile || sa || hasPerm('venues:create') || hasPerm('create_room_reservation'),
       canEditRoomReservation:
         sa || hasPerm('venues:update') || hasPerm('edit_room_reservation'),
       canDeleteRoomReservation:

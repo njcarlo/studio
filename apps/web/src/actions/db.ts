@@ -1320,9 +1320,18 @@ export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
     return prisma.$queryRaw<Booking[]>`SELECT * FROM fn_room_bookings_for_date(${roomId}, ${date}::date)`;
 }
 
-export const createBooking = withPermission(
-    PERMISSIONS.venues.create,
-    async (_ctx, data: any) => {
+// Any authenticated worker with a valid Worker record can submit a reservation.
+// The 3-stage approval workflow that createRoomReservationWorkflow() starts
+// (Ministry Head → Department Head → Room Reservation Manager) is the actual
+// gate.  The old withPermission(venues:create) gate was too restrictive because
+// regular workers have no roles assigned, so every reservation attempt failed.
+export const createBooking = withPublicAction(
+    async (data: any) => {
+        // Require a valid authenticated session — unauthenticated callers are
+        // rejected even though we use withPublicAction for the envelope.
+        const ctx = await resolveCallerCtx();
+        if (!ctx) throw new Error('You must be logged in to create a booking.');
+
         const { workerProfileId, roomId, ...rest } = data;
         if (!workerProfileId) throw new Error('workerProfileId is required to create a booking');
         if (!roomId) throw new Error('roomId is required to create a booking');
