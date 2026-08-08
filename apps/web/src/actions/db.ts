@@ -606,10 +606,22 @@ export const verifyKioskPassword = withPublicAction(async (password: string) => 
     return password === expected;
 });
 
+// Several tables reference Worker with ON DELETE RESTRICT (Booking,
+// AttendanceRecord, MealStub, InventoryBorrowing, VenueBooking), so a hard
+// delete of a worker with any history raised a raw Prisma FK error (P2003).
+// Translate that into a clear, actionable message instead.
+const WORKER_HAS_RECORDS_MESSAGE =
+    'This worker has linked records (reservations, attendance, meal stubs, or borrowings) and cannot be deleted. Set their status to Inactive instead.';
+
 export const deleteWorker = withPermission(
     PERMISSIONS.workers.delete,
     async (_ctx, id: string) => {
-        await WorkersService.deleteWorker(id);
+        try {
+            await WorkersService.deleteWorker(id);
+        } catch (err: any) {
+            if (err?.code === 'P2003') throw new Error(WORKER_HAS_RECORDS_MESSAGE);
+            throw err;
+        }
         revalidatePath('/workers');
     },
 );
@@ -617,7 +629,16 @@ export const deleteWorker = withPermission(
 export const deleteWorkers = withPermission(
     PERMISSIONS.workers.delete,
     async (_ctx, ids: string[]) => {
-        await WorkersService.deleteWorkers(ids);
+        try {
+            await WorkersService.deleteWorkers(ids);
+        } catch (err: any) {
+            if (err?.code === 'P2003') {
+                throw new Error(
+                    'One or more selected workers have linked records (reservations, attendance, meal stubs, or borrowings) and cannot be deleted. Set their status to Inactive instead.',
+                );
+            }
+            throw err;
+        }
         revalidatePath('/workers');
     },
 );

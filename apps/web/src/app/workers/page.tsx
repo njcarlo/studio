@@ -426,11 +426,11 @@ export default function WorkersPage() {
         title: "Worker Deleted",
         description: "The worker profile has been removed from SQL database.",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Delete Failed",
-        description: "Could not delete worker from SQL database.",
+        description: error?.message || "Could not delete worker from SQL database.",
       });
     }
   };
@@ -449,11 +449,11 @@ export default function WorkersPage() {
       });
       setSelectedWorkerIds([]);
       setIsBatchDeleteDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Batch Delete Failed",
-        description: "Could not delete workers from SQL database.",
+        description: error?.message || "Could not delete workers from SQL database.",
       });
     }
   };

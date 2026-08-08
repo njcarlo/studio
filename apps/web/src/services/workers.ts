@@ -14,7 +14,20 @@ export class WorkersService {
     static async createWorker(data: CreateWorkerInput) {
         // Strip undefined to please Prisma
         const cleanData = Object.fromEntries(Object.entries(withInstitutionFlag(data)).filter(([_, v]) => v !== undefined));
-        return prisma.worker.create({ data: cleanData as any });
+        // Guarantee the required NOT NULL columns that carry no schema default,
+        // so no create path (admin form, self-signup, CSV import) fails with a
+        // raw "Argument `X` is missing" error. The self-signup/unauthorized
+        // path in particular omits phone and strips the ministry fields to
+        // undefined; '' is the app's "unset" value for ministries.
+        const dataWithDefaults = {
+            phone: '',
+            avatarUrl: `https://picsum.photos/seed/${Date.now()}/100/100`,
+            status: 'Pending Approval',
+            majorMinistryId: '',
+            minorMinistryId: '',
+            ...cleanData,
+        };
+        return prisma.worker.create({ data: dataWithDefaults as any });
     }
 
     static async updateWorker(id: string, data: UpdateWorkerInput) {
