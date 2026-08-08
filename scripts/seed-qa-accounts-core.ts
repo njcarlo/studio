@@ -37,6 +37,8 @@ type Account = {
   firstName: string;
   lastName: string;
   flags?: string[];
+  /** Assign this account to the QA placeholder ministry (majorMinistryId). */
+  assignQaMinistry?: boolean;
   role?: {
     id: string;
     name: string;
@@ -47,6 +49,19 @@ type Account = {
   ensureC2SGroup?: { name: string; location: string };
 };
 
+// QA placeholder org unit so QA workers belong to a real ministry: without a
+// majorMinistryId, a room reservation's approval workflow has no Ministry Head
+// stage to resolve. The super admin is set as leader/head/approver so the
+// 3-stage flow has an assignee end-to-end. leaderId is required on Ministry;
+// majorMinistryId on Worker is a plain string (no FK), so ordering is flexible.
+const QA_DEPARTMENT = { code: 'QA', name: 'QA (Placeholder)', weight: 99 };
+const QA_MINISTRY = {
+  id: 'qa-ministry',
+  name: 'QA Ministry',
+  description: 'QA placeholder ministry — see docs/PLACEHOLDER_ACCOUNTS.md',
+  departmentCode: QA_DEPARTMENT.code,
+};
+
 const ACCOUNTS: Account[] = [
   {
     email: 'qa.c2s.mentor@cogdasma.local',
@@ -55,6 +70,7 @@ const ACCOUNTS: Account[] = [
     firstName: 'C2S',
     lastName: 'Mentor (QA)',
     flags: ['mentor'],
+    assignQaMinistry: true,
     ensureC2SGroup: { name: 'QA Demo C2S Group', location: 'Dasmariñas (QA)' },
   },
   {
@@ -63,6 +79,7 @@ const ACCOUNTS: Account[] = [
     workerId: 'QA-C2S-ADMIN',
     firstName: 'C2S',
     lastName: 'Admin (QA)',
+    assignQaMinistry: true,
     role: {
       id: 'qa-c2s-admin',
       name: 'C2S Admin (QA)',
@@ -80,6 +97,7 @@ const ACCOUNTS: Account[] = [
     firstName: 'QA',
     lastName: 'Super Admin',
     flags: ['mentor'],
+    assignQaMinistry: true,
     role: {
       id: 'qa-superadmin-role',
       name: 'QA Super Admin',
@@ -139,6 +157,7 @@ async function ensureRole(role: NonNullable<Account['role']>) {
 }
 
 async function ensureWorker(account: Account) {
+  const majorMinistryId = account.assignQaMinistry ? QA_MINISTRY.id : '';
   const worker = await prisma.worker.upsert({
     where: { email: account.email },
     update: {
@@ -146,6 +165,7 @@ async function ensureWorker(account: Account) {
       firstName: account.firstName,
       lastName: account.lastName,
       flags: account.flags ?? [],
+      majorMinistryId,
       passwordChangeRequired: false,
       remarks: 'QA placeholder account — see docs/PLACEHOLDER_ACCOUNTS.md',
     },
@@ -157,7 +177,7 @@ async function ensureWorker(account: Account) {
       phone: '09000000000',
       status: 'Active',
       avatarUrl: `https://picsum.photos/seed/${account.workerId}/100/100`,
-      majorMinistryId: '',
+      majorMinistryId,
       minorMinistryId: '',
       flags: account.flags ?? [],
       passwordChangeRequired: false,
@@ -198,15 +218,52 @@ async function ensureWorker(account: Account) {
   return worker;
 }
 
+/**
+ * Upserts the QA placeholder department + ministry, led by the QA super admin
+ * so a room reservation's 3-stage approval workflow has a resolvable head.
+ */
+async function ensureQaMinistry(leaderWorkerId: string) {
+  await prisma.department.upsert({
+    where: { code: QA_DEPARTMENT.code },
+    update: { name: QA_DEPARTMENT.name, weight: QA_DEPARTMENT.weight },
+    create: QA_DEPARTMENT,
+  });
+  const ministry = await prisma.ministry.upsert({
+    where: { id: QA_MINISTRY.id },
+    update: {
+      name: QA_MINISTRY.name,
+      description: QA_MINISTRY.description,
+      departmentCode: QA_MINISTRY.departmentCode,
+      leaderId: leaderWorkerId,
+      headId: leaderWorkerId,
+      approverId: leaderWorkerId,
+    },
+    create: {
+      id: QA_MINISTRY.id,
+      name: QA_MINISTRY.name,
+      description: QA_MINISTRY.description,
+      departmentCode: QA_MINISTRY.departmentCode,
+      leaderId: leaderWorkerId,
+      headId: leaderWorkerId,
+      approverId: leaderWorkerId,
+    },
+  });
+  console.log(`  ✅ ministry "${ministry.name}" (${ministry.id})`);
+}
+
 export async function seedC2sQaAccounts() {
   console.log('[qa-seed] seeding C2S QA accounts…');
+  const workersByEmail: Record<string, { id: string }> = {};
   for (const account of ACCOUNTS) {
     console.log(`— ${account.email}`);
     await ensureAuthUser(account.email, account.password);
     if (account.role) await ensureRole(account.role);
     const w = await ensureWorker(account);
+    workersByEmail[account.email] = w;
     console.log(`  ✅ worker ${w.id}`);
   }
+  const lead = workersByEmail['qa.superadmin@cogdasma.local'];
+  if (lead) await ensureQaMinistry(lead.id);
   console.log('[qa-seed] done');
 }
 
