@@ -291,7 +291,7 @@ function SlaSettingsForm({
         }
         setIsSaving(true);
         try {
-            await updateVenueAssistanceSetting(days, actorId);
+            await updateVenueAssistanceSetting(days);
             toast({ title: "SLA setting saved" });
             onSaved(days);
         } catch (err: any) {

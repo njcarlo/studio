@@ -178,7 +178,7 @@ export default function VenueAssistanceSettingsPage() {
         }
 
         try {
-            await deleteAssistanceConfig(configToDelete.id, workerProfile.id);
+            await deleteAssistanceConfig(configToDelete.id);
             toast({ title: "Configuration deleted" });
             queryClient.invalidateQueries({ queryKey: ["assistanceConfigs"] });
         } catch (err: any) {
