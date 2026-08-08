@@ -1,7 +1,9 @@
 "use server";
 
+import { prisma } from '@studio/database/prisma';
 import * as venueAssistanceService from '@/services/venue-assistance';
 import { requirePermission } from '@/lib/auth/require-permission';
+import { resolveCallerCtx, type CallerCtx } from '@/lib/auth/with-permission';
 import { PERMISSIONS } from '@/lib/permissions/registry';
 import {
     createVenueBookingSchema,
@@ -41,6 +43,58 @@ export type AssistanceConfigItemInput = {
 };
 
 // ---------------------------------------------------------------------------
+// Authorization helpers
+//
+// Every mutating action derives the caller's identity from the session
+// (resolveCallerCtx) instead of trusting an actorId/responderId/workerProfileId
+// passed by the client. See docs/SERVER_ACTION_AUTH_LAYER_PLAN.md → "Venue
+// Assistance — Residual Authorization Findings".
+// ---------------------------------------------------------------------------
+
+async function requireCaller(): Promise<CallerCtx> {
+    const ctx = await resolveCallerCtx();
+    if (!ctx) throw new Error('You must be logged in to do this.');
+    return ctx;
+}
+
+/**
+ * True if the caller holds a permission, checking both the new `module:action`
+ * key and its legacy flat-string equivalent (resolveCallerCtx surfaces both).
+ */
+function callerHas(ctx: CallerCtx, key: string, legacyKey?: string): boolean {
+    return ctx.isSuperAdmin || ctx.permissions.has(key) || (!!legacyKey && ctx.permissions.has(legacyKey));
+}
+
+/** Can act on ANY ministry's venue assistance. */
+function canManageAllAssistance(ctx: CallerCtx): boolean {
+    return callerHas(ctx, PERMISSIONS.venue_assistance.manage, 'manage_venue_assistance');
+}
+
+/**
+ * Authorize responding to / configuring a specific ministry's assistance:
+ * manage-all, or manage-own-ministry while being that ministry's head.
+ */
+async function assertMinistryAssistanceAuth(ctx: CallerCtx, ministryId: string): Promise<void> {
+    if (canManageAllAssistance(ctx)) return;
+    if (callerHas(ctx, PERMISSIONS.venue_assistance.manage_own_ministry, 'manage_own_ministry_assistance')) {
+        const ministry = await prisma.ministry.findUnique({
+            where: { id: ministryId },
+            select: { headId: true },
+        });
+        if (ministry?.headId === ctx.workerId) return;
+        throw new Error('You can only manage venue assistance for your own ministry.');
+    }
+    throw new Error('You do not have permission to manage venue assistance.');
+}
+
+/** Authorize cancelling a booking: the booking's owner, or a venue manager. */
+function assertCanCancelBooking(ctx: CallerCtx, ownerId: string | null | undefined): void {
+    if (ownerId && ownerId === ctx.workerId) return;
+    if (canManageAllAssistance(ctx) || callerHas(ctx, PERMISSIONS.venues.update, 'edit_room_reservation')) return;
+    throw new Error('You do not have permission to cancel this booking.');
+}
+
+// ---------------------------------------------------------------------------
 // Booking actions
 // ---------------------------------------------------------------------------
 
@@ -57,7 +111,10 @@ export async function createVenueBooking(data: {
     numChairs?: number;
     guidelinesAccepted?: boolean;
 }) {
-    return venueAssistanceService.createVenueBooking(createVenueBookingSchema.parse(data));
+    const ctx = await requireCaller();
+    // Book as yourself; only a venue manager may attribute a booking to another worker.
+    const workerProfileId = canManageAllAssistance(ctx) ? (data.workerProfileId || ctx.workerId) : ctx.workerId;
+    return venueAssistanceService.createVenueBooking(createVenueBookingSchema.parse({ ...data, workerProfileId }));
 }
 
 /** Create a recurring booking, expand occurrences, and generate assistance requests for each. */
@@ -74,22 +131,45 @@ export async function createRecurringBooking(data: {
     pax?: number;
     guidelinesAccepted?: boolean;
 }) {
-    return venueAssistanceService.createRecurringBooking(createRecurringBookingSchema.parse(data));
+    const ctx = await requireCaller();
+    const workerProfileId = canManageAllAssistance(ctx) ? (data.workerProfileId || ctx.workerId) : ctx.workerId;
+    return venueAssistanceService.createRecurringBooking(createRecurringBookingSchema.parse({ ...data, workerProfileId }));
 }
 
 /** Cancel a single venue booking and all its pending assistance requests. */
-export async function cancelVenueBooking(bookingId: string, actorId: string) {
-    return venueAssistanceService.cancelVenueBooking(bookingId, actorId);
+export async function cancelVenueBooking(bookingId: string) {
+    const ctx = await requireCaller();
+    const booking = await prisma.venueBooking.findUnique({
+        where: { id: bookingId },
+        select: { workerProfileId: true },
+    });
+    if (!booking) throw new Error('Booking not found.');
+    assertCanCancelBooking(ctx, booking.workerProfileId);
+    return venueAssistanceService.cancelVenueBooking(bookingId, ctx.workerId);
 }
 
 /** Cancel a single occurrence of a recurring booking (same as cancelVenueBooking). */
-export async function cancelRecurringOccurrence(bookingId: string, actorId: string) {
-    return venueAssistanceService.cancelRecurringOccurrence(bookingId, actorId);
+export async function cancelRecurringOccurrence(bookingId: string) {
+    const ctx = await requireCaller();
+    const booking = await prisma.venueBooking.findUnique({
+        where: { id: bookingId },
+        select: { workerProfileId: true },
+    });
+    if (!booking) throw new Error('Booking not found.');
+    assertCanCancelBooking(ctx, booking.workerProfileId);
+    return venueAssistanceService.cancelRecurringOccurrence(bookingId, ctx.workerId);
 }
 
 /** Cancel an entire recurring series and all pending assistance requests across all occurrences. */
-export async function cancelRecurringSeries(recurringBookingId: string, actorId: string) {
-    return venueAssistanceService.cancelRecurringSeries(recurringBookingId, actorId);
+export async function cancelRecurringSeries(recurringBookingId: string) {
+    const ctx = await requireCaller();
+    const series = await prisma.recurringBooking.findUnique({
+        where: { id: recurringBookingId },
+        select: { workerProfileId: true },
+    });
+    if (!series) throw new Error('Recurring booking not found.');
+    assertCanCancelBooking(ctx, series.workerProfileId);
+    return venueAssistanceService.cancelRecurringSeries(recurringBookingId, ctx.workerId);
 }
 
 // ---------------------------------------------------------------------------
@@ -101,15 +181,16 @@ export async function upsertAssistanceConfig(
     roomId: string,
     ministryId: string,
     items: AssistanceConfigItemInput[],
-    actorId: string,
 ) {
-    const parsed = upsertAssistanceConfigSchema.parse({ roomId, ministryId, items, actorId });
+    const ctx = await requireCaller();
+    const parsed = upsertAssistanceConfigSchema.parse({ roomId, ministryId, items, actorId: ctx.workerId });
     return venueAssistanceService.upsertAssistanceConfig(parsed);
 }
 
 /** Delete an AssistanceConfiguration (cascade deletes items). Does NOT affect existing requests. */
-export async function deleteAssistanceConfig(configId: string, actorId: string) {
-    return venueAssistanceService.deleteAssistanceConfig(configId, actorId);
+export async function deleteAssistanceConfig(configId: string) {
+    const ctx = await requireCaller();
+    return venueAssistanceService.deleteAssistanceConfig(configId, ctx.workerId);
 }
 
 /** Get all AssistanceConfigurations for a room, including items. */
@@ -149,9 +230,18 @@ export async function respondToAssistanceRequest(
     requestId: string,
     itemStatuses: { itemId: string; status: 'Approved' | 'Declined'; adjustedQty?: number; adjustedDesc?: string }[],
     explanation: string | undefined,
-    responderId: string,
 ) {
-    const parsed = respondToAssistanceRequestSchema.parse({ requestId, itemStatuses, explanation, responderId });
+    const ctx = await requireCaller();
+    const request = await prisma.assistanceRequest.findUnique({
+        where: { id: requestId },
+        select: { ministryId: true },
+    });
+    if (!request) throw new Error('Assistance request not found.');
+    await assertMinistryAssistanceAuth(ctx, request.ministryId);
+
+    const parsed = respondToAssistanceRequestSchema.parse({
+        requestId, itemStatuses, explanation, responderId: ctx.workerId,
+    });
     return venueAssistanceService.respondToAssistanceRequest(
         parsed.requestId,
         parsed.itemStatuses,
@@ -169,10 +259,12 @@ export async function bulkRespondToRecurringRequests(
     ministryId: string,
     itemStatuses: { itemId: string; status: 'Approved' | 'Declined'; adjustedQty?: number; adjustedDesc?: string }[],
     explanation: string | undefined,
-    responderId: string,
 ) {
+    const ctx = await requireCaller();
+    await assertMinistryAssistanceAuth(ctx, ministryId);
+
     const parsed = bulkRespondToRecurringRequestsSchema.parse({
-        recurringBookingId, ministryId, itemStatuses, explanation, responderId,
+        recurringBookingId, ministryId, itemStatuses, explanation, responderId: ctx.workerId,
     });
     return venueAssistanceService.bulkRespondToRecurringRequests(
         parsed.recurringBookingId,
@@ -196,13 +288,10 @@ export async function handleBookingCheckIn(bookingId: string) {
     return venueAssistanceService.handleBookingCheckIn(bookingId);
 }
 
-/**
- * Called by cron job: find bookings where end < now, update their
- * In_Progress requests → Fulfilled.
- */
-export async function fulfillCompletedBookings() {
-    return venueAssistanceService.fulfillCompletedBookings();
-}
+// NOTE: fulfillCompletedBookings is intentionally NOT exported as a Server
+// Action. It runs only from the CRON_SECRET-gated /api/cron/venue-assistance
+// route, which calls the service function directly. Exposing it here made it a
+// publicly-callable, unauthenticated mutation (see the auth findings doc).
 
 // ---------------------------------------------------------------------------
 // Admin / Command Center actions
@@ -226,9 +315,9 @@ export async function getAuditLogsForRequest(requestId: string) {
 }
 
 /** Update the global SLA setting (requires manage_venue_assistance permission). */
-export async function updateVenueAssistanceSetting(slaDays: number, actorId: string) {
-    await requirePermission(PERMISSIONS.venue_assistance.manage);
-    const parsed = updateVenueAssistanceSettingSchema.parse({ slaDays, actorId });
+export async function updateVenueAssistanceSetting(slaDays: number) {
+    const { workerId } = await requirePermission(PERMISSIONS.venue_assistance.manage);
+    const parsed = updateVenueAssistanceSettingSchema.parse({ slaDays, actorId: workerId });
     return venueAssistanceService.updateVenueAssistanceSetting(parsed.slaDays, parsed.actorId);
 }
 

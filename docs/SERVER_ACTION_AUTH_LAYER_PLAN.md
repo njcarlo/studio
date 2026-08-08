@@ -253,6 +253,19 @@ supabase functions logs <name>                # inspect recent invocations/error
 
 ## Venue Assistance — Residual Authorization Findings (recorded 2026-06-12)
 
+> **✅ Resolved (2026-08).** `actions/venue-assistance.ts` now derives the caller's
+> identity from `resolveCallerCtx()` for every mutating action instead of trusting a
+> client-supplied `actorId`/`responderId`/`workerProfileId`. Findings 1–5 are all
+> addressed: config actions run under the session identity; `respondToAssistanceRequest`
+> / `bulkRespondToRecurringRequests` now require own-ministry-head or manage permission;
+> the cancel-booking family requires booking ownership or manage/`venues:update`; create
+> derives `workerProfileId` from the session (manager-only "on behalf of"); and
+> `fulfillCompletedBookings` is no longer an exported Server Action (the CRON_SECRET-gated
+> route calls the service directly). **Operational note:** responders must hold
+> `venue_assistance:manage_own_ministry` (and be the ministry head) or
+> `venue_assistance:manage` — mirroring the existing config-permission and RLS model —
+> so confirm ministry heads carry that permission before relying on it in production.
+
 **Why flagged separately:** a security review of `actions/venue-assistance.ts` / `services/venue-assistance.ts` found that while Phase 2/3 added Zod validation and extracted a service layer, the **identity** used for permission checks (`actorId`/`responderId`/`workerProfileId`) is still a plain argument supplied by the *client* rather than derived from the caller's session (`resolveCallerCtx()`). `requirePermission`-style checks that exist (`assertConfigPermission`) check whether *that supplied ID* has the permission — not whether the actual logged-in caller does. So any caller can pass another worker's ID and have the check pass on their behalf.
 
 ### Findings
@@ -311,4 +324,4 @@ Each phase should land as its own PR (or small stack of PRs per domain in Phases
 - [x] Phase 3.5 — Schedule Management Scope: Master vs. Ministry Schedulers (`canViewAllSchedules` added to syncer/hook/store; `/schedule/[id]` UI scoped by it; per-write `ministryId` enforcement intentionally skipped — see rationale in the Phase 3.5 section)
 - [x] Phase 4 — consolidate privileged-write pattern + document exceptions (decision recorded: Server Actions + Prisma is primary; edge-function exception policy + the `_shared/auth.ts` permission-parity gap documented as an explicit follow-up — see Phase 4 "Decision" subsection)
 - [x] Phase 5 — performance enhancements (permission-lookup caching ✅ already landed in Phase 1 via `cache()`; join-path indexes ✅ verified in `schema.prisma`; `assignRolesToWorker` N+1 ✅ fixed via `createMany`; `revalidatePath` narrowing flagged as open follow-up — see Phase 5 "Status" subsection)
-- [ ] Venue Assistance — residual authorization findings (client-trusted `actorId`/`responderId`/`workerProfileId`; missing checks on `respondToAssistanceRequest`/`bulkRespondToRecurringRequests`/cancel-booking family; see dedicated section above)
+- [x] Venue Assistance — residual authorization findings (client-trusted `actorId`/`responderId`/`workerProfileId`; missing checks on `respondToAssistanceRequest`/`bulkRespondToRecurringRequests`/cancel-booking family; see dedicated section above) — **resolved:** `actions/venue-assistance.ts` now derives caller identity from `resolveCallerCtx()`, gates respond/cancel with own-ministry/manage checks, derives `workerProfileId` on create (manager-only "on behalf of"), and removed the unauthenticated `fulfillCompletedBookings` action export (cron route calls the service directly).

@@ -146,7 +146,7 @@ export function AssistanceConfigForm({
                 quantity: i.quantity,
                 isRequired: i.isRequired,
             }));
-            await upsertAssistanceConfig(roomId, ministryId, payload, actorId);
+            await upsertAssistanceConfig(roomId, ministryId, payload);
             toast({ title: existingConfig ? "Configuration updated" : "Configuration created" });
             onSuccess();
         } catch (err: any) {

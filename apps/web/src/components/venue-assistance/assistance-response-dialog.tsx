@@ -176,7 +176,6 @@ export function AssistanceResponseDialog({
                     request.ministryId,
                     updates,
                     explanation || undefined,
-                    responderId,
                 );
                 toast({
                     title: "Bulk response submitted",
@@ -187,7 +186,6 @@ export function AssistanceResponseDialog({
                     request.id,
                     updates,
                     explanation || undefined,
-                    responderId,
                 );
                 toast({
                     title: "Response submitted",

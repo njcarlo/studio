@@ -87,7 +87,7 @@ export default function BookingDetailPage() {
         if (!workerProfile) return;
         setIsCancelling(true);
         try {
-            await cancelVenueBooking(bookingId, workerProfile.id);
+            await cancelVenueBooking(bookingId);
             toast({ title: "Booking cancelled", description: "The booking has been cancelled." });
             // Invalidate queries
             queryClient.invalidateQueries({ queryKey: venueBookingKeys.detail(bookingId) });

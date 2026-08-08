@@ -1,6 +1,6 @@
 import { prisma } from '@studio/database/prisma';
 import { NextResponse } from 'next/server';
-import { fulfillCompletedBookings } from '@/actions/venue-assistance';
+import { fulfillCompletedBookings } from '@/services/venue-assistance';
 import {
     notifySlaEscalation,
     notifyPreEventReminder,
