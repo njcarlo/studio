@@ -85,7 +85,8 @@ export default function EditWorkerPage() {
         });
 
         const { majorMinistryId, minorMinistryId, ...otherFields } = workerData;
-        await updateWorkerSql(id, otherFields);
+        const otherRes = await updateWorkerSql(id, otherFields);
+        if (!otherRes.success) throw new Error(otherRes.error);
 
         await logAction(
           "Requested Ministry Change",
@@ -99,7 +100,8 @@ export default function EditWorkerPage() {
           description: "The ministry change has been submitted for approval.",
         });
       } else {
-        await updateWorkerSql(id, workerData);
+        const updateRes = await updateWorkerSql(id, workerData);
+        if (!updateRes.success) throw new Error(updateRes.error);
         await logAction(
           "Updated Worker",
           "Workers",
@@ -114,7 +116,8 @@ export default function EditWorkerPage() {
       }
 
       // Sync the WorkerRole join table
-      await assignRolesToWorker(id, roleIds);
+      const rolesRes = await assignRolesToWorker(id, roleIds);
+      if (!rolesRes.success) throw new Error(rolesRes.error);
 
       router.push("/workers");
     } catch (error: any) {
