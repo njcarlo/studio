@@ -250,10 +250,13 @@ export default function NewReservationPage() {
             }
         } catch (error) {
             console.error("Error submitting reservation:", error);
+            const message = error instanceof Error && error.message
+                ? error.message
+                : "There was an error submitting your request. Please try again.";
             toast({
                 variant: "destructive",
                 title: "Submission Failed",
-                description: "There was an error submitting your request. Please try again."
+                description: message
             });
         } finally {
             setIsSubmitting(false);

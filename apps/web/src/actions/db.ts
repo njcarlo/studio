@@ -1,7 +1,6 @@
 "use server";
 
 import { randomBytes } from 'crypto';
-import type { Booking } from '@prisma/client';
 import { prisma } from '@studio/database/prisma';
 import { unstable_cache } from 'next/cache';
 import {
@@ -1315,9 +1314,24 @@ export async function getPaginatedBookings(
 }
 
 export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
-    // fn_room_bookings_for_date (supabase/migrations/20260628110920_booking_worker_perf.sql)
-    // does the day-boundary math in SQL and is backed by idx_booking_room_start.
-    return prisma.$queryRaw<Booking[]>`SELECT * FROM fn_room_bookings_for_date(${roomId}, ${date}::date)`;
+    // All bookings for `roomId` on the UTC calendar day of `date`. Uses a plain
+    // Prisma range query (still backed by idx_booking_room_start) rather than
+    // the fn_room_bookings_for_date SQL function: that function only exists in
+    // supabase/migrations/20260628110920_booking_worker_perf.sql, and the live
+    // DB's migration history is incomplete (built via `db push` / manual SQL),
+    // so environments missing the function threw here on every reservation
+    // submit — masked upstream as a generic "Submission Failed". The UTC
+    // day-boundary math mirrors the function's `p_date::date` cast exactly.
+    const dayStart = new Date(Date.UTC(
+        date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0,
+    ));
+    const nextDay = new Date(dayStart);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    return prisma.booking.findMany({
+        where: { roomId, start: { gte: dayStart, lt: nextDay } },
+        orderBy: { start: 'asc' },
+    });
 }
 
 // Any authenticated worker with a valid Worker record can submit a reservation.
