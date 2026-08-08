@@ -59,6 +59,9 @@ service-account.json
 /tmp/
 .env*.local
 package-lock.json
+# functions/ is a standalone (non-workspace) package and the firebase-deploy
+# workflow runs `npm ci` there, which requires a committed lockfile.
+!functions/package-lock.json
 ios/App/App/GoogleService-Info.plist
 android/app/google-services.json
 studio.code-workspace
