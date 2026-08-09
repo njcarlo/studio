@@ -10,7 +10,9 @@ import type {
     MentorSummary,
     PipelineEntry,
     ActivityItem,
+    ChurchWideStats,
 } from '@studio/c2s';
+import type { DashboardData as SharedDashboardData } from '@/components/DashboardSharedWidgets';
 import {
     tagColor,
     type C2SGroup,
@@ -382,8 +384,7 @@ export function toC2SCoordinator(row: CoordinatorSummary, activities: ActivityIt
         email: row.email,
         assignedPotential: row.assignedPotential,
         pendingAssignments: row.pendingAssignments,
-        // Mean days a request has been waiting on this coordinator.
-        avgAssignmentDays: 0,
+        avgAssignmentDays: row.avgAssignmentDays,
         status: row.status === 'Active' ? 'Active' : 'Inactive',
         recentActivities: activities.map((a) => ({ text: a.text, time: relativeTime(a.at) })),
     };
@@ -513,5 +514,30 @@ export function toNotification(item: ActivityItem): DashboardNotification {
         time: relativeTime(item.at),
         // Read state isn't persisted yet — everything older than a day reads as seen.
         read: Date.now() - new Date(item.at).getTime() > 24 * 3600 * 1000,
+    };
+}
+
+// --- Church-wide dashboard --------------------------------------------------
+
+// Department series colours, applied by position so the charts stay readable
+// however many departments the tenant has.
+const DEPT_COLORS = ['#4DA6F5', '#F5C842', '#5CB85C', '#E05C5C', '#C5A3E0', '#0b9b8a', '#e67700'];
+
+export function toSharedDashboardData(stats: ChurchWideStats): SharedDashboardData {
+    return {
+        totalWorkers: stats.totalWorkers,
+        totalMentors: stats.totalMentors,
+        totalMentees: stats.totalMentees,
+        totalGroups: stats.totalGroups,
+        deptWorkers: stats.deptWorkers.map((row, i) => ({
+            ...row,
+            color: DEPT_COLORS[i % DEPT_COLORS.length],
+        })),
+        totalF2F: stats.totalF2F,
+        totalOnline: stats.totalOnline,
+        deptMentees: stats.deptMentees,
+        totalChurch: stats.totalChurch,
+        totalCommunity: stats.totalCommunity,
+        deptGroups: stats.deptGroups,
     };
 }

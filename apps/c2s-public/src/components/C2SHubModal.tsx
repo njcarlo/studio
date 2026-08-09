@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { submitHubApplication } from '@/actions/hub';
 
 interface Props {
     onClose: () => void;
@@ -90,8 +91,6 @@ const TIMES = [
     '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM',
 ];
 
-export const HUB_APPLICATIONS_KEY = 'c2s_hub_applications';
-
 export default function C2SHubModal({ onClose }: Props) {
     const [agreed, setAgreed] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -106,30 +105,34 @@ export default function C2SHubModal({ onClose }: Props) {
     const [day, setDay] = useState('');
     const [time, setTime] = useState('');
 
-    function handleSubmit(e: React.FormEvent) {
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState('');
+
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!agreed) return;
+        if (!agreed || sending) return;
 
-        const now = new Date();
-        const submitted_date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        setSending(true);
+        setError('');
 
-        const newApp = {
-            id: `hub_${Date.now()}`,
+        // Lands in Firestore, where the coordinator's Potential C2S Groups tab
+        // picks it up for triage.
+        const result = await submitHubApplication({
             name: fullName,
-            barangay,
+            email,
             phone,
-            schedule: `${day} ${time}`,
-            family: 0,
+            barangay,
+            address,
+            schedule: `${day} ${time}`.trim(),
             potential,
-            submitted: submitted_date,
-            status: 'Pending' as const,
-        };
+        });
 
-        try {
-            const existing = JSON.parse(localStorage.getItem(HUB_APPLICATIONS_KEY) ?? '[]');
-            localStorage.setItem(HUB_APPLICATIONS_KEY, JSON.stringify([...existing, newApp]));
-            window.dispatchEvent(new Event('storage'));
-        } catch { /* ignore */ }
+        setSending(false);
+
+        if (!result.success) {
+            setError(result.error);
+            return;
+        }
 
         setSubmitted(true);
     }
@@ -413,13 +416,19 @@ export default function C2SHubModal({ onClose }: Props) {
                             </button>
                             <button
                                 type="submit"
-                                disabled={!agreed}
+                                disabled={!agreed || sending}
                                 className="px-6 py-2.5 rounded-full text-sm font-bold text-white transition-colors"
-                                style={{ background: agreed ? '#e91e8c' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}
+                                style={{
+                                    background: agreed && !sending ? '#e91e8c' : '#f0a0cc',
+                                    cursor: agreed && !sending ? 'pointer' : 'not-allowed',
+                                }}
                             >
-                                Submit Application
+                                {sending ? 'Sending…' : 'Submit Application'}
                             </button>
                         </div>
+                        {error && (
+                            <p className="mt-3 text-right text-xs font-semibold text-[#e6184d]">{error}</p>
+                        )}
                     </form>
                 )}
             </div>

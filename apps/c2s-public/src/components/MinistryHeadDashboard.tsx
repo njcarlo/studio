@@ -6,7 +6,7 @@ import type {
     MHActiveMentee, DashboardNotification,
 } from '@/lib/data';
 import type { MinistryHeadDashboardData } from '@/lib/dashboard-data';
-import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
+import { SharedDashboardTab } from '@/components/DashboardSharedWidgets';
 import ClusterMap, { DASMARIÑAS_GROUPS, type ClusterMapGroup } from './ClusterMap';
 import {
     ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -103,13 +103,14 @@ function MHDashboardNotifications() {
 }
 
 function DashboardTab() {
+    const { reports } = useMHData();
     return (
         <div>
             <div className="mb-5">
                 <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
                 <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
             </div>
-            <SharedDashboardTab data={CHURCH_WIDE_DATA} />
+            <SharedDashboardTab data={reports.churchWide} />
         </div>
     );
 }
@@ -506,14 +507,9 @@ function ActiveMenteesTab() {
 
 // ─── Reports Tab ──────────────────────────────────────────────────────────────
 type ReportType = 'monthly' | 'quarterly' | 'annual' | 'coordinator' | 'cluster' | 'mentor' | 'community' | 'maps';
-const REPORT_GROWTH_DATA = [
-    { period: 'Feb', mentees: 22, mentors: 9  },
-    { period: 'Mar', mentees: 27, mentors: 10 },
-    { period: 'Apr', mentees: 30, mentors: 11 },
-    { period: 'May', mentees: 33, mentors: 11 },
-    { period: 'Jun', mentees: 38, mentors: 12 },
-    { period: 'Jul', mentees: 42, mentors: 12 },
-];
+/** The growth series keyed as the report chart expects. */
+const reportGrowthData = (growth: { month: string; mentees: number; mentors: number }[]) =>
+    growth.map((g) => ({ period: g.month, mentees: g.mentees, mentors: g.mentors }));
 
 // ─── Monthly report history data ──────────────────────────────────────────────
 type MonthlyReportStatus = 'Submitted' | 'Pending' | 'Draft';
@@ -547,7 +543,7 @@ const clusterPerf = (clusters: OutreachCluster[]) =>
     clusters.map((c) => ({ name: c.name.replace('Cluster ', ''), mentors: c.totalMentors, active: c.totalActiveMentees, potential: c.totalPotentialMentees }));
 
 function ReportsTab() {
-    const { activeMentees: MH_ACTIVE_MENTEES_LIST, mentors: MH_ALL_MENTORS, clusters: MH_CLUSTERS, potentialMentees: MH_POTENTIAL_MENTEES } = useMHData();
+    const { activeMentees: MH_ACTIVE_MENTEES_LIST, mentors: MH_ALL_MENTORS, clusters: MH_CLUSTERS, potentialMentees: MH_POTENTIAL_MENTEES, reports } = useMHData();
     const [reportType, setReportType] = useState<ReportType>('monthly');
     const [mapFilter, setMapFilter]   = useState<'All' | 'Community-based' | 'Church-based'>('All');
 
@@ -593,7 +589,7 @@ function ReportsTab() {
                 <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                     <p className="text-sm font-semibold text-gray-800 mb-4">Outreach Ministry Growth — {reportType.charAt(0).toUpperCase() + reportType.slice(1)}</p>
                     <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={REPORT_GROWTH_DATA} margin={{ top: 10, right: 20, left: -16, bottom: 0 }}>
+                        <AreaChart data={reportGrowthData(reports.growth)} margin={{ top: 10, right: 20, left: -16, bottom: 0 }}>
                             <defs><linearGradient id="mgFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#5b50d6" stopOpacity={0.15}/><stop offset="95%" stopColor="#5b50d6" stopOpacity={0}/></linearGradient></defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false}/>
                             <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>

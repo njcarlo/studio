@@ -1,0 +1,2 @@
+# Local environment overrides (database URL, Firebase emulator hosts, secrets)
+.env.local

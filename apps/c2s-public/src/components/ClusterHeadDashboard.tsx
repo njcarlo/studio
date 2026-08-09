@@ -7,7 +7,7 @@ import type {
     ClusterGroupPin, DashboardNotification, InactiveMentee,
 } from '@/lib/data';
 import type { ClusterHeadDashboardData } from '@/lib/dashboard-data';
-import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
+import { SharedDashboardTab } from '@/components/DashboardSharedWidgets';
 import Image from 'next/image';
 import Link from 'next/link';
 import MenteeProfileModal from '@/components/MenteeProfileModal';
@@ -51,15 +51,7 @@ const CLUSTER_STATUS_STYLE: Record<string, string> = {
     'Accepted':             'bg-[#dcfce7] text-[#166534]',
 };
 
-// ─── Report data (used in dashboard/page.tsx for chart rendering) ────────────
-export const CH_GROWTH_DATA = [
-    { month: 'Feb', mentees: 3, mentors: 3 },
-    { month: 'Mar', mentees: 4, mentors: 3 },
-    { month: 'Apr', mentees: 4, mentors: 4 },
-    { month: 'May', mentees: 5, mentors: 4 },
-    { month: 'Jun', mentees: 5, mentors: 4 },
-    { month: 'Jul', mentees: 6, mentors: 4 },
-];
+// ─── Report series (rendered by DashboardView's CHReportsCharts) ─────────────
 export const chMentorReportData = (mentors: ClusterMentor[]) =>
     mentors.map(m => ({ name: m.name.split(' ')[0], attendance: m.attendance, completion: m.completion }));
 export const chCoordReportData = (coordinators: C2SCoordinator[]) =>
@@ -870,7 +862,7 @@ export default function ClusterHeadDashboard({
                                 <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
                                 <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
                             </div>
-                            <SharedDashboardTab data={CHURCH_WIDE_DATA} />
+                            <SharedDashboardTab data={data.reports.churchWide} />
                         </div>
                     )}
 

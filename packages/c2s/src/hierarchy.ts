@@ -190,7 +190,51 @@ export type CoordinatorSummary = WorkerSummary & {
     assignedPotential: number;
     pendingAssignments: number;
     activeMentors: number;
+    /**
+     * Mean days from a request landing on this coordinator to them assigning a
+     * mentor. Requests still waiting count their age so far, so a growing
+     * backlog pushes the number up instead of hiding in the unresolved set.
+     */
+    avgAssignmentDays: number;
 };
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+type AssignmentTimelineRow = {
+    assignedCoordinatorId: string | null;
+    assignedCoordinatorAt: Date | null;
+    assignedMentorAt: Date | null;
+    createdAt: Date;
+};
+
+/**
+ * Mean days between a request reaching a coordinator and a mentor being
+ * assigned, keyed by coordinator. Requests without a mentor yet are measured
+ * to now. Pure, so it is unit-testable without Prisma.
+ */
+export function averageAssignmentDays(
+    rows: AssignmentTimelineRow[],
+    now: Date = new Date(),
+): Map<string, number> {
+    const totals = new Map<string, { days: number; count: number }>();
+
+    for (const row of rows) {
+        if (!row.assignedCoordinatorId) continue;
+        // Rows predating the timeline columns fall back to submission time.
+        const from = row.assignedCoordinatorAt ?? row.createdAt;
+        const to = row.assignedMentorAt ?? now;
+        const days = Math.max(0, (to.getTime() - from.getTime()) / MS_PER_DAY);
+
+        const bucket = totals.get(row.assignedCoordinatorId) ?? { days: 0, count: 0 };
+        bucket.days += days;
+        bucket.count += 1;
+        totals.set(row.assignedCoordinatorId, bucket);
+    }
+
+    return new Map(
+        [...totals].map(([id, { days, count }]) => [id, Math.round((days / count) * 10) / 10]),
+    );
+}
 
 /** Coordinators for `clusterId`, or across every cluster when omitted. */
 export async function listCoordinators(clusterId?: string): Promise<CoordinatorSummary[]> {
@@ -199,25 +243,36 @@ export async function listCoordinators(clusterId?: string): Promise<CoordinatorS
         include: { cluster: { include: { mentors: { where: { status: 'Active' } } } } },
     });
 
-    const [workers, assignedCounts, pendingCounts] = await Promise.all([
-        workerMap(assignments.map((a) => a.workerId)),
+    const workerIds = assignments.map((a) => a.workerId);
+    const [workers, assignedCounts, pendingCounts, timeline] = await Promise.all([
+        workerMap(workerIds),
         prisma.c2SJoinRequest.groupBy({
             by: ['assignedCoordinatorId'],
-            where: { assignedCoordinatorId: { in: assignments.map((a) => a.workerId) } },
+            where: { assignedCoordinatorId: { in: workerIds } },
             _count: { _all: true },
         }),
         prisma.c2SJoinRequest.groupBy({
             by: ['assignedCoordinatorId'],
             where: {
-                assignedCoordinatorId: { in: assignments.map((a) => a.workerId) },
+                assignedCoordinatorId: { in: workerIds },
                 pipelineStatus: { in: ['New', 'Waiting for Assignment'] },
             },
             _count: { _all: true },
+        }),
+        prisma.c2SJoinRequest.findMany({
+            where: { assignedCoordinatorId: { in: workerIds } },
+            select: {
+                assignedCoordinatorId: true,
+                assignedCoordinatorAt: true,
+                assignedMentorAt: true,
+                createdAt: true,
+            },
         }),
     ]);
 
     const assignedBy = new Map(assignedCounts.map((r) => [r.assignedCoordinatorId, r._count._all]));
     const pendingBy = new Map(pendingCounts.map((r) => [r.assignedCoordinatorId, r._count._all]));
+    const turnaroundBy = averageAssignmentDays(timeline);
 
     return assignments.flatMap((a) => {
         const worker = workers.get(a.workerId);
@@ -231,6 +286,7 @@ export async function listCoordinators(clusterId?: string): Promise<CoordinatorS
             assignedPotential: assignedBy.get(a.workerId) ?? 0,
             pendingAssignments: pendingBy.get(a.workerId) ?? 0,
             activeMentors: a.cluster.mentors.length,
+            avgAssignmentDays: turnaroundBy.get(a.workerId) ?? 0,
         }];
     });
 }
@@ -506,7 +562,11 @@ export async function listPipeline(scope: PipelineScope = {}): Promise<PipelineE
 export async function assignPipelineCoordinator(requestId: string, coordinatorId: string) {
     return prisma.c2SJoinRequest.update({
         where: { id: requestId },
-        data: { assignedCoordinatorId: coordinatorId, pipelineStatus: 'Waiting for Assignment' },
+        data: {
+            assignedCoordinatorId: coordinatorId,
+            assignedCoordinatorAt: new Date(),
+            pipelineStatus: 'Waiting for Assignment',
+        },
     });
 }
 
@@ -514,7 +574,11 @@ export async function assignPipelineCoordinator(requestId: string, coordinatorId
 export async function assignPipelineMentor(requestId: string, mentorId: string) {
     return prisma.c2SJoinRequest.update({
         where: { id: requestId },
-        data: { assignedMentorId: mentorId, pipelineStatus: 'Assigned to Mentor' },
+        data: {
+            assignedMentorId: mentorId,
+            assignedMentorAt: new Date(),
+            pipelineStatus: 'Assigned to Mentor',
+        },
     });
 }
 
@@ -528,7 +592,10 @@ export async function schedulePipelineInterview(requestId: string, interviewDate
 export async function updatePipelineStatus(requestId: string, status: PipelineStatus) {
     return prisma.c2SJoinRequest.update({
         where: { id: requestId },
-        data: { pipelineStatus: status },
+        data: {
+            pipelineStatus: status,
+            ...(status === 'Accepted' ? { acceptedAt: new Date() } : {}),
+        },
     });
 }
 
@@ -569,6 +636,7 @@ export async function createRecommendedPipelineEntry(input: {
             pipelineStatus: 'New',
             privacyAccepted: true,
             assignedCoordinatorId: input.recommendedById,
+            assignedCoordinatorAt: new Date(),
         },
     });
 }

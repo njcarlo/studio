@@ -36,6 +36,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // C2S Hub applications — households offering to host a group. Written and
+    // read only via the Admin SDK from apps/c2s-public server actions, which
+    // bypass these rules; no client ever touches the collection directly.
+    match /c2sHubApplications/{applicationId} {
+      allow read, write: if false;
+    }
+
     // Example shape for a future collection once migrated:
     // match /workers/{workerId} {
     //   allow read: if isSignedIn();

@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import type { C2SGroup, PotentialMentee, EndorsedGroup, EndorsedWorker, Mentee } from '@/lib/data';
-import type { DashboardData, MentorDashboardData } from '@/lib/dashboard-data';
+import type { DashboardData, MentorDashboardData, C2SReportSeries } from '@/lib/dashboard-data';
 import { acceptMentee } from '@/actions/c2s';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -23,7 +23,7 @@ import EndorsedCreateGroupModal from '@/components/EndorsedCreateGroupModal';
 import MentorProfileModal from '@/components/MentorProfileModal';
 import SettingsModal from '@/components/SettingsModal';
 import ClusterHeadDashboard from '@/components/ClusterHeadDashboard';
-import { chMentorReportData, chCoordReportData, chBarangayData, CH_GROWTH_DATA } from '@/components/ClusterHeadDashboard';
+import { chMentorReportData, chCoordReportData, chBarangayData } from '@/components/ClusterHeadDashboard';
 import CoordinatorDashboard from '@/components/CoordinatorDashboard';
 import DepartmentHeadDashboard from '@/components/MinistryHeadDashboard';
 
@@ -113,6 +113,9 @@ function useMentorData(): MentorDashboardData {
     if (!data) throw new Error('MentorDataContext is missing a provider');
     return data;
 }
+
+// Report series for the chart blocks passed into the role dashboards.
+const ReportSeriesContext = createContext<C2SReportSeries | null>(null);
 
 // Cluster-head data for the report charts rendered into ClusterHeadDashboard.
 const ClusterReportContext = createContext<{
@@ -1019,6 +1022,7 @@ function CHReportsCharts() {
     const CH_MENTOR_REPORT_DATA = chMentorReportData(clusterData?.mentors ?? []);
     const CH_COORD_REPORT_DATA = chCoordReportData(clusterData?.coordinators ?? []);
     const CH_BARANGAY_DATA = chBarangayData(clusterData?.clusterGroups ?? []);
+    const CH_GROWTH_DATA = useContext(ReportSeriesContext)?.growth ?? [];
     const [tab, setTab] = useState<CHReportTab>('mentor');
     const tabs: { key: CHReportTab; label: string }[] = [
         { key: 'mentor',      label: 'Per Mentor' },
@@ -1110,31 +1114,15 @@ function CHReportsCharts() {
 
 const COORD_TS = { borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
 
-const COORD_ASSIGNMENT_DATA = [
-    { month: 'Feb', assigned: 4, pending: 2 },
-    { month: 'Mar', assigned: 6, pending: 3 },
-    { month: 'Apr', assigned: 5, pending: 1 },
-    { month: 'May', assigned: 8, pending: 4 },
-    { month: 'Jun', assigned: 7, pending: 2 },
-    { month: 'Jul', assigned: 9, pending: 3 },
-];
-const COORD_MONTHLY_DATA = [
-    { month: 'Feb', new: 3 }, { month: 'Mar', new: 5 }, { month: 'Apr', new: 4 },
-    { month: 'May', new: 7 }, { month: 'Jun', new: 6 }, { month: 'Jul', new: 8 },
-];
-const COORD_BARANGAY_DATA = [
-    { name: 'Burol', count: 2 }, { name: 'Paliparan III', count: 2 },
-    { name: 'Sampaloc I', count: 1 }, { name: 'Salitran III', count: 1 },
-    { name: 'Emmanuel Bergado I', count: 1 }, { name: 'Fatima I', count: 1 },
-];
-const COORD_MENTOR_DATA = [
-    { name: 'Juan', assigned: 2, capacity: 7 }, { name: 'Pedro', assigned: 2, capacity: 7 },
-    { name: 'Maria', assigned: 1, capacity: 4 }, { name: 'Lena', assigned: 0, capacity: 0 },
-];
 
 type CoordReportChartTab = 'assignment' | 'monthly' | 'barangay' | 'mentor';
 
 function CoordReportsCharts() {
+    const reports = useContext(ReportSeriesContext);
+    const COORD_ASSIGNMENT_DATA = reports?.assignments ?? [];
+    const COORD_MONTHLY_DATA = (reports?.monthlyPotential ?? []).map(p => ({ month: p.name, new: p.value }));
+    const COORD_BARANGAY_DATA = (reports?.byBarangay ?? []).map(p => ({ name: p.name, count: p.value }));
+    const COORD_MENTOR_DATA = (reports?.byMentor ?? []).map(p => ({ name: p.name, assigned: p.value, capacity: p.value }));
     const [tab, setTab] = useState<CoordReportChartTab>('assignment');
     const tabs: { key: CoordReportChartTab; label: string }[] = [
         { key: 'assignment', label: 'Assignment Reports' },
@@ -1254,19 +1242,21 @@ export default function DashboardView({ data }: { data: DashboardData }) {
             <>
                 <DashNav onLogout={handleLogout} />
                 <div className="pt-16">
-                    <ClusterReportContext.Provider
-                        value={{
-                            mentors: data.mentors,
-                            coordinators: data.coordinators,
-                            clusterGroups: data.clusterGroups,
-                        }}
-                    >
-                        <ClusterHeadDashboard
-                            data={data}
-                            onLogout={handleLogout}
-                            reportsContent={<CHReportsCharts />}
-                        />
-                    </ClusterReportContext.Provider>
+                    <ReportSeriesContext.Provider value={data.reports}>
+                        <ClusterReportContext.Provider
+                            value={{
+                                mentors: data.mentors,
+                                coordinators: data.coordinators,
+                                clusterGroups: data.clusterGroups,
+                            }}
+                        >
+                            <ClusterHeadDashboard
+                                data={data}
+                                onLogout={handleLogout}
+                                reportsContent={<CHReportsCharts />}
+                            />
+                        </ClusterReportContext.Provider>
+                    </ReportSeriesContext.Provider>
                 </div>
             </>
         );
@@ -1277,11 +1267,13 @@ export default function DashboardView({ data }: { data: DashboardData }) {
             <>
                 <DashNav onLogout={handleLogout} />
                 <div className="pt-16">
-                    <CoordinatorDashboard
-                        data={data}
-                        onLogout={handleLogout}
-                        reportsContent={<CoordReportsCharts />}
-                    />
+                    <ReportSeriesContext.Provider value={data.reports}>
+                        <CoordinatorDashboard
+                            data={data}
+                            onLogout={handleLogout}
+                            reportsContent={<CoordReportsCharts />}
+                        />
+                    </ReportSeriesContext.Provider>
                 </div>
             </>
         );

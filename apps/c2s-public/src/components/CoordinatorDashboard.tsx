@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, useTransition, createContext, useContext } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import type {
     CoordPotentialMentee, CoordMentor, CoordGroup, DashboardNotification,
 } from '@/lib/data';
 import type { CoordinatorDashboardData } from '@/lib/dashboard-data';
-import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
-import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
+import { reviewHubApplication } from '@/actions/hub';
+import type { HubApplication } from '@/lib/hub-applications';
+import { formatDate } from '@/lib/adapters';
+import { SharedDashboardTab } from '@/components/DashboardSharedWidgets';
 import type { ReactNode } from 'react';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar,
@@ -821,19 +824,6 @@ function CoordNotifsTab() {
     );
 }
 
-// ─── Hub Application type ─────────────────────────────────────────────────────
-interface HubApplication {
-    id: string;
-    name: string;
-    barangay: string;
-    phone: string;
-    schedule: string;
-    family: number;
-    potential: number;
-    submitted: string;
-    status: 'Pending' | 'Approved' | 'Rejected';
-}
-
 const HUB_STATUS_STYLE: Record<string, string> = {
     'Pending':  'bg-[#fef9c3] text-[#92400e]',
     'Approved': 'bg-[#dcfce7] text-[#166534]',
@@ -842,30 +832,19 @@ const HUB_STATUS_STYLE: Record<string, string> = {
 
 // ─── Potential C2S Groups Tab ─────────────────────────────────────────────────
 function PotentialC2SGroupsTab() {
-    const [apps, setApps] = useState<HubApplication[]>([]);
+    const { hubApplications: apps } = useCoordData();
+    const router = useRouter();
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
     const [viewing, setViewing] = useState<HubApplication | null>(null);
     const [confirm, setConfirm] = useState<{ id: string; name: string; action: 'Approved' | 'Rejected' } | null>(null);
-
-    function load() {
-        try {
-            const stored = JSON.parse(localStorage.getItem(HUB_APPLICATIONS_KEY) ?? '[]') as HubApplication[];
-            setApps(stored);
-        } catch { setApps([]); }
-    }
-
-    useEffect(() => {
-        load();
-        const handler = () => load();
-        window.addEventListener('storage', handler);
-        return () => window.removeEventListener('storage', handler);
-    }, []);
+    const [, startTransition] = useTransition();
 
     function updateStatus(id: string, status: HubApplication['status']) {
-        const updated = apps.map(a => a.id === id ? { ...a, status } : a);
-        setApps(updated);
-        localStorage.setItem(HUB_APPLICATIONS_KEY, JSON.stringify(updated));
+        startTransition(async () => {
+            await reviewHubApplication(id, status);
+            router.refresh();
+        });
         if (viewing?.id === id) setViewing(prev => prev ? { ...prev, status } : null);
         setConfirm(null);
     }
@@ -930,7 +909,7 @@ function PotentialC2SGroupsTab() {
                         <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900">Hub Application</h2>
-                                <p className="text-xs text-gray-400 mt-0.5">Submitted {viewing.submitted}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Submitted {formatDate(viewing.submittedAt)}</p>
                             </div>
                             <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-gray-700 p-1">
                                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -957,7 +936,7 @@ function PotentialC2SGroupsTab() {
                                     {[
                                         { label: 'Preferred Schedule', value: viewing.schedule },
                                         { label: 'Potential C2S Members', value: String(viewing.potential) },
-                                        { label: 'Date Submitted', value: viewing.submitted },
+                                        { label: 'Date Submitted', value: formatDate(viewing.submittedAt) },
                                     ].map(r => (
                                         <div key={r.label} className="flex items-center justify-between px-4 py-2.5">
                                             <span className="text-xs text-gray-500">{r.label}</span>
@@ -1054,7 +1033,7 @@ function PotentialC2SGroupsTab() {
                                     <td className="px-4 py-3.5 text-xs text-gray-600">{a.barangay}</td>
                                     <td className="px-4 py-3.5 text-xs text-gray-600">{a.schedule}</td>
                                     <td className="px-4 py-3.5 text-xs text-gray-600 text-center">{a.potential}</td>
-                                    <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{a.submitted}</td>
+                                    <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{formatDate(a.submittedAt)}</td>
                                     <td className="px-4 py-3.5">
                                         <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
                                     </td>
@@ -1103,19 +1082,7 @@ export default function CoordinatorDashboard({
     // local state for mutations
     const [menteeStatuses, setMenteeStatuses] = useState<Record<string, CoordPotentialMentee['status']>>({});
     const [assignedMentors, setAssignedMentors] = useState<Record<string, string>>({});
-    const [hubPendingCount, setHubPendingCount] = useState(0);
-
-    useEffect(() => {
-        function countPending() {
-            try {
-                const stored = JSON.parse(localStorage.getItem(HUB_APPLICATIONS_KEY) ?? '[]') as { status: string }[];
-                setHubPendingCount(stored.filter(a => a.status === 'Pending').length);
-            } catch { setHubPendingCount(0); }
-        }
-        countPending();
-        window.addEventListener('storage', countPending);
-        return () => window.removeEventListener('storage', countPending);
-    }, []);
+    const hubPendingCount = data.hubApplications.filter(a => a.status === 'Pending').length;
 
     function handleAssign(id: string, mentor: string) {
         setAssignedMentors(prev => ({ ...prev, [id]: mentor }));
@@ -1201,7 +1168,7 @@ export default function CoordinatorDashboard({
                                 <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
                                 <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
                             </div>
-                            <SharedDashboardTab data={CHURCH_WIDE_DATA} />
+                            <SharedDashboardTab data={data.reports.churchWide} />
                         </div>
                     )}
                     {/* ── Potential Mentees Tab ── */}

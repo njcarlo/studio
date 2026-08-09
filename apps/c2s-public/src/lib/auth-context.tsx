@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import type { User } from './session-user';
 
 interface AuthContextType {
@@ -21,14 +20,13 @@ const AuthContext = createContext<AuthContextType>({
  */
 export function AuthProvider({ children, user }: { children: ReactNode; user: User | null }) {
     const [current, setCurrent] = useState<User | null>(user);
-    const router = useRouter();
 
     const logout = useCallback(async () => {
         await fetch('/api/auth/session', { method: 'DELETE' });
         setCurrent(null);
-        router.replace('/login');
-        router.refresh();
-    }, [router]);
+        // Full navigation so the server re-resolves the (now absent) session.
+        window.location.assign('/login');
+    }, []);
 
     return (
         <AuthContext.Provider value={{ user: current, logout }}>

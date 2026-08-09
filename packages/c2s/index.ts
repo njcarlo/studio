@@ -66,6 +66,7 @@ export {
   updatePipelineStatus,
   updatePipelineNotes,
   createRecommendedPipelineEntry,
+  averageAssignmentDays,
   listRecentActivity,
   listMenteesForMentor,
   listMenteesForClusters,
@@ -89,3 +90,18 @@ export {
   type PipelineStatus,
   type PipelineEntry,
 } from './src/hierarchy';
+
+export {
+  recentMonths,
+  menteeGrowth,
+  assignmentTrend,
+  potentialMenteeTrend,
+  menteesByBarangay,
+  menteesByMentor,
+  churchWideStats,
+  type MonthBucket,
+  type GrowthPoint,
+  type AssignmentPoint,
+  type NamedCount,
+  type ChurchWideStats,
+} from './src/reports';

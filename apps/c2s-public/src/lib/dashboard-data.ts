@@ -1,6 +1,9 @@
 import 'server-only';
 import * as C2S from '@studio/c2s';
 import type { User } from './session-user';
+import { listHubApplications, type HubApplication } from './hub-applications';
+import { toSharedDashboardData } from './adapters';
+import type { DashboardData as SharedDashboardData } from '@/components/DashboardSharedWidgets';
 import {
     toC2SGroup,
     toClusterMentor,
@@ -53,7 +56,43 @@ import type {
  * result back already shaped as the view types in `./data`.
  */
 
+/**
+ * The chart series behind the report tabs. Every one is an aggregate over the
+ * database, scoped to whatever the asking role can see.
+ */
+export type C2SReportSeries = {
+    growth: C2S.GrowthPoint[];
+    assignments: C2S.AssignmentPoint[];
+    monthlyPotential: C2S.NamedCount[];
+    byBarangay: C2S.NamedCount[];
+    byMentor: C2S.NamedCount[];
+    churchWide: SharedDashboardData;
+};
+
+/** Loads every report series for a scope; `[]` / undefined means church-wide. */
+async function loadReports(clusterIds?: string[]): Promise<C2SReportSeries> {
+    const [growth, assignments, monthlyPotential, byBarangay, byMentor, churchWide] =
+        await Promise.all([
+            C2S.menteeGrowth(clusterIds),
+            C2S.assignmentTrend(clusterIds),
+            C2S.potentialMenteeTrend(clusterIds),
+            C2S.menteesByBarangay(clusterIds),
+            C2S.menteesByMentor(clusterIds),
+            C2S.churchWideStats(),
+        ]);
+
+    return {
+        growth,
+        assignments,
+        monthlyPotential,
+        byBarangay,
+        byMentor,
+        churchWide: toSharedDashboardData(churchWide),
+    };
+}
+
 export type MentorDashboardData = {
+    reports: C2SReportSeries;
     groups: C2SGroup[];
     potentialMentees: PotentialMentee[];
     activeMentees: Mentee[];
@@ -64,6 +103,7 @@ export type MentorDashboardData = {
 };
 
 export type ClusterHeadDashboardData = {
+    reports: C2SReportSeries;
     coordinators: C2SCoordinator[];
     mentors: ClusterMentor[];
     potentialMentees: ClusterPotentialMentee[];
@@ -74,13 +114,16 @@ export type ClusterHeadDashboardData = {
 };
 
 export type CoordinatorDashboardData = {
+    reports: C2SReportSeries;
     potentialMentees: CoordPotentialMentee[];
     mentors: CoordMentor[];
     groups: CoordGroup[];
     notifications: DashboardNotification[];
+    hubApplications: HubApplication[];
 };
 
 export type MinistryHeadDashboardData = {
+    reports: C2SReportSeries;
     clusters: OutreachCluster[];
     coordinators: MHCoordinator[];
     mentors: MHMentor[];
@@ -108,12 +151,13 @@ async function loadGroupRows(): Promise<PublicGroupRow[]> {
 // --- Mentor -----------------------------------------------------------------
 
 async function loadMentorDashboard(user: User): Promise<MentorDashboardData> {
-    const [groups, mentees, inactive, pipeline, endorsed] = await Promise.all([
+    const [groups, mentees, inactive, pipeline, endorsed, reports] = await Promise.all([
         C2S.getMentorGroups(user.id),
         C2S.listMenteesForMentor(user.id),
         C2S.listMenteesForMentor(user.id, true),
         C2S.listPipeline({ mentorId: user.id }),
         C2S.listEndorsedMentees(user.id),
+        loadReports(user.clusterId ? [user.clusterId] : undefined),
     ]);
 
     const groupRows = (await loadGroupRows()).filter((g) => groups.some((mg) => mg.id === g.id));
@@ -133,6 +177,7 @@ async function loadMentorDashboard(user: User): Promise<MentorDashboardData> {
     };
 
     return {
+        reports,
         groups: groupRows.map(toC2SGroup),
         potentialMentees: pipeline.map(toPotentialMentee),
         activeMentees: menteeRows.map(toMentee),
@@ -150,7 +195,7 @@ async function loadMentorDashboard(user: User): Promise<MentorDashboardData> {
 async function loadClusterHeadDashboard(user: User): Promise<ClusterHeadDashboardData> {
     const clusterIds = user.clusterId ? [user.clusterId] : [];
 
-    const [coordinators, mentors, pipeline, mentees, allMentees, activity, groupRows] =
+    const [coordinators, mentors, pipeline, mentees, allMentees, activity, groupRows, reports] =
         await Promise.all([
             C2S.listCoordinators(user.clusterId),
             C2S.listMentors(user.clusterId),
@@ -159,12 +204,14 @@ async function loadClusterHeadDashboard(user: User): Promise<ClusterHeadDashboar
             C2S.listMenteesForClusters(clusterIds, true),
             C2S.listRecentActivity({ clusterIds }),
             loadGroupRows(),
+            loadReports(clusterIds),
         ]);
 
     const menteeRows = mentees as unknown as MenteeRow[];
     const clusterGroupRows = groupRows.filter((g) => g.clusterId === user.clusterId);
 
     return {
+        reports,
         coordinators: coordinators.map((c) =>
             toC2SCoordinator(c, activity.filter((a) => a.type === 'assignment').slice(0, 3)),
         ),
@@ -199,11 +246,13 @@ async function loadCoordinatorDashboard(user: User): Promise<CoordinatorDashboar
     const clusters = await C2S.getClustersForCoordinator(user.id);
     const clusterIds = clusters.map((c) => c.id);
 
-    const [pipeline, mentors, activity, groupRows] = await Promise.all([
+    const [pipeline, mentors, activity, groupRows, hubApplications, reports] = await Promise.all([
         C2S.listPipeline({ clusterIds }),
         C2S.listMentors(clusterIds[0]),
         C2S.listRecentActivity({ coordinatorId: user.id }),
         loadGroupRows(),
+        listHubApplications(clusterIds),
+        loadReports(clusterIds),
     ]);
 
     const clusterGroups = groupRows.filter((g) => g.clusterId && clusterIds.includes(g.clusterId));
@@ -211,28 +260,32 @@ async function loadCoordinatorDashboard(user: User): Promise<CoordinatorDashboar
         mentors.find((m) => m.groups.some((g) => g.id === groupId))?.name ?? '—';
 
     return {
+        reports,
         potentialMentees: pipeline.map(toCoordPotentialMentee),
         mentors: mentors.map(toCoordMentor),
         groups: clusterGroups.map((g) => toCoordGroup(g, mentorName(g.id))),
         notifications: activity.map(toNotification),
+        hubApplications,
     };
 }
 
 // --- Ministry head ----------------------------------------------------------
 
 async function loadMinistryHeadDashboard(): Promise<MinistryHeadDashboardData> {
-    const [clusters, coordinators, mentors, pipeline, mentees, activity] = await Promise.all([
+    const [clusters, coordinators, mentors, pipeline, mentees, activity, reports] = await Promise.all([
         C2S.listClusterOverviews(),
         C2S.listCoordinators(),
         C2S.listMentors(),
         C2S.listPipeline({}),
         C2S.listAllMentees(),
         C2S.listRecentActivity({}),
+        loadReports(),
     ]);
 
     const mentorById = new Map(mentors.map((m) => [m.id, m]));
 
     return {
+        reports,
         clusters: clusters.map(toOutreachCluster),
         coordinators: coordinators.map(toMHCoordinator),
         mentors: mentors.map(toMHMentor),

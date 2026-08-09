@@ -86,11 +86,47 @@ TENANT_ID=cog-dasma
 Server-side Firebase Admin uses `GOOGLE_APPLICATION_CREDENTIALS` when set and
 Application Default Credentials otherwise (App Hosting / Cloud Run).
 
-## Known gaps
+## C2S Hub applications
 
-- The C2S Hub application flow (`C2SHubModal` → coordinator inbox) still keeps
-  its submissions in `localStorage`; it has no Prisma model yet.
-- `avgAssignmentDays` on the coordinator cards is reported as `0` — the wait
-  time isn't derived from the request timeline yet.
-- Several report series (monthly growth, church-wide comparisons) remain
-  illustrative constants rather than aggregates.
+A household offering to host a group submits the **Bring C2S in My Home** form.
+Those applications live in Firestore (`c2sHubApplications`), not Postgres: an
+application is an inbound form submission a coordinator triages, not a record
+the relational C2S model refers to. Once approved, the coordinator creates the
+actual `C2SGroup` and the Prisma-side lifecycle takes over.
+
+Reads and writes go through the Admin SDK in server actions only —
+`firestore.rules` denies the collection to clients outright.
+
+## Report series
+
+Every chart is an aggregate computed in `@studio/c2s`'s `reports.ts`, scoped to
+what the asking role can see:
+
+| Series | Source |
+| --- | --- |
+| Monthly growth | cumulative `C2SMentee.createdAt` / `C2SMentorAssignment.dateAssigned` |
+| Assignment trend | join requests by month, split on whether a mentor was assigned |
+| Monthly potential | join requests by month of submission |
+| Per barangay | active mentees grouped by their group's barangay |
+| Per mentor | active mentees grouped by mentor |
+| Church-wide | workers, mentors, mentees and groups by `Department`, attributing each group to its mentor's department |
+
+The face-to-face vs online split reads `C2SGroup.meetingMode`, a separate axis
+from `groupType` (Community- vs Church-based).
+
+Coordinator turnaround (`avgAssignmentDays`) is measured from the pipeline
+timeline columns on `C2SJoinRequest` — `assignedCoordinatorAt` to
+`assignedMentorAt`, counting still-unassigned requests up to now so a growing
+backlog raises the figure rather than hiding in the unresolved set.
+
+## Testing locally
+
+The app runs end to end against Postgres plus the Firebase emulators:
+
+```bash
+firebase emulators:start --only auth,firestore --project demo-c2s
+# .env.local: FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
+#             FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+#             NEXT_PUBLIC_FIREBASE_USE_EMULATOR=true
+npm run dev:c2s-public
+```

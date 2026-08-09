@@ -532,6 +532,7 @@ model C2SGroup {
   status       String  @default("Open") // Open | Full | Closed
   isFeatured   Boolean @default(false)
   groupType    String  @default("Community-based") // Community-based | Church-based
+  meetingMode  String  @default("F2F") // F2F | Online — drives the face-to-face vs online split
   capacity     Int     @default(12)
   clusterId    String?
   cluster      C2SCluster? @relation(fields: [clusterId], references: [id])
@@ -571,6 +572,11 @@ model C2SJoinRequest {
   assignedMentorId      String?  // Worker.id
   interviewDate         DateTime?
   notes                 String?
+  // Transition timestamps — the turnaround figures on the coordinator and
+  // cluster-head cards are measured from these, not guessed.
+  assignedCoordinatorAt DateTime?
+  assignedMentorAt      DateTime?
+  acceptedAt            DateTime?
   group     C2SGroup @relation(fields: [groupId], references: [id])
 
   @@index([groupId])
