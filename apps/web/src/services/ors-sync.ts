@@ -31,6 +31,199 @@ export type ImportResult = {
     errors: string[];
 };
 
+// ─── Sync run tracking ───────────────────────────────────────────────────────
+
+/** Which slice of ORS a run touched. Persisted verbatim in `OrsSyncRun.scope`. */
+export type OrsSyncScope =
+    | 'workers_import'
+    | 'workers_sync'
+    | 'workers_passwords'
+    | 'ministries'
+    | 'branches'
+    | 'areas'
+    | 'c2s_groups'
+    | 'mentees'
+    | 'attendance'
+    | 'weekly_full';
+
+export type OrsSyncTrigger = 'manual' | 'scheduled';
+
+export type OrsSyncRunStatus = 'running' | 'success' | 'failed';
+
+/** Who/what started a run. Actions fill this from `requirePermission`. */
+export type OrsSyncRunContext = {
+    trigger?: OrsSyncTrigger;
+    actorId?: string | null;
+    actorName?: string | null;
+};
+
+export type OrsSyncRunRecord = {
+    id: string;
+    scope: OrsSyncScope | string;
+    trigger: OrsSyncTrigger | string;
+    status: OrsSyncRunStatus | string;
+    startedAt: Date;
+    finishedAt: Date | null;
+    succeeded: number;
+    skipped: number;
+    failed: number;
+    errors: string[];
+    message: string | null;
+    startedById: string | null;
+    startedByName: string | null;
+};
+
+/**
+ * A run still marked `running` after this long is treated as abandoned — the
+ * serverless instance that owned it was almost certainly recycled mid-import.
+ * ORS imports are chunked network loops over tens of thousands of rows, so this
+ * is deliberately generous; it only needs to be longer than the slowest real
+ * run, not tight.
+ */
+const STALE_RUN_MS = 30 * 60 * 1000;
+
+/** Caps `OrsSyncRun.errors` so one pathological batch can't write a huge row. */
+const MAX_STORED_ERRORS = 50;
+
+export type OrsSyncStatusSummary = {
+    /** True only while a run is genuinely in flight (not a stale/abandoned row). */
+    isRunning: boolean;
+    /** The in-flight run, if any. */
+    current: OrsSyncRunRecord | null;
+    /** Most recent finished run (success or failed), regardless of scope. */
+    lastCompleted: OrsSyncRunRecord | null;
+    /** Runs left `running` past STALE_RUN_MS — surfaced so operators can see them. */
+    stale: OrsSyncRunRecord[];
+    /** Recent history, newest first. */
+    recent: OrsSyncRunRecord[];
+    /** When the weekly scheduled job last finished successfully. */
+    lastScheduledAt: Date | null;
+};
+
+function isStaleRun(run: { status: string; startedAt: Date }): boolean {
+    return run.status === 'running' && Date.now() - run.startedAt.getTime() > STALE_RUN_MS;
+}
+
+/**
+ * Wraps a mutating ORS operation in a durable `OrsSyncRun` record: writes a
+ * `running` row before the work starts, then stamps `finishedAt` plus the
+ * result counts when it settles.
+ *
+ * Deliberately does NOT refuse to start when another run is in flight — the
+ * tabs import disjoint entity types and blocking them against each other would
+ * be a regression for operators. The one place overlap actually matters is the
+ * weekly job, which takes an explicit lock via `hasRunningScope` before doing
+ * anything.
+ *
+ * The bookkeeping is best-effort: if the DB write for the run record itself
+ * fails, the import still runs. Losing an audit row must never cost an import.
+ */
+async function withSyncRun<T extends ImportResult>(
+    scope: OrsSyncScope,
+    ctx: OrsSyncRunContext | undefined,
+    fn: () => Promise<T>,
+): Promise<T> {
+    let runId: string | null = null;
+    try {
+        const run = await prisma.orsSyncRun.create({
+            data: {
+                scope,
+                trigger: ctx?.trigger ?? 'manual',
+                status: 'running',
+                startedById: ctx?.actorId ?? null,
+                startedByName: ctx?.actorName ?? null,
+            },
+            select: { id: true },
+        });
+        runId = run.id;
+    } catch {
+        // Run tracking is observability, not a precondition for the import.
+    }
+
+    try {
+        const result = await fn();
+        if (runId) await finishRun(runId, 'success', result);
+        return result;
+    } catch (err: any) {
+        if (runId) {
+            await finishRun(runId, 'failed', { success: 0, skipped: 0, failed: 0, errors: [] }, err?.message ?? String(err));
+        }
+        throw err;
+    }
+}
+
+async function finishRun(
+    runId: string,
+    status: OrsSyncRunStatus,
+    result: ImportResult,
+    message?: string,
+): Promise<void> {
+    try {
+        await prisma.orsSyncRun.update({
+            where: { id: runId },
+            data: {
+                status,
+                finishedAt: new Date(),
+                succeeded: result.success,
+                skipped: result.skipped,
+                failed: result.failed,
+                errors: result.errors.slice(0, MAX_STORED_ERRORS),
+                message: message ?? null,
+            },
+        });
+    } catch {
+        // See withSyncRun — never let bookkeeping failures surface as import failures.
+    }
+}
+
+/** True if a non-stale run for `scope` is currently in flight. */
+async function hasRunningScope(scope: OrsSyncScope): Promise<boolean> {
+    const running = await prisma.orsSyncRun.findFirst({
+        where: { scope, status: 'running' },
+        orderBy: { startedAt: 'desc' },
+        select: { status: true, startedAt: true },
+    });
+    return !!running && !isStaleRun(running);
+}
+
+/**
+ * The page-facing answer to "is the ORS sync still running?". Reads only the
+ * run table — no ORS network calls — so it stays fast enough to poll.
+ */
+export async function getOrsSyncStatus(limit = 10): Promise<OrsSyncStatusSummary> {
+    const [runningRuns, lastCompleted, recent, lastScheduled] = await Promise.all([
+        prisma.orsSyncRun.findMany({
+            where: { status: 'running' },
+            orderBy: { startedAt: 'desc' },
+        }),
+        prisma.orsSyncRun.findFirst({
+            where: { status: { in: ['success', 'failed'] } },
+            orderBy: { startedAt: 'desc' },
+        }),
+        prisma.orsSyncRun.findMany({
+            orderBy: { startedAt: 'desc' },
+            take: limit,
+        }),
+        prisma.orsSyncRun.findFirst({
+            where: { trigger: 'scheduled', status: 'success' },
+            orderBy: { startedAt: 'desc' },
+            select: { finishedAt: true },
+        }),
+    ]);
+
+    const live = (runningRuns as OrsSyncRunRecord[]).filter((r) => !isStaleRun(r));
+    const stale = (runningRuns as OrsSyncRunRecord[]).filter((r) => isStaleRun(r));
+
+    return {
+        isRunning: live.length > 0,
+        current: live[0] ?? null,
+        lastCompleted: (lastCompleted as OrsSyncRunRecord | null) ?? null,
+        stale,
+        recent: recent as OrsSyncRunRecord[],
+        lastScheduledAt: lastScheduled?.finishedAt ?? null,
+    };
+}
+
 // ─── ORS entity types ────────────────────────────────────────────────────────
 
 export type OrsWorker = {
@@ -639,6 +832,18 @@ export async function importOrsNewWorkers(
         defaultRoleId: string;
         ministryIdMap: Record<string, string>;
         migratePasswordHash: boolean;
+    },
+    ctx?: OrsSyncRunContext
+): Promise<ImportResult> {
+    return withSyncRun('workers_import', ctx, () => importOrsNewWorkersInner(orsWorkerIds, options));
+}
+
+async function importOrsNewWorkersInner(
+    orsWorkerIds: number[],
+    options: {
+        defaultRoleId: string;
+        ministryIdMap: Record<string, string>;
+        migratePasswordHash: boolean;
     }
 ): Promise<ImportResult> {
     const { defaultRoleId, ministryIdMap, migratePasswordHash } = options;
@@ -728,6 +933,14 @@ export async function importOrsNewWorkers(
  * Auth accounts remain in Supabase; this sync only updates Prisma worker fields.
  */
 export async function syncOrsUpdatedWorkers(
+    workers: Array<OrsWorker | SyncUpdatedWorkerInput>,
+    ministryIdMap: Record<string, string> = {},
+    ctx?: OrsSyncRunContext
+): Promise<ImportResult> {
+    return withSyncRun('workers_sync', ctx, () => syncOrsUpdatedWorkersInner(workers, ministryIdMap));
+}
+
+async function syncOrsUpdatedWorkersInner(
     workers: Array<OrsWorker | SyncUpdatedWorkerInput>,
     ministryIdMap: Record<string, string> = {}
 ): Promise<ImportResult> {
@@ -837,6 +1050,13 @@ export async function syncOrsUpdatedWorkers(
  * Useful for workers with changed or missing legacy hash mapping.
  */
 export async function syncOrsWorkerPasswords(
+    orsWorkerIds: number[],
+    ctx?: OrsSyncRunContext
+): Promise<ImportResult> {
+    return withSyncRun('workers_passwords', ctx, () => syncOrsWorkerPasswordsInner(orsWorkerIds));
+}
+
+async function syncOrsWorkerPasswordsInner(
     orsWorkerIds: number[]
 ): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
@@ -905,6 +1125,13 @@ export async function previewOrsMinistries(
 }
 
 export async function importOrsMinistries(
+    ministries: OrsMinistry[],
+    ctx?: OrsSyncRunContext
+): Promise<ImportResult> {
+    return withSyncRun('ministries', ctx, () => importOrsMinistriesInner(ministries));
+}
+
+async function importOrsMinistriesInner(
     ministries: OrsMinistry[]
 ): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
@@ -959,7 +1186,11 @@ export async function previewOrsAreas(
     return orsFetch(`/tables/area?page=${page}&limit=${limit}`);
 }
 
-export async function importOrsSatellites(satellites: OrsSatellite[]): Promise<ImportResult> {
+export async function importOrsSatellites(satellites: OrsSatellite[], ctx?: OrsSyncRunContext): Promise<ImportResult> {
+    return withSyncRun('branches', ctx, () => importOrsSatellitesInner(satellites));
+}
+
+async function importOrsSatellitesInner(satellites: OrsSatellite[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
     for (const s of satellites) {
         try {
@@ -977,7 +1208,11 @@ export async function importOrsSatellites(satellites: OrsSatellite[]): Promise<I
     return result;
 }
 
-export async function importOrsAreas(areas: OrsArea[]): Promise<ImportResult> {
+export async function importOrsAreas(areas: OrsArea[], ctx?: OrsSyncRunContext): Promise<ImportResult> {
+    return withSyncRun('areas', ctx, () => importOrsAreasInner(areas));
+}
+
+async function importOrsAreasInner(areas: OrsArea[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
     let mainBranch = await prisma.branch.findFirst({
@@ -1013,7 +1248,11 @@ export async function previewOrsMentorGroups(
     return orsFetch(`/tables/c2s_online_group_view?page=${page}&limit=${limit}`);
 }
 
-export async function importOrsMentorGroups(groups: OrsMentorGroup[]): Promise<ImportResult> {
+export async function importOrsMentorGroups(groups: OrsMentorGroup[], ctx?: OrsSyncRunContext): Promise<ImportResult> {
+    return withSyncRun('c2s_groups', ctx, () => importOrsMentorGroupsInner(groups));
+}
+
+async function importOrsMentorGroupsInner(groups: OrsMentorGroup[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
     const allWorkers = await prisma.worker.findMany({ select: { id: true, workerId: true } });
@@ -1048,7 +1287,11 @@ export async function previewOrsMentees(
     return orsFetch(`/tables/mentee?page=${page}&limit=${limit}`);
 }
 
-export async function importOrsMentees(mentees: OrsMentee[]): Promise<ImportResult> {
+export async function importOrsMentees(mentees: OrsMentee[], ctx?: OrsSyncRunContext): Promise<ImportResult> {
+    return withSyncRun('mentees', ctx, () => importOrsMenteesInner(mentees));
+}
+
+async function importOrsMenteesInner(mentees: OrsMentee[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
     const allWorkers = await prisma.worker.findMany({
@@ -1120,7 +1363,11 @@ export async function previewOrsAttendance(
     return orsFetch(`/tables/hr_attendance_scan?page=${page}&limit=${limit}`);
 }
 
-export async function importOrsAttendanceBatch(records: OrsAttendanceScan[]): Promise<ImportResult> {
+export async function importOrsAttendanceBatch(records: OrsAttendanceScan[], ctx?: OrsSyncRunContext): Promise<ImportResult> {
+    return withSyncRun('attendance', ctx, () => importOrsAttendanceBatchInner(records));
+}
+
+async function importOrsAttendanceBatchInner(records: OrsAttendanceScan[]): Promise<ImportResult> {
     const result: ImportResult = { success: 0, skipped: 0, failed: 0, errors: [] };
 
     const allWorkers = await prisma.worker.findMany({ select: { id: true, workerId: true } });
@@ -1147,4 +1394,168 @@ export async function importOrsAttendanceBatch(records: OrsAttendanceScan[]): Pr
     }
 
     return result;
+}
+
+// ─── WEEKLY SCHEDULED SYNC ───────────────────────────────────────────────────
+
+/**
+ * Counts of the worker diff without paging — how many ORS workers are new,
+ * changed, or already in step with the new system. The weekly job records this
+ * so operators can see "12 new workers waiting for review" without opening the
+ * Workers tab and paging through it.
+ */
+export type WorkerDiffSummary = {
+    new: number;
+    updated: number;
+    synced: number;
+    orphan: number;
+};
+
+export async function computeWorkerDiffSummary(
+    ministryMap: Record<string, string> = {}
+): Promise<WorkerDiffSummary> {
+    const [orsWorkers, localWorkers] = await Promise.all([
+        fetchAllOrsWorkers(),
+        prisma.worker.findMany({
+            select: {
+                id: true, workerId: true, legacyPasswordHash: true, firstName: true, lastName: true,
+                email: true, phone: true, address: true, birthDate: true, startMonth: true,
+                startYear: true, remarks: true, biometricsId: true, qrToken: true, status: true,
+                majorMinistryId: true, minorMinistryId: true, employmentType: true, roleId: true,
+            },
+        }),
+    ]);
+
+    const byWorkerId = new Map<string, ExistingWorkerSummary>();
+    const byEmail = new Map<string, ExistingWorkerSummary>();
+    for (const w of localWorkers as unknown as ExistingWorkerSummary[]) {
+        if (w.workerId) byWorkerId.set(String(w.workerId), w);
+        if (w.email) byEmail.set(w.email, w);
+    }
+
+    const summary: WorkerDiffSummary = { new: 0, updated: 0, synced: 0, orphan: 0 };
+    const orsIds = new Set(orsWorkers.map((w) => String(w.id)));
+
+    for (const orsWorker of orsWorkers) {
+        const existing =
+            byWorkerId.get(String(orsWorker.id)) ||
+            (orsWorker.email ? byEmail.get(orsWorker.email) : undefined);
+        if (!existing) {
+            summary.new++;
+        } else if (computeDiffFields(orsWorker, existing, ministryMap).length > 0) {
+            summary.updated++;
+        } else {
+            summary.synced++;
+        }
+    }
+
+    for (const w of localWorkers) {
+        if (!w.workerId || !orsIds.has(String(w.workerId))) summary.orphan++;
+    }
+
+    return summary;
+}
+
+/**
+ * Whether the weekly job is allowed to create/update worker records on its own.
+ * Off by default and deliberately so: importing a worker mints an account with
+ * a default role and migrates a legacy password hash, and syncing overwrites
+ * PII on existing records. The UI gates both behind row-by-row human review,
+ * and a cron job is the wrong place to quietly bypass that. Set
+ * `ORS_WEEKLY_INCLUDE_WORKERS=true` to opt in.
+ */
+function weeklyIncludesWorkers(): boolean {
+    return process.env.ORS_WEEKLY_INCLUDE_WORKERS === 'true';
+}
+
+export type WeeklyOrsSyncResult = ImportResult & {
+    skippedReason?: string;
+    diff?: WorkerDiffSummary;
+};
+
+/**
+ * The once-a-week ORS refresh, invoked by `/api/cron/ors-weekly-sync`.
+ *
+ * Scope is intentionally narrow — reference data only (ministries, branches,
+ * areas), which is additive, name-matched, and idempotent (every importer skips
+ * rows that already exist). On top of that it records a worker diff summary so
+ * the sync page can show how much is waiting for review.
+ *
+ * Two things it deliberately does NOT do:
+ *   - Worker imports/field syncs, unless ORS_WEEKLY_INCLUDE_WORKERS=true. See
+ *     `weeklyIncludesWorkers` — this mints accounts and overwrites PII.
+ *   - Attendance. `AttendanceRecord` has no unique constraint on
+ *     (workerProfileId, time), so `createMany({ skipDuplicates: true })` cannot
+ *     actually dedupe scans; re-importing weekly would multiply every row.
+ *     Attendance stays manual until that constraint exists.
+ */
+export async function runWeeklyOrsSync(): Promise<WeeklyOrsSyncResult> {
+    // Single-flight: never stack a scheduled run on top of one still going.
+    if (await hasRunningScope('weekly_full')) {
+        return {
+            success: 0, skipped: 0, failed: 0, errors: [],
+            skippedReason: 'A weekly ORS sync is already running',
+        };
+    }
+
+    return withSyncRun('weekly_full', { trigger: 'scheduled', actorName: 'Scheduled job' }, async () => {
+        const total: WeeklyOrsSyncResult = { success: 0, skipped: 0, failed: 0, errors: [] };
+        const parts: string[] = [];
+
+        const add = (label: string, r: ImportResult) => {
+            total.success += r.success;
+            total.skipped += r.skipped;
+            total.failed += r.failed;
+            total.errors.push(...r.errors.map((e) => `${label}: ${e}`));
+            parts.push(`${label} ${r.success}/${r.skipped}/${r.failed}`);
+        };
+
+        // Reference data, in the same order the UI recommends.
+        const ministries = await orsFetch<OrsApiPage<OrsMinistry>>('/tables/ministry?page=1&limit=500');
+        add('ministries', await importOrsMinistriesInner(ministries.data));
+
+        const satellites = await orsFetch<OrsApiPage<OrsSatellite>>('/tables/satellite?page=1&limit=500');
+        add('branches', await importOrsSatellitesInner(satellites.data));
+
+        const areas = await orsFetch<OrsApiPage<OrsArea>>('/tables/area?page=1&limit=500');
+        add('areas', await importOrsAreasInner(areas.data));
+
+        const ministryMap = await getOrsMinistryMap();
+
+        if (weeklyIncludesWorkers()) {
+            const diffPage = await getWorkerDiffPage(1, 500, undefined, ministryMap, 'legacy_to_new');
+            const newIds = diffPage.data.filter((r) => r.status === 'new').map((r) => r.ors.id);
+            const updated = diffPage.data.filter((r) => r.status === 'updated').map((r) => ({
+                worker: r.ors as OrsWorker,
+                fields: r.diffFields.map((f) => f.label),
+            }));
+
+            if (newIds.length > 0) {
+                add('workers_new', await importOrsNewWorkersInner(newIds, {
+                    defaultRoleId: 'viewer',
+                    ministryIdMap: ministryMap,
+                    migratePasswordHash: true,
+                }));
+            }
+            if (updated.length > 0) {
+                add('workers_updated', await syncOrsUpdatedWorkersInner(updated, ministryMap));
+            }
+        }
+
+        try {
+            total.diff = await computeWorkerDiffSummary(ministryMap);
+            parts.push(
+                `pending review: ${total.diff.new} new, ${total.diff.updated} updated, ${total.diff.orphan} orphan`
+            );
+        } catch (err: any) {
+            total.errors.push(`diff summary: ${err.message}`);
+        }
+
+        await logOrsSyncEvent(
+            'weekly_sync_completed',
+            `Weekly ORS sync — ${parts.join('; ')} (counts are success/skipped/failed)`
+        );
+
+        return total;
+    });
 }

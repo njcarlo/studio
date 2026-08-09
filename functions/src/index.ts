@@ -91,3 +91,19 @@ export const venueAssistance = onSchedule(
   { schedule: '0 8 * * *', timeZone: 'Etc/UTC', region: 'us-central1', secrets: [CRON_SECRET] },
   async () => { await callCron('/api/cron/venue-assistance'); },
 );
+
+// Weekly ORS legacy refresh — Mondays 02:00 Manila (18:00 UTC Sunday), before
+// office hours so the long ORS pagination doesn't compete with real traffic.
+// The route itself is single-flight, so a retried invocation is a no-op rather
+// than a second concurrent run. `timeoutSeconds` is the Scheduler-side wait for
+// the HTTP call; the route's own budget is `maxDuration` in the route file.
+export const weeklyOrsSync = onSchedule(
+  {
+    schedule: '0 18 * * 0',
+    timeZone: 'Etc/UTC',
+    region: 'us-central1',
+    secrets: [CRON_SECRET],
+    timeoutSeconds: 540,
+  },
+  async () => { await callCron('/api/cron/ors-weekly-sync'); },
+);

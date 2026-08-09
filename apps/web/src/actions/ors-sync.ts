@@ -31,6 +31,12 @@ import type {
     DiffField as _DiffField,
     SyncUpdatedWorkerInput as _SyncUpdatedWorkerInput,
     OrsSyncStats as _OrsSyncStats,
+    OrsSyncScope as _OrsSyncScope,
+    OrsSyncTrigger as _OrsSyncTrigger,
+    OrsSyncRunStatus as _OrsSyncRunStatus,
+    OrsSyncRunRecord as _OrsSyncRunRecord,
+    OrsSyncStatusSummary as _OrsSyncStatusSummary,
+    OrsSyncRunContext,
 } from '@/services/ors-sync';
 
 export type OrsPagedResponse<T> = _OrsPagedResponse<T>;
@@ -51,14 +57,23 @@ export type WorkerDiffRecord = _WorkerDiffRecord;
 export type DiffField = _DiffField;
 export type SyncUpdatedWorkerInput = _SyncUpdatedWorkerInput;
 export type OrsSyncStats = _OrsSyncStats;
+export type OrsSyncScope = _OrsSyncScope;
+export type OrsSyncTrigger = _OrsSyncTrigger;
+export type OrsSyncRunStatus = _OrsSyncRunStatus;
+export type OrsSyncRunRecord = _OrsSyncRunRecord;
+export type OrsSyncStatusSummary = _OrsSyncStatusSummary;
 
 const ORS_SYNC_PERMISSION = PERMISSIONS.system.manage_ors_sync;
 
 // All ORS sync actions touch legacy worker PII and can mint or overwrite
 // accounts in bulk — every export (including read-only previews) requires
 // the same domain permission server-side, regardless of UI gating.
-async function assertCanManageOrsSync() {
-    await requirePermission(ORS_SYNC_PERMISSION);
+//
+// Returns the caller so mutating actions can stamp the `OrsSyncRun` row with
+// who started it — the run history is worthless without an actor.
+async function assertCanManageOrsSync(): Promise<OrsSyncRunContext> {
+    const caller = await requirePermission(ORS_SYNC_PERMISSION);
+    return { trigger: 'manual', actorId: caller.workerId, actorName: caller.email };
 }
 
 // ─── Overview / lookups ──────────────────────────────────────────────────────
@@ -71,6 +86,15 @@ export async function getOrsSyncStats(): Promise<OrsSyncStats> {
 export async function getOrsMinistryMap(): Promise<Record<string, string>> {
     await assertCanManageOrsSync();
     return orsSyncService.getOrsMinistryMap();
+}
+
+/**
+ * Live sync status for the page's status card. DB-only (no ORS network calls),
+ * so it's cheap enough for the page to poll while a run is in flight.
+ */
+export async function getOrsSyncStatus(limit = 10): Promise<OrsSyncStatusSummary> {
+    await assertCanManageOrsSync();
+    return orsSyncService.getOrsSyncStatus(limit);
 }
 
 // ─── Worker diff ─────────────────────────────────────────────────────────────
@@ -96,9 +120,9 @@ export async function importOrsNewWorkers(
         migratePasswordHash: boolean;
     }
 ): Promise<ImportResult> {
-    await assertCanManageOrsSync();
+    const ctx = await assertCanManageOrsSync();
     const parsedOptions = importOrsNewWorkersOptionsSchema.parse(options);
-    const result = await orsSyncService.importOrsNewWorkers(orsWorkerIds, parsedOptions);
+    const result = await orsSyncService.importOrsNewWorkers(orsWorkerIds, parsedOptions, ctx);
     if (result.success > 0) revalidatePath('/workers');
     return result;
 }
@@ -107,9 +131,9 @@ export async function syncOrsUpdatedWorkers(
     workers: Array<OrsWorker | SyncUpdatedWorkerInput>,
     ministryIdMap: Record<string, string> = {}
 ): Promise<ImportResult> {
-    await assertCanManageOrsSync();
+    const ctx = await assertCanManageOrsSync();
     const parsedWorkers = workers.map(w => syncUpdatedWorkerItemSchema.parse(w)) as Array<OrsWorker | SyncUpdatedWorkerInput>;
-    const result = await orsSyncService.syncOrsUpdatedWorkers(parsedWorkers, ministryIdMap);
+    const result = await orsSyncService.syncOrsUpdatedWorkers(parsedWorkers, ministryIdMap, ctx);
     if (result.success > 0) revalidatePath('/workers');
     return result;
 }
@@ -117,8 +141,8 @@ export async function syncOrsUpdatedWorkers(
 export async function syncOrsWorkerPasswords(
     orsWorkerIds: number[]
 ): Promise<ImportResult> {
-    await assertCanManageOrsSync();
-    const result = await orsSyncService.syncOrsWorkerPasswords(orsWorkerIds);
+    const ctx = await assertCanManageOrsSync();
+    const result = await orsSyncService.syncOrsWorkerPasswords(orsWorkerIds, ctx);
     if (result.success > 0) {
         revalidatePath('/workers');
         revalidatePath('/settings/ors-sync');
@@ -138,8 +162,8 @@ export async function previewOrsMinistries(
 export async function importOrsMinistries(
     ministries: OrsMinistry[]
 ): Promise<ImportResult> {
-    await assertCanManageOrsSync();
-    const result = await orsSyncService.importOrsMinistries(ministries);
+    const ctx = await assertCanManageOrsSync();
+    const result = await orsSyncService.importOrsMinistries(ministries, ctx);
     if (result.success > 0) revalidatePath('/ministries');
     return result;
 }
@@ -161,13 +185,13 @@ export async function previewOrsAreas(
 }
 
 export async function importOrsSatellites(satellites: OrsSatellite[]): Promise<ImportResult> {
-    await assertCanManageOrsSync();
-    return orsSyncService.importOrsSatellites(satellites);
+    const ctx = await assertCanManageOrsSync();
+    return orsSyncService.importOrsSatellites(satellites, ctx);
 }
 
 export async function importOrsAreas(areas: OrsArea[]): Promise<ImportResult> {
-    await assertCanManageOrsSync();
-    return orsSyncService.importOrsAreas(areas);
+    const ctx = await assertCanManageOrsSync();
+    return orsSyncService.importOrsAreas(areas, ctx);
 }
 
 // ─── C2S groups & mentees ────────────────────────────────────────────────────
@@ -180,8 +204,8 @@ export async function previewOrsMentorGroups(
 }
 
 export async function importOrsMentorGroups(groups: OrsMentorGroup[]): Promise<ImportResult> {
-    await assertCanManageOrsSync();
-    const result = await orsSyncService.importOrsMentorGroups(groups);
+    const ctx = await assertCanManageOrsSync();
+    const result = await orsSyncService.importOrsMentorGroups(groups, ctx);
     if (result.success > 0) revalidatePath('/c2s');
     return result;
 }
@@ -194,8 +218,8 @@ export async function previewOrsMentees(
 }
 
 export async function importOrsMentees(mentees: OrsMentee[]): Promise<ImportResult> {
-    await assertCanManageOrsSync();
-    const result = await orsSyncService.importOrsMentees(mentees);
+    const ctx = await assertCanManageOrsSync();
+    const result = await orsSyncService.importOrsMentees(mentees, ctx);
     if (result.success > 0) revalidatePath('/c2s');
     return result;
 }
@@ -210,6 +234,6 @@ export async function previewOrsAttendance(
 }
 
 export async function importOrsAttendanceBatch(records: OrsAttendanceScan[]): Promise<ImportResult> {
-    await assertCanManageOrsSync();
-    return orsSyncService.importOrsAttendanceBatch(records);
+    const ctx = await assertCanManageOrsSync();
+    return orsSyncService.importOrsAttendanceBatch(records, ctx);
 }
