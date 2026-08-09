@@ -2,50 +2,50 @@
 -- potential-mentee pipeline. Backs the four role dashboards in apps/c2s-public.
 
 -- --- Public directory fields on the group -----------------------------------
-ALTER TABLE "C2SGroup" ADD COLUMN "description" TEXT;
-ALTER TABLE "C2SGroup" ADD COLUMN "barangay" TEXT;
-ALTER TABLE "C2SGroup" ADD COLUMN "leaderName" TEXT;
-ALTER TABLE "C2SGroup" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'Open';
-ALTER TABLE "C2SGroup" ADD COLUMN "isFeatured" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "C2SGroup" ADD COLUMN "groupType" TEXT NOT NULL DEFAULT 'Community-based';
-ALTER TABLE "C2SGroup" ADD COLUMN "capacity" INTEGER NOT NULL DEFAULT 12;
-ALTER TABLE "C2SGroup" ADD COLUMN "clusterId" TEXT;
+ALTER TABLE "C2SGroup" ADD COLUMN IF NOT EXISTS "description" TEXT;
+ALTER TABLE "C2SGroup" ADD COLUMN IF NOT EXISTS "barangay" TEXT;
+ALTER TABLE "C2SGroup" ADD COLUMN IF NOT EXISTS "leaderName" TEXT;
+ALTER TABLE "C2SGroup" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'Open';
+ALTER TABLE "C2SGroup" ADD COLUMN IF NOT EXISTS "isFeatured" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "C2SGroup" ADD COLUMN IF NOT EXISTS "groupType" TEXT NOT NULL DEFAULT 'Community-based';
+ALTER TABLE "C2SGroup" ADD COLUMN IF NOT EXISTS "capacity" INTEGER NOT NULL DEFAULT 12;
+ALTER TABLE "C2SGroup" ADD COLUMN IF NOT EXISTS "clusterId" TEXT;
 
 -- --- Discipleship profile on the mentee --------------------------------------
-ALTER TABLE "C2SMentee" ADD COLUMN "gender" TEXT;
-ALTER TABLE "C2SMentee" ADD COLUMN "birthday" TIMESTAMP(3);
-ALTER TABLE "C2SMentee" ADD COLUMN "socialMediaLink" TEXT;
-ALTER TABLE "C2SMentee" ADD COLUMN "firstAttended" TEXT;
-ALTER TABLE "C2SMentee" ADD COLUMN "connectedSince" TIMESTAMP(3);
-ALTER TABLE "C2SMentee" ADD COLUMN "currentModule" TEXT;
-ALTER TABLE "C2SMentee" ADD COLUMN "currentLesson" TEXT;
-ALTER TABLE "C2SMentee" ADD COLUMN "progress" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "C2SMentee" ADD COLUMN "mentorNotes" TEXT;
-ALTER TABLE "C2SMentee" ADD COLUMN "inactiveAt" TIMESTAMP(3);
-ALTER TABLE "C2SMentee" ADD COLUMN "inactiveReason" TEXT;
-ALTER TABLE "C2SMentee" ADD COLUMN "endorsedAt" TIMESTAMP(3);
-ALTER TABLE "C2SMentee" ADD COLUMN "endorsedById" TEXT;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "gender" TEXT;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "birthday" TIMESTAMP(3);
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "socialMediaLink" TEXT;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "firstAttended" TEXT;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "connectedSince" TIMESTAMP(3);
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "currentModule" TEXT;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "currentLesson" TEXT;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "progress" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "mentorNotes" TEXT;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "inactiveAt" TIMESTAMP(3);
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "inactiveReason" TEXT;
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "endorsedAt" TIMESTAMP(3);
+ALTER TABLE "C2SMentee" ADD COLUMN IF NOT EXISTS "endorsedById" TEXT;
 
-CREATE INDEX "C2SMentee_groupId_idx" ON "C2SMentee"("groupId");
-CREATE INDEX "C2SMentee_mentorId_idx" ON "C2SMentee"("mentorId");
+CREATE INDEX IF NOT EXISTS "C2SMentee_groupId_idx" ON "C2SMentee"("groupId");
+CREATE INDEX IF NOT EXISTS "C2SMentee_mentorId_idx" ON "C2SMentee"("mentorId");
 
 -- --- Potential-mentee pipeline on the join request ---------------------------
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "barangay" TEXT;
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "preferredGroupIds" TEXT[] DEFAULT ARRAY[]::TEXT[];
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "groupType" TEXT;
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "source" TEXT NOT NULL DEFAULT 'From C2S Group Finder';
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "pipelineStatus" TEXT NOT NULL DEFAULT 'New';
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "assignedCoordinatorId" TEXT;
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "assignedMentorId" TEXT;
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "interviewDate" TIMESTAMP(3);
-ALTER TABLE "C2SJoinRequest" ADD COLUMN "notes" TEXT;
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "barangay" TEXT;
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "preferredGroupIds" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "groupType" TEXT;
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "source" TEXT NOT NULL DEFAULT 'From C2S Group Finder';
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "pipelineStatus" TEXT NOT NULL DEFAULT 'New';
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "assignedCoordinatorId" TEXT;
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "assignedMentorId" TEXT;
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "interviewDate" TIMESTAMP(3);
+ALTER TABLE "C2SJoinRequest" ADD COLUMN IF NOT EXISTS "notes" TEXT;
 
-CREATE INDEX "C2SJoinRequest_groupId_idx" ON "C2SJoinRequest"("groupId");
-CREATE INDEX "C2SJoinRequest_pipelineStatus_idx" ON "C2SJoinRequest"("pipelineStatus");
-CREATE INDEX "C2SJoinRequest_assignedCoordinatorId_idx" ON "C2SJoinRequest"("assignedCoordinatorId");
+CREATE INDEX IF NOT EXISTS "C2SJoinRequest_groupId_idx" ON "C2SJoinRequest"("groupId");
+CREATE INDEX IF NOT EXISTS "C2SJoinRequest_pipelineStatus_idx" ON "C2SJoinRequest"("pipelineStatus");
+CREATE INDEX IF NOT EXISTS "C2SJoinRequest_assignedCoordinatorId_idx" ON "C2SJoinRequest"("assignedCoordinatorId");
 
 -- --- Trainings and devotional entries ----------------------------------------
-CREATE TABLE "C2STraining" (
+CREATE TABLE IF NOT EXISTS "C2STraining" (
     "id" TEXT NOT NULL,
     "menteeId" TEXT NOT NULL,
     "label" TEXT NOT NULL,
@@ -53,11 +53,14 @@ CREATE TABLE "C2STraining" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "C2STraining_pkey" PRIMARY KEY ("id")
 );
-CREATE INDEX "C2STraining_menteeId_idx" ON "C2STraining"("menteeId");
-ALTER TABLE "C2STraining" ADD CONSTRAINT "C2STraining_menteeId_fkey"
+CREATE INDEX IF NOT EXISTS "C2STraining_menteeId_idx" ON "C2STraining"("menteeId");
+DO $$ BEGIN
+    ALTER TABLE "C2STraining" ADD CONSTRAINT "C2STraining_menteeId_fkey"
     FOREIGN KEY ("menteeId") REFERENCES "C2SMentee"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE "C2SDevotionEntry" (
+CREATE TABLE IF NOT EXISTS "C2SDevotionEntry" (
     "id" TEXT NOT NULL,
     "menteeId" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
@@ -68,13 +71,16 @@ CREATE TABLE "C2SDevotionEntry" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "C2SDevotionEntry_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "C2SDevotionEntry_menteeId_date_key" ON "C2SDevotionEntry"("menteeId", "date");
-CREATE INDEX "C2SDevotionEntry_menteeId_idx" ON "C2SDevotionEntry"("menteeId");
-ALTER TABLE "C2SDevotionEntry" ADD CONSTRAINT "C2SDevotionEntry_menteeId_fkey"
+CREATE UNIQUE INDEX IF NOT EXISTS "C2SDevotionEntry_menteeId_date_key" ON "C2SDevotionEntry"("menteeId", "date");
+CREATE INDEX IF NOT EXISTS "C2SDevotionEntry_menteeId_idx" ON "C2SDevotionEntry"("menteeId");
+DO $$ BEGIN
+    ALTER TABLE "C2SDevotionEntry" ADD CONSTRAINT "C2SDevotionEntry_menteeId_fkey"
     FOREIGN KEY ("menteeId") REFERENCES "C2SMentee"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- --- Cluster hierarchy --------------------------------------------------------
-CREATE TABLE "C2SCluster" (
+CREATE TABLE IF NOT EXISTS "C2SCluster" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "barangays" TEXT[] DEFAULT ARRAY[]::TEXT[],
@@ -85,9 +91,9 @@ CREATE TABLE "C2SCluster" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "C2SCluster_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "C2SCluster_name_key" ON "C2SCluster"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "C2SCluster_name_key" ON "C2SCluster"("name");
 
-CREATE TABLE "C2SCoordinatorAssignment" (
+CREATE TABLE IF NOT EXISTS "C2SCoordinatorAssignment" (
     "id" TEXT NOT NULL,
     "workerId" TEXT NOT NULL,
     "clusterId" TEXT NOT NULL,
@@ -96,12 +102,15 @@ CREATE TABLE "C2SCoordinatorAssignment" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "C2SCoordinatorAssignment_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "C2SCoordinatorAssignment_workerId_clusterId_key" ON "C2SCoordinatorAssignment"("workerId", "clusterId");
-CREATE INDEX "C2SCoordinatorAssignment_clusterId_idx" ON "C2SCoordinatorAssignment"("clusterId");
-ALTER TABLE "C2SCoordinatorAssignment" ADD CONSTRAINT "C2SCoordinatorAssignment_clusterId_fkey"
+CREATE UNIQUE INDEX IF NOT EXISTS "C2SCoordinatorAssignment_workerId_clusterId_key" ON "C2SCoordinatorAssignment"("workerId", "clusterId");
+CREATE INDEX IF NOT EXISTS "C2SCoordinatorAssignment_clusterId_idx" ON "C2SCoordinatorAssignment"("clusterId");
+DO $$ BEGIN
+    ALTER TABLE "C2SCoordinatorAssignment" ADD CONSTRAINT "C2SCoordinatorAssignment_clusterId_fkey"
     FOREIGN KEY ("clusterId") REFERENCES "C2SCluster"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE "C2SMentorAssignment" (
+CREATE TABLE IF NOT EXISTS "C2SMentorAssignment" (
     "id" TEXT NOT NULL,
     "workerId" TEXT NOT NULL,
     "clusterId" TEXT NOT NULL,
@@ -110,12 +119,18 @@ CREATE TABLE "C2SMentorAssignment" (
     "dateAssigned" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "C2SMentorAssignment_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "C2SMentorAssignment_workerId_clusterId_key" ON "C2SMentorAssignment"("workerId", "clusterId");
-CREATE INDEX "C2SMentorAssignment_clusterId_idx" ON "C2SMentorAssignment"("clusterId");
-ALTER TABLE "C2SMentorAssignment" ADD CONSTRAINT "C2SMentorAssignment_clusterId_fkey"
+CREATE UNIQUE INDEX IF NOT EXISTS "C2SMentorAssignment_workerId_clusterId_key" ON "C2SMentorAssignment"("workerId", "clusterId");
+CREATE INDEX IF NOT EXISTS "C2SMentorAssignment_clusterId_idx" ON "C2SMentorAssignment"("clusterId");
+DO $$ BEGIN
+    ALTER TABLE "C2SMentorAssignment" ADD CONSTRAINT "C2SMentorAssignment_clusterId_fkey"
     FOREIGN KEY ("clusterId") REFERENCES "C2SCluster"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE INDEX "C2SGroup_clusterId_idx" ON "C2SGroup"("clusterId");
-CREATE INDEX "C2SGroup_barangay_idx" ON "C2SGroup"("barangay");
-ALTER TABLE "C2SGroup" ADD CONSTRAINT "C2SGroup_clusterId_fkey"
+CREATE INDEX IF NOT EXISTS "C2SGroup_clusterId_idx" ON "C2SGroup"("clusterId");
+CREATE INDEX IF NOT EXISTS "C2SGroup_barangay_idx" ON "C2SGroup"("barangay");
+DO $$ BEGIN
+    ALTER TABLE "C2SGroup" ADD CONSTRAINT "C2SGroup_clusterId_fkey"
     FOREIGN KEY ("clusterId") REFERENCES "C2SCluster"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

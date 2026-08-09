@@ -16,17 +16,29 @@ function getAdminApp(): App {
   const existing = getApps();
   if (existing.length > 0) return existing[0];
 
-  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (credentialsPath) {
-    const serviceAccount = JSON.parse(readFileSync(resolve(credentialsPath), 'utf-8'));
-    return initializeApp({ credential: cert(serviceAccount) });
-  }
-
   // Prefer an explicit project id when ADC has no project (local / some CI).
   const projectId =
     process.env.GCLOUD_PROJECT ||
     process.env.GOOGLE_CLOUD_PROJECT ||
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (credentialsPath) {
+    // A stale GOOGLE_APPLICATION_CREDENTIALS is common: it belongs in a local
+    // .env but the file it points at is gitignored and absent from deployed
+    // containers. Throwing here took down every sign-in with an opaque ENOENT,
+    // so fall through to ADC — which is what the runtime wanted anyway.
+    try {
+      const serviceAccount = JSON.parse(readFileSync(resolve(credentialsPath), 'utf-8'));
+      return initializeApp({ credential: cert(serviceAccount) });
+    } catch (error) {
+      console.warn(
+        `[firebase-admin] Could not read GOOGLE_APPLICATION_CREDENTIALS at ` +
+          `"${credentialsPath}" (${error instanceof Error ? error.message : error}). ` +
+          `Falling back to Application Default Credentials.`,
+      );
+    }
+  }
 
   return projectId ? initializeApp({ projectId }) : initializeApp();
 }
