@@ -71,3 +71,9 @@ studio.code-workspace
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# Playwright
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/blob-report/
+apps/web/.playwright/

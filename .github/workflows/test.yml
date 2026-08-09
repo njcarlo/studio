@@ -1,0 +1,119 @@
+# Quality gate: typecheck -> lint -> unit/component tests.
+#
+# Mirrors the local husky pre-push hook, minus `next build` (App Hosting builds
+# on deploy, and a full Next build here would roughly triple CI time for little
+# extra signal — type errors already fail the typecheck step).
+#
+# The unit suite mocks Prisma and needs no database service; `prisma generate`
+# only produces the client types that `tsc` needs.
+name: Test
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck, lint, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install workspace deps
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=prisma/schema.prisma
+
+      - name: Typecheck
+        run: npm run typecheck --workspace=web
+
+      - name: Lint
+        run: npm run lint --workspace=web
+
+      - name: Unit + component tests
+        run: npm run test:ci --workspace=web
+
+  e2e:
+    name: E2E (public pages)
+    runs-on: ubuntu-latest
+    # Independent of the unit job so a lint nit doesn't hide an E2E regression.
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      # Build-time public config. Real values live in Secret Manager for the
+      # actual deploy; these only need to be present and well-formed so the
+      # client bundle builds.
+      NEXT_PUBLIC_FIREBASE_API_KEY: ci-placeholder
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: cog-app-studio.firebaseapp.com
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: cog-app-studio
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: cog-app-studio.appspot.com
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '000000000000'
+      NEXT_PUBLIC_FIREBASE_APP_ID: '1:000000000000:web:ci'
+      NEXT_PUBLIC_ROOT_DOMAIN: cogdasma.app
+      TENANT_ID: cog-dasma
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install workspace deps
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=prisma/schema.prisma
+
+      # The live DB was built with `db push` (migration history is incomplete —
+      # see AGENTS.md), so materialize the CI schema the same way.
+      - name: Create database schema
+        run: npx prisma db push --schema=prisma/schema.prisma --skip-generate
+
+      - name: Build web app
+        run: npx next build
+        working-directory: apps/web
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Run public E2E suite
+        run: npm run e2e --workspace=web
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

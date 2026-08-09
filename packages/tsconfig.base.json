@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "_comment": "Shared base for the workspace packages. These packages ship raw TypeScript (main: ./index.ts) and are compiled by whatever consumes them — Next via transpilePackages, and Vitest/oxc in tests. Without a tsconfig next to the sources, the Vitest transform fails with 'Failed to load tsconfig' and every test importing @studio/* dies at import time.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowJs": true,
+    "noEmit": true
+  },
+  "exclude": ["node_modules", "dist"]
+}
