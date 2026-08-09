@@ -49,6 +49,14 @@ export type UpdateGroupProfileInput = {
     demographics?: string[];
     mapLng?: number | null;
     mapLat?: number | null;
+    description?: string | null;
+    barangay?: string | null;
+    leaderName?: string | null;
+    status?: string;
+    isFeatured?: boolean;
+    groupType?: string;
+    capacity?: number;
+    clusterId?: string | null;
 };
 
 export async function updateGroupProfile(groupId: string, data: UpdateGroupProfileInput) {
@@ -72,8 +80,17 @@ export async function listPublicC2SGroups() {
             mapLng: true,
             mapLat: true,
             createdAt: true,
+            description: true,
+            barangay: true,
+            leaderName: true,
+            status: true,
+            isFeatured: true,
+            groupType: true,
+            capacity: true,
+            clusterId: true,
+            _count: { select: { mentees: true } },
         },
-        orderBy: { name: 'asc' },
+        orderBy: [{ isFeatured: 'desc' }, { name: 'asc' }],
     });
 }
 
@@ -243,6 +260,15 @@ export type MenteeInput = {
     phone: string;
     status: string;
     notes?: string | null;
+    gender?: string | null;
+    birthday?: Date | null;
+    socialMediaLink?: string | null;
+    firstAttended?: string | null;
+    connectedSince?: Date | null;
+    currentModule?: string | null;
+    currentLesson?: string | null;
+    progress?: number;
+    mentorNotes?: string | null;
 };
 
 export async function createMenteeInGroup(groupId: string, data: MenteeInput) {
@@ -327,15 +353,12 @@ export type AdminCreateGroupInput = {
     name: string;
     mentorId: string;
     menteeIds?: string[];
-};
+} & UpdateGroupProfileInput;
 
 export async function createAdminC2SGroup(data: AdminCreateGroupInput) {
+    const { menteeIds, ...rest } = data;
     return prisma.c2SGroup.create({
-        data: {
-            name: data.name,
-            mentorId: data.mentorId,
-            menteeIds: data.menteeIds ?? [],
-        },
+        data: { ...rest, menteeIds: menteeIds ?? [] },
     });
 }
 
@@ -343,7 +366,7 @@ export type AdminUpdateGroupInput = {
     name?: string;
     mentorId?: string;
     menteeIds?: string[];
-};
+} & UpdateGroupProfileInput;
 
 export async function updateAdminC2SGroup(id: string, data: AdminUpdateGroupInput) {
     return prisma.c2SGroup.update({ where: { id }, data });

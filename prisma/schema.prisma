@@ -411,7 +411,101 @@ model C2SMentee {
   groupId   String
   mentorId  String
   createdAt DateTime @default(now())
-  group     C2SGroup @relation(fields: [groupId], references: [id])
+  // Discipleship profile — surfaced on the mentor/cluster/coordinator dashboards.
+  gender         String?
+  birthday       DateTime?
+  socialMediaLink String?
+  firstAttended  String?
+  connectedSince DateTime?
+  currentModule  String?
+  currentLesson  String?
+  progress       Int       @default(0) // 0-100 through the current module
+  mentorNotes    String?
+  // Lifecycle — an inactive mentee keeps its row so history survives.
+  inactiveAt     DateTime?
+  inactiveReason String?   // Completed | Inactive | Transferred
+  // Endorsement — a mentee endorsed to become a worker.
+  endorsedAt     DateTime?
+  endorsedById   String?
+  group      C2SGroup           @relation(fields: [groupId], references: [id])
+  trainings  C2STraining[]
+  devotions  C2SDevotionEntry[]
+
+  @@index([groupId])
+  @@index([mentorId])
+}
+
+/// A training/seminar a mentee has completed, e.g. { label: "Basic Discipleship", year: "2024" }.
+model C2STraining {
+  id        String     @id @default(uuid())
+  menteeId  String
+  label     String
+  year      String
+  createdAt DateTime   @default(now())
+  mentee    C2SMentee  @relation(fields: [menteeId], references: [id], onDelete: Cascade)
+
+  @@index([menteeId])
+}
+
+/// One devotional entry logged by a mentee — the source for the devotion streak widgets.
+model C2SDevotionEntry {
+  id        String    @id @default(uuid())
+  menteeId  String
+  date      DateTime
+  module    String?
+  lesson    String?
+  completed Boolean   @default(true)
+  notes     String?
+  createdAt DateTime  @default(now())
+  mentee    C2SMentee @relation(fields: [menteeId], references: [id], onDelete: Cascade)
+
+  @@unique([menteeId, date])
+  @@index([menteeId])
+}
+
+/// An outreach cluster — the geographic grouping a cluster head oversees and a
+/// C2S coordinator staffs. Groups, mentors and coordinators all hang off it.
+model C2SCluster {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  barangays     String[] @default([])
+  mapLat        Float?
+  mapLng        Float?
+  clusterHeadId String?  // Worker.id
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  groups       C2SGroup[]
+  coordinators C2SCoordinatorAssignment[]
+  mentors      C2SMentorAssignment[]
+}
+
+/// Assigns a worker as C2S coordinator for a cluster, optionally narrowed to barangays.
+model C2SCoordinatorAssignment {
+  id        String     @id @default(uuid())
+  workerId  String
+  clusterId String
+  barangays String[]   @default([])
+  status    String     @default("Active")
+  createdAt DateTime   @default(now())
+  cluster   C2SCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, clusterId])
+  @@index([clusterId])
+}
+
+/// Assigns a worker as a mentor within a cluster, with the group capacity that
+/// drives the "available slots" figures on the coordinator dashboard.
+model C2SMentorAssignment {
+  id            String     @id @default(uuid())
+  workerId      String
+  clusterId     String
+  groupCapacity Int        @default(12)
+  status        String     @default("Active")
+  dateAssigned  DateTime   @default(now())
+  cluster       C2SCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, clusterId])
+  @@index([clusterId])
 }
 
 model C2SGroup {
@@ -431,9 +525,23 @@ model C2SGroup {
   mapLat          Float?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  // Public directory fields — what the Group Finder renders.
+  description  String?
+  barangay     String?
+  leaderName   String?
+  status       String  @default("Open") // Open | Full | Closed
+  isFeatured   Boolean @default(false)
+  groupType    String  @default("Community-based") // Community-based | Church-based
+  meetingMode  String  @default("F2F") // F2F | Online — drives the face-to-face vs online split
+  capacity     Int     @default(12)
+  clusterId    String?
+  cluster      C2SCluster? @relation(fields: [clusterId], references: [id])
   mentees         C2SMentee[]
   joinRequests    C2SJoinRequest[]
   sessions        C2SSession[]
+
+  @@index([clusterId])
+  @@index([barangay])
 }
 
 model C2SJoinRequest {
@@ -453,7 +561,27 @@ model C2SJoinRequest {
   status    String   @default("Pending")
   workflowId String?
   createdAt DateTime @default(now())
+  // Potential-mentee pipeline — the coordinator/cluster-head view of this same
+  // request as it moves from submission to an accepted mentee.
+  barangay              String?
+  preferredGroupIds     String[] @default([]) // up to 2; groupId is the primary
+  groupType             String?  // Community-based | Church-based
+  source                String   @default("From C2S Group Finder") // or "Recommended"
+  pipelineStatus        String   @default("New") // New | Waiting for Assignment | Assigned to Mentor | Interview Scheduled | Interview Completed | Accepted
+  assignedCoordinatorId String?  // Worker.id
+  assignedMentorId      String?  // Worker.id
+  interviewDate         DateTime?
+  notes                 String?
+  // Transition timestamps — the turnaround figures on the coordinator and
+  // cluster-head cards are measured from these, not guessed.
+  assignedCoordinatorAt DateTime?
+  assignedMentorAt      DateTime?
+  acceptedAt            DateTime?
   group     C2SGroup @relation(fields: [groupId], references: [id])
+
+  @@index([groupId])
+  @@index([pipelineStatus])
+  @@index([assignedCoordinatorId])
 }
 
 model C2SSession {

@@ -1,38 +1,30 @@
 import type { Config } from 'tailwindcss';
 
 export default {
-  darkMode: ['class'],
-  content: [
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
-    '../../packages/ui/**/*.{js,ts,jsx,tsx}',
-  ],
-  theme: {
-    extend: {
-      colors: {
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
-        popover: { DEFAULT: 'hsl(var(--popover))', foreground: 'hsl(var(--popover-foreground))' },
-        primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
-        secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
-        muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
-        accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
-        destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        /** Tenant accent from `--brand` (set via TenantConfig.primaryColor). */
-        brand: {
-          DEFAULT: 'var(--brand)',
-          foreground: '#ffffff',
+    darkMode: ['class'],
+    content: [
+        './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+        './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+        './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    ],
+    theme: {
+        extend: {
+            colors: {
+                // Church of God brand colors (matched from screenshot)
+                'cog-red': '#e03131',       // logo red
+                'cog-dark': '#1a1a2e',
+                'cog-navy': '#0f172a',      // dark footer/hero bg
+                'c2s-teal': '#2dc7be',      // primary brand teal (C2S logo, buttons)
+                'c2s-teal-dark': '#1fa89f', // hover state
+                'c2s-coral': '#f03e5f',     // "Find a Group" CTA button
+                'c2s-coral-dark': '#d42f52',
+                'c2s-orange': '#f59e0b',    // "2" in c2s logo accent
+                'c2s-card-bg': '#f8f9fc',   // subtle off-white card bg
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+            },
         },
-      },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
-      },
     },
-  },
-  plugins: [require('tailwindcss-animate')],
+    plugins: [require('tailwindcss-animate')],
 } satisfies Config;

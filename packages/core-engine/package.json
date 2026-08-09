@@ -9,6 +9,7 @@
     "./approvals": "./src/approvals/engine.ts",
     "./action-response": "./src/auth/action-response.ts",
     "./auth": "./src/auth/with-permission.ts",
+    "./worker-credentials": "./src/auth/worker-credentials.ts",
     "./tenant": "./src/tenant/index.ts",
     "./email": "./src/notify/email.ts",
     "./notify": "./src/notify/engine.ts",

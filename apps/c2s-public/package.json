@@ -14,13 +14,15 @@
     "@studio/core-engine": "file:../../packages/core-engine",
     "@studio/database": "file:../../packages/database",
     "@studio/ui": "file:../../packages/ui",
-    "@tanstack/react-query": "^5.90.21",
+    "firebase": "^12.15.0",
+    "firebase-admin": "^14.1.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.475.0",
     "next": "^15.5.12",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
-    "react-leaflet": "^5.0.0",
+    "recharts": "^2.15.0",
+    "server-only": "^0.0.1",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
