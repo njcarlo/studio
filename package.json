@@ -33,6 +33,8 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts",
-    "seed:superadmin": "tsx prisma/seed-superadmin.ts"
+    "seed:superadmin": "tsx prisma/seed-superadmin.ts",
+    "workers:truncate:dry": "tsx prisma/truncate-workers.ts",
+    "workers:truncate": "tsx prisma/truncate-workers.ts --confirm"
   }
 }

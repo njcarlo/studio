@@ -150,10 +150,17 @@ describe('withSyncRun bookkeeping', () => {
 });
 
 describe('weeklyWorkerMode', () => {
-    const ORIGINAL = { ...process.env };
+    // Restore only the two keys this block touches. Replacing `process.env`
+    // wholesale would clobber env that other test files in the same worker
+    // depend on, which shows up as an unrelated intermittent failure.
+    const KEYS = ['ORS_WEEKLY_WORKERS', 'ORS_WEEKLY_INCLUDE_WORKERS'] as const;
+    const ORIGINAL = new Map(KEYS.map((k) => [k, process.env[k]]));
 
     afterEach(() => {
-        process.env = { ...ORIGINAL };
+        for (const [k, v] of ORIGINAL) {
+            if (v === undefined) delete process.env[k];
+            else process.env[k] = v;
+        }
     });
 
     it('adds new workers by default', async () => {
