@@ -36,7 +36,9 @@ jobs:
           # Vercel is retired — these must not return.
           test ! -f vercel.json
           test ! -f scripts/vercel-ignore.sh
-          PROJECT=$(node -p "require('./.firebaserc').projects.default || 'cog-app-studio'")
+          # .firebaserc has no .json extension, so require() parses it as CJS
+          # and throws. Read and parse it as JSON explicitly.
+          PROJECT=$(node -p "JSON.parse(require('fs').readFileSync('./.firebaserc','utf8')).projects.default || 'cog-app-studio'")
           echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
           echo "Validated App Hosting + Firebase config for project $PROJECT"
 
