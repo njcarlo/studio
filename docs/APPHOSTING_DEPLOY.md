@@ -38,7 +38,9 @@ In Firebase console → App Hosting → backend **studio** → Secrets (or Googl
 | `NEXT_PUBLIC_MODULE_URL_C2S` | Studio `/public/c2s-join` URL | Links stay on one host |
 | `NEXT_PUBLIC_STUDIO_URL` | Studio hosted.app URL | Canonical Studio URL |
 | `NEXT_PUBLIC_FEATURE_C2S` | `true` | Show C2S in nav |
-| `ORS_WEEKLY_INCLUDE_WORKERS` | `false` | Let the weekly ORS sync import/overwrite workers unattended (see below) |
+| `ORS_WEEKLY_WORKERS` | `new` | What the weekly ORS sync does with workers: `new` / `all` / `none` (see below) |
+| `ORS_WEEKLY_WORKER_ROLE` | `viewer` | Role given to weekly-imported workers (`viewer` or `worker`) |
+| `ORS_WEEKLY_WORKER_LIMIT` | `250` | Max new workers imported per weekly run |
 | `TENANT_ID` | `cog-dasma` | Tenant branding key |
 | `QA_SEED_ON_DEPLOY` | `true` | Build step seeds C2S QA accounts (set `false` after success) |
 | `HOSTNAME` | `0.0.0.0` | Cloud Run bind |
@@ -99,17 +101,35 @@ review. Every run writes an `OrsSyncRun` row, which is what the sync page's
 Sync Status card reads; the job is single-flight, so a retried invocation
 becomes a no-op rather than a second concurrent run.
 
-Two exclusions are deliberate:
+#### Worker handling
 
-- **Workers** are not imported or overwritten unless
-  `ORS_WEEKLY_INCLUDE_WORKERS=true`. Importing mints an account (default role
-  `viewer`) and migrates a legacy password hash; syncing overwrites PII on
-  existing records. The UI gates both behind row-by-row review and a cron job
-  shouldn't quietly bypass that.
-- **Attendance** is never included. `AttendanceRecord` has no unique constraint
-  on `(workerProfileId, time)`, so `createMany({ skipDuplicates: true })` can't
-  actually dedupe scans — a weekly re-import would multiply every row. Add that
-  constraint before automating attendance.
+`ORS_WEEKLY_WORKERS` decides what the run does with worker records:
+
+| Value | Behaviour |
+|---|---|
+| `new` (default) | Import ORS workers that don't exist here yet. Purely additive — existing records are never modified. |
+| `all` | Also push ORS field changes onto existing workers. **Overwrites live PII** (name, email, phone, address, ministry) from the legacy system. |
+| `none` | Change no worker records; just report the diff. |
+
+New workers are created with the `ORS_WEEKLY_WORKER_ROLE` role (`viewer` by
+default; only `viewer` and `worker` are accepted, so a typo can't mint
+privileged accounts) and their legacy password hash is migrated, matching what
+the manual import does. The job scans the entire legacy worker table to find
+them — new workers are appended at the end of ORS, so a first-page-only view
+would miss exactly the rows it's looking for — and imports at most
+`ORS_WEEKLY_WORKER_LIMIT` per run so a large initial backlog can't exhaust the
+route's time budget. Anything deferred is reported in the run message and
+picked up the following week.
+
+`ORS_WEEKLY_INCLUDE_WORKERS=true` is still honoured as the old spelling of
+`all`, so an environment set before this split keeps its behaviour.
+
+#### Attendance is never included
+
+`AttendanceRecord` has no unique constraint on `(workerProfileId, time)`, so
+`createMany({ skipDuplicates: true })` can't actually dedupe scans — a weekly
+re-import would multiply every row. Add that constraint before automating
+attendance.
 
 To change the day/time, edit the `schedule` on `weeklyOrsSync` and redeploy
 Functions. To pause it without a deploy, disable the job in Cloud Scheduler.

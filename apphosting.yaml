@@ -126,19 +126,34 @@ env:
 
   # Weekly ORS sync (Sundays 18:00 UTC / Mondays 02:00 Manila) refreshes
   # reference data — ministries, branches, areas — and records how many worker
-  # records are waiting for review. Set to "true" to ALSO let the job import new
-  # workers and overwrite changed worker fields unattended. Off by default:
-  # importing mints an account with the `viewer` role and migrates a legacy
-  # password hash, and syncing overwrites PII, both of which the sync page
-  # deliberately gates behind row-by-row human review.
-  - variable: ORS_WEEKLY_INCLUDE_WORKERS
-    value: "false"
+  # records are waiting for review. This setting controls what it does with
+  # workers:
+  #   new  — import ORS workers missing here; never touch existing ones (default)
+  #   all  — also overwrite changed fields on existing workers from ORS (PII)
+  #   none — report the diff only, change no worker records
+  - variable: ORS_WEEKLY_WORKERS
+    value: "new"
+    availability:
+      - RUNTIME
+
+  # Role given to workers the weekly job imports. Only "viewer" or "worker" are
+  # accepted; anything else falls back to "viewer".
+  - variable: ORS_WEEKLY_WORKER_ROLE
+    value: "viewer"
+    availability:
+      - RUNTIME
+
+  # Ceiling on new-worker imports per weekly run, so a large first backlog
+  # can't exhaust the cron route's time budget. The remainder is picked up on
+  # the next run. Defaults to 250 when unset.
+  - variable: ORS_WEEKLY_WORKER_LIMIT
+    value: "250"
     availability:
       - RUNTIME
 
   # Rollout marker — bump to force App Hosting rebuild when settings change.
   - variable: APPHOSTING_SETTINGS_REV
-    value: "2026-08-09-qa-seed-off-1"
+    value: "2026-08-09-ors-weekly-workers-1"
     availability:
       - BUILD
       - RUNTIME

@@ -1411,9 +1411,12 @@ export type WorkerDiffSummary = {
     orphan: number;
 };
 
-export async function computeWorkerDiffSummary(
-    ministryMap: Record<string, string> = {}
-): Promise<WorkerDiffSummary> {
+/**
+ * One full pass over ORS + local workers, indexed for matching. Both the diff
+ * summary and the weekly new-worker pick-up need exactly this, and it's the
+ * expensive part (it pages the entire legacy worker table), so they share it.
+ */
+async function loadWorkerDiffIndex() {
     const [orsWorkers, localWorkers] = await Promise.all([
         fetchAllOrsWorkers(),
         prisma.worker.findMany({
@@ -1433,13 +1436,23 @@ export async function computeWorkerDiffSummary(
         if (w.email) byEmail.set(w.email, w);
     }
 
+    const matchLocal = (orsWorker: any): ExistingWorkerSummary | undefined =>
+        byWorkerId.get(String(orsWorker.id)) ||
+        (orsWorker.email ? byEmail.get(orsWorker.email) : undefined);
+
+    return { orsWorkers, localWorkers, matchLocal };
+}
+
+export async function computeWorkerDiffSummary(
+    ministryMap: Record<string, string> = {}
+): Promise<WorkerDiffSummary> {
+    const { orsWorkers, localWorkers, matchLocal } = await loadWorkerDiffIndex();
+
     const summary: WorkerDiffSummary = { new: 0, updated: 0, synced: 0, orphan: 0 };
     const orsIds = new Set(orsWorkers.map((w) => String(w.id)));
 
     for (const orsWorker of orsWorkers) {
-        const existing =
-            byWorkerId.get(String(orsWorker.id)) ||
-            (orsWorker.email ? byEmail.get(orsWorker.email) : undefined);
+        const existing = matchLocal(orsWorker);
         if (!existing) {
             summary.new++;
         } else if (computeDiffFields(orsWorker, existing, ministryMap).length > 0) {
@@ -1457,15 +1470,68 @@ export async function computeWorkerDiffSummary(
 }
 
 /**
- * Whether the weekly job is allowed to create/update worker records on its own.
- * Off by default and deliberately so: importing a worker mints an account with
- * a default role and migrates a legacy password hash, and syncing overwrites
- * PII on existing records. The UI gates both behind row-by-row human review,
- * and a cron job is the wrong place to quietly bypass that. Set
- * `ORS_WEEKLY_INCLUDE_WORKERS=true` to opt in.
+ * ORS worker IDs with no counterpart in the new system, oldest ORS ID first.
+ *
+ * Scans the WHOLE legacy worker table rather than the first page of the diff:
+ * new workers are appended at the end of ORS, so a page-1 view would routinely
+ * miss exactly the rows this is meant to find.
  */
-function weeklyIncludesWorkers(): boolean {
-    return process.env.ORS_WEEKLY_INCLUDE_WORKERS === 'true';
+async function collectNewOrsWorkerIds(): Promise<number[]> {
+    const { orsWorkers, matchLocal } = await loadWorkerDiffIndex();
+    return orsWorkers
+        .filter((w) => !matchLocal(w))
+        .map((w) => Number(w.id))
+        .filter((id) => Number.isFinite(id))
+        .sort((a, b) => a - b);
+}
+
+/**
+ * What the weekly job is allowed to do with workers:
+ *
+ *   "new"  — import ORS workers that don't exist here yet (default). Additive:
+ *            it only ever creates records, and `importOrsNewWorkersInner` skips
+ *            any ORS row that already matches by worker ID or email.
+ *   "all"  — also push ORS field changes onto existing workers. This OVERWRITES
+ *            live PII (name, email, phone, address, ministry…) from the legacy
+ *            system, so it stays opt-in; the sync page gates it behind
+ *            field-by-field review for a reason.
+ *   "none" — touch no worker records at all; just report the diff.
+ *
+ * `ORS_WEEKLY_INCLUDE_WORKERS=true` is still honoured as the old spelling of
+ * "all" so an already-deployed environment doesn't silently lose behaviour.
+ */
+export type WeeklyWorkerMode = 'none' | 'new' | 'all';
+
+export function weeklyWorkerMode(): WeeklyWorkerMode {
+    const raw = (process.env.ORS_WEEKLY_WORKERS || '').trim().toLowerCase();
+    if (raw === 'none' || raw === 'new' || raw === 'all') return raw;
+    if (process.env.ORS_WEEKLY_INCLUDE_WORKERS === 'true') return 'all';
+    return 'new';
+}
+
+/**
+ * Role assigned to workers the weekly job imports. Restricted to the same two
+ * roles the manual import allows — `importOrsNewWorkersInner` throws on
+ * anything else, and a cron job must not be able to mint privileged accounts
+ * via a typo in an env var.
+ */
+function weeklyDefaultRoleId(): string {
+    const raw = (process.env.ORS_WEEKLY_WORKER_ROLE || '').trim().toLowerCase();
+    return raw === 'worker' ? 'worker' : 'viewer';
+}
+
+/**
+ * Ceiling on how many new workers one weekly run imports. Each import is a
+ * per-row ORS fetch plus an insert, and the cron route has a finite budget —
+ * a first run against a large backlog would otherwise blow through it and be
+ * killed mid-way. The remainder is picked up next week (or by a manual import),
+ * and the run message says how many were left.
+ */
+const WEEKLY_NEW_WORKER_LIMIT = 250;
+
+function weeklyNewWorkerLimit(): number {
+    const parsed = Number(process.env.ORS_WEEKLY_WORKER_LIMIT);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : WEEKLY_NEW_WORKER_LIMIT;
 }
 
 export type WeeklyOrsSyncResult = ImportResult & {
@@ -1481,13 +1547,15 @@ export type WeeklyOrsSyncResult = ImportResult & {
  * rows that already exist). On top of that it records a worker diff summary so
  * the sync page can show how much is waiting for review.
  *
- * Two things it deliberately does NOT do:
- *   - Worker imports/field syncs, unless ORS_WEEKLY_INCLUDE_WORKERS=true. See
- *     `weeklyIncludesWorkers` — this mints accounts and overwrites PII.
- *   - Attendance. `AttendanceRecord` has no unique constraint on
- *     (workerProfileId, time), so `createMany({ skipDuplicates: true })` cannot
- *     actually dedupe scans; re-importing weekly would multiply every row.
- *     Attendance stays manual until that constraint exists.
+ * Worker handling is governed by `weeklyWorkerMode()`: by default the run adds
+ * ORS workers that are missing here, and leaves existing records alone. Field
+ * changes on already-imported workers are only pushed when the mode is "all",
+ * since that overwrites live PII.
+ *
+ * The one thing it never does is attendance. `AttendanceRecord` has no unique
+ * constraint on (workerProfileId, time), so `createMany({ skipDuplicates: true })`
+ * cannot actually dedupe scans; re-importing weekly would multiply every row.
+ * Attendance stays manual until that constraint exists.
  */
 export async function runWeeklyOrsSync(): Promise<WeeklyOrsSyncResult> {
     // Single-flight: never stack a scheduled run on top of one still going.
@@ -1522,21 +1590,34 @@ export async function runWeeklyOrsSync(): Promise<WeeklyOrsSyncResult> {
 
         const ministryMap = await getOrsMinistryMap();
 
-        if (weeklyIncludesWorkers()) {
-            const diffPage = await getWorkerDiffPage(1, 500, undefined, ministryMap, 'legacy_to_new');
-            const newIds = diffPage.data.filter((r) => r.status === 'new').map((r) => r.ors.id);
-            const updated = diffPage.data.filter((r) => r.status === 'updated').map((r) => ({
-                worker: r.ors as OrsWorker,
-                fields: r.diffFields.map((f) => f.label),
-            }));
+        const mode = weeklyWorkerMode();
+        parts.push(`worker mode: ${mode}`);
 
-            if (newIds.length > 0) {
-                add('workers_new', await importOrsNewWorkersInner(newIds, {
-                    defaultRoleId: 'viewer',
+        if (mode !== 'none') {
+            const newIds = await collectNewOrsWorkerIds();
+            const limit = weeklyNewWorkerLimit();
+            const batch = newIds.slice(0, limit);
+
+            if (batch.length > 0) {
+                add('workers_new', await importOrsNewWorkersInner(batch, {
+                    defaultRoleId: weeklyDefaultRoleId(),
                     ministryIdMap: ministryMap,
                     migratePasswordHash: true,
                 }));
             }
+            if (newIds.length > batch.length) {
+                parts.push(`${newIds.length - batch.length} new worker(s) deferred to next run (limit ${limit})`);
+            }
+        }
+
+        if (mode === 'all') {
+            const diffPage = await getWorkerDiffPage(1, 500, undefined, ministryMap, 'legacy_to_new');
+            const updated = diffPage.data
+                .filter((r) => r.status === 'updated')
+                .map((r) => ({
+                    worker: r.ors as OrsWorker,
+                    fields: r.diffFields.map((f) => f.label),
+                }));
             if (updated.length > 0) {
                 add('workers_updated', await syncOrsUpdatedWorkersInner(updated, ministryMap));
             }
