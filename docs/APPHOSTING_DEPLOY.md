@@ -38,6 +38,7 @@ In Firebase console → App Hosting → backend **studio** → Secrets (or Googl
 | `NEXT_PUBLIC_MODULE_URL_C2S` | Studio `/public/c2s-join` URL | Links stay on one host |
 | `NEXT_PUBLIC_STUDIO_URL` | Studio hosted.app URL | Canonical Studio URL |
 | `NEXT_PUBLIC_FEATURE_C2S` | `true` | Show C2S in nav |
+| `ORS_WEEKLY_INCLUDE_WORKERS` | `false` | Let the weekly ORS sync import/overwrite workers unattended (see below) |
 | `TENANT_ID` | `cog-dasma` | Tenant branding key |
 | `QA_SEED_ON_DEPLOY` | `true` | Build step seeds C2S QA accounts (set `false` after success) |
 | `HOSTNAME` | `0.0.0.0` | Cloud Run bind |
@@ -77,3 +78,38 @@ gh secret set FIREBASE_TOKEN   # paste token into repo secrets
 ```
 
 Then pushes to `main` also deploy Functions + rules via `.github/workflows/firebase-deploy.yml`.
+
+## Scheduled jobs
+
+Cloud Scheduler triggers live in `functions/src/index.ts`; each one calls a
+Next.js route under `/api/cron/*` with `Authorization: Bearer $CRON_SECRET`.
+
+| Function | Schedule (UTC) | Route |
+|---|---|---|
+| `dailyJobs` | `0 16 * * *` | `/api/cron/daily-jobs` |
+| `venueAssistance` | `0 8 * * *` | `/api/cron/venue-assistance` |
+| `weeklyOrsSync` | `0 18 * * 0` (Mon 02:00 Manila) | `/api/cron/ors-weekly-sync` |
+
+### Weekly ORS sync
+
+`weeklyOrsSync` refreshes the legacy ORS reference data — ministries, branches,
+areas — and records a worker diff summary (how many ORS workers are new,
+changed, or orphaned) so `/settings/ors-sync` can show what's waiting for
+review. Every run writes an `OrsSyncRun` row, which is what the sync page's
+Sync Status card reads; the job is single-flight, so a retried invocation
+becomes a no-op rather than a second concurrent run.
+
+Two exclusions are deliberate:
+
+- **Workers** are not imported or overwritten unless
+  `ORS_WEEKLY_INCLUDE_WORKERS=true`. Importing mints an account (default role
+  `viewer`) and migrates a legacy password hash; syncing overwrites PII on
+  existing records. The UI gates both behind row-by-row review and a cron job
+  shouldn't quietly bypass that.
+- **Attendance** is never included. `AttendanceRecord` has no unique constraint
+  on `(workerProfileId, time)`, so `createMany({ skipDuplicates: true })` can't
+  actually dedupe scans — a weekly re-import would multiply every row. Add that
+  constraint before automating attendance.
+
+To change the day/time, edit the `schedule` on `weeklyOrsSync` and redeploy
+Functions. To pause it without a deploy, disable the job in Cloud Scheduler.

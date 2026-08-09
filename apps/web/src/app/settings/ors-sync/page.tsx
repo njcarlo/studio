@@ -69,6 +69,8 @@ import {
   ChevronUp,
   GitMerge,
   Key,
+  Clock,
+  CalendarClock,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +94,7 @@ import {
   importOrsAttendanceBatch,
   getOrsSyncStats,
   getOrsMinistryMap,
+  getOrsSyncStatus,
   type OrsWorker,
   type OrsMinistry,
   type OrsSatellite,
@@ -105,7 +108,190 @@ import {
   type WorkerSyncDirection,
   type WorkerSyncStatus,
   type PasswordSyncStatus,
+  type OrsSyncRunRecord,
+  type OrsSyncStatusSummary,
 } from "@/actions/ors-sync";
+
+// ─── Sync status ────────────────────────────────────────────────────────────
+
+const SCOPE_LABELS: Record<string, string> = {
+  workers_import: "Worker import",
+  workers_sync: "Worker field sync",
+  workers_passwords: "Password hash sync",
+  ministries: "Ministries",
+  branches: "Branches",
+  areas: "Areas",
+  c2s_groups: "C2S groups",
+  mentees: "Mentees",
+  attendance: "Attendance",
+  weekly_full: "Weekly scheduled sync",
+};
+
+function scopeLabel(scope: string) {
+  return SCOPE_LABELS[scope] ?? scope;
+}
+
+function formatWhen(value: Date | string | null | undefined) {
+  if (!value) return "never";
+  const d = typeof value === "string" ? new Date(value) : value;
+  return d.toLocaleString();
+}
+
+function formatDuration(from: Date | string, to: Date | string | null) {
+  const start = new Date(from).getTime();
+  const end = to ? new Date(to).getTime() : Date.now();
+  const secs = Math.max(0, Math.round((end - start) / 1000));
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  return `${mins}m ${secs % 60}s`;
+}
+
+function RunRow({ run }: { run: OrsSyncRunRecord }) {
+  const badge =
+    run.status === "running" ? (
+      <Badge variant="outline" className="gap-1">
+        <LoaderCircle className="h-3 w-3 animate-spin" />
+        Running
+      </Badge>
+    ) : run.status === "failed" ? (
+      <Badge variant="destructive">Failed</Badge>
+    ) : (
+      <Badge variant="secondary">Done</Badge>
+    );
+
+  return (
+    <TableRow>
+      <TableCell className="whitespace-nowrap">{scopeLabel(run.scope)}</TableCell>
+      <TableCell>{badge}</TableCell>
+      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+        {run.trigger === "scheduled" ? "Weekly job" : run.startedByName || "Manual"}
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {formatWhen(run.startedAt)}
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-xs">
+        {formatDuration(run.startedAt, run.finishedAt)}
+      </TableCell>
+      <TableCell className="text-xs">
+        {run.succeeded}/{run.skipped}/{run.failed}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/**
+ * Answers "is the ORS sync still running?" from the durable `OrsSyncRun`
+ * table rather than a client-side flag, so the answer survives a page reload,
+ * a different operator's browser, and the weekly cron job.
+ */
+function SyncStatusCard() {
+  const { data, isLoading, refetch, isFetching } = useQuery<OrsSyncStatusSummary>({
+    queryKey: ["ors-sync-status"],
+    queryFn: () => getOrsSyncStatus(10),
+    // Poll quickly while something is in flight, slowly when idle.
+    refetchInterval: (query) => (query.state.data?.isRunning ? 5_000 : 60_000),
+  });
+
+  if (isLoading || !data) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Sync Status</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          Checking…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className={data.isRunning ? "border-primary" : undefined}>
+      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+        <div>
+          <CardTitle className="text-sm flex items-center gap-2">
+            {data.isRunning ? (
+              <LoaderCircle className="h-4 w-4 animate-spin text-primary" />
+            ) : (
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            )}
+            {data.isRunning ? "Sync in progress" : "No sync running"}
+          </CardTitle>
+          <CardDescription className="text-xs">
+            {data.isRunning && data.current ? (
+              <>
+                {scopeLabel(data.current.scope)} — started {formatWhen(data.current.startedAt)} (
+                {formatDuration(data.current.startedAt, null)} elapsed)
+              </>
+            ) : data.lastCompleted ? (
+              <>
+                Last run: {scopeLabel(data.lastCompleted.scope)}, finished{" "}
+                {formatWhen(data.lastCompleted.finishedAt)} —{" "}
+                {data.lastCompleted.status === "failed" ? "failed" : "succeeded"} (
+                {data.lastCompleted.succeeded} ok, {data.lastCompleted.skipped} skipped,{" "}
+                {data.lastCompleted.failed} failed)
+              </>
+            ) : (
+              "No sync has ever been recorded."
+            )}
+          </CardDescription>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+        >
+          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <CalendarClock className="h-3.5 w-3.5" />
+          Weekly scheduled sync last succeeded: {formatWhen(data.lastScheduledAt)}
+        </div>
+
+        {data.lastCompleted?.message && (
+          <p className="text-xs text-muted-foreground">{data.lastCompleted.message}</p>
+        )}
+
+        {data.stale.length > 0 && (
+          <div className="flex items-start gap-2 text-xs text-amber-600">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>
+              {data.stale.length} run(s) never reported finishing (started over 30
+              minutes ago) — the server was most likely recycled mid-import. Re-run
+              that tab; imports skip rows that already landed.
+            </span>
+          </div>
+        )}
+
+        {data.recent.length > 0 && (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Scope</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>By</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>OK/Skip/Fail</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.recent.map((run) => (
+                  <RunRow key={run.id} run={run} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 // ─── Shared sub-components ──────────────────────────────────────────────────
 
@@ -2141,6 +2327,7 @@ export default function OrsLegacySyncPage() {
       queryClient.invalidateQueries({ queryKey: ["ors-workers"] });
       queryClient.invalidateQueries({ queryKey: ["ors-ministries"] });
       queryClient.invalidateQueries({ queryKey: ["ors-sync-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["ors-sync-status"] });
     },
     [refetchStats, queryClient],
   );
@@ -2242,6 +2429,9 @@ export default function OrsLegacySyncPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Sync status — durable "is it still syncing?" answer */}
+      <SyncStatusCard />
 
       {/* Last result */}
       {lastResult && <ImportResultCard result={lastResult} />}
