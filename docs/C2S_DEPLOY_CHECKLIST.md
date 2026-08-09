@@ -72,7 +72,10 @@ npm run migrate:c2s            # apply
 npx prisma generate            # regenerate the client afterwards
 ```
 
-The runner applies only the three C2S migrations, each in its own transaction,
+The runner needs nothing installed beyond what the repo already ships — it
+goes through the Prisma client, so a plain `npm ci` is enough.
+
+It applies only the three C2S migrations, each in its own transaction,
 and prints the before/after state of every table and column it expects. The SQL
 is idempotent — `IF NOT EXISTS` throughout, foreign keys guarded against
 `duplicate_object`, and the backfill only fills `NULL`s — so re-running it

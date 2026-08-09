@@ -49,6 +49,9 @@ jobs:
       - name: Unit + component tests
         run: npm run test:ci --workspace=web
 
+      - name: Repo script tests
+        run: npm run test:scripts
+
   e2e:
     name: E2E (public pages)
     runs-on: ubuntu-latest

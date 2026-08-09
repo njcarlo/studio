@@ -18,12 +18,11 @@
     "migrate:sql": "tsx scripts/migrate.ts",
     "prepare": "husky || true",
     "apphosting:build": "sh scripts/apphosting-build.sh",
-    "migrate:c2s": "tsx scripts/apply-c2s-migrations.ts"
+    "migrate:c2s": "tsx scripts/apply-c2s-migrations.ts",
+    "test:scripts": "tsx --test scripts/*.test.ts"
   },
   "devDependencies": {
-    "@types/pg": "^8.21.0",
     "husky": "^9.1.7",
-    "pg": "^8.23.0",
     "prisma": "^5.22.0",
     "tsx": "^4.21.0",
     "turbo": "^2.8.16"
