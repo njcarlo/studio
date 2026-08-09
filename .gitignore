@@ -49,6 +49,8 @@ next-env.d.ts
 
 .genkit/*
 .env*
+# ...but the template carries no secrets and should be tracked.
+!.env.example
 
 # mobile signing & secrets
 *.jks
