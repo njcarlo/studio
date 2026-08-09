@@ -1,133 +1,173 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import { Button } from "@studio/ui";
-import { MapPin, Calendar, Users } from "lucide-react";
+import { useEffect, useRef } from 'react';
+import type { C2SGroup } from '@/lib/data';
 
-export type MapGroup = {
-  id: string;
-  name: string;
-  location?: string | null;
-  meetingSchedule?: string | null;
-  ageRangeMin?: number | null;
-  ageRangeMax?: number | null;
-  mapLng?: number | null;
-  mapLat?: number | null;
-};
-
-const DASMARINAS_CENTER: [number, number] = [14.3294, 120.9367];
-
-function pinIcon(color: string) {
-  return L.divIcon({
-    className: "",
-    html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="${color}" stroke="white" stroke-width="1.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3" fill="white"/></svg>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
-    popupAnchor: [0, -28],
-  });
+interface Props {
+    groups: C2SGroup[];
+    selectedId: string | null;
+    onSelect: (id: string) => void;
 }
 
-const AVAILABLE_ICON = pinIcon("#ec4899");
-const SELECTED_ICON = pinIcon("#14b8a6");
+export default function GroupFinderMap({ groups, selectedId, onSelect }: Props) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const mapRef = useRef<any>(null);       // leaflet map instance
+    const LRef = useRef<any>(null);         // leaflet lib reference
+    const markersRef = useRef<Map<string, any>>(new Map());
 
-function FlyToSelected({ pins, selectedGroupId }: { pins: MapGroup[]; selectedGroupId: string | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!selectedGroupId) return;
-    const pin = pins.find((p) => p.id === selectedGroupId);
-    if (pin?.mapLat != null && pin?.mapLng != null) {
-      map.flyTo([pin.mapLat, pin.mapLng], Math.max(map.getZoom(), 14), { duration: 0.5 });
+    /* ── Init map ONCE ── */
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        // Guard: if leaflet already initialised this container, remove it first
+        const container = containerRef.current as any;
+        if (container._leaflet_id) {
+            container._leaflet_id = undefined;
+        }
+
+        let destroyed = false;
+
+        import('leaflet').then((L) => {
+            if (destroyed || !containerRef.current) return;
+
+            // Prevent double-init after HMR
+            const el = containerRef.current as any;
+            if (el._leaflet_id) return;
+
+            delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+            const map = L.map(containerRef.current, {
+                center: [14.3294, 120.9367],
+                zoom: 13,
+                zoomControl: true,
+                scrollWheelZoom: true,
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+                maxZoom: 18,
+            }).addTo(map);
+
+            mapRef.current = map;
+            LRef.current = L;
+
+            // Add initial markers
+            groups.forEach((g) => addMarker(L, map, g, g.id === selectedId, onSelect, markersRef));
+        });
+
+        return () => {
+            destroyed = true;
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+                LRef.current = null;
+                markersRef.current.clear();
+            }
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    /* ── Sync markers when groups / selectedId changes ── */
+    useEffect(() => {
+        const map = mapRef.current;
+        const L = LRef.current;
+        if (!map || !L) return;
+
+        // Remove existing markers
+        markersRef.current.forEach((m) => m.remove());
+        markersRef.current.clear();
+
+        // Re-add
+        groups.forEach((g) => addMarker(L, map, g, g.id === selectedId, onSelect, markersRef));
+
+        // Pan + open popup for selected
+        if (selectedId) {
+            const group = groups.find((g) => g.id === selectedId);
+            if (group) {
+                map.setView([group.lat, group.lng], Math.max(map.getZoom(), 14), { animate: true });
+                const marker = markersRef.current.get(selectedId);
+                if (marker) marker.openPopup();
+            }
+        }
+    }, [selectedId, groups]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return (
+        <div
+            ref={containerRef}
+            className="w-full h-full rounded-xl overflow-hidden"
+        />
+    );
+}
+
+/* ─── Helpers ─────────────────────────────────────────────── */
+
+function pinSvg(color: string) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+        <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z"
+            fill="${color}" stroke="white" stroke-width="2"/>
+        <circle cx="14" cy="14" r="5" fill="white"/>
+    </svg>`;
+}
+
+function makeIcon(L: any, selected: boolean) {
+    return L.divIcon({
+        html: pinSvg(selected ? '#0b9b8a' : '#e91e8c'),
+        iconSize: [28, 36],
+        iconAnchor: [14, 36],
+        popupAnchor: [0, -38],
+        className: '',
+    });
+}
+
+function popupHtml(group: C2SGroup) {
+    return `
+        <div style="font-family:system-ui,sans-serif;min-width:180px;padding:2px 0">
+            <div style="font-size:15px;font-weight:900;color:#111827;margin-bottom:4px">${group.name}</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#6b7280;margin-bottom:3px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#e91e8c">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                ${group.location}
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#e91e8c;font-weight:600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#e91e8c">
+                    <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>
+                </svg>
+                ${group.schedule}
+            </div>
+        </div>`;
+}
+
+function addMarker(
+    L: any,
+    map: any,
+    group: C2SGroup,
+    selected: boolean,
+    onSelect: (id: string) => void,
+    markersRef: React.MutableRefObject<Map<string, any>>
+) {
+    const marker = L.marker([group.lat, group.lng], {
+        icon: makeIcon(L, selected),
+        title: group.name,
+    });
+
+    marker.bindPopup(popupHtml(group), {
+        closeButton: false,
+        className: 'c2s-popup',
+        maxWidth: 240,
+        offset: [0, -2],
+    });
+
+    marker.on('click', () => {
+        onSelect(group.id);
+        marker.openPopup();
+    });
+
+    if (selected) {
+        marker.addTo(map);
+        marker.openPopup();
+    } else {
+        marker.addTo(map);
     }
-  }, [selectedGroupId, pins, map]);
-  return null;
-}
 
-export function GroupFinderMap({
-  groups,
-  selectedGroupId,
-  onSelectGroup,
-  onJoin,
-}: {
-  groups: MapGroup[];
-  selectedGroupId: string | null;
-  onSelectGroup: (id: string | null) => void;
-  onJoin: (group: MapGroup) => void;
-}) {
-  const pins = groups.filter((g) => g.mapLng != null && g.mapLat != null);
-
-  return (
-    <div className="rounded-xl border bg-white shadow-sm overflow-hidden flex flex-col h-full">
-      <div className="p-4 border-b flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-gray-900">Dasmariñas City</h3>
-          <p className="text-xs text-muted-foreground">{pins.length} C2S groups nearby</p>
-        </div>
-        <span className="flex items-center gap-1 text-xs text-teal-600 font-medium">
-          <MapPin className="h-3.5 w-3.5" /> Live Map
-        </span>
-      </div>
-
-      <div className="relative flex-1 min-h-[420px]">
-        <MapContainer
-          center={DASMARINAS_CENTER}
-          zoom={13}
-          scrollWheelZoom={false}
-          className="absolute inset-0 h-full w-full"
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <FlyToSelected pins={pins} selectedGroupId={selectedGroupId} />
-          {pins.map((g) => {
-            const selected = selectedGroupId === g.id;
-            return (
-              <Marker
-                key={g.id}
-                position={[g.mapLat as number, g.mapLng as number]}
-                icon={selected ? SELECTED_ICON : AVAILABLE_ICON}
-                eventHandlers={{ click: () => onSelectGroup(selected ? null : g.id) }}
-              >
-                <Popup>
-                  <div className="space-y-2 min-w-[180px]">
-                    <p className="font-semibold text-gray-900">{g.name}</p>
-                    {g.location && (
-                      <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <MapPin className="h-3.5 w-3.5" /> {g.location}
-                      </p>
-                    )}
-                    {g.meetingSchedule && (
-                      <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Calendar className="h-3.5 w-3.5" /> {g.meetingSchedule}
-                      </p>
-                    )}
-                    {(g.ageRangeMin || g.ageRangeMax) && (
-                      <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Users className="h-3.5 w-3.5" /> Ages {g.ageRangeMin ?? "?"}-{g.ageRangeMax ?? "?"}
-                      </p>
-                    )}
-                    <Button size="sm" className="w-full bg-brand text-brand-foreground hover:opacity-90" onClick={() => onJoin(g)}>
-                      Join C2S Group
-                    </Button>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
-        </MapContainer>
-      </div>
-
-      <div className="flex items-center justify-between px-4 py-2 border-t text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-pink-500" /> Available
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-teal-500" /> Selected
-        </span>
-      </div>
-    </div>
-  );
+    markersRef.current.set(group.id, marker);
 }
