@@ -23,10 +23,18 @@ export async function login(
 ): Promise<void> {
   await page.goto("/login");
 
-  // The login form takes an identifier (email or worker ID) plus a password.
+  // Login is a two-step form: enter the identifier (email or worker ID) and
+  // press Continue, which looks the account up and only then reveals the
+  // password field. Filling both at once fails — #password does not exist yet.
   await page.locator("#identifier").fill(creds.email);
-  await page.locator("#password").fill(creds.password);
-  await page.getByRole("button", { name: /^(log ?in|sign ?in)/i }).click();
+  await page.getByRole("button", { name: /continue/i }).click();
+
+  const password = page.locator("#password");
+  await expect(password, "password step should appear after Continue").toBeVisible({
+    timeout: 30_000,
+  });
+  await password.fill(creds.password);
+  await page.getByRole("button", { name: /^(log ?in|sign ?in|submit)/i }).click();
 
   // Landing anywhere other than /login means the session was established.
   await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });

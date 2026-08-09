@@ -40,7 +40,9 @@ test.describe("Room reservations", () => {
 
     // Validation must surface a specific reason. The bug being guarded against
     // is the opposite: a generic "Submission Failed" that hides the real cause.
-    await expect(page.locator("text=/Missing Information/i")).toBeVisible();
+    // The toast renders the text twice (visible title + aria-live announcement),
+    // so scope to the first match rather than tripping strict mode.
+    await expect(page.getByText("Missing Information").first()).toBeVisible();
   });
 
   test("TC-RES-01 — my reservations list is reachable", async ({ page }) => {
