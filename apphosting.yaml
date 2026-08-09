@@ -114,7 +114,7 @@ env:
   # When true, apphosting-build.sh seeds C2S QA accounts (idempotent).
   # Set to "false" after the first successful seed (see docs/PLACEHOLDER_ACCOUNTS.md).
   - variable: QA_SEED_ON_DEPLOY
-    value: "true"
+    value: "false"
     availability:
       - BUILD
 
@@ -126,7 +126,7 @@ env:
 
   # Rollout marker — bump to force App Hosting rebuild when settings change.
   - variable: APPHOSTING_SETTINGS_REV
-    value: "2026-07-19-qa-seed-1"
+    value: "2026-08-09-qa-seed-off-1"
     availability:
       - BUILD
       - RUNTIME
