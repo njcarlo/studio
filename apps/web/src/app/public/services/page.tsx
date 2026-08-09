@@ -12,6 +12,13 @@ export const metadata = {
     description: `Browse published service schedules for ${brand}.`,
 };
 
+// Server-rendered on demand rather than prerendered at build. This page reads
+// published schedules + ministries from Postgres, so static export made the
+// production build depend on a reachable DATABASE_URL (a DB blip fails the whole
+// App Hosting deploy) and froze the listing until the next redeploy. Rendering
+// per request keeps newly published schedules visible immediately.
+export const dynamic = "force-dynamic";
+
 export default async function PublicServicesPage() {
     const [schedules, ministries] = await Promise.all([
         getPublicSchedulesWithAssignments(),

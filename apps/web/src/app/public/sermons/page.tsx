@@ -13,6 +13,13 @@ export const metadata = {
     description: `Browse recent preaching from ${brand}.`,
 };
 
+// Server-rendered on demand rather than prerendered at build. This page reads
+// sermons from Postgres, so static export made the production build depend on a
+// reachable DATABASE_URL (a DB blip fails the whole App Hosting deploy) and
+// froze the public list until the next redeploy. Rendering per request keeps
+// newly published sermons visible immediately.
+export const dynamic = "force-dynamic";
+
 export default async function PublicSermonsPage() {
     const res = await getPublicSermons();
     const sermons = res.success ? res.data : [];
