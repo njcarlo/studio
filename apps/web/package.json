@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:ci": "cross-env VITEST_SKIP_EXPLORATION=true vitest --run",
+    "test:ci": "vitest --run",
     "e2e": "playwright test --project=public",
     "e2e:auth": "cross-env E2E_AUTH=true playwright test --project=authed",
     "e2e:report": "playwright show-report"
