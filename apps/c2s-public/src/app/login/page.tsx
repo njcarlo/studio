@@ -3,16 +3,116 @@
 import { useState } from 'react';
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase-client';
+import { startWorkerIdLogin, completeWorkerIdClaim } from '@/actions/worker-login';
 import Image from 'next/image';
 
+/**
+ * Three modes:
+ *   'email'   — the normal path once a worker has claimed their address
+ *   'worker'  — first-time sign-in with the ORS Worker ID + legacy password
+ *   'claim'   — the one-time step where they choose their email and password
+ */
+type Mode = 'email' | 'worker' | 'claim';
+
 export default function LoginPage() {
+    const [mode, setMode] = useState<Mode>('email');
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [keepSigned, setKeepSigned] = useState(false);
     const [error, setError] = useState('');
+    const [notice, setNotice] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Worker ID path
+    const [workerId, setWorkerId] = useState('');
+    const [legacyPassword, setLegacyPassword] = useState('');
+    const [claimFirstName, setClaimFirstName] = useState('');
+    const [claimEmail, setClaimEmail] = useState('');
+    const [claimPassword, setClaimPassword] = useState('');
+    const [claimConfirm, setClaimConfirm] = useState('');
+
+    /** Signs in against Firebase and exchanges the token for the session cookie. */
+    async function establishSession(withEmail: string, withPassword: string) {
+        const auth = firebaseAuth();
+        await setPersistence(auth, keepSigned ? browserLocalPersistence : browserSessionPersistence);
+        const credential = await signInWithEmailAndPassword(auth, withEmail.trim(), withPassword);
+
+        const idToken = await credential.user.getIdToken();
+        const res = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+        });
+        if (!res.ok) throw new Error('Could not start a session.');
+
+        // Full navigation rather than router.push + refresh: the session
+        // cookie was only just set, and the two racing against each other
+        // aborts the dashboard's RSC fetch and leaves the login page up.
+        window.location.assign('/dashboard');
+    }
+
+    /** Step 1 of the Worker ID path. */
+    async function handleWorkerIdSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setError('');
+        setNotice('');
+        setLoading(true);
+
+        const result = await startWorkerIdLogin(workerId, legacyPassword);
+        setLoading(false);
+
+        if (!result.success) {
+            setError(result.error);
+            return;
+        }
+
+        if (result.data.step === 'use_email') {
+            setMode('email');
+            setEmail(result.data.email);
+            setNotice('This Worker ID is already set up. Please sign in with your email.');
+            return;
+        }
+
+        setClaimFirstName(result.data.firstName);
+        setClaimEmail(result.data.suggestedEmail ?? '');
+        setMode('claim');
+    }
+
+    /** Step 2 — claim the email, then sign straight in with it. */
+    async function handleClaimSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setError('');
+
+        if (claimPassword !== claimConfirm) {
+            setError('The two passwords do not match.');
+            return;
+        }
+
+        setLoading(true);
+        const result = await completeWorkerIdClaim({
+            workerId,
+            legacyPassword,
+            email: claimEmail,
+            newPassword: claimPassword,
+        });
+
+        if (!result.success) {
+            setLoading(false);
+            setError(result.error);
+            return;
+        }
+
+        try {
+            await establishSession(result.data.email, claimPassword);
+        } catch {
+            setLoading(false);
+            setMode('email');
+            setEmail(result.data.email);
+            setNotice('Your account is set up. Please sign in with your new email and password.');
+        }
+    }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -20,26 +120,9 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const auth = firebaseAuth();
-            await setPersistence(auth, keepSigned ? browserLocalPersistence : browserSessionPersistence);
-            const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
-
-            // Exchange the ID token for the httpOnly session cookie the server reads.
-            const idToken = await credential.user.getIdToken();
-            const res = await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken }),
-            });
-            if (!res.ok) throw new Error('Could not start a session.');
-
-            // Full navigation rather than router.push + refresh: the session
-            // cookie was only just set, and the two racing against each other
-            // aborts the dashboard's RSC fetch and leaves the login page up.
-            window.location.assign('/dashboard');
+            await establishSession(email, password);
         } catch {
             setError('Invalid email or password.');
-        } finally {
             setLoading(false);
         }
     }
@@ -83,9 +166,151 @@ export default function LoginPage() {
 
                 {/* Login card */}
                 <div className="w-full max-w-md bg-white rounded-2xl shadow-xl px-8 py-8">
-                    <h2 className="text-xl font-bold text-gray-900 text-center mb-1">Login to your account</h2>
-                    <p className="text-sm text-gray-500 text-center mb-6">Enter your email and password to continue</p>
+                    <h2 className="text-xl font-bold text-gray-900 text-center mb-1">
+                        {mode === 'claim' ? 'Set up your account' : 'Login to your account'}
+                    </h2>
+                    <p className="text-sm text-gray-500 text-center mb-5">
+                        {mode === 'email' && 'Enter your email and password to continue'}
+                        {mode === 'worker' && 'First time here? Sign in with your Worker ID once.'}
+                        {mode === 'claim' && `Welcome, ${claimFirstName}. Choose the email you will log in with from now on.`}
+                    </p>
 
+                    {/* Mode switcher — hidden mid-claim so the flow isn't abandoned halfway. */}
+                    {mode !== 'claim' && (
+                        <div className="flex mb-5 rounded-xl bg-[#f4f5f7] p-1">
+                            {([['email', 'Email'], ['worker', 'Worker ID']] as const).map(([key, label]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => { setMode(key); setError(''); setNotice(''); }}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
+                                        mode === key ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {notice && (
+                        <div className="mb-4 bg-[#e0f7f5] border border-[#9fe3dd] text-[#0b7d72] text-xs px-4 py-2.5 rounded-xl">
+                            {notice}
+                        </div>
+                    )}
+
+                    {mode === 'worker' && (
+                        <form onSubmit={handleWorkerIdSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Worker ID</label>
+                                <input
+                                    required
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={workerId}
+                                    onChange={(e) => setWorkerId(e.target.value)}
+                                    placeholder="e.g 145021"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Current password</label>
+                                <input
+                                    required
+                                    type="password"
+                                    value={legacyPassword}
+                                    onChange={(e) => setLegacyPassword(e.target.value)}
+                                    placeholder="Your ORS password"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 text-red-600 text-xs px-4 py-2.5 rounded-xl">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-3 rounded-xl text-white font-bold text-sm transition-opacity disabled:opacity-70"
+                                style={{ background: '#2dc7be' }}
+                            >
+                                {loading ? 'Checking...' : 'Continue'}
+                            </button>
+                        </form>
+                    )}
+
+                    {mode === 'claim' && (
+                        <form onSubmit={handleClaimSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Your email</label>
+                                <input
+                                    required
+                                    type="email"
+                                    autoComplete="email"
+                                    value={claimEmail}
+                                    onChange={(e) => setClaimEmail(e.target.value)}
+                                    placeholder="you@cogdasmarinas.org"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                />
+                                <p className="text-[11px] text-gray-400 mt-1">
+                                    You will use this to sign in from now on. Your Worker ID login closes after this step.
+                                </p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                                <input
+                                    required
+                                    type="password"
+                                    minLength={8}
+                                    autoComplete="new-password"
+                                    value={claimPassword}
+                                    onChange={(e) => setClaimPassword(e.target.value)}
+                                    placeholder="At least 8 characters"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+                                <input
+                                    required
+                                    type="password"
+                                    minLength={8}
+                                    autoComplete="new-password"
+                                    value={claimConfirm}
+                                    onChange={(e) => setClaimConfirm(e.target.value)}
+                                    placeholder="Re-enter your new password"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 text-red-600 text-xs px-4 py-2.5 rounded-xl">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-3 rounded-xl text-white font-bold text-sm transition-opacity disabled:opacity-70"
+                                style={{ background: '#2dc7be' }}
+                            >
+                                {loading ? 'Setting up...' : 'Finish setup'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setMode('worker'); setError(''); }}
+                                className="w-full text-xs text-gray-500 hover:text-gray-700"
+                            >
+                                Back
+                            </button>
+                        </form>
+                    )}
+
+                    {mode === 'email' && (
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Email */}
                         <div>
@@ -176,17 +401,20 @@ export default function LoginPage() {
                             {loading ? 'Logging in...' : 'Login'}
                         </button>
                     </form>
+                    )}
 
-                    {/* Find My Worker ID */}
-                    <div className="mt-4 text-center">
-                        <button
-                            type="button"
-                            className="text-sm text-[#2dc7be] font-medium hover:underline"
-                            onClick={() => {/* TODO: implement find worker ID flow */}}
-                        >
-                            Find My Worker ID
-                        </button>
-                    </div>
+                    {/* First-time entry point — hidden mid-claim. */}
+                    {mode === 'email' && (
+                        <div className="mt-4 text-center">
+                            <button
+                                type="button"
+                                className="text-sm text-[#2dc7be] font-medium hover:underline"
+                                onClick={() => { setMode('worker'); setError(''); setNotice(''); }}
+                            >
+                                First time here? Use your Worker ID
+                            </button>
+                        </div>
+                    )}
 
                 </div>
 

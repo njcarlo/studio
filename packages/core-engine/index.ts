@@ -24,6 +24,13 @@ export {
   isHRWorker,
 } from './src/auth/with-permission';
 
+export {
+  checkWorkerIdCredentials,
+  isEmailTaken,
+  commitWorkerEmailClaim,
+  type WorkerIdCheck,
+} from './src/auth/worker-credentials';
+
 export { EmailService } from './src/notify/email';
 
 export {

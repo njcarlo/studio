@@ -25,6 +25,23 @@ Default: **`https://c2s.cogdasma.app`**
 | `/dashboard` | worker | Role-routed dashboard (see below) |
 | `/api/auth/session` | — | ID-token → session-cookie exchange (POST) and sign-out (DELETE) |
 
+## Signing in
+
+Two paths, mirroring ORS:
+
+- **Email** — the normal path. Firebase sign-in mints the `fb_session` cookie
+  that `apps/web` also accepts.
+- **Worker ID** — one time only, for workers migrated from ORS. They enter
+  their Worker ID and old ORS password, choose the email they will use from
+  then on, and set a new password. The claim writes the email to the `Worker`
+  row, destroys `legacyPasswordHash`, and stamps `legacyMigratedAt`, so the
+  Worker ID path is closed to them afterwards and sends them to the email form.
+
+The verification and claim live in `@studio/core-engine`'s
+`worker-credentials.ts` (rate limited to 5 attempts per 15 minutes, audited to
+`TransactionLog`); creating the Firebase user stays in the app's
+`actions/worker-login.ts`, so core-engine keeps no firebase-admin dependency.
+
 ## Roles
 
 `getC2SUser()` (`src/lib/auth.ts`) derives the caller's role from real data,
