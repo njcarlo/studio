@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
  * Tests for the durable ORS sync-run tracking added alongside the weekly
@@ -146,5 +146,64 @@ describe('withSyncRun bookkeeping', () => {
 
         expect(result.success).toBe(1);
         expect(prismaMock.orsSyncRun.update).not.toHaveBeenCalled();
+    });
+});
+
+describe('weeklyWorkerMode', () => {
+    // Restore only the two keys this block touches. Replacing `process.env`
+    // wholesale would clobber env that other test files in the same worker
+    // depend on, which shows up as an unrelated intermittent failure.
+    const KEYS = ['ORS_WEEKLY_WORKERS', 'ORS_WEEKLY_INCLUDE_WORKERS'] as const;
+    const ORIGINAL = new Map(KEYS.map((k) => [k, process.env[k]]));
+
+    afterEach(() => {
+        for (const [k, v] of ORIGINAL) {
+            if (v === undefined) delete process.env[k];
+            else process.env[k] = v;
+        }
+    });
+
+    it('adds new workers by default', async () => {
+        const { weeklyWorkerMode } = await import('@/services/ors-sync');
+        delete process.env.ORS_WEEKLY_WORKERS;
+        delete process.env.ORS_WEEKLY_INCLUDE_WORKERS;
+
+        expect(weeklyWorkerMode()).toBe('new');
+    });
+
+    it('honours each explicit mode', async () => {
+        const { weeklyWorkerMode } = await import('@/services/ors-sync');
+
+        for (const mode of ['none', 'new', 'all'] as const) {
+            process.env.ORS_WEEKLY_WORKERS = mode;
+            expect(weeklyWorkerMode()).toBe(mode);
+        }
+
+        // Case and padding shouldn't matter — these get typed into a console.
+        process.env.ORS_WEEKLY_WORKERS = '  ALL  ';
+        expect(weeklyWorkerMode()).toBe('all');
+    });
+
+    it('falls back to the default on an unrecognised value rather than doing nothing', async () => {
+        const { weeklyWorkerMode } = await import('@/services/ors-sync');
+        process.env.ORS_WEEKLY_WORKERS = 'yes-please';
+
+        expect(weeklyWorkerMode()).toBe('new');
+    });
+
+    it('still honours the old ORS_WEEKLY_INCLUDE_WORKERS spelling as "all"', async () => {
+        const { weeklyWorkerMode } = await import('@/services/ors-sync');
+        delete process.env.ORS_WEEKLY_WORKERS;
+        process.env.ORS_WEEKLY_INCLUDE_WORKERS = 'true';
+
+        expect(weeklyWorkerMode()).toBe('all');
+    });
+
+    it('lets the new setting override the old one', async () => {
+        const { weeklyWorkerMode } = await import('@/services/ors-sync');
+        process.env.ORS_WEEKLY_INCLUDE_WORKERS = 'true';
+        process.env.ORS_WEEKLY_WORKERS = 'new';
+
+        expect(weeklyWorkerMode()).toBe('new');
     });
 });
