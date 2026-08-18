@@ -19,7 +19,10 @@
     "prepare": "husky || true",
     "apphosting:build": "sh scripts/apphosting-build.sh",
     "migrate:c2s": "tsx scripts/apply-c2s-migrations.ts",
-    "test:scripts": "tsx --test scripts/*.test.ts"
+    "test:scripts": "tsx --test scripts/*.test.ts",
+    "seed:superadmin": "tsx prisma/seed-superadmin.ts",
+    "workers:truncate:dry": "tsx prisma/truncate-workers.ts",
+    "workers:truncate": "tsx prisma/truncate-workers.ts --confirm"
   },
   "devDependencies": {
     "husky": "^9.1.7",
@@ -34,9 +37,6 @@
     "@rollup/rollup-darwin-arm64": "^4.59.0"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts",
-    "seed:superadmin": "tsx prisma/seed-superadmin.ts",
-    "workers:truncate:dry": "tsx prisma/truncate-workers.ts",
-    "workers:truncate": "tsx prisma/truncate-workers.ts --confirm"
+    "seed": "tsx prisma/seed.ts"
   }
 }
