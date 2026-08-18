@@ -64,10 +64,18 @@ leave balances → training records → worker availability → meal stubs →
 approval requests → inventory borrowings → inventory logs →
 notification preferences → worker roles → **workers**
 
-`MealStubLedger`, `WorshipSlotWorker`, `ScheduleAssignment` and
-`EventAssignment` hold `workerId` as a plain string with no foreign key. The
-database would happily leave those rows pointing at deleted workers, so the
-script clears them too — silent orphans are worse than the delete itself.
+`MealStubLedger`, `WorshipSlotWorker`, `ScheduleAssignment`,
+`EventAssignment`, `C2SCoordinatorAssignment` and `C2SMentorAssignment` hold
+`workerId` as a plain string with no foreign key. The database would happily
+leave those rows pointing at deleted workers, so the script clears them too —
+silent orphans are worse than the delete itself. `C2SCluster.clusterHeadId` is
+nulled rather than deleting the cluster.
+
+C2S **groups and mentees are not deleted**. They're the public Group Finder
+directory, and wiping them as a side-effect of a worker reset would be the
+wrong surprise. The dry run still reports how many `C2SGroup.mentorId` /
+`C2SMentee.mentorId` pointers will dangle, so you can reassign mentors
+afterwards.
 
 **This means a wipe takes attendance history, leave records and training records
 with it.** That's usually the surprise. Run the dry run and read the counts

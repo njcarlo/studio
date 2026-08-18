@@ -114,6 +114,21 @@ const STEPS: Step[] = [
   simple('WorshipSlotWorker (no FK)', 'worshipSlotWorker', 'workerId'),
   simple('ScheduleAssignment (no FK)', 'scheduleAssignment', 'workerId'),
   simple('EventAssignment (no FK)', 'eventAssignment', 'workerId'),
+
+  // C2S staff assignments hang off workerId with no FK. Groups themselves are
+  // not deleted (they're the public Group Finder directory); mentorId on a
+  // group/mentee is reported as a leftover rather than wiping C2S.
+  simple('C2SCoordinatorAssignment (no FK)', 'c2SCoordinatorAssignment', 'workerId'),
+  simple('C2SMentorAssignment (no FK)', 'c2SMentorAssignment', 'workerId'),
+  {
+    label: 'C2SCluster.clusterHeadId (null out)',
+    count: (db, ids) => db.c2SCluster.count({ where: { clusterHeadId: { in: ids } } }),
+    remove: (db, ids) =>
+      db.c2SCluster.updateMany({
+        where: { clusterHeadId: { in: ids } },
+        data: { clusterHeadId: null },
+      }),
+  },
 ];
 
 async function main() {
@@ -163,6 +178,18 @@ async function main() {
     for (const [label, n] of counts) console.log(`   ${String(n).padStart(7)}  ${label}`);
   }
   console.log(`   ${String(dependents).padStart(7)}  TOTAL dependent rows\n`);
+
+  // Groups/mentees keep their rows so the public directory survives a worker
+  // wipe. mentorId is a required string with no FK, so those pointers will
+  // dangle — surface the count so it isn't a surprise after the fact.
+  const leftoverGroups = await prisma.c2SGroup.count({ where: { mentorId: { in: ids } } });
+  const leftoverMentees = await prisma.c2SMentee.count({ where: { mentorId: { in: ids } } });
+  if (leftoverGroups > 0 || leftoverMentees > 0) {
+    console.log('C2S leftovers (not deleted — Group Finder directory stays):');
+    if (leftoverGroups > 0) console.log(`   ${String(leftoverGroups).padStart(7)}  C2SGroup.mentorId will dangle`);
+    if (leftoverMentees > 0) console.log(`   ${String(leftoverMentees).padStart(7)}  C2SMentee.mentorId will dangle`);
+    console.log('');
+  }
 
   if (!CONFIRM) {
     console.log('Re-run with --confirm to delete. Take a database backup first — this cannot be undone.');
