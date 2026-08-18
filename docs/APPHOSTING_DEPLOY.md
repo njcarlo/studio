@@ -119,7 +119,9 @@ them — new workers are appended at the end of ORS, so a first-page-only view
 would miss exactly the rows it's looking for — and imports at most
 `ORS_WEEKLY_WORKER_LIMIT` per run so a large initial backlog can't exhaust the
 route's time budget. Anything deferred is reported in the run message and
-picked up the following week.
+picked up the following week. The `all` mode uses the same full-table scan
+(and the same per-run cap) for field updates on existing workers, so a change
+on a row past page 1 of ORS is not skipped.
 
 `ORS_WEEKLY_INCLUDE_WORKERS=true` is still honoured as the old spelling of
 `all`, so an environment set before this split keeps its behaviour.

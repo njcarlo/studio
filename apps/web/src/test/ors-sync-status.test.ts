@@ -207,3 +207,120 @@ describe('weeklyWorkerMode', () => {
         expect(weeklyWorkerMode()).toBe('new');
     });
 });
+
+function orsWorker(overrides: Partial<{
+    id: number; first_name: string; last_name: string; email: string | null; mobile: string | null;
+}> = {}) {
+    return {
+        id: 1,
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        email: 'ada@example.com',
+        username: null,
+        mobile: '0917',
+        birthdate: null,
+        ministry_id: null,
+        sec_ministry_id: null,
+        status: 'active',
+        worker_type: 'Volunteer',
+        qrdata: null,
+        address: null,
+        start_month: null,
+        start_year: null,
+        remarks: null,
+        biometrics_id: null,
+        facebook_handle: null,
+        worker_status: null,
+        area_id: null,
+        church_id: null,
+        ...overrides,
+    };
+}
+
+function localWorker(overrides: Record<string, unknown> = {}) {
+    return {
+        id: 'w1',
+        workerId: '1',
+        legacyPasswordHash: null,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        email: 'ada@example.com',
+        phone: '0917',
+        address: null,
+        birthDate: null,
+        startMonth: null,
+        startYear: null,
+        remarks: null,
+        biometricsId: null,
+        qrToken: null,
+        status: 'Active',
+        majorMinistryId: '',
+        minorMinistryId: '',
+        employmentType: 'Volunteer',
+        roleId: 'viewer',
+        ...overrides,
+    };
+}
+
+describe('weekly worker index collectors', () => {
+    it('finds new ORS workers anywhere in the table, not just page 1', async () => {
+        const { collectNewOrsWorkerIdsFromIndex } = await import('@/services/ors-sync');
+        const local = localWorker({ workerId: '1', email: 'ada@example.com' });
+        const byWorkerId = new Map([['1', local]]);
+        const matchLocal = (ors: { id: number; email: string | null }) =>
+            byWorkerId.get(String(ors.id));
+
+        const ids = collectNewOrsWorkerIdsFromIndex({
+            orsWorkers: [
+                orsWorker({ id: 1, email: 'ada@example.com' }),
+                orsWorker({ id: 9001, first_name: 'New', last_name: 'Hire', email: 'new@example.com' }),
+            ],
+            matchLocal,
+        });
+
+        expect(ids).toEqual([9001]);
+    });
+
+    it('finds field updates past the first page of the ORS table', async () => {
+        const { collectUpdatedWorkersFromIndex } = await import('@/services/ors-sync');
+        const ada = localWorker({ workerId: '1', email: 'ada@example.com', phone: '0917' });
+        const zoe = localWorker({
+            id: 'w2',
+            workerId: '9001',
+            firstName: 'Zoe',
+            lastName: 'Old',
+            email: 'zoe@example.com',
+            phone: '0000',
+        });
+        const byWorkerId = new Map([['1', ada], ['9001', zoe]]);
+        const matchLocal = (ors: { id: number }) => byWorkerId.get(String(ors.id));
+
+        const updated = collectUpdatedWorkersFromIndex(
+            {
+                orsWorkers: [
+                    orsWorker({ id: 1 }),
+                    orsWorker({ id: 9001, first_name: 'Zoe', last_name: 'New', email: 'zoe@example.com', mobile: '0000' }),
+                ],
+                matchLocal,
+            },
+            {},
+        );
+
+        expect(updated).toHaveLength(1);
+        expect(updated[0].worker.id).toBe(9001);
+        expect(updated[0].fields).toContain('Last Name');
+    });
+
+    it('skips ORS rows that already match local records', async () => {
+        const { collectUpdatedWorkersFromIndex } = await import('@/services/ors-sync');
+        const local = localWorker();
+        const matchLocal = () => local;
+
+        const updated = collectUpdatedWorkersFromIndex(
+            { orsWorkers: [orsWorker()], matchLocal },
+            {},
+        );
+
+        expect(updated).toEqual([]);
+    });
+});

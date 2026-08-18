@@ -1443,11 +1443,52 @@ async function loadWorkerDiffIndex() {
     return { orsWorkers, localWorkers, matchLocal };
 }
 
-export async function computeWorkerDiffSummary(
-    ministryMap: Record<string, string> = {}
-): Promise<WorkerDiffSummary> {
-    const { orsWorkers, localWorkers, matchLocal } = await loadWorkerDiffIndex();
+type WorkerDiffIndex = Awaited<ReturnType<typeof loadWorkerDiffIndex>>;
 
+/**
+ * ORS worker IDs with no counterpart in the new system, oldest ORS ID first.
+ *
+ * Scans the WHOLE legacy worker table rather than the first page of the diff:
+ * new workers are appended at the end of ORS, so a page-1 view would routinely
+ * miss exactly the rows this is meant to find.
+ */
+export function collectNewOrsWorkerIdsFromIndex(
+    { orsWorkers, matchLocal }: Pick<WorkerDiffIndex, 'orsWorkers' | 'matchLocal'>,
+): number[] {
+    return orsWorkers
+        .filter((w) => !matchLocal(w))
+        .map((w) => Number(w.id))
+        .filter((id) => Number.isFinite(id))
+        .sort((a, b) => a - b);
+}
+
+/**
+ * Existing workers whose ORS fields have drifted, from a full-table index.
+ *
+ * Same page-1 trap as new-worker collection: `getWorkerDiffPage(1, 500)` only
+ * sees the first page of the ORS worker table, so updates later in the table
+ * would never be pushed. The weekly `all` mode has to scan the whole index.
+ */
+export function collectUpdatedWorkersFromIndex(
+    { orsWorkers, matchLocal }: Pick<WorkerDiffIndex, 'orsWorkers' | 'matchLocal'>,
+    ministryMap: Record<string, string>,
+): SyncUpdatedWorkerInput[] {
+    const updated: SyncUpdatedWorkerInput[] = [];
+    for (const worker of orsWorkers) {
+        const existing = matchLocal(worker);
+        if (!existing) continue;
+        const fields = computeDiffFields(worker, existing, ministryMap);
+        if (fields.length > 0) {
+            updated.push({ worker, fields: fields.map((f) => f.label) });
+        }
+    }
+    return updated;
+}
+
+function summarizeFromIndex(
+    { orsWorkers, localWorkers, matchLocal }: WorkerDiffIndex,
+    ministryMap: Record<string, string>,
+): WorkerDiffSummary {
     const summary: WorkerDiffSummary = { new: 0, updated: 0, synced: 0, orphan: 0 };
     const orsIds = new Set(orsWorkers.map((w) => String(w.id)));
 
@@ -1469,20 +1510,10 @@ export async function computeWorkerDiffSummary(
     return summary;
 }
 
-/**
- * ORS worker IDs with no counterpart in the new system, oldest ORS ID first.
- *
- * Scans the WHOLE legacy worker table rather than the first page of the diff:
- * new workers are appended at the end of ORS, so a page-1 view would routinely
- * miss exactly the rows this is meant to find.
- */
-async function collectNewOrsWorkerIds(): Promise<number[]> {
-    const { orsWorkers, matchLocal } = await loadWorkerDiffIndex();
-    return orsWorkers
-        .filter((w) => !matchLocal(w))
-        .map((w) => Number(w.id))
-        .filter((id) => Number.isFinite(id))
-        .sort((a, b) => a - b);
+export async function computeWorkerDiffSummary(
+    ministryMap: Record<string, string> = {}
+): Promise<WorkerDiffSummary> {
+    return summarizeFromIndex(await loadWorkerDiffIndex(), ministryMap);
 }
 
 /**
@@ -1593,8 +1624,16 @@ export async function runWeeklyOrsSync(): Promise<WeeklyOrsSyncResult> {
         const mode = weeklyWorkerMode();
         parts.push(`worker mode: ${mode}`);
 
+        // One full-table index for new-worker pickup, field updates, and the
+        // pending-review summary. Each of those used to page ORS independently.
+        let index: WorkerDiffIndex | null = null;
+        const getIndex = async () => {
+            if (!index) index = await loadWorkerDiffIndex();
+            return index;
+        };
+
         if (mode !== 'none') {
-            const newIds = await collectNewOrsWorkerIds();
+            const newIds = collectNewOrsWorkerIdsFromIndex(await getIndex());
             const limit = weeklyNewWorkerLimit();
             const batch = newIds.slice(0, limit);
 
@@ -1611,20 +1650,19 @@ export async function runWeeklyOrsSync(): Promise<WeeklyOrsSyncResult> {
         }
 
         if (mode === 'all') {
-            const diffPage = await getWorkerDiffPage(1, 500, undefined, ministryMap, 'legacy_to_new');
-            const updated = diffPage.data
-                .filter((r) => r.status === 'updated')
-                .map((r) => ({
-                    worker: r.ors as OrsWorker,
-                    fields: r.diffFields.map((f) => f.label),
-                }));
-            if (updated.length > 0) {
-                add('workers_updated', await syncOrsUpdatedWorkersInner(updated, ministryMap));
+            const updated = collectUpdatedWorkersFromIndex(await getIndex(), ministryMap);
+            const limit = weeklyNewWorkerLimit();
+            const batch = updated.slice(0, limit);
+            if (batch.length > 0) {
+                add('workers_updated', await syncOrsUpdatedWorkersInner(batch, ministryMap));
+            }
+            if (updated.length > batch.length) {
+                parts.push(`${updated.length - batch.length} updated worker(s) deferred to next run (limit ${limit})`);
             }
         }
 
         try {
-            total.diff = await computeWorkerDiffSummary(ministryMap);
+            total.diff = summarizeFromIndex(await getIndex(), ministryMap);
             parts.push(
                 `pending review: ${total.diff.new} new, ${total.diff.updated} updated, ${total.diff.orphan} orphan`
             );
