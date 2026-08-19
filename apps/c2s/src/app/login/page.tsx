@@ -50,7 +50,6 @@ export default function LoginPage() {
             {/* Top accent bar */}
             <div className="relative z-10 flex h-2 w-full">
                 <div className="flex-1 bg-[#e91e8c]" />
-                <div className="w-2" />
                 <div className="flex-1 bg-[#2dc7be]" />
             </div>
 
@@ -183,7 +182,7 @@ export default function LoginPage() {
                 <div className="w-full max-w-sm sm:max-w-md mt-4 bg-white rounded-2xl shadow-xl px-5 sm:px-6 py-5 flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-gray-900">Get the connect2souls app</p>
-                        <p className="text-xs text-gray-500 mb-3">Scan the QR code or download from your store.</p>
+                        <p className="text-xs text-gray-500 mb-2">Scan the QR code or download from your store.</p>
                         <div className="flex items-center gap-2 flex-wrap">
                             {/* App Store badge */}
                             <a

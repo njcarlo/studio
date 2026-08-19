@@ -318,7 +318,7 @@ function PotentialMenteesTab({
     const [recommendingMentee, setRecommendingMentee] = useState<CoordPotentialMentee | null>(null);
     const [interviewMentee, setInterviewMentee] = useState<CoordPotentialMentee | null>(null);
 
-    const STATUS_FILTERS = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Interview Completed', 'Accepted'];
+    const STATUS_FILTERS = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Accepted'];
 
     const resolved = mentees.map(m => ({ ...m, status: (statuses[m.id] ?? m.status) as CoordPotentialMentee['status'] }));
     const filtered = resolved.filter(m => {

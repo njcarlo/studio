@@ -386,7 +386,7 @@ function PotentialMenteesTab() {
     const coordinators = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.coordinator)))];
     const mentors      = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.mentor).filter((x) => x !== '—')))];
     const barangays    = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.barangay)))];
-    const statuses     = ['All','New','Waiting for Assignment','Assigned to Mentor','Interview Scheduled','Interview Completed','Accepted'];
+    const statuses     = ['All','New','Waiting for Assignment','Assigned to Mentor','Interview Scheduled','Accepted'];
 
     const filtered = MH_POTENTIAL_MENTEES.filter((m) =>
         (clusterFilter  === 'All' || m.cluster     === clusterFilter)  &&

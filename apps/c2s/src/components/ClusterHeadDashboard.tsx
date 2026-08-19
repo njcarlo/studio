@@ -651,7 +651,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
         return matchSearch && matchFilter;
     });
 
-    const statusFilters = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Interview Completed', 'Accepted'];
+    const statusFilters = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Accepted'];
     const filteredPotential = CH_POTENTIAL_MENTEES.filter(m => {
         const ms = potentialSearch.toLowerCase();
         const matchSearch = m.name.toLowerCase().includes(ms);
