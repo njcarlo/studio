@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default function HomePage() {
     return (
-        <div className="min-h-screen bg-white">
+        <div className="force-light min-h-screen bg-white">
             <Navbar />
 
             {/* Hero */}

@@ -162,7 +162,7 @@ export default function GroupFinderModal({ onClose }: Props) {
             className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
-            <div className="bg-[#f8f9fc] rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
 
                 {/* ── Header ── */}
                 <div className="bg-white px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">

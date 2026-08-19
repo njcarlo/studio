@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9', '#1971c2'];
+const AVATAR_COLORS = ['#5b50d6', '#5b50d6', '#0b9b8a', '#e67700', '#6741d9', '#1971c2'];
 function avatarColor(id: string) {
     let h = 0;
     for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
@@ -24,7 +24,7 @@ const STATUS_STYLE: Record<string, string> = {
     'New':                    'bg-[#dbeafe] text-[#1d4ed8]',
     'Waiting for Assignment': 'bg-[#fef9c3] text-[#92400e]',
     'Assigned to Mentor':     'bg-[#ede9fe] text-[#6741d9]',
-    'Interview Scheduled':    'bg-[#fde8ef] text-[#e6184d]',
+    'Interview Scheduled':    'bg-[#ede9fe] text-[#5b50d6]',
     'Interview Completed':    'bg-[#d3f9f0] text-[#0c8a6e]',
     'Accepted':               'bg-[#dcfce7] text-[#166534]',
 };
@@ -52,7 +52,7 @@ function MHDashboardNotifications() {
     const unread = notifs.filter(n => !n.read).length;
     const NOTIF_ICON: Record<string, { bg: string; dot: string }> = {
         worker:      { bg: '#ede9fe', dot: '#5b50d6' },
-        worker_id:   { bg: '#fde8ef', dot: '#e91e8c' },
+        worker_id:   { bg: '#ede9fe', dot: '#5b50d6' },
         coordinator: { bg: '#d3f9f0', dot: '#0b9b8a' },
         mentor:      { bg: '#fef3c7', dot: '#e67700' },
     };
@@ -125,7 +125,7 @@ function MentorProfileView({ mentor, cluster, onClose }: { mentor: typeof MH_ALL
                     </div>
 
                     {/* Info Cards */}
-                    <div className="px-6 pb-4 grid grid-cols-2 gap-3">
+                    <div className="px-6 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {[
                             { label: 'Contact',        value: mentor.phone },
                             { label: 'Department',     value: 'Outreach' },
@@ -149,7 +149,7 @@ function MentorProfileView({ mentor, cluster, onClose }: { mentor: typeof MH_ALL
                         ) : (
                             <div className="rounded-xl border border-gray-200 overflow-hidden">
                                 {/* Table Header */}
-                                <div className="grid grid-cols-12 px-4 py-2 bg-[#f8f9fc] border-b border-gray-100">
+                                <div className="grid grid-cols-12 px-4 py-2 border-b border-gray-100" style={{ background: 'var(--bg-subtle)' }}>
                                     <p className="col-span-4 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Name</p>
                                     <p className="col-span-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Module</p>
                                     <p className="col-span-5 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Progress</p>
@@ -280,7 +280,7 @@ function ClustersTab() {
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                             {[{ label: 'Members', value: c.totalGroups, color: '#5b50d6' }, { label: 'Mentors', value: c.totalMentors, color: '#0b9b8a' }, { label: 'Active', value: c.totalActiveMentees, color: '#1971c2' }].map((s) => (
-                                <div key={s.label} className="bg-[#f8f9fc] rounded-xl px-2 py-3 text-center">
+                                <div key={s.label} className="rounded-xl px-2 py-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                                     <p className="text-lg font-black" style={{ color: s.color }}>{s.value}</p>
                                     <p className="text-[9px] text-gray-400 mt-0.5">{s.label}</p>
                                 </div>
@@ -307,26 +307,51 @@ function CoordinatorsTab() {
                     <input type="text" placeholder="Search coordinators..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white"/>
                 </div>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div className="overflow-x-auto">
+            {/* Mobile cards */}
+            <div className="sm:hidden bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No coordinators found</p></div>}
+                {filtered.map((c) => (
+                    <div key={c.id} className="p-4 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: c.color }}>{c.initials}</div>
+                                <span className="font-semibold text-gray-900 text-sm">{c.name}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
+                        </div>
+                        <p className="text-xs text-gray-500">{c.cluster}</p>
+                        <div className="flex gap-4 mt-1">
+                            <div>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Assigned</p>
+                                <p className="font-semibold text-gray-900 text-sm">{c.assignedPotentialMentees}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Active Mentors</p>
+                                <p className="font-semibold text-gray-900 text-sm">{c.activeMentors}</p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                     <table className="w-full text-xs">
                         <thead className="bg-[#f8f9fc]">
-                            <tr>{['Coordinator Name','Cluster','Assigned Potential Mentees','Active Mentors','Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-5 py-3.5">{h}</th>))}</tr>
+                            <tr>{['Coordinator Name','Cluster','Assigned Potential Mentees','Active Mentors','Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-3.5">{h}</th>))}</tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map((c) => (
                                 <tr key={c.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-5 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: c.color }}>{c.initials}</div><span className="font-semibold text-gray-900">{c.name}</span></div></td>
-                                    <td className="px-5 py-3.5 text-gray-600">{c.cluster}</td>
-                                    <td className="px-5 py-3.5 font-semibold text-gray-900">{c.assignedPotentialMentees}</td>
-                                    <td className="px-5 py-3.5 font-semibold text-gray-900">{c.activeMentors}</td>
-                                    <td className="px-5 py-3.5"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span></td>
+                                    <td className="px-4 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: c.color }}>{c.initials}</div><span className="font-semibold text-gray-900">{c.name}</span></div></td>
+                                    <td className="px-4 py-3.5 text-gray-600">{c.cluster}</td>
+                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{c.assignedPotentialMentees}</td>
+                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{c.activeMentors}</td>
+                                    <td className="px-4 py-3.5"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                     {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No coordinators found</p></div>}
-                </div>
             </div>
         </div>
     );
@@ -349,26 +374,51 @@ function MentorsTab() {
                     <button key={f} onClick={() => setFilter(f)} className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{f}</button>
                 ))}
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div className="overflow-x-auto">
+            {/* Mobile cards */}
+            <div className="sm:hidden bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No mentors found</p></div>}
+                {filtered.map((m) => (
+                    <div key={m.id} className="p-4 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>{m.initials}</div>
+                                <span className="font-semibold text-gray-900 text-sm">{m.name}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${m.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{m.status}</span>
+                        </div>
+                        <p className="text-xs text-gray-500">{m.cluster}</p>
+                        <div className="flex gap-4 mt-1">
+                            <div>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Groups</p>
+                                <p className="font-semibold text-gray-900 text-sm">{m.totalGroups}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Active Mentees</p>
+                                <p className="font-semibold text-gray-900 text-sm">{m.activeMentees}</p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                     <table className="w-full text-xs">
                         <thead className="bg-[#f8f9fc]">
-                            <tr>{['Name','Cluster','Total Groups','Active Mentees','Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-5 py-3.5">{h}</th>))}</tr>
+                            <tr>{['Name','Cluster','Total Groups','Active Mentees','Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-3.5">{h}</th>))}</tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map((m) => (
                                 <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-5 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
-                                    <td className="px-5 py-3.5 text-gray-600">{m.cluster}</td>
-                                    <td className="px-5 py-3.5 font-semibold text-gray-900">{m.totalGroups}</td>
-                                    <td className="px-5 py-3.5 font-semibold text-gray-900">{m.activeMentees}</td>
-                                    <td className="px-5 py-3.5"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${m.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{m.status}</span></td>
+                                    <td className="px-4 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
+                                    <td className="px-4 py-3.5 text-gray-600">{m.cluster}</td>
+                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{m.totalGroups}</td>
+                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{m.activeMentees}</td>
+                                    <td className="px-4 py-3.5"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${m.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{m.status}</span></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                     {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No mentors found</p></div>}
-                </div>
             </div>
         </div>
     );
@@ -398,7 +448,7 @@ function PotentialMenteesTab() {
 
     function Sel({ label, val, opts, onChange }: { label: string; val: string; opts: string[]; onChange: (v: string) => void }) {
         return (
-            <select value={val} onChange={(e) => onChange(e.target.value)} className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] text-gray-700">
+            <select value={val} onChange={(e) => onChange(e.target.value)} className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] text-gray-700 w-full sm:w-auto">
                 {opts.map((o) => <option key={o} value={o}>{o === 'All' ? `${label}: All` : o}</option>)}
             </select>
         );
@@ -440,30 +490,28 @@ function PotentialMenteesTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                         <thead className="bg-[#f8f9fc]">
-                            <tr>{['Name','Age','Gender','Cluster','Coordinator','Mentor','Barangay','Source','Status','Submitted'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-3.5 whitespace-nowrap">{h}</th>))}</tr>
+                            <tr>{['Name','Age','Gender','Cluster','Coordinator','Mentor','Barangay','Source','Status','Submitted'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>))}</tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map((m) => (
                                 <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900 whitespace-nowrap">{m.name}</span></div></td>
-                                    <td className="px-4 py-3 text-gray-600">{m.age}</td>
-                                    <td className="px-4 py-3 text-gray-600">{m.gender}</td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.cluster}</td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.coordinator}</td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.mentor}</td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.barangay}</td>
-                                    <td className="px-4 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${m.source === 'From C2S Group Finder' ? 'bg-[#e0f7f5] text-[#0b9b8a]' : 'bg-[#ede9fe] text-[#6741d9]'}`}>{m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}</span></td>
-                                    <td className="px-4 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_STYLE[m.status] ?? ''}`}>{m.status}</span></td>
-                                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{m.dateSubmitted}</td>
+                                    <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
+                                    <td className="px-3 py-3 text-gray-600">{m.age}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.gender}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.cluster}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.coordinator}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
+                                    <td className="px-3 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#e0f7f5] text-[#0b9b8a]' : 'bg-[#ede9fe] text-[#6741d9]'}`}>{m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}</span></td>
+                                    <td className="px-3 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[m.status] ?? ''}`}>{m.status}</span></td>
+                                    <td className="px-3 py-3 text-gray-400">{m.dateSubmitted}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                     {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No potential mentees match the selected filters</p></div>}
-                </div>
             </div>
         </div>
     );
@@ -512,28 +560,26 @@ function ActiveMenteesTab() {
                 {filtered.length === 0 && <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center"><p className="text-sm font-semibold text-gray-600">No active mentees found</p></div>}
             </div>
             {/* Desktop table */}
-            <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-x-auto" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div className="overflow-x-auto">
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                     <table className="w-full text-xs">
                         <thead className="bg-[#f8f9fc]">
-                            <tr>{['Name','Cluster','Coordinator','Mentor','Barangay','Module','Progress'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-3.5 whitespace-nowrap">{h}</th>))}</tr>
+                            <tr>{['Name','Cluster','Coordinator','Mentor','Barangay','Module','Progress'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>))}</tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.map((m) => (
                                 <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900 whitespace-nowrap">{m.name}</span></div></td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.cluster}</td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.coordinator}</td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.mentor}</td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.barangay}</td>
-                                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{m.module}</td>
-                                    <td className="px-4 py-3"><div className="flex items-center gap-2 min-w-[80px]"><div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }}/></div><span className="text-[10px] font-semibold text-gray-700 shrink-0">{m.progress}%</span></div></td>
+                                    <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
+                                    <td className="px-3 py-3 text-gray-600">{m.cluster}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.coordinator}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.module}</td>
+                                    <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }}/></div><span className="text-[10px] font-semibold text-gray-700 shrink-0">{m.progress}%</span></div></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                     {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No active mentees found</p></div>}
-                </div>
             </div>
         </div>
     );
@@ -606,9 +652,9 @@ function ReportsTab() {
 
     return (
         <div>
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
                 <div><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Reports</h1><p className="text-sm text-gray-400 mt-1">Generate and view Outreach Ministry reports.</p></div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-xl bg-white hover:border-gray-300 transition-colors">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>Export PDF
                     </button>
@@ -650,34 +696,63 @@ function ReportsTab() {
                         </div>
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#ede9fe] text-[#5b50d6]">{MONTHLY_REPORT_HISTORY.filter(r => r.status === 'Submitted').length} submitted</span>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                    <div className="overflow-x-auto sm:hidden">
+                        {/* Mobile cards */}
+                        <div className="divide-y divide-gray-100">
+                            {MONTHLY_REPORT_HISTORY.map((r, i) => (
+                                <div key={i} className="p-4 flex flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-gray-900 text-sm">{r.month}</span>
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                                            r.status === 'Submitted' ? 'bg-[#dcfce7] text-[#166534]' :
+                                            r.status === 'Pending'   ? 'bg-[#fef9c3] text-[#92400e]' :
+                                            'bg-gray-100 text-gray-500'
+                                        }`}>{r.status}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Clusters </span><span className="font-semibold text-gray-700 text-xs">{r.clusters}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Mentors </span><span className="font-semibold text-[#5b50d6] text-xs">{r.mentors}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Active </span><span className="font-semibold text-[#0b9b8a] text-xs">{r.activeMentees}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Potential </span><span className="font-semibold text-[#e67700] text-xs">{r.potentialMentees}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">New Groups </span><span className="font-semibold text-gray-600 text-xs">{r.newGroups}</span></div>
+                                        <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Modules </span><span className="font-semibold text-gray-600 text-xs">{r.completedModules}</span></div>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-1 text-xs text-gray-400">
+                                        <span>{r.submittedBy}</span>
+                                        <span>{r.submittedDate}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-sm min-w-[760px]">
                             <thead>
                                 <tr className="bg-[#f8f9fc]">
                                     {['Month', 'Clusters', 'Mentors', 'Active Mentees', 'Potential', 'New Groups', 'Modules Done', 'Status', 'Submitted By', 'Date'].map(h => (
-                                        <th key={h} className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                        <th key={h} className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {MONTHLY_REPORT_HISTORY.map((r, i) => (
                                     <tr key={i} className="hover:bg-[#fafbff] transition-colors">
-                                        <td className="px-5 py-3.5 font-semibold text-gray-900 whitespace-nowrap">{r.month}</td>
-                                        <td className="px-5 py-3.5 text-center font-semibold text-gray-700">{r.clusters}</td>
-                                        <td className="px-5 py-3.5 text-center font-semibold text-[#5b50d6]">{r.mentors}</td>
-                                        <td className="px-5 py-3.5 text-center font-semibold text-[#0b9b8a]">{r.activeMentees}</td>
-                                        <td className="px-5 py-3.5 text-center font-semibold text-[#e67700]">{r.potentialMentees}</td>
-                                        <td className="px-5 py-3.5 text-center text-gray-600">{r.newGroups}</td>
-                                        <td className="px-5 py-3.5 text-center text-gray-600">{r.completedModules}</td>
-                                        <td className="px-5 py-3.5">
-                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                                        <td className="px-3 py-3.5 font-semibold text-gray-900">{r.month}</td>
+                                        <td className="px-3 py-3.5 text-center font-semibold text-gray-700">{r.clusters}</td>
+                                        <td className="px-3 py-3.5 text-center font-semibold text-[#5b50d6]">{r.mentors}</td>
+                                        <td className="px-3 py-3.5 text-center font-semibold text-[#0b9b8a]">{r.activeMentees}</td>
+                                        <td className="px-3 py-3.5 text-center font-semibold text-[#e67700]">{r.potentialMentees}</td>
+                                        <td className="px-3 py-3.5 text-center text-gray-600">{r.newGroups}</td>
+                                        <td className="px-3 py-3.5 text-center text-gray-600">{r.completedModules}</td>
+                                        <td className="px-3 py-3.5">
+                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
                                                 r.status === 'Submitted' ? 'bg-[#dcfce7] text-[#166534]' :
                                                 r.status === 'Pending'   ? 'bg-[#fef9c3] text-[#92400e]' :
                                                 'bg-gray-100 text-gray-500'
                                             }`}>{r.status}</span>
                                         </td>
-                                        <td className="px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap">{r.submittedBy}</td>
-                                        <td className="px-5 py-3.5 text-xs text-gray-400 whitespace-nowrap">{r.submittedDate}</td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-500">{r.submittedBy}</td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-400">{r.submittedDate}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -730,10 +805,10 @@ function ReportsTab() {
                     </div>
                     {/* Map + sidebar */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-                        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ height: 460, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 overflow-hidden map-container" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                             <ClusterMap groups={filteredGroups} accentColor="#0b9b8a" />
                         </div>
-                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col" style={{ maxHeight: 460, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col" style={{ maxHeight: 'clamp(260px, 40vh, 460px)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                             <div className="px-5 pt-5 pb-3 border-b border-gray-50">
                                 <p className="text-sm font-semibold text-gray-800">Groups by Barangay</p>
                             </div>
@@ -787,7 +862,7 @@ function NotificationsTab() {
     const unreadCount = notifs.filter((n) => !n.read).length;
     const NOTIF_ICON: Record<string, { color: string; icon: string }> = {
         worker:      { color: '#5b50d6', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-        worker_id:   { color: '#e91e8c', icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
+        worker_id:   { color: '#5b50d6', icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
         coordinator: { color: '#0b9b8a', icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
         mentor:      { color: '#e67700', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
     };
@@ -811,7 +886,7 @@ function NotificationsTab() {
                                 <div className="flex items-start justify-between gap-2">
                                     <div>
                                         <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mr-2" style={{ background: s.color + '20', color: s.color }}>{TYPE_LABEL[n.type]}</span>
-                                        {!n.read && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#e91e8c]/10 text-[#e91e8c]">New</span>}
+                                        {!n.read && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#5b50d6]/10 text-[#5b50d6]">New</span>}
                                     </div>
                                     <span className="text-[11px] text-gray-400 whitespace-nowrap shrink-0">{n.time}</span>
                                 </div>
@@ -837,18 +912,18 @@ export default function DepartmentHeadDashboard() {
     }
 
     return (
-        <div className="flex min-h-screen" style={{ background: '#EEF2F7' }}>
+        <div className="flex min-h-screen dashboard-shell" style={{ background: 'var(--bg-page)' }}>
 
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 z-30 bg-black/40 md:hidden"
+                    className="fixed inset-0 z-[1001] bg-black/40 md:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40 transition-transform duration-200
+            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-[1002] transition-transform duration-200
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 {/* MENU label */}
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
@@ -857,7 +932,7 @@ export default function DepartmentHeadDashboard() {
                 <nav className="px-3 flex flex-col gap-1 overflow-y-auto flex-1">
                     {MH_NAV.map((item) => (
                         <button key={item.key} onClick={() => navigate(item.key)}
-                            className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeNav === item.key ? 'text-gray-800 bg-white shadow-sm' : 'text-gray-500 hover:bg-white/60'}`}>
+                            className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeNav === item.key ? 'nav-item-active text-gray-800 shadow-sm' : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'}`}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill={activeNav === item.key ? '#5b50d6' : '#aaa'}><path d={item.icon}/></svg>
                             {item.label}
                             {item.key === 'notifications' && unreadCount > 0 && (
@@ -878,10 +953,10 @@ export default function DepartmentHeadDashboard() {
             </aside>
 
             {/* ── Main content ── */}
-            <div className="md:ml-56 flex-1 pb-16">
+            <div className="w-full md:ml-56 pb-16 min-w-0 overflow-x-hidden">
 
                 {/* Mobile sticky menu bar */}
-                <div className="md:hidden sticky top-16 z-20 bg-[#EEF2F7] border-b border-gray-200 px-4 py-2.5 flex items-center gap-2">
+                <div className="md:hidden fixed top-16 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
                     <button
                         className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
                         onClick={() => setSidebarOpen(true)}
@@ -890,14 +965,13 @@ export default function DepartmentHeadDashboard() {
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                         </svg>
-                        <span>Menu</span>
                     </button>
                     <span className="text-xs text-gray-400 ml-1">
                         {MH_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
                     </span>
                 </div>
 
-                <div className="pt-5 px-4 sm:px-6">
+                <div className="pt-[72px] md:pt-5 px-4 sm:px-6">
                 {activeNav === 'dashboard'    && <DashboardTab/>}
                 {activeNav === 'clusters'     && <ClustersTab/>}
                 {activeNav === 'coordinators' && <CoordinatorsTab/>}

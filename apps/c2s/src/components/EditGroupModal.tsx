@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import type { C2SGroup } from '@/lib/data';
-import { BARANGAYS } from '@/lib/data';
+import { BARANGAYS_BY_SATELLITE } from '@/lib/data';
 
 interface Props {
     group: C2SGroup;
@@ -29,6 +29,7 @@ const DURATIONS = [
 const GROUP_TYPES  = ['Youth','Young Adults',"Men's","Ladies'",'Couples','Open to All'];
 const STATUSES     = ['Exclusive','Open'];
 const SATELLITE_CHURCHES = ['COG Dasmarinas','COG Silang','COG Jabez','COG Trece'];
+const MEETING_FORMATS  = ['Face to Face', 'Online'];
 const GENDERS      = ['Female','Male','Both'];
 
 const SUBDIVISIONS = [
@@ -54,9 +55,23 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
     const [frequency, setFrequency]     = useState('Weekly');
     const [duration, setDuration]       = useState('1 hr');
     // Exclusive location
-    const [satellite, setSatellite]     = useState('Church of God Dasmariñas');
+    const [satellite, setSatellite]     = useState('COG Dasmarinas');
+    const [meetingFormat, setMeetingFormat] = useState('Face to Face');
     // Open location
-    const [barangay, setBarangay]       = useState(group.barangay ?? 'Burol');
+    const [communitySatellite, setCommunitySatellite] = useState(
+        (() => {
+            // Try to infer from group data; default to Dasmarinas
+            return 'COG Dasmarinas';
+        })()
+    );
+    const [barangay, setBarangay]       = useState(group.barangay ?? '');
+    const communityBarangays            = BARANGAYS_BY_SATELLITE[communitySatellite] ?? [];
+
+    function handleCommunitySatelliteChange(val: string) {
+        setCommunitySatellite(val);
+        setBarangay('');
+        setSubdivision('');
+    }
     const [subdivision, setSubdivision] = useState(group.location ?? '');
     const [subdivSuggestions, setSubdivSuggestions] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions]     = useState(false);
@@ -100,18 +115,18 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-8 pt-7 pb-5 border-b border-gray-100">
+                    <div className="px-5 sm:px-8 pt-7 pb-5 border-b border-gray-100">
                         <h2 className="text-xl font-black text-gray-900">Edit Group</h2>
                         <p className="text-xs text-gray-400 mt-0.5">Changes sync automatically to the C2S Group Finder.</p>
                     </div>
 
                     {/* Body */}
-                    <div className="flex-1 overflow-y-auto px-8 py-6 flex flex-col gap-7">
+                    <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 flex flex-col gap-7">
 
                         {/* ── Basic Information ── */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Basic Information</p>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field label="Group Name">
                                     <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={INPUT} />
                                 </Field>
@@ -130,7 +145,7 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                         {/* ── Meeting Information ── */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Meeting Information</p>
-                            <div className="grid grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 <Field label="Meeting Day">
                                     <Sel value={meetingDay} onChange={setMeetingDay} options={DAYS} />
                                 </Field>
@@ -150,31 +165,60 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Location</p>
 
-                            {/* Exclusive: Church base + Satellite Churches */}
+                            {/* Exclusive: Church base + Meeting Format + Satellite Churches */}
                             {!isOpen && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Field label="I will conduct my C2S:">
-                                        <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] text-gray-500">
-                                            Church base
-                                        </div>
-                                    </Field>
-                                    <Field label="Satellite Churches">
-                                        <Sel value={satellite} onChange={setSatellite} options={SATELLITE_CHURCHES} />
-                                    </Field>
+                                <div className="flex flex-col gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <Field label="I will conduct my C2S:">
+                                            <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-500" style={{ background: "var(--bg-subtle)" }}>
+                                                Church base
+                                            </div>
+                                        </Field>
+                                        <Field label="Meeting Format">
+                                            <Sel value={meetingFormat} onChange={setMeetingFormat} options={MEETING_FORMATS} />
+                                        </Field>
+                                    </div>
+                                    <div className="w-full sm:max-w-[50%]">
+                                        <Field label="Satellite Churches">
+                                            <Sel value={satellite} onChange={setSatellite} options={SATELLITE_CHURCHES} />
+                                        </Field>
+                                    </div>
                                 </div>
                             )}
 
-                            {/* Open: Community base + Barangay + Subdivision */}
+                            {/* Open: Community base → Meeting Format → Satellite → Barangay + Subdivision */}
                             {isOpen && (
                                 <div className="flex flex-col gap-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <Field label="I will conduct my C2S:">
-                                            <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] text-gray-500">
+                                            <div className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-500" style={{ background: "var(--bg-subtle)" }}>
                                                 Community base
                                             </div>
                                         </Field>
+                                        <Field label="Meeting Format">
+                                            <Sel value={meetingFormat} onChange={setMeetingFormat} options={MEETING_FORMATS} />
+                                        </Field>
+                                    </div>
+                                    <div className="w-full sm:max-w-[50%]">
+                                        <Field label="Satellite Church">
+                                            <Sel value={communitySatellite} onChange={handleCommunitySatelliteChange} options={SATELLITE_CHURCHES} />
+                                        </Field>
+                                    </div>
+                                    <div className="w-full sm:max-w-[50%]">
                                         <Field label="Barangay">
-                                            <Sel value={barangay} onChange={setBarangay} options={BARANGAYS} />
+                                            <div className="relative">
+                                                <select
+                                                    value={barangay}
+                                                    onChange={(e) => setBarangay(e.target.value)}
+                                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
+                                                >
+                                                    <option value="">— Select barangay —</option>
+                                                    {communityBarangays.map((b) => (
+                                                        <option key={b} value={b}>{b}</option>
+                                                    ))}
+                                                </select>
+                                                <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                            </div>
                                         </Field>
                                     </div>
                                     <Field label="Subdivision/Village">
@@ -207,7 +251,7 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                         {status === 'Open' && (
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Group Preferences</p>
-                            <div className="grid grid-cols-2 gap-4" style={{ maxWidth: '50%' }}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:max-w-[50%]">
                                 <Field label="Age group">
                                     <input type="text" value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)} className={INPUT} />
                                 </Field>
@@ -220,7 +264,7 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                     </div>
 
                     {/* Footer */}
-                    <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
+                    <div className="px-5 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
                         <button onClick={onClose}
                             className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
                             Cancel

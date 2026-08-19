@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DashboardSharedWidgets.tsx
  *
  * Reusable dashboard sections shared by all four role dashboards:
@@ -68,7 +68,7 @@ export function DashboardSummaryCards({ data }: { data: DashboardData }) {
             value: data.totalWorkers,
             sub: 'Across all departments',
             icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="#6aabf7">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="#6aabf7">
                     <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
                 </svg>
             ),
@@ -78,7 +78,7 @@ export function DashboardSummaryCards({ data }: { data: DashboardData }) {
             value: data.totalMentors,
             sub: 'Active discipleship mentors',
             icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="#f07070">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="#f07070">
                     <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
                 </svg>
             ),
@@ -88,7 +88,7 @@ export function DashboardSummaryCards({ data }: { data: DashboardData }) {
             value: data.totalMentees,
             sub: 'Church-wide C2S mentees',
             icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="#5cb85c">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="#5cb85c">
                     <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
                 </svg>
             ),
@@ -98,7 +98,7 @@ export function DashboardSummaryCards({ data }: { data: DashboardData }) {
             value: data.totalGroups,
             sub: 'Church & community based',
             icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="#f5a623">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="#f5a623">
                     <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z"/>
                 </svg>
             ),
@@ -106,15 +106,17 @@ export function DashboardSummaryCards({ data }: { data: DashboardData }) {
     ];
 
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+        <div className="grid grid-cols-2 gap-4 mb-5">
             {cards.map((s) => (
-                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                    <div className="flex items-start justify-between mb-3 sm:mb-4">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
-                        <span className="opacity-80 hidden sm:block">{s.icon}</span>
+                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col justify-between min-h-[160px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                    <div className="flex items-start justify-between">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
+                        <span className="opacity-80">{s.icon}</span>
                     </div>
-                    <p className="text-[1.8rem] sm:text-[2.4rem] font-normal text-gray-900 leading-none mb-1 sm:mb-2">{s.value.toLocaleString()}</p>
-                    <p className="text-xs text-gray-400 leading-snug">{s.sub}</p>
+                    <div>
+                        <p className="text-[2.6rem] font-normal text-gray-900 leading-none mb-1.5">{s.value.toLocaleString()}</p>
+                        <p className="text-sm text-gray-400 leading-snug">{s.sub}</p>
+                    </div>
                 </div>
             ))}
         </div>
@@ -134,9 +136,10 @@ export function WorkersByDepartment({ data }: { data: DashboardData }) {
     const donutData = rows.map((d) => ({ name: d.dept, value: d.workers + d.mentors, color: d.color }));
     const total = donutData.reduce((s, d) => s + d.value, 0);
 
-    const W = 320; const H = 300;
-    const CX = 160; const CY = 150;
-    const OR = 110; const IR = 68;
+    const W = 240; const H = 240;
+    const CX = 120; const CY = 120;
+    const OR = 100; const IR = 60;
+    const LR = (OR + IR) / 2;
     const RAD = Math.PI / 180;
 
     type Slice = { name: string; color: string; percent: number; startDeg: number; endDeg: number };
@@ -159,30 +162,27 @@ export function WorkersByDepartment({ data }: { data: DashboardData }) {
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <h2 className="font-bold text-gray-900 text-base mb-0.5">Workers by Department</h2>
             <p className="text-xs text-gray-400 mb-4">Worker and mentor distribution by department.</p>
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
-                <div className="overflow-x-auto flex justify-center">
-                    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', flexShrink: 0 }}>
+                <div className="flex justify-center">
+                    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
                     {slices.map((s) => (
-                        <path key={s.name} d={arc(CX, CY, OR, s.startDeg, s.endDeg, IR)} fill={s.color} stroke="white" strokeWidth={2} />
+                        <path key={s.name} d={arc(CX, CY, OR, s.startDeg, s.endDeg, IR)} fill={s.color} stroke="rgba(0,0,0,0.15)" strokeWidth={2} />
                     ))}
                     {slices.map((s) => {
-                        if (s.percent < 0.04) return null;
+                        if (s.percent < 0.06) return null;
                         const mid = (s.startDeg + s.endDeg) / 2 * RAD;
-                        const lx1 = CX + (OR + 5)  * Math.cos(mid); const ly1 = CY + (OR + 5)  * Math.sin(mid);
-                        const lx2 = CX + (OR + 20) * Math.cos(mid); const ly2 = CY + (OR + 20) * Math.sin(mid);
-                        const tx  = CX + (OR + 26) * Math.cos(mid); const ty  = CY + (OR + 26) * Math.sin(mid);
+                        const tx = CX + LR * Math.cos(mid);
+                        const ty = CY + LR * Math.sin(mid);
                         return (
-                            <g key={`lbl-${s.name}`}>
-                                <line x1={lx1} y1={ly1} x2={lx2} y2={ly2} stroke="#9ca3af" strokeWidth={1} />
-                                <text x={tx} y={ty} fill="#6b7280" textAnchor={tx >= CX ? 'start' : 'end'}
-                                    dominantBaseline="central" fontSize={11} fontFamily="Inter, system-ui, sans-serif">
-                                    {`${(s.percent * 100).toFixed(0)}%`}
-                                </text>
-                            </g>
+                            <text key={`lbl-${s.name}`} x={tx} y={ty} fill="white"
+                                textAnchor="middle" dominantBaseline="central"
+                                fontSize={12} fontWeight="bold" fontFamily="Inter, system-ui, sans-serif">
+                                {`${(s.percent * 100).toFixed(0)}%`}
+                            </text>
                         );
                     })}
                     </svg>
@@ -197,30 +197,36 @@ export function WorkersByDepartment({ data }: { data: DashboardData }) {
                 </div>
             </div>
 
-            <div className="rounded-xl overflow-x-auto border border-gray-100">
-                <table className="w-full min-w-[360px]">
+            <div className="rounded-xl border border-gray-100">
+                <table className="w-full table-fixed">
+                    <colgroup>
+                        <col className="w-[40%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[20%]" />
+                    </colgroup>
                     <thead>
-                        <tr style={{ background: '#f8f9fc', borderBottom: '1px solid #e5e7eb' }}>
-                            <th className="px-4 sm:px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Workers</th>
-                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mentors</th>
-                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                        <tr className="table-header-row" style={{ borderBottom: '1px solid var(--border)' }}>
+                            <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                            <th className="px-2 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Workers</th>
+                            <th className="px-2 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mentors</th>
+                            <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map((row, i) => (
-                            <tr key={row.dept} style={{ borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm text-gray-500 text-right">{row.workers.toLocaleString()}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm text-gray-500 text-right">{row.mentors.toLocaleString()}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm text-gray-500 text-right">{(row.workers + row.mentors).toLocaleString()}</td>
+                            <tr key={row.dept} className="table-body-row">
+                                <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                <td className="px-2 py-3.5 text-sm text-gray-500 text-right">{row.workers.toLocaleString()}</td>
+                                <td className="px-2 py-3.5 text-sm text-gray-500 text-right">{row.mentors.toLocaleString()}</td>
+                                <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{(row.workers + row.mentors).toLocaleString()}</td>
                             </tr>
                         ))}
-                        <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-black text-gray-800">Total</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-bold text-gray-700 text-right">{totalWorkers.toLocaleString()}</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-bold text-gray-700 text-right">{totalMentors.toLocaleString()}</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-sm font-bold text-gray-700 text-right">{grandTotal.toLocaleString()}</td>
+                        <tr className="table-total-row">
+                            <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
+                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-right">{totalWorkers.toLocaleString()}</td>
+                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-right">{totalMentors.toLocaleString()}</td>
+                            <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{grandTotal.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -243,7 +249,7 @@ export function MenteesByDepartment({ data }: { data: DashboardData }) {
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Face-to-Face */}
-                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7">
                             <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
@@ -251,12 +257,12 @@ export function MenteesByDepartment({ data }: { data: DashboardData }) {
                     </div>
                     <div>
                         <p className="text-xs text-gray-400 mb-0.5">Face-to-Face</p>
-                        <p className="text-[2rem] font-normal text-gray-900 leading-none">{data.totalF2F.toLocaleString()}</p>
+                        <p className="text-[1.6rem] sm:text-[2rem] font-normal text-gray-900 leading-none">{data.totalF2F.toLocaleString()}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{totalAll > 0 ? Math.round(data.totalF2F / totalAll * 100) : 0}% of all mentees</p>
                     </div>
                 </div>
                 {/* Online */}
-                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#f07070">
                             <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
@@ -264,37 +270,43 @@ export function MenteesByDepartment({ data }: { data: DashboardData }) {
                     </div>
                     <div>
                         <p className="text-xs text-gray-400 mb-0.5">Online</p>
-                        <p className="text-[2rem] font-normal text-gray-900 leading-none">{data.totalOnline.toLocaleString()}</p>
+                        <p className="text-[1.6rem] sm:text-[2rem] font-normal text-gray-900 leading-none">{data.totalOnline.toLocaleString()}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{totalAll > 0 ? Math.round(data.totalOnline / totalAll * 100) : 0}% of all mentees</p>
                     </div>
                 </div>
             </div>
 
             {/* Department table */}
-            <div className="rounded-xl overflow-x-auto border border-gray-100">
-                <table className="w-full min-w-[360px]">
+            <div className="rounded-xl border border-gray-100">
+                <table className="w-full table-fixed">
+                    <colgroup>
+                        <col className="w-[40%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[20%]" />
+                    </colgroup>
                     <thead>
-                        <tr style={{ background: '#EEF2F7' }}>
-                            <th className="px-4 sm:px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                            <th className="px-4 sm:px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Face-to-Face</th>
-                            <th className="px-4 sm:px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
-                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                        <tr className="table-header-row">
+                            <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                            <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">F2F</th>
+                            <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
+                            <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.deptMentees.map((row) => (
-                            <tr key={row.dept} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-center">{row.f2f.toLocaleString()}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-center">{row.online.toLocaleString()}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-right">{row.total.toLocaleString()}</td>
+                            <tr key={row.dept} className="table-body-row">
+                                <td className="pl-3 pr-2 py-3 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                <td className="px-2 py-3 text-sm text-gray-500 text-center">{row.f2f.toLocaleString()}</td>
+                                <td className="px-2 py-3 text-sm text-gray-500 text-center">{row.online.toLocaleString()}</td>
+                                <td className="pl-2 pr-4 py-3 text-sm text-gray-500 text-right">{row.total.toLocaleString()}</td>
                             </tr>
                         ))}
-                        <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-black text-gray-800">Total</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalF2F.toLocaleString()}</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalOnline.toLocaleString()}</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-right">{totalAll.toLocaleString()}</td>
+                        <tr className="table-total-row">
+                            <td className="pl-3 pr-2 py-3 text-sm font-black text-gray-800">Total</td>
+                            <td className="px-2 py-3 text-sm font-bold text-gray-700 text-center">{data.totalF2F.toLocaleString()}</td>
+                            <td className="px-2 py-3 text-sm font-bold text-gray-700 text-center">{data.totalOnline.toLocaleString()}</td>
+                            <td className="pl-2 pr-4 py-3 text-sm font-bold text-gray-700 text-right">{totalAll.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -317,7 +329,7 @@ export function C2SGroupsSection({ data }: { data: DashboardData }) {
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Church-based */}
-                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7">
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.05 8.74-7 9.93-3.95-1.19-7-5.41-7-9.93V6.3l7-3.12z"/>
@@ -325,12 +337,12 @@ export function C2SGroupsSection({ data }: { data: DashboardData }) {
                     </div>
                     <div>
                         <p className="text-xs text-gray-400 mb-0.5">Church-based</p>
-                        <p className="text-[2rem] font-normal text-gray-900 leading-none">{data.totalChurch.toLocaleString()}</p>
+                        <p className="text-[1.6rem] sm:text-[2rem] font-normal text-gray-900 leading-none">{data.totalChurch.toLocaleString()}</p>
                         <p className="text-xs text-gray-400 mt-0.5">Meeting in COG Satellite Churches</p>
                     </div>
                 </div>
                 {/* Community-based */}
-                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#5cb85c">
                             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
@@ -338,37 +350,43 @@ export function C2SGroupsSection({ data }: { data: DashboardData }) {
                     </div>
                     <div>
                         <p className="text-xs text-gray-400 mb-0.5">Community-based</p>
-                        <p className="text-[2rem] font-normal text-gray-900 leading-none">{data.totalCommunity.toLocaleString()}</p>
+                        <p className="text-[1.6rem] sm:text-[2rem] font-normal text-gray-900 leading-none">{data.totalCommunity.toLocaleString()}</p>
                         <p className="text-xs text-gray-400 mt-0.5">Meeting in barangays &amp; homes</p>
                     </div>
                 </div>
             </div>
 
             {/* Department table */}
-            <div className="rounded-xl overflow-x-auto border border-gray-100">
-                <table className="w-full min-w-[360px]">
+            <div className="rounded-xl border border-gray-100">
+                <table className="w-full table-fixed">
+                    <colgroup>
+                        <col className="w-[40%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[20%]" />
+                    </colgroup>
                     <thead>
-                        <tr style={{ background: '#EEF2F7' }}>
-                            <th className="px-4 sm:px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                            <th className="px-4 sm:px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church-based</th>
-                            <th className="px-4 sm:px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community-based</th>
-                            <th className="px-4 sm:px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                        <tr className="table-header-row">
+                            <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                            <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church</th>
+                            <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community</th>
+                            <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.deptGroups.map((row) => (
-                            <tr key={row.dept} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-center">{row.church.toLocaleString()}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-center">{row.community.toLocaleString()}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm text-gray-500 text-right">{row.total.toLocaleString()}</td>
+                            <tr key={row.dept} className="table-body-row">
+                                <td className="pl-3 pr-2 py-3 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                <td className="px-2 py-3 text-sm text-gray-500 text-center">{row.church.toLocaleString()}</td>
+                                <td className="px-2 py-3 text-sm text-gray-500 text-center">{row.community.toLocaleString()}</td>
+                                <td className="pl-2 pr-4 py-3 text-sm text-gray-500 text-right">{row.total.toLocaleString()}</td>
                             </tr>
                         ))}
-                        <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-black text-gray-800">Total</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalChurch.toLocaleString()}</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-center">{data.totalCommunity.toLocaleString()}</td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-3.5 text-sm font-bold text-gray-700 text-right">{totalAll.toLocaleString()}</td>
+                        <tr className="table-total-row">
+                            <td className="pl-3 pr-2 py-3 text-sm font-black text-gray-800">Total</td>
+                            <td className="px-2 py-3 text-sm font-bold text-gray-700 text-center">{data.totalChurch.toLocaleString()}</td>
+                            <td className="px-2 py-3 text-sm font-bold text-gray-700 text-center">{data.totalCommunity.toLocaleString()}</td>
+                            <td className="pl-2 pr-4 py-3 text-sm font-bold text-gray-700 text-right">{totalAll.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -431,3 +449,4 @@ export const CHURCH_WIDE_DATA: DashboardData = {
         { dept: 'Administration', church:  6, community:  7, total: 13 },
     ],
 };
+

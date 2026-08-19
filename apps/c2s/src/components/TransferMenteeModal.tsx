@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DEPARTMENTS, MINISTRY_DEPARTMENTS } from '@/lib/admin-data';
 
 interface Props {
     menteeName: string;
@@ -9,8 +10,6 @@ interface Props {
     onConfirm: () => void;
 }
 
-const DEPARTMENTS = ['Discipleship','Worship','Outreach','Relationship','Administration'];
-const MINISTRIES  = ['Young Adults','Teens','Couples','Worship','Singers','Outreach'];
 const CLUSTERS    = ['Cluster 1','Cluster 2','Cluster 3','Cluster 4'];
 const MENTORS     = ['Monique Balena','Elijah Bautista','Grace Santos','Rico Reyes','Ana Lim'];
 
@@ -41,6 +40,11 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
     const [ministry, setMin]  = useState('');
     const [cluster, setClust] = useState('');
     const [mentor, setMentor] = useState('');
+
+    // Ministries available for the selected department
+    const availableMinistries = dept
+        ? MINISTRY_DEPARTMENTS[dept as keyof typeof MINISTRY_DEPARTMENTS] ?? []
+        : [];
 
     const canNext = dept !== '' && ministry !== '' && cluster !== '' && mentor !== '';
 
@@ -84,7 +88,7 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
                             <hr className="border-gray-100" />
 
                             {/* Currently Assigned */}
-                            <div className="bg-[#f8f9fc] border border-gray-200 rounded-xl px-5 py-4">
+                            <div className="border border-gray-200 rounded-xl px-5 py-4" style={{ background: 'var(--bg-subtle)' }}>
                                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">Currently Assigned</p>
                                 <div className="grid grid-cols-4 gap-4">
                                     {[
@@ -105,11 +109,11 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex flex-col gap-1.5">
                                     <label className="text-xs font-semibold text-gray-700">New Department</label>
-                                    <Sel placeholder="Select Department" options={DEPARTMENTS} value={dept} onChange={setDept} />
+                                    <Sel placeholder="Select Department" options={[...DEPARTMENTS]} value={dept} onChange={v => { setDept(v); setMin(''); }} />
                                 </div>
                                 <div className="flex flex-col gap-1.5">
                                     <label className="text-xs font-semibold text-gray-700">New Ministry</label>
-                                    <Sel placeholder="Select Ministry" options={MINISTRIES} value={ministry} onChange={setMin} />
+                                    <Sel placeholder={dept ? 'Select Ministry' : 'Select a dept first'} options={availableMinistries} value={ministry} onChange={setMin} />
                                 </div>
                                 <div className="flex flex-col gap-1.5">
                                     <label className="text-xs font-semibold text-gray-700">New Cluster</label>
@@ -125,7 +129,7 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
 
                             {/* Show confirmation summary if all selected */}
                             {canNext && (
-                                <div className="bg-[#f8f9fc] border border-gray-200 rounded-xl px-5 py-4 flex flex-col gap-3">
+                                <div className="border border-gray-200 rounded-xl px-5 py-4 flex flex-col gap-3" style={{ background: 'var(--bg-subtle)' }}>
                                     {/* Mentee row */}
                                     <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
                                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0"

@@ -129,7 +129,7 @@ export default function ClusterMap({ groups, accentColor = '#0b9b8a' }: Props) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function markerSvg(color: string, count: number) {
+function markerSvg(color: string) {
     return `
 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">
   <filter id="shadow" x="-30%" y="-20%" width="160%" height="160%">
@@ -137,9 +137,8 @@ function markerSvg(color: string, count: number) {
   </filter>
   <path d="M20 1C10.059 1 2 9.059 2 19c0 13.5 18 31 18 31S38 32.5 38 19C38 9.059 29.941 1 20 1z"
         fill="${color}" stroke="white" stroke-width="2" filter="url(#shadow)"/>
-  <circle cx="20" cy="18" r="10" fill="white" fill-opacity="0.95"/>
-  <text x="20" y="23" text-anchor="middle" font-size="11" font-weight="800"
-        font-family="system-ui,sans-serif" fill="${color}">${count}</text>
+  <circle cx="20" cy="18" r="11" fill="white" fill-opacity="0.97"/>
+  <image href="/c2s.png" x="9" y="7" width="22" height="22" preserveAspectRatio="xMidYMid meet" clip-path="circle(11px at 11px 11px)"/>
 </svg>`;
 }
 
@@ -182,7 +181,7 @@ function addMarker(
     const color = g.type === 'Church-based' ? '#1971c2' : accentColor;
 
     const icon = L.divIcon({
-        html: markerSvg(color, g.members),
+        html: markerSvg(color),
         iconSize: [40, 52],
         iconAnchor: [20, 52],
         popupAnchor: [0, -54],

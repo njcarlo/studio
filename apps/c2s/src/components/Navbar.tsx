@@ -34,8 +34,8 @@ export default function Navbar() {
     const [mobileOpen, setMobileOpen] = useState(false);
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
-            <div className="w-full px-6">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm" style={{ backgroundColor: 'var(--nav-bg)', borderBottom: '1px solid var(--border)' }}>
+            <div className="w-full px-4 sm:px-6">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo — pinaka-kaliwa */}
                     <Link href="/" className="flex items-center gap-2.5 shrink-0">

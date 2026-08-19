@@ -50,7 +50,7 @@ export default function MenteeProfileModal({ mentee, onClose }: Props) {
                     </div>
 
                     {/* Personal Information */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                    <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Personal Information</p>
                         <div className="divide-y divide-gray-100">
                             {[
@@ -71,7 +71,7 @@ export default function MenteeProfileModal({ mentee, onClose }: Props) {
                     </section>
 
                     {/* Devotional Timeline */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] px-4 py-3">
+                    <section className="rounded-xl border border-gray-100 px-4 py-3" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Devotional Timeline</p>
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-xs text-gray-500">Overall progress</span>
@@ -86,7 +86,7 @@ export default function MenteeProfileModal({ mentee, onClose }: Props) {
                     </section>
 
                     {/* Trainings Attended */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                    <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Trainings Attended</p>
                         <div className="divide-y divide-gray-100">
                             {mentee.trainings.map((t) => (
@@ -99,7 +99,7 @@ export default function MenteeProfileModal({ mentee, onClose }: Props) {
                     </section>
 
                     {/* Mentor Notes */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] px-4 py-3">
+                    <section className="rounded-xl border border-gray-100 px-4 py-3" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Mentor Notes</p>
                         <p className="text-xs text-gray-700 leading-relaxed">{mentee.mentorNotes}</p>
                     </section>

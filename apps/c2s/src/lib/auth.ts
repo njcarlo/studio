@@ -1,6 +1,6 @@
 // ─── Static accounts ─────────────────────────────────────────────────────────
 
-export type UserRole = 'ministry_head' | 'mentor' | 'cluster_head' | 'c2s_coordinator';
+export type UserRole = 'ministry_head' | 'mentor' | 'cluster_head' | 'c2s_coordinator' | 'admin';
 
 export interface User {
     id: string;
@@ -14,6 +14,14 @@ export interface User {
 }
 
 export const STATIC_USERS: User[] = [
+    {
+        id: '0',
+        name: 'C2S Admin',
+        email: 'admin@cogdasmarinas.org',
+        password: 'Admin@2024',
+        role: 'admin',
+        avatar: 'CA',
+    },
     {
         id: '1',
         name: 'Pastor Ramon Dela Cruz',

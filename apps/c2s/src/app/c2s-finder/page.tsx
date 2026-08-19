@@ -30,7 +30,7 @@ export default function C2SFinderPage() {
     });
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="force-light min-h-screen bg-white">
             <Navbar />
             {showHubModal && <C2SHubModal onClose={() => setShowHubModal(false)} />}
             {joiningGroup && (
@@ -57,7 +57,7 @@ export default function C2SFinderPage() {
             {/* ── Hero ──────────────────────────────────────── */}
             <section className="pt-16">
                 <div className="max-w-5xl mx-auto px-6 py-10 lg:py-14">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
 
                         {/* Left */}
                         <div>
@@ -71,15 +71,10 @@ export default function C2SFinderPage() {
                                 <img
                                     src="/c2s.png"
                                     alt="Connect2Souls logo"
-                                    style={{ width: '72px', height: '72px', objectFit: 'contain', flexShrink: 0 }}
+                                    className="w-12 h-12 sm:w-16 sm:h-16 shrink-0"
+                                    style={{ objectFit: 'contain' }}
                                 />
-                                <h1 style={{
-                                    fontSize: '2rem',
-                                    fontWeight: 900,
-                                    lineHeight: 1.2,
-                                    color: '#111827',
-                                    margin: 0,
-                                }}>
+                                <h1 className="text-2xl sm:text-[2rem] font-black leading-tight text-gray-900">
                                     Find a Christ-Centered<br />Community Near You.
                                 </h1>
                             </div>
@@ -106,7 +101,7 @@ export default function C2SFinderPage() {
                         </div>
 
                         {/* Right — community photo */}
-                        <div className="hidden lg:block">
+                        <div className="hidden md:block">
                             <div className="relative w-full h-72 rounded-2xl overflow-hidden shadow-md">
                                 <Image
                                     src="/community.png"

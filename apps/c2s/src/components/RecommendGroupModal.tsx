@@ -48,20 +48,19 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
             <div className="fixed inset-0 z-[200] bg-black/40" onClick={onClose} />
             <div className="fixed inset-0 z-[201] flex items-center justify-center p-4" onClick={onClose}>
                 <div
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col"
-                    style={{ minHeight: 360 }}
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh]"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-8 pt-8 pb-5 border-b border-gray-100">
-                        <h2 className="text-2xl font-semibold text-gray-900">Recommend Another Group</h2>
+                    <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-5 border-b border-gray-100">
+                        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Recommend Another Group</h2>
                         <p className="text-sm text-gray-400 mt-1">
                             For {menteeName} · Step {step === 3 && selectedGroup ? '3' : step} of 3
                         </p>
                     </div>
 
                     {/* Body */}
-                    <div className="flex-1 px-8 py-6">
+                    <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-5 sm:py-6">
 
                         {/* ── Step 1: Select reason ── */}
                         {step === 1 && (
@@ -126,7 +125,7 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
                                 <p className="text-sm text-gray-500">Recommended groups based on barangay, schedule, and preferences.</p>
                                 <div className="flex flex-col gap-3">
                                     {SUGGESTED_GROUPS.map((g) => (
-                                        <div key={g.name} className="flex items-center justify-between border border-gray-200 rounded-xl px-5 py-4 bg-[#f8f9fc]">
+                                        <div key={g.name} className="flex items-center justify-between border border-gray-200 rounded-xl px-5 py-4" style={{ background: 'var(--bg-subtle)' }}>
                                             <div>
                                                 <p className="font-semibold text-gray-900 text-sm">{g.name}</p>
                                                 <p className="text-xs text-gray-400 mt-0.5">Mentor: {g.mentor}</p>
@@ -148,7 +147,7 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
                         {/* ── Step 3b: Confirm transfer ── */}
                         {step === 3 && selectedGroup && (
                             <div className="flex flex-col gap-5">
-                                <div className="border border-gray-200 rounded-xl px-5 py-4 bg-[#f8f9fc] flex flex-col gap-2">
+                                <div className="border border-gray-200 rounded-xl px-5 py-4 flex flex-col gap-2" style={{ background: 'var(--bg-subtle)' }}>
                                     <p className="font-semibold text-gray-900 text-sm">Confirm Transfer</p>
                                     <p className="text-sm text-gray-700">
                                         Forward <span className="font-bold">{menteeName}</span>'s request to{' '}
@@ -166,7 +165,7 @@ export default function RecommendGroupModal({ menteeName, onClose, onConfirm }: 
                     </div>
 
                     {/* Footer */}
-                    <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-between">
+                    <div className="px-5 sm:px-8 py-4 sm:py-5 border-t border-gray-100 flex items-center justify-between gap-3">
                         {/* Back / Cancel */}
                         {step === 1 && (
                             <button onClick={onClose}

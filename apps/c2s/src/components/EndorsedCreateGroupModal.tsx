@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BARANGAYS, SUBDIVISIONS_BY_BARANGAY } from '@/lib/data';
+import { SUBDIVISIONS_BY_BARANGAY, BARANGAYS_BY_SATELLITE } from '@/lib/data';
 
 interface Props {
     onClose: () => void;
@@ -15,6 +15,7 @@ const DURATIONS  = ['1 hr','2 hrs','3 hrs','4 hrs','5 hrs','6 hrs','7 hrs','8 hr
 const STATUSES   = ['Open','Exclusive'];
 const SATELLITES = ['COG Dasmarinas','COG Silang','COG Jabez','COG Trece'];
 const CONDUCT_OPTIONS = ['Church base','Community base'];
+const MEETING_FORMATS = ['Face to Face', 'Online'];
 const GENDERS    = ['Female','Male','Both'];
 
 function Sel({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
@@ -41,18 +42,28 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
     const [time, setTime]           = useState('4:00 PM');
     const [freq, setFreq]           = useState('Weekly');
     const [dur, setDur]             = useState('1 hr');
-    const [conduct, setConduct]     = useState('Church base');
-    const [satellite, setSatellite] = useState('COG Dasmarinas');
-    const [barangay, setBarangay]   = useState('Burol');
-    const [subdivision, setSubdiv]  = useState('');
-    const [customSubdiv, setCustomSubdiv] = useState('');
-    const [ageGroup, setAgeGroup]   = useState('25-35');
-    const [gender, setGender]       = useState('Female');
+    const [conduct, setConduct]                       = useState('Church base');
+    const [meetingFormat, setMeetingFormat]           = useState('Face to Face');
+    const [satellite, setSatellite]                   = useState('COG Dasmarinas');
+    const [communitySatellite, setCommunitySatellite] = useState('COG Dasmarinas');
+    const [barangay, setBarangay]                     = useState('');
+    const [subdivision, setSubdiv]                    = useState('');
+    const [customSubdiv, setCustomSubdiv]             = useState('');
+    const [ageGroup, setAgeGroup]                     = useState('25-35');
+    const [gender, setGender]                         = useState('Female');
 
     const isCommunity = conduct === 'Community base';
     const isOther = subdivision === 'Other';
 
+    const communityBarangays = BARANGAYS_BY_SATELLITE[communitySatellite] ?? [];
     const subdivisionOptions = SUBDIVISIONS_BY_BARANGAY[barangay] ?? [];
+
+    function handleCommunitySatelliteChange(val: string) {
+        setCommunitySatellite(val);
+        setBarangay('');
+        setSubdiv('');
+        setCustomSubdiv('');
+    }
 
     function handleBarangayChange(val: string) {
         setBarangay(val);
@@ -65,7 +76,7 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
             <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose} />
             <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                    <div className="px-8 pt-7 pb-5 border-b border-gray-100 flex items-start justify-between">
+                    <div className="px-5 sm:px-8 pt-7 pb-5 border-b border-gray-100 flex items-start justify-between">
                         <div>
                             <h2 className="text-xl font-semibold text-gray-900">Create New Group</h2>
                             <p className="text-xs text-gray-400 mt-0.5">Changes automatically sync with the Endorsed page.</p>
@@ -73,11 +84,11 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1"><svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-8 py-6 flex flex-col gap-7">
+                    <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 flex flex-col gap-7">
                         {/* Basic Info */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Basic Information</p>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field label="Group Name"><input type="text" placeholder="e.g. Salt & Light Youth" value={name} onChange={e => setName(e.target.value)} className={INPUT} /></Field>
                                 <Field label="Group Type"><input type="text" value="Mentor" readOnly className={INPUT + ' text-gray-400 cursor-default'} /></Field>
                                 <Field label="Short Description"><input type="text" placeholder="One-line Description" value={description} onChange={e => setDesc(e.target.value)} className={INPUT} /></Field>
@@ -88,7 +99,7 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                         {/* Meeting Info */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Meeting Information</p>
-                            <div className="grid grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 <Field label="Meeting Day"><Sel value={day} onChange={setDay} options={DAYS} /></Field>
                                 <Field label="Meeting Time"><Sel value={time} onChange={setTime} options={TIMES} /></Field>
                                 <Field label="Frequency"><Sel value={freq} onChange={setFreq} options={FREQUENCIES} /></Field>
@@ -100,18 +111,38 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Location</p>
                             <div className="flex flex-col gap-4">
-                                <div style={{ maxWidth: '50%' }}>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <Field label="I will conduct my C2S:"><Sel value={conduct} onChange={setConduct} options={CONDUCT_OPTIONS} /></Field>
+                                    <Field label="Meeting Format"><Sel value={meetingFormat} onChange={setMeetingFormat} options={MEETING_FORMATS} /></Field>
                                 </div>
                                 {!isCommunity && (
-                                    <div style={{ maxWidth: '50%' }}>
+                                    <div className="w-full sm:max-w-[50%]">
                                         <Field label="Satellite Churches"><Sel value={satellite} onChange={setSatellite} options={SATELLITES} /></Field>
                                     </div>
                                 )}
                                 {isCommunity && (
                                     <>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <Field label="Barangay"><Sel value={barangay} onChange={handleBarangayChange} options={BARANGAYS} /></Field>
+                                        <div className="w-full sm:max-w-[50%]">
+                                            <Field label="Satellite Church">
+                                                <Sel value={communitySatellite} onChange={handleCommunitySatelliteChange} options={SATELLITES} />
+                                            </Field>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Field label="Barangay">
+                                                <div className="relative">
+                                                    <select
+                                                        value={barangay}
+                                                        onChange={e => handleBarangayChange(e.target.value)}
+                                                        className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
+                                                    >
+                                                        <option value="">— Select barangay —</option>
+                                                        {communityBarangays.map(b => (
+                                                            <option key={b} value={b}>{b}</option>
+                                                        ))}
+                                                    </select>
+                                                    <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                                </div>
+                                            </Field>
                                         </div>
                                         <Field label="Subdivision/Village">
                                             <div className="relative">
@@ -121,7 +152,8 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                                                         setSubdiv(e.target.value);
                                                         if (e.target.value !== 'Other') setCustomSubdiv('');
                                                     }}
-                                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
+                                                    disabled={!barangay}
+                                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700 disabled:opacity-50"
                                                 >
                                                     <option value="">— Select subdivision —</option>
                                                     {subdivisionOptions.map(s => (
@@ -149,14 +181,14 @@ export default function EndorsedCreateGroupModal({ onClose, onCreate }: Props) {
                         {/* Group Preferences — always shown for Endorsed */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Group Preferences</p>
-                            <div className="grid grid-cols-2 gap-4" style={{ maxWidth: '50%' }}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:max-w-[50%]">
                                 <Field label="Age group"><input type="text" value={ageGroup} onChange={e => setAgeGroup(e.target.value)} className={INPUT} /></Field>
                                 <Field label="Gender"><Sel value={gender} onChange={setGender} options={GENDERS} /></Field>
                             </div>
                         </section>
                     </div>
 
-                    <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
+                    <div className="px-5 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
                         <button onClick={onClose} className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
                         <button onClick={() => { if (name.trim()) { onCreate(); onClose(); } }} disabled={!name.trim()}
                             className="px-6 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"

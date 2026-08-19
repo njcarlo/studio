@@ -371,6 +371,74 @@ export const GROUP_MEMBERS: Record<string, GroupMember[]> = {
     ],
 };
 
+// ─── Barangays per Satellite Church ──────────────────────────────────────────
+export const BARANGAYS_BY_SATELLITE: Record<string, string[]> = {
+    'COG Dasmarinas': [
+        'Burol','Burol I','Burol II','Burol III','Datu Esmael',
+        'Emmanuel Bergado I','Emmanuel Bergado II',
+        'Fatima I','Fatima II','Fatima III','H-2',
+        'Langkaan I','Langkaan II','Luzviminda I','Luzviminda II',
+        'Paliparan I','Paliparan II','Paliparan III','Sabang',
+        'Saint Peter I','Saint Peter II','Salawag',
+        'Salitran I','Salitran II','Salitran III','Salitran IV',
+        'Sampaloc I','Sampaloc II','Sampaloc III','Sampaloc IV','Sampaloc V',
+        'San Agustin I','San Agustin II','San Agustin III',
+        'San Andres I','San Andres II',
+        'San Antonio De Padua I','San Antonio De Padua II',
+        'San Dionisio','San Esteban','San Francisco I','San Francisco II',
+        'San Isidro Labrador I','San Isidro Labrador II',
+        'San Jose','San Juan','San Lorenzo Ruiz I','San Lorenzo Ruiz II',
+        'San Luis I','San Luis II','San Manuel I','San Manuel II','San Mateo',
+        'San Miguel I','San Miguel II','San Nicolas I','San Nicolas II',
+        'San Roque','San Simon',
+        'Santa Cristina I','Santa Cristina II','Santa Cruz I','Santa Cruz II',
+        'Santa Fe','Santa Lucia','Santa Maria',
+        'Santo Cristo','Santo Niño I','Santo Niño II',
+        'Victoria Reyes','Zone I','Zone I-B','Zone II','Zone III','Zone IV',
+    ],
+    'COG Jabez': [
+        'Burol','Burol I','Burol II','Burol III','Datu Esmael',
+        'Emmanuel Bergado I','Emmanuel Bergado II',
+        'Fatima I','Fatima II','Fatima III','H-2',
+        'Langkaan I','Langkaan II','Luzviminda I','Luzviminda II',
+        'Paliparan I','Paliparan II','Paliparan III','Sabang',
+        'Saint Peter I','Saint Peter II','Salawag',
+        'Salitran I','Salitran II','Salitran III','Salitran IV',
+        'Sampaloc I','Sampaloc II','Sampaloc III','Sampaloc IV','Sampaloc V',
+        'San Agustin I','San Agustin II','San Agustin III',
+        'San Andres I','San Andres II',
+        'San Antonio De Padua I','San Antonio De Padua II',
+        'San Dionisio','San Esteban','San Francisco I','San Francisco II',
+        'San Isidro Labrador I','San Isidro Labrador II',
+        'San Jose','San Juan','San Lorenzo Ruiz I','San Lorenzo Ruiz II',
+        'San Luis I','San Luis II','San Manuel I','San Manuel II','San Mateo',
+        'San Miguel I','San Miguel II','San Nicolas I','San Nicolas II',
+        'San Roque','San Simon',
+        'Santa Cristina I','Santa Cristina II','Santa Cruz I','Santa Cruz II',
+        'Santa Fe','Santa Lucia','Santa Maria',
+        'Santo Cristo','Santo Niño I','Santo Niño II',
+        'Victoria Reyes','Zone I','Zone I-B','Zone II','Zone III','Zone IV',
+    ],
+    'COG Silang': [
+        'Adlas','Balite I','Balite II','Balubad','Banaba','Batas',
+        'Biga I','Biga II','Biluso','Bucal','Buho','Bulihan',
+        'Cabang','Carmen','Hukay','Inchican','Kaong','Kalubkob',
+        'Lalaan I','Lalaan II','Litlit','Lucsuhin','Lumil','Maguyam',
+        'Malabag','Munting Ilog','Narra I & II',
+        'Poblacion Barangay I','Poblacion Barangay II','Poblacion Barangay III',
+        'Poblacion Barangay IV','Poblacion Barangay V',
+        'Pooc','Puting Kahoy','Sabutan',
+        'San Miguel I & II','San Vicente I & II',
+        'Santol','Tartaria','Tubuan I','Tubuan II','Tubuan III',
+        'Ulat','Yakal',
+    ],
+    'COG Trece': [
+        'San Agustin','Aguado','Lapidario','Inocencio','Cabuco',
+        'De Ocampo','Gregorio','Osorio','Conchu','Cabezas',
+        'Hugo Perez','Lallana','Luciano',
+    ],
+};
+
 // ─── Subdivisions per Barangay (HOA List 2026) ───────────────────────────────
 export const SUBDIVISIONS_BY_BARANGAY: Record<string, string[]> = {
     'Burol': [
@@ -1310,6 +1378,7 @@ export interface CoordGroup {
     mentorInitials: string;
     mentorColor: string;
     barangay: string;
+    satellite?: 'Trece' | 'Dasma';
     type: 'Community-based' | 'Church-based';
     members: number;
     capacity: number;
@@ -1329,7 +1398,7 @@ export const COORD_GROUPS: CoordGroup[] = [
     {
         id: 'cg2', name: 'DBB-B', mentor: 'Pedro Santos',
         mentorInitials: 'PS', mentorColor: '#e91e8c',
-        barangay: 'Paliparan III', type: 'Church-based',
+        barangay: 'Paliparan III', satellite: 'Dasma', type: 'Church-based',
         members: 4, capacity: 11, availableSlots: 7,
         status: 'Open', schedule: 'Saturday · 7:00 PM',
     },
@@ -1357,7 +1426,7 @@ export const COORD_GROUPS: CoordGroup[] = [
     {
         id: 'cg6', name: 'Fatima Sector', mentor: 'Carmen Villanueva',
         mentorInitials: 'CV', mentorColor: '#0c8a6e',
-        barangay: 'Fatima I', type: 'Church-based',
+        barangay: 'Fatima I', satellite: 'Trece', type: 'Church-based',
         members: 8, capacity: 10, availableSlots: 2,
         status: 'Open', schedule: 'Saturday · 3:00 PM',
     },

@@ -154,7 +154,7 @@ export default function C2SHubModal({ onClose }: Props) {
                 </button>
 
                 {submitted ? (
-                    <div className="py-10 px-8 text-center max-w-lg mx-auto">
+                    <div className="py-8 sm:py-10 px-5 sm:px-8 text-center max-w-lg mx-auto">
                         <h2 className="text-xl font-black text-gray-900 mb-6">Application Submitted!</h2>
                         <p className="text-sm text-gray-700 leading-relaxed mb-5 text-center">
                             Thank you for applying to make your home a Connect2Souls (C2S) Hub. We
@@ -174,14 +174,14 @@ export default function C2SHubModal({ onClose }: Props) {
                             <button
                                 onClick={onClose}
                                 className="text-white font-bold px-16 py-3 rounded-xl text-sm transition-colors"
-                                style={{ background: '#e91e8c' }}
+                                style={{ background: '#5b50d6' }}
                             >
                                 Back to Home
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="p-7">
+                    <form onSubmit={handleSubmit} className="p-4 sm:p-7">
                         {/* Header */}
                         <div className="flex items-center gap-3 mb-1">
                             <div className="w-8 h-8 rounded-lg bg-[#e0f7f5] flex items-center justify-center">
@@ -231,7 +231,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                 </div>
                             </div>
 
-                            <div className="max-w-xs">
+                            <div className="w-full sm:max-w-xs">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">
                                     Phone Number <span className="text-[#f03e5f]">*</span>
                                 </label>
@@ -252,7 +252,7 @@ export default function C2SHubModal({ onClose }: Props) {
                             </p>
                             <hr className="border-gray-100 mb-4" />
 
-                            <div className="mb-4 max-w-xs">
+                            <div className="mb-4 w-full sm:max-w-xs">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">
                                     Barangay <span className="text-[#f03e5f]">*</span>
                                 </label>
@@ -416,7 +416,7 @@ export default function C2SHubModal({ onClose }: Props) {
                                 type="submit"
                                 disabled={!agreed}
                                 className="px-6 py-2.5 rounded-full text-sm font-bold text-white transition-colors"
-                                style={{ background: agreed ? '#e91e8c' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}
+                                style={{ background: agreed ? '#5b50d6' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}
                             >
                                 Submit Application
                             </button>

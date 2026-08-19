@@ -62,7 +62,7 @@ export default function ViewMembersModal({ group, onClose }: Props) {
                 </div>
 
                 {/* Group info grid */}
-                <div className="mx-6 mt-5 rounded-xl border border-gray-100 bg-[#f8f9fc] grid grid-cols-2 divide-x divide-y divide-gray-100">
+                <div className="mx-6 mt-5 rounded-xl border border-gray-100 grid grid-cols-2 divide-x divide-y divide-gray-100" style={{ background: 'var(--bg-subtle)' }}>
                     {[
                         { label: 'GROUP NAME',      value: group.name },
                         { label: 'GROUP TYPE',       value: group.tags.map(t => t.label).join(', ') },

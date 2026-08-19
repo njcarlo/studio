@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BARANGAYS, SUBDIVISIONS_BY_BARANGAY } from '@/lib/data';
+import { SUBDIVISIONS_BY_BARANGAY, BARANGAYS_BY_SATELLITE } from '@/lib/data';
 
 interface Props {
     onClose: () => void;
@@ -21,6 +21,7 @@ const GROUP_TYPES = ['Youth','Young Adults',"Men's","Ladies'",'Couples','Open to
 const STATUSES    = ['Exclusive','Open'];
 const SATELLITES  = ['COG Dasmarinas','COG Silang','COG Jabez','COG Trece'];
 const CONDUCT_OPTIONS = ['Church base','Community base'];
+const MEETING_FORMATS = ['Face to Face', 'Online'];
 const GENDERS     = ['Female','Male','Both'];
 
 const INPUT = 'border border-gray-200 rounded-lg px-3 py-2 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-[#f8f9fc] w-full';
@@ -57,19 +58,29 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
     const [meetingTime, setMeetingTime] = useState('8:00 AM');
     const [frequency, setFrequency]     = useState('Weekly');
     const [duration, setDuration]       = useState('1 hr');
-    const [conduct, setConduct]         = useState('Church base');
-    const [satellite, setSatellite]     = useState('COG Dasmarinas');
-    const [barangay, setBarangay]       = useState('Burol');
-    const [subdivision, setSubdivision] = useState('');
+    const [conduct, setConduct]                       = useState('Church base');
+    const [meetingFormat, setMeetingFormat]           = useState('Face to Face');
+    const [satellite, setSatellite]                 = useState('COG Dasmarinas');
+    const [communitySatellite, setCommunitySatellite] = useState('COG Dasmarinas');
+    const [barangay, setBarangay]                   = useState('');
+    const [subdivision, setSubdivision]             = useState('');
     const [customSubdivision, setCustomSubdivision] = useState('');
-    const [ageGroup, setAgeGroup]       = useState('25-35');
-    const [gender, setGender]           = useState('Female');
+    const [ageGroup, setAgeGroup]                   = useState('25-35');
+    const [gender, setGender]                       = useState('Female');
 
     const isCommunity = conduct === 'Community base';
     const isOther = subdivision === 'Other';
 
-    // Get subdivisions for the currently selected barangay
+    // Barangay list scoped to the selected satellite (community base)
+    const communityBarangays = BARANGAYS_BY_SATELLITE[communitySatellite] ?? [];
     const subdivisionOptions = SUBDIVISIONS_BY_BARANGAY[barangay] ?? [];
+
+    function handleCommunitySatelliteChange(val: string) {
+        setCommunitySatellite(val);
+        setBarangay('');
+        setSubdivision('');
+        setCustomSubdivision('');
+    }
 
     function handleBarangayChange(val: string) {
         setBarangay(val);
@@ -84,7 +95,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
             frequency, duration, conduct,
             barangay: isCommunity ? barangay : undefined,
             subdivision: isCommunity ? (isOther ? customSubdivision : subdivision) : undefined,
-            satellite: !isCommunity ? satellite : undefined,
+            satellite: !isCommunity ? satellite : communitySatellite,
             ageGroup, gender,
         });
         onClose();
@@ -99,7 +110,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-8 pt-7 pb-5 border-b border-gray-100 flex items-start justify-between">
+                    <div className="px-5 sm:px-8 pt-7 pb-5 border-b border-gray-100 flex items-start justify-between">
                         <div>
                             <h2 className="text-xl font-semibold text-gray-900">Create New Group</h2>
                             <p className="text-xs text-gray-400 mt-0.5">Changes automatically sync with the C2S Group Finder.</p>
@@ -112,12 +123,12 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                     </div>
 
                     {/* Body */}
-                    <div className="flex-1 overflow-y-auto px-8 py-6 flex flex-col gap-7">
+                    <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 flex flex-col gap-7">
 
                         {/* ── Basic Information ── */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Basic Information</p>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field label="Group Name">
                                     <input type="text" placeholder="e.g. Salt & Light Youth" value={name}
                                         onChange={(e) => setName(e.target.value)} className={INPUT} />
@@ -138,7 +149,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                         {/* ── Meeting Information ── */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Meeting Information</p>
-                            <div className="grid grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 <Field label="Meeting Day">
                                     <Sel value={meetingDay} onChange={setMeetingDay} options={DAYS} />
                                 </Field>
@@ -158,28 +169,48 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Location</p>
                             <div className="flex flex-col gap-4">
-                                {/* Conduct dropdown — always visible */}
-                                <div style={{ maxWidth: '50%' }}>
+                                {/* Conduct + Meeting Format row — always visible */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <Field label="I will conduct my C2S:">
                                         <Sel value={conduct} onChange={setConduct} options={CONDUCT_OPTIONS} />
+                                    </Field>
+                                    <Field label="Meeting Format">
+                                        <Sel value={meetingFormat} onChange={setMeetingFormat} options={MEETING_FORMATS} />
                                     </Field>
                                 </div>
 
                                 {/* Church base → Satellite Churches */}
                                 {!isCommunity && (
-                                    <div style={{ maxWidth: '50%' }}>
+                                    <div className="w-full sm:max-w-[50%]">
                                         <Field label="Satellite Churches">
                                             <Sel value={satellite} onChange={setSatellite} options={SATELLITES} />
                                         </Field>
                                     </div>
                                 )}
 
-                                {/* Community base → Barangay + Subdivision */}
+                                {/* Community base → Satellite → Barangay + Subdivision */}
                                 {isCommunity && (
                                     <>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="w-full sm:max-w-[50%]">
+                                            <Field label="Satellite Church">
+                                                <Sel value={communitySatellite} onChange={handleCommunitySatelliteChange} options={SATELLITES} />
+                                            </Field>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <Field label="Barangay">
-                                                <Sel value={barangay} onChange={handleBarangayChange} options={BARANGAYS} />
+                                                <div className="relative">
+                                                    <select
+                                                        value={barangay}
+                                                        onChange={(e) => handleBarangayChange(e.target.value)}
+                                                        className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
+                                                    >
+                                                        <option value="">— Select barangay —</option>
+                                                        {communityBarangays.map((b) => (
+                                                            <option key={b} value={b}>{b}</option>
+                                                        ))}
+                                                    </select>
+                                                    <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                                </div>
                                             </Field>
                                         </div>
                                         <Field label="Subdivision/Village">
@@ -190,7 +221,8 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                                                         setSubdivision(e.target.value);
                                                         if (e.target.value !== 'Other') setCustomSubdivision('');
                                                     }}
-                                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
+                                                    disabled={!barangay}
+                                                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700 disabled:opacity-50"
                                                 >
                                                     <option value="">— Select subdivision —</option>
                                                     {subdivisionOptions.map((s) => (
@@ -220,7 +252,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                         {/* ── Group Preferences — always shown ── */}
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Group Preferences</p>
-                            <div className="grid grid-cols-2 gap-4" style={{ maxWidth: '50%' }}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:max-w-[50%]">
                                 <Field label="Age group">
                                     <input type="text" value={ageGroup}
                                         onChange={(e) => setAgeGroup(e.target.value)} className={INPUT} />
@@ -233,7 +265,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                     </div>
 
                     {/* Footer */}
-                    <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
+                    <div className="px-5 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-end gap-3">
                         <button onClick={onClose}
                             className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
                             Cancel

@@ -72,7 +72,7 @@ export default function MenteeDetailsModal({ mentee, onClose, onAccept, onRecomm
                     </div>
 
                     {/* Personal Information */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                    <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Personal Information</p>
                         <div className="divide-y divide-gray-100">
                             {[

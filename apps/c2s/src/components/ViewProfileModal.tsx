@@ -65,7 +65,7 @@ export default function ViewProfileModal({ member, groupName, onClose }: Props) 
                 <div className="flex-1 overflow-y-auto px-6 pb-8 flex flex-col gap-4 mt-4">
 
                     {/* Personal Information */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                    <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Personal Information</p>
                         <div className="divide-y divide-gray-100">
                             {[
@@ -84,7 +84,7 @@ export default function ViewProfileModal({ member, groupName, onClose }: Props) 
                     </section>
 
                     {/* Devotional Timeline */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] px-4 py-3">
+                    <section className="rounded-xl border border-gray-100 px-4 py-3" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">Devotional Timeline</p>
 
                         {/* Overall progress */}
@@ -106,7 +106,7 @@ export default function ViewProfileModal({ member, groupName, onClose }: Props) 
                     </section>
 
                     {/* Trainings Attended */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                    <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Trainings Attended</p>
                         <div className="divide-y divide-gray-100">
                             {member.trainings.map((t) => (

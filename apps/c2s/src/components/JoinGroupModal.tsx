@@ -113,27 +113,27 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     aria-label="Close"
                 >×</button>
 
-                <form onSubmit={handleSubmit} className="p-7">
+                <form onSubmit={handleSubmit} className="p-5 sm:p-7">
                     {/* Header */}
                     <h2 className="text-xl font-black text-gray-900 mb-1">Sign Up</h2>
                     <p className="text-sm text-gray-500 mb-6">
                         You&apos;re signing up for{' '}
-                        <span style={{ color: '#e91e8c' }} className="font-semibold">{group.name}</span>
+                        <span style={{ color: '#5b50d6' }} className="font-semibold">{group.name}</span>
                         {' '}in {group.location}.
                     </p>
 
                     {/* First Name + Last Name */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                First Name <span className="text-[#e91e8c]">*</span>
+                                First Name <span className="text-[#5b50d6]">*</span>
                             </label>
                             <input required type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Last Name <span className="text-[#e91e8c]">*</span>
+                                Last Name <span className="text-[#5b50d6]">*</span>
                             </label>
                             <input required type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]" />
@@ -141,17 +141,17 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     </div>
 
                     {/* Email + Phone */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email Address <span className="text-[#e91e8c]">*</span>
+                                Email Address <span className="text-[#5b50d6]">*</span>
                             </label>
                             <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Phone Number <span className="text-[#e91e8c]">*</span>
+                                Phone Number <span className="text-[#5b50d6]">*</span>
                             </label>
                             <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be]" />
@@ -159,17 +159,17 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     </div>
 
                     {/* Birthday + Gender */}
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Birthday <span className="text-[#e91e8c]">*</span>
+                                Birthday <span className="text-[#5b50d6]">*</span>
                             </label>
                             <input required type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] text-gray-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Gender <span className="text-[#e91e8c]">*</span>
+                                Gender <span className="text-[#5b50d6]">*</span>
                             </label>
                             <div className="relative">
                                 <select required value={gender} onChange={(e) => setGender(e.target.value)}
@@ -233,10 +233,10 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                     <div className="flex items-start gap-2.5 mb-6 bg-gray-50 p-3 rounded-xl">
                         <input id="join-privacy" type="checkbox" checked={agreed}
                             onChange={(e) => setAgreed(e.target.checked)}
-                            className="mt-0.5 w-4 h-4 accent-[#e91e8c] cursor-pointer shrink-0" />
+                            className="mt-0.5 w-4 h-4 accent-[#5b50d6] cursor-pointer shrink-0" />
                         <label htmlFor="join-privacy" className="text-xs text-gray-600 cursor-pointer">
                             I agree to the{' '}
-                            <span className="text-[#e91e8c] underline">Data privacy Policy</span>
+                            <span className="text-[#5b50d6] underline">Data privacy Policy</span>
                             {' '}of Church of God Dasmariñas.
                         </label>
                     </div>
@@ -249,7 +249,7 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
                         </button>
                         <button type="submit" disabled={!agreed}
                             className="px-8 py-2.5 rounded-full text-sm font-bold text-white transition-colors"
-                            style={{ background: agreed ? '#e91e8c' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}>
+                            style={{ background: agreed ? '#5b50d6' : '#f0a0cc', cursor: agreed ? 'pointer' : 'not-allowed' }}>
                             Sign Up
                         </button>
                     </div>

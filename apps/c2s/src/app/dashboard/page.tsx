@@ -24,6 +24,7 @@ import ClusterHeadDashboard from '@/components/ClusterHeadDashboard';
 import { CH_MENTOR_REPORT_DATA, CH_COORD_REPORT_DATA, CH_BARANGAY_DATA, CH_GROWTH_DATA } from '@/components/ClusterHeadDashboard';
 import CoordinatorDashboard from '@/components/CoordinatorDashboard';
 import DepartmentHeadDashboard from '@/components/MinistryHeadDashboard';
+import AdminDashboard from '@/components/AdminDashboard';
 
 /* â”€â”€ Shared data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const DEPT_WORKERS = [
@@ -51,13 +52,14 @@ function DashNav({ onLogout }: { onLogout: () => void }) {
     const isHead = user.role === 'ministry_head';
     const isCluster = user.role === 'cluster_head';
     const isCoord = user.role === 'c2s_coordinator';
-    const roleColor = isHead ? '#0b9b8a' : isCluster ? '#6741d9' : isCoord ? '#0b9b8a' : '#e91e8c';
-    const roleLabel = isHead ? 'Department Head' : isCluster ? 'Cluster Head' : isCoord ? 'C2S Coordinator' : 'Mentor';
+    const isAdmin = user.role === 'admin';
+    const roleColor = isAdmin ? '#111827' : isHead ? '#0b9b8a' : isCluster ? '#6741d9' : isCoord ? '#0b9b8a' : '#5b50d6';
+    const roleLabel = isAdmin ? 'Admin' : isHead ? 'Department Head' : isCluster ? 'Cluster Head' : isCoord ? 'C2S Coordinator' : 'Mentor';
     return (
         <>
             {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
             <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
-            <div className="w-full px-6 flex items-center justify-between h-16">
+            <div className="w-full px-4 sm:px-6 flex items-center justify-between h-16">
                 <Link href="/" className="flex items-center gap-2.5">
                     <div className="w-9 h-9 relative shrink-0">
                         <Image src="/logo.png" alt="COG" fill className="object-contain" priority />
@@ -131,7 +133,7 @@ function potentialMenteeToMentee(pm: PotentialMentee): Mentee {
     };
 }
 
-/* ── Mentor Dashboard helper constants ──────────────────────────────────────── */
+/* -- Mentor Dashboard helper constants ---------------------------------------- */
 const MENTEES_F2F     = 1842;
 const MENTEES_ONLINE  = 923;
 const MENTEES_TOTAL   = MENTEES_F2F + MENTEES_ONLINE;
@@ -155,7 +157,7 @@ const C2S_GROUPS_BY_DEPT = [
     { dept: 'Administration', community:  7, church:  6, total: 13 },
 ];
 
-/* ─── WorkersMentorsChart ────────────────────────────────────────────────── */
+/* --- WorkersMentorsChart -------------------------------------------------- */
 const DEPT_COMBINED = [
     { dept: 'Worship',        workers: DEPT_WORKERS[0].value, mentors: DEPT_MENTORS[0].value, color: '#4DA6F5' },
     { dept: 'Outreach',       workers: DEPT_WORKERS[1].value, mentors: DEPT_MENTORS[1].value, color: '#F5C842' },
@@ -170,17 +172,18 @@ const COMBINED_GRAND_TOTAL   = COMBINED_TOTAL_WORKERS + COMBINED_TOTAL_MENTORS;
 const DONUT_DATA = DEPT_COMBINED.map((d) => ({ name: d.dept, value: d.workers + d.mentors, color: d.color }));
 
 function WorkersMentorsChart() {
-    const W = 320;
-    const H = 300;
-    const CX = 160;
-    const CY = 150;
-    const OR = 110;
-    const IR = 68;
+    // Smaller canvas — labels go inside the slices, no overflow needed
+    const W = 240;
+    const H = 240;
+    const CX = 120;
+    const CY = 120;
+    const OR = 100;
+    const IR = 60;
+    const LR = (OR + IR) / 2; // mid-radius for inside labels
     const RADIAN = Math.PI / 180;
 
     const total = DONUT_DATA.reduce((s, d) => s + d.value, 0);
 
-    // Compute slices starting at top (-90 deg)
     type SliceInfo = { name: string; color: string; percent: number; startDeg: number; endDeg: number };
     const slices: SliceInfo[] = [];
     let cum = -90;
@@ -202,55 +205,50 @@ function WorkersMentorsChart() {
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <h2 className="font-bold text-gray-900 text-base mb-0.5">Workers by Department</h2>
             <p className="text-xs text-gray-400 mb-4">Worker and mentor distribution by department.</p>
 
-            <div className="flex items-center justify-center gap-8 mb-8">
-                {/* Pure SVG donut — overflow visible so labels never clip */}
-                <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', flexShrink: 0 }}>
-                    {/* Slices */}
-                    {slices.map((s) => (
-                        <path
-                            key={s.name}
-                            d={arc(CX, CY, OR, s.startDeg, s.endDeg, IR)}
-                            fill={s.color}
-                            stroke="white"
-                            strokeWidth={2}
-                        />
-                    ))}
-                    {/* Labels with leader lines */}
-                    {slices.map((s) => {
-                        if (s.percent < 0.04) return null;
-                        const midDeg = (s.startDeg + s.endDeg) / 2;
-                        const midRad = midDeg * RADIAN;
-                        const lx1 = CX + (OR + 5)  * Math.cos(midRad);
-                        const ly1 = CY + (OR + 5)  * Math.sin(midRad);
-                        const lx2 = CX + (OR + 20) * Math.cos(midRad);
-                        const ly2 = CY + (OR + 20) * Math.sin(midRad);
-                        const tx  = CX + (OR + 26) * Math.cos(midRad);
-                        const ty  = CY + (OR + 26) * Math.sin(midRad);
-                        const anchor = tx >= CX ? 'start' : 'end';
-                        return (
-                            <g key={`lbl-${s.name}`}>
-                                <line x1={lx1} y1={ly1} x2={lx2} y2={ly2} stroke="#9ca3af" strokeWidth={1} />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-8 mb-6 sm:mb-8">
+                {/* Self-contained SVG donut — no overflow outside its box */}
+                <div className="flex justify-center">
+                    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+                        {/* Slices */}
+                        {slices.map((s) => (
+                            <path
+                                key={s.name}
+                                d={arc(CX, CY, OR, s.startDeg, s.endDeg, IR)}
+                                fill={s.color}
+                                stroke="rgba(0,0,0,0.15)"
+                                strokeWidth={2}
+                            />
+                        ))}
+                        {/* % labels inside slices */}
+                        {slices.map((s) => {
+                            if (s.percent < 0.06) return null;
+                            const midRad = (s.startDeg + s.endDeg) / 2 * RADIAN;
+                            const tx = CX + LR * Math.cos(midRad);
+                            const ty = CY + LR * Math.sin(midRad);
+                            return (
                                 <text
+                                    key={`lbl-${s.name}`}
                                     x={tx} y={ty}
-                                    fill="#6b7280"
-                                    textAnchor={anchor}
+                                    fill="white"
+                                    textAnchor="middle"
                                     dominantBaseline="central"
-                                    fontSize={11}
+                                    fontSize={12}
+                                    fontWeight="bold"
                                     fontFamily="Inter, system-ui, sans-serif"
                                 >
                                     {`${(s.percent * 100).toFixed(0)}%`}
                                 </text>
-                            </g>
-                        );
-                    })}
-                </svg>
+                            );
+                        })}
+                    </svg>
+                </div>
 
                 {/* Legend */}
-                <div className="flex flex-col gap-3.5">
+                <div className="flex sm:flex-col flex-wrap gap-3 sm:gap-3.5 justify-center sm:justify-start">
                     {DONUT_DATA.map((d) => (
                         <div key={d.name} className="flex items-center gap-2.5">
                             <span className="w-3 h-3 rounded-full shrink-0" style={{ background: d.color }} />
@@ -261,30 +259,36 @@ function WorkersMentorsChart() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl overflow-hidden border border-gray-100">
-                <table className="w-full">
+            <div className="rounded-xl border border-gray-100">
+                <table className="w-full table-fixed">
+                    <colgroup>
+                        <col className="w-[40%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[20%]" />
+                    </colgroup>
                     <thead>
-                        <tr style={{ background: '#f8f9fc', borderBottom: '1px solid #e5e7eb' }}>
-                            <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Workers</th>
-                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mentors</th>
-                            <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                        <tr className="table-header-row">
+                            <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                            <th className="px-2 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Workers</th>
+                            <th className="px-2 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mentors</th>
+                            <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {DEPT_COMBINED.map((row, i) => (
-                            <tr key={row.dept} style={{ borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
-                                <td className="px-5 py-4 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{row.workers.toLocaleString()}</td>
-                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{row.mentors.toLocaleString()}</td>
-                                <td className="px-5 py-4 text-sm text-gray-500 text-right">{(row.workers + row.mentors).toLocaleString()}</td>
+                            <tr key={row.dept} className="table-body-row">
+                                <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                <td className="px-2 py-3.5 text-sm text-gray-500 text-right">{row.workers.toLocaleString()}</td>
+                                <td className="px-2 py-3.5 text-sm text-gray-500 text-right">{row.mentors.toLocaleString()}</td>
+                                <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{(row.workers + row.mentors).toLocaleString()}</td>
                             </tr>
                         ))}
-                        <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                            <td className="px-5 py-4 text-sm font-black text-gray-800">Total</td>
-                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{COMBINED_TOTAL_WORKERS.toLocaleString()}</td>
-                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{COMBINED_TOTAL_MENTORS.toLocaleString()}</td>
-                            <td className="px-5 py-4 text-sm font-bold text-gray-700 text-right">{COMBINED_GRAND_TOTAL.toLocaleString()}</td>
+                        <tr className="table-total-row">
+                            <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
+                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-right">{COMBINED_TOTAL_WORKERS.toLocaleString()}</td>
+                            <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-right">{COMBINED_TOTAL_MENTORS.toLocaleString()}</td>
+                            <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{COMBINED_GRAND_TOTAL.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -293,7 +297,7 @@ function WorkersMentorsChart() {
     );
 }
 
-/* ── PotentialMenteeCard ─────────────────────────────────────────────────────── */
+/* -- PotentialMenteeCard ------------------------------------------------------- */
 function PotentialMenteeCard({ mentee, onAccepted }: {
     mentee: PotentialMentee;
     onAccepted: (pm: PotentialMentee) => void;
@@ -340,7 +344,7 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                         <p className="font-bold text-gray-900 leading-tight">{mentee.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{mentee.age} · {mentee.gender} · {mentee.phone}</p>
                     </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#fff3cd] text-[#92400e] shrink-0 border border-[#fde68a]">
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#fef9c3] text-[#92400e] shrink-0 border border-[#fde68a]">
                         Pending
                     </span>
                 </div>
@@ -365,7 +369,7 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
 
                 {/* Row 4: Notes box */}
                 {mentee.notes && (
-                    <div className="bg-[#f8f9fc] rounded-xl px-4 py-3">
+                    <div className="rounded-xl px-4 py-3" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Notes</p>
                         <p className="text-xs text-gray-600 leading-relaxed">{mentee.notes}</p>
                     </div>
@@ -406,15 +410,15 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
     );
 }
 
-/* ── Avatar color helper (shared with MenteesTab) ────────────────────────────── */
-const MENTOR_AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9'];
+/* -- Avatar color helper (shared with MenteesTab) ------------------------------ */
+const MENTOR_AVATAR_COLORS = ['#5b50d6', '#5b50d6', '#0b9b8a', '#e67700', '#6741d9'];
 function mentorAvatarColor(id: string) {
     let h = 0;
     for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
     return MENTOR_AVATAR_COLORS[Math.abs(h) % MENTOR_AVATAR_COLORS.length];
 }
 
-/* ── MenteesTab ──────────────────────────────────────────────────────────────── */
+/* -- MenteesTab ---------------------------------------------------------------- */
 function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Mentee[] }) {
     const [viewing, setViewing] = useState<import('@/lib/data').Mentee | null>(null);
     const [showDevotional, setShowDevotional] = useState<import('@/lib/data').Mentee | null>(null);
@@ -448,11 +452,11 @@ function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Men
                     <p className="text-sm text-gray-400 mt-1">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
                 </div>
 
-                {/* ── Stats row ── */}
-                <div className="flex gap-4 mb-8 items-stretch">
+                {/* -- Stats row -- */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-8">
                     {/* Donut card */}
-                    <div className="bg-white rounded-2xl border border-gray-200 px-6 py-6 flex items-center gap-6 shrink-0">
-                        <div className="min-w-0">
+                    <div className="bg-white rounded-2xl border border-gray-200 px-6 py-6 flex items-center gap-6 sm:shrink-0">
+                        <div className="min-w-0 flex-1 sm:flex-none">
                             <p className="text-sm font-bold text-gray-800 leading-tight">Mentee Status</p>
                             <p className="text-[11px] text-gray-400 mb-4">Active vs Inactive</p>
                             <div className="flex items-center gap-2 text-xs text-gray-700 mb-2">
@@ -464,8 +468,15 @@ function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Men
                                 Inactive&nbsp;<span className="font-bold">{inactiveList.length}</span>
                             </div>
                         </div>
-                        <div className="relative shrink-0 w-[140px] h-[140px]">
-                            <svg width="140" height="140" viewBox="0 0 140 140">
+                        <div className="relative shrink-0 w-[120px] h-[120px] sm:w-[140px] sm:h-[140px]">
+                            <svg width="120" height="120" viewBox="0 0 140 140" className="sm:hidden">
+                                <circle cx="70" cy="70" r="52" fill="none" stroke="#e5e7eb" strokeWidth="14" />
+                                <circle cx="70" cy="70" r="52" fill="none" stroke="#3b82f6" strokeWidth="14"
+                                    strokeDasharray={`${(activePct / 100) * (2 * Math.PI * 52)} ${(2 * Math.PI * 52) - (activePct / 100) * (2 * Math.PI * 52)}`}
+                                    strokeLinecap="butt"
+                                    transform="rotate(-90 70 70)" />
+                            </svg>
+                            <svg width="140" height="140" viewBox="0 0 140 140" className="hidden sm:block">
                                 <circle cx="70" cy="70" r="52" fill="none" stroke="#e5e7eb" strokeWidth="14" />
                                 <circle cx="70" cy="70" r="52" fill="none" stroke="#3b82f6" strokeWidth="14"
                                     strokeDasharray={`${(activePct / 100) * (2 * Math.PI * 52)} ${(2 * Math.PI * 52) - (activePct / 100) * (2 * Math.PI * 52)}`}
@@ -473,95 +484,202 @@ function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Men
                                     transform="rotate(-90 70 70)" />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-2xl font-black text-gray-900 leading-none">{activePct}%</span>
+                                <span className="text-xl sm:text-2xl font-black text-gray-900 leading-none">{activePct}%</span>
                                 <span className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">ACTIVE</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Stat cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-1 sm:flex sm:flex-1 gap-4 sm:gap-4">
                     {[
-                        { label: 'Total Mentees', value: totalMentees,   color: '#111827' },
+                        { label: 'Total Mentees', value: totalMentees,   color: '#6741d9' },
                         { label: 'Active',        value: activeCnt,      color: '#ef4444' },
                         { label: 'Inactive',      value: inactiveCnt,    color: '#3b82f6' },
-                        { label: 'Transferred',   value: transferredCnt, color: '#111827' },
+                        { label: 'Transferred',   value: transferredCnt, color: '#0b9b8a' },
                     ].map(s => (
-                        <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-7 py-5 flex flex-col justify-center flex-1">
-                            <p className="text-sm font-semibold text-gray-600 mb-2 whitespace-nowrap">{s.label}</p>
-                            <p className="font-black leading-none" style={{ color: s.color, fontSize: '2.75rem' }}>{s.value}</p>
+                        <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-4 sm:px-7 py-5 flex flex-col justify-center sm:flex-1 dark:bg-gray-800 dark:border-gray-700">
+                            <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-2 dark:text-gray-300">{s.label}</p>
+                            <p className="font-black leading-none" style={{ color: s.color, fontSize: 'clamp(1.75rem, 4vw, 2.75rem)' }}>{s.value}</p>
                         </div>
                     ))}
+                    </div>
                 </div>
 
-                {/* ── Active Mentees cards ── */}
+                {/* -- Active Mentees table -- */}
                 <div className="mb-8">
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-sm font-bold text-gray-700">Active Mentees <span className="text-gray-400 font-normal">({filteredActive.length})</span></h2>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                        <h2 className="text-base font-bold text-gray-900">Active Mentees</h2>
                         <div className="relative">
                             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                             <input type="text" placeholder="Search mentees..." value={activeSearch} onChange={e => setActiveSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-white w-52" />
+                                className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-white w-full sm:w-52" />
                         </div>
                     </div>
-                    {filteredActive.length === 0 ? (
-                        <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-                            <p className="text-sm text-gray-400">No active mentees found.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {filteredActive.map((m) => (
-                                <div key={m.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
-                                            style={{ background: mentorAvatarColor(m.id) }}>{m.initials}</div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-bold text-gray-900 truncate">{m.name}</p>
-                                            <p className="text-xs text-gray-400">{m.assignedGroup} · Since {m.connectedSince}</p>
+                    <div className="bg-white rounded-2xl border border-gray-200">
+                        {filteredActive.length === 0 ? (
+                            <div className="p-10 text-center text-sm text-gray-400">No active mentees found.</div>
+                        ) : (
+                            <>
+                                {/* Mobile card list */}
+                                <div className="sm:hidden divide-y divide-gray-100">
+                                    {filteredActive.map((m) => (
+                                        <div key={m.id} className="p-4 flex flex-col gap-3">
+                                            {/* Top row: avatar + name + group */}
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0"
+                                                    style={{ background: mentorAvatarColor(m.id) }}>{m.initials}</div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-gray-900 text-sm leading-tight truncate">{m.name}</p>
+                                                    <p className="text-xs text-gray-400 truncate">{m.assignedGroup}</p>
+                                                </div>
+                                                <span className="text-[10px] text-gray-400 shrink-0">{m.connectedSince}</span>
+                                            </div>
+                                            {/* Devotional status + progress */}
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Devotional Manual</p>
+                                                    <p className="text-xs text-gray-600 truncate">{m.module}, {m.lesson}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-gray-600">{m.progress}%</span>
+                                                </div>
+                                            </div>
+                                            {/* Actions */}
+                                            <div className="flex gap-2">
+                                                <button onClick={() => setViewing(m)}
+                                                    className="flex-1 text-xs font-semibold text-gray-700 border border-gray-200 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                                    View Profile
+                                                </button>
+                                                <button onClick={() => setShowDevotional(m)}
+                                                    className="flex-1 text-xs font-bold text-white py-2 rounded-lg transition-colors"
+                                                    style={{ background: '#5b50d6' }}>
+                                                    Update
+                                                </button>
+                                            </div>
                                         </div>
-                                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#dcfce7] text-[#166534] shrink-0">Active</span>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[11px] text-gray-500">{m.currentModule}</span>
-                                            <span className="text-[11px] font-semibold text-gray-700">{m.progress}%</span>
-                                        </div>
-                                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                            <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setViewing(m)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:border-gray-300 transition-colors">View Profile</button>
-                                        <button onClick={() => setShowDevotional(m)} className="text-xs font-semibold text-[#5b50d6] border border-[#5b50d6] px-3 py-1.5 rounded-lg hover:bg-[#f5f3ff] transition-colors">Devotional</button>
-                                    </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                {/* Desktop table */}
+                                <table className="hidden sm:table w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 bg-[#f8f9fc]">
+                                            {['Name', 'Assigned Group', 'Connected Since', 'Devotional Manual Status', 'Progress', 'Actions'].map(h => (
+                                                <th key={h} className="px-3 py-3.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {filteredActive.map((m) => (
+                                            <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
+                                                <td className="px-3 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0"
+                                                            style={{ background: mentorAvatarColor(m.id) }}>{m.initials}</div>
+                                                        <span className="font-bold text-gray-900 text-sm">{m.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-4 text-sm text-gray-500">{m.assignedGroup}</td>
+                                                <td className="px-3 py-4 text-sm text-gray-500">{m.connectedSince}</td>
+                                                <td className="px-3 py-4 text-sm text-gray-600">{m.module}, {m.lesson}</td>
+                                                <td className="px-3 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[60px]">
+                                                            <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} />
+                                                        </div>
+                                                        <span className="text-xs font-semibold text-gray-600 shrink-0">{m.progress}%</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <button onClick={() => setViewing(m)} className="text-xs font-semibold text-gray-600 hover:underline transition-colors">View Profile</button>
+                                                        <button onClick={() => setShowDevotional(m)}
+                                                            className="text-xs font-bold text-white px-3 py-1.5 rounded-lg transition-colors"
+                                                            style={{ background: '#5b50d6' }}>
+                                                            Update
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </>
+                        )}
+                    </div>
                 </div>
 
-                {/* ── Inactive Mentees table ── */}
+                {/* -- Inactive Mentees table -- */}
                 <div>
                     <h2 className="text-sm font-bold text-gray-700 mb-3">Inactive Mentees <span className="text-gray-400 font-normal">({inactiveList.length})</span></h2>
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-                        <table className="w-full text-sm min-w-[600px]">
+                    <div className="bg-white rounded-2xl border border-gray-200">
+                        {/* Mobile card list */}
+                        <div className="sm:hidden divide-y divide-gray-100">
+                            {inactiveList.map((m) => (
+                                <div key={m.id} className="p-4 flex flex-col gap-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <p className="font-bold text-gray-900 text-sm">{m.name}</p>
+                                            <p className="text-xs text-gray-400">{m.assignedGroup}</p>
+                                        </div>
+                                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${reasonBadge(m.reason)}`}>{m.reason}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                        <span><span className="font-semibold text-gray-400">Inactive: </span>{m.dateInactive}</span>
+                                        <span><span className="font-semibold text-gray-400">Last: </span>{m.lastModule}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const fake: import('@/lib/data').Mentee = {
+                                                id: m.id,
+                                                initials: m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+                                                name: m.name,
+                                                assignedGroup: m.assignedGroup,
+                                                connectedSince: m.dateInactive,
+                                                module: m.lastModule.split(',')[0]?.trim() ?? 'Module 1',
+                                                lesson: m.lastModule.split(',')[1]?.trim() ?? 'Lesson 1',
+                                                progress: 0,
+                                                email: '—', phone: '—', age: 0,
+                                                birthday: '—', gender: '—', facebook: '—',
+                                                firstAttended: '—',
+                                                currentModule: m.lastModule,
+                                                currentLesson: '',
+                                                mentorNotes: '',
+                                                trainings: [],
+                                            };
+                                            setViewing(fake);
+                                        }}
+                                        className="self-start text-xs font-semibold text-[#5b50d6] hover:underline"
+                                    >View Profile</button>
+                                </div>
+                            ))}
+                            {inactiveList.length === 0 && (
+                                <div className="p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
+                            )}
+                        </div>
+                        {/* Desktop table */}
+                        <table className="hidden sm:table w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
                                     {['Name', 'Assigned Group', 'Date Became Inactive', 'Last Devotional Manual', 'Reason', 'Actions'].map(h => (
-                                        <th key={h} className="px-5 py-3.5 text-left font-semibold whitespace-nowrap">{h}</th>
+                                        <th key={h} className="px-3 py-3.5 text-left font-semibold">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {inactiveList.map((m) => (
                                     <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                        <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap">{m.name}</td>
-                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.assignedGroup}</td>
-                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.dateInactive}</td>
-                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.lastModule}</td>
-                                        <td className="px-5 py-4">
+                                        <td className="px-3 py-4 font-semibold text-gray-900">{m.name}</td>
+                                        <td className="px-3 py-4 text-gray-500">{m.assignedGroup}</td>
+                                        <td className="px-3 py-4 text-gray-500">{m.dateInactive}</td>
+                                        <td className="px-3 py-4 text-gray-500">{m.lastModule}</td>
+                                        <td className="px-3 py-4">
                                             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${reasonBadge(m.reason)}`}>{m.reason}</span>
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="px-3 py-4">
                                             <button
                                                 onClick={() => {
                                                     const fake: import('@/lib/data').Mentee = {
@@ -583,7 +701,7 @@ function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Men
                                                     };
                                                     setViewing(fake);
                                                 }}
-                                                className="text-xs text-gray-500 hover:underline font-medium whitespace-nowrap"
+                                                className="text-xs text-gray-500 hover:underline font-medium"
                                             >View Profile</button>
                                         </td>
                                     </tr>
@@ -591,7 +709,7 @@ function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Men
                             </tbody>
                         </table>
                         {inactiveList.length === 0 && (
-                            <div className="p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
+                            <div className="hidden sm:block p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
                         )}
                     </div>
                 </div>
@@ -600,7 +718,7 @@ function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Men
     );
 }
 
-/* ── EndorsedTab ─────────────────────────────────────────────────────────────── */
+/* -- EndorsedTab --------------------------------------------------------------- */
 function EndorsedTab() {
     const [viewingMembers, setViewingMembers] = useState<typeof ENDORSED_GROUPS[0] | null>(null);
     const [editingGroup, setEditingGroup] = useState<typeof ENDORSED_GROUPS[0] | null>(null);
@@ -650,11 +768,11 @@ function EndorsedTab() {
                         <div key={g.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3">
                             <p className="font-bold text-gray-900 text-lg">{g.name}</p>
                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="bg-[#f8f9fc] rounded-xl px-3 py-2 text-center">
+                                <div className="rounded-xl px-3 py-2 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
                                     <p className="text-lg font-black text-[#5b50d6]">{g.members}</p>
                                     <p className="text-gray-400 text-[10px]">Members</p>
                                 </div>
-                                <div className="bg-[#f8f9fc] rounded-xl px-3 py-2 text-center">
+                                <div className="rounded-xl px-3 py-2 text-center" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
                                     <p className="text-lg font-black text-[#0b9b8a]">{g.progress}%</p>
                                     <p className="text-gray-400 text-[10px]">Progress</p>
                                 </div>
@@ -699,9 +817,9 @@ function EndorsedTab() {
     );
 }
 
-/* ════════════════════════════════════════════════════════════ */
+/* ------------------------------------------------------------ */
 
-/* ── Potential C2S Groups Tab (Mentor view) ──────────────────────────────────── */
+/* -- Potential C2S Groups Tab (Mentor view) ------------------------------------ */
 interface MentorHubApplication {
     id: string;
     name: string;
@@ -774,7 +892,7 @@ function MentorPotentialC2STab() {
                                     <p className="text-xs text-gray-400 mt-0.5">{viewing.barangay} · {viewing.phone}</p>
                                 </div>
                             </div>
-                            <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                            <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                                 <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Application Details</p>
                                 <div className="divide-y divide-gray-100">
                                     {[
@@ -800,11 +918,11 @@ function MentorPotentialC2STab() {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap items-center gap-2 mb-5">
-                <div className="relative">
+            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 mb-5">
+                <div className="relative w-full sm:w-auto">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                     <input type="text" placeholder="Search name or barangay..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-56 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full sm:w-56 bg-white" />
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                     {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => (
@@ -814,7 +932,7 @@ function MentorPotentialC2STab() {
                         </button>
                     ))}
                 </div>
-                <span className="ml-auto text-xs text-gray-400">{filtered.length} application{filtered.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-gray-400 sm:ml-auto">{filtered.length} application{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
             {/* Table */}
@@ -825,44 +943,73 @@ function MentorPotentialC2STab() {
                     <p className="text-xs text-gray-300 mt-1">C2S Home Applicants from C2S Finder will appear here.</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
-                                {['Applicant', 'Barangay', 'Schedule', 'Potential Members', 'Date Submitted', 'Status', 'Actions'].map(h => (
-                                    <th key={h} className="px-4 py-3 text-left font-semibold whitespace-nowrap">{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filtered.map(a => (
-                                <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                    <td className="px-4 py-3.5">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
-                                                {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-gray-900 text-xs">{a.name}</p>
-                                                <p className="text-[10px] text-gray-400">{a.phone}</p>
-                                            </div>
+                <>
+                    {/* Mobile card list */}
+                    <div className="sm:hidden bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+                        {filtered.map(a => (
+                            <div key={a.id} className="p-4 flex flex-col gap-2">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                            {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                                         </div>
-                                    </td>
-                                    <td className="px-4 py-3.5 text-xs text-gray-600">{a.barangay}</td>
-                                    <td className="px-4 py-3.5 text-xs text-gray-600">{a.schedule}</td>
-                                    <td className="px-4 py-3.5 text-xs text-gray-600 text-center">{a.potential}</td>
-                                    <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{a.submitted}</td>
-                                    <td className="px-4 py-3.5">
-                                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
-                                    </td>
-                                    <td className="px-4 py-3.5">
-                                        <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline whitespace-nowrap">View</button>
-                                    </td>
+                                        <div>
+                                            <p className="font-semibold text-gray-900 text-sm">{a.name}</p>
+                                            <p className="text-[10px] text-gray-400">{a.phone}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                    <span><span className="font-semibold text-gray-400">Brgy: </span>{a.barangay}</span>
+                                    <span><span className="font-semibold text-gray-400">Sched: </span>{a.schedule}</span>
+                                    <span><span className="font-semibold text-gray-400">Potential: </span>{a.potential}</span>
+                                    <span><span className="font-semibold text-gray-400">Date: </span>{a.submitted}</span>
+                                </div>
+                                <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#5b50d6] hover:underline">View Details</button>
+                            </div>
+                        ))}
+                    </div>
+                    {/* Desktop table */}
+                    <div className="hidden sm:block bg-white rounded-2xl border border-gray-200">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
+                                    {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map(h => (
+                                        <th key={h} className="px-3 py-3 text-left font-semibold">{h}</th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {filtered.map(a => (
+                                    <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
+                                        <td className="px-3 py-3.5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                                    {a.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-900 text-xs">{a.name}</p>
+                                                    <p className="text-[10px] text-gray-400">{a.phone}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-600">{a.barangay}</td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-600">{a.schedule}</td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-600 text-center">{a.potential}</td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-500">{a.submitted}</td>
+                                        <td className="px-3 py-3.5">
+                                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE_MENTOR[a.status]}`}>{a.status}</span>
+                                        </td>
+                                        <td className="px-3 py-3.5">
+                                            <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
             )}
         </div>
     );
@@ -945,7 +1092,7 @@ function MentorDashboard() {
     const myGroups = C2S_GROUPS.filter((g) => g.name === user?.group);
 
     return (
-        <div className="flex min-h-screen" style={{ background: '#EEF2F7' }}>
+        <div className="min-h-screen dashboard-shell overflow-x-hidden" style={{ background: 'var(--bg-page)' }}>
 
             {/* View Members modal */}
             {viewingGroup && (
@@ -969,8 +1116,16 @@ function MentorDashboard() {
                 />
             )}
 
+
+            {/* Mobile sidebar overlay */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 z-[1001] bg-black/40 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
             {/* â”€â”€ Left Sidebar â”€â”€ */}
-            <aside className={`w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+            <aside className={`sidebar-nav w-56 border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-[1002] transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 {/* MENU label */}
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
 
@@ -997,7 +1152,7 @@ function MentorDashboard() {
                                 : 'text-gray-500 hover:bg-white/60'
                         }`}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'my-groups' ? '#e91e8c' : '#aaa'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={activeTab === 'my-groups' ? '#5b50d6' : '#aaa'}>
                             <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
                         </svg>
                         My Groups
@@ -1072,7 +1227,26 @@ function MentorDashboard() {
             </aside>
 
             {/* â”€â”€ Main content â”€â”€ */}
-            <div className="md:ml-56 flex-1 pt-6 px-4 sm:px-6 pb-16">
+            <div className="md:ml-56 flex-1 pb-16 min-w-0">
+
+                {/* Mobile sticky menu bar */}
+                <div className="md:hidden fixed top-16 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
+                    <button
+                        className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open menu"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
+                    </button>
+                    <span className="text-xs text-gray-400 ml-1">
+                        {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'my-groups' ? 'My Groups' : activeTab === 'potential-mentees' ? 'Potential Mentees' : activeTab === 'mentees' ? 'Mentees' : activeTab === 'endorsed' ? 'Endorsed' : 'Potential C2S Groups'}
+                    </span>
+                </div>
+
+                {/* Content with padding */}
+                <div className="pt-[72px] md:pt-6 px-4 sm:px-6">
 
                 {/* Title â€” only shown on dashboard tab */}
                 {activeTab === 'dashboard' && (
@@ -1088,7 +1262,7 @@ function MentorDashboard() {
                 {activeTab === 'my-groups' && (
                     <div>
                         {/* Header row */}
-                        <div className="flex items-start justify-between mb-8">
+                        <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
                             <div>
                                 <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Connect 2 Souls</h1>
                                 <p className="text-sm text-gray-400 mt-1">
@@ -1097,7 +1271,7 @@ function MentorDashboard() {
                             </div>
                             <button
                                 onClick={() => setShowCreateGroup(true)}
-                                className="flex items-center gap-1.5 bg-[#e53e3e] hover:bg-[#c53030] text-white font-bold px-4 py-2 rounded-md text-sm transition-colors shadow-sm shrink-0 ml-6"
+                                className="flex items-center gap-1.5 bg-[#e53e3e] hover:bg-[#c53030] text-white font-bold px-4 py-2 rounded-md text-sm transition-colors shadow-sm shrink-0"
                             >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                                 Create Group
@@ -1241,20 +1415,19 @@ function MentorDashboard() {
                 {/* â”€â”€ Dashboard Tab â”€â”€ */}
                 {activeTab === 'dashboard' && <>
                 {/* Stat cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+                <div className="grid grid-cols-2 gap-4 mb-5">
                     {[
-                        { label: 'Workers',    value: 3455, sub: 'Across all departments',      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> },
-                        { label: 'Mentors',    value: 717,  sub: 'Active discipleship mentors', icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#f07070"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg> },
-                        { label: 'Mentees',    value: 2765, sub: 'Church-wide C2S mentees',     icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#5cb85c"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg> },
-                        { label: 'C2S Groups', value: 179,  sub: 'Church & community based',    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="#f5a623"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z"/></svg> },
+                        { label: 'Workers',    value: 3455, sub: 'Across all departments',      icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> },
+                        { label: 'Mentors',    value: 717,  sub: 'Active discipleship mentors', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f07070"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg> },
+                        { label: 'Mentees',    value: 2765, sub: 'Church-wide C2S mentees',     icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#5cb85c"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg> },
+                        { label: 'C2S Groups', value: 179,  sub: 'Church & community based',    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f5a623"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z"/></svg> },
                     ].map((s) => (
-                        <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                            <div className="flex items-start justify-between mb-4">
-                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
+                        <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col justify-between min-h-[160px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                            <div className="flex items-start justify-between">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
                                 <span className="opacity-80">{s.icon}</span>
                             </div>
-                            <p className="text-[2.4rem] font-normal text-gray-900 leading-none mb-2">{s.value.toLocaleString()}</p>
-                            <p className="text-xs text-gray-400">{s.sub}</p>
+                            <div><p className="text-[2.6rem] font-normal text-gray-900 leading-none mb-1.5">{s.value.toLocaleString()}</p><p className="text-sm text-gray-400 leading-snug">{s.sub}</p></div>
                         </div>
                     ))}
                 </div>
@@ -1267,7 +1440,7 @@ function MentorDashboard() {
                     <h2 className="font-bold text-gray-900 text-base mb-0.5">Mentees by Department</h2>
                     <p className="text-xs text-gray-400 mb-6">Mentee delivery mode across departments.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
                             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                             </div>
@@ -1277,7 +1450,7 @@ function MentorDashboard() {
                                 <p className="text-xs text-gray-400 mt-0.5">{Math.round(MENTEES_F2F / MENTEES_TOTAL * 100)}% of all mentees</p>
                             </div>
                         </div>
-                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
                             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#f07070"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
                             </div>
@@ -1288,28 +1461,34 @@ function MentorDashboard() {
                             </div>
                         </div>
                     </div>
-                    <div className="rounded-xl overflow-hidden border border-gray-100">
-                        <table className="w-full">
-                            <thead><tr style={{ background: '#EEF2F7' }}>
-                                <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                                <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Face-to-Face</th>
-                                <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
-                                <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                    <div className="rounded-xl border border-gray-100">
+                        <table className="w-full table-fixed">
+                            <colgroup>
+                                <col className="w-[40%]" />
+                                <col className="w-[20%]" />
+                                <col className="w-[20%]" />
+                                <col className="w-[20%]" />
+                            </colgroup>
+                            <thead><tr style={{ background: 'var(--bg-highlight)' }}>
+                                <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">F2F</th>
+                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Online</th>
+                                <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                             </tr></thead>
                             <tbody>
                                 {MENTEES_BY_DEPT.map((row) => (
-                                    <tr key={row.dept} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                        <td className="px-5 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                        <td className="px-5 py-3.5 text-sm text-gray-500 text-center">{row.f2f}</td>
-                                        <td className="px-5 py-3.5 text-sm text-gray-500 text-center">{row.online}</td>
-                                        <td className="px-5 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
+                                    <tr key={row.dept} className="table-body-row">
+                                        <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.f2f}</td>
+                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.online}</td>
+                                        <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
                                     </tr>
                                 ))}
-                                <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                                    <td className="px-5 py-3.5 text-sm font-black text-gray-800">Total</td>
-                                    <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_F2F.toLocaleString()}</td>
-                                    <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_ONLINE.toLocaleString()}</td>
-                                    <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-right">{MENTEES_TOTAL.toLocaleString()}</td>
+                                <tr className="table-total-row">
+                                    <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
+                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_F2F.toLocaleString()}</td>
+                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{MENTEES_ONLINE.toLocaleString()}</td>
+                                    <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{MENTEES_TOTAL.toLocaleString()}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1321,7 +1500,7 @@ function MentorDashboard() {
                     <h2 className="font-bold text-gray-900 text-base mb-0.5">C2S Groups</h2>
                     <p className="text-xs text-gray-400 mb-6">Where discipleship groups meet.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
                             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.05 8.74-7 9.93-3.95-1.19-7-5.41-7-9.93V6.3l7-3.12z"/></svg>
                             </div>
@@ -1331,7 +1510,7 @@ function MentorDashboard() {
                                 <p className="text-xs text-gray-400 mt-0.5">Meeting in COG Satellite Churches</p>
                             </div>
                         </div>
-                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: '#EEF2F7' }}>
+                        <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
                             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#5cb85c"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                             </div>
@@ -1342,42 +1521,49 @@ function MentorDashboard() {
                             </div>
                         </div>
                     </div>
-                    <div className="rounded-xl overflow-hidden border border-gray-100">
-                        <table className="w-full">
-                            <thead><tr style={{ background: '#EEF2F7' }}>
-                                <th className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                                <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church-based</th>
-                                <th className="px-5 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community-based</th>
-                                <th className="px-5 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
+                    <div className="rounded-xl border border-gray-100">
+                        <table className="w-full table-fixed">
+                            <colgroup>
+                                <col className="w-[40%]" />
+                                <col className="w-[20%]" />
+                                <col className="w-[20%]" />
+                                <col className="w-[20%]" />
+                            </colgroup>
+                            <thead><tr className="table-header-row">
+                                <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church</th>
+                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community</th>
+                                <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total</th>
                             </tr></thead>
                             <tbody>
                                 {C2S_GROUPS_BY_DEPT.map((row) => (
-                                    <tr key={row.dept} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                        <td className="px-5 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
-                                        <td className="px-5 py-3.5 text-sm text-gray-500 text-center">{row.church}</td>
-                                        <td className="px-5 py-3.5 text-sm text-gray-500 text-center">{row.community}</td>
-                                        <td className="px-5 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
+                                    <tr key={row.dept} className="table-body-row">
+                                        <td className="pl-3 pr-2 py-3.5 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.church}</td>
+                                        <td className="px-2 py-3.5 text-sm text-gray-500 text-center">{row.community}</td>
+                                        <td className="pl-2 pr-4 py-3.5 text-sm text-gray-500 text-right">{row.total}</td>
                                     </tr>
                                 ))}
-                                <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8f9fc' }}>
-                                    <td className="px-5 py-3.5 text-sm font-black text-gray-800">Total</td>
-                                    <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_CHURCH}</td>
-                                    <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_COMMUNITY}</td>
-                                    <td className="px-5 py-3.5 text-sm font-bold text-gray-700 text-right">{C2S_TOTAL_ALL}</td>
+                                <tr className="table-total-row">
+                                    <td className="pl-3 pr-2 py-3.5 text-sm font-black text-gray-800">Total</td>
+                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_CHURCH}</td>
+                                    <td className="px-2 py-3.5 text-sm font-bold text-gray-700 text-center">{C2S_COMMUNITY}</td>
+                                    <td className="pl-2 pr-4 py-3.5 text-sm font-bold text-gray-700 text-right">{C2S_TOTAL_ALL}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
                 </>}
+                </div>
             </div>
         </div>
     );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   CLUSTER HEAD REPORTS CHARTS â€” rendered here so recharts resolves correctly
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+// ── CLUSTER HEAD REPORTS CHARTS ── rendered here so recharts resolves correctly
+
+
 
 const CH_TS = { borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
 
@@ -1469,9 +1655,9 @@ function CHReportsCharts() {
     );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   COORDINATOR REPORTS CHARTS â€” rendered here so recharts resolves correctly
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+// ── COORDINATOR REPORTS CHARTS ── rendered here so recharts resolves correctly
+
+
 
 const COORD_TS = { borderRadius: '10px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,.10)', fontSize: '12px', padding: '8px 14px' };
 
@@ -1589,9 +1775,9 @@ function CoordReportsCharts() {
     );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   ROOT
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+// ── ROOT ──
+
+
 export default function DashboardPage() {
     const { user, logout } = useAuth();
     const router = useRouter();
@@ -1606,6 +1792,17 @@ export default function DashboardPage() {
     function handleLogout() {
         logout();
         router.push('/login');
+    }
+
+    if (user.role === 'admin') {
+        return (
+            <>
+                <DashNav onLogout={handleLogout} />
+                <div className="pt-16">
+                    <AdminDashboard />
+                </div>
+            </>
+        );
     }
 
     if (user.role === 'ministry_head') {
@@ -1644,9 +1841,10 @@ export default function DashboardPage() {
     return (
         <>
             <DashNav onLogout={handleLogout} />
-            <div className="pt-16">
+            <div className="pt-16 overflow-x-hidden">
                 <MentorDashboard />
             </div>
         </>
     );
 }
+

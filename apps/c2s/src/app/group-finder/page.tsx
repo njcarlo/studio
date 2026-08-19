@@ -139,7 +139,7 @@ export default function GroupFinderPage() {
 
     return (
         /* full-screen layout: navbar (fixed 64px) + content fills rest */
-        <div className="h-screen flex flex-col bg-[#f8f9fc] overflow-hidden">
+        <div className="force-light flex flex-col bg-[#f8f9fc] overflow-hidden" style={{ height: '100dvh' }}>
             <Navbar />
 
             {/* Join modal */}
@@ -168,9 +168,9 @@ export default function GroupFinderPage() {
 
             {/* ── Mobile Map Overlay ── */}
             {showMobileMap && (
-                <div className="fixed inset-0 z-[9999] flex flex-col lg:hidden">
+                <div className="fixed inset-0 z-[9999] flex flex-col lg:hidden" style={{ height: '100dvh' }}>
                     {/* Map header */}
-                    <div className="bg-white px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0 pt-[calc(1rem+env(safe-area-inset-top))]" style={{ paddingTop: '4rem' }}>
+                    <div className="bg-white px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 4rem)' }}>
                         <div>
                             <p className="font-bold text-gray-900 text-sm">Dasmariñas City</p>
                             <p className="text-xs text-gray-400">{filtered.length} C2S groups nearby</p>
@@ -235,8 +235,8 @@ export default function GroupFinderPage() {
                         </Link>
                     </div>
                     <div className="flex items-center gap-3 mb-0.5">
-                        <img src="/c2s.png" alt="C2S" style={{ width: 56, height: 56, objectFit: 'contain' }} />
-                        <h1 className="text-4xl font-black text-gray-900">Group Finder</h1>
+                        <img src="/c2s.png" alt="C2S" className="w-10 h-10 sm:w-14 sm:h-14 shrink-0" style={{ objectFit: 'contain' }} />
+                        <h1 className="text-2xl sm:text-4xl font-black text-gray-900">Group Finder</h1>
                     </div>
                     <p className="text-sm text-gray-400 ml-1">
                         Discover a Connect2Souls group near you in Dasmariñas City — built for real friendships, growth in faith, and a place to belong.
@@ -261,7 +261,7 @@ export default function GroupFinderPage() {
                                     className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white"
                                 />
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                 <Select label="Age Group"            value={ageGroup}  onChange={setAgeGroup}  options={AGE_GROUPS} />
                                 <Select label="Meetup Day"           value={meetupDay} onChange={setMeetupDay} options={MEETUP_DAYS} />
                                 <Select label="Barangay/Subdivision" value={barangay}  onChange={setBarangay}  options={['All', ...BARANGAYS]} />

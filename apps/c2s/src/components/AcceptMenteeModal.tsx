@@ -29,7 +29,7 @@ export default function AcceptMenteeModal({ menteeName, groupName, onCancel, onC
                     </p>
 
                     {/* Reminder banner */}
-                    <div className="flex items-start gap-3 bg-[#fffbeb] border border-[#fde68a] rounded-xl px-4 py-3">
+                    <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
                         <svg className="w-4 h-4 text-[#d97706] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
                         </svg>

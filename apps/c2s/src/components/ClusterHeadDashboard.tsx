@@ -24,7 +24,7 @@ const TOOLTIP_STYLE = {
 };
 
 // ─── Color helpers ──────────────────────────────────────────────────────────
-const AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9'];
+const AVATAR_COLORS = ['#5b50d6', '#5b50d6', '#0b9b8a', '#e67700', '#6741d9'];
 function avatarColor(id: string) {
     let h = 0;
     for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
@@ -36,7 +36,7 @@ const CLUSTER_STATUS_STYLE: Record<string, string> = {
     'New':                  'bg-[#dbeafe] text-[#1d4ed8]',
     'Waiting for Assignment': 'bg-[#fef9c3] text-[#92400e]',
     'Assigned to Mentor':   'bg-[#ede9fe] text-[#6741d9]',
-    'Interview Scheduled':  'bg-[#fde8ef] text-[#e6184d]',
+    'Interview Scheduled':  'bg-[#ede9fe] text-[#5b50d6]',
     'Interview Completed':  'bg-[#d3f9f0] text-[#0c8a6e]',
     'Accepted':             'bg-[#dcfce7] text-[#166534]',
 };
@@ -95,7 +95,7 @@ function CoordinatorPanel({ coord, onClose }: { coord: C2SCoordinator; onClose: 
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 ${coord.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{coord.status}</span>
                         </div>
                     </div>
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                    <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Contact Info</p>
                         <div className="divide-y divide-gray-100">
                             {[{ label: 'Phone', value: coord.phone }, { label: 'Email', value: coord.email }].map(r => (
@@ -169,7 +169,7 @@ function MapTab() {
                     <p className="text-sm text-gray-400 mt-1">Group distribution across the cluster barangays — powered by OpenStreetMap.</p>
                 </div>
             </div>
-            <div className="flex items-center gap-2 mb-5">
+            <div className="flex flex-wrap items-center gap-2 mb-5">
                 {(['All', 'Community-based', 'Church-based'] as const).map(t => (
                     <button key={t} onClick={() => setMapType(t as any)}
                         className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${mapType === t ? 'bg-[#6741d9] text-white border-[#6741d9]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
@@ -179,12 +179,12 @@ function MapTab() {
             </div>
 
             {/* Real OSM Map */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6" style={{ height: 440 }}>
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6 map-container">
                 <ClusterMapDynamic groups={mapGroups} accentColor="#6741d9" />
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-6 mb-5">
+            <div className="flex items-center flex-wrap gap-x-6 gap-y-2 mb-5">
                 <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded-full" style={{ background: '#6741d9' }} />
                     <span className="text-xs text-gray-600 font-medium">Community-based</span>
@@ -193,7 +193,7 @@ function MapTab() {
                     <div className="w-4 h-4 rounded-full" style={{ background: '#1971c2' }} />
                     <span className="text-xs text-gray-600 font-medium">Church-based</span>
                 </div>
-                <p className="text-xs text-gray-400 ml-auto">Click a marker to see group details</p>
+                <p className="text-xs text-gray-400 sm:ml-auto hidden sm:block">Click a marker to see group details</p>
             </div>
 
             {/* Groups list */}
@@ -228,12 +228,12 @@ function CHReportsTab({ clusterName, reportsContent }: { clusterName: string; re
 
     return (
         <div>
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
                 <div>
                     <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Reports</h1>
                     <p className="text-xs text-gray-400 mt-0.5">{clusterName}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg bg-white hover:border-gray-300 transition-colors">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>
                         Export PDF
@@ -252,7 +252,7 @@ function CHReportsTab({ clusterName, reportsContent }: { clusterName: string; re
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 mb-10">
                 {[
                     { value: `${CH_MENTORS.length}`,           label: 'Total Mentors',     sub: clusterName,        color: '#6741d9' },
-                    { value: `${CH_POTENTIAL_MENTEES.length}`, label: 'Potential Mentees', sub: 'All statuses',     color: '#e91e8c' },
+                    { value: `${CH_POTENTIAL_MENTEES.length}`, label: 'Potential Mentees', sub: 'All statuses',     color: '#5b50d6' },
                     { value: `${CH_ACTIVE_MENTEES.length}`,    label: 'Active Mentees',    sub: 'In discipleship',  color: '#0b9b8a' },
                     { value: `${CH_COORDINATORS.length}`,      label: 'C2S Coordinators',  sub: 'Active only',      color: '#e67700' },
                 ].map(s => (
@@ -269,16 +269,16 @@ function CHReportsTab({ clusterName, reportsContent }: { clusterName: string; re
                 <h2 className="text-lg font-black text-gray-900">Interactive Map</h2>
                 <p className="text-sm text-gray-400 mt-0.5">Group distribution across the cluster barangays — powered by OpenStreetMap.</p>
             </div>
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
                 {(['All', 'Community-based', 'Church-based'] as const).map(t => (
                     <button key={t} onClick={() => setMapType(t)}
                         className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${mapType === t ? 'bg-[#6741d9] text-white border-[#6741d9]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{t}</button>
                 ))}
             </div>
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4" style={{ height: 420 }}>
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4 map-container">
                 <ClusterMapDynamic groups={mapGroups} accentColor="#6741d9" />
             </div>
-            <div className="flex items-center gap-6 mb-5">
+            <div className="flex items-center flex-wrap gap-x-6 gap-y-2 mb-5">
                 <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded-full" style={{ background: '#6741d9' }} />
                     <span className="text-xs text-gray-600 font-medium">Community-based</span>
@@ -287,7 +287,7 @@ function CHReportsTab({ clusterName, reportsContent }: { clusterName: string; re
                     <div className="w-4 h-4 rounded-full" style={{ background: '#1971c2' }} />
                     <span className="text-xs text-gray-600 font-medium">Church-based</span>
                 </div>
-                <p className="text-xs text-gray-400 ml-auto">Click a marker to see group details</p>
+                <p className="text-xs text-gray-400 sm:ml-auto hidden sm:block">Click a marker to see group details</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {filteredGroups.map(g => (
@@ -525,11 +525,11 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
                 return (
                     <>
                         <div className="fixed inset-0 z-[100] bg-black/40" onClick={() => { setViewingGroup(null); setMenteeSearch(''); setMenteeStatusFilter('All'); }} />
-                        <div className="fixed inset-0 z-[101] flex items-center justify-center p-6" onClick={() => { setViewingGroup(null); setMenteeSearch(''); setMenteeStatusFilter('All'); }}>
+                        <div className="fixed inset-0 z-[101] flex items-center justify-center p-3 sm:p-6" onClick={() => { setViewingGroup(null); setMenteeSearch(''); setMenteeStatusFilter('All'); }}>
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]" onClick={e => e.stopPropagation()}>
 
                                 {/* Modal header */}
-                                <div className="px-8 pt-6 pb-5 border-b border-gray-100 flex items-start justify-between shrink-0">
+                                <div className="px-5 sm:px-8 pt-6 pb-5 border-b border-gray-100 flex items-start justify-between shrink-0">
                                     <div>
                                         <h2 className="text-xl font-bold text-gray-900">{grp.name}</h2>
                                         <div className="flex items-center gap-4 mt-1.5 text-sm text-gray-500">
@@ -551,28 +551,25 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
                                 </div>
 
                                 {/* Search + filter + count */}
-                                <div className="px-8 py-4 border-b border-gray-100 flex items-center gap-3 shrink-0">
-                                    <div className="relative flex-1">
-                                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
+                                <div className="px-4 sm:px-8 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
+                                    <div className="relative flex-1 min-w-0">
+                                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                                         <input
                                             type="text"
-                                            placeholder="Search mentee name..."
+                                            placeholder=""
                                             value={menteeSearch}
                                             onChange={e => setMenteeSearch(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6741d9] bg-white"
+                                            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6741d9] bg-white"
                                         />
                                     </div>
-                                    <div className="relative">
-                                        <select
-                                            value={menteeStatusFilter}
-                                            onChange={e => setMenteeStatusFilter(e.target.value)}
-                                            className="text-sm border border-gray-200 rounded-xl px-3 py-2 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-[#6741d9] appearance-none cursor-pointer"
-                                        >
-                                            {statusOptions.map(o => <option key={o}>{o}</option>)}
-                                        </select>
-                                        <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                                    </div>
-                                    <span className="text-sm font-semibold text-[#6741d9] bg-[#ede9fe] px-3 py-1 rounded-full whitespace-nowrap">
+                                    <select
+                                        value={menteeStatusFilter}
+                                        onChange={e => setMenteeStatusFilter(e.target.value)}
+                                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#6741d9] cursor-pointer shrink-0"
+                                    >
+                                        {statusOptions.map(o => <option key={o}>{o}</option>)}
+                                    </select>
+                                    <span className="text-xs font-semibold text-[#6741d9] bg-[#ede9fe] px-2.5 py-1 rounded-full whitespace-nowrap shrink-0">
                                         {grpMentees.length} mentee{grpMentees.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
@@ -585,25 +582,25 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
                                             <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filter.</p>
                                         </div>
                                     ) : grpMentees.map(mt => (
-                                        <div key={mt.id} className="flex items-start gap-5 px-8 py-5">
-                                            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-black shrink-0" style={{ background: mt.color }}>
+                                        <div key={mt.id} className="flex items-start gap-3 px-4 sm:px-8 py-4">
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-black shrink-0" style={{ background: mt.color }}>
                                                 {mt.initials}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div>
-                                                        <p className="text-base font-bold text-gray-900 leading-tight">{mt.name}</p>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold text-gray-900 leading-tight truncate">{mt.name}</p>
                                                         <p className="text-xs text-gray-400 mt-0.5">{mt.id}</p>
                                                     </div>
                                                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${statusBadge(mt.status)}`}>
                                                         {mt.status}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-gray-500 mt-2 flex items-center gap-1.5">
-                                                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+                                                <p className="text-sm text-gray-500 mt-1.5 flex items-center gap-1.5">
+                                                    <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
                                                     {mt.lesson}
                                                 </p>
-                                                <div className="flex items-center gap-5 mt-1.5 text-xs text-gray-400">
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-1 text-xs text-gray-400">
                                                     <span>Devotion: {mt.devotionDate}</span>
                                                     <span>Att: {mt.attendanceDate}</span>
                                                 </div>
@@ -675,10 +672,9 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
     const avgDays             = Math.round(CH_COORDINATORS.reduce((s, c) => s + c.avgAssignmentDays, 0) / CH_COORDINATORS.length);
 
     return (
-        <div className="flex min-h-screen" style={{ background: '#EEF2F7' }}>
+        <div className="flex min-h-screen dashboard-shell overflow-x-hidden" style={{ background: 'var(--bg-page)' }}>
             {/* Modals */}
             {viewingCoord && <CoordinatorPanel coord={viewingCoord} onClose={() => setViewingCoord(null)} />}
-            {viewingActiveMentee && <MenteeProfileModal mentee={viewingActiveMentee} onClose={() => setViewingActiveMentee(null)} />}
             {updatingMentee && (
                 <DevotionalProgressModal
                     mentee={updatingMentee}
@@ -697,25 +693,25 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 z-30 bg-black/40 md:hidden"
+                    className="fixed inset-0 z-[1001] bg-black/40 md:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`w-56 shrink-0 bg-[#f4f5f7] border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-40 transition-transform duration-200
+            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-[1002] transition-transform duration-200
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
                 <nav className="px-3 flex flex-col gap-1 flex-1 overflow-y-auto">
                     {CH_NAV.map((item) => (
                         <button key={item.key} onClick={() => { setActiveNav(item.key); setSidebarOpen(false); if (item.key !== 'mentors') setMentorProfilePage(null); }}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left relative ${activeNav === item.key ? 'text-gray-800 bg-white shadow-sm' : 'text-gray-500 hover:bg-white/60'}`}>
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left relative ${activeNav === item.key ? 'nav-item-active text-gray-800 shadow-sm' : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'}`}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill={activeNav === item.key ? '#6741d9' : '#aaa'}>
                                 <path d={item.icon} />
                             </svg>
                             {item.label}
                             {item.key === 'notifications' && unreadCount > 0 && (
-                                <span className="ml-auto text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full bg-[#e91e8c] text-white shrink-0">{unreadCount}</span>
+                                <span className="ml-auto text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full bg-[#5b50d6] text-white shrink-0">{unreadCount}</span>
                             )}
                         </button>
                     ))}
@@ -723,10 +719,10 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
             </aside>
 
             {/* ── Main ── */}
-            <div className="md:ml-56 flex-1 pb-16">
+            <div className="w-full md:ml-56 pb-16 min-w-0 overflow-x-hidden">
 
                     {/* Mobile sticky menu bar */}
-                    <div className="md:hidden sticky top-16 z-20 bg-[#EEF2F7] border-b border-gray-200 px-4 py-2.5 flex items-center gap-2">
+                    <div className="md:hidden fixed top-16 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
                         <button
                             className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
                             onClick={() => setSidebarOpen(true)}
@@ -735,14 +731,13 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                             </svg>
-                            <span>Menu</span>
                         </button>
                         <span className="text-xs text-gray-400 ml-1">
                             {activeNav === 'dashboard' ? 'Dashboard' : CH_NAV.find(n => n.key === activeNav)?.label ?? ''}
                         </span>
                     </div>
 
-                    <div className="pt-5 px-4 sm:px-6">
+                    <div className="pt-[72px] md:pt-5 px-4 sm:px-6">
                     {activeNav === 'dashboard' && (
                         <div>
                             <div className="mb-5">
@@ -798,13 +793,13 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                 { label: 'Pending',   value: c.pendingAssignments, color: '#e67700' },
                                                 { label: 'Avg Days',  value: `${c.avgAssignmentDays}d`, color: '#0b9b8a' },
                                             ].map(s => (
-                                                <div key={s.label} className="bg-[#f8f9fc] rounded-xl p-3 text-center">
+                                                <div key={s.label} className="rounded-xl p-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                                                     <p className="text-lg font-black" style={{ color: s.color }}>{s.value}</p>
                                                     <p className="text-[10px] text-gray-400">{s.label}</p>
                                                 </div>
                                             ))}
                                         </div>
-                                        <div className="bg-[#f8f9fc] rounded-xl p-3">
+                                        <div className="rounded-xl p-3" style={{ background: 'var(--bg-subtle)' }}>
                                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Recent Activities</p>
                                             {c.recentActivities.slice(0, 2).map((a, i) => (
                                                 <p key={i} className="text-xs text-gray-600 leading-snug mb-1">• {a.text} <span className="text-gray-400 text-[10px]">({a.time})</span></p>
@@ -944,29 +939,53 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                 ))}
                                 </div>
                             </div>
-                            <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-                                <table className="w-full text-sm min-w-[700px]">
+                            {/* Mobile cards */}
+                            <div className="sm:hidden bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+                                {filteredPotential.map(m => (
+                                    <div key={m.id} className="p-4 flex flex-col gap-2.5">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
+                                            <span className="font-semibold text-gray-900 text-sm">{m.name}</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                            <span>{m.age} · {m.gender}</span>
+                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${m.sourceColor}`}>{m.source}</span>
+                                        </div>
+                                        <p className="text-xs text-gray-600">{m.requestedGroup}</p>
+                                        <p className="text-xs text-gray-500">{m.assignedCoordinator ?? '—'}</p>
+                                        <span className={`self-start text-[10px] font-semibold px-2.5 py-1 rounded-full ${CLUSTER_STATUS_STYLE[m.clusterStatus]}`}>{m.clusterStatus}</span>
+                                    </div>
+                                ))}
+                                {filteredPotential.length === 0 && (
+                                    <div className="p-10 text-center">
+                                        <p className="font-semibold text-gray-700 text-sm">No potential mentees found</p>
+                                    </div>
+                                )}
+                            </div>
+                            {/* Desktop table */}
+                            <div className="hidden sm:block bg-white rounded-2xl border border-gray-200">
+                                <table className="w-full text-sm">
                                     <thead>
                                         <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
                                             {['Name', 'Age / Gender', 'Source', 'Requested Group', 'Coordinator', 'Status'].map(h => (
-                                                <th key={h} className="px-5 py-3 text-left font-semibold whitespace-nowrap">{h}</th>
+                                                <th key={h} className="px-3 py-3 text-left font-semibold">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
                                         {filteredPotential.map(m => (
                                             <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                                <td className="px-5 py-3.5">
+                                                <td className="px-3 py-3.5">
                                                     <div className="flex items-center gap-2.5">
                                                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
                                                         <span className="font-semibold text-gray-900">{m.name}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-3.5 text-xs text-gray-500">{m.age} · {m.gender}</td>
-                                                <td className="px-5 py-3.5"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${m.sourceColor}`}>{m.source}</span></td>
-                                                <td className="px-5 py-3.5 text-xs text-gray-600">{m.requestedGroup}</td>
-                                                <td className="px-5 py-3.5 text-xs text-gray-500">{m.assignedCoordinator ?? '—'}</td>
-                                                <td className="px-5 py-3.5">
+                                                <td className="px-3 py-3.5 text-xs text-gray-500">{m.age} · {m.gender}</td>
+                                                <td className="px-3 py-3.5"><span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${m.sourceColor}`}>{m.source}</span></td>
+                                                <td className="px-3 py-3.5 text-xs text-gray-600">{m.requestedGroup}</td>
+                                                <td className="px-3 py-3.5 text-xs text-gray-500">{m.assignedCoordinator ?? '—'}</td>
+                                                <td className="px-3 py-3.5">
                                                     <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${CLUSTER_STATUS_STYLE[m.clusterStatus]}`}>{m.clusterStatus}</span>
                                                 </td>
                                             </tr>
@@ -1007,10 +1026,10 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                             </div>
 
                             {/* ── Stats row ── */}
-                            <div className="flex gap-4 mb-8 items-stretch">
-                                {/* Donut card — fixed width */}
-                                <div className="bg-white rounded-2xl border border-gray-200 px-6 py-6 flex items-center gap-6 shrink-0">
-                                    <div className="min-w-0">
+                            <div className="flex flex-col sm:flex-row gap-4 mb-8 items-stretch">
+                                {/* Donut card */}
+                                <div className="bg-white rounded-2xl border border-gray-200 px-5 py-5 flex items-center gap-5 sm:shrink-0">
+                                    <div className="min-w-0 flex-1 sm:flex-none">
                                         <p className="text-sm font-bold text-gray-800 leading-tight">Mentee Status</p>
                                         <p className="text-[11px] text-gray-400 mb-4">Active vs Inactive</p>
                                         <div className="flex items-center gap-2 text-xs text-gray-700 mb-2">
@@ -1022,8 +1041,15 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                             Inactive&nbsp;<span className="font-bold">{INACTIVE_MENTEES.length}</span>
                                         </div>
                                     </div>
-                                    <div className="relative shrink-0 w-[140px] h-[140px]">
-                                        <svg width="140" height="140" viewBox="0 0 140 140">
+                                    <div className="relative shrink-0 w-[120px] h-[120px] sm:w-[140px] sm:h-[140px]">
+                                        <svg width="120" height="120" viewBox="0 0 140 140" className="sm:hidden">
+                                            <circle cx="70" cy="70" r="52" fill="none" stroke="#e5e7eb" strokeWidth="14" />
+                                            <circle cx="70" cy="70" r="52" fill="none" stroke="#3b82f6" strokeWidth="14"
+                                                strokeDasharray={`${(activePct / 100) * (2 * Math.PI * 52)} ${(2 * Math.PI * 52) - (activePct / 100) * (2 * Math.PI * 52)}`}
+                                                strokeLinecap="butt"
+                                                transform="rotate(-90 70 70)" />
+                                        </svg>
+                                        <svg width="140" height="140" viewBox="0 0 140 140" className="hidden sm:block">
                                             <circle cx="70" cy="70" r="52" fill="none" stroke="#e5e7eb" strokeWidth="14" />
                                             <circle cx="70" cy="70" r="52" fill="none" stroke="#3b82f6" strokeWidth="14"
                                                 strokeDasharray={`${(activePct / 100) * (2 * Math.PI * 52)} ${(2 * Math.PI * 52) - (activePct / 100) * (2 * Math.PI * 52)}`}
@@ -1031,24 +1057,26 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                 transform="rotate(-90 70 70)" />
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span className="text-2xl font-black text-gray-900 leading-none">{activePct}%</span>
+                                            <span className="text-xl sm:text-2xl font-black text-gray-900 leading-none">{activePct}%</span>
                                             <span className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">ACTIVE</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Stat cards — each fills equal share of remaining space */}
-                                {[
-                                    { label: 'Total Mentees', value: totalMentees,   color: '#111827' },
-                                    { label: 'Active',        value: activeCnt,      color: '#ef4444' },
-                                    { label: 'Inactive',      value: inactiveCnt,    color: '#3b82f6' },
-                                    { label: 'Transferred',   value: transferredCnt, color: '#111827' },
-                                ].map(s => (
-                                    <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-7 py-5 flex flex-col justify-center flex-1">
-                                        <p className="text-sm font-semibold text-gray-600 mb-2 whitespace-nowrap">{s.label}</p>
-                                        <p className="font-black leading-none" style={{ color: s.color, fontSize: '2.75rem' }}>{s.value}</p>
-                                    </div>
-                                ))}
+                                {/* Stat cards — 2x2 on mobile, row on desktop */}
+                                <div className="grid grid-cols-2 sm:grid-cols-1 sm:flex sm:flex-1 gap-4">
+                                    {[
+                                        { label: 'Total Mentees', value: totalMentees,   color: '#6741d9' },
+                                        { label: 'Active',        value: activeCnt,      color: '#ef4444' },
+                                        { label: 'Inactive',      value: inactiveCnt,    color: '#3b82f6' },
+                                        { label: 'Transferred',   value: transferredCnt, color: '#0b9b8a' },
+                                    ].map(s => (
+                                        <div key={s.label} className="bg-white rounded-2xl border border-gray-200 px-4 sm:px-7 py-5 flex flex-col justify-center sm:flex-1 dark:bg-gray-800 dark:border-gray-700">
+                                            <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-2 dark:text-gray-300">{s.label}</p>
+                                            <p className="font-black leading-none" style={{ color: s.color, fontSize: 'clamp(1.75rem, 5vw, 2.75rem)' }}>{s.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* ── Active Mentees cards ── */}
@@ -1100,58 +1128,77 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                             {/* ── Inactive Mentees table ── */}
                             {(() => {
                                 const filtered = inactiveMenteesList.filter(m => m.name.toLowerCase().includes(inactiveMenteeSearch.toLowerCase()));
+
+                                const buildFakeMentee = (m: typeof filtered[0]): Mentee => ({
+                                    id: m.id,
+                                    initials: m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+                                    name: m.name,
+                                    assignedGroup: m.assignedGroup,
+                                    connectedSince: m.dateInactive,
+                                    module: m.lastModule.split(',')[0]?.trim() ?? 'Module 1',
+                                    lesson: m.lastModule.split(',')[1]?.trim() ?? 'Lesson 1',
+                                    progress: 0,
+                                    email: '—', phone: '—', age: 0,
+                                    birthday: '—', gender: '—', facebook: '—',
+                                    firstAttended: '—',
+                                    currentModule: m.lastModule,
+                                    currentLesson: '',
+                                    mentorNotes: '',
+                                    trainings: [],
+                                });
+
                                 return (
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <h2 className="text-sm font-bold text-gray-700">Inactive Mentees <span className="text-gray-400 font-normal">({filtered.length})</span></h2>
                                     </div>
-                                    <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-                                        <table className="w-full text-sm min-w-[700px]">
+
+                                    {/* Mobile cards */}
+                                    <div className="sm:hidden bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+                                        {filtered.length === 0 && (
+                                            <div className="p-10 text-center text-sm text-gray-400">No inactive mentees found.</div>
+                                        )}
+                                        {filtered.map(m => (
+                                            <div key={m.id} className="p-4 flex flex-col gap-2">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div>
+                                                        <p className="font-bold text-gray-900 text-sm">{m.name}</p>
+                                                        <p className="text-xs text-gray-400">{m.assignedGroup}</p>
+                                                    </div>
+                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${reasonBadge(m.reason)}`}>{m.reason}</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500">
+                                                    <span><span className="text-gray-400">Inactive: </span>{m.dateInactive}</span>
+                                                    <span><span className="text-gray-400">Last: </span>{m.lastModule}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Desktop table */}
+                                    <div className="hidden sm:block overflow-x-auto bg-white rounded-2xl border border-gray-200">
+                                        <table className="w-full text-sm min-w-[520px]">
                                             <thead>
                                                 <tr className="border-b border-gray-100 text-[10px] text-gray-400 uppercase tracking-widest">
                                                     {['Name', 'Assigned Group', 'Date Became Inactive', 'Last Devotional Manual', 'Reason', 'Actions'].map(h => (
-                                                        <th key={h} className="px-5 py-3.5 text-left font-semibold whitespace-nowrap">{h}</th>
+                                                        <th key={h} className="px-3 py-3.5 text-left font-semibold">{h}</th>
                                                     ))}
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
                                                 {filtered.map(m => (
                                                     <tr key={m.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                                        <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap">{m.name}</td>
-                                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.assignedGroup}</td>
-                                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.dateInactive}</td>
-                                                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{m.lastModule}</td>
-                                                        <td className="px-5 py-4">
+                                                        <td className="px-3 py-4 font-semibold text-gray-900">{m.name}</td>
+                                                        <td className="px-3 py-4 text-gray-500">{m.assignedGroup}</td>
+                                                        <td className="px-3 py-4 text-gray-500">{m.dateInactive}</td>
+                                                        <td className="px-3 py-4 text-gray-500">{m.lastModule}</td>
+                                                        <td className="px-3 py-4">
                                                             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${reasonBadge(m.reason)}`}>{m.reason}</span>
                                                         </td>
-                                                        <td className="px-5 py-4">
+                                                        <td className="px-3 py-4">
                                                             <button
-                                                                onClick={() => {
-                                                                    // Build a minimal Mentee from inactive record for the profile modal
-                                                                    const fake: Mentee = {
-                                                                        id: m.id,
-                                                                        initials: m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
-                                                                        name: m.name,
-                                                                        assignedGroup: m.assignedGroup,
-                                                                        connectedSince: m.dateInactive,
-                                                                        module: m.lastModule.split(',')[0]?.trim() ?? 'Module 1',
-                                                                        lesson: m.lastModule.split(',')[1]?.trim() ?? 'Lesson 1',
-                                                                        progress: 0,
-                                                                        email: '—',
-                                                                        phone: '—',
-                                                                        age: 0,
-                                                                        birthday: '—',
-                                                                        gender: '—',
-                                                                        facebook: '—',
-                                                                        firstAttended: '—',
-                                                                        currentModule: m.lastModule,
-                                                                        currentLesson: '',
-                                                                        mentorNotes: '',
-                                                                        trainings: [],
-                                                                    };
-                                                                    setViewingActiveMentee(fake);
-                                                                }}
-                                                                className="text-xs text-gray-500 hover:underline font-medium whitespace-nowrap"
+                                                                onClick={() => setViewingActiveMentee(buildFakeMentee(m))}
+                                                                className="text-xs text-gray-500 hover:underline font-medium"
                                                             >View Profile</button>
                                                         </td>
                                                     </tr>

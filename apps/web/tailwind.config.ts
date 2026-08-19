@@ -100,4 +100,6 @@ export default {
     },
   },
   plugins: [require('tailwindcss-animate')],
+  // scrollbar-hide utility used in reports page
+  // (handled inline in globals.css via @layer utilities)
 } satisfies Config;

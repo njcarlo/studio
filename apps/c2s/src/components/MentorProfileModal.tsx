@@ -70,7 +70,7 @@ export default function MentorProfileModal({ mentor, onClose }: Props) {
                     </div>
 
                     {/* Personal Information */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                    <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Personal Information</p>
                         <div className="divide-y divide-gray-100">
                             {[
@@ -88,7 +88,7 @@ export default function MentorProfileModal({ mentor, onClose }: Props) {
                     </section>
 
                     {/* Performance */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] px-4 py-4">
+                    <section className="rounded-xl border border-gray-100 px-4 py-4" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-4">Performance Overview</p>
 
                         {/* Stat boxes */}
@@ -127,7 +127,7 @@ export default function MentorProfileModal({ mentor, onClose }: Props) {
                     </section>
 
                     {/* Trainings */}
-                    <section className="rounded-xl border border-gray-100 bg-[#f8f9fc] overflow-hidden">
+                    <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Trainings Attended</p>
                         <div className="divide-y divide-gray-100">
                             {TRAININGS.map((t) => (
