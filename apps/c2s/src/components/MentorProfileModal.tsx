@@ -61,8 +61,8 @@ export default function MentorProfileModal({ mentor, onClose }: Props) {
                                 <p className="font-bold text-gray-900 text-base">{mentor.name}</p>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                                     mentor.status === 'Active'
-                                        ? 'bg-[#dcfce7] text-[#166534]'
-                                        : 'bg-gray-100 text-gray-500'
+                                        ? 'bg-[#16a34a] text-white'
+                                        : 'bg-gray-400 text-white'
                                 }`}>{mentor.status}</span>
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">{mentor.id}</p>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
@@ -9,6 +9,7 @@ import {
 import { HUB_APPLICATIONS_KEY } from '@/components/C2SHubModal';
 import { SharedDashboardTab, CHURCH_WIDE_DATA } from '@/components/DashboardSharedWidgets';
 import type { ReactNode } from 'react';
+import SettingsModal from '@/components/SettingsModal';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar,
     LineChart, Line, CartesianGrid, XAxis, YAxis, Legend,
@@ -28,12 +29,12 @@ function avatarColor(id: string) {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-    'New':                    'bg-[#dbeafe] text-[#1d4ed8]',
-    'Waiting for Assignment': 'bg-[#fef9c3] text-[#92400e]',
-    'Assigned to Mentor':     'bg-[#ede9fe] text-[#6741d9]',
-    'Interview Scheduled':    'bg-[#ede9fe] text-[#5b50d6]',
-    'Interview Completed':    'bg-[#ede9fe] text-[#5b50d6]',
-    'Accepted':               'bg-[#dcfce7] text-[#166534]',
+    'New':                    'bg-[#1d4ed8] text-white',
+    'Waiting for Assignment': 'bg-[#b45309] text-white',
+    'Assigned to Mentor':     'bg-[#6741d9] text-white',
+    'Interview Scheduled':    'bg-[#5b50d6] text-white',
+    'Interview Completed':    'bg-[#5b50d6] text-white',
+    'Accepted':               'bg-[#166534] text-white',
 };
 
 // ─── Nav ─────────────────────────────────────────────────────────────────────
@@ -396,7 +397,7 @@ function PotentialMenteesTab({
                             {m.preferredGroups.map((g, i) => <p key={i}><span className="text-gray-400">{i + 1}.</span> {g}</p>)}
                         </div>
                         <div className="flex items-center gap-3 text-[11px]">
-                            <span className={`font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#ede9fe] text-[#5b50d6]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{m.groupType}</span>
+                            <span className={`font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{m.groupType}</span>
                             <span className="text-gray-400">{m.dateSubmitted}</span>
                         </div>
                         <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
@@ -446,7 +447,7 @@ function PotentialMenteesTab({
                                 </td>
                                 <td className="px-3 py-3.5 text-xs text-gray-600">{m.barangay}</td>
                                 <td className="px-3 py-3.5">
-                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#ede9fe] text-[#5b50d6]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>
+                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${m.groupType === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>
                                         {m.groupType}
                                     </span>
                                 </td>
@@ -512,7 +513,7 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                                             <p className="font-bold text-gray-900 text-base leading-tight">{m.name}</p>
                                             <p className="text-xs text-gray-400 mt-0.5">{m.group} · {m.barangay}</p>
                                         </div>
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${m.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{m.status}</span>
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span>
                                     </div>
                                     <div className="flex gap-4 mt-1.5 text-[11px] text-gray-500">
                                         <span>📞 {m.phone}</span>
@@ -545,7 +546,7 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                             {/* Availability badge */}
                             <div className="flex items-center justify-between">
                                 <span className="text-xs text-gray-500">Availability</span>
-                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${m.availableSlots > 0 && m.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#991b1b]'}`}>
+                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${m.availableSlots > 0 && m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-[#dc2626] text-white'}`}>
                                     {m.availableSlots > 0 && m.status === 'Active' ? `${m.availableSlots} slots available` : 'Not Available'}
                                 </span>
                             </div>
@@ -587,7 +588,7 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                         <div key={g.id} className="p-4 flex flex-col gap-2.5">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="font-semibold text-gray-900 text-sm leading-tight">{g.name}</span>
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${g.type === 'Community-based' ? 'bg-[#ede9fe] text-[#5b50d6]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{g.type}</span>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
@@ -602,7 +603,7 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                                 <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#5b50d6]' : 'text-[#e67700]'}`}>{g.availableSlots} open</span>
                             </div>
                             <div className="flex items-center justify-between gap-2">
-                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#dcfce7] text-[#166534]' : g.status === 'Full' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>{g.status}</span>
+                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                                 <span className="text-xs text-gray-400">{g.schedule}</span>
                             </div>
                         </div>
@@ -633,7 +634,7 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                                     </td>
                                     <td className="px-3 py-3.5 text-xs text-gray-600">{g.barangay}</td>
                                     <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.type === 'Community-based' ? 'bg-[#ede9fe] text-[#5b50d6]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{g.type}</span>
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                                     </td>
                                     <td className="px-3 py-3.5 text-center">
                                         <div className="flex items-center gap-2">
@@ -648,7 +649,7 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                                         <span className={`text-xs font-bold ${g.availableSlots > 0 ? 'text-[#5b50d6]' : 'text-[#e67700]'}`}>{g.availableSlots}</span>
                                     </td>
                                     <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#dcfce7] text-[#166534]' : g.status === 'Full' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>{g.status}</span>
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                                     </td>
                                     <td className="px-3 py-3.5 text-xs text-gray-500">{g.schedule}</td>
                                 </tr>
@@ -744,8 +745,8 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
                             <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                         </div>
                         <div className="text-right shrink-0 flex flex-col gap-1">
-                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${g.type === 'Community-based' ? 'bg-[#ede9fe] text-[#5b50d6]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{g.type}</span>
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#dcfce7] text-[#166534]' : g.status === 'Full' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>{g.status}</span>
+                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                         </div>
                     </div>
                 ))}
@@ -827,8 +828,8 @@ function CoordMapTab({ groups }: { groups: CoordGroup[] }) {
                             <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                         </div>
                         <div className="text-right shrink-0 flex flex-col gap-1">
-                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${g.type === 'Community-based' ? 'bg-[#ede9fe] text-[#5b50d6]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{g.type}</span>
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#dcfce7] text-[#166534]' : g.status === 'Full' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>{g.status}</span>
+                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${g.type === 'Community-based' ? 'bg-[#5b50d6] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#16a34a] text-white' : g.status === 'Full' ? 'bg-[#b45309] text-white' : 'bg-gray-400 text-white'}`}>{g.status}</span>
                         </div>
                     </div>
                 ))}
@@ -845,7 +846,7 @@ function CoordDashboardNotifications() {
         new_mentee: { bg: '#ede9fe', color: '#6741d9', path: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
         accepted:   { bg: '#dcfce7', color: '#166534', path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
         reassign:   { bg: '#fef9c3', color: '#92400e', path: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' },
-        capacity:   { bg: '#fee2e2', color: '#991b1b', path: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z' },
+        capacity:   { bg: '#fee2e2', color: '#dc2626', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
         interview:  { bg: '#ede9fe', color: '#5b50d6', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
     };
     return (
@@ -890,7 +891,7 @@ function CoordNotifsTab() {
         new_mentee: { bg: '#ede9fe', color: '#6741d9', path: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
         accepted:   { bg: '#dcfce7', color: '#166534', path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
         reassign:   { bg: '#fef9c3', color: '#92400e', path: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' },
-        capacity:   { bg: '#fee2e2', color: '#991b1b', path: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z' },
+        capacity:   { bg: '#fee2e2', color: '#dc2626', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
         interview:  { bg: '#ede9fe', color: '#5b50d6', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
     };
     return (
@@ -940,9 +941,9 @@ interface HubApplication {
 }
 
 const HUB_STATUS_STYLE: Record<string, string> = {
-    'Pending':  'bg-[#fef9c3] text-[#92400e]',
-    'Approved': 'bg-[#dcfce7] text-[#166534]',
-    'Rejected': 'bg-[#fee2e2] text-[#991b1b]',
+    'Pending':  'bg-[#b45309] text-white',
+    'Approved': 'bg-[#16a34a] text-white',
+    'Rejected': 'bg-[#dc2626] text-white',
 };
 
 // ─── Potential C2S Groups Tab ─────────────────────────────────────────────────
@@ -1214,9 +1215,8 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
     const { user } = useAuth();
     const [activeNav, setActiveNav] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const clusterName = user?.cluster ?? 'Outreach Cluster 4';
-
-    // local state for mutations
     const [menteeStatuses, setMenteeStatuses] = useState<Record<string, CoordPotentialMentee['status']>>({});
     const [assignedMentors, setAssignedMentors] = useState<Record<string, string>>({});
     const [hubPendingCount, setHubPendingCount] = useState(0);
@@ -1269,7 +1269,7 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-[1002] transition-transform duration-200
+            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 z-[1002] transition-transform duration-200
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
                 <nav className="px-3 flex flex-col gap-1 flex-1 overflow-y-auto">
@@ -1292,13 +1292,26 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                         </button>
                     ))}
                 </nav>
+                {/* Settings at bottom */}
+                <div className="mt-auto px-3 pt-3 border-t border-gray-100 mx-2">
+                    <button
+                        onClick={() => { setShowSettings(true); setSidebarOpen(false); }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#aaa">
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                        </svg>
+                        Settings
+                    </button>
+                </div>
             </aside>
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
             {/* ── Main ── */}
             <div className="md:ml-56 flex-1 pb-16 min-w-0">
 
                     {/* Mobile sticky menu bar */}
-                    <div className="md:hidden fixed top-16 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
+                    <div className="md:hidden fixed top-nav-fixed left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
                         <button
                             className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
                             onClick={() => setSidebarOpen(true)}

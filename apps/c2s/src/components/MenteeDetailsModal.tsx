@@ -10,9 +10,9 @@ interface Props {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-    'Pending':      'bg-[#fef9c3] text-[#92400e]',
-    'Accepted':     'bg-[#dcfce7] text-[#166534]',
-    'Recommended':  'bg-[#ede9fe] text-[#6741d9]',
+    'Pending':      'bg-[#b45309] text-white',
+    'Accepted':     'bg-[#16a34a] text-white',
+    'Recommended':  'bg-[#6741d9] text-white',
 };
 
 const AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9'];

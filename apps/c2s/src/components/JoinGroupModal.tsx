@@ -70,7 +70,7 @@ export default function JoinGroupModal({ group, onClose, onSuccess }: Props) {
             gender,
             phone,
             source: 'From C2S Group Finder',
-            sourceColor: 'bg-[#e0f7f5] text-[#0b9b8a]',
+            sourceColor: 'bg-[#0b9b8a] text-white',
             requestedGroup: group.name,
             notes: notes.trim() || 'No notes provided.',
             status: 'Pending',

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
@@ -12,6 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import MenteeProfileModal from '@/components/MenteeProfileModal';
 import DevotionalProgressModal from '@/components/DevotionalProgressModal';
+import SettingsModal from '@/components/SettingsModal';
 import type { ReactNode } from 'react';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar,
@@ -33,12 +34,12 @@ function avatarColor(id: string) {
 
 // ─── Status badge styles ─────────────────────────────────────────────────────
 const CLUSTER_STATUS_STYLE: Record<string, string> = {
-    'New':                  'bg-[#dbeafe] text-[#1d4ed8]',
-    'Waiting for Assignment': 'bg-[#fef9c3] text-[#92400e]',
-    'Assigned to Mentor':   'bg-[#ede9fe] text-[#6741d9]',
-    'Interview Scheduled':  'bg-[#ede9fe] text-[#5b50d6]',
-    'Interview Completed':  'bg-[#d3f9f0] text-[#0c8a6e]',
-    'Accepted':             'bg-[#dcfce7] text-[#166534]',
+    'New':                  'bg-[#1d4ed8] text-white',
+    'Waiting for Assignment': 'bg-[#b45309] text-white',
+    'Assigned to Mentor':   'bg-[#6741d9] text-white',
+    'Interview Scheduled':  'bg-[#5b50d6] text-white',
+    'Interview Completed':  'bg-[#0c8a6e] text-white',
+    'Accepted':             'bg-[#166534] text-white',
 };
 
 // ─── Report data (used in dashboard/page.tsx for chart rendering) ────────────
@@ -92,7 +93,7 @@ function CoordinatorPanel({ coord, onClose }: { coord: C2SCoordinator; onClose: 
                         <div>
                             <p className="font-bold text-gray-900 text-base">{coord.name}</p>
                             <p className="text-xs text-gray-400">{coord.barangay}</p>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 ${coord.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{coord.status}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 ${coord.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{coord.status}</span>
                         </div>
                     </div>
                     <section className="rounded-xl border border-gray-100 overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
@@ -208,7 +209,7 @@ function MapTab() {
                             <p className="font-bold text-gray-900 text-sm">{g.name}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                         </div>
-                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${g.type === 'Church-based' ? 'bg-[#ede9fe] text-[#6741d9]' : 'bg-[#d3f9f0] text-[#0c8a6e]'}`}>
+                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${g.type === 'Church-based' ? 'bg-[#6741d9] text-white' : 'bg-[#0b9b8a] text-white'}`}>
                             {g.type}
                         </span>
                     </div>
@@ -298,7 +299,7 @@ function CHReportsTab({ clusterName, reportsContent }: { clusterName: string; re
                             <p className="font-bold text-gray-900 text-sm">{g.name}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                         </div>
-                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${g.type === 'Church-based' ? 'bg-[#ede9fe] text-[#6741d9]' : 'bg-[#d3f9f0] text-[#0c8a6e]'}`}>
+                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${g.type === 'Church-based' ? 'bg-[#6741d9] text-white' : 'bg-[#0b9b8a] text-white'}`}>
                             {g.type}
                         </span>
                     </div>
@@ -402,9 +403,9 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
     const statusOptions = ['All', 'Active', 'Needs Follow-up', 'Inactive'];
 
     const statusBadge = (s: string) => {
-        if (s === 'Active')          return 'bg-[#dcfce7] text-[#166534]';
-        if (s === 'Needs Follow-up') return 'bg-[#fef3c7] text-[#92400e]';
-        return 'bg-gray-100 text-gray-500';
+        if (s === 'Active')          return 'bg-[#16a34a] text-white';
+        if (s === 'Needs Follow-up') return 'bg-[#b45309] text-white';
+        return 'bg-gray-400 text-white';
     };
 
     return (
@@ -425,7 +426,7 @@ function CHMentorProfilePage({ mentor, onBack }: { mentor: ClusterMentor; onBack
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold text-gray-900">{mentor.name}</h1>
-                            <span className={`text-[15px] font-bold px-2.5 py-1 rounded-full ${mentor.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>
+                            <span className={`text-[15px] font-bold px-2.5 py-1 rounded-full ${mentor.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>
                                 {mentor.status}
                             </span>
                         </div>
@@ -624,7 +625,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
     const { user } = useAuth();
     const [activeNav, setActiveNav] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [viewingCoord, setViewingCoord] = useState<C2SCoordinator | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
     const [mentorProfilePage, setMentorProfilePage] = useState<ClusterMentor | null>(null);
     const [viewingActiveMentee, setViewingActiveMentee] = useState<Mentee | null>(null);
     const [updatingMentee, setUpdatingMentee] = useState<Mentee | null>(null);
@@ -699,7 +700,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-[1002] transition-transform duration-200
+            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 z-[1002] transition-transform duration-200
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
                 <nav className="px-3 flex flex-col gap-1 flex-1 overflow-y-auto">
@@ -716,13 +717,26 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                         </button>
                     ))}
                 </nav>
+                {/* Settings at bottom */}
+                <div className="mt-auto px-3 pt-3 border-t border-gray-100 mx-2">
+                    <button
+                        onClick={() => { setShowSettings(true); setSidebarOpen(false); }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#aaa">
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                        </svg>
+                        Settings
+                    </button>
+                </div>
             </aside>
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
             {/* ── Main ── */}
             <div className="w-full md:ml-56 pb-16 min-w-0 overflow-x-hidden">
 
                     {/* Mobile sticky menu bar */}
-                    <div className="md:hidden fixed top-16 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
+                    <div className="md:hidden fixed top-nav-fixed left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
                         <button
                             className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
                             onClick={() => setSidebarOpen(true)}
@@ -779,7 +793,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                         <p className="font-bold text-gray-900">{c.name}</p>
                                                         <p className="text-xs text-gray-400 mt-0.5">{c.barangay}</p>
                                                     </div>
-                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${c.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
+                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${c.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{c.status}</span>
                                                 </div>
                                                 <div className="flex gap-3 mt-2 text-xs text-gray-500">
                                                     <span>{c.phone}</span>
@@ -829,9 +843,9 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                             </div>
 
                             {/* Info banner */}
-                            <div className="flex items-start gap-3 bg-[#f0eeff] border border-[#d8d0f5] rounded-xl px-4 py-3 mb-6">
+                            <div className="flex items-start gap-3 bg-[#5b50d6] rounded-xl px-4 py-3 mb-6">
                                 <svg className="w-4 h-4 text-[#6741d9] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                                <p className="text-xs text-[#5b3fc4]">Mentors are created exclusively through the Endorsement Approval process. No manual creation allowed.</p>
+                                <p className="text-xs text-white">Mentors are created exclusively through the Endorsement Approval process. No manual creation allowed.</p>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -860,7 +874,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                         <div>
                                                             <p className="font-bold text-gray-900 text-xl leading-tight">{m.name}</p>
                                                         </div>
-                                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${m.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{m.status}</span>
+                                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2 text-base text-gray-500">
                                                         <span className="flex items-center gap-1.5">
@@ -1104,7 +1118,7 @@ export default function ClusterHeadDashboard({ onLogout, reportsContent }: { onL
                                                         <p className="font-bold text-gray-900 truncate">{m.name}</p>
                                                         <p className="text-xs text-gray-400">{m.assignedGroup} · Since {m.connectedSince}</p>
                                                     </div>
-                                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#dcfce7] text-[#166534] shrink-0">Active</span>
+                                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#16a34a] text-white shrink-0">Active</span>
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center justify-between mb-1">

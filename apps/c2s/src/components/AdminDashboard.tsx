@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import {
@@ -13,6 +13,7 @@ import {
     MH_CLUSTERS, MH_ALL_MENTORS, MH_COORDINATORS, MH_POTENTIAL_MENTEES, MH_ACTIVE_MENTEES_LIST,
     COORD_GROUPS,
 } from '@/lib/data';
+import SettingsModal from '@/components/SettingsModal';
 import dynamic from 'next/dynamic';
 import type { ClusterMapGroup } from '@/components/ClusterMap';
 import {
@@ -1457,7 +1458,7 @@ function GroupsTab() {
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
                                 <span className="text-xs text-gray-600">{g.mentor}</span>
-                                <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.type === 'Community-based' ? 'bg-[#d3f9f0] text-[#0c8a6e]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{g.type}</span>
+                                <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.type === 'Community-based' ? 'bg-[#0b9b8a] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                             </div>
                             <p className="text-xs text-gray-500">{g.type === 'Church-based' ? (g.satellite ?? '—') : g.barangay} · {g.schedule}</p>
                             <div className="flex items-center gap-2">
@@ -1510,7 +1511,7 @@ function GroupsTab() {
                                             {g.type === 'Church-based' ? (g.satellite ?? '—') : g.barangay}
                                         </td>
                                         <td className="px-3 py-3.5">
-                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.type === 'Community-based' ? 'bg-[#d3f9f0] text-[#0c8a6e]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{g.type}</span>
+                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${g.type === 'Community-based' ? 'bg-[#0b9b8a] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                                         </td>
                                         <td className="px-3 py-3.5">
                                             <div className="flex items-center gap-2">
@@ -1609,7 +1610,7 @@ function PotentialMenteesTab() {
                             {m.mentor !== '—' && <span>{m.mentor}</span>}
                         </div>
                         <div className="flex items-center justify-between gap-2">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#e0f7f5] text-[#0b9b8a]' : 'bg-[#ede9fe] text-[#6741d9]'}`}>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#0b9b8a] text-white' : 'bg-[#ede9fe] text-[#6741d9]'}`}>
                                 {m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}
                             </span>
                             <span className="text-[10px] text-gray-400">{m.dateSubmitted}</span>
@@ -1642,7 +1643,7 @@ function PotentialMenteesTab() {
                                     <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
                                     <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
                                     <td className="px-3 py-3">
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#e0f7f5] text-[#0b9b8a]' : 'bg-[#ede9fe] text-[#6741d9]'}`}>
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#0b9b8a] text-white' : 'bg-[#ede9fe] text-[#6741d9]'}`}>
                                             {m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}
                                         </span>
                                     </td>
@@ -2114,7 +2115,7 @@ function ReportsTab() {
                                     <p className="text-xs text-gray-400 mt-0.5">{g.barangay} · {g.mentor}</p>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${g.type === 'Community-based' ? 'bg-[#d3f9f0] text-[#0c8a6e]' : 'bg-[#e0f0ff] text-[#1971c2]'}`}>{g.type}</span>
+                                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${g.type === 'Community-based' ? 'bg-[#0b9b8a] text-white' : 'bg-[#1971c2] text-white'}`}>{g.type}</span>
                                 </div>
                             </div>
                         ))}
@@ -3408,6 +3409,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
 export default function AdminDashboard() {
     const [activeNav, setActiveNav] = useState<AdminNav>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     const unreadNotifs  = ADMIN_NOTIFICATIONS.filter(n => !n.read).length;
     const pendingWorkerID = ADMIN_WORKERS.filter(w => w.workerIdStatus === 'Pending').length;
@@ -3478,7 +3480,20 @@ export default function AdminDashboard() {
                         );
                     })}
                 </div>
+                {/* My Settings at bottom */}
+                <div className="px-3 pt-3 border-t border-gray-100 mx-1 mt-2">
+                    <button
+                        onClick={() => { setShowSettings(true); setSidebarOpen(false); }}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60 dark:hover:bg-white/10"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="#aaa">
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                        </svg>
+                        My Settings
+                    </button>
+                </div>
             </aside>
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
             {/* ── Main Content ── */}
             <div className="md:ml-60 pb-16 min-w-0">

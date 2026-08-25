@@ -167,7 +167,7 @@ export default function GroupFinderModal({ onClose }: Props) {
                 {/* ── Header ── */}
                 <div className="bg-white px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
                     {/* "Find your community" pill */}
-                    <div className="inline-flex items-center bg-[#e0f7f5] text-[#0b9b8a] text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                    <div className="inline-flex items-center bg-[#0b9b8a] text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
                         Find your community
                     </div>
 

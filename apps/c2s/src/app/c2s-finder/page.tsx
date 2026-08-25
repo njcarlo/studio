@@ -44,7 +44,7 @@ export default function C2SFinderPage() {
                 />
             )}
             {successMsg && (
-                <div className="fixed top-16 left-0 right-0 z-[9998] flex justify-center px-4 pt-3">
+                <div className="fixed top-nav-fixed left-0 right-0 z-[9998] flex justify-center px-4 pt-3">
                     <div className="flex items-center gap-3 bg-[#f0fdf4] border border-[#86efac] text-[#15803d] rounded-xl px-5 py-3 shadow-md text-sm font-semibold max-w-lg w-full">
                         <svg className="w-5 h-5 shrink-0 text-[#22c55e]" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
@@ -55,14 +55,14 @@ export default function C2SFinderPage() {
             )}
 
             {/* ── Hero ──────────────────────────────────────── */}
-            <section className="pt-16">
+            <section className="pt-nav-fixed">
                 <div className="max-w-5xl mx-auto px-6 py-10 lg:py-14">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
 
                         {/* Left */}
                         <div>
                             {/* "Find your community" teal pill */}
-                            <div className="inline-flex items-center bg-[#e0f7f5] text-[#0b9b8a] text-xs font-semibold px-3 py-1 rounded-full mb-5">
+                            <div className="inline-flex items-center bg-[#0b9b8a] text-white text-xs font-semibold px-3 py-1 rounded-full mb-5">
                                 Find your community
                             </div>
 

@@ -38,12 +38,12 @@ export const LIVE_SCHEDULE: LiveScheduleItem[] = [
 
 export const YOUTUBE_LIVE_ID = 'O0WewzcECwg';
 
-const TEAL   = 'bg-[#e0f7f5] text-[#0b9b8a]';
-const PINK   = 'bg-[#fde8ef] text-[#e6184d]';
-const BLUE   = 'bg-[#e0f0ff] text-[#1971c2]';
-const GREEN  = 'bg-[#d3f9f0] text-[#0c8a6e]';
-const YELLOW = 'bg-[#fff9c4] text-[#b8860b]';
-const PURPLE = 'bg-[#ede9fe] text-[#6741d9]';
+const TEAL   = 'bg-[#0b9b8a] text-white';
+const PINK   = 'bg-[#e6184d] text-white';
+const BLUE   = 'bg-[#1971c2] text-white';
+const GREEN  = 'bg-[#0c8a6e] text-white';
+const YELLOW = 'bg-[#b45309] text-white';
+const PURPLE = 'bg-[#6741d9] text-white';
 
 // Dasmariñas City center: 14.3294, 120.9367
 export const C2S_GROUPS: C2SGroup[] = [

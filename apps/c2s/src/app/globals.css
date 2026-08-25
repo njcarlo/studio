@@ -76,6 +76,8 @@ html {
 
 @layer base {
   :root {
+    --nav-h:      64px;             /* fixed navbar height — never scales with font-size */
+
     --teal:       #2dc7be;
     --teal-dark:  #1fa89f;
     --coral:      #f03e5f;
@@ -446,10 +448,94 @@ html {
     border-top: 2px solid var(--border);
   }
 
-  /* ── Sidebar nav ── */
+  /* ── Status / label badges — always white text ── */
+  /* Catches any remaining light-bg rounded-full badges */
+  .rounded-full.bg-\[#dcfce7\],
+  .rounded-full.bg-\[#fef9c3\],
+  .rounded-full.bg-\[#fef3c7\],
+  .rounded-full.bg-\[#ede9fe\],
+  .rounded-full.bg-\[#dbeafe\],
+  .rounded-full.bg-\[#d3f9f0\],
+  .rounded-full.bg-\[#e0f7f5\],
+  .rounded-full.bg-\[#e0f0ff\],
+  .rounded-full.bg-\[#fee2e2\],
+  .rounded-full.bg-\[#fde68a\],
+  .rounded-full.bg-\[#dde0f5\],
+  .rounded-full.bg-\[#f0effc\],
+  .rounded-full.bg-\[#f0eeff\] {
+    color: #ffffff !important;
+  }
+
+  /* ── Dark mode: brighten badge backgrounds for readability on dark bg ── */
+  /* Solid-colored rounded-full badges get lighter/brighter versions in dark mode */
+  html.dark .rounded-full.bg-\[#16a34a\]  { background-color: #22c55e !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#166534\]  { background-color: #22c55e !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#0b9b8a\]  { background-color: #2dd4bf !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#0c8a6e\]  { background-color: #2dd4bf !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#5b50d6\]  { background-color: #818cf8 !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#6741d9\]  { background-color: #a78bfa !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#6366c1\]  { background-color: #818cf8 !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#1971c2\]  { background-color: #60a5fa !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#1d4ed8\]  { background-color: #60a5fa !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#b45309\]  { background-color: #fb923c !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#e67700\]  { background-color: #fb923c !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#dc2626\]  { background-color: #f87171 !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#e6184d\]  { background-color: #fb7185 !important; color: #ffffff !important; }
+  html.dark .rounded-full.bg-\[#e91e8c\]  { background-color: #f472b6 !important; color: #ffffff !important; }
+  /* Gray/inactive stays muted */
+  html.dark .rounded-full.bg-gray-400     { background-color: #6b7280 !important; color: #e5e7eb !important; }
+  html.dark .rounded-full.bg-gray-100     { background-color: #374151 !important; color: #9ca3af !important; }
+
+  /* Force white text on ALL colored rounded-full badges in dark mode regardless of text-color class */
+  html.dark .rounded-full.text-\[#166534\],
+  html.dark .rounded-full.text-\[#0c8a6e\],
+  html.dark .rounded-full.text-\[#0b9b8a\],
+  html.dark .rounded-full.text-\[#6741d9\],
+  html.dark .rounded-full.text-\[#5b50d6\],
+  html.dark .rounded-full.text-\[#6366c1\],
+  html.dark .rounded-full.text-\[#1971c2\],
+  html.dark .rounded-full.text-\[#1d4ed8\],
+  html.dark .rounded-full.text-\[#92400e\],
+  html.dark .rounded-full.text-\[#b45309\],
+  html.dark .rounded-full.text-\[#991b1b\],
+  html.dark .rounded-full.text-\[#dc2626\],
+  html.dark .rounded-full.text-\[#e6184d\],
+  html.dark .rounded-full.text-\[#e67700\] { color: #ffffff !important; }
+
+  /* Same brightening for rounded-xl pill badges */
+  html.dark .rounded-xl.bg-\[#16a34a\],
+  html.dark .rounded-xl.bg-\[#166534\]    { background-color: #22c55e !important; color: #ffffff !important; }
+  html.dark .rounded-xl.bg-\[#0b9b8a\],
+  html.dark .rounded-xl.bg-\[#0c8a6e\]   { background-color: #2dd4bf !important; color: #ffffff !important; }
+  html.dark .rounded-xl.bg-\[#5b50d6\],
+  html.dark .rounded-xl.bg-\[#6366c1\]   { background-color: #818cf8 !important; color: #ffffff !important; }
+  html.dark .rounded-xl.bg-\[#6741d9\]   { background-color: #a78bfa !important; color: #ffffff !important; }
+  html.dark .rounded-xl.bg-\[#1971c2\],
+  html.dark .rounded-xl.bg-\[#1d4ed8\]   { background-color: #60a5fa !important; color: #ffffff !important; }
+  html.dark .rounded-xl.bg-\[#b45309\],
+  html.dark .rounded-xl.bg-\[#e67700\]   { background-color: #fb923c !important; color: #ffffff !important; }
+  html.dark .rounded-xl.bg-\[#dc2626\]   { background-color: #f87171 !important; color: #ffffff !important; }
+  html.dark .rounded-xl.bg-\[#e6184d\]   { background-color: #fb7185 !important; color: #ffffff !important; }
+  /* Force white text on rounded-xl badges too */
+  html.dark .rounded-xl.text-\[#166534\],
+  html.dark .rounded-xl.text-\[#0c8a6e\],
+  html.dark .rounded-xl.text-\[#0b9b8a\],
+  html.dark .rounded-xl.text-\[#6741d9\],
+  html.dark .rounded-xl.text-\[#5b50d6\],
+  html.dark .rounded-xl.text-\[#1971c2\],
+  html.dark .rounded-xl.text-\[#92400e\],
+  html.dark .rounded-xl.text-\[#b45309\],
+  html.dark .rounded-xl.text-\[#991b1b\],
+  html.dark .rounded-xl.text-\[#dc2626\],
+  html.dark .rounded-xl.text-\[#e6184d\] { color: #ffffff !important; }
   .sidebar-nav {    background-color: var(--bg-sidebar);
     border-right-color: var(--border);
   }
+
+  /* ── Fixed-height navbar helpers (immune to font-size scaling) ── */
+  .nav-fixed-h       { height: var(--nav-h) !important; }
+  .top-nav-fixed     { top: var(--nav-h) !important; }
+  .pt-nav-fixed      { padding-top: var(--nav-h) !important; }
 
   /* Active nav item pill */
   .nav-item-active {

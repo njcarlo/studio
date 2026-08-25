@@ -8,7 +8,7 @@ export default function HomePage() {
             <Navbar />
 
             {/* Hero */}
-            <section className="pt-16 bg-gray-950 text-white">
+            <section className="pt-nav-fixed bg-gray-950 text-white">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
                     <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-8 uppercase">
                         Church Online

@@ -47,7 +47,7 @@ const TOTAL_MENTORS = DEPT_MENTORS.reduce((s, d) => s + d.value, 0);
 /* â”€â”€ Shared Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function DashNav({ onLogout }: { onLogout: () => void }) {
     const { user } = useAuth();
-    const [showSettings, setShowSettings] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
     if (!user) return null;
     const isHead = user.role === 'ministry_head';
     const isCluster = user.role === 'cluster_head';
@@ -56,10 +56,8 @@ function DashNav({ onLogout }: { onLogout: () => void }) {
     const roleColor = isAdmin ? '#111827' : isHead ? '#0b9b8a' : isCluster ? '#6741d9' : isCoord ? '#0b9b8a' : '#5b50d6';
     const roleLabel = isAdmin ? 'Admin' : isHead ? 'Department Head' : isCluster ? 'Cluster Head' : isCoord ? 'C2S Coordinator' : 'Mentor';
     return (
-        <>
-            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
-            <div className="w-full px-4 sm:px-6 flex items-center justify-between h-16">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
+            <div className="w-full px-4 sm:px-6 flex items-center justify-between nav-fixed-h">
                 <Link href="/" className="flex items-center gap-2.5">
                     <div className="w-9 h-9 relative shrink-0">
                         <Image src="/logo.png" alt="COG" fill className="object-contain" priority />
@@ -69,36 +67,56 @@ function DashNav({ onLogout }: { onLogout: () => void }) {
                         <p className="text-[10px] text-gray-400 uppercase tracking-widest">CONNECT2SOULS</p>
                     </div>
                 </Link>
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black"
-                        style={{ background: roleColor }}>
-                        {user.avatar}
-                    </div>
-                    <div className="hidden sm:block leading-tight">
-                        <p className="text-sm font-bold text-gray-800">{user.name}</p>
-                        <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: roleColor }}>
-                            {roleLabel}
-                        </p>
-                    </div>
-                        {/* Settings / Font Size button */}
-                        <button
-                            onClick={() => setShowSettings(true)}
-                            aria-label="Settings"
-                            title="Text Size and Settings"
-                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors"
-                        >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-                            </svg>
-                        </button>
-                    <button onClick={onLogout}
-                        className="ml-1 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-full transition-colors">
-                        Sign Out
+
+                {/* Avatar dropdown */}
+                <div className="relative">
+                    <button
+                        onClick={() => setDropdownOpen(o => !o)}
+                        className="flex items-center gap-2.5 rounded-full pr-1 hover:opacity-90 transition-opacity"
+                    >
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0"
+                            style={{ background: roleColor }}>
+                            {user.avatar}
+                        </div>
+                        <div className="hidden sm:block leading-tight text-left">
+                            <p className="text-sm font-bold text-gray-800">{user.name}</p>
+                            <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: roleColor }}>
+                                {roleLabel}
+                            </p>
+                        </div>
+                        <svg className="w-3.5 h-3.5 text-gray-400 shrink-0 hidden" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 10l5 5 5-5z"/>
+                        </svg>
                     </button>
+
+                    {/* Dropdown menu */}
+                    {dropdownOpen && (
+                        <>
+                            {/* Backdrop */}
+                            <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+                            <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-20"
+                                style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+                                {/* User info */}
+                                <div className="px-4 py-3 border-b border-gray-100">
+                                    <p className="text-xs font-bold text-gray-900 truncate">{user.name}</p>
+                                    <p className="text-[10px] uppercase tracking-widest font-semibold mt-0.5" style={{ color: roleColor }}>{roleLabel}</p>
+                                </div>
+                                {/* Sign out */}
+                                <button
+                                    onClick={() => { setDropdownOpen(false); onLogout(); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors text-left"
+                                >
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                                    </svg>
+                                    Sign Out
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </nav>
-        </>
     );
 }
 
@@ -344,7 +362,7 @@ function PotentialMenteeCard({ mentee, onAccepted }: {
                         <p className="font-bold text-gray-900 leading-tight">{mentee.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{mentee.age} · {mentee.gender} · {mentee.phone}</p>
                     </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#fef9c3] text-[#92400e] shrink-0 border border-[#fde68a]">
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#b45309] text-white shrink-0 border border-[#fde68a]">
                         Pending
                     </span>
                 </div>
@@ -436,9 +454,9 @@ function MenteesTab({ activeMentees }: { activeMentees: import('@/lib/data').Men
     );
 
     const reasonBadge = (r: string) => {
-        if (r === 'Completed')   return 'bg-[#dcfce7] text-[#166534]';
-        if (r === 'Transferred') return 'bg-[#ede9fe] text-[#6741d9]';
-        return 'bg-gray-100 text-gray-500';
+        if (r === 'Completed')   return 'bg-[#16a34a] text-white';
+        if (r === 'Transferred') return 'bg-[#6741d9] text-white';
+        return 'bg-gray-400 text-white';
     };
 
     return (
@@ -832,9 +850,9 @@ interface MentorHubApplication {
 }
 
 const HUB_STATUS_STYLE_MENTOR: Record<string, string> = {
-    'Pending':  'bg-[#fef9c3] text-[#92400e]',
-    'Approved': 'bg-[#dcfce7] text-[#166534]',
-    'Rejected': 'bg-[#fee2e2] text-[#991b1b]',
+    'Pending':  'bg-[#b45309] text-white',
+    'Approved': 'bg-[#16a34a] text-white',
+    'Rejected': 'bg-[#dc2626] text-white',
 };
 
 function MentorPotentialC2STab() {
@@ -1019,6 +1037,7 @@ function MentorDashboard() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'my-groups' | 'potential-mentees' | 'mentees' | 'endorsed' | 'potential-c2s-groups'>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const [viewingGroup, setViewingGroup] = useState<C2SGroup | null>(null);
     const [editingGroup, setEditingGroup] = useState<C2SGroup | null>(null);
     const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -1117,6 +1136,9 @@ function MentorDashboard() {
             )}
 
 
+            {/* Settings modal */}
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
             {/* Mobile sidebar overlay */}
             {sidebarOpen && (
                 <div
@@ -1125,7 +1147,7 @@ function MentorDashboard() {
                 />
             )}
             {/* â”€â”€ Left Sidebar â”€â”€ */}
-            <aside className={`sidebar-nav w-56 border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-16 bottom-0 left-0 z-[1002] transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+            <aside className={`sidebar-nav w-56 border-r border-gray-200 flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 z-[1002] transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 {/* MENU label */}
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
 
@@ -1224,13 +1246,26 @@ function MentorDashboard() {
                         Potential C2S Groups
                     </button>
                 </nav>
+
+                {/* Settings at bottom of sidebar */}
+                <div className="mt-auto px-3 pt-3 border-t border-gray-100 mx-2">
+                    <button
+                        onClick={() => { setShowSettings(true); setSidebarOpen(false); }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#aaa">
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                        </svg>
+                        Settings
+                    </button>
+                </div>
             </aside>
 
             {/* â”€â”€ Main content â”€â”€ */}
             <div className="md:ml-56 flex-1 pb-16 min-w-0">
 
                 {/* Mobile sticky menu bar */}
-                <div className="md:hidden fixed top-16 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
+                <div className="md:hidden fixed top-nav-fixed left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
                     <button
                         className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
                         onClick={() => setSidebarOpen(true)}
@@ -1295,10 +1330,10 @@ function MentorDashboard() {
                                                     {t.label}
                                                 </span>
                                             ))}
-                                            <span className={`text-xs font-semibold px-3 py-1 rounded-full border ml-auto ${
+                                            <span className={`text-xs font-semibold px-3 py-1 rounded-full ml-auto ${
                                                 group.status === 'Open'
-                                                    ? 'border-[#22c55e] text-[#22c55e]'
-                                                    : 'border-gray-300 text-gray-400'
+                                                    ? 'bg-[#16a34a] text-white'
+                                                    : 'bg-gray-400 text-white'
                                             }`}>
                                                 {group.status}
                                             </span>
@@ -1376,13 +1411,13 @@ function MentorDashboard() {
                         </div>
 
                         {/* Reminder banner */}
-                        <div className="flex items-start gap-3 bg-[#fffbeb] border border-[#fde68a] rounded-xl px-5 py-4 mb-7">
-                            <svg className="w-5 h-5 text-[#d97706] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
+                        <div className="flex items-start gap-3 bg-[#b45309] border border-[#92400e] rounded-xl px-5 py-4 mb-7">
+                            <svg className="w-5 h-5 text-white shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
                             </svg>
                             <div>
-                                <p className="text-xs font-bold text-[#92400e] mb-0.5">Reminder</p>
-                                <p className="text-xs text-[#92400e] leading-relaxed">
+                                <p className="text-xs font-bold text-white mb-0.5">Reminder</p>
+                                <p className="text-xs text-white/90 leading-relaxed">
                                     Mentors should personally meet the potential mentee before accepting the mentoring request. This helps ensure both mentor and mentee are ready for discipleship.
                                 </p>
                             </div>
@@ -1418,9 +1453,9 @@ function MentorDashboard() {
                 <div className="grid grid-cols-2 gap-4 mb-5">
                     {[
                         { label: 'Workers',    value: 3455, sub: 'Across all departments',      icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#6aabf7"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> },
-                        { label: 'Mentors',    value: 717,  sub: 'Active discipleship mentors', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f07070"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg> },
-                        { label: 'Mentees',    value: 2765, sub: 'Church-wide C2S mentees',     icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#5cb85c"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg> },
-                        { label: 'C2S Groups', value: 179,  sub: 'Church & community based',    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f5a623"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z"/></svg> },
+                        { label: 'Mentors',    value: 717,  sub: 'Active discipleship mentors', icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f07070"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg> },
+                        { label: 'Mentees',    value: 2765, sub: 'Church-wide C2S mentees',     icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#5cb85c"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> },
+                        { label: 'C2S Groups', value: 179,  sub: 'Church & community based',    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="#f5a623"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> },
                     ].map((s) => (
                         <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col justify-between min-h-[160px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                             <div className="flex items-start justify-between">
@@ -1798,7 +1833,7 @@ export default function DashboardPage() {
         return (
             <>
                 <DashNav onLogout={handleLogout} />
-                <div className="pt-16">
+                <div className="pt-nav-fixed">
                     <AdminDashboard />
                 </div>
             </>
@@ -1809,7 +1844,7 @@ export default function DashboardPage() {
         return (
             <>
                 <DashNav onLogout={handleLogout} />
-                <div className="pt-16">
+                <div className="pt-nav-fixed">
                     <DepartmentHeadDashboard />
                 </div>
             </>
@@ -1820,7 +1855,7 @@ export default function DashboardPage() {
         return (
             <>
                 <DashNav onLogout={handleLogout} />
-                <div className="pt-16">
+                <div className="pt-nav-fixed">
                     <ClusterHeadDashboard onLogout={handleLogout} reportsContent={<CHReportsCharts />} />
                 </div>
             </>
@@ -1831,7 +1866,7 @@ export default function DashboardPage() {
         return (
             <>
                 <DashNav onLogout={handleLogout} />
-                <div className="pt-16">
+                <div className="pt-nav-fixed">
                     <CoordinatorDashboard onLogout={handleLogout} reportsContent={<CoordReportsCharts />} />
                 </div>
             </>
@@ -1841,7 +1876,7 @@ export default function DashboardPage() {
     return (
         <>
             <DashNav onLogout={handleLogout} />
-            <div className="pt-16 overflow-x-hidden">
+            <div className="pt-nav-fixed overflow-x-hidden">
                 <MentorDashboard />
             </div>
         </>

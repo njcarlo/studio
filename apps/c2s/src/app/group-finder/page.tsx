@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -83,7 +83,7 @@ function GroupCard({ group, selected, onSelect, onJoin }: {
                         <span key={t.label} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${t.color}`}>{t.label}</span>
                     ))}
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${group.status === 'Open' ? 'border-[#2dc7be] text-[#0b9b8a]' : 'border-gray-300 text-gray-400'}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${group.status === 'Open' ? 'bg-[#0b9b8a] text-white border-0' : 'border-gray-300 text-gray-400'}`}>
                     {group.status}
                 </span>
             </div>
@@ -156,7 +156,7 @@ export default function GroupFinderPage() {
 
             {/* Success banner */}
             {successMsg && (
-                <div className="fixed top-16 left-0 right-0 z-[9998] flex justify-center px-4 pt-3">
+                <div className="fixed top-nav-fixed left-0 right-0 z-[9998] flex justify-center px-4 pt-3">
                     <div className="flex items-center gap-3 bg-[#f0fdf4] border border-[#86efac] text-[#15803d] rounded-xl px-5 py-3 shadow-md text-sm font-semibold max-w-lg w-full">
                         <svg className="w-5 h-5 shrink-0 text-[#22c55e]" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
@@ -216,12 +216,12 @@ export default function GroupFinderPage() {
             )}
 
             {/* Content area below navbar */}
-            <div className="flex flex-col flex-1 overflow-hidden pt-16">
+            <div className="flex flex-col flex-1 overflow-hidden pt-nav-fixed">
 
                 {/* ── Header strip ── */}
                 <div className="bg-white px-6 py-4 border-b border-gray-100 shrink-0">
                     <div className="flex items-center justify-between mb-2">
-                        <div className="inline-flex items-center bg-[#e0f7f5] text-[#0b9b8a] text-xs font-semibold px-3 py-1 rounded-full">
+                        <div className="inline-flex items-center bg-[#0b9b8a] text-white text-xs font-semibold px-3 py-1 rounded-full">
                             Find your community
                         </div>
                         <Link

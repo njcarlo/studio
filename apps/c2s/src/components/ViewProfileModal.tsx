@@ -10,9 +10,9 @@ interface Props {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-    'Active':         'bg-[#dcfce7] text-[#166534]',
-    'Pending Review': 'bg-[#fef9c3] text-[#854d0e]',
-    'Inactive':       'bg-gray-100 text-gray-500',
+    'Active':         'bg-[#16a34a] text-white',
+    'Pending Review': 'bg-[#b45309] text-white',
+    'Inactive':       'bg-gray-400 text-white',
 };
 
 const AVATAR_COLORS = ['#5b50d6', '#e91e8c', '#0b9b8a', '#e67700', '#6741d9'];
@@ -44,7 +44,7 @@ export default function ViewProfileModal({ member, groupName, onClose }: Props) 
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h2 className="text-xl font-black text-gray-900">{member.name}</h2>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ede9fe] text-[#5b50d6]">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#5b50d6] text-white">
                                         {groupName}
                                     </span>
                                 </div>
