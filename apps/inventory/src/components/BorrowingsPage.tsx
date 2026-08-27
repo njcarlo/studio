@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   ClipboardList, Search, RefreshCw, Plus, X, CheckCircle,
-  AlertTriangle, ChevronLeft, ChevronRight, Package,
+  AlertTriangle, Clock, ChevronLeft, ChevronRight, Package,
   User, Calendar, ArrowUpCircle, ArrowDownCircle, QrCode,
-  Upload, ShieldAlert
+  Upload, Image as ImageIcon, ShieldAlert
 } from 'lucide-react';
 import { QRModal } from './QRModal';
 import { ScannerModal } from './ScannerModal';
-import { uploadItemPhoto } from '../utils/upload';
+import { uploadItemPhoto } from '../utils/firebase';
 
 interface Borrowing {
   id: string;
@@ -952,4 +952,3 @@ function ScanModal({ onClose, onCheckout, onReturn }: {
     </div>
   );
 }
-
