@@ -39,10 +39,10 @@ export default function ViewMembersModal({ group, onClose }: Props) {
     return (
         <>
             {/* Backdrop */}
-            <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose} />
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
 
             {/* Slide-in panel */}
-            <div className="fixed top-0 right-0 bottom-0 z-[101] w-[480px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[480px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
 
                 {/* Header */}
                 <div className="px-6 pt-6 pb-4 border-b border-gray-100">

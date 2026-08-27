@@ -13,6 +13,7 @@ export interface AdminWorker {
     email: string;
     phone: string;
     ministry: string;
+    department?: Department;
     cluster?: string;
     c2sRole?: C2SRole;
     status: WorkerStatus;
@@ -22,22 +23,22 @@ export interface AdminWorker {
 }
 
 export const ADMIN_WORKERS: AdminWorker[] = [
-    { id: 'w1',  initials: 'RD', name: 'Pastor Ramon Dela Cruz', color: '#0b9b8a', email: 'ministry@cogdasmarinas.org',         phone: '+63 917 000 0100', ministry: 'Outreach', cluster: undefined,    c2sRole: 'ministry_head',   status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Jan 1, 2024',  permissions: ['c2s:admin_view','c2s:reports','c2s:manage_workers','c2s:manage_groups','c2s:manage_mentees'] },
-    { id: 'w2',  initials: 'LE', name: 'Liza Evangelista',       color: '#6741d9', email: 'clusterhead@cogdasmarinas.org',       phone: '+63 917 000 0101', ministry: 'Outreach', cluster: 'Cluster 1', c2sRole: 'cluster_head',    status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Jan 10, 2024', permissions: ['c2s:cluster_view','c2s:manage_cluster_mentees'] },
-    { id: 'w3',  initials: 'MV', name: 'Marco Villanueva',       color: '#1971c2', email: 'marco.v@cogdasmarinas.org',           phone: '+63 917 000 0102', ministry: 'Outreach', cluster: 'Cluster 2', c2sRole: 'cluster_head',    status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Jan 10, 2024', permissions: ['c2s:cluster_view','c2s:manage_cluster_mentees'] },
-    { id: 'w4',  initials: 'RC', name: 'Rosa Castillo',          color: '#e91e8c', email: 'coordinator@cogdasmarinas.org',       phone: '+63 917 100 2001', ministry: 'Outreach', cluster: 'Cluster 1', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 1, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
-    { id: 'w5',  initials: 'BM', name: 'Ben Macaraeg',           color: '#0b9b8a', email: 'ben.m@cogdasmarinas.org',             phone: '+63 918 200 3002', ministry: 'Outreach', cluster: 'Cluster 2', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 1, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
-    { id: 'w6',  initials: 'SA', name: 'Sofia Aguila',           color: '#e91e8c', email: 'sofia.a@cogdasmarinas.org',           phone: '+63 919 300 4003', ministry: 'Outreach', cluster: 'Cluster 3', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Pending',  dateAdded: 'Feb 5, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees'] },
-    { id: 'w7',  initials: 'JD', name: 'Juan Dela Cruz',         color: '#5b50d6', email: 'mentor.orchard@cogdasmarinas.org',    phone: '+63 917 123 4567', ministry: 'Outreach', cluster: 'Cluster 1', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Mar 1, 2024',  permissions: ['c2s:mentor_view','c2s:manage_mentees'] },
-    { id: 'w8',  initials: 'PS', name: 'Pedro Santos',           color: '#e91e8c', email: 'mentor.dbb@cogdasmarinas.org',        phone: '+63 918 234 5678', ministry: 'Outreach', cluster: 'Cluster 1', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Mar 1, 2024',  permissions: ['c2s:mentor_view','c2s:manage_mentees'] },
-    { id: 'w9',  initials: 'MR', name: 'Maria Reyes',            color: '#0b9b8a', email: 'mentor.greenfields@cogdasmarinas.org',phone: '+63 919 345 6789', ministry: 'Outreach', cluster: 'Cluster 1', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Mar 1, 2024',  permissions: ['c2s:mentor_view','c2s:manage_mentees'] },
-    { id: 'w10', initials: 'LS', name: 'Lena Santos',            color: '#e67700', email: 'lena.s@cogdasmarinas.org',            phone: '+63 920 456 7890', ministry: 'Outreach', cluster: 'Cluster 1', c2sRole: 'mentor',          status: 'Inactive', workerIdStatus: 'Approved', dateAdded: 'Apr 1, 2024',  permissions: ['c2s:mentor_view'] },
-    { id: 'w11', initials: 'AL', name: 'Ana Lim',                color: '#6741d9', email: 'ana.lim@cogdasmarinas.org',           phone: '+63 917 000 0005', ministry: 'Outreach', cluster: 'Cluster 2', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Jan 20, 2024', permissions: ['c2s:mentor_view','c2s:manage_mentees'] },
-    { id: 'w12', initials: 'CV', name: 'Carmen Villanueva',      color: '#0c8a6e', email: 'carmen.v@cogdasmarinas.org',          phone: '+63 917 000 0006', ministry: 'Outreach', cluster: 'Cluster 2', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Pending',  dateAdded: 'Feb 10, 2024', permissions: ['c2s:mentor_view'] },
-    { id: 'w13', initials: 'EF', name: 'Elena Fuentes',          color: '#e67700', email: 'elena.f@cogdasmarinas.org',           phone: '+63 920 111 2233', ministry: 'Outreach', cluster: 'Cluster 3', c2sRole: 'cluster_head',    status: 'Active',   workerIdStatus: 'Pending',  dateAdded: 'Jan 8, 2024',  permissions: ['c2s:cluster_view'] },
-    { id: 'w14', initials: 'PB', name: 'Patricia Bautista',      color: '#e67700', email: 'patricia.b@cogdasmarinas.org',        phone: '+63 917 000 0014', ministry: 'Outreach', cluster: 'Cluster 4', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 1, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
-    { id: 'w15', initials: 'FR', name: 'Ferdinand Ramos',        color: '#5b50d6', email: 'ferdinand.r@cogdasmarinas.org',       phone: '+63 917 000 0015', ministry: 'Outreach', cluster: 'Cluster 5', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 5, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
-    { id: 'w16', initials: 'MS', name: 'Maricel Santos',         color: '#1971c2', email: 'maricel.s@cogdasmarinas.org',         phone: '+63 917 000 0016', ministry: 'Outreach', cluster: 'Cluster 6', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 5, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
+    { id: 'w1',  initials: 'RD', name: 'Pastor Ramon Dela Cruz', color: '#0b9b8a', email: 'ministry@cogdasmarinas.org',         phone: '+63 917 000 0100', ministry: 'Outreach', department: 'Outreach', cluster: undefined,    c2sRole: 'ministry_head',   status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Jan 1, 2024',  permissions: ['c2s:admin_view','c2s:reports','c2s:manage_workers','c2s:manage_groups','c2s:manage_mentees'] },
+    { id: 'w2',  initials: 'LE', name: 'Liza Evangelista',       color: '#6741d9', email: 'clusterhead@cogdasmarinas.org',       phone: '+63 917 000 0101', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 1', c2sRole: 'cluster_head',    status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Jan 10, 2024', permissions: ['c2s:cluster_view','c2s:manage_cluster_mentees'] },
+    { id: 'w3',  initials: 'MV', name: 'Marco Villanueva',       color: '#1971c2', email: 'marco.v@cogdasmarinas.org',           phone: '+63 917 000 0102', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 2', c2sRole: 'cluster_head',    status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Jan 10, 2024', permissions: ['c2s:cluster_view','c2s:manage_cluster_mentees'] },
+    { id: 'w4',  initials: 'RC', name: 'Rosa Castillo',          color: '#e91e8c', email: 'coordinator@cogdasmarinas.org',       phone: '+63 917 100 2001', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 1', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 1, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
+    { id: 'w5',  initials: 'BM', name: 'Ben Macaraeg',           color: '#0b9b8a', email: 'ben.m@cogdasmarinas.org',             phone: '+63 918 200 3002', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 2', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 1, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
+    { id: 'w6',  initials: 'SA', name: 'Sofia Aguila',           color: '#e91e8c', email: 'sofia.a@cogdasmarinas.org',           phone: '+63 919 300 4003', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 3', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Pending',  dateAdded: 'Feb 5, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees'] },
+    { id: 'w7',  initials: 'JD', name: 'Juan Dela Cruz',         color: '#5b50d6', email: 'mentor.orchard@cogdasmarinas.org',    phone: '+63 917 123 4567', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 1', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Mar 1, 2024',  permissions: ['c2s:mentor_view','c2s:manage_mentees'] },
+    { id: 'w8',  initials: 'PS', name: 'Pedro Santos',           color: '#e91e8c', email: 'mentor.dbb@cogdasmarinas.org',        phone: '+63 918 234 5678', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 1', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Mar 1, 2024',  permissions: ['c2s:mentor_view','c2s:manage_mentees'] },
+    { id: 'w9',  initials: 'MR', name: 'Maria Reyes',            color: '#0b9b8a', email: 'mentor.greenfields@cogdasmarinas.org',phone: '+63 919 345 6789', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 1', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Mar 1, 2024',  permissions: ['c2s:mentor_view','c2s:manage_mentees'] },
+    { id: 'w10', initials: 'LS', name: 'Lena Santos',            color: '#e67700', email: 'lena.s@cogdasmarinas.org',            phone: '+63 920 456 7890', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 1', c2sRole: 'mentor',          status: 'Inactive', workerIdStatus: 'Approved', dateAdded: 'Apr 1, 2024',  permissions: ['c2s:mentor_view'] },
+    { id: 'w11', initials: 'AL', name: 'Ana Lim',                color: '#6741d9', email: 'ana.lim@cogdasmarinas.org',           phone: '+63 917 000 0005', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 2', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Jan 20, 2024', permissions: ['c2s:mentor_view','c2s:manage_mentees'] },
+    { id: 'w12', initials: 'CV', name: 'Carmen Villanueva',      color: '#0c8a6e', email: 'carmen.v@cogdasmarinas.org',          phone: '+63 917 000 0006', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 2', c2sRole: 'mentor',          status: 'Active',   workerIdStatus: 'Pending',  dateAdded: 'Feb 10, 2024', permissions: ['c2s:mentor_view'] },
+    { id: 'w13', initials: 'EF', name: 'Elena Fuentes',          color: '#e67700', email: 'elena.f@cogdasmarinas.org',           phone: '+63 920 111 2233', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 3', c2sRole: 'cluster_head',    status: 'Active',   workerIdStatus: 'Pending',  dateAdded: 'Jan 8, 2024',  permissions: ['c2s:cluster_view'] },
+    { id: 'w14', initials: 'PB', name: 'Patricia Bautista',      color: '#e67700', email: 'patricia.b@cogdasmarinas.org',        phone: '+63 917 000 0014', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 4', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 1, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
+    { id: 'w15', initials: 'FR', name: 'Ferdinand Ramos',        color: '#5b50d6', email: 'ferdinand.r@cogdasmarinas.org',       phone: '+63 917 000 0015', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 5', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 5, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
+    { id: 'w16', initials: 'MS', name: 'Maricel Santos',         color: '#1971c2', email: 'maricel.s@cogdasmarinas.org',         phone: '+63 917 000 0016', ministry: 'Outreach', department: 'Outreach', cluster: 'Cluster 6', c2sRole: 'c2s_coordinator', status: 'Active',   workerIdStatus: 'Approved', dateAdded: 'Feb 5, 2024',  permissions: ['c2s:coord_view','c2s:assign_mentees','c2s:manage_potential'] },
 ];
 
 // ─── RBAC Role Templates ──────────────────────────────────────────────────────
@@ -204,9 +205,31 @@ export const MINISTRY_DEPARTMENTS: Record<Department, string[]> = {
 /** Flat list of all ministry names across all departments */
 export const ALL_MINISTRIES: string[] = DEPARTMENTS.flatMap(d => MINISTRY_DEPARTMENTS[d]);
 
-/** Get the department name for a given ministry name */
-export function getMinistryDept(ministry: string): Department | undefined {
-    return DEPARTMENTS.find(d => MINISTRY_DEPARTMENTS[d].includes(ministry));
+/** Get the department name for a given ministry or cluster name */
+export function getMinistryDept(ministryOrCluster: string): Department | undefined {
+    if (DEPARTMENTS.includes(ministryOrCluster as Department)) {
+        return ministryOrCluster as Department;
+    }
+    return DEPARTMENTS.find(d => 
+        MINISTRY_DEPARTMENTS[d].includes(ministryOrCluster) ||
+        ministryOrCluster.toLowerCase().includes(d.toLowerCase())
+    );
+}
+
+/** Get the resolved department of a worker */
+export function getDepartmentOfWorker(worker: { department?: Department; ministry?: string; cluster?: string }): Department {
+    if (worker.department && DEPARTMENTS.includes(worker.department)) {
+        return worker.department;
+    }
+    if (worker.cluster) {
+        const d = getMinistryDept(worker.cluster);
+        if (d) return d;
+    }
+    if (worker.ministry) {
+        const d = getMinistryDept(worker.ministry);
+        if (d) return d;
+    }
+    return 'Outreach';
 }
 
 // ─── Org Structure (WORDA) ────────────────────────────────────────────────────

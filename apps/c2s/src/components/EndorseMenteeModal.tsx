@@ -9,8 +9,8 @@ interface Props {
 export default function EndorseMenteeModal({ menteeName, onClose, onConfirm }: Props) {
     return (
         <>
-            <div className="fixed inset-0 z-[200] bg-black/40" onClick={onClose} />
-            <div className="fixed inset-0 z-[201] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 flex flex-col gap-6" onClick={e => e.stopPropagation()}>
                     <h2 className="text-2xl font-semibold text-gray-900">Endorse Mentee</h2>
                     <hr className="border-gray-100" />

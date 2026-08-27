@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
@@ -29,23 +29,23 @@ function avatarColor(id: string) {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-    'New':                    'bg-[#1d4ed8] text-white',
+    'New': 'bg-[#1d4ed8] text-white',
     'Waiting for Assignment': 'bg-[#b45309] text-white',
-    'Assigned to Mentor':     'bg-[#6741d9] text-white',
-    'Interview Scheduled':    'bg-[#5b50d6] text-white',
-    'Interview Completed':    'bg-[#5b50d6] text-white',
-    'Accepted':               'bg-[#166534] text-white',
+    'Assigned to Mentor': 'bg-[#6741d9] text-white',
+    'Interview Scheduled': 'bg-[#5b50d6] text-white',
+    'Interview Completed': 'bg-[#5b50d6] text-white',
+    'Accepted': 'bg-[#166534] text-white',
 };
 
 // ─── Nav ─────────────────────────────────────────────────────────────────────
 const COORD_NAV = [
-    { key: 'dashboard',        label: 'Dashboard',             icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z' },
-    { key: 'notifs',           label: 'Notifications',          icon: 'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
-    { key: 'potential',        label: 'Potential Mentees',      icon: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
-    { key: 'potential_c2s',    label: 'Potential C2S Groups',   icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' },
-    { key: 'mentors',          label: 'Mentors',                icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
-    { key: 'groups',           label: 'C2S Groups',             icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-    { key: 'reports',          label: 'Reports',                icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
+    { key: 'dashboard', label: 'Dashboard', icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z' },
+    { key: 'notifs', label: 'Notifications', icon: 'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
+    { key: 'potential', label: 'Potential Mentees', icon: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+    { key: 'potential_c2s', label: 'Potential C2S Home', icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' },
+    { key: 'mentors', label: 'Mentors', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+    { key: 'groups', label: 'C2S Groups', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+    { key: 'reports', label: 'Reports', icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
 ];
 
 // ─── Schedule Interview Modal ─────────────────────────────────────────────────
@@ -56,8 +56,8 @@ function InterviewModal({ name, onClose }: { name: string; onClose: () => void }
     const [done, setDone] = useState(false);
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose} />
-            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-7 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
                     <div className="flex items-start justify-between">
                         <div>
@@ -65,7 +65,7 @@ function InterviewModal({ name, onClose }: { name: string; onClose: () => void }
                             <p className="text-xs text-gray-400 mt-0.5">For {name}</p>
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
                         </button>
                     </div>
                     <div className="flex flex-col gap-3">
@@ -102,7 +102,8 @@ function InterviewModal({ name, onClose }: { name: string; onClose: () => void }
 }
 
 // ─── Assign to Mentor Modal ───────────────────────────────────────────────────
-function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {    mentee: CoordPotentialMentee;
+function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {
+    mentee: CoordPotentialMentee;
     mentors: CoordMentor[];
     onClose: () => void;
     onAssign: (menteeId: string, mentorName: string) => void;
@@ -112,8 +113,8 @@ function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {    mentee: 
 
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose} />
-            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-7 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
                     <div className="flex items-start justify-between">
                         <div>
@@ -121,7 +122,7 @@ function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {    mentee: 
                             <p className="text-xs text-gray-400 mt-0.5">For <span className="font-semibold text-gray-700">{mentee.name}</span></p>
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
                         </button>
                     </div>
                     <div className="rounded-xl p-4 text-xs text-gray-600" style={{ background: 'var(--bg-subtle)' }}>
@@ -142,7 +143,7 @@ function AssignMentorModal({ mentee, mentors, onClose, onAssign }: {    mentee: 
                                     <p className="text-xs text-gray-400">{m.group} · {m.availableSlots} slots left</p>
                                 </div>
                                 {selected === m.name && (
-                                    <svg className="w-5 h-5 text-[#5b50d6] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                    <svg className="w-5 h-5 text-[#5b50d6] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
                                 )}
                             </label>
                         ))}
@@ -172,15 +173,15 @@ function ViewDetailsModal({ mentee, onClose, onAssign, onRecommend }: {
 }) {
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose} />
-            <div className="fixed top-0 right-0 bottom-0 z-[101] w-[480px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[480px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
                 <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900">Potential Mentee Details</h2>
                         <p className="text-xs text-gray-400 mt-0.5">Submitted {mentee.dateSubmitted}</p>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
@@ -200,14 +201,14 @@ function ViewDetailsModal({ mentee, onClose, onAssign, onRecommend }: {
                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Personal Information</p>
                         <div className="divide-y divide-gray-100">
                             {[
-                                { label: 'Email',              value: mentee.email },
-                                { label: 'Phone',              value: mentee.phone },
-                                { label: 'Birthday',           value: mentee.birthday },
-                                { label: 'Barangay',           value: mentee.barangay },
-                                { label: 'Facebook',           value: `Facebook.com/${mentee.facebook}` },
-                                { label: 'First Attended',     value: mentee.firstAttended },
-                                { label: 'Source',             value: mentee.source },
-                                { label: 'Group Type',         value: mentee.groupType },
+                                { label: 'Email', value: mentee.email },
+                                { label: 'Phone', value: mentee.phone },
+                                { label: 'Birthday', value: mentee.birthday },
+                                { label: 'Barangay', value: mentee.barangay },
+                                { label: 'Facebook', value: `Facebook.com/${mentee.facebook}` },
+                                { label: 'First Attended', value: mentee.firstAttended },
+                                { label: 'Source', value: mentee.source },
+                                { label: 'Group Type', value: mentee.groupType },
                             ].map(r => (
                                 <div key={r.label} className="flex items-center justify-between px-4 py-2.5">
                                     <span className="text-xs text-gray-500">{r.label}</span>
@@ -266,8 +267,8 @@ function RecommendGroupModal({ mentee, groups, onClose, onConfirm }: {
     const available = groups.filter(g => g.status === 'Open');
     return (
         <>
-            <div className="fixed inset-0 z-[200] bg-black/40" onClick={onClose} />
-            <div className="fixed inset-0 z-[201] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-7 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900">Recommend Another Group</h2>
@@ -364,20 +365,21 @@ function PotentialMenteesTab({
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 mb-5">
-                <div className="relative w-full sm:w-auto">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
+            <div className="flex flex-wrap items-center gap-3 mb-5">
+                <div className="relative w-full sm:w-64">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search name, barangay, group..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full sm:w-56 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <select
+                    value={filter}
+                    onChange={e => setFilter(e.target.value as any)}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[130px]"
+                >
                     {STATUS_FILTERS.map(f => (
-                        <button key={f} onClick={() => setFilter(f)}
-                            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                            {f}
-                        </button>
+                        <option key={f} value={f}>{f === 'All' ? 'All Status' : f}</option>
                     ))}
-                </div>
+                </select>
             </div>
 
             {/* Mobile cards */}
@@ -490,15 +492,20 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                 <p className="text-sm text-gray-400 mt-1">All mentors within the cluster.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3 mb-6">
-                <div className="relative flex-1 max-w-xs">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
+                <div className="relative w-full sm:w-64">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
                     <input type="text" placeholder="Search mentors..." value={search} onChange={e => setSearch(e.target.value)}
                         className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
                 </div>
-                {(['All', 'Active', 'Inactive'] as const).map(f => (
-                    <button key={f} onClick={() => setFilter(f)}
-                        className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{f}</button>
-                ))}
+                <select
+                    value={filter}
+                    onChange={e => setFilter(e.target.value as any)}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[130px]"
+                >
+                    <option value="All">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {filtered.map(m => {
@@ -523,9 +530,9 @@ function MentorsTab({ mentors }: { mentors: CoordMentor[] }) {
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {[
-                                    { label: 'Active Mentees',    value: m.activeMentees,   color: '#5b50d6' },
-                                    { label: 'Available Slots',   value: m.availableSlots,  color: m.availableSlots > 0 ? '#5b50d6' : '#e67700' },
-                                    { label: 'Group Capacity',    value: m.groupCapacity,   color: '#1971c2' },
+                                    { label: 'Active Mentees', value: m.activeMentees, color: '#5b50d6' },
+                                    { label: 'Available Slots', value: m.availableSlots, color: m.availableSlots > 0 ? '#5b50d6' : '#e67700' },
+                                    { label: 'Group Capacity', value: m.groupCapacity, color: '#1971c2' },
                                 ].map(s => (
                                     <div key={s.label} className="rounded-xl p-3 text-center border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                                         <p className="text-xl font-black leading-none mb-0.5" style={{ color: s.color }}>{s.value}</p>
@@ -569,16 +576,26 @@ function GroupsTab({ groups }: { groups: CoordGroup[] }) {
                 <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">C2S Groups</h1>
                 <p className="text-sm text-gray-400 mt-1">All groups within the cluster.</p>
             </div>
-            <div className="flex items-center gap-2 mb-5 flex-wrap">
-                {(['All', 'Community-based', 'Church-based'] as const).map(f => (
-                    <button key={f} onClick={() => setFilter(f)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{f}</button>
-                ))}
-                <div className="w-px h-5 bg-gray-200 mx-1" />
-                {(['All', 'Open', 'Full', 'Closed'] as const).map(f => (
-                    <button key={f} onClick={() => setStatusFilter(f)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${statusFilter === f ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{f}</button>
-                ))}
+            <div className="flex items-center gap-3 mb-5 flex-wrap">
+                <select
+                    value={filter}
+                    onChange={e => setFilter(e.target.value as any)}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[150px]"
+                >
+                    <option value="All">All Types</option>
+                    <option value="Community-based">Community-based</option>
+                    <option value="Church-based">Church-based</option>
+                </select>
+                <select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value as any)}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[130px]"
+                >
+                    <option value="All">All Status</option>
+                    <option value="Open">Open</option>
+                    <option value="Full">Full</option>
+                    <option value="Closed">Closed</option>
+                </select>
             </div>
             {/* Mobile cards */}
             <div className="sm:hidden bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
@@ -681,11 +698,11 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg bg-white hover:border-gray-300 transition-colors">
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
                         Export PDF
                     </button>
                     <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-lg bg-white hover:border-gray-300 transition-colors">
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>
                         Export Excel
                     </button>
                 </div>
@@ -697,10 +714,10 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
             {/* Summary stat cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 mb-10">
                 {[
-                    { value: COORD_POTENTIAL_MENTEES.length,                                  label: 'Total Potential',  sub: 'All statuses',      color: '#5b50d6' },
-                    { value: COORD_POTENTIAL_MENTEES.filter(m => m.status === 'New').length,  label: 'New This Week',    sub: 'Not yet processed', color: '#5b50d6' },
-                    { value: COORD_MENTORS.filter(m => m.status === 'Active').length,          label: 'Active Mentors',   sub: 'Available',         color: '#5b50d6' },
-                    { value: COORD_GROUPS.filter(g => g.status === 'Open').length,            label: 'Open Groups',      sub: 'Accepting now',     color: '#1971c2' },
+                    { value: COORD_POTENTIAL_MENTEES.length, label: 'Total Potential', sub: 'All statuses', color: '#5b50d6' },
+                    { value: COORD_POTENTIAL_MENTEES.filter(m => m.status === 'New').length, label: 'New This Week', sub: 'Not yet processed', color: '#5b50d6' },
+                    { value: COORD_MENTORS.filter(m => m.status === 'Active').length, label: 'Active Mentors', sub: 'Available', color: '#5b50d6' },
+                    { value: COORD_GROUPS.filter(g => g.status === 'Open').length, label: 'Open Groups', sub: 'Accepting now', color: '#1971c2' },
                 ].map(s => (
                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                         <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
@@ -716,10 +733,15 @@ function CoordReportsTab({ clusterName, groups, reportsContent }: {
                 <p className="text-sm text-gray-400 mt-0.5">Group distribution within the cluster — powered by OpenStreetMap.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-4">
-                {(['All', 'Community-based', 'Church-based'] as const).map(t => (
-                    <button key={t} onClick={() => setMapType(t)}
-                        className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${mapType === t ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{t}</button>
-                ))}
+                <select
+                    value={mapType}
+                    onChange={e => setMapType(e.target.value as any)}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[160px]"
+                >
+                    <option value="All">All Types</option>
+                    <option value="Community-based">Community-based</option>
+                    <option value="Church-based">Church-based</option>
+                </select>
             </div>
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4 map-container">
                 <ClusterMapDynamic groups={mapGroups} accentColor="#5b50d6" />
@@ -794,10 +816,15 @@ function CoordMapTab({ groups }: { groups: CoordGroup[] }) {
                 </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-5">
-                {(['All', 'Community-based', 'Church-based'] as const).map(t => (
-                    <button key={t} onClick={() => setMapType(t)}
-                        className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${mapType === t ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{t}</button>
-                ))}
+                <select
+                    value={mapType}
+                    onChange={e => setMapType(e.target.value as any)}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[160px]"
+                >
+                    <option value="All">All Types</option>
+                    <option value="Community-based">Community-based</option>
+                    <option value="Church-based">Church-based</option>
+                </select>
             </div>
 
             {/* OSM Map */}
@@ -844,10 +871,10 @@ function CoordDashboardNotifications() {
     const unread = notifs.filter(n => !n.read).length;
     const iconMap: Record<string, { bg: string; color: string; path: string }> = {
         new_mentee: { bg: '#ede9fe', color: '#6741d9', path: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
-        accepted:   { bg: '#dcfce7', color: '#166534', path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
-        reassign:   { bg: '#fef9c3', color: '#92400e', path: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' },
-        capacity:   { bg: '#fee2e2', color: '#dc2626', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
-        interview:  { bg: '#ede9fe', color: '#5b50d6', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
+        accepted: { bg: '#dcfce7', color: '#166534', path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
+        reassign: { bg: '#fef9c3', color: '#92400e', path: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' },
+        capacity: { bg: '#fee2e2', color: '#dc2626', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
+        interview: { bg: '#ede9fe', color: '#5b50d6', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
     };
     return (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -868,7 +895,7 @@ function CoordDashboardNotifications() {
                         <div key={n.id} onClick={() => setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
                             className={`flex items-start gap-4 px-6 py-4 cursor-pointer transition-colors hover:bg-gray-50 ${!n.read ? 'bg-[#f5f3ff]' : ''}`}>
                             <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: ic.bg }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill={ic.color}><path d={ic.path}/></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill={ic.color}><path d={ic.path} /></svg>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className={`text-sm leading-snug ${n.read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{n.text}</p>
@@ -889,10 +916,10 @@ function CoordNotifsTab() {
     const unread = notifs.filter(n => !n.read).length;
     const iconMap: Record<string, { bg: string; color: string; path: string }> = {
         new_mentee: { bg: '#ede9fe', color: '#6741d9', path: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
-        accepted:   { bg: '#dcfce7', color: '#166534', path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
-        reassign:   { bg: '#fef9c3', color: '#92400e', path: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' },
-        capacity:   { bg: '#fee2e2', color: '#dc2626', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
-        interview:  { bg: '#ede9fe', color: '#5b50d6', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
+        accepted: { bg: '#dcfce7', color: '#166534', path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
+        reassign: { bg: '#fef9c3', color: '#92400e', path: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' },
+        capacity: { bg: '#fee2e2', color: '#dc2626', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z' },
+        interview: { bg: '#ede9fe', color: '#5b50d6', path: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
     };
     return (
         <div>
@@ -912,7 +939,7 @@ function CoordNotifsTab() {
                         <div key={n.id} onClick={() => setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
                             className={`bg-white rounded-2xl border p-5 flex items-start gap-4 cursor-pointer transition-colors ${n.read ? 'border-gray-100' : 'border-[#5b50d6]/30 bg-[#f5f3ff]'}`}>
                             <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: ic.bg }}>
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill={ic.color}><path d={ic.path}/></svg>
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill={ic.color}><path d={ic.path} /></svg>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className={`text-sm leading-snug ${n.read ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>{n.text}</p>
@@ -941,7 +968,7 @@ interface HubApplication {
 }
 
 const HUB_STATUS_STYLE: Record<string, string> = {
-    'Pending':  'bg-[#b45309] text-white',
+    'Pending': 'bg-[#b45309] text-white',
     'Approved': 'bg-[#16a34a] text-white',
     'Rejected': 'bg-[#dc2626] text-white',
 };
@@ -991,13 +1018,13 @@ function PotentialC2SGroupsTab() {
             {/* ── Confirmation dialog ── */}
             {confirm && (
                 <>
-                    <div className="fixed inset-0 z-[200] bg-black/40" onClick={() => setConfirm(null)} />
-                    <div className="fixed inset-0 z-[201] flex items-center justify-center p-4" onClick={() => setConfirm(null)}>
+                    <div className="fixed inset-0 z-[9999] bg-black/50" onClick={() => setConfirm(null)} />
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={() => setConfirm(null)}>
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 flex flex-col gap-5" onClick={e => e.stopPropagation()}>
                             <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${confirm.action === 'Approved' ? 'bg-[#d3f9f0]' : 'bg-[#fee2e2]'}`}>
                                 {confirm.action === 'Approved'
-                                    ? <svg className="w-6 h-6 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                                    : <svg className="w-6 h-6 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                    ? <svg className="w-6 h-6 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                    : <svg className="w-6 h-6 text-[#5b50d6]" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
                                 }
                             </div>
                             <div className="text-center">
@@ -1031,15 +1058,15 @@ function PotentialC2SGroupsTab() {
             {/* Detail slide-over */}
             {viewing && (
                 <>
-                    <div className="fixed inset-0 z-[100] bg-black/40" onClick={() => setViewing(null)} />
-                    <div className="fixed top-0 right-0 bottom-0 z-[101] w-[420px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
+                    <div className="fixed inset-0 z-[9999] bg-black/50" onClick={() => setViewing(null)} />
+                    <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[420px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
                         <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-start justify-between">
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900">C2S Home Applicants</h2>
                                 <p className="text-xs text-gray-400 mt-0.5">Submitted {viewing.submitted}</p>
                             </div>
                             <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-gray-700 p-1">
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
@@ -1104,106 +1131,106 @@ function PotentialC2SGroupsTab() {
             )}
 
             <div className="mb-6">
-                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Potential C2S Groups</h1>
+                <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Potential C2S Home</h1>
                 <p className="text-sm text-gray-400 mt-1">Applications to host a Connect2Souls devotion hub.</p>
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col gap-2 mb-5">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="relative flex-1 min-w-0">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
-                        <input type="text" placeholder="Search name or barangay..." value={search} onChange={e => setSearch(e.target.value)}
-                            className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
-                    </div>
-                    <span className="text-xs text-gray-400 shrink-0">{filtered.length} application{filtered.length !== 1 ? 's' : ''}</span>
+            <div className="flex flex-wrap items-center gap-3 mb-5">
+                <div className="relative w-full sm:w-64">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
+                    <input type="text" placeholder="Search name or barangay..." value={search} onChange={e => setSearch(e.target.value)}
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                    {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => (
-                        <button key={f} onClick={() => setFilter(f)}
-                            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                            {f}
-                        </button>
-                    ))}
-                </div>
+                <select
+                    value={filter}
+                    onChange={e => setFilter(e.target.value as any)}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[140px]"
+                >
+                    <option value="All">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+                <span className="text-xs text-gray-400 sm:ml-auto">{filtered.length} application{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
             {/* Table */}
             {filtered.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
-                    <svg className="w-12 h-12 text-gray-200 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                    <svg className="w-12 h-12 text-gray-200 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
                     <p className="text-sm text-gray-400 font-medium">No applications yet</p>
                     <p className="text-xs text-gray-300 mt-1">C2S Home Applicants from C2S Finder will appear here.</p>
                 </div>
             ) : (
                 <>
-                {/* Mobile cards */}
-                <div className="sm:hidden bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
-                    {filtered.map(a => (
-                        <div key={a.id} className="p-4 flex flex-col gap-2.5">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
-                                    {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                    {/* Mobile cards */}
+                    <div className="sm:hidden bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+                        {filtered.map(a => (
+                            <div key={a.id} className="p-4 flex flex-col gap-2.5">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                        {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-900 text-sm">{a.name}</p>
+                                        <p className="text-[11px] text-gray-400">{a.phone}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-semibold text-gray-900 text-sm">{a.name}</p>
-                                    <p className="text-[11px] text-gray-400">{a.phone}</p>
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                    <span>{a.barangay}</span>
+                                    <span>{a.schedule}</span>
+                                    <span>Potential: {a.potential}</span>
                                 </div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[11px] text-gray-400">{a.submitted}</span>
+                                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
+                                </div>
+                                <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#5b50d6] border border-[#5b50d6] px-3 py-1.5 rounded-lg hover:bg-[#ede9fe] transition-colors">View</button>
                             </div>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                                <span>{a.barangay}</span>
-                                <span>{a.schedule}</span>
-                                <span>Potential: {a.potential}</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-[11px] text-gray-400">{a.submitted}</span>
-                                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
-                            </div>
-                            <button onClick={() => setViewing(a)} className="self-start text-xs font-semibold text-[#5b50d6] border border-[#5b50d6] px-3 py-1.5 rounded-lg hover:bg-[#ede9fe] transition-colors">View</button>
-                        </div>
-                    ))}
-                </div>
-                {/* Desktop table */}
-                <div className="hidden sm:block bg-white rounded-2xl border border-gray-200">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
-                                {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map(h => (
-                                    <th key={h} className="px-3 py-3 text-left font-semibold">{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filtered.map(a => (
-                                <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
-                                    <td className="px-4 py-3.5">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
-                                                {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-gray-900 text-xs">{a.name}</p>
-                                                <p className="text-[10px] text-gray-400">{a.phone}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-3.5 text-xs text-gray-600">{a.barangay}</td>
-                                    <td className="px-3 py-3.5 text-xs text-gray-600">{a.schedule}</td>
-                                    <td className="px-3 py-3.5 text-xs text-gray-600 text-center">{a.potential}</td>
-                                    <td className="px-3 py-3.5 text-xs text-gray-500">{a.submitted}</td>
-                                    <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
-                                    </td>
-                                    <td className="px-3 py-3.5">
-                                        <div className="flex items-center gap-1.5">
-                                            <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
-                                        </div>
-                                    </td>
+                        ))}
+                    </div>
+                    {/* Desktop table */}
+                    <div className="hidden sm:block bg-white rounded-2xl border border-gray-200">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-[#f8f9fc] text-[10px] text-gray-400 uppercase tracking-widest">
+                                    {['Applicant', 'Barangay', 'Schedule', 'Potential', 'Date', 'Status', 'Actions'].map(h => (
+                                        <th key={h} className="px-3 py-3 text-left font-semibold">{h}</th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {filtered.map(a => (
+                                    <tr key={a.id} className="hover:bg-[#f8f9fc] transition-colors">
+                                        <td className="px-4 py-3.5">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-7 h-7 rounded-full bg-[#ede9fe] flex items-center justify-center text-[#5b50d6] text-[10px] font-black shrink-0">
+                                                    {a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-900 text-xs">{a.name}</p>
+                                                    <p className="text-[10px] text-gray-400">{a.phone}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-600">{a.barangay}</td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-600">{a.schedule}</td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-600 text-center">{a.potential}</td>
+                                        <td className="px-3 py-3.5 text-xs text-gray-500">{a.submitted}</td>
+                                        <td className="px-3 py-3.5">
+                                            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${HUB_STATUS_STYLE[a.status]}`}>{a.status}</span>
+                                        </td>
+                                        <td className="px-3 py-3.5">
+                                            <div className="flex items-center gap-1.5">
+                                                <button onClick={() => setViewing(a)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">View</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </>
             )}
         </div>
@@ -1248,14 +1275,14 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
     }));
 
     // Dashboard stats
-    const newCount       = resolvedMentees.filter(m => m.status === 'New').length;
-    const waitingCount   = resolvedMentees.filter(m => m.status === 'Waiting for Assignment').length;
-    const assignedToday  = resolvedMentees.filter(m => m.status === 'Assigned to Mentor').length;
-    const activeMentors  = COORD_MENTORS.filter(m => m.status === 'Active').length;
-    const openGroups     = COORD_GROUPS.filter(g => g.status === 'Open').length;
+    const newCount = resolvedMentees.filter(m => m.status === 'New').length;
+    const waitingCount = resolvedMentees.filter(m => m.status === 'Waiting for Assignment').length;
+    const assignedToday = resolvedMentees.filter(m => m.status === 'Assigned to Mentor').length;
+    const activeMentors = COORD_MENTORS.filter(m => m.status === 'Active').length;
+    const openGroups = COORD_GROUPS.filter(g => g.status === 'Open').length;
     const communityCount = COORD_GROUPS.filter(g => g.type === 'Community-based').length;
-    const churchCount    = COORD_GROUPS.filter(g => g.type === 'Church-based').length;
-    const unreadCount    = COORD_NOTIFICATIONS.filter(n => !n.read).length;
+    const churchCount = COORD_GROUPS.filter(g => g.type === 'Church-based').length;
+    const unreadCount = COORD_NOTIFICATIONS.filter(n => !n.read).length;
 
     return (
         <div className="flex min-h-screen dashboard-shell" style={{ background: 'var(--bg-page)' }}>
@@ -1263,14 +1290,13 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 z-[1001] bg-black/40 md:hidden"
+                    className="fixed inset-0 z-40 bg-black/50 md:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 z-[1002] transition-transform duration-200
-                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-transform duration-200`}>
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
                 <nav className="px-3 flex flex-col gap-1 flex-1 overflow-y-auto">
                     {COORD_NAV.map(item => (
@@ -1281,13 +1307,13 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                             </svg>
                             {item.label}
                             {item.key === 'potential' && (newCount + waitingCount) > 0 && (
-                                <span className="ml-auto text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-full shrink-0" style={{ background: '#dde0f5', color: '#6366c1' }}>{newCount + waitingCount}</span>
+                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full shrink-0 bg-[#5b50d6] text-white">{newCount + waitingCount}</span>
                             )}
                             {item.key === 'notifs' && unreadCount > 0 && (
-                                <span className="ml-auto text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-full shrink-0" style={{ background: '#dde0f5', color: '#6366c1' }}>{unreadCount}</span>
+                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full shrink-0 bg-[#5b50d6] text-white">{unreadCount}</span>
                             )}
                             {item.key === 'potential_c2s' && hubPendingCount > 0 && (
-                                <span className="ml-auto text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-full shrink-0" style={{ background: '#fef9c3', color: '#92400e' }}>{hubPendingCount}</span>
+                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full shrink-0 bg-[#d97706] text-white">{hubPendingCount}</span>
                             )}
                         </button>
                     ))}
@@ -1299,7 +1325,7 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60"
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="#aaa">
-                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
                         </svg>
                         Settings
                     </button>
@@ -1310,23 +1336,23 @@ export default function CoordinatorDashboard({ onLogout, reportsContent }: { onL
             {/* ── Main ── */}
             <div className="md:ml-56 flex-1 pb-16 min-w-0">
 
-                    {/* Mobile sticky menu bar */}
-                    <div className="md:hidden fixed top-nav-fixed left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
-                        <button
-                            className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
-                            onClick={() => setSidebarOpen(true)}
-                            aria-label="Open menu"
-                        >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                            </svg>
-                        </button>
-                        <span className="text-xs text-gray-400 ml-1">
-                            {COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
-                        </span>
-                    </div>
+                {/* Mobile sticky menu bar */}
+                <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
+                    <button
+                        className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open menu"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+                        </svg>
+                    </button>
+                    <span className="text-xs text-gray-400 ml-1">
+                        {COORD_NAV.find(n => n.key === activeNav)?.label ?? 'Dashboard'}
+                    </span>
+                </div>
 
-                    <div className="pt-[72px] md:pt-5 px-4 sm:px-6">
+                <div className="pt-4 md:pt-5 px-4 sm:px-6">
                     {/* -- Dashboard -- */}
                     {activeNav === 'dashboard' && (
                         <div>

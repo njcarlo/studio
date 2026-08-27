@@ -288,8 +288,8 @@ export default function DevotionalProgressModal({ mentee, onClose, onSave }: Pro
 
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose} />
-            <div className="fixed inset-0 z-[101] flex items-center justify-center p-3 sm:p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4" onClick={onClose}>
 
                 {showEndorse && (
                     <EndorseMenteeModal

@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
 import { ThemeProvider } from '@/lib/theme-context';
+import { SatelliteProvider } from '@/lib/satellite-context';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -31,7 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <AuthProvider>
                     <ThemeProvider>
                         <FontSizeProvider>
-                            {children}
+                            <SatelliteProvider>
+                                {children}
+                            </SatelliteProvider>
                         </FontSizeProvider>
                     </ThemeProvider>
                 </AuthProvider>

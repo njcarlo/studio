@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SUBDIVISIONS_BY_BARANGAY, BARANGAYS_BY_SATELLITE } from '@/lib/data';
+import { useSatellites } from '@/lib/satellite-context';
 
 interface Props {
     onClose: () => void;
@@ -9,7 +10,8 @@ interface Props {
         name: string; description: string; groupType: string; status: string;
         meetingDay: string; meetingTime: string; frequency: string; duration: string;
         conduct: string; barangay?: string; subdivision?: string;
-        satellite?: string; ageGroup?: string; gender?: string;
+        satellite?: string; satelliteId?: string; satelliteName?: string;
+        ageGroup?: string; gender?: string;
     }) => void;
 }
 
@@ -19,7 +21,6 @@ const FREQUENCIES = ['Weekly','Once a week','Once a month','Once a year'];
 const DURATIONS   = ['1 hr','2 hrs','3 hrs','4 hrs','5 hrs','6 hrs','7 hrs','8 hrs','9 hrs','10 hrs','11 hrs','12 hrs'];
 const GROUP_TYPES = ['Youth','Young Adults',"Men's","Ladies'",'Couples','Open to All'];
 const STATUSES    = ['Exclusive','Open'];
-const SATELLITES  = ['COG Dasmarinas','COG Silang','COG Jabez','COG Trece'];
 const CONDUCT_OPTIONS = ['Church base','Community base'];
 const MEETING_FORMATS = ['Face to Face', 'Online'];
 const GENDERS     = ['Female','Male','Both'];
@@ -40,7 +41,7 @@ function Sel({ value, onChange, options }: { value: string; onChange: (v: string
         <div className="relative">
             <select value={value} onChange={(e) => onChange(e.target.value)}
                 className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700">
-                {options.map((o) => <option key={o}>{o}</option>)}
+                {options.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
             <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M7 10l5 5 5-5z"/>
@@ -50,6 +51,8 @@ function Sel({ value, onChange, options }: { value: string; onChange: (v: string
 }
 
 export default function CreateGroupModal({ onClose, onCreate }: Props) {
+    const { activeSatellites } = useSatellites();
+
     const [name, setName]               = useState('');
     const [groupType, setGroupType]     = useState('Youth');
     const [description, setDescription] = useState('');
@@ -60,8 +63,10 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
     const [duration, setDuration]       = useState('1 hr');
     const [conduct, setConduct]                       = useState('Church base');
     const [meetingFormat, setMeetingFormat]           = useState('Face to Face');
-    const [satellite, setSatellite]                 = useState('COG Dasmarinas');
-    const [communitySatellite, setCommunitySatellite] = useState('COG Dasmarinas');
+
+    const defaultSat = activeSatellites[0]?.name ?? '';
+    const [satellite, setSatellite]                 = useState(defaultSat);
+    const [communitySatellite, setCommunitySatellite] = useState(defaultSat);
     const [barangay, setBarangay]                   = useState('');
     const [subdivision, setSubdivision]             = useState('');
     const [customSubdivision, setCustomSubdivision] = useState('');
@@ -71,8 +76,14 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
     const isCommunity = conduct === 'Community base';
     const isOther = subdivision === 'Other';
 
-    // Barangay list scoped to the selected satellite (community base)
-    const communityBarangays = BARANGAYS_BY_SATELLITE[communitySatellite] ?? [];
+    // Find active satellite objects
+    const currentSelectedSatName = !isCommunity ? satellite : communitySatellite;
+    const selectedSatObj = activeSatellites.find(s => s.name === currentSelectedSatName) || activeSatellites[0];
+
+    // Barangay list scoped to the selected satellite
+    const communityBarangays = BARANGAYS_BY_SATELLITE[communitySatellite] ??
+        (selectedSatObj ? [selectedSatObj.barangay, ...BARANGAYS_BY_SATELLITE['COG Dasmarinas']] : BARANGAYS_BY_SATELLITE['COG Dasmarinas']);
+    const uniqueBarangays = Array.from(new Set(communityBarangays));
     const subdivisionOptions = SUBDIVISIONS_BY_BARANGAY[barangay] ?? [];
 
     function handleCommunitySatelliteChange(val: string) {
@@ -90,21 +101,32 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
 
     function handleCreate() {
         if (!name.trim()) return;
+        const chosenSatObj = activeSatellites.find(s => s.name === (!isCommunity ? satellite : communitySatellite)) || activeSatellites[0];
         onCreate({
-            name, description, groupType, status, meetingDay, meetingTime,
-            frequency, duration, conduct,
+            name,
+            description,
+            groupType,
+            status,
+            meetingDay,
+            meetingTime,
+            frequency,
+            duration,
+            conduct,
             barangay: isCommunity ? barangay : undefined,
             subdivision: isCommunity ? (isOther ? customSubdivision : subdivision) : undefined,
-            satellite: !isCommunity ? satellite : communitySatellite,
-            ageGroup, gender,
+            satellite: chosenSatObj?.name || (!isCommunity ? satellite : communitySatellite),
+            satelliteId: chosenSatObj?.id,
+            satelliteName: chosenSatObj?.name || (!isCommunity ? satellite : communitySatellite),
+            ageGroup,
+            gender,
         });
         onClose();
     }
 
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose} />
-            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div
                     className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
                     onClick={(e) => e.stopPropagation()}
@@ -115,7 +137,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                             <h2 className="text-xl font-semibold text-gray-900">Create New Group</h2>
                             <p className="text-xs text-gray-400 mt-0.5">Changes automatically sync with the C2S Group Finder.</p>
                         </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors mt-0.5">
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 transition-colors mt-0.5" aria-label="Close">
                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                             </svg>
@@ -129,7 +151,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                         <section>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Basic Information</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field label="Group Name">
+                                <Field label="Group Name *">
                                     <input type="text" placeholder="e.g. Salt & Light Youth" value={name}
                                         onChange={(e) => setName(e.target.value)} className={INPUT} />
                                 </Field>
@@ -181,19 +203,61 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
 
                                 {/* Church base → Satellite Churches */}
                                 {!isCommunity && (
-                                    <div className="w-full sm:max-w-[50%]">
-                                        <Field label="Satellite Churches">
-                                            <Sel value={satellite} onChange={setSatellite} options={SATELLITES} />
-                                        </Field>
-                                    </div>
-                                )}
+                                    <div className="w-full sm:max-w-[70%]">
+                                        <Field label="Satellite Church *">
+                                            {activeSatellites.length === 0 ? (
+                                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                                                    No satellite churches available. Ask a C2S Admin to add an active satellite church first.
+                                                </div>
+                                            ) : (
+                                                    <div className="relative">
+                                                        <select
+                                                            value={satellite || (activeSatellites[0]?.name ?? '')}
+                                                            onChange={(e) => setSatellite(e.target.value)}
+                                                            className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
+                                                        >
+                                                            {activeSatellites.map((s) => (
+                                                                <option key={s.id} value={s.name}>
+                                                                    {s.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path d="M7 10l5 5 5-5z"/>
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                            </Field>
+                                        </div>
+                                    )}
 
-                                {/* Community base → Satellite → Barangay + Subdivision */}
-                                {isCommunity && (
-                                    <>
-                                        <div className="w-full sm:max-w-[50%]">
-                                            <Field label="Satellite Church">
-                                                <Sel value={communitySatellite} onChange={handleCommunitySatelliteChange} options={SATELLITES} />
+                                    {/* Community base → Satellite → Barangay + Subdivision */}
+                                    {isCommunity && (
+                                        <>
+                                            <div className="w-full sm:max-w-[70%]">
+                                                <Field label="Satellite Church *">
+                                                    {activeSatellites.length === 0 ? (
+                                                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                                                            No satellite churches available. Ask a C2S Admin to add an active satellite church first.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="relative">
+                                                            <select
+                                                                value={communitySatellite || (activeSatellites[0]?.name ?? '')}
+                                                                onChange={(e) => handleCommunitySatelliteChange(e.target.value)}
+                                                                className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
+                                                            >
+                                                                {activeSatellites.map((s) => (
+                                                                    <option key={s.id} value={s.name}>
+                                                                        {s.name}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M7 10l5 5 5-5z"/>
+                                                            </svg>
+                                                        </div>
+                                                    )}
                                             </Field>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -205,7 +269,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                                                         className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-[#f8f9fc] focus:outline-none focus:ring-2 focus:ring-[#5b50d6] pr-8 text-gray-700"
                                                     >
                                                         <option value="">— Select barangay —</option>
-                                                        {communityBarangays.map((b) => (
+                                                        {uniqueBarangays.map((b) => (
                                                             <option key={b} value={b}>{b}</option>
                                                         ))}
                                                     </select>
@@ -270,7 +334,7 @@ export default function CreateGroupModal({ onClose, onCreate }: Props) {
                             className="px-5 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors">
                             Cancel
                         </button>
-                        <button onClick={handleCreate} disabled={!name.trim()}
+                        <button onClick={handleCreate} disabled={!name.trim() || activeSatellites.length === 0}
                             className="px-6 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             style={{ background: '#5b50d6' }}>
                             Create Group

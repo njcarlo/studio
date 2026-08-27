@@ -50,8 +50,8 @@ export default function TransferMenteeModal({ menteeName, menteeInitials, onClos
 
     return (
         <>
-            <div className="fixed inset-0 z-[200] bg-black/40" onClick={onClose} />
-            <div className="fixed inset-0 z-[201] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col" onClick={e => e.stopPropagation()}>
 
                     {/* ── Step 1: Confirm ── */}

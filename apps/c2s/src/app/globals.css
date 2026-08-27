@@ -1,9 +1,8 @@
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Leaflet CSS */
-@import 'leaflet/dist/leaflet.css';
 
 /* ── Contain Leaflet z-index within the map container ── */
 /* Prevents map tiles/controls from overlapping the mobile sidebar */
@@ -136,7 +135,10 @@ html {
     color: var(--text);
     @apply antialiased;
     font-family: 'Inter', system-ui, sans-serif;
-    font-weight: 400;
+    font-size: 1.125rem; /* ~18px base text for clear elder accessibility */
+    line-height: 1.55;
+    font-weight: 450;
+    text-rendering: optimizeLegibility;
     transition: background-color 0.2s ease, color 0.2s ease;
     /* Prevent horizontal overflow on mobile */
     overflow-x: hidden;
@@ -144,7 +146,67 @@ html {
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-weight: 600;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* ── Senior Accessibility: Scale up micro text arbitrary classes (+25-30%) ── */
+  [class*="text-[8px]"], .text-\[8px\]   { font-size: 11px !important; line-height: 1.35 !important; }
+  [class*="text-[9px]"], .text-\[9px\]   { font-size: 12.5px !important; line-height: 1.35 !important; font-weight: 700; }
+  [class*="text-[10px]"], .text-\[10px\] { font-size: 13.5px !important; line-height: 1.4 !important; }
+  [class*="text-[11px]"], .text-\[11px\] { font-size: 14.5px !important; line-height: 1.45 !important; }
+  [class*="text-[12px]"], .text-\[12px\] { font-size: 15.5px !important; line-height: 1.45 !important; }
+  [class*="text-[13px]"], .text-\[13px\] { font-size: 16.5px !important; line-height: 1.5 !important; }
+  [class*="text-[14px]"], .text-\[14px\] { font-size: 17.5px !important; line-height: 1.5 !important; }
+  [class*="text-[15px]"], .text-\[15px\] { font-size: 18.5px !important; line-height: 1.5 !important; }
+  [class*="text-[1.6rem]"], .text-\[1\.6rem\] { font-size: 1.95rem !important; }
+  [class*="text-[2rem]"], .text-\[2rem\]     { font-size: 2.4rem !important; }
+  [class*="text-[2.6rem]"], .text-\[2\.6rem\] { font-size: 3.1rem !important; }
+  [class*="text-[2.75rem]"], .text-\[2\.75rem\] { font-size: 3.3rem !important; }
+
+  /* Accessible form elements */
+  input, select, textarea, button {
+    font-size: 1.05rem;
+  }
+  input::placeholder, textarea::placeholder {
+    font-size: 0.95rem;
+    color: #6b7280;
+  }
+
+  /* Accessible table typography */
+  th {
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em;
+  }
+  td {
+    font-size: 1.05rem;
+  }
+
+  /* ── Mobile Anti-Overlap & Overflow Protection ── */
+  p, span, h1, h2, h3, h4, h5, h6, label, a, button {
+    overflow-wrap: break-word;
+  }
+
+  @media (max-width: 640px) {
+    body {
+      font-size: 1.05rem; /* ~16.8px on mobile (20% boost over default, perfectly fitted) */
+      line-height: 1.5;
+    }
+
+    [class*="text-[1.6rem]"], .text-\[1\.6rem\] { font-size: 1.45rem !important; line-height: 1.25 !important; }
+    [class*="text-[2rem]"], .text-\[2rem\]     { font-size: 1.75rem !important; line-height: 1.2 !important; }
+    [class*="text-[2.6rem]"], .text-\[2\.6rem\] { font-size: 2.1rem !important; line-height: 1.15 !important; }
+    [class*="text-[2.75rem]"], .text-\[2\.75rem\] { font-size: 2.2rem !important; line-height: 1.15 !important; }
+
+    [class*="text-[8px]"], .text-\[8px\]   { font-size: 10.5px !important; }
+    [class*="text-[9px]"], .text-\[9px\]   { font-size: 11.5px !important; }
+    [class*="text-[10px]"], .text-\[10px\] { font-size: 12.5px !important; }
+    [class*="text-[11px]"], .text-\[11px\] { font-size: 13.5px !important; }
+
+    input, select, textarea, button {
+      font-size: 1rem;
+    }
   }
 
   /* ── Force-light pages: never apply dark overrides ───────────────────────── */
@@ -357,19 +419,19 @@ html {
     background-color: var(--bg-subtle) !important;
   }
 
-  /* ── Light tinted backgrounds (status badges, selection states, table headers) ── */
-  html.dark [class*="bg-[#f5f3ff]"] { background-color: #2d2a4a !important; }
-  html.dark [class*="bg-[#dbeafe]"] { background-color: #1e2a3d !important; }
-  html.dark [class*="bg-[#d3f9f0]"] { background-color: #0d2926 !important; }
-  html.dark [class*="bg-[#dcfce7]"] { background-color: #0d2e1a !important; }
-  html.dark [class*="bg-[#fef9c3]"],
-  html.dark [class*="bg-[#fef3c7]"],
-  html.dark [class*="bg-[#fff3cd]"],
-  html.dark [class*="bg-[#fffbeb]"] { background-color: #2d2512 !important; }
-  html.dark [class*="bg-[#fee2e2]"] { background-color: #2d1414 !important; }
-  html.dark [class*="bg-[#ede9fe]"] { background-color: #2d2a4a !important; }
-  html.dark [class*="bg-[#e0f0ff]"] { background-color: #1a2a3d !important; }
-  html.dark [class*="bg-[#dde0f5]"] { background-color: #2a2c45 !important; }
+  /* ── Light tinted container backgrounds (selection states, alerts, info cards) ── */
+  html.dark div:not(.rounded-full)[class*="bg-[#f5f3ff]"] { background-color: #2d2a4a !important; }
+  html.dark div:not(.rounded-full)[class*="bg-[#dbeafe]"] { background-color: #1e2a3d !important; }
+  html.dark div:not(.rounded-full)[class*="bg-[#d3f9f0]"] { background-color: #0d2926 !important; }
+  html.dark div:not(.rounded-full)[class*="bg-[#dcfce7]"] { background-color: #0d2e1a !important; }
+  html.dark div:not(.rounded-full)[class*="bg-[#fef9c3]"],
+  html.dark div:not(.rounded-full)[class*="bg-[#fef3c7]"],
+  html.dark div:not(.rounded-full)[class*="bg-[#fff3cd]"],
+  html.dark div:not(.rounded-full)[class*="bg-[#fffbeb]"] { background-color: #2d2512 !important; }
+  html.dark div:not(.rounded-full)[class*="bg-[#fee2e2]"] { background-color: #2d1414 !important; }
+  html.dark div:not(.rounded-full)[class*="bg-[#ede9fe]"] { background-color: #2d2a4a !important; }
+  html.dark div:not(.rounded-full)[class*="bg-[#e0f0ff]"] { background-color: #1a2a3d !important; }
+  html.dark div:not(.rounded-full)[class*="bg-[#dde0f5]"] { background-color: #2a2c45 !important; }
 
   /* Table header rows with inline style background: #dbeafe */
   html.dark tr[style*="background: #dbeafe"],
@@ -448,86 +510,151 @@ html {
     border-top: 2px solid var(--border);
   }
 
-  /* ── Status / label badges — always white text ── */
-  /* Catches any remaining light-bg rounded-full badges */
-  .rounded-full.bg-\[#dcfce7\],
-  .rounded-full.bg-\[#fef9c3\],
-  .rounded-full.bg-\[#fef3c7\],
-  .rounded-full.bg-\[#ede9fe\],
-  .rounded-full.bg-\[#dbeafe\],
-  .rounded-full.bg-\[#d3f9f0\],
-  .rounded-full.bg-\[#e0f7f5\],
-  .rounded-full.bg-\[#e0f0ff\],
-  .rounded-full.bg-\[#fee2e2\],
-  .rounded-full.bg-\[#fde68a\],
-  .rounded-full.bg-\[#dde0f5\],
-  .rounded-full.bg-\[#f0effc\],
-  .rounded-full.bg-\[#f0eeff\] {
+  /* ══════════════════════════════════════════════════════════════════
+     DARK MODE: BADGES & STATUS PILLS (High-Contrast White Text)
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* ── 1. Green badges: Active, Open, Accepted, Approved ── */
+  html.dark .rounded-full[class*="bg-[#dcfce7]"],
+  html.dark .rounded-full[class*="bg-[#d3f9f0]"],
+  html.dark .rounded-full[class*="bg-[#e0f7f5]"],
+  html.dark .rounded-full[class*="bg-[#16a34a]"],
+  html.dark .rounded-full[class*="bg-[#166534]"],
+  html.dark .rounded-full[class*="bg-[#0c8a6e]"],
+  html.dark .rounded-full[class*="bg-[#0b9b8a]"],
+  html.dark .rounded-full[class*="bg-green-"],
+  html.dark .rounded-full[class*="bg-emerald-"],
+  html.dark .rounded-full[class*="bg-teal-"],
+  html.dark .rounded-xl[class*="bg-[#dcfce7]"],
+  html.dark .rounded-xl[class*="bg-[#16a34a]"],
+  html.dark .rounded-xl[class*="bg-[#166534]"],
+  html.dark .rounded-xl[class*="bg-[#0c8a6e]"],
+  html.dark .rounded-xl[class*="bg-[#0b9b8a]"] {
+    background-color: #16a34a !important;
     color: #ffffff !important;
   }
 
-  /* ── Dark mode: brighten badge backgrounds for readability on dark bg ── */
-  /* Solid-colored rounded-full badges get lighter/brighter versions in dark mode */
-  html.dark .rounded-full.bg-\[#16a34a\]  { background-color: #22c55e !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#166534\]  { background-color: #22c55e !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#0b9b8a\]  { background-color: #2dd4bf !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#0c8a6e\]  { background-color: #2dd4bf !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#5b50d6\]  { background-color: #818cf8 !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#6741d9\]  { background-color: #a78bfa !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#6366c1\]  { background-color: #818cf8 !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#1971c2\]  { background-color: #60a5fa !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#1d4ed8\]  { background-color: #60a5fa !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#b45309\]  { background-color: #fb923c !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#e67700\]  { background-color: #fb923c !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#dc2626\]  { background-color: #f87171 !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#e6184d\]  { background-color: #fb7185 !important; color: #ffffff !important; }
-  html.dark .rounded-full.bg-\[#e91e8c\]  { background-color: #f472b6 !important; color: #ffffff !important; }
-  /* Gray/inactive stays muted */
-  html.dark .rounded-full.bg-gray-400     { background-color: #6b7280 !important; color: #e5e7eb !important; }
-  html.dark .rounded-full.bg-gray-100     { background-color: #374151 !important; color: #9ca3af !important; }
+  /* ── 2. Blue badges: Approved, New, Church-based, Finder ── */
+  html.dark .rounded-full[class*="bg-[#dbeafe]"],
+  html.dark .rounded-full[class*="bg-[#e0f0ff]"],
+  html.dark .rounded-full[class*="bg-[#1971c2]"],
+  html.dark .rounded-full[class*="bg-[#1d4ed8]"],
+  html.dark .rounded-full[class*="bg-[#2563eb]"],
+  html.dark .rounded-full[class*="bg-blue-"],
+  html.dark .rounded-full[class*="bg-sky-"],
+  html.dark .rounded-xl[class*="bg-[#dbeafe]"],
+  html.dark .rounded-xl[class*="bg-[#e0f0ff]"],
+  html.dark .rounded-xl[class*="bg-[#1971c2]"],
+  html.dark .rounded-xl[class*="bg-[#1d4ed8]"] {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+  }
 
-  /* Force white text on ALL colored rounded-full badges in dark mode regardless of text-color class */
-  html.dark .rounded-full.text-\[#166534\],
-  html.dark .rounded-full.text-\[#0c8a6e\],
-  html.dark .rounded-full.text-\[#0b9b8a\],
-  html.dark .rounded-full.text-\[#6741d9\],
-  html.dark .rounded-full.text-\[#5b50d6\],
-  html.dark .rounded-full.text-\[#6366c1\],
-  html.dark .rounded-full.text-\[#1971c2\],
-  html.dark .rounded-full.text-\[#1d4ed8\],
-  html.dark .rounded-full.text-\[#92400e\],
-  html.dark .rounded-full.text-\[#b45309\],
-  html.dark .rounded-full.text-\[#991b1b\],
-  html.dark .rounded-full.text-\[#dc2626\],
-  html.dark .rounded-full.text-\[#e6184d\],
-  html.dark .rounded-full.text-\[#e67700\] { color: #ffffff !important; }
+  /* ── 3. Purple / Indigo badges: Mentor, Assigned, Recommended ── */
+  html.dark .rounded-full[class*="bg-[#ede9fe]"],
+  html.dark .rounded-full[class*="bg-[#f5f3ff]"],
+  html.dark .rounded-full[class*="bg-[#dde0f5]"],
+  html.dark .rounded-full[class*="bg-[#f0effc]"],
+  html.dark .rounded-full[class*="bg-[#f0eeff]"],
+  html.dark .rounded-full[class*="bg-[#5b50d6]"],
+  html.dark .rounded-full[class*="bg-[#6741d9]"],
+  html.dark .rounded-full[class*="bg-[#6366c1]"],
+  html.dark .rounded-full[class*="bg-indigo-"],
+  html.dark .rounded-full[class*="bg-purple-"],
+  html.dark .rounded-full[class*="bg-violet-"],
+  html.dark .rounded-xl[class*="bg-[#ede9fe]"],
+  html.dark .rounded-xl[class*="bg-[#f5f3ff]"],
+  html.dark .rounded-xl[class*="bg-[#5b50d6]"],
+  html.dark .rounded-xl[class*="bg-[#6741d9]"] {
+    background-color: #6366f1 !important;
+    color: #ffffff !important;
+  }
 
-  /* Same brightening for rounded-xl pill badges */
-  html.dark .rounded-xl.bg-\[#16a34a\],
-  html.dark .rounded-xl.bg-\[#166534\]    { background-color: #22c55e !important; color: #ffffff !important; }
-  html.dark .rounded-xl.bg-\[#0b9b8a\],
-  html.dark .rounded-xl.bg-\[#0c8a6e\]   { background-color: #2dd4bf !important; color: #ffffff !important; }
-  html.dark .rounded-xl.bg-\[#5b50d6\],
-  html.dark .rounded-xl.bg-\[#6366c1\]   { background-color: #818cf8 !important; color: #ffffff !important; }
-  html.dark .rounded-xl.bg-\[#6741d9\]   { background-color: #a78bfa !important; color: #ffffff !important; }
-  html.dark .rounded-xl.bg-\[#1971c2\],
-  html.dark .rounded-xl.bg-\[#1d4ed8\]   { background-color: #60a5fa !important; color: #ffffff !important; }
-  html.dark .rounded-xl.bg-\[#b45309\],
-  html.dark .rounded-xl.bg-\[#e67700\]   { background-color: #fb923c !important; color: #ffffff !important; }
-  html.dark .rounded-xl.bg-\[#dc2626\]   { background-color: #f87171 !important; color: #ffffff !important; }
-  html.dark .rounded-xl.bg-\[#e6184d\]   { background-color: #fb7185 !important; color: #ffffff !important; }
-  /* Force white text on rounded-xl badges too */
-  html.dark .rounded-xl.text-\[#166534\],
-  html.dark .rounded-xl.text-\[#0c8a6e\],
-  html.dark .rounded-xl.text-\[#0b9b8a\],
-  html.dark .rounded-xl.text-\[#6741d9\],
-  html.dark .rounded-xl.text-\[#5b50d6\],
-  html.dark .rounded-xl.text-\[#1971c2\],
-  html.dark .rounded-xl.text-\[#92400e\],
-  html.dark .rounded-xl.text-\[#b45309\],
-  html.dark .rounded-xl.text-\[#991b1b\],
-  html.dark .rounded-xl.text-\[#dc2626\],
-  html.dark .rounded-xl.text-\[#e6184d\] { color: #ffffff !important; }
+  /* ── 4. Amber / Yellow / Orange badges: Pending, Waiting, Full ── */
+  html.dark .rounded-full[class*="bg-[#fef9c3]"],
+  html.dark .rounded-full[class*="bg-[#fef3c7]"],
+  html.dark .rounded-full[class*="bg-[#fff3cd]"],
+  html.dark .rounded-full[class*="bg-[#fffbeb]"],
+  html.dark .rounded-full[class*="bg-[#fde68a]"],
+  html.dark .rounded-full[class*="bg-[#b45309]"],
+  html.dark .rounded-full[class*="bg-[#e67700]"],
+  html.dark .rounded-full[class*="bg-[#f59e0b]"],
+  html.dark .rounded-full[class*="bg-amber-"],
+  html.dark .rounded-full[class*="bg-yellow-"],
+  html.dark .rounded-full[class*="bg-orange-"],
+  html.dark .rounded-xl[class*="bg-[#fef9c3]"],
+  html.dark .rounded-xl[class*="bg-[#fef3c7]"],
+  html.dark .rounded-xl[class*="bg-[#b45309]"],
+  html.dark .rounded-xl[class*="bg-[#e67700]"] {
+    background-color: #d97706 !important;
+    color: #ffffff !important;
+  }
+
+  /* ── 5. Red / Rose badges: Rejected, Inactive, Error ── */
+  html.dark .rounded-full[class*="bg-[#fee2e2]"],
+  html.dark .rounded-full[class*="bg-[#fde8ef]"],
+  html.dark .rounded-full[class*="bg-[#dc2626]"],
+  html.dark .rounded-full[class*="bg-[#e6184d]"],
+  html.dark .rounded-full[class*="bg-[#e91e8c]"],
+  html.dark .rounded-full[class*="bg-red-"],
+  html.dark .rounded-full[class*="bg-rose-"],
+  html.dark .rounded-xl[class*="bg-[#fee2e2]"],
+  html.dark .rounded-xl[class*="bg-[#dc2626]"],
+  html.dark .rounded-xl[class*="bg-[#e6184d]"] {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+  }
+
+  /* ── 6. Gray / Muted badges: Inactive, Default, None ── */
+  html.dark .rounded-full.bg-gray-100,
+  html.dark .rounded-full.bg-gray-200,
+  html.dark .rounded-full.bg-gray-400,
+  html.dark .rounded-full[class*="bg-gray-"],
+  html.dark .rounded-xl.bg-gray-100,
+  html.dark .rounded-xl[class*="bg-gray-"] {
+    background-color: #4b5563 !important;
+    color: #ffffff !important;
+  }
+
+  /* ── Form Inputs Defaults: dark text in light mode, bright text in dark mode ── */
+  input, select, textarea {
+    color: #111827;
+  }
+  html.dark input,
+  html.dark select,
+  html.dark textarea {
+    color: var(--text);
+  }
+  /* Specific overrides: light inputs and force-light containers ALWAYS have dark text #111827 */
+  html.dark .force-light input,
+  html.dark .force-light select,
+  html.dark .force-light textarea,
+  html.dark .force-light .text-gray-900,
+  html.dark .force-light .text-gray-800,
+  html.dark .force-light .text-gray-700,
+  html.dark input.bg-white,
+  html.dark input[class*="bg-[#f8fffe]"],
+  html.dark input[class*="bg-white"],
+  html.dark .bg-white input,
+  .force-light input,
+  .force-light select,
+  .force-light textarea,
+  input.bg-white,
+  input[class*="bg-[#f8fffe]"],
+  input[class*="bg-white"] {
+    color: #111827 !important;
+  }
+
+  /* ── Force white text and high-contrast font on all colored pill badges in dark mode ── */
+  html.dark .rounded-full[class*="bg-"],
+  html.dark .rounded-xl[class*="bg-"],
+  html.dark span.rounded-full.text-white,
+  html.dark span.rounded-xl.text-white,
+  html.dark .rounded-full[class*="text-"],
+  html.dark .rounded-xl[class*="text-"] {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+  }
   .sidebar-nav {    background-color: var(--bg-sidebar);
     border-right-color: var(--border);
   }
@@ -557,7 +684,7 @@ html {
   }
 
   /* Mobile sticky menu bar — override the hardcoded Tailwind bg */
-  html.dark .md\:hidden.sticky.bg-\[#EEF2F7\] {
+  html.dark .md\:hidden.sticky[class*="bg-[#EEF2F7]"] {
     background-color: var(--bg-page) !important;
   }
 

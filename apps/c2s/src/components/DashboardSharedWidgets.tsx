@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DashboardSharedWidgets.tsx
  *
  * Reusable dashboard sections shared by all four role dashboards:
@@ -329,36 +329,36 @@ export function C2SGroupsSection({ data }: { data: DashboardData }) {
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Church-based */}
-                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
+                <div className="rounded-2xl p-4 sm:p-5 flex items-start sm:items-center gap-4 min-w-0" style={{ background: 'var(--bg-highlight)' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#6aabf7">
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12V11c0 4.52-3.05 8.74-7 9.93-3.95-1.19-7-5.41-7-9.93V6.3l7-3.12z"/>
                         </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                         <p className="text-xs text-gray-400 mb-0.5">Church-based</p>
                         <p className="text-[1.6rem] sm:text-[2rem] font-normal text-gray-900 leading-none">{data.totalChurch.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Meeting in COG Satellite Churches</p>
+                        <p className="text-xs text-gray-400 mt-0.5 leading-snug">Meeting in COG Satellite Churches</p>
                     </div>
                 </div>
                 {/* Community-based */}
-                <div className="rounded-2xl p-4 sm:p-5 flex items-center gap-4" style={{ background: 'var(--bg-highlight)' }}>
+                <div className="rounded-2xl p-4 sm:p-5 flex items-start sm:items-center gap-4 min-w-0" style={{ background: 'var(--bg-highlight)' }}>
                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#5cb85c">
                             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                         </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                         <p className="text-xs text-gray-400 mb-0.5">Community-based</p>
                         <p className="text-[1.6rem] sm:text-[2rem] font-normal text-gray-900 leading-none">{data.totalCommunity.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Meeting in barangays &amp; homes</p>
+                        <p className="text-xs text-gray-400 mt-0.5 leading-snug">Meeting in barangays &amp; homes</p>
                     </div>
                 </div>
             </div>
 
             {/* Department table */}
-            <div className="rounded-xl border border-gray-100">
-                <table className="w-full table-fixed">
+            <div className="rounded-xl border border-gray-100 overflow-x-auto">
+                <table className="w-full min-w-[360px]">
                     <colgroup>
                         <col className="w-[40%]" />
                         <col className="w-[20%]" />

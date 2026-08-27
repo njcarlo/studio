@@ -1,6 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
+import TransferDepartmentModal, { type TransferDepartmentResult } from '@/components/TransferDepartmentModal';
+import AddMenteeModal from '@/components/AddMenteeModal';
+import type { Mentee } from '@/lib/data';
 import {
     ADMIN_WORKERS, ROLE_TEMPLATES, C2S_PERMISSIONS, AUDIT_LOGS, ADMIN_NOTIFICATIONS,
     GROUP_CAPACITY_CONFIGS, ORG_MINISTRIES, ADMIN_GROWTH_DATA, ADMIN_MINISTRY_PERF,
@@ -8,11 +11,14 @@ import {
     type Department,
     type AdminWorker, type RoleTemplate, type AuditLog, type AdminNotification,
     type OrgMinistry, type OrgCluster,
+    getDepartmentOfWorker,
 } from '@/lib/admin-data';
 import {
     MH_CLUSTERS, MH_ALL_MENTORS, MH_COORDINATORS, MH_POTENTIAL_MENTEES, MH_ACTIVE_MENTEES_LIST,
-    COORD_GROUPS,
+    COORD_GROUPS, C2S_GROUPS,
+    type MHActiveMentee,
 } from '@/lib/data';
+import { useSatellites, type SatelliteChurch } from '@/lib/satellite-context';
 import SettingsModal from '@/components/SettingsModal';
 import dynamic from 'next/dynamic';
 import type { ClusterMapGroup } from '@/components/ClusterMap';
@@ -141,10 +147,12 @@ function WorkerDetailPanel({
     worker,
     onClose,
     onSave,
+    onOpenTransfer,
 }: {
     worker: AdminWorker;
     onClose: () => void;
     onSave: (updated: AdminWorker) => void;
+    onOpenTransfer?: (worker: AdminWorker) => void;
 }) {
     const [activeTab, setActiveTab] = useState<'info' | 'permissions'>('info');
 
@@ -234,8 +242,8 @@ function WorkerDetailPanel({
 
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose} />
-            <div className="fixed top-0 right-0 bottom-0 z-[101] w-[500px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[500px] max-w-full bg-white shadow-2xl flex flex-col overflow-hidden">
 
                 {/* Header */}
                 <div className="px-6 pt-5 pb-4 border-b border-gray-100 flex items-start justify-between">
@@ -277,14 +285,14 @@ function WorkerDetailPanel({
                                         {ROLE_LABEL[draftRole]}
                                     </span>
                                 )}
-                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${draftStatus === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>
+                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full text-white ${draftStatus === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>
                                     {draftStatus}
                                 </span>
-                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${worker.workerIdStatus === 'Approved' ? 'bg-[#dbeafe] text-[#1d4ed8]' : worker.workerIdStatus === 'Pending' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>
+                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full text-white ${worker.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : worker.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>
                                     Worker ID: {worker.workerIdStatus}
                                 </span>
                                 {hasChanges && (
-                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#fef9c3] text-[#92400e]">Unsaved changes</span>
+                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#e67700] text-white">Unsaved changes</span>
                                 )}
                             </div>
 
@@ -293,16 +301,54 @@ function WorkerDetailPanel({
                                 <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-4 pt-3 pb-2">Details</p>
                                 <div className="divide-y divide-gray-100">
                                     {[
-                                        { label: 'Phone',      value: worker.phone },
-                                        { label: 'Ministry',   value: worker.ministry },
-                                        { label: 'Cluster',    value: worker.cluster ?? '—' },
-                                        { label: 'Date Added', value: worker.dateAdded },
+                                        { label: 'Phone',        value: worker.phone },
+                                        { label: 'Department',   value: getDepartmentOfWorker(worker) },
+                                        { label: 'Cluster/Unit', value: worker.cluster ?? worker.ministry ?? '—' },
+                                        { label: 'Date Added',   value: worker.dateAdded },
                                     ].map(r => (
                                         <div key={r.label} className="flex items-center justify-between px-4 py-2.5">
                                             <span className="text-xs text-gray-500">{r.label}</span>
                                             <span className="text-xs font-medium text-gray-800">{r.value}</span>
                                         </div>
                                     ))}
+                                </div>
+                            </section>
+
+                            {/* ── Department & Ministry Assignment Section ── */}
+                            <section className="rounded-xl border border-gray-100 overflow-hidden">
+                                <div className="flex items-center justify-between px-4 py-3" style={{ background: 'var(--bg-subtle)' }}>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Department & Ministry</p>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">Organizational unit and ministry scope</p>
+                                    </div>
+                                    {onOpenTransfer && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onOpenTransfer(worker)}
+                                            className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[#5b50d6] text-white hover:bg-[#4d42c4] transition-all flex items-center gap-1.5 shadow-2xs"
+                                        >
+                                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
+                                            </svg>
+                                            Transfer Dept
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="p-4 flex items-center justify-between bg-white">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-[#ede9fe] text-[#5b50d6] flex items-center justify-center font-bold text-sm shrink-0">
+                                            🏢
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs font-bold text-gray-900">{getDepartmentOfWorker(worker)}</p>
+                                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    Active Assignment
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-gray-500 mt-0.5">{worker.cluster || worker.ministry || 'General Cluster'}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </section>
 
@@ -537,8 +583,8 @@ function WorkerDetailPanel({
                 {/* Deactivation confirmation modal */}
                 {showDeactivateConfirm && (
                     <>
-                        <div className="fixed inset-0 z-[110] bg-black/50" />
-                        <div className="fixed inset-0 z-[111] flex items-center justify-center p-4">
+                        <div className="fixed inset-0 z-[9999] bg-black/50" />
+                        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
@@ -669,7 +715,7 @@ function DashboardTab() {
                         label: 'Total Active Mentees', value: totalActive,
                         sub: 'Church-wide C2S mentees',
                         color: '#5b50d6', bg: '#ede9fe',
-                        icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+                        icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
                     },
                     {
                         label: 'Total C2S Groups', value: totalGroups,
@@ -694,24 +740,24 @@ function DashboardTab() {
                     },
                 ] as const).map(k => (
                     <div key={k.label}
-                        className="bg-white border border-gray-100 rounded-xl p-4"
+                        className="bg-white border border-gray-100 rounded-xl p-4 min-w-0"
                         style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                         <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide leading-tight pr-1">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide leading-tight pr-1 truncate">
                                 {k.label}
                             </p>
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                                style={{ background: k.bg }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill={k.color}>
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: k.color + '18' }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill={k.color}>
                                     <path d={k.icon}/>
                                 </svg>
                             </div>
                         </div>
-                        <p className="text-[1.9rem] font-black leading-none mb-1.5"
+                        <p className="text-[1.8rem] sm:text-[2rem] font-black leading-none mb-1.5 break-words"
                             style={{ color: k.color }}>
                             {k.value.toLocaleString()}
                         </p>
-                        <p className="text-[11px] text-gray-400 leading-snug">{k.sub}</p>
+                        <p className="text-[11px] text-gray-400 leading-snug break-words">{k.sub}</p>
                     </div>
                 ))}
             </div>
@@ -760,7 +806,7 @@ function DashboardTab() {
 
                     {/* ── Table 1: Department breakdown ── */}
                     <div className="overflow-x-auto mb-6">
-                        <table className="w-full text-xs">
+                        <table className="w-full text-xs min-w-[480px]">
                             <thead>
                                 <tr style={{ background: 'var(--bg-subtle)' }}>
                                     {['Department', 'Workers', 'Mentors', 'C2S Coordinators', 'Total'].map(h => (
@@ -804,7 +850,7 @@ function DashboardTab() {
                         <p className="text-xs text-gray-400 mb-4">Where discipleship groups meet.</p>
 
                         {/* Stat tiles row — Church-based + Community-based */}
-                        <div className="grid grid-cols-2 gap-3 mb-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                             {[
                                 {
                                     label: 'Church-based', value: churchBased,
@@ -820,20 +866,20 @@ function DashboardTab() {
                                 },
                             ].map(t => (
                                 <div key={t.label}
-                                    className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-700 dark:!bg-[#2d2e2f] px-4 py-3.5"
+                                    className="flex items-start sm:items-center gap-3.5 rounded-xl border border-gray-100 dark:border-gray-700 dark:!bg-[#2d2e2f] p-4 min-w-0"
                                     style={{ background: t.bg + '55' }}>
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 dark:!bg-[#3a3b3c]"
+                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 dark:!bg-[#3a3b3c]"
                                         style={{ background: t.bg }}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill={t.color}>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill={t.color}>
                                             <path d={t.icon}/>
                                         </svg>
                                     </div>
-                                    <div>
-                                        <p className="text-[11px] text-gray-500 mb-0.5">{t.label}</p>
-                                        <p className="text-2xl font-bold leading-none" style={{ color: t.color }}>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs text-gray-500 mb-0.5 font-medium">{t.label}</p>
+                                        <p className="text-2xl sm:text-3xl font-black leading-tight" style={{ color: t.color }}>
                                             {t.value}
                                         </p>
-                                        <p className="text-[10px] text-gray-400 mt-0.5">{t.sub}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5 leading-snug">{t.sub}</p>
                                     </div>
                                 </div>
                             ))}
@@ -841,7 +887,7 @@ function DashboardTab() {
 
                         {/* Department × Group-type table */}
                         <div className="overflow-x-auto mb-6">
-                            <table className="w-full text-xs">
+                            <table className="w-full text-xs min-w-[420px]">
                                 <thead>
                                     <tr style={{ background: 'var(--bg-subtle)' }}>
                                         {['Department', 'Church-Based', 'Community-Based', 'Total'].map(h => (
@@ -894,9 +940,9 @@ function DashboardTab() {
                             ].map(t => (
                                 <div key={t.label}
                                     className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-700 dark:!bg-[#2d2e2f] px-4 py-3.5"
-                                    style={{ background: t.bg + '55' }}>
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 dark:!bg-[#3a3b3c]"
-                                        style={{ background: t.bg }}>
+                                    style={{ background: t.color + '10' }}>
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                        style={{ background: t.color + '20' }}>
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill={t.color}>
                                             <path d={t.icon}/>
                                         </svg>
@@ -1028,110 +1074,178 @@ function DashboardTab() {
 }
 
 
-function OrgStructureTab() {
+function OrgStructureTab({
+    workers = ADMIN_WORKERS,
+    onTransferWorker,
+}: {
+    workers?: AdminWorker[];
+    onTransferWorker?: (worker: AdminWorker) => void;
+}) {
     const [expandedMinistry, setExpandedMinistry] = useState<string | null>(null);
     const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
 
     return (
         <div>
-            <SectionHeader title="Departments" sub="WORDA — all clusters, heads, and coordinators" />
+            <SectionHeader title="Departments" sub="WORDA — all clusters, heads, coordinators, and assigned mentors" />
             <div className="flex flex-col gap-4">
-                {ORG_MINISTRIES.map(ministry => (
-                    <div key={ministry.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        {/* Ministry header */}
-                        <button
-                            className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
-                            onClick={() => setExpandedMinistry(prev => prev === ministry.id ? null : ministry.id)}
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: ministry.headColor }}>
-                                    {ministry.name.replace(' Ministry', '')[0]}
+                {ORG_MINISTRIES.map(ministry => {
+                    const ministryDeptName = ministry.name.replace(' Ministry', '') as Department;
+                    return (
+                        <div key={ministry.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                            {/* Ministry header */}
+                            <button
+                                className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+                                onClick={() => setExpandedMinistry(prev => prev === ministry.id ? null : ministry.id)}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: ministry.headColor }}>
+                                        {ministryDeptName[0]}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-900 text-base">{ministryDeptName}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">Head: {ministry.head}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-bold text-gray-900 text-base">{ministry.name.replace(' Ministry', '')}</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">Head: {ministry.head}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-6 shrink-0">
-                                <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                                    {[
-                                        { label: 'Workers',  value: ministry.totalWorkers,  color: '#5b50d6' },
-                                        { label: 'Mentors',  value: ministry.totalMentors,  color: '#0b9b8a' },
-                                        { label: 'Mentees',  value: ministry.totalMentees,  color: '#5b50d6' },
-                                        { label: 'Groups',   value: ministry.totalGroups,   color: '#1971c2' },
-                                    ].map(s => (
-                                        <div key={s.label}>
-                                            <p className="text-lg font-black leading-none" style={{ color: s.color }}>{s.value}</p>
-                                            <p className="text-[9px] text-gray-400">{s.label}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                                <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedMinistry === ministry.id ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                            </div>
-                        </button>
-
-                        {/* Clusters */}
-                        {expandedMinistry === ministry.id && (
-                            <div className="border-t border-gray-100">
-                                {ministry.clusters.map((cluster, ci) => (
-                                    <div key={cluster.id} className={`${ci > 0 ? 'border-t border-gray-50 dark:border-gray-700' : ''}`}>
-                                        <button
-                                            className="w-full flex items-center gap-4 px-6 py-3.5 text-left transition-colors dark:hover:bg-transparent"
-                                            onClick={() => setExpandedCluster(prev => prev === cluster.id ? null : cluster.id)}
-                                        >
-                                            <div className="w-1 h-8 rounded-full ml-4 shrink-0" style={{ background: cluster.clusterHeadColor }} />
-                                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">{cluster.name}</p>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-black shrink-0" style={{ background: cluster.clusterHeadColor }}>{cluster.clusterHeadInitials}</div>
-                                                        <span className="text-xs text-gray-500">{cluster.clusterHead} <span className="text-gray-300">·</span> Cluster Head</span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-black shrink-0" style={{ background: cluster.coordinatorColor }}>{cluster.coordinatorInitials}</div>
-                                                    <span className="text-xs text-gray-500">{cluster.coordinator} <span className="text-gray-300">·</span> C2S Coordinator</span>
-                                                </div>
-                                                <div className="flex items-center gap-4 text-xs">
-                                                    <span className="text-[#0b9b8a] font-semibold">{cluster.mentorCount} mentors</span>
-                                                    <span className="text-[#5b50d6] font-semibold">{cluster.menteeCount} mentees</span>
-                                                    <span className="text-[#1971c2] font-semibold">{cluster.groupCount} groups</span>
-                                                </div>
+                                <div className="flex items-center gap-6 shrink-0">
+                                    <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                                        {[
+                                            { label: 'Workers',  value: ministry.totalWorkers,  color: '#5b50d6' },
+                                            { label: 'Mentors',  value: ministry.totalMentors,  color: '#0b9b8a' },
+                                            { label: 'Mentees',  value: ministry.totalMentees,  color: '#5b50d6' },
+                                            { label: 'Groups',   value: ministry.totalGroups,   color: '#1971c2' },
+                                        ].map(s => (
+                                            <div key={s.label}>
+                                                <p className="text-lg font-black leading-none" style={{ color: s.color }}>{s.value}</p>
+                                                <p className="text-[9px] text-gray-400">{s.label}</p>
                                             </div>
-                                            <svg className={`w-4 h-4 text-gray-300 transition-transform shrink-0 ${expandedCluster === cluster.id ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                                        </button>
-                                        {expandedCluster === cluster.id && (
-                                            <div className="px-4 sm:px-16 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                {[
-                                                    { label: 'Cluster Head',    name: cluster.clusterHead,    initials: cluster.clusterHeadInitials,    color: cluster.clusterHeadColor,    role: 'Cluster Head' },
-                                                    { label: 'C2S Coordinator', name: cluster.coordinator,    initials: cluster.coordinatorInitials,    color: cluster.coordinatorColor,    role: 'Coordinator' },
-                                                ].map(person => (
-                                                    <div key={person.label} className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--bg-subtle)' }}>
-                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: person.color }}>{person.initials}</div>
+                                        ))}
+                                    </div>
+                                    <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedMinistry === ministry.id ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                </div>
+                            </button>
+
+                            {/* Clusters */}
+                            {expandedMinistry === ministry.id && (
+                                <div className="border-t border-gray-100">
+                                    {ministry.clusters.map((cluster, ci) => {
+                                        const clusterMentors = workers.filter(w =>
+                                            w.cluster === cluster.name ||
+                                            (getDepartmentOfWorker(w) === ministryDeptName && w.cluster === cluster.name)
+                                        );
+
+                                        return (
+                                            <div key={cluster.id} className={`${ci > 0 ? 'border-t border-gray-50 dark:border-gray-700' : ''}`}>
+                                                <button
+                                                    className="w-full flex items-center gap-4 px-6 py-3.5 text-left transition-colors dark:hover:bg-transparent"
+                                                    onClick={() => setExpandedCluster(prev => prev === cluster.id ? null : cluster.id)}
+                                                >
+                                                    <div className="w-1 h-8 rounded-full ml-4 shrink-0" style={{ background: cluster.clusterHeadColor }} />
+                                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
                                                         <div>
-                                                            <p className="text-xs font-bold text-gray-900">{person.name}</p>
-                                                            <p className="text-[10px] text-gray-400">{person.role}</p>
+                                                            <p className="text-sm font-bold text-gray-900">{cluster.name}</p>
+                                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-black shrink-0" style={{ background: cluster.clusterHeadColor }}>{cluster.clusterHeadInitials}</div>
+                                                                <span className="text-xs text-gray-500">{cluster.clusterHead} <span className="text-gray-300">·</span> Cluster Head</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-black shrink-0" style={{ background: cluster.coordinatorColor }}>{cluster.coordinatorInitials}</div>
+                                                            <span className="text-xs text-gray-500">{cluster.coordinator} <span className="text-gray-300">·</span> C2S Coordinator</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-xs">
+                                                            <span className="text-[#0b9b8a] font-semibold">{clusterMentors.length || cluster.mentorCount} mentors</span>
+                                                            <span className="text-[#5b50d6] font-semibold">{cluster.menteeCount} mentees</span>
+                                                            <span className="text-[#1971c2] font-semibold">{cluster.groupCount} groups</span>
                                                         </div>
                                                     </div>
-                                                ))}
+                                                    <svg className={`w-4 h-4 text-gray-300 transition-transform shrink-0 ${expandedCluster === cluster.id ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                                                </button>
+                                                {expandedCluster === cluster.id && (
+                                                    <div className="px-4 sm:px-16 pb-5 flex flex-col gap-4">
+                                                        {/* Leaders Row */}
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            {[
+                                                                { label: 'Cluster Head',    name: cluster.clusterHead,    initials: cluster.clusterHeadInitials,    color: cluster.clusterHeadColor,    role: 'Cluster Head' },
+                                                                { label: 'C2S Coordinator', name: cluster.coordinator,    initials: cluster.coordinatorInitials,    color: cluster.coordinatorColor,    role: 'Coordinator' },
+                                                            ].map(person => (
+                                                                <div key={person.label} className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'var(--bg-subtle)' }}>
+                                                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: person.color }}>{person.initials}</div>
+                                                                    <div>
+                                                                        <p className="text-xs font-bold text-gray-900">{person.name}</p>
+                                                                        <p className="text-[10px] text-gray-400">{person.role}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* Assigned Mentors / Workers list in this Cluster */}
+                                                        <div className="rounded-xl border border-gray-100 p-3.5 bg-white shadow-2xs">
+                                                            <div className="flex items-center justify-between mb-2.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                                                        Assigned Mentors & Workers ({clusterMentors.length})
+                                                                    </p>
+                                                                    <span className="text-[10px] text-gray-400">in {cluster.name}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {clusterMentors.length > 0 ? (
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                    {clusterMentors.map(m => (
+                                                                        <div key={m.id} className="rounded-lg p-2.5 border border-gray-100 flex items-center justify-between gap-2 hover:bg-gray-50/70 transition-colors" style={{ background: 'var(--bg-subtle)' }}>
+                                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: m.color }}>
+                                                                                    {m.initials}
+                                                                                </div>
+                                                                                <div className="min-w-0">
+                                                                                    <p className="text-xs font-bold text-gray-900 truncate">{m.name}</p>
+                                                                                    <p className="text-[10px] text-gray-400 truncate">{m.c2sRole ? ROLE_LABEL[m.c2sRole] : 'Worker'}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                            {onTransferWorker && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => onTransferWorker(m)}
+                                                                                    className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-md text-[#5b50d6] bg-[#ede9fe] hover:bg-[#ddd6fe] transition-colors flex items-center gap-1"
+                                                                                >
+                                                                                    <span>⇄</span> Transfer
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-gray-400 italic py-1">No mentors currently assigned to this cluster.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                ))}
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
 
 // ─── Workers Tab ──────────────────────────────────────────────────────────────
-function WorkersTab() {
-    const [workers, setWorkers] = useState<AdminWorker[]>(ADMIN_WORKERS);
-    const [search, setSearch]       = useState('');
-    const [roleFilter, setRoleFilter]   = useState('All');
+function WorkersTab({
+    workers,
+    setWorkers,
+    onTransferWorker,
+}: {
+    workers: AdminWorker[];
+    setWorkers: React.Dispatch<React.SetStateAction<AdminWorker[]>>;
+    onTransferWorker: (worker: AdminWorker) => void;
+}) {
+    const [search, setSearch]             = useState('');
+    const [deptFilter, setDeptFilter]     = useState('All');
+    const [roleFilter, setRoleFilter]     = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
     const [viewingWorker, setViewingWorker] = useState<AdminWorker | null>(null);
 
@@ -1145,15 +1259,18 @@ function WorkersTab() {
 
     const filtered = workers.filter(w => {
         const ms = search.toLowerCase();
+        const deptMatch = deptFilter === 'All' || getDepartmentOfWorker(w) === deptFilter;
         const roleMatch = roleFilter === 'All' || w.c2sRole === roleMap[roleFilter];
         const statMatch = statusFilter === 'All' || w.status === statusFilter;
-        const textMatch = w.name.toLowerCase().includes(ms) || w.email.toLowerCase().includes(ms) || (w.cluster ?? '').toLowerCase().includes(ms);
-        return roleMatch && statMatch && textMatch;
+        const textMatch = w.name.toLowerCase().includes(ms) ||
+                          w.email.toLowerCase().includes(ms) ||
+                          (w.cluster ?? '').toLowerCase().includes(ms) ||
+                          getDepartmentOfWorker(w).toLowerCase().includes(ms);
+        return deptMatch && roleMatch && statMatch && textMatch;
     });
 
     function handleSave(updated: AdminWorker) {
         setWorkers(prev => prev.map(w => w.id === updated.id ? updated : w));
-        // Keep the panel open with updated data
         setViewingWorker(updated);
     }
 
@@ -1168,9 +1285,13 @@ function WorkersTab() {
                     worker={viewingWorker}
                     onClose={() => setViewingWorker(null)}
                     onSave={handleSave}
+                    onOpenTransfer={w => {
+                        setViewingWorker(null);
+                        onTransferWorker(w);
+                    }}
                 />
             )}
-            <SectionHeader title="Workers" sub="All workers with C2S access across ministries." />
+            <SectionHeader title="Workers" sub="All workers with C2S access across ministries and departments." />
 
             {/* Summary */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -1185,8 +1306,15 @@ function WorkersTab() {
                 <div className="relative">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                     <input type="text" placeholder="Search name, email, cluster..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full sm:w-64 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full sm:w-60 bg-white" />
                 </div>
+                <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
+                    className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] text-gray-700 font-medium">
+                    <option value="All">All Departments</option>
+                    {DEPARTMENTS.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                </select>
                 <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
                     className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] text-gray-700">
                     <option value="All">All Roles</option>
@@ -1217,25 +1345,40 @@ function WorkersTab() {
                                 <p className="text-[10px] text-gray-400 truncate">{w.email}</p>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-                            <span>{w.ministry}</span>
-                            {w.cluster && <span>{w.cluster}</span>}
+                        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-gray-500">
+                            <span className="font-bold text-gray-700 px-2 py-0.5 rounded bg-gray-100 text-[10px]">{getDepartmentOfWorker(w)}</span>
+                            <span>·</span>
+                            <span>{w.cluster || w.ministry}</span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
                             {w.c2sRole && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: ROLE_COLOR[w.c2sRole] ?? '#5b50d6' }}>{ROLE_LABEL[w.c2sRole]}</span>}
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${w.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{w.status}</span>
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${w.workerIdStatus === 'Approved' ? 'bg-[#dbeafe] text-[#1d4ed8]' : w.workerIdStatus === 'Pending' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>{w.workerIdStatus}</span>
-                            <button onClick={() => setViewingWorker(w)} className="ml-auto text-[11px] font-semibold text-[#5b50d6] hover:underline">Manage Access</button>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.status === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>{w.status}</span>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : w.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{w.workerIdStatus}</span>
+                            <div className="ml-auto flex items-center gap-2">
+                                <button
+                                    onClick={() => onTransferWorker(w)}
+                                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#ede9fe] text-[#5b50d6] hover:bg-[#ddd6fe] transition-colors"
+                                >
+                                    ⇄ Transfer
+                                </button>
+                                <button
+                                    onClick={() => setViewingWorker(w)}
+                                    className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 underline"
+                                >
+                                    Manage
+                                </button>
+                            </div>
                         </div>
                     </div>
                 ))}
             </div>
+
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                 <div>
-                    <table className="w-full text-xs min-w-[600px]">
+                    <table className="w-full text-xs min-w-[700px]">
                         <thead className="bg-[#f8f9fc]">
-                            <tr>{['Worker','Ministry','Cluster','C2S Role','Status','Worker ID','Actions'].map(h => (
+                            <tr>{['Worker','Department','Ministry / Cluster','C2S Role','Status','Worker ID','Actions'].map(h => (
                                 <th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>
                             ))}</tr>
                         </thead>
@@ -1251,21 +1394,39 @@ function WorkersTab() {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3.5 text-gray-600">{w.ministry}</td>
-                                    <td className="px-3 py-3.5 text-gray-600">{w.cluster ?? '—'}</td>
+                                    <td className="px-3 py-3.5 font-semibold text-gray-800">
+                                        <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[11px]">
+                                            {getDepartmentOfWorker(w)}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 py-3.5 text-gray-600">{w.cluster ?? w.ministry ?? '—'}</td>
                                     <td className="px-3 py-3.5">
                                         {w.c2sRole ? (
                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: ROLE_COLOR[w.c2sRole] ?? '#5b50d6' }}>{ROLE_LABEL[w.c2sRole]}</span>
                                         ) : <span className="text-gray-300">—</span>}
                                     </td>
                                     <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${w.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-gray-100 text-gray-500'}`}>{w.status}</span>
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.status === 'Active' ? 'bg-[#16a34a]' : 'bg-gray-400'}`}>{w.status}</span>
                                     </td>
                                     <td className="px-3 py-3.5">
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${w.workerIdStatus === 'Approved' ? 'bg-[#dbeafe] text-[#1d4ed8]' : w.workerIdStatus === 'Pending' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>{w.workerIdStatus}</span>
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${w.workerIdStatus === 'Approved' ? 'bg-[#1971c2]' : w.workerIdStatus === 'Pending' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{w.workerIdStatus}</span>
                                     </td>
                                     <td className="px-3 py-3.5">
-                                        <button onClick={() => setViewingWorker(w)} className="text-[11px] font-semibold text-[#5b50d6] hover:underline">Manage Access</button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => onTransferWorker(w)}
+                                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#ede9fe] text-[#5b50d6] hover:bg-[#ddd6fe] transition-colors flex items-center gap-1"
+                                                title="Transfer mentor/worker to another department"
+                                            >
+                                                <span>⇄</span> Transfer
+                                            </button>
+                                            <button
+                                                onClick={() => setViewingWorker(w)}
+                                                className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 underline"
+                                            >
+                                                Manage
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -1453,7 +1614,7 @@ function GroupsTab() {
                         <div key={g.id} className="p-4 flex flex-col gap-2">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="font-bold text-gray-900 text-sm leading-tight">{g.name}</span>
-                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${g.status === 'Open' ? 'bg-[#dcfce7] text-[#166534]' : g.status === 'Full' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>{g.status}</span>
+                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 text-white ${g.status === 'Open' ? 'bg-[#16a34a]' : g.status === 'Full' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{g.status}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: g.mentorColor }}>{g.mentorInitials}</div>
@@ -1524,7 +1685,7 @@ function GroupsTab() {
                                         <td className="px-3 py-3.5 text-center text-gray-600">{g.capacity}</td>
                                         <td className="px-3 py-3.5 text-center font-bold" style={{ color: g.availableSlots > 0 ? '#0b9b8a' : '#e67700' }}>{g.availableSlots}</td>
                                         <td className="px-3 py-3.5">
-                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${g.status === 'Open' ? 'bg-[#dcfce7] text-[#166534]' : g.status === 'Full' ? 'bg-[#fef9c3] text-[#92400e]' : 'bg-gray-100 text-gray-500'}`}>{g.status}</span>
+                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full text-white ${g.status === 'Open' ? 'bg-[#16a34a]' : g.status === 'Full' ? 'bg-[#e67700]' : 'bg-gray-400'}`}>{g.status}</span>
                                         </td>
                                         <td className="px-3 py-3.5 text-gray-500">{g.schedule}</td>
                                     </tr>
@@ -1548,11 +1709,11 @@ function PotentialMenteesTab() {
     const statuses = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Accepted'];
 
     const STATUS_STYLE: Record<string, string> = {
-        'New':                    'bg-[#dbeafe] text-[#1d4ed8]',
-        'Waiting for Assignment': 'bg-[#fef9c3] text-[#92400e]',
-        'Assigned to Mentor':     'bg-[#ede9fe] text-[#6741d9]',
-        'Interview Scheduled':    'bg-[#ede9fe] text-[#5b50d6]',
-        'Accepted':               'bg-[#dcfce7] text-[#166534]',
+        'New':                    'bg-[#1971c2] text-white',
+        'Waiting for Assignment': 'bg-[#e67700] text-white',
+        'Assigned to Mentor':     'bg-[#6741d9] text-white',
+        'Interview Scheduled':    'bg-[#5b50d6] text-white',
+        'Accepted':               'bg-[#16a34a] text-white',
     };
 
     const filtered = MH_POTENTIAL_MENTEES.filter(m =>
@@ -1666,20 +1827,93 @@ function PotentialMenteesTab() {
 function ActiveMenteesTab() {
     const [clusterFilter, setClusterFilter] = useState('All');
     const [search, setSearch] = useState('');
-    const filtered = MH_ACTIVE_MENTEES_LIST.filter(m =>
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [localMentees, setLocalMentees] = useState<MHActiveMentee[]>(() => [...MH_ACTIVE_MENTEES_LIST]);
+    const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+    const filtered = localMentees.filter(m =>
         (clusterFilter === 'All' || m.cluster === clusterFilter) &&
         (m.name.toLowerCase().includes(search.toLowerCase()) || m.barangay.toLowerCase().includes(search.toLowerCase()))
     );
 
+    function handleAddSuccess(newMentee: Mentee) {
+        // Convert Mentee shape to MHActiveMentee shape
+        const mhMentee: MHActiveMentee = {
+            id: newMentee.id,
+            initials: newMentee.initials,
+            name: newMentee.name,
+            cluster: newMentee.assignedGroup ?? 'General',
+            coordinator: '—',
+            mentor: '—',
+            barangay: '—',
+            module: newMentee.module ?? 'Module 1',
+            progress: newMentee.progress ?? 0,
+        };
+        setLocalMentees(prev => [mhMentee, ...prev]);
+        setToastMsg(`${newMentee.name} successfully added as a mentee.`);
+        setTimeout(() => setToastMsg(null), 4000);
+    }
+
     return (
         <div>
-            <SectionHeader title="Active Mentees" sub="All active mentees across every department and ministry." />
+            {/* Add Mentee Modal */}
+            {showAddModal && (
+                <AddMenteeModal
+                    defaultGroup="Orchard Residences"
+                    onClose={() => setShowAddModal(false)}
+                    onSuccess={handleAddSuccess}
+                />
+            )}
+
+            {/* Success Toast */}
+            {toastMsg && (
+                <div
+                    role="status"
+                    aria-live="polite"
+                    className="fixed bottom-6 right-6 z-[10000] flex items-center gap-3 bg-white border border-gray-200 shadow-2xl rounded-2xl px-5 py-3.5 animate-in fade-in slide-in-from-bottom-4 duration-300"
+                    style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.15)' }}
+                >
+                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-gray-900 leading-tight">Mentee Added</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{toastMsg}</p>
+                    </div>
+                    <button
+                        onClick={() => setToastMsg(null)}
+                        className="ml-2 text-gray-400 hover:text-gray-700 p-1 text-base leading-none transition-colors"
+                        aria-label="Dismiss"
+                    >×</button>
+                </div>
+            )}
+
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentees</h1>
+                    <p className="text-sm text-gray-400 mt-1">All active mentees across every department and ministry.</p>
+                </div>
+                <button
+                    onClick={() => setShowAddModal(true)}
+                    className="flex items-center gap-2 bg-[#1d6fd8] hover:bg-[#1558b0] active:bg-[#1046a0] text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-sm shrink-0 self-start sm:self-auto active:scale-95"
+                >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                    </svg>
+                    Add Mentee
+                </button>
+            </div>
+
+            {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {[
-                    { label: 'Total Active', value: MH_ACTIVE_MENTEES_LIST.length, color: '#5b50d6' },
-                    { label: 'Departments',  value: MH_CLUSTERS.length,            color: '#0b9b8a' },
+                    { label: 'Total Active', value: localMentees.length, color: '#5b50d6' },
+                    { label: 'Departments',  value: MH_CLUSTERS.length,  color: '#0b9b8a' },
                     { label: 'Mentors',      value: MH_ALL_MENTORS.filter(m => m.status === 'Active').length, color: '#5b50d6' },
-                    { label: 'Avg Progress', value: Math.round(MH_ACTIVE_MENTEES_LIST.reduce((s, m) => s + m.progress, 0) / (MH_ACTIVE_MENTEES_LIST.length || 1)) + '%', color: '#e67700' },
+                    { label: 'Avg Progress', value: Math.round(localMentees.reduce((s, m) => s + (m.progress ?? 0), 0) / (localMentees.length || 1)) + '%', color: '#e67700' },
                 ].map(s => (
                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                         <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
@@ -1707,17 +1941,17 @@ function ActiveMenteesTab() {
                             <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-gray-900 truncate">{m.name}</p>
-                                <p className="text-[10px] text-gray-400 truncate">{m.barangay} · {m.cluster}</p>
+                                <p className="text-[10px] text-gray-400 truncate">{m.barangay ?? '—'} · {m.cluster ?? '—'}</p>
                             </div>
                         </div>
-                        <p className="text-xs text-gray-500">{m.coordinator} · {m.mentor}</p>
+                        <p className="text-xs text-gray-500">{m.coordinator ?? '—'} · {m.mentor ?? '—'}</p>
                         <div>
-                            <p className="text-[10px] text-gray-400 mb-1">{m.module}</p>
+                            <p className="text-[10px] text-gray-400 mb-1">{m.module ?? '—'}</p>
                             <div className="flex items-center gap-2">
                                 <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }}/>
+                                    <div className="h-full rounded-full" style={{ width: `${m.progress ?? 0}%`, background: '#5b50d6' }}/>
                                 </div>
-                                <span className="text-xs font-semibold text-gray-700">{m.progress}%</span>
+                                <span className="text-xs font-semibold text-gray-700">{m.progress ?? 0}%</span>
                             </div>
                         </div>
                     </div>
@@ -1741,17 +1975,17 @@ function ActiveMenteesTab() {
                                             <span className="font-semibold text-gray-900">{m.name}</span>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3 text-gray-600">{m.cluster}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.coordinator}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.module}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.cluster ?? '—'}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.coordinator ?? '—'}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.mentor ?? '—'}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.barangay ?? '—'}</td>
+                                    <td className="px-3 py-3 text-gray-600">{m.module ?? '—'}</td>
                                     <td className="px-3 py-3">
                                         <div className="flex items-center gap-2">
                                             <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                <div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }}/>
+                                                <div className="h-full rounded-full" style={{ width: `${m.progress ?? 0}%`, background: '#5b50d6' }}/>
                                             </div>
-                                            <span className="text-[10px] font-semibold text-gray-700 shrink-0">{m.progress}%</span>
+                                            <span className="text-[10px] font-semibold text-gray-700 shrink-0">{m.progress ?? 0}%</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -1780,9 +2014,9 @@ function C2SHomeTab() {
         { id: 'hg6', name: 'Dela Cruz Gatherings',  barangay: 'San Agustin I',      schedule: 'Tue 7:00 PM', potential: 5, status: 'Approved'     as const, coordinator: 'Maricel Santos',    submitted: 'Jul 12, 2026' },
     ];
     const STATUS_STYLE: Record<string, string> = {
-        'Pending':     'bg-[#fef9c3] text-[#92400e]',
-        'Approved':    'bg-[#dcfce7] text-[#166534]',
-        'Recommended': 'bg-[#ede9fe] text-[#6741d9]',
+        'Pending':     'bg-[#e67700] text-white',
+        'Approved':    'bg-[#16a34a] text-white',
+        'Recommended': 'bg-[#6741d9] text-white',
     };
     const filtered = homeGroups.filter(h =>
         (filter === 'All' || h.status === filter) &&
@@ -1794,8 +2028,8 @@ function C2SHomeTab() {
             {/* Confirmation dialog */}
             {confirmAction && (
                 <>
-                    <div className="fixed inset-0 z-[110] bg-black/50" />
-                    <div className="fixed inset-0 z-[111] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[9999] bg-black/50" />
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${confirmAction.action === 'approve' ? 'bg-green-100' : 'bg-red-100'}`}>
@@ -2093,10 +2327,15 @@ function ReportsTab() {
             {reportType === 'map' && (
                 <div>
                     <div className="flex flex-wrap gap-2 mb-4">
-                        {(['All', 'Community-based', 'Church-based'] as const).map(f => (
-                            <button key={f} onClick={() => setMapFilter(f)}
-                                className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${mapFilter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{f}</button>
-                        ))}
+                        <select
+                            value={mapFilter}
+                            onChange={e => setMapFilter(e.target.value as any)}
+                            className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[160px]"
+                        >
+                            <option value="All">All Types</option>
+                            <option value="Community-based">Community-based</option>
+                            <option value="Church-based">Church-based</option>
+                        </select>
                     </div>
                     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4 map-container" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                         <ClusterMapDynamic groups={allMapGroups} accentColor="#5b50d6" />
@@ -2127,8 +2366,16 @@ function ReportsTab() {
 }
 
 // ─── Notifications Tab ────────────────────────────────────────────────────────
-function NotificationsTab() {
-    const [notifs, setNotifs] = useState<AdminNotification[]>(ADMIN_NOTIFICATIONS);
+function NotificationsTab({
+    notifs: externalNotifs,
+    setNotifs: externalSetNotifs,
+}: {
+    notifs?: AdminNotification[];
+    setNotifs?: React.Dispatch<React.SetStateAction<AdminNotification[]>>;
+}) {
+    const [localNotifs, setLocalNotifs] = useState<AdminNotification[]>(ADMIN_NOTIFICATIONS);
+    const notifs = externalNotifs || localNotifs;
+    const setNotifs = externalSetNotifs || setLocalNotifs;
     const [typeFilter, setTypeFilter] = useState<'All' | AdminNotification['type']>('All');
     const unread = notifs.filter(n => !n.read).length;
 
@@ -2194,7 +2441,11 @@ function NotificationsTab() {
 }
 
 // ─── Audit Logs Tab ───────────────────────────────────────────────────────────
-function AuditLogsTab() {
+function AuditLogsTab({
+    logs = AUDIT_LOGS,
+}: {
+    logs?: AuditLog[];
+}) {
     const [typeFilter, setTypeFilter] = useState<'All' | AuditLog['type']>('All');
     const [severityFilter, setSeverityFilter] = useState<'All' | 'info' | 'warning' | 'critical'>('All');
     const [search, setSearch] = useState('');
@@ -2223,7 +2474,7 @@ function AuditLogsTab() {
         system:        'System',
     };
 
-    const filtered = AUDIT_LOGS.filter(l =>
+    const filtered = logs.filter(l =>
         (typeFilter === 'All' || l.type === typeFilter) &&
         (severityFilter === 'All' || l.severity === severityFilter) &&
         (l.actor.toLowerCase().includes(search.toLowerCase()) ||
@@ -2238,10 +2489,10 @@ function AuditLogsTab() {
             {/* Summary pills */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {[
-                    { label: 'Total Events',  value: AUDIT_LOGS.length,                                    color: '#5b50d6' },
-                    { label: 'Critical',      value: AUDIT_LOGS.filter(l => l.severity === 'critical').length, color: '#5b50d6' },
-                    { label: 'Warnings',      value: AUDIT_LOGS.filter(l => l.severity === 'warning').length,  color: '#e67700' },
-                    { label: 'RBAC Changes',  value: AUDIT_LOGS.filter(l => l.type === 'rbac_change').length,  color: '#6741d9' },
+                    { label: 'Total Events',  value: logs.length,                                    color: '#5b50d6' },
+                    { label: 'Critical',      value: logs.filter(l => l.severity === 'critical').length, color: '#5b50d6' },
+                    { label: 'Warnings',      value: logs.filter(l => l.severity === 'warning').length,  color: '#e67700' },
+                    { label: 'RBAC Changes',  value: logs.filter(l => l.type === 'rbac_change').length,  color: '#6741d9' },
                 ].map(s => (
                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                         <p className="text-2xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
@@ -2435,8 +2686,8 @@ function ConfirmDialog({
 }) {
     return (
         <>
-            <div className="fixed inset-0 z-[300] bg-black/40" onClick={onCancel} />
-            <div className="fixed inset-0 z-[301] flex items-center justify-center p-4" onClick={onCancel}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onCancel} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onCancel}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
                     <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto" style={{ background: confirmColor + '15' }}>
                         <svg className="w-6 h-6" viewBox="0 0 24 24" fill={confirmColor}>
@@ -2467,8 +2718,106 @@ function ConfirmDialog({
     );
 }
 
+// ─── Base Barangay Data and City Helpers ─────────────────────────────────────
+const BASE_BARANGAY_DATA: Record<string, string[]> = {
+    'Dasmariñas City': [
+        'Burol','Burol I','Burol II','Burol III','Datu Esmael',
+        'Emmanuel Bergado I','Emmanuel Bergado II',
+        'Fatima I','Fatima II','Fatima III','H-2',
+        'Langkaan I','Langkaan II','Luzviminda I','Luzviminda II',
+        'Paliparan I','Paliparan II','Paliparan III','Sabang',
+        'Saint Peter I','Saint Peter II','Salawag',
+        'Salitran I','Salitran II','Salitran III','Salitran IV',
+        'Sampaloc I','Sampaloc II','Sampaloc III','Sampaloc IV','Sampaloc V',
+        'San Agustin I','San Agustin II','San Agustin III',
+        'San Andres I','San Andres II',
+        'San Antonio De Padua I','San Antonio De Padua II',
+        'San Dionisio','San Esteban','San Francisco I','San Francisco II',
+        'San Isidro Labrador I','San Isidro Labrador II',
+        'San Jose','San Juan','San Lorenzo Ruiz I','San Lorenzo Ruiz II',
+        'San Luis I','San Luis II','San Manuel I','San Manuel II','San Mateo',
+        'San Miguel I','San Miguel II','San Nicolas I','San Nicolas II',
+        'San Roque','San Simon',
+        'Santa Cristina I','Santa Cristina II','Santa Cruz I','Santa Cruz II',
+        'Santa Fe','Santa Lucia','Santa Maria',
+        'Santo Cristo','Santo Niño I','Santo Niño II',
+        'Victoria Reyes','Zone I','Zone I-B','Zone II','Zone III','Zone IV',
+    ],
+    'Silang': [
+        'Acacia','Adlas','Anahaw I','Anahaw II',
+        'Balite I','Balite II','Balubad','Banaba','Batas',
+        'Biga I','Biga II','Biluso','Bucal','Buho','Bulihan',
+        'Cabangaan','Carmen',
+        'Hoyo','Hukay','Iba','Inchican',
+        'Ipil I','Ipil II','Kalubkob','Kaong',
+        'Lalaan I','Lalaan II','Litlit','Lucsuhin','Lumil',
+        'Maguyam','Malabag','Malaking Tatyao','Mataas Na Burol','Munting Ilog',
+        'Narra I','Narra II','Narra III',
+        'Paligawan','Pasong Langka',
+        'Poblacion Barangay I','Poblacion Barangay II','Poblacion Barangay III',
+        'Poblacion Barangay IV','Poblacion Barangay V',
+        'Pooc I','Pooc II','Pulong Bunga','Pulong Saging','Puting Kahoy',
+        'Sabutan','San Miguel I','San Miguel II','San Vicente I','San Vicente II',
+        'Santol','Tartaria','Tibig','Toledo',
+        'Tubuan I','Tubuan II','Tubuan III','Ulat','Yakal',
+    ],
+    'Trece Martires City': [
+        'Aguado','Cabezas','Cabuco','Conchu','De Ocampo',
+        'Gregorio','Hugo Perez','Inocencio','Lallana',
+        'Lapidario','Luciano','Osorio','San Agustin',
+    ],
+};
+
+const CITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+    'Dasmariñas City':     { bg: '#ede9fe', text: '#5b50d6', border: '#ddd6fe' },
+    'Silang':              { bg: '#ede9fe', text: '#6741d9', border: '#d4c9f9' },
+    'Trece Martires City': { bg: '#d3f9f0', text: '#0b9b8a', border: '#a7f3e0' },
+    'Tagaytay City':       { bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
+    'Tagaytay':            { bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
+    'General Trias':       { bg: '#e0f2fe', text: '#0369a1', border: '#bae6fd' },
+    'Imus City':           { bg: '#fce7f3', text: '#be185d', border: '#fbcfe8' },
+    'Bacoor City':         { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
+};
+
+function getCityColor(city: string) {
+    if (CITY_COLORS[city]) return CITY_COLORS[city];
+    return { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' };
+}
+
+function getMergedBarangays(satellites: SatelliteChurch[], customAdditions: Record<string, string[]> = {}): Record<string, string[]> {
+    const data: Record<string, string[]> = {};
+
+    // Base data
+    Object.keys(BASE_BARANGAY_DATA).forEach(c => {
+        data[c] = [...BASE_BARANGAY_DATA[c]];
+    });
+
+    // Merge from satellites (including dynamic cities like Tagaytay City, etc.)
+    satellites.forEach(sat => {
+        const cityName = sat.city || (sat.name.toLowerCase().includes('tagaytay') ? 'Tagaytay City' : 'Dasmariñas City');
+        if (!data[cityName]) {
+            data[cityName] = [];
+        }
+        if (sat.barangay && !data[cityName].includes(sat.barangay)) {
+            data[cityName] = [sat.barangay, ...data[cityName]];
+        }
+    });
+
+    // Custom additions
+    Object.keys(customAdditions).forEach(c => {
+        if (!data[c]) data[c] = [];
+        customAdditions[c].forEach(b => {
+            if (!data[c].includes(b)) data[c].push(b);
+        });
+    });
+
+    return data;
+}
+
 // ─── Subdivisions Section ─────────────────────────────────────────────────────
 function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boolean }) {
+    const { satellites } = useSatellites();
+    const mergedBarangayData = getMergedBarangays(satellites);
     const [barangayFilter, setBarangayFilter] = useState('');
     const [subsDropdown, setSubsDropdown] = useState('');
     const [newSubName, setNewSubName]   = useState('');
@@ -2524,15 +2873,11 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
                             className={`flex-1 min-w-0 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white text-gray-700 ${addError && !newSubBrgy ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-[#5b50d6]'}`}
                         >
                             <option value="">Select Barangay</option>
-                            <optgroup label="DASMARIÑAS">
-                                {BARANGAY_DATA['Dasmariñas City'].map(b => <option key={b} value={b}>{b}</option>)}
-                            </optgroup>
-                            <optgroup label="SILANG">
-                                {BARANGAY_DATA['Silang'].map(b => <option key={b} value={b}>{b}</option>)}
-                            </optgroup>
-                            <optgroup label="TRECE MARTIRES CITY">
-                                {BARANGAY_DATA['Trece Martires City'].map(b => <option key={b} value={b}>{b}</option>)}
-                            </optgroup>
+                            {Object.entries(mergedBarangayData).map(([city, brgys]) => (
+                                <optgroup key={city} label={city.toUpperCase()}>
+                                    {brgys.map(b => <option key={b} value={b}>{b}</option>)}
+                                </optgroup>
+                            ))}
                         </select>
                         <button onClick={handleAdd} className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl shrink-0" style={{ background: '#5b50d6' }}>Add</button>
                     </div>
@@ -2545,18 +2890,14 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
                 <select value={barangayFilter} onChange={e => { setBarangayFilter(e.target.value); setSubsDropdown(''); }}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-white text-gray-700">
                     <option value="">— Select a barangay to browse subdivisions —</option>
-                    <optgroup label="DASMARIÑAS">
-                        {BARANGAY_DATA['Dasmariñas City'].map(b => {
-                            const hoaGroup = HOA_DATA.find(g => g.barangay === b);
-                            return <option key={b} value={b}>{b}{hoaGroup ? ` (${hoaGroup.subs.length})` : ''}</option>;
-                        })}
-                    </optgroup>
-                    <optgroup label="SILANG">
-                        {BARANGAY_DATA['Silang'].map(b => <option key={b} value={b}>{b}</option>)}
-                    </optgroup>
-                    <optgroup label="TRECE MARTIRES CITY">
-                        {BARANGAY_DATA['Trece Martires City'].map(b => <option key={b} value={b}>{b}</option>)}
-                    </optgroup>
+                    {Object.entries(mergedBarangayData).map(([city, brgys]) => (
+                        <optgroup key={city} label={city.toUpperCase()}>
+                            {brgys.map(b => {
+                                const hoaGroup = HOA_DATA.find(g => g.barangay === b);
+                                return <option key={b} value={b}>{b}{hoaGroup ? ` (${hoaGroup.subs.length})` : ''}</option>;
+                            })}
+                        </optgroup>
+                    ))}
                 </select>
 
                 {selectedGroup && (
@@ -2591,61 +2932,9 @@ function SubdivisionsSection({ onSave, saved }: { onSave: () => void; saved: boo
 }
 
 // ─── Barangays Section Component ──────────────────────────────────────────────
-const BARANGAY_DATA = {
-    'Dasmariñas City': [
-        'Burol','Burol I','Burol II','Burol III','Datu Esmael',
-        'Emmanuel Bergado I','Emmanuel Bergado II',
-        'Fatima I','Fatima II','Fatima III','H-2',
-        'Langkaan I','Langkaan II','Luzviminda I','Luzviminda II',
-        'Paliparan I','Paliparan II','Paliparan III','Sabang',
-        'Saint Peter I','Saint Peter II','Salawag',
-        'Salitran I','Salitran II','Salitran III','Salitran IV',
-        'Sampaloc I','Sampaloc II','Sampaloc III','Sampaloc IV','Sampaloc V',
-        'San Agustin I','San Agustin II','San Agustin III',
-        'San Andres I','San Andres II',
-        'San Antonio De Padua I','San Antonio De Padua II',
-        'San Dionisio','San Esteban','San Francisco I','San Francisco II',
-        'San Isidro Labrador I','San Isidro Labrador II',
-        'San Jose','San Juan','San Lorenzo Ruiz I','San Lorenzo Ruiz II',
-        'San Luis I','San Luis II','San Manuel I','San Manuel II','San Mateo',
-        'San Miguel I','San Miguel II','San Nicolas I','San Nicolas II',
-        'San Roque','San Simon',
-        'Santa Cristina I','Santa Cristina II','Santa Cruz I','Santa Cruz II',
-        'Santa Fe','Santa Lucia','Santa Maria',
-        'Santo Cristo','Santo Niño I','Santo Niño II',
-        'Victoria Reyes','Zone I','Zone I-B','Zone II','Zone III','Zone IV',
-    ],
-    'Silang': [
-        'Acacia','Adlas','Anahaw I','Anahaw II',
-        'Balite I','Balite II','Balubad','Banaba','Batas',
-        'Biga I','Biga II','Biluso','Bucal','Buho','Bulihan',
-        'Cabangaan','Carmen',
-        'Hoyo','Hukay','Iba','Inchican',
-        'Ipil I','Ipil II','Kalubkob','Kaong',
-        'Lalaan I','Lalaan II','Litlit','Lucsuhin','Lumil',
-        'Maguyam','Malabag','Malaking Tatyao','Mataas Na Burol','Munting Ilog',
-        'Narra I','Narra II','Narra III',
-        'Paligawan','Pasong Langka',
-        'Poblacion Barangay I','Poblacion Barangay II','Poblacion Barangay III',
-        'Poblacion Barangay IV','Poblacion Barangay V',
-        'Pooc I','Pooc II','Pulong Bunga','Pulong Saging','Puting Kahoy',
-        'Sabutan','San Miguel I','San Miguel II','San Vicente I','San Vicente II',
-        'Santol','Tartaria','Tibig','Toledo',
-        'Tubuan I','Tubuan II','Tubuan III','Ulat','Yakal',
-    ],
-    'Trece Martires City': [
-        'Aguado','Cabezas','Cabuco','Conchu','De Ocampo',
-        'Gregorio','Hugo Perez','Inocencio','Lallana',
-        'Lapidario','Luciano','Osorio','San Agustin',
-    ],
-};
-const CITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-    'Dasmariñas City':     { bg: '#ede9fe', text: '#5b50d6', border: '#ddd6fe' },
-    'Silang':              { bg: '#ede9fe', text: '#6741d9', border: '#d4c9f9' },
-    'Trece Martires City': { bg: '#d3f9f0', text: '#0b9b8a', border: '#a7f3e0' },
-};
-
 function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolean }) {
+    const { satellites } = useSatellites();
+    const [customAdditions, setCustomAdditions] = useState<Record<string, string[]>>({});
     const [selectedCity, setSelectedCity] = useState('');
     const [selectedBarangay, setSelectedBarangay] = useState('');
     const [newBrgyName, setNewBrgyName] = useState('');
@@ -2653,14 +2942,21 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
     const [addError, setAddError]       = useState('');
     const [confirmRemove, setConfirmRemove] = useState<{ barangay: string; city: string } | null>(null);
 
-    const cities = Object.keys(BARANGAY_DATA) as (keyof typeof BARANGAY_DATA)[];
-    const allBarangays = cities.flatMap(c => BARANGAY_DATA[c].map(b => b.toLowerCase()));
+    const mergedData = getMergedBarangays(satellites, customAdditions);
+    const cities = Object.keys(mergedData);
+    const allBarangays = cities.flatMap(c => (mergedData[c] || []).map(b => b.toLowerCase()));
 
     function handleAdd() {
         const trimmed = newBrgyName.trim();
+        const cityTrimmed = newBrgyCity.trim();
         if (!trimmed) { setAddError('Barangay name cannot be empty.'); return; }
-        if (!newBrgyCity) { setAddError('Please select a city / municipality.'); return; }
+        if (!cityTrimmed) { setAddError('Please select or enter a city / municipality.'); return; }
         if (allBarangays.includes(trimmed.toLowerCase())) { setAddError(`"${trimmed}" already exists.`); return; }
+
+        setCustomAdditions(prev => {
+            const list = prev[cityTrimmed] ? [...prev[cityTrimmed], trimmed] : [trimmed];
+            return { ...prev, [cityTrimmed]: list };
+        });
         setNewBrgyName(''); setNewBrgyCity(''); setAddError('');
         onSave();
     }
@@ -2690,9 +2986,7 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
             <div>
                 <h2 className="text-base font-bold text-gray-900 mb-1">Barangays</h2>
                 <p className="text-sm text-gray-400">
-                    Dasmariñas City ({BARANGAY_DATA['Dasmariñas City'].length}) ·{' '}
-                    Silang ({BARANGAY_DATA['Silang'].length}) ·{' '}
-                    Trece Martires City ({BARANGAY_DATA['Trece Martires City'].length})
+                    {cities.map(c => `${c} (${mergedData[c].length})`).join(' · ')}
                 </p>
             </div>
 
@@ -2723,7 +3017,7 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
             {/* One block per city — non-clickable header + dropdown */}
             <div className="flex flex-col gap-4">
                 {cities.map(city => {
-                    const c = CITY_COLORS[city];
+                    const c = getCityColor(city);
                     const isThisSelected = selectedCity === city;
                     const anotherSelected = selectedCity !== '' && selectedCity !== city;
 
@@ -2734,7 +3028,7 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
                             <div className="px-4 py-3 flex items-center justify-between"
                                 style={{ background: c.bg, borderBottom: `1px solid ${c.border}` }}>
                                 <p className="text-sm font-bold uppercase tracking-widest" style={{ color: c.text }}>{city}</p>
-                                <span className="text-xs font-semibold" style={{ color: c.text }}>{BARANGAY_DATA[city].length} barangays</span>
+                                <span className="text-xs font-semibold" style={{ color: c.text }}>{mergedData[city].length} barangays</span>
                             </div>
                             {/* Dropdown */}
                             <div className="p-3 bg-white">
@@ -2743,7 +3037,7 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
                                     onChange={e => e.target.value ? handleSelect(city, e.target.value) : handleClear()}
                                     className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-white text-gray-700">
                                     <option value="">— Select a barangay —</option>
-                                    {BARANGAY_DATA[city].map(b => <option key={b} value={b}>{b}</option>)}
+                                    {mergedData[city].map(b => <option key={b} value={b}>{b}</option>)}
                                 </select>
                             </div>
                             {/* Selected action row */}
@@ -2764,6 +3058,349 @@ function BarangaysSection({ onSave, saved }: { onSave: () => void; saved: boolea
                 })}
             </div>
         </div>
+        </>
+    );
+}
+
+// ─── Satellites Section Component ───────────────────────────────────────────
+function SatellitesSection({ onSave, saved }: { onSave: () => void; saved: boolean }) {
+    const { satellites, activeSatellites, addSatellite, updateSatellite, deleteSatellite } = useSatellites();
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [editingSat, setEditingSat] = useState<SatelliteChurch | null>(null);
+    const [confirmRemove, setConfirmRemove] = useState<SatelliteChurch | null>(null);
+    const [toast, setToast] = useState<string | null>(null);
+
+    // Form fields — Satellite Name, Municipality / City, Barangay, and Address
+    const [formName, setFormName] = useState('');
+    const [formCity, setFormCity] = useState('');
+    const [formBarangay, setFormBarangay] = useState('');
+    const [formAddress, setFormAddress] = useState('');
+    const [formError, setFormError] = useState('');
+
+    const knownCities = Array.from(new Set([
+        'Dasmariñas City', 'Silang', 'Trece Martires City', 'Tagaytay City',
+        ...satellites.map(s => s.city).filter(Boolean) as string[],
+    ]));
+
+    function resetForm() {
+        setFormName('');
+        setFormCity('Dasmariñas City');
+        setFormBarangay('');
+        setFormAddress('');
+        setFormError('');
+    }
+
+    function openAdd() {
+        resetForm();
+        setShowAddModal(true);
+    }
+
+    function openEdit(sat: SatelliteChurch) {
+        setEditingSat(sat);
+        setFormName(sat.name);
+        setFormCity(sat.city || 'Dasmariñas City');
+        setFormBarangay(sat.barangay);
+        setFormAddress(sat.address || '');
+        setFormError('');
+    }
+
+    function handleSaveSatellite(e: React.FormEvent) {
+        e.preventDefault();
+        const name = formName.trim();
+        const city = formCity.trim();
+        const barangay = formBarangay.trim();
+        const address = formAddress.trim();
+
+        if (!name) { setFormError('Satellite Name is required.'); return; }
+        if (!city) { setFormError('Municipality / City is required.'); return; }
+        if (!barangay) { setFormError('Barangay is required.'); return; }
+
+        if (editingSat) {
+            updateSatellite(editingSat.id, {
+                name,
+                city,
+                barangay,
+                address,
+            });
+            setEditingSat(null);
+            setToast('Satellite updated successfully.');
+        } else {
+            addSatellite({
+                name,
+                city,
+                barangay,
+                address,
+                status: 'Active',
+                code: name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase() || 'SAT',
+                leader: 'Assigned Leader',
+            });
+            setShowAddModal(false);
+            setToast('Satellite successfully added.');
+        }
+
+        onSave();
+        setTimeout(() => setToast(null), 3500);
+    }
+
+    function handleToggleStatus(sat: SatelliteChurch) {
+        const nextStatus = sat.status === 'Active' ? 'Inactive' : 'Active';
+        updateSatellite(sat.id, { status: nextStatus });
+        setToast(`Satellite marked as ${nextStatus}.`);
+        onSave();
+        setTimeout(() => setToast(null), 3000);
+    }
+
+    function confirmDeleteSatellite() {
+        if (!confirmRemove) return;
+        deleteSatellite(confirmRemove.id);
+        setConfirmRemove(null);
+        setToast('Satellite removed.');
+        onSave();
+        setTimeout(() => setToast(null), 3000);
+    }
+
+    const filtered = satellites.filter(s => {
+        const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
+        const q = search.toLowerCase();
+        const matchesQuery = !search ||
+            s.name.toLowerCase().includes(q) ||
+            (s.city && s.city.toLowerCase().includes(q)) ||
+            s.barangay.toLowerCase().includes(q) ||
+            (s.address && s.address.toLowerCase().includes(q));
+        return matchesStatus && matchesQuery;
+    });
+
+    const isSatelliteAssigned = (sat: SatelliteChurch): boolean => {
+        return COORD_GROUPS.some(g => (g.satellite && g.satellite.toLowerCase() === sat.name.toLowerCase()) || (g.satellite && sat.name.toLowerCase().includes(g.satellite.toLowerCase()))) ||
+               C2S_GROUPS.some(g => (g.satelliteName && g.satelliteName === sat.name) || (g.satelliteId === sat.id) || (g.name.toLowerCase().includes(sat.name.toLowerCase())));
+    };
+
+    return (
+        <>
+            {/* Toast */}
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-[10001] flex items-center gap-3 bg-white border border-gray-200 shadow-2xl rounded-2xl px-5 py-3.5 animate-in fade-in duration-300">
+                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800">{toast}</p>
+                </div>
+            )}
+
+            {/* Remove Confirmation */}
+            {confirmRemove && (
+                <ConfirmDialog
+                    title="Remove Satellite?"
+                    message={<>Are you sure you want to remove <strong>"{confirmRemove.name}"</strong>?</>}
+                    warning={isSatelliteAssigned(confirmRemove) ? 'This satellite is currently assigned to one or more groups. Are you sure you want to remove it?' : undefined}
+                    onConfirm={confirmDeleteSatellite}
+                    onCancel={() => setConfirmRemove(null)}
+                />
+            )}
+
+            {/* Add / Edit Modal — with Municipality / City */}
+            {(showAddModal || editingSat) && (
+                <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
+                    onClick={() => { if (!editingSat) setShowAddModal(false); else setEditingSat(null); }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 sm:p-7 relative"
+                        onClick={e => e.stopPropagation()}>
+                        <button
+                            type="button"
+                            onClick={() => { if (!editingSat) setShowAddModal(false); else setEditingSat(null); }}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-light w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                        >×</button>
+
+                        <div className="mb-5">
+                            <h3 className="text-lg font-bold text-gray-900">
+                                {editingSat ? 'Edit Satellite Church' : 'Add Satellite Church'}
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                                {editingSat ? 'Update satellite details. Added municipality/city will sync to System Settings Barangays.' : 'New satellite and its municipality/city will automatically sync to Barangays and Mentor group creation.'}
+                            </p>
+                        </div>
+
+                        {formError && (
+                            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200">
+                                <FieldError msg={formError} />
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSaveSatellite} className="flex flex-col gap-4">
+                            {/* Satellite Name */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-gray-700">
+                                    Satellite Name <span className="text-[#5b50d6]">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formName}
+                                    onChange={e => { setFormName(e.target.value); if (formError) setFormError(''); }}
+                                    placeholder="e.g. COG TAGAYTAY"
+                                    className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6]"
+                                />
+                            </div>
+
+                            {/* Municipality / City */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-gray-700">
+                                    Municipality / City <span className="text-[#5b50d6]">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    list="known-cities-list"
+                                    value={formCity}
+                                    onChange={e => { setFormCity(e.target.value); if (formError) setFormError(''); }}
+                                    placeholder="e.g. Tagaytay City, Dasmariñas City, Silang..."
+                                    className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6]"
+                                />
+                                <datalist id="known-cities-list">
+                                    {knownCities.map(c => <option key={c} value={c} />)}
+                                </datalist>
+                            </div>
+
+                            {/* Barangay */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-gray-700">
+                                    Barangay <span className="text-[#5b50d6]">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formBarangay}
+                                    onChange={e => { setFormBarangay(e.target.value); if (formError) setFormError(''); }}
+                                    placeholder="e.g. Tagaytay, Kaybagal, Burol Main..."
+                                    className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6]"
+                                />
+                            </div>
+
+                            {/* Address / Location */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-gray-700">Address / Location</label>
+                                <input
+                                    type="text"
+                                    value={formAddress}
+                                    onChange={e => setFormAddress(e.target.value)}
+                                    placeholder="e.g. Tagaytay Rotonda, Aguinaldo Hwy"
+                                    className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5b50d6]"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { if (!editingSat) setShowAddModal(false); else setEditingSat(null); }}
+                                    className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2.5 text-sm font-bold text-white rounded-xl transition-colors"
+                                    style={{ background: '#5b50d6' }}
+                                >
+                                    {editingSat ? 'Save Changes' : 'Add Satellite'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            <div className="flex flex-col gap-6">
+                {/* Section Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h2 className="text-base font-bold text-gray-900 mb-0.5">Satellite Churches</h2>
+                        <p className="text-xs text-gray-400">
+                            Total ({satellites.length}) · Active ({activeSatellites.length}) · Inactive ({satellites.length - activeSatellites.length})
+                        </p>
+                    </div>
+                    <button
+                        onClick={openAdd}
+                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white rounded-xl shadow-sm hover:opacity-90 transition-opacity self-start sm:self-auto"
+                        style={{ background: '#5b50d6' }}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                        </svg>
+                        Add Satellite
+                    </button>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[220px]">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
+                        <input
+                            type="text"
+                            placeholder="Search by satellite name, municipality, city, barangay, or address..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] bg-white"
+                        />
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={e => setStatusFilter(e.target.value as any)}
+                        className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] text-gray-700"
+                    >
+                        <option value="All">All Statuses ({satellites.length})</option>
+                        <option value="Active">Active Only ({activeSatellites.length})</option>
+                        <option value="Inactive">Inactive Only ({satellites.length - activeSatellites.length})</option>
+                    </select>
+                </div>
+
+                {/* Satellites List */}
+                <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
+                    {filtered.length === 0 ? (
+                        <div className="p-10 text-center text-sm text-gray-400">
+                            No satellite churches found matching your criteria.
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-100">
+                            {filtered.map(sat => {
+                                const isActive = sat.status === 'Active';
+                                return (
+                                    <div key={sat.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/60 transition-colors">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 mt-0.5"
+                                                style={{ background: isActive ? '#5b50d6' : '#9ca3af' }}>
+                                                {sat.name.slice(0, 3).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <p className="text-sm font-bold text-gray-900">{sat.name}</p>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                        {sat.status || 'Active'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    <span className="font-semibold text-gray-700">Municipality / City:</span> {sat.city || 'Dasmariñas City'}
+                                                    {' · '}
+                                                    <span className="font-semibold text-gray-700">Barangay:</span> {sat.barangay}
+                                                    {sat.address && <> · <span className="font-semibold text-gray-700">Address:</span> {sat.address}</>}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Actions — Only Edit Button */}
+                                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => openEdit(sat)}
+                                                className="text-xs font-semibold text-[#5b50d6] hover:bg-[#ede9fe] border border-transparent hover:border-[#ddd6fe] px-3.5 py-1.5 rounded-lg transition-colors"
+                                            >
+                                                Edit
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
         </>
     );
 }
@@ -2794,82 +3431,43 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
     const [newName, setNewName] = useState('');
     const [addError, setAddError] = useState('');
 
-    // Confirmation dialog state
-    const [confirmRemove, setConfirmRemove] = useState<{ name: string; dept: Department } | null>(null);
-    const [confirmAdd, setConfirmAdd] = useState<{ name: string; dept: Department } | null>(null);
-
-    const c = DEPT_COLORS[activeDept];
     const currentList = ministries[activeDept];
-    const totalCount = DEPARTMENTS.reduce((s, d) => s + ministries[d].length, 0);
+    const c = DEPT_COLORS[activeDept];
 
     function handleAdd() {
         const trimmed = newName.trim();
-        if (!trimmed) {
-            setAddError('Ministry name cannot be empty.');
-            return;
+        if (!trimmed) { setAddError('Ministry name cannot be empty.'); return; }
+        if (currentList.some(m => m.toLowerCase() === trimmed.toLowerCase())) {
+            setAddError(`"${trimmed}" already exists under ${activeDept}.`); return;
         }
-        if (currentList.map(m => m.toLowerCase()).includes(trimmed.toLowerCase())) {
-            setAddError(`"${trimmed}" already exists under ${activeDept}.`);
-            return;
-        }
-        setConfirmAdd({ name: trimmed, dept: activeDept });
-    }
-
-    function confirmAndAdd() {
-        if (!confirmAdd) return;
-        setMinistries(prev => ({ ...prev, [confirmAdd.dept]: [...prev[confirmAdd.dept], confirmAdd.name] }));
-        setNewName('');
-        setAddError('');
-        setConfirmAdd(null);
+        setMinistries(prev => ({ ...prev, [activeDept]: [...prev[activeDept], trimmed] }));
+        setNewName(''); setAddError('');
         onSave();
     }
 
-    function confirmAndRemove() {
-        if (!confirmRemove) return;
-        setMinistries(prev => ({
-            ...prev,
-            [confirmRemove.dept]: prev[confirmRemove.dept].filter(m => m !== confirmRemove.name),
-        }));
-        setConfirmRemove(null);
+    function confirmDeleteMinistry(name: string, dept: Department) {
+        setMinistries(prev => ({ ...prev, [dept]: prev[dept].filter(m => m !== name) }));
         onSave();
     }
+
+    const [confirmRemove, setConfirmRemove] = useState<{ name: string; dept: Department } | null>(null);
 
     return (
         <>
-        {/* ── Remove Confirmation Dialog ── */}
         {confirmRemove && (
             <ConfirmDialog
                 title="Remove Ministry?"
-                message={
-                    <>Remove <strong>"{confirmRemove.name}"</strong> from{' '}
-                    <span style={{ color: DEPT_COLORS[confirmRemove.dept].dot }}>{confirmRemove.dept}</span>?</>
-                }
-                warning="This will remove it from all dropdowns and filters across the system."
-                onConfirm={confirmAndRemove}
+                message={<>Remove <strong>"{confirmRemove.name}"</strong> from <strong>{confirmRemove.dept}</strong>?</>}
+                warning="Workers assigned to this ministry will need to be reassigned."
+                onConfirm={() => { confirmDeleteMinistry(confirmRemove.name, confirmRemove.dept); setConfirmRemove(null); }}
                 onCancel={() => setConfirmRemove(null)}
             />
         )}
-
-        {/* ── Add Confirmation Dialog ── */}
-        {confirmAdd && (
-            <ConfirmDialog
-                title="Add Ministry?"
-                message={
-                    <>Add <strong>"{confirmAdd.name}"</strong> under{' '}
-                    <span style={{ color: DEPT_COLORS[confirmAdd.dept].dot }}>{confirmAdd.dept}</span>?</>
-                }
-                confirmLabel="Yes, Add"
-                confirmColor="#5b50d6"
-                onConfirm={confirmAndAdd}
-                onCancel={() => setConfirmAdd(null)}
-            />
-        )}
-
         <div className="flex flex-col gap-6">
             <div>
                 <h2 className="text-base font-bold text-gray-900 mb-1">Ministries</h2>
                 <p className="text-sm text-gray-400">
-                    Manage ministries per department. {totalCount} total {totalCount === 1 ? 'ministry' : 'ministries'}.
+                    Add or remove ministries per department. Total: {Object.values(ministries).reduce((s, a) => s + a.length, 0)} ministries
                 </p>
             </div>
 
@@ -2879,19 +3477,19 @@ function MinistriesSection({ onSave, saved }: { onSave: () => void; saved: boole
                     const dc = DEPT_COLORS[dept];
                     const isActive = activeDept === dept;
                     return (
-                        <button key={dept}
-                            onClick={() => { setActiveDept(dept); setAddError(''); }}
-                            className="px-3 py-1.5 rounded-full text-xs font-bold transition-all border"
-                            style={isActive
-                                ? { background: dc.dot, color: '#fff', borderColor: dc.dot }
-                                : { background: dc.bg, color: dc.text, borderColor: dc.border }
-                            }>
+                        <button key={dept} onClick={() => { setActiveDept(dept); setAddError(''); }}
+                            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors border ${
+                                isActive ? 'shadow-sm' : 'hover:opacity-80'
+                            }`}
+                            style={{
+                                background: isActive ? dc.bg : 'white',
+                                color: dc.text,
+                                borderColor: isActive ? dc.border : '#e5e7eb',
+                            }}>
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dc.dot }} />
                             {dept}
                             {ministries[dept].length > 0 && (
-                                <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
-                                    style={isActive
-                                        ? { background: 'rgba(255,255,255,0.3)', color: '#fff' }
-                                        : { background: dc.border, color: dc.text }}>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: dc.dot + '20', color: dc.dot }}>
                                     {ministries[dept].length}
                                 </span>
                             )}
@@ -3069,8 +3667,8 @@ function RolesSection({ onSave, saved }: { onSave: () => void; saved: boolean })
 }
 
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
-function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp' | 'notifications' | 'capacity' | 'labels' | 'rbac' | 'subdivisions' | 'barangays' | 'roles' | 'ministries' }) {
-    const [activeSection, setActiveSection] = useState<'c2s_config' | 'otp' | 'notifications' | 'capacity' | 'labels' | 'rbac' | 'subdivisions' | 'barangays' | 'roles' | 'ministries'>(initialSection ?? 'c2s_config');
+function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp' | 'notifications' | 'capacity' | 'labels' | 'rbac' | 'satellites' | 'subdivisions' | 'barangays' | 'roles' | 'ministries' }) {
+    const [activeSection, setActiveSection] = useState<'c2s_config' | 'otp' | 'notifications' | 'capacity' | 'labels' | 'rbac' | 'satellites' | 'subdivisions' | 'barangays' | 'roles' | 'ministries'>(initialSection ?? 'c2s_config');
 
     // Local state for settings forms
     const [otpExpiry, setOtpExpiry] = useState(10);
@@ -3096,6 +3694,7 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
         { key: 'capacity',      label: 'Group Capacity' },
         { key: 'labels',        label: 'Status / Labels' },
         { key: 'rbac',          label: 'Permissions' },
+        { key: 'satellites',    label: 'Satellites' },
         { key: 'subdivisions',  label: 'Subdivisions' },
         { key: 'barangays',     label: 'Barangays' },
         { key: 'roles',         label: 'Roles' },
@@ -3384,6 +3983,10 @@ function SettingsTab({ initialSection }: { initialSection?: 'c2s_config' | 'otp'
                         </div>
                     )}
 
+                    {activeSection === 'satellites' && (
+                        <SatellitesSection onSave={handleSave} saved={saved} />
+                    )}
+
                     {activeSection === 'subdivisions' && (
                         <SubdivisionsSection onSave={handleSave} saved={saved} />
                     )}
@@ -3411,9 +4014,18 @@ export default function AdminDashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
 
-    const unreadNotifs  = ADMIN_NOTIFICATIONS.filter(n => !n.read).length;
-    const pendingWorkerID = ADMIN_WORKERS.filter(w => w.workerIdStatus === 'Pending').length;
-    const criticalAudit = AUDIT_LOGS.filter(l => l.severity === 'critical').length;
+    // Shared state across tabs
+    const [workers, setWorkers] = useState<AdminWorker[]>(ADMIN_WORKERS);
+    const [auditLogs, setAuditLogs] = useState<AuditLog[]>(AUDIT_LOGS);
+    const [notifications, setNotifications] = useState<AdminNotification[]>(ADMIN_NOTIFICATIONS);
+
+    // Transfer department modal & toast state
+    const [transferringWorker, setTransferringWorker] = useState<AdminWorker | null>(null);
+    const [toast, setToast] = useState<{ title: string; desc: string } | null>(null);
+
+    const unreadNotifs  = notifications.filter(n => !n.read).length;
+    const pendingWorkerID = workers.filter(w => w.workerIdStatus === 'Pending').length;
+    const criticalAudit = auditLogs.filter(l => l.severity === 'critical').length;
 
     // Group nav items by section
     const sections = [...new Set(ADMIN_NAV.map(n => n.section).filter(Boolean))] as string[];
@@ -3425,17 +4037,95 @@ export default function AdminDashboard() {
         return undefined;
     }
 
+    function handleTransferConfirm(result: TransferDepartmentResult) {
+        // 1. Update worker record
+        setWorkers(prev => prev.map(w => {
+            if (w.id === result.workerId) {
+                return {
+                    ...w,
+                    department: result.toDepartment,
+                    ministry: result.toDepartment,
+                    cluster: result.toCluster,
+                };
+            }
+            return w;
+        }));
+
+        // 2. Append to audit logs
+        const newLog: AuditLog = {
+            id: `al-${Date.now()}`,
+            type: 'rbac_change',
+            actor: 'C2S Admin',
+            actorInitials: 'CA',
+            actorColor: '#5b50d6',
+            action: 'Transferred Department',
+            target: result.workerName,
+            detail: `Transferred from ${result.fromDepartment} (${result.fromCluster}) to ${result.toDepartment} (${result.toCluster}) · Reason: ${result.reason}`,
+            timestamp: 'Just now',
+            severity: 'info',
+        };
+        setAuditLogs(prev => [newLog, ...prev]);
+
+        // 3. Append to system notifications
+        const newNotif: AdminNotification = {
+            id: `an-${Date.now()}`,
+            type: 'worker_id',
+            title: 'Department Transfer Completed',
+            text: `${result.workerName} was successfully transferred to ${result.toDepartment} Ministry (${result.toCluster}).`,
+            time: 'Just now',
+            read: false,
+            priority: 'medium',
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+
+        // 4. Show confirmation toast
+        setToast({
+            title: 'Department Transfer Successful',
+            desc: `${result.workerName} is now assigned to ${result.toDepartment} (${result.toCluster}).`,
+        });
+        setTimeout(() => {
+            setToast(null);
+        }, 4500);
+    }
+
     return (
-        <div className="min-h-screen dashboard-shell" style={{ background: 'var(--bg-page)' }}>
+        <div className="min-h-screen dashboard-shell relative" style={{ background: 'var(--bg-page)' }}>
+
+            {/* ── Toast Notification Banner ── */}
+            {toast && (
+                <div className="fixed top-20 right-6 z-[11000] max-w-md bg-white border border-emerald-200 rounded-2xl shadow-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-black">
+                        ✓
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-900">{toast.title}</p>
+                        <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">{toast.desc}</p>
+                    </div>
+                    <button
+                        onClick={() => setToast(null)}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
+            {/* ── Transfer Department Modal ── */}
+            {transferringWorker && (
+                <TransferDepartmentModal
+                    worker={transferringWorker}
+                    onClose={() => setTransferringWorker(null)}
+                    onConfirm={handleTransferConfirm}
+                />
+            )}
 
             {/* Mobile overlay */}
             {sidebarOpen && (
-                <div className="fixed inset-0 z-[1001] bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
+                <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setSidebarOpen(false)} />
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav w-60 border-r flex flex-col pt-4 pb-4 fixed top-16 bottom-0 left-0 z-[1002] transition-transform duration-200
-                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+            <aside className={`sidebar-nav w-60 border-r flex flex-col pt-4 pb-4 fixed top-16 bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-transform duration-200`}>
 
                 {/* Admin badge */}
                 <div className="mx-4 mb-4 px-3 py-2 rounded-xl flex items-center gap-2.5" style={{ background: 'var(--bg-subtle)' }}>
@@ -3467,8 +4157,7 @@ export default function AdminDashboard() {
                                                 </svg>
                                                 <span className="flex-1 truncate text-[13px]">{item.label}</span>
                                                 {badge !== undefined && badge > 0 && (
-                                                    <span className="text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0 px-1"
-                                                        style={{ background: '#dde0f5', color: '#6366c1' }}>
+                                                    <span className="text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0 px-1 bg-[#5b50d6] text-white">
                                                         {badge}
                                                     </span>
                                                 )}
@@ -3499,7 +4188,7 @@ export default function AdminDashboard() {
             <div className="md:ml-60 pb-16 min-w-0">
 
                 {/* Mobile sticky top bar */}
-                <div className="md:hidden fixed top-16 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
+                <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
                     <button
                         className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
                         onClick={() => setSidebarOpen(true)}
@@ -3514,17 +4203,17 @@ export default function AdminDashboard() {
                     </span>
                 </div>
 
-                <div className="pt-[72px] md:pt-5 px-4 sm:px-6">
+                <div className="pt-4 md:pt-5 px-4 sm:px-6">
                     {activeNav === 'dashboard'         && <DashboardTab />}
-                    {activeNav === 'org'               && <OrgStructureTab />}
-                    {activeNav === 'workers'           && <WorkersTab />}
+                    {activeNav === 'org'               && <OrgStructureTab workers={workers} onTransferWorker={w => setTransferringWorker(w)} />}
+                    {activeNav === 'workers'           && <WorkersTab workers={workers} setWorkers={setWorkers} onTransferWorker={w => setTransferringWorker(w)} />}
                     {activeNav === 'groups'            && <GroupsTab />}
                     {activeNav === 'potential_mentees' && <PotentialMenteesTab />}
                     {activeNav === 'active_mentees'    && <ActiveMenteesTab />}
                     {activeNav === 'c2s_home'          && <C2SHomeTab />}
                     {activeNav === 'reports'           && <ReportsTab />}
-                    {activeNav === 'notifications'     && <NotificationsTab />}
-                    {activeNav === 'audit'             && <AuditLogsTab />}
+                    {activeNav === 'notifications'     && <NotificationsTab notifs={notifications} setNotifs={setNotifications} />}
+                    {activeNav === 'audit'             && <AuditLogsTab logs={auditLogs} />}
                     {(activeNav === 'settings' || activeNav === 'rbac') && <SettingsTab initialSection={activeNav === 'rbac' ? 'rbac' : undefined} />}
                 </div>
             </div>

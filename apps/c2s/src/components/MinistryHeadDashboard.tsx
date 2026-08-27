@@ -22,12 +22,12 @@ function avatarColor(id: string) {
     return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 const STATUS_STYLE: Record<string, string> = {
-    'New':                    'bg-[#1d4ed8] text-white',
+    'New': 'bg-[#1d4ed8] text-white',
     'Waiting for Assignment': 'bg-[#b45309] text-white',
-    'Assigned to Mentor':     'bg-[#6741d9] text-white',
-    'Interview Scheduled':    'bg-[#5b50d6] text-white',
-    'Interview Completed':    'bg-[#0c8a6e] text-white',
-    'Accepted':               'bg-[#166534] text-white',
+    'Assigned to Mentor': 'bg-[#6741d9] text-white',
+    'Interview Scheduled': 'bg-[#5b50d6] text-white',
+    'Interview Completed': 'bg-[#0c8a6e] text-white',
+    'Accepted': 'bg-[#166534] text-white',
 };
 const TOOLTIP_STYLE = {
     borderRadius: '10px', border: 'none',
@@ -37,14 +37,14 @@ const TOOLTIP_STYLE = {
 // ─── Nav definition ────────────────────────────────────────────────────────────
 type NavKey = 'dashboard' | 'clusters' | 'coordinators' | 'mentors' | 'potential' | 'mentees' | 'reports' | 'notifications';
 const MH_NAV: { key: NavKey; label: string; icon: string }[] = [
-    { key: 'dashboard',     label: 'Dashboard',          icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z' },
-    { key: 'notifications', label: 'Notifications',       icon: 'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
-    { key: 'clusters',      label: 'Clusters',            icon: 'M20 6h-2.18c.07-.44.18-.86.18-1a3 3 0 1 0-6 0c0 .14.11.56.18 1H6c-1.11 0-2 .9-2 2v11c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-8-3a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm2 16H6v-2h8v2zm6-4H6v-6h14v6z' },
-    { key: 'coordinators',  label: 'C2S Coordinators',    icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-    { key: 'mentors',       label: 'Mentors',             icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
-    { key: 'potential',     label: 'Potential Mentees',   icon: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
-    { key: 'mentees',       label: 'Active Mentees',      icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-    { key: 'reports',       label: 'Reports',             icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
+    { key: 'dashboard', label: 'Dashboard', icon: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-2-4H10v-2h8v2zm-4 4H10v-2h4v2zm4-8H10V6h8v2z' },
+    { key: 'notifications', label: 'Notifications', icon: 'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
+    { key: 'clusters', label: 'Clusters', icon: 'M20 6h-2.18c.07-.44.18-.86.18-1a3 3 0 1 0-6 0c0 .14.11.56.18 1H6c-1.11 0-2 .9-2 2v11c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-8-3a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm2 16H6v-2h8v2zm6-4H6v-6h14v6z' },
+    { key: 'coordinators', label: 'C2S Coordinators', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+    { key: 'mentors', label: 'Mentors', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+    { key: 'potential', label: 'Potential Mentees', icon: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
+    { key: 'mentees', label: 'Active Mentees', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+    { key: 'reports', label: 'Reports', icon: 'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z' },
 ];
 
 // ─── Dashboard Notifications panel ───────────────────────────────────────────
@@ -52,10 +52,10 @@ function MHDashboardNotifications() {
     const [notifs, setNotifs] = useState(MH_NOTIFICATIONS);
     const unread = notifs.filter(n => !n.read).length;
     const NOTIF_ICON: Record<string, { bg: string; dot: string }> = {
-        worker:      { bg: '#ede9fe', dot: '#5b50d6' },
-        worker_id:   { bg: '#ede9fe', dot: '#5b50d6' },
+        worker: { bg: '#ede9fe', dot: '#5b50d6' },
+        worker_id: { bg: '#ede9fe', dot: '#5b50d6' },
         coordinator: { bg: '#d3f9f0', dot: '#0b9b8a' },
-        mentor:      { bg: '#fef3c7', dot: '#e67700' },
+        mentor: { bg: '#fef3c7', dot: '#e67700' },
     };
     return (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -110,9 +110,9 @@ function MentorProfileView({ mentor, cluster, onClose }: { mentor: typeof MH_ALL
     return (
         <>
             {/* Backdrop */}
-            <div className="fixed inset-0 z-[200] bg-black/40" onClick={onClose} />
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
             {/* Modal */}
-            <div className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none">
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto pointer-events-auto" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
                     {/* Header */}
                     <div className="flex items-start justify-between px-6 pt-6 pb-4">
@@ -121,18 +121,18 @@ function MentorProfileView({ mentor, cluster, onClose }: { mentor: typeof MH_ALL
                             <p className="text-sm text-gray-400 mt-0.5">Outreach · {cluster.name}</p>
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 rounded-full border border-gray-200 transition-colors">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
                         </button>
                     </div>
 
                     {/* Info Cards */}
                     <div className="px-6 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {[
-                            { label: 'Contact',        value: mentor.phone },
-                            { label: 'Department',     value: 'Outreach' },
-                            { label: 'Cluster',        value: cluster.name },
-                            { label: 'Date Assigned',  value: mentor.dateAssigned },
-                            { label: 'Status',         value: mentor.status },
+                            { label: 'Contact', value: mentor.phone },
+                            { label: 'Department', value: 'Outreach' },
+                            { label: 'Cluster', value: cluster.name },
+                            { label: 'Date Assigned', value: mentor.dateAssigned },
+                            { label: 'Status', value: mentor.status },
                             { label: 'Active Mentees', value: String(mentor.activeMentees) },
                         ].map((f) => (
                             <div key={f.label} className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
@@ -196,7 +196,7 @@ function ClusterDetailPanel({ cluster, onClose }: { cluster: OutreachCluster; on
                     <p className="text-sm text-gray-400 mt-0.5">Led by {cluster.clusterHead}</p>
                 </div>
                 <button onClick={onClose} className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-2 bg-white transition-colors">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" /></svg>
                     All Clusters
                 </button>
             </div>
@@ -204,12 +204,12 @@ function ClusterDetailPanel({ cluster, onClose }: { cluster: OutreachCluster; on
             {/* Stats Row */}
             <div className="grid grid-cols-2 gap-3">
                 {[
-                    { label: 'Mentors',  value: cluster.totalMentors,   color: '#0b9b8a', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
-                    { label: 'Mentees',  value: totalMembers,           color: '#5b50d6', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+                    { label: 'Mentors', value: cluster.totalMentors, color: '#0b9b8a', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+                    { label: 'Mentees', value: totalMembers, color: '#5b50d6', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
                 ].map((s) => (
                     <div key={s.label} className="bg-white rounded-2xl border border-gray-100 px-5 py-4 flex items-center gap-4" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: s.color + '18' }}>
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill={s.color}><path d={s.icon}/></svg>
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill={s.color}><path d={s.icon} /></svg>
                         </div>
                         <div>
                             <p className="text-2xl font-black leading-none" style={{ color: s.color }}>{s.value}</p>
@@ -304,8 +304,8 @@ function CoordinatorsTab() {
             <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">C2S Coordinators</h1><p className="text-sm text-gray-400 mt-1">All coordinators across the Outreach Ministry.</p></div>
             <div className="flex items-center gap-3 mb-5">
                 <div className="relative flex-1 max-w-xs">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" placeholder="Search coordinators..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white"/>
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
+                    <input type="text" placeholder="Search coordinators..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
                 </div>
             </div>
             {/* Mobile cards */}
@@ -336,23 +336,23 @@ function CoordinatorsTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc]">
-                            <tr>{['Coordinator Name','Cluster','Assigned Potential Mentees','Active Mentors','Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-3.5">{h}</th>))}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filtered.map((c) => (
-                                <tr key={c.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-4 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: c.color }}>{c.initials}</div><span className="font-semibold text-gray-900">{c.name}</span></div></td>
-                                    <td className="px-4 py-3.5 text-gray-600">{c.cluster}</td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{c.assignedPotentialMentees}</td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{c.activeMentors}</td>
-                                    <td className="px-4 py-3.5"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{c.status}</span></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No coordinators found</p></div>}
+                <table className="w-full text-xs">
+                    <thead className="bg-[#f8f9fc]">
+                        <tr>{['Coordinator Name', 'Cluster', 'Assigned Potential Mentees', 'Active Mentors', 'Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-3.5">{h}</th>))}</tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {filtered.map((c) => (
+                            <tr key={c.id} className="hover:bg-[#fafbff] transition-colors">
+                                <td className="px-4 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: c.color }}>{c.initials}</div><span className="font-semibold text-gray-900">{c.name}</span></div></td>
+                                <td className="px-4 py-3.5 text-gray-600">{c.cluster}</td>
+                                <td className="px-4 py-3.5 font-semibold text-gray-900">{c.assignedPotentialMentees}</td>
+                                <td className="px-4 py-3.5 font-semibold text-gray-900">{c.activeMentors}</td>
+                                <td className="px-4 py-3.5"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{c.status}</span></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No coordinators found</p></div>}
             </div>
         </div>
     );
@@ -367,13 +367,19 @@ function MentorsTab() {
         <div>
             <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Mentors</h1><p className="text-sm text-gray-400 mt-1">All mentors across the Outreach Ministry.</p></div>
             <div className="flex flex-wrap items-center gap-3 mb-5">
-                <div className="relative flex-1 max-w-xs">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" placeholder="Search mentors..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white"/>
+                <div className="relative w-full sm:w-64">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" /></svg>
+                    <input type="text" placeholder="Search mentors..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full bg-white" />
                 </div>
-                {(['All','Active','Inactive'] as const).map((f) => (
-                    <button key={f} onClick={() => setFilter(f)} className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{f}</button>
-                ))}
+                <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value as 'All' | 'Active' | 'Inactive')}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[130px]"
+                >
+                    <option value="All">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
             </div>
             {/* Mobile cards */}
             <div className="sm:hidden bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -403,23 +409,23 @@ function MentorsTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc]">
-                            <tr>{['Name','Cluster','Total Groups','Active Mentees','Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-3.5">{h}</th>))}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filtered.map((m) => (
-                                <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-4 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
-                                    <td className="px-4 py-3.5 text-gray-600">{m.cluster}</td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{m.totalGroups}</td>
-                                    <td className="px-4 py-3.5 font-semibold text-gray-900">{m.activeMentees}</td>
-                                    <td className="px-4 py-3.5"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No mentors found</p></div>}
+                <table className="w-full text-xs">
+                    <thead className="bg-[#f8f9fc]">
+                        <tr>{['Name', 'Cluster', 'Total Groups', 'Active Mentees', 'Status'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 py-3.5">{h}</th>))}</tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {filtered.map((m) => (
+                            <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
+                                <td className="px-4 py-3.5"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0" style={{ background: m.color }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
+                                <td className="px-4 py-3.5 text-gray-600">{m.cluster}</td>
+                                <td className="px-4 py-3.5 font-semibold text-gray-900">{m.totalGroups}</td>
+                                <td className="px-4 py-3.5 font-semibold text-gray-900">{m.activeMentees}</td>
+                                <td className="px-4 py-3.5"><span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${m.status === 'Active' ? 'bg-[#16a34a] text-white' : 'bg-gray-400 text-white'}`}>{m.status}</span></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No mentors found</p></div>}
             </div>
         </div>
     );
@@ -428,23 +434,23 @@ function MentorsTab() {
 // ─── Potential Mentees Tab ────────────────────────────────────────────────────
 function PotentialMenteesTab() {
     const [clusterFilter, setClusterFilter] = useState('All');
-    const [coordFilter,   setCoordFilter]   = useState('All');
-    const [mentorFilter,  setMentorFilter]  = useState('All');
-    const [barangayFilter,setBarangayFilter]= useState('All');
-    const [statusFilter,  setStatusFilter]  = useState('All');
+    const [coordFilter, setCoordFilter] = useState('All');
+    const [mentorFilter, setMentorFilter] = useState('All');
+    const [barangayFilter, setBarangayFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('All');
 
-    const clusters     = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.cluster)))];
+    const clusters = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.cluster)))];
     const coordinators = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.coordinator)))];
-    const mentors      = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.mentor).filter((x) => x !== '—')))];
-    const barangays    = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.barangay)))];
-    const statuses     = ['All','New','Waiting for Assignment','Assigned to Mentor','Interview Scheduled','Accepted'];
+    const mentors = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.mentor).filter((x) => x !== '—')))];
+    const barangays = ['All', ...Array.from(new Set(MH_POTENTIAL_MENTEES.map((m) => m.barangay)))];
+    const statuses = ['All', 'New', 'Waiting for Assignment', 'Assigned to Mentor', 'Interview Scheduled', 'Accepted'];
 
     const filtered = MH_POTENTIAL_MENTEES.filter((m) =>
-        (clusterFilter  === 'All' || m.cluster     === clusterFilter)  &&
-        (coordFilter    === 'All' || m.coordinator === coordFilter)    &&
-        (mentorFilter   === 'All' || m.mentor      === mentorFilter)   &&
-        (barangayFilter === 'All' || m.barangay    === barangayFilter) &&
-        (statusFilter   === 'All' || m.status      === statusFilter)
+        (clusterFilter === 'All' || m.cluster === clusterFilter) &&
+        (coordFilter === 'All' || m.coordinator === coordFilter) &&
+        (mentorFilter === 'All' || m.mentor === mentorFilter) &&
+        (barangayFilter === 'All' || m.barangay === barangayFilter) &&
+        (statusFilter === 'All' || m.status === statusFilter)
     );
 
     function Sel({ label, val, opts, onChange }: { label: string; val: string; opts: string[]; onChange: (v: string) => void }) {
@@ -459,11 +465,11 @@ function PotentialMenteesTab() {
         <div>
             <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Potential Mentees</h1><p className="text-sm text-gray-400 mt-1">Master list of all potential mentees across the Outreach Ministry.</p></div>
             <div className="flex flex-wrap gap-2 mb-5">
-                <Sel label="Cluster"     val={clusterFilter}  opts={clusters}     onChange={setClusterFilter}/>
-                <Sel label="Coordinator" val={coordFilter}    opts={coordinators} onChange={setCoordFilter}/>
-                <Sel label="Mentor"      val={mentorFilter}   opts={mentors}      onChange={setMentorFilter}/>
-                <Sel label="Barangay"    val={barangayFilter} opts={barangays}    onChange={setBarangayFilter}/>
-                <Sel label="Status"      val={statusFilter}   opts={statuses}     onChange={setStatusFilter}/>
+                <Sel label="Cluster" val={clusterFilter} opts={clusters} onChange={setClusterFilter} />
+                <Sel label="Coordinator" val={coordFilter} opts={coordinators} onChange={setCoordFilter} />
+                <Sel label="Mentor" val={mentorFilter} opts={mentors} onChange={setMentorFilter} />
+                <Sel label="Barangay" val={barangayFilter} opts={barangays} onChange={setBarangayFilter} />
+                <Sel label="Status" val={statusFilter} opts={statuses} onChange={setStatusFilter} />
             </div>
             {/* Mobile cards */}
             <div className="flex flex-col gap-3 sm:hidden">
@@ -491,28 +497,28 @@ function PotentialMenteesTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc]">
-                            <tr>{['Name','Age','Gender','Cluster','Coordinator','Mentor','Barangay','Source','Status','Submitted'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>))}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filtered.map((m) => (
-                                <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
-                                    <td className="px-3 py-3 text-gray-600">{m.age}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.gender}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.cluster}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.coordinator}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
-                                    <td className="px-3 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#0b9b8a] text-white' : 'bg-[#6741d9] text-white'}`}>{m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}</span></td>
-                                    <td className="px-3 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[m.status] ?? ''}`}>{m.status}</span></td>
-                                    <td className="px-3 py-3 text-gray-400">{m.dateSubmitted}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No potential mentees match the selected filters</p></div>}
+                <table className="w-full text-xs">
+                    <thead className="bg-[#f8f9fc]">
+                        <tr>{['Name', 'Age', 'Gender', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Source', 'Status', 'Submitted'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>))}</tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {filtered.map((m) => (
+                            <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
+                                <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
+                                <td className="px-3 py-3 text-gray-600">{m.age}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.gender}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.cluster}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.coordinator}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
+                                <td className="px-3 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${m.source === 'From C2S Group Finder' ? 'bg-[#0b9b8a] text-white' : 'bg-[#6741d9] text-white'}`}>{m.source === 'From C2S Group Finder' ? 'Finder' : 'Recommended'}</span></td>
+                                <td className="px-3 py-3"><span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[m.status] ?? ''}`}>{m.status}</span></td>
+                                <td className="px-3 py-3 text-gray-400">{m.dateSubmitted}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No potential mentees match the selected filters</p></div>}
             </div>
         </div>
     );
@@ -527,10 +533,18 @@ function ActiveMenteesTab() {
     return (
         <div>
             <div className="mb-6"><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Active Mentees</h1><p className="text-sm text-gray-400 mt-1">Master list of all active mentees across the Outreach Ministry.</p></div>
-            <div className="flex flex-wrap gap-2 mb-5">
-                {clusters.map((c) => (
-                    <button key={c} onClick={() => setClusterFilter(c)} className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${clusterFilter === c ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>{c}</button>
-                ))}
+            <div className="flex flex-wrap items-center gap-3 mb-5">
+                <select
+                    value={clusterFilter}
+                    onChange={(e) => setClusterFilter(e.target.value)}
+                    className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[160px]"
+                >
+                    {clusters.map((c) => (
+                        <option key={c} value={c}>
+                            {c === 'All' ? 'All Clusters' : c}
+                        </option>
+                    ))}
+                </select>
             </div>
             {/* Mobile cards */}
             <div className="flex flex-col gap-3 sm:hidden">
@@ -562,25 +576,25 @@ function ActiveMenteesTab() {
             </div>
             {/* Desktop table */}
             <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                    <table className="w-full text-xs">
-                        <thead className="bg-[#f8f9fc]">
-                            <tr>{['Name','Cluster','Coordinator','Mentor','Barangay','Module','Progress'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>))}</tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filtered.map((m) => (
-                                <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
-                                    <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
-                                    <td className="px-3 py-3 text-gray-600">{m.cluster}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.coordinator}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
-                                    <td className="px-3 py-3 text-gray-600">{m.module}</td>
-                                    <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }}/></div><span className="text-[10px] font-semibold text-gray-700 shrink-0">{m.progress}%</span></div></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No active mentees found</p></div>}
+                <table className="w-full text-xs">
+                    <thead className="bg-[#f8f9fc]">
+                        <tr>{['Name', 'Cluster', 'Coordinator', 'Mentor', 'Barangay', 'Module', 'Progress'].map((h) => (<th key={h} className="text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-3.5">{h}</th>))}</tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {filtered.map((m) => (
+                            <tr key={m.id} className="hover:bg-[#fafbff] transition-colors">
+                                <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0" style={{ background: avatarColor(m.id) }}>{m.initials}</div><span className="font-semibold text-gray-900">{m.name}</span></div></td>
+                                <td className="px-3 py-3 text-gray-600">{m.cluster}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.coordinator}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.mentor}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.barangay}</td>
+                                <td className="px-3 py-3 text-gray-600">{m.module}</td>
+                                <td className="px-3 py-3"><div className="flex items-center gap-2"><div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${m.progress}%`, background: '#5b50d6' }} /></div><span className="text-[10px] font-semibold text-gray-700 shrink-0">{m.progress}%</span></div></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {filtered.length === 0 && <div className="p-12 text-center"><p className="text-sm font-semibold text-gray-600">No active mentees found</p></div>}
             </div>
         </div>
     );
@@ -589,7 +603,7 @@ function ActiveMenteesTab() {
 // ─── Reports Tab ──────────────────────────────────────────────────────────────
 type ReportType = 'monthly' | 'quarterly' | 'annual' | 'coordinator' | 'cluster' | 'mentor' | 'community' | 'maps';
 const REPORT_GROWTH_DATA = [
-    { period: 'Feb', mentees: 22, mentors: 9  },
+    { period: 'Feb', mentees: 22, mentors: 9 },
     { period: 'Mar', mentees: 27, mentors: 10 },
     { period: 'Apr', mentees: 30, mentors: 11 },
     { period: 'May', mentees: 33, mentors: 11 },
@@ -613,33 +627,33 @@ interface MonthlyReport {
     submittedDate: string;
 }
 const MONTHLY_REPORT_HISTORY: MonthlyReport[] = [
-    { month: 'July 2026',      period: 'Jul 2026', clusters: 6, mentors: 20, activeMentees: 42, potentialMentees: 12, newGroups: 3, completedModules: 8,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Jul 31, 2026' },
-    { month: 'June 2026',      period: 'Jun 2026', clusters: 6, mentors: 19, activeMentees: 38, potentialMentees: 14, newGroups: 2, completedModules: 6,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Jun 30, 2026' },
-    { month: 'May 2026',       period: 'May 2026', clusters: 6, mentors: 18, activeMentees: 33, potentialMentees: 11, newGroups: 1, completedModules: 5,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'May 31, 2026' },
-    { month: 'April 2026',     period: 'Apr 2026', clusters: 6, mentors: 17, activeMentees: 30, potentialMentees: 10, newGroups: 2, completedModules: 4,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Apr 30, 2026' },
-    { month: 'March 2026',     period: 'Mar 2026', clusters: 6, mentors: 16, activeMentees: 27, potentialMentees:  9, newGroups: 1, completedModules: 3,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Mar 31, 2026' },
-    { month: 'February 2026',  period: 'Feb 2026', clusters: 6, mentors: 15, activeMentees: 22, potentialMentees:  8, newGroups: 0, completedModules: 2,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Feb 28, 2026' },
-    { month: 'January 2026',   period: 'Jan 2026', clusters: 5, mentors: 14, activeMentees: 18, potentialMentees:  7, newGroups: 2, completedModules: 1,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Jan 31, 2026' },
-    { month: 'December 2025',  period: 'Dec 2025', clusters: 5, mentors: 13, activeMentees: 15, potentialMentees:  6, newGroups: 1, completedModules: 0,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Dec 31, 2025' },
-    { month: 'November 2025',  period: 'Nov 2025', clusters: 5, mentors: 12, activeMentees: 12, potentialMentees:  5, newGroups: 0, completedModules: 0,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Nov 30, 2025' },
-    { month: 'October 2025',   period: 'Oct 2025', clusters: 4, mentors: 11, activeMentees: 10, potentialMentees:  4, newGroups: 1, completedModules: 0,  status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Oct 31, 2025' },
-    { month: 'September 2025', period: 'Sep 2025', clusters: 4, mentors: 10, activeMentees:  8, potentialMentees:  3, newGroups: 0, completedModules: 0,  status: 'Draft',     submittedBy: '—',                     submittedDate: '—'            },
+    { month: 'July 2026', period: 'Jul 2026', clusters: 6, mentors: 20, activeMentees: 42, potentialMentees: 12, newGroups: 3, completedModules: 8, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Jul 31, 2026' },
+    { month: 'June 2026', period: 'Jun 2026', clusters: 6, mentors: 19, activeMentees: 38, potentialMentees: 14, newGroups: 2, completedModules: 6, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Jun 30, 2026' },
+    { month: 'May 2026', period: 'May 2026', clusters: 6, mentors: 18, activeMentees: 33, potentialMentees: 11, newGroups: 1, completedModules: 5, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'May 31, 2026' },
+    { month: 'April 2026', period: 'Apr 2026', clusters: 6, mentors: 17, activeMentees: 30, potentialMentees: 10, newGroups: 2, completedModules: 4, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Apr 30, 2026' },
+    { month: 'March 2026', period: 'Mar 2026', clusters: 6, mentors: 16, activeMentees: 27, potentialMentees: 9, newGroups: 1, completedModules: 3, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Mar 31, 2026' },
+    { month: 'February 2026', period: 'Feb 2026', clusters: 6, mentors: 15, activeMentees: 22, potentialMentees: 8, newGroups: 0, completedModules: 2, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Feb 28, 2026' },
+    { month: 'January 2026', period: 'Jan 2026', clusters: 5, mentors: 14, activeMentees: 18, potentialMentees: 7, newGroups: 2, completedModules: 1, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Jan 31, 2026' },
+    { month: 'December 2025', period: 'Dec 2025', clusters: 5, mentors: 13, activeMentees: 15, potentialMentees: 6, newGroups: 1, completedModules: 0, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Dec 31, 2025' },
+    { month: 'November 2025', period: 'Nov 2025', clusters: 5, mentors: 12, activeMentees: 12, potentialMentees: 5, newGroups: 0, completedModules: 0, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Nov 30, 2025' },
+    { month: 'October 2025', period: 'Oct 2025', clusters: 4, mentors: 11, activeMentees: 10, potentialMentees: 4, newGroups: 1, completedModules: 0, status: 'Submitted', submittedBy: 'Pastor Ramon Dela Cruz', submittedDate: 'Oct 31, 2025' },
+    { month: 'September 2025', period: 'Sep 2025', clusters: 4, mentors: 10, activeMentees: 8, potentialMentees: 3, newGroups: 0, completedModules: 0, status: 'Draft', submittedBy: '—', submittedDate: '—' },
 ];
-const CLUSTER_PERF = MH_CLUSTERS.map((c) => ({ name: c.name.replace('Cluster ',''), mentors: c.totalMentors, active: c.totalActiveMentees, potential: c.totalPotentialMentees }));
+const CLUSTER_PERF = MH_CLUSTERS.map((c) => ({ name: c.name.replace('Cluster ', ''), mentors: c.totalMentors, active: c.totalActiveMentees, potential: c.totalPotentialMentees }));
 
 function ReportsTab() {
     const [reportType, setReportType] = useState<ReportType>('monthly');
-    const [mapFilter, setMapFilter]   = useState<'All' | 'Community-based' | 'Church-based'>('All');
+    const [mapFilter, setMapFilter] = useState<'All' | 'Community-based' | 'Church-based'>('All');
 
     const reportTypes: { key: ReportType; label: string }[] = [
-        { key: 'monthly',     label: 'Monthly'            },
-        { key: 'quarterly',   label: 'Quarterly'          },
-        { key: 'annual',      label: 'Annual'             },
-        { key: 'coordinator', label: 'Per Coordinator'    },
-        { key: 'cluster',     label: 'Per Cluster'        },
-        { key: 'mentor',      label: 'Per Mentor'         },
-        { key: 'community',   label: 'Community Outreach' },
-        { key: 'maps',        label: 'Interactive Maps'   },
+        { key: 'monthly', label: 'Monthly' },
+        { key: 'quarterly', label: 'Quarterly' },
+        { key: 'annual', label: 'Annual' },
+        { key: 'coordinator', label: 'Per Coordinator' },
+        { key: 'cluster', label: 'Per Cluster' },
+        { key: 'mentor', label: 'Per Mentor' },
+        { key: 'community', label: 'Community Outreach' },
+        { key: 'maps', label: 'Interactive Maps' },
     ];
 
     const barangayCounts: Record<string, number> = {};
@@ -657,10 +671,10 @@ function ReportsTab() {
                 <div><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Reports</h1><p className="text-sm text-gray-400 mt-1">Generate and view Outreach Ministry reports.</p></div>
                 <div className="flex flex-wrap items-center gap-2">
                     <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-xl bg-white hover:border-gray-300 transition-colors">
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>Export PDF
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>Export PDF
                     </button>
                     <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-2 rounded-xl bg-white hover:border-gray-300 transition-colors">
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>Export Excel
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z" /></svg>Export Excel
                     </button>
                 </div>
             </div>
@@ -674,14 +688,14 @@ function ReportsTab() {
                     <p className="text-sm font-semibold text-gray-800 mb-4">Outreach Ministry Growth — {reportType.charAt(0).toUpperCase() + reportType.slice(1)}</p>
                     <ResponsiveContainer width="100%" height={220}>
                         <AreaChart data={REPORT_GROWTH_DATA} margin={{ top: 10, right: 20, left: -16, bottom: 0 }}>
-                            <defs><linearGradient id="mgFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#5b50d6" stopOpacity={0.15}/><stop offset="95%" stopColor="#5b50d6" stopOpacity={0}/></linearGradient></defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false}/>
-                            <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                            <Tooltip contentStyle={TOOLTIP_STYLE}/>
-                            <Legend iconType="plainline" iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}/>
-                            <Area type="monotone" dataKey="mentees" name="Active Mentees" stroke="#5b50d6" strokeWidth={2} fill="url(#mgFill)" dot={false}/>
-                            <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#0b9b8a" strokeWidth={2} dot={false}/>
+                            <defs><linearGradient id="mgFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#5b50d6" stopOpacity={0.15} /><stop offset="95%" stopColor="#5b50d6" stopOpacity={0} /></linearGradient></defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                            <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                            <Tooltip contentStyle={TOOLTIP_STYLE} />
+                            <Legend iconType="plainline" iconSize={14} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                            <Area type="monotone" dataKey="mentees" name="Active Mentees" stroke="#5b50d6" strokeWidth={2} fill="url(#mgFill)" dot={false} />
+                            <Line type="monotone" dataKey="mentors" name="Mentors" stroke="#0b9b8a" strokeWidth={2} dot={false} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
@@ -704,11 +718,10 @@ function ReportsTab() {
                                 <div key={i} className="p-4 flex flex-col gap-2">
                                     <div className="flex items-center justify-between">
                                         <span className="font-semibold text-gray-900 text-sm">{r.month}</span>
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                                            r.status === 'Submitted' ? 'bg-[#16a34a] text-white' :
-                                            r.status === 'Pending'   ? 'bg-[#b45309] text-white' :
-                                            'bg-gray-400 text-white'
-                                        }`}>{r.status}</span>
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${r.status === 'Submitted' ? 'bg-[#16a34a] text-white' :
+                                                r.status === 'Pending' ? 'bg-[#b45309] text-white' :
+                                                    'bg-gray-400 text-white'
+                                            }`}>{r.status}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
                                         <div><span className="text-[10px] text-gray-400 uppercase tracking-widest">Clusters </span><span className="font-semibold text-gray-700 text-xs">{r.clusters}</span></div>
@@ -746,11 +759,10 @@ function ReportsTab() {
                                         <td className="px-3 py-3.5 text-center text-gray-600">{r.newGroups}</td>
                                         <td className="px-3 py-3.5 text-center text-gray-600">{r.completedModules}</td>
                                         <td className="px-3 py-3.5">
-                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                                                r.status === 'Submitted' ? 'bg-[#16a34a] text-white' :
-                                                r.status === 'Pending'   ? 'bg-[#b45309] text-white' :
-                                                'bg-gray-400 text-white'
-                                            }`}>{r.status}</span>
+                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${r.status === 'Submitted' ? 'bg-[#16a34a] text-white' :
+                                                    r.status === 'Pending' ? 'bg-[#b45309] text-white' :
+                                                        'bg-gray-400 text-white'
+                                                }`}>{r.status}</span>
                                         </td>
                                         <td className="px-3 py-3.5 text-xs text-gray-500">{r.submittedBy}</td>
                                         <td className="px-3 py-3.5 text-xs text-gray-400">{r.submittedDate}</td>
@@ -766,14 +778,14 @@ function ReportsTab() {
                     <p className="text-sm font-semibold text-gray-800 mb-4">Performance by {reportType === 'coordinator' ? 'Coordinator' : reportType === 'cluster' ? 'Cluster' : 'Mentor'}</p>
                     <ResponsiveContainer width="100%" height={220}>
                         <BarChart data={CLUSTER_PERF} margin={{ top: 10, right: 20, left: -16, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false}/>
-                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                            <Tooltip contentStyle={TOOLTIP_STYLE}/>
-                            <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}/>
-                            <Bar dataKey="active"    name="Active Mentees"    fill="#5b50d6" radius={[3,3,0,0]} barSize={22}/>
-                            <Bar dataKey="potential" name="Potential Mentees" fill="#e67700" fillOpacity={0.7} radius={[3,3,0,0]} barSize={22}/>
-                            <Bar dataKey="mentors"   name="Mentors"           fill="#0b9b8a" fillOpacity={0.6} radius={[3,3,0,0]} barSize={22}/>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                            <Tooltip contentStyle={TOOLTIP_STYLE} />
+                            <Legend iconSize={12} wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                            <Bar dataKey="active" name="Active Mentees" fill="#5b50d6" radius={[3, 3, 0, 0]} barSize={22} />
+                            <Bar dataKey="potential" name="Potential Mentees" fill="#e67700" fillOpacity={0.7} radius={[3, 3, 0, 0]} barSize={22} />
+                            <Bar dataKey="mentors" name="Mentors" fill="#0b9b8a" fillOpacity={0.6} radius={[3, 3, 0, 0]} barSize={22} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -797,12 +809,15 @@ function ReportsTab() {
                 <div className="mb-6">
                     {/* Filter controls */}
                     <div className="flex flex-wrap items-center gap-3 mb-4">
-                        {(['All', 'Community-based', 'Church-based'] as const).map((f) => (
-                            <button key={f} onClick={() => setMapFilter(f)}
-                                className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${mapFilter === f ? 'bg-[#5b50d6] text-white border-[#5b50d6]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                                {f}
-                            </button>
-                        ))}
+                        <select
+                            value={mapFilter}
+                            onChange={(e) => setMapFilter(e.target.value as any)}
+                            className="text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5b50d6] min-w-[160px]"
+                        >
+                            <option value="All">All Types</option>
+                            <option value="Community-based">Community-based</option>
+                            <option value="Church-based">Church-based</option>
+                        </select>
                     </div>
                     {/* Map + sidebar */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
@@ -838,20 +853,20 @@ function ReportsTab() {
                 </div>
             )}
             {reportType !== 'maps' && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { value: MH_CLUSTERS.length, color: '#5b50d6', label: 'Total Clusters', sub: 'Active' },
-                    { value: MH_ALL_MENTORS.filter((m) => m.status === 'Active').length, color: '#0b9b8a', label: 'Active Mentors', sub: 'Outreach Ministry' },
-                    { value: MH_ACTIVE_MENTEES_LIST.length, color: '#1971c2', label: 'Active Mentees', sub: '+3 this month' },
-                    { value: MH_POTENTIAL_MENTEES.length, color: '#e67700', label: 'Potential Mentees', sub: 'Awaiting process' },
-                ].map((s) => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                        <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
-                        <p className="text-sm font-semibold text-gray-800">{s.label}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
-                    </div>
-                ))}
-            </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                        { value: MH_CLUSTERS.length, color: '#5b50d6', label: 'Total Clusters', sub: 'Active' },
+                        { value: MH_ALL_MENTORS.filter((m) => m.status === 'Active').length, color: '#0b9b8a', label: 'Active Mentors', sub: 'Outreach Ministry' },
+                        { value: MH_ACTIVE_MENTEES_LIST.length, color: '#1971c2', label: 'Active Mentees', sub: '+3 this month' },
+                        { value: MH_POTENTIAL_MENTEES.length, color: '#e67700', label: 'Potential Mentees', sub: 'Awaiting process' },
+                    ].map((s) => (
+                        <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                            <p className="text-3xl font-black leading-none mb-1" style={{ color: s.color }}>{s.value}</p>
+                            <p className="text-sm font-semibold text-gray-800">{s.label}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
+                        </div>
+                    ))}
+                </div>
             )}
         </div>
     );
@@ -862,10 +877,10 @@ function NotificationsTab() {
     const [notifs, setNotifs] = useState(MH_NOTIFICATIONS);
     const unreadCount = notifs.filter((n) => !n.read).length;
     const NOTIF_ICON: Record<string, { color: string; icon: string }> = {
-        worker:      { color: '#5b50d6', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
-        worker_id:   { color: '#5b50d6', icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
+        worker: { color: '#5b50d6', icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+        worker_id: { color: '#5b50d6', icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
         coordinator: { color: '#0b9b8a', icon: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' },
-        mentor:      { color: '#e67700', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
+        mentor: { color: '#e67700', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
     };
     const TYPE_LABEL: Record<string, string> = { worker: 'New Worker', worker_id: 'Worker ID', coordinator: 'Coordinator', mentor: 'Mentor' };
 
@@ -881,7 +896,7 @@ function NotificationsTab() {
                     return (
                         <div key={n.id} className={`bg-white rounded-2xl border px-5 py-4 flex items-start gap-4 transition-all ${!n.read ? 'border-[#5b50d6]/30 shadow-sm' : 'border-gray-100'}`}>
                             <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: s.color + '20' }}>
-                                <svg style={{ color: s.color, width: 18, height: 18 }} viewBox="0 0 24 24" fill="currentColor"><path d={s.icon}/></svg>
+                                <svg style={{ color: s.color, width: 18, height: 18 }} viewBox="0 0 24 24" fill="currentColor"><path d={s.icon} /></svg>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
@@ -919,14 +934,13 @@ export default function DepartmentHeadDashboard() {
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 z-[1001] bg-black/40 md:hidden"
+                    className="fixed inset-0 z-40 bg-black/50 md:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
             {/* ── Left Sidebar ── */}
-            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 z-[1002] transition-transform duration-200
-                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+            <aside className={`sidebar-nav w-56 border-r flex flex-col pt-6 pb-4 fixed top-nav-fixed bottom-0 left-0 ${sidebarOpen ? 'z-40 translate-x-0' : 'z-30 -translate-x-full md:translate-x-0'} transition-transform duration-200`}>
                 {/* MENU label */}
                 <p className="px-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Menu</p>
 
@@ -935,19 +949,19 @@ export default function DepartmentHeadDashboard() {
                     {MH_NAV.map((item) => (
                         <button key={item.key} onClick={() => navigate(item.key)}
                             className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left ${activeNav === item.key ? 'nav-item-active text-gray-800 shadow-sm' : 'text-gray-500 hover:bg-white/60 dark:hover:bg-white/10'}`}>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill={activeNav === item.key ? '#5b50d6' : '#aaa'}><path d={item.icon}/></svg>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill={activeNav === item.key ? '#5b50d6' : '#aaa'}><path d={item.icon} /></svg>
                             {item.label}
                             {item.key === 'notifications' && unreadCount > 0 && (
-                                <span className="ml-auto text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-full" style={{ background: '#dde0f5', color: '#6366c1' }}>{unreadCount}</span>
+                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-[#5b50d6] text-white">{unreadCount}</span>
                             )}
                             {item.key === 'clusters' && (
-                                <span className="ml-auto text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-full" style={{ background: '#dde0f5', color: '#6366c1' }}>{MH_CLUSTERS.length}</span>
+                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-[#5b50d6] text-white">{MH_CLUSTERS.length}</span>
                             )}
                             {item.key === 'potential' && (
-                                <span className="ml-auto text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-full" style={{ background: '#dde0f5', color: '#6366c1' }}>{MH_POTENTIAL_MENTEES.length}</span>
+                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-[#5b50d6] text-white">{MH_POTENTIAL_MENTEES.length}</span>
                             )}
                             {item.key === 'mentees' && (
-                                <span className="ml-auto text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-full" style={{ background: '#dde0f5', color: '#6366c1' }}>{MH_ACTIVE_MENTEES_LIST.length}</span>
+                                <span className="ml-auto text-[11px] font-bold min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-[#5b50d6] text-white">{MH_ACTIVE_MENTEES_LIST.length}</span>
                             )}
                         </button>
                     ))}
@@ -959,7 +973,7 @@ export default function DepartmentHeadDashboard() {
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full text-left text-gray-500 hover:bg-white/60"
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="#aaa">
-                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
                         </svg>
                         Settings
                     </button>
@@ -971,14 +985,14 @@ export default function DepartmentHeadDashboard() {
             <div className="w-full md:ml-56 pb-16 min-w-0 overflow-x-hidden">
 
                 {/* Mobile sticky menu bar */}
-                <div className="md:hidden fixed top-nav-fixed left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
+                <div className="md:hidden sticky top-0 left-0 right-0 z-20 mobile-menu-bar px-4 py-2.5 flex items-center gap-2">
                     <button
                         className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
                         onClick={() => setSidebarOpen(true)}
                         aria-label="Open menu"
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
                         </svg>
                     </button>
                     <span className="text-xs text-gray-400 ml-1">
@@ -986,15 +1000,15 @@ export default function DepartmentHeadDashboard() {
                     </span>
                 </div>
 
-                <div className="pt-[72px] md:pt-5 px-4 sm:px-6">
-                {activeNav === 'dashboard'    && <DashboardTab/>}
-                {activeNav === 'clusters'     && <ClustersTab/>}
-                {activeNav === 'coordinators' && <CoordinatorsTab/>}
-                {activeNav === 'mentors'      && <MentorsTab/>}
-                {activeNav === 'potential'    && <PotentialMenteesTab/>}
-                {activeNav === 'mentees'      && <ActiveMenteesTab/>}
-                {activeNav === 'reports'      && <ReportsTab/>}
-                {activeNav === 'notifications'&& <NotificationsTab/>}
+                <div className="pt-4 md:pt-5 px-4 sm:px-6">
+                    {activeNav === 'dashboard' && <DashboardTab />}
+                    {activeNav === 'clusters' && <ClustersTab />}
+                    {activeNav === 'coordinators' && <CoordinatorsTab />}
+                    {activeNav === 'mentors' && <MentorsTab />}
+                    {activeNav === 'potential' && <PotentialMenteesTab />}
+                    {activeNav === 'mentees' && <ActiveMenteesTab />}
+                    {activeNav === 'reports' && <ReportsTab />}
+                    {activeNav === 'notifications' && <NotificationsTab />}
                 </div>
             </div>
         </div>

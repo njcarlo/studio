@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authenticate } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
@@ -16,6 +16,11 @@ export default function LoginPage() {
     const [keepSigned, setKeepSigned] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        // Ensure login screen is always clean light mode
+        document.documentElement.classList.remove('dark');
+    }, []);
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -54,25 +59,21 @@ export default function LoginPage() {
             </div>
 
             {/* Page content */}
-            <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 sm:px-6 py-6 sm:py-12">
+            <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 sm:px-6 pt-4 pb-8 sm:py-8 w-full max-w-md mx-auto">
 
                 {/* Logo above card */}
-                <div className="mb-4 sm:mb-6 flex flex-col items-center">
+                <div className="-mt-16 sm:-mt-12 mb-6 sm:mb-6 flex flex-col items-center shrink-0">
                     <div
-                        className="rounded-full bg-white shadow-lg overflow-hidden flex items-center justify-center"
+                        className="w-[130px] h-[130px] sm:w-[145px] sm:h-[145px] md:w-[155px] md:h-[155px] rounded-full bg-white shadow-xl overflow-hidden flex items-center justify-center border-4 border-white p-2.5 sm:p-3 transition-all"
                         style={{
-                            width: 'clamp(80px, 20vw, 144px)',
-                            height: 'clamp(80px, 20vw, 144px)',
-                            border: 'clamp(3px, 0.8vw, 6px) solid white',
-                            boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-                            padding: 'clamp(5px, 1.2vw, 12px)',
+                            boxShadow: '0 8px 30px rgba(0,0,0,0.22)',
                         }}
                     >
                         <Image
                             src="/c2s.png"
                             alt="Connect2Souls Logo"
-                            width={130}
-                            height={130}
+                            width={150}
+                            height={150}
                             className="object-contain w-full h-full"
                             priority
                         />
@@ -80,9 +81,9 @@ export default function LoginPage() {
                 </div>
 
                 {/* Login card */}
-                <div className="w-full max-w-sm sm:max-w-md bg-white rounded-2xl shadow-xl px-4 sm:px-8 py-5 sm:py-8">
+                <div className="w-full bg-white rounded-2xl shadow-xl px-5 sm:px-8 py-5 sm:py-7">
                     <h2 className="text-lg sm:text-xl font-bold text-gray-900 text-center mb-1">Login to your account</h2>
-                    <p className="text-xs sm:text-sm text-gray-500 text-center mb-4 sm:mb-6">Enter your Worker ID and password to continue</p>
+                    <p className="text-xs sm:text-sm text-gray-500 text-center mb-4 sm:mb-5">Enter your Worker ID and password to continue</p>
 
                     <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                         {/* Worker ID */}
@@ -102,7 +103,8 @@ export default function LoginPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="e.g 145021"
-                                    className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 sm:py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                    style={{ color: '#111827', backgroundColor: '#f8fffe' }}
+                                    className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 sm:py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
                                 />
                             </div>
                         </div>
@@ -124,7 +126,8 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter your password"
-                                    className="w-full border border-gray-200 rounded-xl pl-9 pr-10 py-2.5 sm:py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
+                                    style={{ color: '#111827', backgroundColor: '#f8fffe' }}
+                                    className="w-full border border-gray-200 rounded-xl pl-9 pr-10 py-2.5 sm:py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-[#f8fffe]"
                                 />
                                 <button
                                     type="button"
@@ -179,7 +182,7 @@ export default function LoginPage() {
                         <button
                             type="button"
                             className="text-xs sm:text-sm text-[#2dc7be] font-medium hover:underline"
-                            onClick={() => {/* TODO: implement find worker ID flow */}}
+                            onClick={() => {/* TODO: implement find worker ID flow */ }}
                         >
                             Find My Worker ID
                         </button>

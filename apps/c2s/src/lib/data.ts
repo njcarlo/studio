@@ -21,6 +21,9 @@ export interface C2SGroup {
     lat: number;
     lng: number;
     isFeatured?: boolean;
+    satellite?: string;
+    satelliteId?: string;
+    satelliteName?: string;
 }
 
 export interface LiveScheduleItem { time: string; label: string; }

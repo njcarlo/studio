@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import type { C2SGroup } from '@/lib/data';
 import { BARANGAYS_BY_SATELLITE } from '@/lib/data';
+import { useSatellites } from '@/lib/satellite-context';
 
 interface Props {
     group: C2SGroup;
@@ -28,7 +29,6 @@ const DURATIONS = [
 
 const GROUP_TYPES  = ['Youth','Young Adults',"Men's","Ladies'",'Couples','Open to All'];
 const STATUSES     = ['Exclusive','Open'];
-const SATELLITE_CHURCHES = ['COG Dasmarinas','COG Silang','COG Jabez','COG Trece'];
 const MEETING_FORMATS  = ['Face to Face', 'Online'];
 const GENDERS      = ['Female','Male','Both'];
 
@@ -44,6 +44,10 @@ function parseSchedule(schedule: string) {
 }
 
 export default function EditGroupModal({ group, onClose, onSave }: Props) {
+    const { activeSatellites } = useSatellites();
+    const satOptionNames = activeSatellites.map(s => s.name);
+    const initialSat = group.satelliteName || group.satellite || (activeSatellites[0]?.name ?? 'COG Dasmarinas');
+
     const { day: initDay, time: initTime } = parseSchedule(group.schedule);
 
     const [name, setName]               = useState(group.name);
@@ -55,17 +59,12 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
     const [frequency, setFrequency]     = useState('Weekly');
     const [duration, setDuration]       = useState('1 hr');
     // Exclusive location
-    const [satellite, setSatellite]     = useState('COG Dasmarinas');
+    const [satellite, setSatellite]     = useState(initialSat);
     const [meetingFormat, setMeetingFormat] = useState('Face to Face');
     // Open location
-    const [communitySatellite, setCommunitySatellite] = useState(
-        (() => {
-            // Try to infer from group data; default to Dasmarinas
-            return 'COG Dasmarinas';
-        })()
-    );
+    const [communitySatellite, setCommunitySatellite] = useState(initialSat);
     const [barangay, setBarangay]       = useState(group.barangay ?? '');
-    const communityBarangays            = BARANGAYS_BY_SATELLITE[communitySatellite] ?? [];
+    const communityBarangays            = BARANGAYS_BY_SATELLITE[communitySatellite] ?? (BARANGAYS_BY_SATELLITE['COG Dasmarinas'] || []);
 
     function handleCommunitySatelliteChange(val: string) {
         setCommunitySatellite(val);
@@ -93,6 +92,7 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
     }
 
     function handleSave() {
+        const chosenSatObj = activeSatellites.find(s => s.name === (!isOpen ? satellite : communitySatellite));
         onSave({
             ...group,
             name,
@@ -102,14 +102,17 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
             meetupDay: meetingDay,
             location: isOpen ? subdivision || group.location : group.location,
             barangay: isOpen ? barangay : group.barangay,
+            satellite: !isOpen ? satellite : communitySatellite,
+            satelliteName: chosenSatObj?.name || (!isOpen ? satellite : communitySatellite),
+            satelliteId: chosenSatObj?.id,
         });
         onClose();
     }
 
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose} />
-            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div
                     className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
                     onClick={(e) => e.stopPropagation()}
@@ -180,7 +183,7 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                                     </div>
                                     <div className="w-full sm:max-w-[50%]">
                                         <Field label="Satellite Churches">
-                                            <Sel value={satellite} onChange={setSatellite} options={SATELLITE_CHURCHES} />
+                                            <Sel value={satellite} onChange={setSatellite} options={satOptionNames} />
                                         </Field>
                                     </div>
                                 </div>
@@ -201,7 +204,7 @@ export default function EditGroupModal({ group, onClose, onSave }: Props) {
                                     </div>
                                     <div className="w-full sm:max-w-[50%]">
                                         <Field label="Satellite Church">
-                                            <Sel value={communitySatellite} onChange={handleCommunitySatelliteChange} options={SATELLITE_CHURCHES} />
+                                            <Sel value={communitySatellite} onChange={handleCommunitySatelliteChange} options={satOptionNames} />
                                         </Field>
                                     </div>
                                     <div className="w-full sm:max-w-[50%]">

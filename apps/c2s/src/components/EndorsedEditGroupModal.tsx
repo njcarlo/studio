@@ -77,8 +77,8 @@ export default function EndorsedEditGroupModal({ group, onClose, onSave }: Props
 
     return (
         <>
-            <div className="fixed inset-0 z-[100] bg-black/50" onClick={onClose} />
-            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                     <div className="px-5 sm:px-8 pt-7 pb-5 border-b border-gray-100 flex items-start justify-between">
                         <div>

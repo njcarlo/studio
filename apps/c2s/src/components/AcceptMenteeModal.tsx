@@ -11,10 +11,10 @@ export default function AcceptMenteeModal({ menteeName, groupName, onCancel, onC
     return (
         <>
             {/* Backdrop */}
-            <div className="fixed inset-0 z-[200] bg-black/40" onClick={onCancel} />
+            <div className="fixed inset-0 z-[9999] bg-black/50" onClick={onCancel} />
 
             {/* Dialog */}
-            <div className="fixed inset-0 z-[201] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                 <div
                     className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 flex flex-col gap-5"
                     onClick={(e) => e.stopPropagation()}
