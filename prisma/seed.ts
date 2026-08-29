@@ -14,7 +14,27 @@ const DEFAULT_INVENTORY_CATEGORIES = [
   { name: 'Safety & First Aid', description: 'Fire extinguishers, first aid kits, and safety equipment',         color: '#f97316', icon: '🧰' },
 ];
 
+// Ministry.departmentCode is a required FK, so nothing that creates a ministry
+// (the admin form, CSV import, ORS sync) works until these rows exist.
+const DEPARTMENTS = [
+  { code: 'W', name: 'Worship' },
+  { code: 'O', name: 'Outreach' },
+  { code: 'R', name: 'Relationship' },
+  { code: 'D', name: 'Discipleship' },
+  { code: 'A', name: 'Administration' },
+];
+
 async function main() {
+  console.log('Seeding Department...');
+  for (const dept of DEPARTMENTS) {
+    const record = await prisma.department.upsert({
+      where: { code: dept.code },
+      update: { name: dept.name },
+      create: { code: dept.code, name: dept.name, weight: 0 },
+    });
+    console.log(`  ✅ ${record.code} — ${record.name}`);
+  }
+
   console.log('Seeding VenueAssistanceSetting...');
 
   await prisma.venueAssistanceSetting.upsert({
