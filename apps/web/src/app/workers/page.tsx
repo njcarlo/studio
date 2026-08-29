@@ -334,13 +334,15 @@ export default function WorkersPage() {
         workerId ||
         String(100000 + (allWorkers?.length || 0)).slice(-6);
 
-      const firstRole = roles?.[0]?.id;
+      // Roles come back sorted by name, so `roles[0]` was "Admin" — leaving the
+      // Role field untouched silently granted the new worker super-admin.
+      // Default to the least-privileged role instead.
       await createWorkerSql({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim() || "N/A",
-        roleId: roleId || firstRole || null,
+        roleId: roleId || "viewer",
         status: status || "Pending Approval",
         majorMinistryId,
         minorMinistryId: minorMinistryId || majorMinistryId,
