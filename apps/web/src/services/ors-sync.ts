@@ -359,6 +359,15 @@ const ORS_DEPT_MAP: Record<number, string> = {
     6: 'D',
 };
 
+/** Canonical department names per code — mirrors `normalizeDepartmentCode` in actions/db.ts. */
+const DEPT_NAMES: Record<string, string> = {
+    W: 'Worship',
+    O: 'Outreach',
+    R: 'Relationship',
+    D: 'Discipleship',
+    A: 'Administration',
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function mapEmploymentType(workerType: string | null): string {
@@ -453,6 +462,41 @@ async function orsFetch<T>(path: string): Promise<T> {
     const res = await fetch(`${ORS_BASE}${path}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`ORS fetch failed: ${path} (${res.status})`);
     return res.json();
+}
+
+/**
+ * Single-row ORS reads (`/tables/<table>/<id>`) answer with a *nested* envelope
+ * — `{ table, data: {...} }` — unlike the list endpoints' flat `OrsApiPage`.
+ * Reading fields straight off the response therefore yields `undefined` for
+ * every column, which is silent: the importer happily wrote one row with
+ * `workerId: "undefined"` and then treated every later worker as already
+ * present, so no worker could ever be imported again.
+ */
+type OrsApiRow<T> = { table: string; data: T };
+
+async function orsFetchRow<T>(path: string): Promise<T> {
+    const body = await orsFetch<OrsApiRow<T> | T>(path);
+    const row = (body as OrsApiRow<T>)?.data ?? (body as T);
+    if (!row || typeof row !== 'object') {
+        throw new Error(`ORS row fetch returned no data: ${path}`);
+    }
+    return row as T;
+}
+
+/**
+ * ORS caps `limit` at 100 regardless of what is asked for, and reports the
+ * resulting page count in `pages`. Always follow `pages` rather than assuming
+ * one big request returned everything — a single `?limit=200` silently
+ * truncated the 1,739-row C2S group view to its first 100 rows.
+ */
+async function fetchAllOrsRows<T>(table: string): Promise<T[]> {
+    const first = await orsFetch<OrsApiPage<T>>(`/tables/${table}?page=1&limit=100`);
+    const all = [...first.data];
+    for (let page = 2; page <= first.pages; page++) {
+        const res = await orsFetch<OrsApiPage<T>>(`/tables/${table}?page=${page}&limit=100`);
+        all.push(...res.data);
+    }
+    return all;
 }
 
 async function fetchAllOrsWorkerIds(): Promise<Set<string>> {
@@ -586,12 +630,12 @@ export async function getOrsSyncStats(): Promise<OrsSyncStats> {
 // ─── Ministry map (ORS id → new app id, matched by name) ────────────────────
 
 export async function getOrsMinistryMap(): Promise<Record<string, string>> {
-    const [orsRes, newMinistries] = await Promise.all([
-        orsFetch<OrsApiPage<OrsMinistry>>('/tables/ministry?limit=200'),
+    const [orsMinistries, newMinistries] = await Promise.all([
+        fetchAllOrsRows<OrsMinistry>('ministry'),
         prisma.ministry.findMany(),
     ]);
     const map: Record<string, string> = {};
-    for (const orsMin of orsRes.data) {
+    for (const orsMin of orsMinistries) {
         const normalized = (orsMin.name || '').toLowerCase().trim();
         const match = newMinistries.find((m: any) => m.name.toLowerCase().trim() === normalized);
         if (match) map[String(orsMin.id)] = match.id;
@@ -855,7 +899,7 @@ async function importOrsNewWorkersInner(
     for (let i = 0; i < orsWorkerIds.length; i += CHUNK) {
         const chunk = orsWorkerIds.slice(i, i + CHUNK);
         const fetched = await Promise.all(
-            chunk.map(id => orsFetch<any>(`/tables/worker/${id}`).catch(() => null))
+            chunk.map(id => orsFetchRow<any>(`/tables/worker/${id}`).catch(() => null))
         );
         allWorkers.push(...fetched.filter(Boolean));
     }
@@ -866,9 +910,19 @@ async function importOrsNewWorkersInner(
 
     for (const w of allWorkers) {
         try {
+            // A row without an ORS id can only produce a junk record whose
+            // `workerId` then matches every subsequent lookup, wedging all
+            // later imports. Refuse it loudly instead.
+            const orsId = w?.id != null ? String(w.id).trim() : '';
+            if (!orsId || orsId === 'undefined' || orsId === 'null') {
+                result.failed++;
+                result.errors.push('Skipped an ORS row with no usable worker id');
+                continue;
+            }
+
             // Skip workers already in the DB
             const existingWorker = await prisma.worker.findFirst({
-                where: { OR: [{ workerId: String(w.id) }, ...(w.email ? [{ email: w.email }] : [])] },
+                where: { OR: [{ workerId: orsId }, ...(w.email ? [{ email: w.email }] : [])] },
             });
             if (existingWorker) {
                 result.skipped++;
@@ -1066,7 +1120,7 @@ async function syncOrsWorkerPasswordsInner(
     for (let i = 0; i < orsWorkerIds.length; i += CHUNK) {
         const chunk = orsWorkerIds.slice(i, i + CHUNK);
         const fetched = await Promise.all(
-            chunk.map(id => orsFetch<any>(`/tables/worker/${id}`).catch(() => null))
+            chunk.map(id => orsFetchRow<any>(`/tables/worker/${id}`).catch(() => null))
         );
         allWorkers.push(...fetched.filter(Boolean));
     }
@@ -1151,6 +1205,18 @@ async function importOrsMinistriesInner(
             const departmentCode = ORS_DEPT_MAP[m.department_id] || 'D';
             const headId = m.head_id ? (workerIdMap[String(m.head_id)] || null) : null;
 
+            // Nothing in the repo seeds `Department`, so on a fresh database a
+            // bare `connect` failed for every ministry. Ensure the row exists.
+            await prisma.department.upsert({
+                where: { code: departmentCode },
+                update: {},
+                create: {
+                    code: departmentCode,
+                    name: DEPT_NAMES[departmentCode] ?? departmentCode,
+                    weight: 0,
+                },
+            });
+
             await prisma.ministry.create({
                 data: {
                     name: m.name,
@@ -1158,7 +1224,11 @@ async function importOrsMinistriesInner(
                     department: {
                         connect: { code: departmentCode },
                     },
-                    leaderId: headId || null,
+                    // `Ministry.leaderId` is a required column and most ORS
+                    // ministries have no resolvable head, so `null` rejected
+                    // every single ministry. '' is the app's "unset" value
+                    // (see the ministries form).
+                    leaderId: headId || '',
                     headId: headId || null,
                 },
             });
@@ -1308,8 +1378,8 @@ async function importOrsMenteesInner(mentees: OrsMentee[]): Promise<ImportResult
         groupsByMentor[g.mentorId].push(g);
     }
 
-    const orsGroups = await orsFetch<OrsApiPage<OrsMentorGroup>>('/tables/c2s_online_group_view?limit=200');
-    const orsGroupMap = Object.fromEntries(orsGroups.data.map(g => [String(g.group_id || g.id), g]));
+    const orsGroups = await fetchAllOrsRows<OrsMentorGroup>('c2s_online_group_view');
+    const orsGroupMap = Object.fromEntries(orsGroups.map(g => [String(g.group_id || g.id), g]));
 
     for (const m of mentees) {
         try {
@@ -1610,14 +1680,9 @@ export async function runWeeklyOrsSync(): Promise<WeeklyOrsSyncResult> {
         };
 
         // Reference data, in the same order the UI recommends.
-        const ministries = await orsFetch<OrsApiPage<OrsMinistry>>('/tables/ministry?page=1&limit=500');
-        add('ministries', await importOrsMinistriesInner(ministries.data));
-
-        const satellites = await orsFetch<OrsApiPage<OrsSatellite>>('/tables/satellite?page=1&limit=500');
-        add('branches', await importOrsSatellitesInner(satellites.data));
-
-        const areas = await orsFetch<OrsApiPage<OrsArea>>('/tables/area?page=1&limit=500');
-        add('areas', await importOrsAreasInner(areas.data));
+        add('ministries', await importOrsMinistriesInner(await fetchAllOrsRows<OrsMinistry>('ministry')));
+        add('branches', await importOrsSatellitesInner(await fetchAllOrsRows<OrsSatellite>('satellite')));
+        add('areas', await importOrsAreasInner(await fetchAllOrsRows<OrsArea>('area')));
 
         const ministryMap = await getOrsMinistryMap();
 
