@@ -105,3 +105,9 @@
     color: hsl(var(--foreground));
   }
 }
+
+@layer utilities {
+  .shadow-card-dark {
+    box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.14), 0 4px 10px -2px rgba(0, 0, 0, 0.08) !important;
+  }
+}
