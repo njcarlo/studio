@@ -2,12 +2,10 @@ import { StatCard } from './StatCard';
 import { ActivityFeed } from './ActivityFeed';
 import { InventoryTable } from './InventoryTable';
 import { useInventory } from '../hooks/useInventory';
-import { useAuth } from '../lib/auth-context';
 import { useEffect } from 'react';
 
 export function Dashboard() {
-  const { ministryId } = useAuth();
-  const { stats, fetchStats } = useInventory(ministryId);
+  const { stats, fetchStats } = useInventory();
 
   useEffect(() => {
     fetchStats();
