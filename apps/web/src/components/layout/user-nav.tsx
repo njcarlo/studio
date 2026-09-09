@@ -73,7 +73,7 @@ export function UserNav() {
       "Administrator";
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"

@@ -73,7 +73,8 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       boxShadow: {
-        card: '0 0.75rem 1.5rem rgba(18, 38, 63, 0.03)',
+        card: '0 10px 25px -3px rgba(0, 0, 0, 0.14), 0 4px 10px -2px rgba(0, 0, 0, 0.08)',
+        'dark-card': '0 10px 25px -3px rgba(0, 0, 0, 0.14), 0 4px 10px -2px rgba(0, 0, 0, 0.08)',
       },
       keyframes: {
         'accordion-down': {
