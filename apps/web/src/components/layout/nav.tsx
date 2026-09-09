@@ -87,7 +87,7 @@ const allNavItems: NavItem[] = [
       },
       {
         href: "/reservations/masterview/daily",
-        label: "Daily View",
+        label: "Schedule Calendar",
         permissionKey: "canViewScheduleMasterview",
       },
       { href: "/reservations/calendar", label: "View Schedules" },
@@ -110,7 +110,21 @@ const allNavItems: NavItem[] = [
       {
         href: "/meals?tab=assign",
         label: "Assign Meal Stub",
-        permissionKey: "isMealStubAssigner",
+        anyPermissionKeys: [
+          "isMealStubAssigner",
+          "canManageAllMealStubs",
+          "isMinistryHead",
+        ],
+      },
+      {
+        href: "/meals?tab=reports",
+        label: "Reports",
+        anyPermissionKeys: [
+          "isMealStubAssigner",
+          "canManageAllMealStubs",
+          "isMinistryHead",
+          "canViewReports",
+        ],
       },
     ],
   },

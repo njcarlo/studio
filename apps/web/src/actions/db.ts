@@ -669,8 +669,8 @@ export async function deleteMinistry(id: string) {
 
 export async function getBookings(filters: {
     workerProfileId?: string;
-    dateFrom?: Date;
-    dateTo?: Date;
+    dateFrom?: Date | string;
+    dateTo?: Date | string;
     roomId?: string;
     status?: string;
 } = {}) {
@@ -686,8 +686,8 @@ export async function getBookings(filters: {
     }
     if (filters.dateFrom || filters.dateTo) {
         where.start = {
-            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
-            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+            ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+            ...(filters.dateTo ? { lte: new Date(filters.dateTo) } : {}),
         };
     }
 
@@ -703,7 +703,7 @@ export async function getBookings(filters: {
     });
 }
 
-export async function getBookingsForRoomOnDate(roomId: string, date: Date) {
+export async function getBookingsForRoomOnDate(roomId: string, date: Date | string) {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
@@ -758,13 +758,13 @@ export async function deleteBooking(id: string) {
 
 // --- Meal Stubs ---
 
-export async function getMealStubs(filters: { workerId?: string; dateFrom?: Date; dateTo?: Date } = {}) {
+export async function getMealStubs(filters: { workerId?: string; dateFrom?: Date | string; dateTo?: Date | string } = {}) {
     const where: any = {};
     if (filters.workerId) where.workerId = filters.workerId;
     if (filters.dateFrom || filters.dateTo) {
         where.date = {
-            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
-            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+            ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+            ...(filters.dateTo ? { lte: new Date(filters.dateTo) } : {}),
         };
     }
 
@@ -809,13 +809,13 @@ export async function deleteMealStub(id: string) {
 
 // --- Attendance ---
 
-export async function getAttendanceRecords(filters: { workerProfileId?: string; dateFrom?: Date; dateTo?: Date } = {}) {
+export async function getAttendanceRecords(filters: { workerProfileId?: string; dateFrom?: Date | string; dateTo?: Date | string } = {}) {
     const where: any = {};
     if (filters.workerProfileId) where.workerProfileId = filters.workerProfileId;
     if (filters.dateFrom || filters.dateTo) {
         where.time = {
-            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
-            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+            ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+            ...(filters.dateTo ? { lte: new Date(filters.dateTo) } : {}),
         };
     }
 

@@ -3,65 +3,126 @@
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Button } from "@studio/ui";
 import {
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon,
-  Info,
   LoaderCircle,
-  Mic,
+  CheckCircle2,
   Tv,
+  Mic,
   Speaker,
 } from "lucide-react";
-import { format, addDays, subDays, isSameDay, isToday } from "date-fns";
+import {
+  format,
+  addMonths,
+  subMonths,
+  addWeeks,
+  subWeeks,
+  addDays,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  isSameMonth,
+  isToday,
+} from "date-fns";
 import { useQuery } from "@tanstack/react-query";
-import type { Booking, Room, Area, Worker } from "@studio/types";
-import { Badge } from "@studio/ui";
+import type { Booking, Room, Area, Worker, VenueElement, Ministry } from "@studio/types";
+import {
+  Badge,
+  Button,
+  Separator,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@studio/ui";
 import { cn, toJsDate } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
-import { getAreas, getBookings, getRooms, getWorkers } from "@/actions/db";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@studio/ui";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@studio/ui";
-import { Separator } from "@studio/ui";
+  getAreas,
+  getBookings,
+  getRooms,
+  getVenueElements,
+  getWorkers,
+  getMinistries,
+} from "@/actions/db";
+import { EditReservationDialog } from "@/components/reservations/edit-reservation-dialog";
 
-export default function DailyViewPage() {
+type CalendarViewMode = "month" | "week" | "day";
+
+// Color styles for reservation badge pills
+const EVENT_COLORS = [
+  {
+    bg: "bg-blue-50 dark:bg-blue-950/40",
+    text: "text-blue-900 dark:text-blue-200",
+    border: "border-l-blue-500",
+  },
+  {
+    bg: "bg-emerald-50 dark:bg-emerald-950/40",
+    text: "text-emerald-900 dark:text-emerald-200",
+    border: "border-l-emerald-500",
+  },
+  {
+    bg: "bg-purple-50 dark:bg-purple-950/40",
+    text: "text-purple-900 dark:text-purple-200",
+    border: "border-l-purple-500",
+  },
+  {
+    bg: "bg-amber-50 dark:bg-amber-950/40",
+    text: "text-amber-900 dark:text-amber-200",
+    border: "border-l-amber-500",
+  },
+  {
+    bg: "bg-rose-50 dark:bg-rose-950/40",
+    text: "text-rose-900 dark:text-rose-200",
+    border: "border-l-rose-500",
+  },
+];
+
+export default function ScheduleCalendarPage() {
   const { canViewScheduleMasterview, isLoading: roleLoading } = useUserRole();
   const router = useRouter();
 
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<CalendarViewMode>("day");
+  const [selectedAreaId, setSelectedAreaId] = useState<string>("all");
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  // Data fetching
+  // Fetch data live from Database queries
   const { data: rooms, isLoading: roomsLoading } = useQuery({
     queryKey: ["rooms"],
     queryFn: getRooms,
   });
+
   const { data: areas, isLoading: areasLoading } = useQuery({
     queryKey: ["areas"],
     queryFn: getAreas,
   });
+
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ["bookings"],
     queryFn: () => getBookings(),
   });
+
   const { data: workers, isLoading: workersLoading } = useQuery({
     queryKey: ["workers"],
     queryFn: getWorkers,
+  });
+
+  const { data: venueElements, isLoading: venueElementsLoading } = useQuery({
+    queryKey: ["venue-elements"],
+    queryFn: getVenueElements,
+  });
+
+  const { data: ministries, isLoading: ministriesLoading } = useQuery({
+    queryKey: ["ministries"],
+    queryFn: getMinistries,
   });
 
   const isLoading =
@@ -69,536 +130,572 @@ export default function DailyViewPage() {
     areasLoading ||
     bookingsLoading ||
     workersLoading ||
-    roleLoading;
+    roleLoading ||
+    venueElementsLoading ||
+    ministriesLoading;
 
-  // Permission guard
+  // Protected route check
   React.useEffect(() => {
     if (!roleLoading && !canViewScheduleMasterview) {
       router.replace("/dashboard");
     }
   }, [canViewScheduleMasterview, roleLoading, router]);
 
-  const handlePrev = () => setCurrentDate(subDays(currentDate, 1));
-  const handleNext = () => setCurrentDate(addDays(currentDate, 1));
-  const handleToday = () => setCurrentDate(new Date());
+  // Navigation handlers
+  const handlePrev = () => {
+    if (viewMode === "month") {
+      setCurrentDate(subMonths(currentDate, 1));
+    } else if (viewMode === "week") {
+      setCurrentDate(subWeeks(currentDate, 1));
+    } else {
+      setCurrentDate(subDays(currentDate, 1));
+    }
+  };
+
+  const handleNext = () => {
+    if (viewMode === "month") {
+      setCurrentDate(addMonths(currentDate, 1));
+    } else if (viewMode === "week") {
+      setCurrentDate(addWeeks(currentDate, 1));
+    } else {
+      setCurrentDate(addDays(currentDate, 1));
+    }
+  };
 
   const handleBookingClick = (booking: any) => {
     setSelectedBooking(booking);
     setIsDetailsOpen(true);
   };
 
-  // Filter to this day's approved bookings only
-  const dayBookings = useMemo(() => {
+  // Title text calculation
+  const calendarTitle = useMemo(() => {
+    if (viewMode === "month") {
+      return format(currentDate, "MMMM yyyy");
+    }
+    if (viewMode === "week") {
+      const start = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const end = endOfWeek(currentDate, { weekStartsOn: 0 });
+      return `${format(start, "MMM d")} - ${format(end, "MMM d, yyyy")}`;
+    }
+    return format(currentDate, "EEEE, MMMM d, yyyy");
+  }, [currentDate, viewMode]);
+
+  // Approved bookings only
+  const approvedBookings = useMemo(() => {
     if (!bookings) return [];
-    return bookings.filter(
-      (b) =>
-        b.status === "Approved" &&
-        b.start &&
-        isSameDay(toJsDate(b.start), currentDate),
-    );
-  }, [bookings, currentDate]);
+    return bookings.filter((b) => b.status === "Approved");
+  }, [bookings]);
 
-  // Group by area → room
-  const groupedData = useMemo(() => {
-    if (!rooms || !areas || dayBookings.length === 0) return [];
+  // Days for Month View Grid (Sun-Sat)
+  const monthDays = useMemo(() => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
-    const groups: Record<
-      string,
-      {
-        areaName: string;
-        order: number;
-        items: { room: any; bookings: any[] }[];
-      }
-    > = {};
+    return eachDayOfInterval({ start: startDate, end: endDate });
+  }, [currentDate]);
 
-    dayBookings.forEach((booking) => {
-      const room = rooms.find((r) => r.id === booking.roomId);
-      if (!room) return;
+  // Days for Week View
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(currentDate, { weekStartsOn: 0 });
+    const end = endOfWeek(currentDate, { weekStartsOn: 0 });
+    return eachDayOfInterval({ start, end });
+  }, [currentDate]);
 
-      const area = areas.find(
-        (a) => a.id === room.areaId || a.areaId === room.areaId,
-      );
-      const areaId = area?.id || "unassigned";
-      const areaName = area?.name || "Unassigned Area";
-
-      if (!groups[areaId]) {
-        groups[areaId] = {
-          areaName,
-          order: area ? (areas.indexOf(area) ?? 999) : 999,
-          items: [],
-        };
-      }
-
-      let roomItem = groups[areaId].items.find((i) => i.room.id === room.id);
-      if (!roomItem) {
-        roomItem = { room, bookings: [] };
-        groups[areaId].items.push(roomItem);
-      }
-      roomItem.bookings.push(booking);
-    });
-
-    // Sort bookings within each room by start time
-    Object.values(groups).forEach((group) => {
-      group.items.forEach((item) => {
-        item.bookings.sort(
-          (a, b) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime(),
-        );
-      });
-      group.items.sort((a, b) => a.room.name.localeCompare(b.room.name));
-    });
-
-    return Object.entries(groups).sort((a, b) =>
-      a[1].areaName.localeCompare(b[1].areaName),
-    );
-  }, [rooms, areas, dayBookings]);
-
-  const totalBookings = dayBookings.length;
-  const totalRooms = groupedData.reduce(
-    (acc, [, g]) => acc + g.items.length,
-    0,
-  );
+  // Rooms for Day View filtered by chosen Area/Floor
+  const dayRooms = useMemo(() => {
+    if (!rooms) return [];
+    if (selectedAreaId === "all") return rooms;
+    return rooms.filter((r) => r.areaId === selectedAreaId);
+  }, [rooms, selectedAreaId]);
 
   if (roleLoading) return null;
   if (!canViewScheduleMasterview) return null;
 
   return (
     <AppLayout>
-      <div className="max-w-[1400px] mx-auto pb-20 space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b">
-          <div>
-            <h1 className="text-3xl font-headline font-bold">Daily View</h1>
-            <p className="text-muted-foreground">
-              Approved reservations grouped by area and room.
-            </p>
+      <div className="w-full space-y-6 pb-12">
+        {/* Header Section */}
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold font-headline text-gray-900 dark:text-white">
+            Schedule Calendar
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            View and manage room reservations across all facilities.
+          </p>
+        </div>
+
+        {/* Navigation & View Mode Card */}
+        <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Date Navigator */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-muted text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+              title="Previous"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            <span className="font-bold text-sm sm:text-base text-gray-800 dark:text-foreground text-center min-w-[160px]">
+              {calendarTitle}
+            </span>
+
+            <button
+              type="button"
+              onClick={handleNext}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-muted text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+              title="Next"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
 
-          {/* Date Navigator */}
-          <div className="flex flex-col items-end gap-3">
-            <div className="flex items-center gap-1 bg-card border rounded-lg p-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePrev}
-                className="h-8 w-8 rounded-md"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <button
-                onClick={handleToday}
-                className="px-4 py-1.5 rounded-md transition-colors hover:bg-muted text-center"
-              >
-                <p
-                  className={cn(
-                    "text-base font-semibold leading-none",
-                    isToday(currentDate) ? "text-primary" : "text-foreground",
-                  )}
-                >
-                  {format(currentDate, "MMMM d, yyyy")}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {format(currentDate, "EEEE")}
-                  {isToday(currentDate) && (
-                    <span className="text-primary"> · Today</span>
-                  )}
-                </p>
-              </button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleNext}
-                className="h-8 w-8 rounded-md"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Quick stats */}
-            {!isLoading && (
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground">
-                    Bookings
-                  </span>
-                  <p className="text-base font-semibold leading-none">
-                    {totalBookings}
-                  </p>
-                </div>
-                <div className="w-px h-6 bg-border" />
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground">
-                    Rooms In Use
-                  </span>
-                  <p className="text-base font-semibold leading-none">
-                    {totalRooms}
-                  </p>
-                </div>
-                <div className="w-px h-6 bg-border" />
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground">Areas</span>
-                  <p className="text-base font-semibold leading-none">
-                    {groupedData.length}
-                  </p>
-                </div>
-              </div>
-            )}
+          {/* View Mode Pill Switcher */}
+          <div className="bg-gray-100 dark:bg-muted p-1 rounded-xl flex items-center border border-gray-200/50 dark:border-border/50">
+            <button
+              type="button"
+              onClick={() => setViewMode("month")}
+              className={cn(
+                "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                viewMode === "month"
+                  ? "bg-white dark:bg-card shadow-xs text-gray-800 dark:text-foreground"
+                  : "text-gray-500 hover:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground"
+              )}
+            >
+              Month
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("week")}
+              className={cn(
+                "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                viewMode === "week"
+                  ? "bg-white dark:bg-card shadow-xs text-gray-800 dark:text-foreground"
+                  : "text-gray-500 hover:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground"
+              )}
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("day")}
+              className={cn(
+                "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                viewMode === "day"
+                  ? "bg-white dark:bg-card shadow-xs text-gray-800 dark:text-foreground"
+                  : "text-gray-500 hover:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground"
+              )}
+            >
+              Day
+            </button>
           </div>
         </div>
 
-        {/* Main Content */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Loading schedule...</p>
+        {/* Floor / Area selector for Day view */}
+        {viewMode === "day" && (
+          <div className="flex items-center justify-end gap-2.5">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+              Show rooms:
+            </span>
+            <Select
+              value={selectedAreaId}
+              onValueChange={setSelectedAreaId}
+            >
+              <SelectTrigger className="w-[190px] h-9 text-xs rounded-xl border-gray-200 dark:border-border bg-white dark:bg-card font-medium">
+                <SelectValue placeholder="Select Floor / Area" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs font-medium">
+                  All Floors & Areas
+                </SelectItem>
+                {areas?.map((area) => (
+                  <SelectItem
+                    key={area.id}
+                    value={area.id}
+                    className="text-xs font-medium"
+                  >
+                    {area.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ) : groupedData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="mb-4">
-              <CalendarIcon
-                className="h-10 w-10 text-muted-foreground/30"
-                strokeWidth={1.5}
-              />
+        )}
+
+        {/* Main Content Card */}
+        <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border p-6 shadow-xs overflow-hidden min-h-[520px]">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-32 gap-3">
+              <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Loading calendar schedules...
+              </p>
             </div>
-            <h3 className="text-xl font-semibold">All Clear</h3>
-            <p className="text-sm text-muted-foreground max-w-xs mt-2">
-              No approved reservations on{" "}
-              <span className="font-semibold text-foreground">
-                {format(currentDate, "MMMM d, yyyy")}
-              </span>
-              .
-            </p>
-            <div className="flex gap-3 mt-6">
-              <Button variant="outline" onClick={handlePrev} className="gap-2">
-                <ChevronLeft className="h-4 w-4" /> Previous Day
-              </Button>
-              <Button variant="outline" onClick={handleNext} className="gap-2">
-                Next Day <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {groupedData.map(([areaId, group]) => (
-              <section key={areaId}>
-                {/* Area label */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div>
-                    <h2 className="text-sm font-semibold">{group.areaName}</h2>
-                    <p className="text-xs text-muted-foreground">
-                      {group.items.length}{" "}
-                      {group.items.length === 1 ? "room" : "rooms"} ·{" "}
-                      {group.items.reduce((s, i) => s + i.bookings.length, 0)}{" "}
-                      bookings
-                    </p>
-                  </div>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
+          ) : viewMode === "month" ? (
+            /* Month View Grid */
+            <div className="space-y-3">
+              {/* Day Headers (Sun - Sat) */}
+              <div className="grid grid-cols-7 gap-3">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                  (dayName) => (
+                    <div
+                      key={dayName}
+                      className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-2"
+                    >
+                      {dayName}
+                    </div>
+                  )
+                )}
+              </div>
 
-                {/* Rooms table */}
-                <div className="rounded-lg border overflow-hidden bg-card">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-[180px] h-9 px-3 text-xs">
-                          Room
-                        </TableHead>
-                        <TableHead className="w-[200px] h-9 px-3 text-xs">
-                          Time Slot
-                        </TableHead>
-                        <TableHead className="h-9 px-3 text-xs">
-                          Event
-                        </TableHead>
-                        <TableHead className="w-[80px] h-9 px-3 text-xs text-center">
-                          AV
-                        </TableHead>
-                        <TableHead className="w-[90px] h-9 px-3 text-xs text-center">
-                          Visuals
-                        </TableHead>
-                        <TableHead className="w-[50px] h-9" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {group.items.map((item) =>
-                        item.bookings.map((booking, bIdx) => {
-                          const isFirstBookingInRoom = bIdx === 0;
-                          const isLastBookingInRoom =
-                            bIdx === item.bookings.length - 1;
-                          return (
-                            <TableRow
-                              key={booking.id}
-                              className={cn(
-                                "group",
-                                !isLastBookingInRoom &&
-                                  "border-b border-dashed border-muted",
-                                isLastBookingInRoom && "border-b border-border",
-                              )}
-                            >
-                              {/* Room name — only show on first booking */}
-                              <TableCell className="py-2 px-3 align-middle">
-                                {isFirstBookingInRoom && (
-                                  <div>
-                                    <p className="text-sm font-medium group-hover:text-primary transition-colors">
-                                      {item.room.name}
-                                    </p>
-                                    <div className="flex items-center gap-1">
-                                      <span
-                                        className={cn(
-                                          "inline-block h-1.5 w-1.5 rounded-full",
-                                          item.bookings.length > 0
-                                            ? "bg-emerald-500"
-                                            : "bg-muted-foreground/30",
-                                        )}
-                                      />
-                                      <span className="text-xs text-muted-foreground">
-                                        {item.bookings.length}{" "}
-                                        {item.bookings.length === 1
-                                          ? "booking"
-                                          : "bookings"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-                              </TableCell>
+              {/* 7-column Days Grid */}
+              <div className="grid grid-cols-7 gap-3">
+                {monthDays.map((day, idx) => {
+                  const isCurrentMonth = isSameMonth(day, currentDate);
+                  const isDayToday = isToday(day);
 
-                              {/* Time */}
-                              <TableCell className="px-3 py-2 align-middle">
-                                <p className="text-sm">
-                                  {format(toJsDate(booking.start), "h:mm a")} –{" "}
-                                  {format(toJsDate(booking.end), "h:mm a")}
-                                </p>
-                              </TableCell>
+                  // Find bookings for this day
+                  const dayEvents = approvedBookings.filter((b) =>
+                    isSameDay(toJsDate(b.start), day)
+                  );
 
-                              {/* Event details */}
-                              <TableCell className="px-3 py-2 align-middle max-w-xs">
-                                <p className="text-sm font-medium">
-                                  {booking.title}
-                                </p>
-                                <p className="text-xs text-muted-foreground line-clamp-1">
-                                  {booking.purpose || "Regular meeting"}
-                                </p>
-                              </TableCell>
-
-                              {/* AV Equipment */}
-                              <TableCell className="text-center px-3 py-2 align-middle">
-                                {booking.equipment_Mic ||
-                                booking.equipment_Speakers ? (
-                                  <div className="flex flex-col items-center gap-0.5">
-                                    <Mic className="h-4 w-4 text-emerald-500" />
-                                    <span className="text-[10px] text-emerald-600">
-                                      Yes
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground/40">
-                                    —
-                                  </span>
-                                )}
-                              </TableCell>
-
-                              {/* Visuals */}
-                              <TableCell className="text-center px-3 py-2 align-middle">
-                                {booking.equipment_TV ? (
-                                  <div className="flex flex-col items-center gap-0.5">
-                                    <Tv className="h-4 w-4 text-blue-500" />
-                                    <span className="text-[10px] text-blue-600">
-                                      Yes
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground/40">
-                                    —
-                                  </span>
-                                )}
-                              </TableCell>
-
-                              {/* Info button */}
-                              <TableCell className="px-3 py-2 align-middle text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100"
-                                  onClick={() => handleBookingClick(booking)}
-                                >
-                                  <Info className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        }),
+                  return (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "min-h-[110px] md:min-h-[125px] p-2.5 rounded-2xl border transition-all flex flex-col justify-between",
+                        isCurrentMonth
+                          ? "bg-white dark:bg-card border-gray-200/70 dark:border-border/70 hover:border-gray-300 dark:hover:border-border"
+                          : "bg-gray-50/80 dark:bg-muted/20 border-gray-100 dark:border-border/40 text-gray-400 dark:text-gray-600"
                       )}
-                    </TableBody>
-                  </Table>
+                    >
+                      {/* Top Header: Day Number */}
+                      <div className="flex items-center justify-between mb-1.5">
+                        {isDayToday ? (
+                          <span className="w-5 h-5 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center text-[11px] font-bold shadow-xs">
+                            {format(day, "d")}
+                          </span>
+                        ) : (
+                          <span
+                            className={cn(
+                              "text-xs font-bold px-0.5",
+                              isCurrentMonth
+                                ? "text-gray-700 dark:text-gray-300"
+                                : "text-gray-400 dark:text-gray-600"
+                            )}
+                          >
+                            {format(day, "d")}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Event Items */}
+                      <div className="space-y-1 overflow-y-auto max-h-[80px]">
+                        {dayEvents.map((booking, bIdx) => {
+                          const room = rooms?.find(
+                            (r) => r.id === booking.roomId
+                          );
+                          const color =
+                            EVENT_COLORS[bIdx % EVENT_COLORS.length];
+                          const startTime = toJsDate(booking.start);
+
+                          return (
+                            <div
+                              key={booking.id}
+                              onClick={() => handleBookingClick(booking)}
+                              className={cn(
+                                "border-l-[3px] rounded-md py-1 px-1.5 text-[10px] font-medium truncate cursor-pointer hover:opacity-90 transition-all flex items-center gap-1",
+                                color.bg,
+                                color.text,
+                                color.border
+                              )}
+                              title={`${booking.title} - ${room?.name || "Room"} (${format(startTime, "h:mm a")})`}
+                            >
+                              <span className="font-semibold shrink-0">
+                                {format(startTime, "HH:mm")}
+                              </span>
+                              <span className="truncate">
+                                {room?.name || booking.title}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : viewMode === "week" ? (
+            /* Week Hourly Time Grid Matrix */
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
+                {/* Header Row: Days of the Week */}
+                <div className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-gray-200 dark:border-border">
+                  <div className="border-r border-gray-200/80 dark:border-border/80 py-3" />
+
+                  {weekDays.map((day) => (
+                    <div
+                      key={day.toISOString()}
+                      className="py-3 px-2 text-center border-r border-gray-200/80 dark:border-border/80 last:border-r-0"
+                    >
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                        {format(day, "EEE")}
+                      </p>
+                      <p
+                        className={cn(
+                          "text-base font-bold mt-0.5",
+                          isToday(day)
+                            ? "text-indigo-600 dark:text-indigo-400"
+                            : "text-gray-800 dark:text-gray-100"
+                        )}
+                      >
+                        {format(day, "d")}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              </section>
-            ))}
+
+                {/* Hourly Rows (8 AM to 8 PM) */}
+                {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(
+                  (hour) => {
+                    const hourLabel =
+                      hour === 12
+                        ? "12 PM"
+                        : hour > 12
+                          ? `${hour - 12} PM`
+                          : `${hour} AM`;
+
+                    return (
+                      <div
+                        key={hour}
+                        className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-gray-200/70 dark:border-border/70 min-h-[52px]"
+                      >
+                        {/* Time Label on left */}
+                        <div className="border-r border-gray-200/80 dark:border-border/80 text-xs font-medium text-gray-400 dark:text-gray-500 flex items-center justify-center p-2 select-none">
+                          {hourLabel}
+                        </div>
+
+                        {/* 7 Day Slot Cells */}
+                        {weekDays.map((day, dIdx) => {
+                          const slotBookings = approvedBookings.filter((b) => {
+                            const start = toJsDate(b.start);
+                            return (
+                              isSameDay(start, day) &&
+                              start.getHours() === hour
+                            );
+                          });
+
+                          return (
+                            <div
+                              key={dIdx}
+                              className="border-r border-gray-200/70 dark:border-border/70 last:border-r-0 p-1 relative flex flex-col justify-center"
+                            >
+                              {slotBookings.map((booking, bIdx) => {
+                                const room = rooms?.find(
+                                  (r) => r.id === booking.roomId
+                                );
+                                const color =
+                                  EVENT_COLORS[bIdx % EVENT_COLORS.length];
+                                const startTime = toJsDate(booking.start);
+
+                                return (
+                                  <div
+                                    key={booking.id}
+                                    onClick={() =>
+                                      handleBookingClick(booking)
+                                    }
+                                    className={cn(
+                                      "w-full h-full min-h-[36px] rounded-md border-l-[3px] px-2 py-1 text-xs font-medium flex items-center cursor-pointer hover:opacity-90 transition-all truncate shadow-2xs",
+                                      color.bg,
+                                      color.text,
+                                      color.border
+                                    )}
+                                    title={`${booking.title} - ${room?.name || "Room"} (${format(startTime, "h:mm a")})`}
+                                  >
+                                    <span className="truncate">
+                                      {room?.name || booking.title}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Day View Matrix by Rooms */
+            <div className="overflow-x-auto">
+              <div
+                style={{
+                  minWidth: `${Math.max(700, dayRooms.length * 130 + 70)}px`,
+                }}
+              >
+                {/* Header Row: Rooms */}
+                <div
+                  className="grid border-b border-gray-200 dark:border-border"
+                  style={{
+                    gridTemplateColumns: `70px repeat(${Math.max(1, dayRooms.length)}, minmax(120px, 1fr))`,
+                  }}
+                >
+                  <div className="border-r border-gray-200/80 dark:border-border/80 py-3" />
+
+                  {dayRooms.map((room) => (
+                    <div
+                      key={room.id}
+                      className="py-3 px-2 text-center border-r border-gray-200/80 dark:border-border/80 last:border-r-0"
+                    >
+                      <p className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate">
+                        {room.name}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Hourly Rows (8 AM to 8 PM) */}
+                {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(
+                  (hour) => {
+                    const hourLabel =
+                      hour === 12
+                        ? "12 PM"
+                        : hour > 12
+                          ? `${hour - 12} PM`
+                          : `${hour} AM`;
+
+                    return (
+                      <div
+                        key={hour}
+                        className="grid border-b border-gray-200/70 dark:border-border/70 min-h-[52px]"
+                        style={{
+                          gridTemplateColumns: `70px repeat(${Math.max(1, dayRooms.length)}, minmax(120px, 1fr))`,
+                        }}
+                      >
+                        {/* Time Label on left */}
+                        <div className="border-r border-gray-200/80 dark:border-border/80 text-xs font-medium text-gray-400 dark:text-gray-500 flex items-center justify-center p-2 select-none">
+                          {hourLabel}
+                        </div>
+
+                        {/* Room Slots for this Hour */}
+                        {dayRooms.map((room) => {
+                          const slotBookings = approvedBookings.filter((b) => {
+                            const start = toJsDate(b.start);
+                            return (
+                              b.roomId === room.id &&
+                              isSameDay(start, currentDate) &&
+                              start.getHours() === hour
+                            );
+                          });
+
+                          return (
+                            <div
+                              key={room.id}
+                              className="border-r border-gray-200/70 dark:border-border/70 last:border-r-0 p-1 relative flex flex-col justify-center"
+                            >
+                              {slotBookings.map((booking) => {
+                                const worker = workers?.find(
+                                  (w) => w.id === booking.workerProfileId
+                                );
+                                const startTime = toJsDate(booking.start);
+                                const endTime = toJsDate(booking.end);
+                                const requesterName = worker
+                                  ? `${worker.firstName} ${worker.lastName}`
+                                  : booking.name || "Requester";
+
+                                return (
+                                  <div
+                                    key={booking.id}
+                                    onClick={() =>
+                                      handleBookingClick(booking)
+                                    }
+                                    className="w-full h-full min-h-[38px] rounded-md border-l-[3px] border-l-blue-500 bg-blue-50/90 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200 px-2 py-1 flex flex-col justify-center cursor-pointer hover:opacity-90 transition-all shadow-2xs"
+                                    title={`${booking.title} (${format(startTime, "h:mm a")} - ${format(endTime, "h:mm a")})`}
+                                  >
+                                    <span className="text-[11px] font-bold leading-tight">
+                                      {format(startTime, "HH:mm")}-
+                                      {format(endTime, "HH:mm")}
+                                    </span>
+                                    <span className="text-[10px] text-gray-600 dark:text-gray-300 truncate leading-tight mt-0.5">
+                                      {requesterName}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Room Availability Section for Day view */}
+        {viewMode === "day" && !isLoading && (
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">
+                Room Availability
+              </h3>
+            </div>
+
+            <div className="space-y-2.5">
+              {dayRooms.map((room) => {
+                const roomBookings = approvedBookings.filter(
+                  (b) =>
+                    b.roomId === room.id &&
+                    isSameDay(toJsDate(b.start), currentDate)
+                );
+                const isAvailable = roomBookings.length === 0;
+
+                return (
+                  <div
+                    key={room.id}
+                    className="w-full bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border p-4 px-6 flex items-center justify-between shadow-xs hover:border-gray-300 transition-all"
+                  >
+                    <span className="font-bold text-sm text-gray-800 dark:text-gray-100">
+                      {room.name}
+                    </span>
+
+                    {isAvailable ? (
+                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                        Available
+                      </span>
+                    ) : (
+                      <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                        Reserved ({roomBookings.length} booking
+                        {roomBookings.length > 1 ? "s" : ""})
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      <BookingDetailsSheet
+      {/* Edit Reservation Dialog Form */}
+      <EditReservationDialog
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         booking={selectedBooking}
-        roomName={
-          selectedBooking
-            ? (rooms?.find((r) => r.id === selectedBooking.roomId)?.name ??
-              "Unknown Room")
-            : ""
-        }
-        workers={workers ?? []}
+        ministries={ministries || []}
+        workers={workers || []}
       />
     </AppLayout>
-  );
-}
-
-// ─── Booking Detail Sheet ───────────────────────────────────────────────────
-
-function BookingDetailsSheet({
-  isOpen,
-  onClose,
-  booking,
-  roomName,
-  workers,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  booking: any | null;
-  roomName: string;
-  workers: any[];
-}) {
-  if (!booking) return null;
-
-  const startTime = toJsDate(booking.start);
-  const endTime = toJsDate(booking.end);
-
-  const getUserName = (userId: string) => {
-    const user = workers.find((w) => w.id === userId);
-    return user ? `${user.firstName} ${user.lastName}` : "Unknown";
-  };
-
-  return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="sm:max-w-md overflow-y-auto">
-        <SheetHeader className="pb-6 border-b">
-          <div className="flex items-center gap-2 mb-2">
-            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 text-xs">
-              {booking.status}
-            </Badge>
-          </div>
-          <SheetTitle className="text-2xl font-headline font-bold">
-            {booking.title}
-          </SheetTitle>
-          <SheetDescription>
-            Reservation detail summary and equipment requirements
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="mt-6 space-y-6">
-          <div className="space-y-4">
-            <DetailRow label="Location" value={roomName} />
-            <DetailRow label="Date" value={format(startTime, "PPPP")} />
-            <DetailRow
-              label="Schedule"
-              value={`${format(startTime, "h:mm a")} – ${format(endTime, "h:mm a")}`}
-            />
-            <DetailRow
-              label="Requested By"
-              value={getUserName((booking as any).workerProfileId)}
-            />
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <h4 className="text-xs font-medium text-muted-foreground">
-              Purpose
-            </h4>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {booking.purpose ||
-                "No specific purpose provided for this reservation."}
-            </p>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3">
-            <h4 className="text-xs font-medium text-muted-foreground">
-              Technical Requirements
-            </h4>
-            <div className="grid grid-cols-1 gap-2">
-              <EquipmentStatus
-                label="Television / Multimedia"
-                active={!!booking.equipment_TV}
-                icon={Tv}
-              />
-              <EquipmentStatus
-                label="Microphone / Audio"
-                active={!!booking.equipment_Mic}
-                icon={Mic}
-              />
-              <EquipmentStatus
-                label="Sound System / Speakers"
-                active={!!booking.equipment_Speakers}
-                icon={Speaker}
-              />
-            </div>
-          </div>
-
-          <Button variant="outline" className="w-full mt-4" onClick={onClose}>
-            Close Details
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-// ─── Shared Micro-Components ─────────────────────────────────────────────────
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value}</span>
-    </div>
-  );
-}
-
-function EquipmentStatus({
-  label,
-  active,
-  icon: Icon,
-}: {
-  label: string;
-  active: boolean;
-  icon: any;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between p-2.5 rounded-lg border transition-colors",
-        active
-          ? "bg-green-50 border-green-100 dark:bg-green-900/10 dark:border-green-900/20"
-          : "opacity-50",
-      )}
-    >
-      <div className="flex items-center gap-2.5">
-        <Icon
-          className={cn(
-            "h-4 w-4",
-            active ? "text-green-600" : "text-muted-foreground",
-          )}
-        />
-        <span className="text-xs font-medium">{label}</span>
-      </div>
-      <span
-        className={cn(
-          "text-xs",
-          active ? "text-green-600" : "text-muted-foreground/40",
-        )}
-      >
-        {active ? "Yes" : "No"}
-      </span>
-    </div>
   );
 }
