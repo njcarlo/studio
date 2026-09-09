@@ -133,6 +133,16 @@ const allNavItems: NavItem[] = [
     icon: HeartHandshake,
     label: "Connect 2 Souls",
     permissionKey: "canManageC2S",
+    subItems: [
+      {
+        href: "/c2s?tab=overview",
+        label: "Admin Overview",
+        permissionKey: "isSuperAdmin",
+      },
+      { href: "/c2s?tab=devotions", label: "Devotions" },
+      { href: "/c2s?tab=groups", label: "Groups & Mentees" },
+      { href: "/c2s?tab=analytics", label: "Analytics" },
+    ],
   },
   {
     href: "/approvals",

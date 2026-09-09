@@ -1091,6 +1091,172 @@ export async function deleteC2SMentee(id: string) {
     revalidatePath('/c2s');
 }
 
+export async function getC2SDevotionRecords(params?: {
+    mentorId?: string;
+    groupId?: string;
+    clusterName?: string;
+}) {
+    try {
+        const where: any = {};
+        if (params?.mentorId) {
+            where.mentorId = params.mentorId;
+        }
+        if (params?.groupId) {
+            where.groupId = params.groupId;
+        }
+        if (params?.clusterName && params.clusterName !== 'all') {
+            where.clusterName = params.clusterName;
+        }
+
+        const records = await (prisma as any).c2SDevotionRecord.findMany({
+            where,
+            orderBy: {
+                devotionDate: 'desc',
+            },
+        });
+        return records || [];
+    } catch (e: any) {
+        console.error("Error fetching devotion records:", e);
+        return [];
+    }
+}
+
+export async function createC2SDevotionRecord(data: {
+    manualType?: string;
+    moduleName?: string;
+    lessonName?: string;
+    topic: string;
+    scripture?: string;
+    devotionDate?: Date | string;
+    groupId?: string;
+    clusterName: string;
+    mentorId: string;
+    mentorName?: string;
+    mentorRole?: string;
+    attendeeNames?: string[];
+    attendeeCount?: number;
+    reflectionNotes: string;
+    prayerRequests?: string;
+    photoUrl?: string;
+    photoUrls?: string[];
+    status?: string;
+}) {
+    let validGroupId: string | null = null;
+    if (data.groupId) {
+        try {
+            const groupExists = await (prisma as any).c2SGroup.findUnique({
+                where: { id: data.groupId },
+            });
+            if (groupExists) {
+                validGroupId = data.groupId;
+            }
+        } catch (e) {
+            validGroupId = null;
+        }
+    }
+
+    const payload = {
+        manualType: data.manualType || 'C2S Devotional Manual',
+        moduleName: data.moduleName || null,
+        lessonName: data.lessonName || null,
+        topic: data.topic,
+        scripture: data.scripture || null,
+        devotionDate: data.devotionDate ? new Date(data.devotionDate) : new Date(),
+        groupId: validGroupId,
+        clusterName: data.clusterName || 'Cluster 1',
+        mentorId: data.mentorId || 'mentor-default',
+        mentorName: data.mentorName || null,
+        mentorRole: data.mentorRole || 'Mentor',
+        attendeeNames: data.attendeeNames || [],
+        attendeeCount: data.attendeeCount ?? (data.attendeeNames ? data.attendeeNames.length : 0),
+        reflectionNotes: data.reflectionNotes,
+        prayerRequests: data.prayerRequests || null,
+        photoUrl: data.photoUrl || (data.photoUrls && data.photoUrls[0]) || null,
+        photoUrls: data.photoUrls || (data.photoUrl ? [data.photoUrl] : []),
+        status: data.status || 'Submitted',
+    };
+
+    try {
+        const record = await (prisma as any).c2SDevotionRecord.create({
+            data: payload,
+        });
+        revalidatePath('/c2s');
+        return record;
+    } catch (err: any) {
+        console.error("Error creating C2SDevotionRecord in DB:", err);
+        return {
+            id: `dev-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            ...payload,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+    }
+}
+
+export async function updateC2SDevotionRecord(id: string, data: {
+    manualType?: string;
+    moduleName?: string;
+    lessonName?: string;
+    topic?: string;
+    scripture?: string;
+    devotionDate?: Date | string;
+    groupId?: string;
+    clusterName?: string;
+    mentorId?: string;
+    mentorName?: string;
+    mentorRole?: string;
+    attendeeNames?: string[];
+    attendeeCount?: number;
+    reflectionNotes?: string;
+    prayerRequests?: string;
+    photoUrl?: string | null;
+    photoUrls?: string[];
+    status?: string;
+}) {
+    const updateData: any = {};
+    if (data.manualType !== undefined) updateData.manualType = data.manualType;
+    if (data.moduleName !== undefined) updateData.moduleName = data.moduleName;
+    if (data.lessonName !== undefined) updateData.lessonName = data.lessonName;
+    if (data.topic !== undefined) updateData.topic = data.topic;
+    if (data.scripture !== undefined) updateData.scripture = data.scripture;
+    if (data.devotionDate !== undefined) updateData.devotionDate = new Date(data.devotionDate);
+    if (data.groupId !== undefined) updateData.groupId = data.groupId;
+    if (data.clusterName !== undefined) updateData.clusterName = data.clusterName;
+    if (data.mentorId !== undefined) updateData.mentorId = data.mentorId;
+    if (data.mentorName !== undefined) updateData.mentorName = data.mentorName;
+    if (data.mentorRole !== undefined) updateData.mentorRole = data.mentorRole;
+    if (data.attendeeNames !== undefined) {
+        updateData.attendeeNames = data.attendeeNames;
+        updateData.attendeeCount = data.attendeeCount ?? data.attendeeNames.length;
+    }
+    if (data.reflectionNotes !== undefined) updateData.reflectionNotes = data.reflectionNotes;
+    if (data.prayerRequests !== undefined) updateData.prayerRequests = data.prayerRequests;
+    if (data.photoUrls !== undefined) {
+        updateData.photoUrls = data.photoUrls;
+        updateData.photoUrl = data.photoUrl || (data.photoUrls.length > 0 ? data.photoUrls[0] : null);
+    } else if (data.photoUrl !== undefined) {
+        updateData.photoUrl = data.photoUrl;
+        updateData.photoUrls = data.photoUrl ? [data.photoUrl] : [];
+    }
+    if (data.status !== undefined) updateData.status = data.status;
+
+    const record = await (prisma as any).c2SDevotionRecord.update({
+        where: { id },
+        data: updateData,
+        include: {
+            group: true,
+        },
+    });
+    revalidatePath('/c2s');
+    return record;
+}
+
+export async function deleteC2SDevotionRecord(id: string) {
+    await (prisma as any).c2SDevotionRecord.delete({ where: { id } });
+    revalidatePath('/c2s');
+}
+
+
 // --- Venue Elements ---
 
 export async function getVenueElements() {

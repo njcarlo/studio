@@ -1,8 +1,6 @@
 "use client";
 
 import React from "react";
-import { Avatar, AvatarFallback } from "@studio/ui";
-import { Button } from "@studio/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,13 +16,25 @@ import { supabase } from "@studio/database";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useImpersonation } from "@/hooks/use-impersonation";
-import { LogOut, UserCircle, ChevronDown, QrCode, KeyRound, User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getMinistries, getC2SGroups } from "@/actions/db";
+import { LogOut, ChevronDown, QrCode, KeyRound, User } from "lucide-react";
 
 export function UserNav() {
   const { user } = useAuthStore();
   const { workerProfile, allRoles, isSuperAdmin, isMinistryHead } = useUserRole();
   const { toast } = useToast();
   const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
+
+  const { data: allMinistries } = useQuery({
+    queryKey: ["ministries"],
+    queryFn: getMinistries,
+  });
+
+  const { data: c2sGroups } = useQuery({
+    queryKey: ["c2s-groups"],
+    queryFn: getC2SGroups,
+  });
 
   const handleLogout = async () => {
     if (impersonatedWorkerId) {
@@ -72,6 +82,28 @@ export function UserNav() {
       (workerProfile as any)?.role ||
       "Administrator";
 
+  const userMinistry = allMinistries?.find(
+    (m: any) =>
+      m.id === workerProfile?.majorMinistryId ||
+      m.headId === workerProfile?.id ||
+      m.approverId === workerProfile?.id
+  );
+  const headDept = userMinistry?.department || "Outreach";
+
+  const rawRole = (allRoles?.find((r: any) => r.id === workerProfile?.roleId)?.name || "").toLowerCase();
+  const isHead = isMinistryHead || rawRole.includes("head") || Boolean(allMinistries && workerProfile?.id && allMinistries.some((m: any) => m.headId === workerProfile.id));
+
+  let indicatorBadge = "";
+  if (isSuperAdmin) {
+    indicatorBadge = "Super Admin • All Departments";
+  } else if (isHead) {
+    indicatorBadge = `Ministry Head • ${headDept}`;
+  } else {
+    const assignedGroup = c2sGroups?.find((g: any) => g.mentorId === workerProfile?.id);
+    const clusterLabel = assignedGroup?.name || userMinistry?.name || "Outreach Cluster 4";
+    indicatorBadge = `Mentor • ${clusterLabel}`;
+  }
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -90,7 +122,7 @@ export function UserNav() {
               {displayName}
             </span>
             <span className="text-[11px] text-muted-foreground leading-tight font-normal">
-              {roleName}
+              {indicatorBadge || roleName}
             </span>
           </div>
 
@@ -104,7 +136,7 @@ export function UserNav() {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-semibold leading-none">{displayName}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {roleName}
+              {indicatorBadge || roleName}
             </p>
           </div>
         </DropdownMenuLabel>

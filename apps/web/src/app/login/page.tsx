@@ -246,7 +246,7 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          
+
         </CardContent>
       </Card>
     </div>

@@ -44,31 +44,68 @@ const MobileSidebarTrigger = () => {
   );
 };
 
+import { useQuery } from "@tanstack/react-query";
+import { getMinistries, getC2SGroups } from "@/actions/db";
+
 const ImpersonationBanner = () => {
   const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
-  const { workerProfile } = useUserRole(); // This will be the impersonated profile
+  const { workerProfile, allRoles, isMinistryHead } = useUserRole();
+
+  const { data: allMinistries } = useQuery({
+    queryKey: ["ministries"],
+    queryFn: getMinistries,
+    enabled: !!impersonatedWorkerId,
+  });
+
+  const { data: c2sGroups } = useQuery({
+    queryKey: ["c2s-groups"],
+    queryFn: getC2SGroups,
+    enabled: !!impersonatedWorkerId,
+  });
 
   if (!impersonatedWorkerId) {
     return null;
   }
 
+  const userMinistry = allMinistries?.find(
+    (m: any) =>
+      m.id === workerProfile?.majorMinistryId ||
+      m.headId === workerProfile?.id ||
+      m.approverId === workerProfile?.id
+  );
+  const headDept = userMinistry?.department || "Outreach";
+
+  const rawRole = (allRoles?.find((r: any) => r.id === workerProfile?.roleId)?.name || "").toLowerCase();
+  const isHead = isMinistryHead || rawRole.includes("head") || Boolean(allMinistries && workerProfile?.id && allMinistries.some((m: any) => m.headId === workerProfile.id));
+
+  let indicatorLabel = "";
+  if (isHead) {
+    indicatorLabel = `Ministry Head • ${headDept} Department`;
+  } else {
+    const assignedGroup = c2sGroups?.find((g: any) => g.mentorId === workerProfile?.id);
+    const clusterLabel = assignedGroup?.name || userMinistry?.name || "Outreach Cluster 4";
+    indicatorLabel = `Mentor • ${clusterLabel}`;
+  }
+
   return (
-    <div className="bg-yellow-400 text-yellow-900 p-2 text-center text-sm font-semibold flex items-center justify-center gap-4">
-      <Info className="h-5 w-5" />
+    <div className="bg-amber-400 text-amber-950 p-2 text-center text-sm font-semibold flex items-center justify-center gap-3 flex-wrap shadow-sm">
+      <Info className="h-4 w-4" />
       <span>
         You are viewing as{" "}
         <strong>
           {workerProfile?.firstName} {workerProfile?.lastName}
-        </strong>
-        . All actions are still performed as an administrator.
+        </strong>{" "}
+        <span className="bg-amber-100 text-amber-900 border border-amber-300/80 px-2 py-0.5 rounded-full text-xs font-bold shadow-xs">
+          {indicatorLabel}
+        </span>
       </span>
       <Button
         variant="ghost"
         size="sm"
         onClick={stopImpersonation}
-        className="hover:bg-yellow-500"
+        className="hover:bg-amber-500/80 text-xs h-7 px-2 font-bold"
       >
-        <X className="mr-2 h-4 w-4" />
+        <X className="mr-1.5 h-3.5 w-3.5" />
         Exit View-As Mode
       </Button>
     </div>

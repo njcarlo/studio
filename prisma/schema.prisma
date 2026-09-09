@@ -248,13 +248,45 @@ model C2SMentee {
 }
 
 model C2SGroup {
-  id        String      @id @default(uuid())
+  id        String              @id @default(uuid())
   name      String
   mentorId  String
   menteeIds String[]
-  createdAt DateTime    @default(now())
+  createdAt DateTime            @default(now())
   mentees   C2SMentee[]
+  devotions C2SDevotionRecord[]
 }
+
+model C2SDevotionRecord {
+  id              String    @id @default(uuid())
+  manualType      String?   @default("C2S Devotional Manual") @map("manual_type")
+  moduleName      String?   @map("module_title")
+  lessonName      String?   @map("lesson_title")
+  topic           String
+  scripture       String?
+  devotionDate    DateTime  @default(now()) @map("devotion_date")
+  groupId         String?   @map("group_id")
+  clusterName     String?   @map("cluster_name")
+  mentorId        String    @map("submitted_by")
+  mentorName      String?   @map("mentor_name")
+  mentorRole      String?   @map("mentor_role")
+  attendeeNames   String[]  @default([]) @map("attendee_names")
+  attendeeCount   Int       @default(0) @map("attendee_count")
+  reflectionNotes String    @map("reflection")
+  prayerRequests  String?   @map("prayer_request")
+  photoUrl        String?   @map("photo_url")
+  photoUrls       String[]  @default([]) @map("photo_urls")
+  status          String    @default("Submitted")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  group           C2SGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@map("connect_2_souls_submissions")
+}
+
+
+
 
 model Setting {
   id   String @id
