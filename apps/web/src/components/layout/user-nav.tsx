@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Avatar, AvatarFallback } from "@studio/ui";
 import { Button } from "@studio/ui";
 import {
@@ -17,7 +18,7 @@ import { supabase } from "@studio/database";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useImpersonation } from "@/hooks/use-impersonation";
-import { LogOut, UserCircle } from "lucide-react";
+import { LogOut, UserCircle, ChevronDown, QrCode, KeyRound, User } from "lucide-react";
 
 export function UserNav() {
   const { user } = useAuthStore();
@@ -53,57 +54,99 @@ export function UserNav() {
     }
   };
 
+  const initial =
+    workerProfile?.firstName?.[0]?.toUpperCase() ||
+    user?.displayName?.[0]?.toUpperCase() ||
+    user?.email?.[0]?.toUpperCase() ||
+    "S";
+
   const displayName =
     workerProfile?.firstName && workerProfile?.lastName
       ? `${workerProfile.firstName} ${workerProfile.lastName}`
-      : user?.email?.split("@")[0] || "User";
+      : workerProfile?.firstName || user?.displayName || user?.email?.split("@")[0] || "System Admin";
 
-  // Resolve role name from ID
+  // Resolve role title
   const roleName = isSuperAdmin
-    ? "Super Admin"
-    : allRoles?.find((r: any) => r.id === workerProfile?.roleId)?.name || "Worker";
+    ? "Administrator"
+    : allRoles?.find((r: any) => r.id === workerProfile?.roleId)?.name ||
+      (workerProfile as any)?.role ||
+      "Administrator";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback>
-              <UserCircle className="h-6 w-6 text-muted-foreground" />
-            </AvatarFallback>
-          </Avatar>
-        </Button>
+        <button
+          type="button"
+          className="flex items-center gap-2 p-1 sm:px-2 rounded-lg hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none"
+        >
+          {/* Avatar circle */}
+          <div className="h-7.5 w-7.5 sm:h-8 sm:w-8 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white font-bold flex items-center justify-center text-xs shadow-sm shrink-0">
+            {initial}
+          </div>
+
+          {/* User info */}
+          <div className="hidden sm:flex flex-col text-left">
+            <span className="text-xs sm:text-[13px] font-bold text-foreground leading-tight">
+              {displayName}
+            </span>
+            <span className="text-[11px] text-muted-foreground leading-tight font-normal">
+              {roleName}
+            </span>
+          </div>
+
+          {/* Down Chevron */}
+          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-0.5" />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
+
+      <DropdownMenuContent className="w-56 mt-1.5 shadow-lg rounded-xl" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal sm:hidden">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName}</p>
+            <p className="text-sm font-semibold leading-none">{displayName}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {roleName}
             </p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="sm:hidden" />
+
         <DropdownMenuGroup>
           {impersonatedWorkerId ? (
-            <DropdownMenuItem onSelect={stopImpersonation}>
-              <LogOut className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onSelect={stopImpersonation} className="cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4 text-muted-foreground" />
               <span>Exit Impersonation</span>
             </DropdownMenuItem>
           ) : (
-            <DropdownMenuItem asChild>
-              <Link href="/profile">Profile</Link>
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/profile" className="flex items-center">
+                <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                <span>Profile</span>
+              </Link>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem asChild>
-            <Link href="/workers/my-qr">My QR Code</Link>
+
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href="/workers/my-qr" className="flex items-center">
+              <QrCode className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>My QR Code</span>
+            </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleChangePassword}>
-            Change Password
+
+          <DropdownMenuItem onSelect={handleChangePassword} className="cursor-pointer">
+            <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
+            <span>Change Password</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={handleLogout}>Log out</DropdownMenuItem>
+
+        <DropdownMenuItem
+          onSelect={handleLogout}
+          className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

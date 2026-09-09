@@ -128,7 +128,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <ImpersonationBanner />
-        <header className="flex h-14 md:h-[70px] items-center gap-4 border-b bg-card px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content">
+        <header className="flex h-12 md:h-[52px] items-center gap-4 border-b border-border/40 bg-white dark:bg-card px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content">
           <div className="md:hidden flex items-center gap-2">
             <Image
               src="/church-logo.png"
