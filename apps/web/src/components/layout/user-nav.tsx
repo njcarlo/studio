@@ -17,6 +17,8 @@ import { supabase } from "@studio/database";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useImpersonation } from "@/hooks/use-impersonation";
+import { useQuery } from "@tanstack/react-query";
+import { getMinistries, getC2SGroups } from "@/actions/db";
 import { LogOut, UserCircle } from "lucide-react";
 
 export function UserNav() {
@@ -24,6 +26,16 @@ export function UserNav() {
   const { workerProfile, allRoles, isSuperAdmin, isMinistryHead } = useUserRole();
   const { toast } = useToast();
   const { impersonatedWorkerId, stopImpersonation } = useImpersonation();
+
+  const { data: allMinistries } = useQuery({
+    queryKey: ["ministries"],
+    queryFn: getMinistries,
+  });
+
+  const { data: c2sGroups } = useQuery({
+    queryKey: ["c2s-groups"],
+    queryFn: getC2SGroups,
+  });
 
   const handleLogout = async () => {
     if (impersonatedWorkerId) {
@@ -63,26 +75,64 @@ export function UserNav() {
     ? "Super Admin"
     : allRoles?.find((r: any) => r.id === workerProfile?.roleId)?.name || "Worker";
 
+  const userMinistry = allMinistries?.find(
+    (m: any) =>
+      m.id === workerProfile?.majorMinistryId ||
+      m.headId === workerProfile?.id ||
+      m.approverId === workerProfile?.id
+  );
+  const headDept = userMinistry?.department || "Outreach";
+
+  const rawRole = (allRoles?.find((r: any) => r.id === workerProfile?.roleId)?.name || "").toLowerCase();
+  const isHead = isMinistryHead || rawRole.includes("head") || Boolean(allMinistries && workerProfile?.id && allMinistries.some((m: any) => m.headId === workerProfile.id));
+
+  let indicatorBadge = "";
+  if (isSuperAdmin) {
+    indicatorBadge = "Super Admin • All Departments";
+  } else if (isHead) {
+    indicatorBadge = `Ministry Head • ${headDept}`;
+  } else {
+    const assignedGroup = c2sGroups?.find((g: any) => g.mentorId === workerProfile?.id);
+    const clusterLabel = assignedGroup?.name || userMinistry?.name || "Outreach Cluster 4";
+    indicatorBadge = `Mentor • ${clusterLabel}`;
+  }
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback>
-              <UserCircle className="h-6 w-6 text-muted-foreground" />
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {roleName}
-            </p>
-          </div>
-        </DropdownMenuLabel>
+    <div className="flex items-center gap-2">
+      <div className="hidden sm:flex flex-col items-end text-right">
+        <span className="text-xs font-semibold text-foreground leading-tight">{displayName}</span>
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5 border ${
+          isSuperAdmin
+            ? "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
+            : isHead
+            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+            : "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
+        }`}>
+          {indicatorBadge}
+        </span>
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Avatar className="h-9 w-9">
+              <AvatarFallback>
+                <UserCircle className="h-6 w-6 text-muted-foreground" />
+              </AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-64" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-semibold leading-none">{displayName}</p>
+              <p className="text-xs font-medium text-primary">
+                {indicatorBadge}
+              </p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {user?.email}
+              </p>
+            </div>
+          </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {impersonatedWorkerId ? (
@@ -106,5 +156,6 @@ export function UserNav() {
         <DropdownMenuItem onSelect={handleLogout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  </div>
   );
 }

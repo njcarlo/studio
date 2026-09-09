@@ -2,7 +2,7 @@ export type TimestampLike = {
     toDate?: () => Date;
     seconds?: number;
     nanoseconds?: number;
-};
+} | Date | string;
 
 export type Role = {
     id: string;
@@ -177,10 +177,11 @@ export type C2SMentee = {
     lastName: string;
     email: string;
     phone: string;
-    status: 'In Progress' | 'Completed' | 'Dropped';
+    status: 'In Progress' | 'Completed' | 'Dropped' | string;
     groupId: string;
     mentorId: string;
     createdAt: TimestampLike;
+    group?: C2SGroup;
 };
 
 export type C2SGroup = {
@@ -189,4 +190,32 @@ export type C2SGroup = {
     mentorId: string;
     menteeIds: string[];
     createdAt: TimestampLike;
+    mentees?: C2SMentee[];
 };
+
+export type C2SDevotionRecord = {
+    id: string;
+    manualType?: string | null;
+    moduleName?: string | null;
+    lessonName?: string | null;
+    topic: string;
+    scripture?: string | null;
+    devotionDate: TimestampLike;
+    groupId?: string | null;
+    clusterName: string;
+    mentorId: string;
+    mentorName?: string | null;
+    mentorRole?: string | null;
+    attendeeNames: string[];
+    attendeeCount: number;
+    reflectionNotes: string;
+    prayerRequests?: string | null;
+    photoUrl?: string | null;
+    photoUrls: string[];
+    status: string;
+    createdAt: TimestampLike;
+    updatedAt: TimestampLike;
+    group?: C2SGroup | null;
+};
+
+

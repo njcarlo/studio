@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "@supabase/supabase-js": "^2.98.0"
+    "@supabase/supabase-js": "^2.98.0",
+    "lucide-react": "0.475.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-darwin-arm64": "^4.59.0"

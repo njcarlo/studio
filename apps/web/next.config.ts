@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: false,
   },
   serverExternalPackages: ["@apollo/server"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '50mb',
+    },
+  },
   transpilePackages: ["@studio/ui", "@studio/database", "@studio/store", "@studio/types", "@studio/graphql"],
   outputFileTracingRoot: monorepoRoot,
   images: {
