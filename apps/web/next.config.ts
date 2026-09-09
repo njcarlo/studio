@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  eslint: {
-    ignoreDuringBuilds: false,
+  turbopack: {
+    root: monorepoRoot,
   },
   serverExternalPackages: ["@apollo/server"],
   experimental: {

@@ -1,160 +1,207 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import {
-    getDashboardStats, getLogs, getItems, getCategories,
-    adjustStock, createItem as apiCreateItem, updateItem as apiUpdateItem, deleteItem as apiDeleteItem,
-    getBorrowings, createBorrowing, returnBorrowing,
-} from '../lib/inventory-api';
 
-export function useInventory(ministryId?: string | null) {    const [stats, setStats] = useState<any>(null);
-    const [logs, setLogs] = useState<any[]>([]);
-    const [items, setItems] = useState<any[]>([]);
-    const [totalItems, setTotalItems] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [categories, setCategories] = useState<any[]>([]);
-    const [borrowings, setBorrowings] = useState<any[]>([]);
-    const [locations, setLocations] = useState<any[]>([]);
+export function useInventory() {
+  const [stats, setStats] = useState<any>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-    const fetchStats = useCallback(async () => {
-        if (!ministryId) return;
-        try {
-            const data = await getDashboardStats(ministryId);
-            setStats(data);
-        } catch (e) {
-            console.error('Failed to fetch stats', e);
-        }
-    }, [ministryId]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
 
-    const fetchLogs = useCallback(async (itemId?: string) => {
-        if (!ministryId) return;
-        try {
-            const data = await getLogs(ministryId, { itemId, limit: 100 });
-            setLogs(data);
-        } catch (e) {
-            console.error('Failed to fetch logs', e);
-        }
-    }, [ministryId]);
+  // Fetch Dashboard Stats
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/dashboard/stats');
+      const data = await res.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Failed to fetch stats', error);
+    }
+  }, []);
 
-    const fetchItems = useCallback(async (params: any = {}) => {
-        if (!ministryId) return;
-        setLoading(true);
-        try {
-            const data = await getItems(ministryId, params);
-            setItems(data.items);
-            setTotalItems(data.total);
-        } catch (e) {
-            console.error('Failed to fetch items', e);
-        } finally {
-            setLoading(false);
-        }
-    }, [ministryId]);
+  // Fetch Activity Logs
+  const fetchLogs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/inventory/logs');
+      const data = await res.json();
+      setLogs(data);
+    } catch (error) {
+      console.error('Failed to fetch logs', error);
+    }
+  }, []);
 
-    const fetchCategories = useCallback(async () => {
-        try {
-            const data = await getCategories();
-            setCategories(data);
-        } catch (e) {
-            console.error('Failed to fetch categories', e);
-        }
-    }, []);
+  // Fetch Inventory Items
+  const fetchItems = useCallback(async (params: any = {}) => {
+    setLoading(true);
+    try {
+      const query = new URLSearchParams(params).toString();
+      const res = await fetch(`/api/inventory/items?${query}`);
+      const data = await res.json();
+      setItems(data.items);
+      setTotalItems(data.total);
+    } catch (error) {
+      console.error('Failed to fetch items', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    const fetchBorrowings = useCallback(async (params: any = {}) => {
-        if (!ministryId) return;
-        try {
-            const data = await getBorrowings(ministryId, params);
-            setBorrowings(data);
-        } catch (e) {
-            console.error('Failed to fetch borrowings', e);
-        }
-    }, [ministryId]);
+  // Quick Action
+  const updateStock = async (id: string, action: 'Stock In' | 'Stock Out', quantity: number) => {
+    try {
+      await fetch(`/api/inventory/items/${id}/stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, quantity })
+      });
+      // Refresh data
+      fetchStats();
+      fetchLogs();
+      fetchItems();
+    } catch (error) {
+      console.error('Failed to update stock', error);
+    }
+  };
 
-    const fetchLocations = useCallback(async () => {
-        if (!ministryId) return;
-        try {
-            const { data } = await supabase
-                .from('InventoryItem')
-                .select('location')
-                .eq('group', ministryId)
-                .not('location', 'is', null);
-            const unique = [...new Set((data ?? []).map((d: any) => d.location).filter(Boolean))];
-            setLocations(unique.map((name: string) => ({ id: name, name })));
-        } catch (e) {
-            console.error('Failed to fetch locations', e);
-        }
-    }, [ministryId]);
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/categories');
+      const data = await res.json();
+      setCategories(data);
+    } catch (error) {
+      console.error('Failed to fetch categories', error);
+    }
+  }, []);
 
-    const updateStock = async (id: string, action: 'Stock In' | 'Stock Out', quantity: number, notes?: string) => {
-        try {
-            await adjustStock(id, action, quantity, notes);
-            fetchStats();
-            fetchLogs();
-            fetchItems();
-        } catch (e) {
-            console.error('Failed to update stock', e);
-        }
-    };
+  const fetchLocations = useCallback(async () => {
+    try {
+      const res = await fetch('/api/locations');
+      const data = await res.json();
+      setLocations(data);
+    } catch (error) {
+      console.error('Failed to fetch locations', error);
+    }
+  }, []);
 
-    const addItem = async (payload: any): Promise<any> => {
-        if (!ministryId) throw new Error('No ministry context');
-        const item = await apiCreateItem(ministryId, payload);
-        fetchItems();
-        fetchStats();
-        return item;
-    };
+  const createItem = async (data: any) => {
+    try {
+      await fetch('/api/inventory/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      fetchItems();
+      fetchStats();
+    } catch (error) {
+      console.error('Failed to create item', error);
+    }
+  };
 
-    const editItem = async (id: string, payload: any): Promise<any> => {
-        const item = await apiUpdateItem(id, payload);
-        fetchItems();
-        return item;
-    };
+  const updateItem = async (id: string, data: any) => {
+    try {
+      await fetch(`/api/inventory/items/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      fetchItems();
+      fetchStats();
+    } catch (error) {
+      console.error('Failed to update item', error);
+    }
+  };
 
-    const removeItem = async (id: string): Promise<void> => {
-        await apiDeleteItem(id);
-        fetchItems();
-        fetchStats();
-    };
+  const deleteItem = async (id: string) => {
+    try {
+      const res = await fetch(`/api/inventory/items/${id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        throw new Error('Server returned ' + res.status);
+      }
+      fetchItems();
+      fetchStats();
+    } catch (error) {
+      console.error('Failed to delete item', error);
+      throw error;
+    }
+  };
 
-    const checkoutItem = async (payload: any) => {
-        const b = await createBorrowing(payload);
-        fetchBorrowings();
-        fetchStats();
-        return b;
-    };
+  const bulkUpdateItems = async (itemIds: string[], data: any) => {
+    try {
+      await fetch('/api/inventory/items/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds, data })
+      });
+      fetchItems();
+      fetchStats();
+    } catch (error) {
+      console.error('Failed to bulk update items', error);
+    }
+  };
 
-    const returnItem = async (id: string, payload: any) => {
-        const b = await returnBorrowing(id, payload);
-        fetchBorrowings();
-        fetchStats();
-        return b;
-    };
+  const bulkDeleteItems = async (itemIds: string[]) => {
+    try {
+      const res = await fetch('/api/inventory/items/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds })
+      });
+      if (!res.ok) {
+        throw new Error('Server returned ' + res.status);
+      }
+      fetchItems();
+      fetchStats();
+    } catch (error) {
+      console.error('Failed to bulk delete items', error);
+      throw error;
+    }
+  };
 
-    const bulkUpdateItems = async (ids: string[], payload: any) => {
-        await supabase.from('InventoryItem').update(payload).in('id', ids);
-        fetchItems();
-    };
+  const bulkImportItems = async (items: any[]) => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/inventory/items/bulk-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      });
+      if (!res.ok) throw new Error('Failed to import items');
+      fetchItems();
+      fetchStats();
+      fetchCategories();
+      fetchLocations();
+      return await res.json();
+    } catch (error) {
+      console.error('Failed to bulk import', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const bulkDeleteItems = async (ids: string[]) => {
-        await supabase.from('InventoryItem').delete().in('id', ids);
-        fetchItems();
-        fetchStats();
-    };
-
-    const bulkImportItems = async (rows: any[]) => {
-        const tagged = rows.map(r => ({ ...r, group: ministryId }));
-        await supabase.from('InventoryItem').insert(tagged);
-        fetchItems();
-        fetchStats();
-    };
-
-    const createItem = async (payload: any): Promise<any> => addItem(payload);
-    const updateItem = async (id: string, payload: any): Promise<any> => editItem(id, payload);
-    const deleteItem = async (id: string): Promise<void> => removeItem(id);
-
-    return {
-        stats, logs, items, totalItems, loading, categories, borrowings, locations,
-        fetchStats, fetchLogs, fetchItems, fetchCategories, fetchBorrowings, fetchLocations,
-        updateStock, addItem, editItem, removeItem, checkoutItem, returnItem,
-        createItem, updateItem, deleteItem,
-        bulkUpdateItems, bulkDeleteItems, bulkImportItems,
-    };
+  return {
+    stats,
+    logs,
+    items,
+    totalItems,
+    loading,
+    categories,
+    locations,
+    fetchStats,
+    fetchLogs,
+    fetchItems,
+    fetchCategories,
+    fetchLocations,
+    updateStock,
+    createItem,
+    updateItem,
+    deleteItem,
+    bulkUpdateItems,
+    bulkDeleteItems,
+    bulkImportItems
+  };
 }

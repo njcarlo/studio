@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useInventory } from '../hooks/useInventory';
 import { X, Upload, Image as ImageIcon } from 'lucide-react';
-import { uploadItemPhoto } from '../utils/upload';
+import { uploadItemPhoto } from '../utils/firebase';
 
 interface ItemModalProps {
   isOpen: boolean;
@@ -128,7 +128,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
       setFormData(prev => ({ ...prev, imageUrl: url }));
     } catch (error) {
       console.error('Upload failed', error);
-      alert('Failed to upload image');
+      alert('Failed to upload image to Firebase');
     } finally {
       setUploadingImage(false);
     }

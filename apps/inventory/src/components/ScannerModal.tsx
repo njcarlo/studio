@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Camera } from 'lucide-react';
-// Capacitor removed for web build
-// BarcodeScanner removed � using web camera only
+import { X, Camera, RefreshCw } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 
 export function ScannerModal({ onClose, onScan }: { onClose: () => void, onScan: (payload: string) => void }) {
   const [error, setError] = useState('');
@@ -61,13 +61,50 @@ export function ScannerModal({ onClose, onScan }: { onClose: () => void, onScan:
     }
   };
 
+  const startNativeScan = async () => {
+    try {
+      const { camera } = await BarcodeScanner.requestPermissions();
+      if (camera === 'granted' || camera === 'prompt') {
+        const { barcodes } = await BarcodeScanner.scan();
+        if (barcodes && barcodes.length > 0) {
+          if (navigator.vibrate) navigator.vibrate(200);
+          onScan(barcodes[0].rawValue);
+        } else {
+          onClose(); // cancelled
+        }
+      } else {
+        setError("Camera permission denied.");
+      }
+    } catch (err: any) {
+      setError("Native scan failed: " + err.message);
+    }
+  };
+
   useEffect(() => {
-    startWebCamera();
+    if (Capacitor.isNativePlatform()) {
+      startNativeScan();
+    } else {
+      startWebCamera();
+    }
     return () => {
-      stopCamera();
+      if (!Capacitor.isNativePlatform()) {
+        stopCamera();
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (Capacitor.isNativePlatform()) {
+    return (
+      <div className="modal-overlay" style={{ zIndex: 400, backgroundColor: 'rgba(0,0,0,0.8)' }}>
+        <div style={{ color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite' }} />
+          <p style={{ marginTop: '1rem', fontWeight: 600 }}>Opening native scanner...</p>
+          <button onClick={onClose} style={{ marginTop: '1.5rem', padding: '0.5rem 1rem', background: '#3b5bdb', border: 'none', color: 'white', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay" style={{ zIndex: 500 }}>
@@ -99,4 +136,3 @@ export function ScannerModal({ onClose, onScan }: { onClose: () => void, onScan:
     </div>
   );
 }
-
