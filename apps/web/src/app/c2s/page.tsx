@@ -127,6 +127,7 @@ import {
   updateC2SDevotionRecord,
   deleteC2SDevotionRecord,
   getMinistries,
+  getDepartmentSettings,
 } from "@/actions/db";
 
 // ─── DYNAMIC CURRICULUM DATA ───────────────────────────────────────────────
@@ -316,21 +317,7 @@ const DevotionForm = ({
   const [nextScheduleDate, setNextScheduleDate] = useState<string>("");
 
   const menteeOptions = useMemo(() => {
-    const defaultList = [
-      { id: "m1", name: "Maria Santos" },
-      { id: "m2", name: "Juan Dela Cruz" },
-      { id: "m3", name: "Ana Reyes" },
-      { id: "m4", name: "Rico Bautista" },
-      { id: "m5", name: "Liza Gomez" },
-    ];
-    const dbList = mentees?.map((m) => ({ id: m.id, name: `${m.firstName} ${m.lastName}` })) || [];
-    const combined = [...dbList];
-    defaultList.forEach((def) => {
-      if (!combined.some((c) => c.name.toLowerCase() === def.name.toLowerCase())) {
-        combined.push(def);
-      }
-    });
-    return combined;
+    return mentees?.map((m) => ({ id: m.id, name: `${m.firstName} ${m.lastName}` })) || [];
   }, [mentees]);
 
   // Session Details
@@ -1164,6 +1151,7 @@ const AdminOverview = ({
   workers,
   devotions = [],
   departmentClusters,
+  departmentSettings = [],
   onSelectDepartment,
   onViewDevotion,
 }: {
@@ -1172,34 +1160,16 @@ const AdminOverview = ({
   workers: any[];
   devotions?: C2SDevotionRecord[];
   departmentClusters: Record<string, { value: string; label: string }[]>;
+  departmentSettings?: any[];
   onSelectDepartment?: (dept: string) => void;
   onViewDevotion?: (devotion: C2SDevotionRecord) => void;
 }) => {
   const [viewingDept, setViewingDept] = useState<any | null>(null);
 
   const departmentStats = useMemo(() => {
-    const headsMap: Record<string, string> = {
-      Worship: "John Dave Salgado",
-      "Youth Ministry": "Mark Bautista",
-      "Servant Leaders": "Rhea Dela Peña",
-      Outreach: "Bro. Carlo Santos",
-      Discipleship: "Maria Relao",
-      Administration: "Daniela ANN Cabiladas",
-    };
-
-    const completionRatesMap: Record<string, number> = {
-      Worship: 72,
-      "Youth Ministry": 48,
-      "Servant Leaders": 81,
-      Outreach: 65,
-      Discipleship: 78,
-      Administration: 55,
-    };
-
     return Object.entries(departmentClusters).map(([dept, clusterList]) => {
       const clusterNames = clusterList.map((c) => c.value.toLowerCase());
 
-      // Find groups matching this department's clusters
       const deptGroups = groups.filter((g) => {
         const name = (g.name || "").toLowerCase();
         return clusterNames.some((c) => name.includes(c));
@@ -1209,11 +1179,21 @@ const AdminOverview = ({
       const deptMentees = mentees.filter((m) => deptGroupIds.has(m.groupId));
       const mentorIds = new Set(deptGroups.map((g) => g.mentorId).filter(Boolean));
 
-      const completionPct = completionRatesMap[dept] || 65;
+      // Compute real completion rate from mentee statuses
+      const completedCount = deptMentees.filter((m) => m.status === "Completed").length;
+      const completionPct = deptMentees.length > 0
+        ? Math.round((completedCount / deptMentees.length) * 100)
+        : 0;
       const status = completionPct < 55 ? "Needs Attention" : "Active";
-      const headName =
-        headsMap[dept] ||
-        (workers[0] ? `${workers[0].firstName} ${workers[0].lastName}` : "Ministry Head");
+
+      // Derive head name from departmentSettings.headId → workers
+      const deptSetting = departmentSettings?.find((s: any) => s.id === dept);
+      const headWorker = deptSetting?.headId
+        ? workers.find((w) => w.id === deptSetting.headId)
+        : null;
+      const headName = headWorker
+        ? `${headWorker.firstName} ${headWorker.lastName}`
+        : "—";
 
       const clusters = clusterList.map((c) => {
         const matchingGroups = groups.filter((g) =>
@@ -1226,33 +1206,33 @@ const AdminOverview = ({
         );
         return {
           name: c.label,
-          groupsCount: matchingGroups.length || 1,
-          mentorsCount: clusterMentorIds.size || 1,
-          menteesCount: clusterMentees.length || 4,
+          groupsCount: matchingGroups.length,
+          mentorsCount: clusterMentorIds.size,
+          menteesCount: clusterMentees.length,
         };
       });
 
       return {
         department: dept,
         headName,
-        groupsCount: deptGroups.length || clusterList.length,
-        mentorsCount: mentorIds.size || clusterList.length,
-        menteesCount: deptMentees.length || clusterList.length * 4,
+        groupsCount: deptGroups.length,
+        mentorsCount: mentorIds.size,
+        menteesCount: deptMentees.length,
         completionPct,
         status,
         clusters,
       };
     });
-  }, [groups, mentees, workers, departmentClusters]);
+  }, [groups, mentees, workers, departmentClusters, departmentSettings]);
 
-  const totalGroups = groups.length || 23;
-  const totalMentees = mentees.length || 96;
+  const totalGroups = groups.length;
+  const totalMentees = mentees.length;
   const totalMentors =
-    new Set(groups.map((g) => g.mentorId).filter(Boolean)).size || 23;
-  const totalDepts = Object.keys(departmentClusters).length || 6;
+    new Set(groups.map((g) => g.mentorId).filter(Boolean)).size;
+  const totalDepts = Object.keys(departmentClusters).length;
 
   const avgCompletion = useMemo(() => {
-    if (departmentStats.length === 0) return 59;
+    if (departmentStats.length === 0) return 0;
     const sum = departmentStats.reduce((acc, d) => acc + d.completionPct, 0);
     return Math.round(sum / departmentStats.length);
   }, [departmentStats]);
@@ -2181,59 +2161,7 @@ const C2SAnalytics = ({
   );
 };
 
-// Department-specific cluster & sub-ministry structure
-const DEPARTMENT_CLUSTERS: Record<string, { value: string; label: string }[]> = {
-  WORSHIP: [
-    { value: "Whitelight", label: "Whitelight" },
-    { value: "Dance", label: "Dance" },
-    { value: "PMT", label: "PMT" },
-    { value: "Crusade", label: "Crusade" },
-    { value: "Singers", label: "Singers" },
-    { value: "Musicians", label: "Musicians" },
-    { value: "Audio", label: "Audio" },
-  ],
-  OUTREACH: [
-    { value: "Cluster 1", label: "Cluster 1" },
-    { value: "Cluster 2", label: "Cluster 2" },
-    { value: "Cluster 3", label: "Cluster 3" },
-    { value: "Cluster 4", label: "Cluster 4" },
-    { value: "Cluster 5", label: "Cluster 5" },
-    { value: "Cluster 6", label: "Cluster 6" },
-    { value: "Cluster 7", label: "Cluster 7" },
-    { value: "Cluster 8", label: "Cluster 8" },
-    { value: "Cluster 9", label: "Cluster 9" },
-    { value: "WEYJ", label: "WEYJ" },
-    { value: "TAPAT", label: "TAPAT" },
-  ],
-  RELATIONSHIP: [
-    { value: "Sports", label: "Sports" },
-    { value: "GEM", label: "GEM" },
-    { value: "Ushering", label: "Ushering" },
-    { value: "Mens", label: "Mens" },
-    { value: "Ladies", label: "Ladies" },
-    { value: "Youth Empowered", label: "Youth Empowered" },
-    { value: "Young Adults", label: "Young Adults" },
-  ],
-  DISCIPLESHIP: [
-    { value: "J12", label: "J12" },
-    { value: "Oneliner", label: "Oneliner" },
-    { value: "CLDP", label: "CLDP" },
-    { value: "KID", label: "KID" },
-    { value: "Children's Ministry", label: "Children's Ministry" },
-    { value: "Life Institute", label: "Life Institute" },
-    { value: "KCA", label: "KCA" },
-  ],
-  ADMINISTRATION: [
-    { value: "Finance", label: "Finance" },
-    { value: "Engineering", label: "Engineering" },
-    { value: "Security and Shuttle", label: "Security and Shuttle" },
-    { value: "Technology", label: "Technology" },
-    { value: "In house", label: "In house" },
-    { value: "Ventures", label: "Ventures" },
-    { value: "Arts", label: "Arts" },
-    { value: "Linkages", label: "Linkages" },
-  ],
-};
+// departmentClusters is now derived from DB — see departmentClusters useMemo in C2SPage
 
 // ─── MAIN CONNECT 2 SOULS PAGE COMPONENT ─────────────────────────────────
 export default function C2SPage() {
@@ -2268,6 +2196,24 @@ export default function C2SPage() {
     queryKey: ["ministries"],
     queryFn: getMinistries,
   });
+
+  const { data: departmentSettings } = useQuery({
+    queryKey: ["department-settings"],
+    queryFn: getDepartmentSettings,
+  });
+
+  // Derive department → ministry list from DB instead of static hardcoded map
+  const departmentClusters = useMemo<Record<string, { value: string; label: string }[]>>(() => {
+    if (!allMinistries || allMinistries.length === 0) return {};
+    const map: Record<string, { value: string; label: string }[]> = {};
+    for (const m of allMinistries) {
+      const deptCode = (m.departmentCode || m.department || "").toUpperCase();
+      if (!deptCode) continue;
+      if (!map[deptCode]) map[deptCode] = [];
+      map[deptCode].push({ value: m.name, label: m.name });
+    }
+    return map;
+  }, [allMinistries]);
 
   const getRoleString = (raw: any): string => {
     if (!raw) return "";
@@ -2389,8 +2335,8 @@ export default function C2SPage() {
       );
       const userDept = userMinistry?.department || (workerProfile as any)?.department || "Outreach";
       const myDeptClusters = (
-        DEPARTMENT_CLUSTERS[userDept] ||
-        DEPARTMENT_CLUSTERS["OUTREACH"] ||
+        departmentClusters[userDept] ||
+        departmentClusters["OUTREACH"] ||
         []
       ).map((c) => c.value.toLowerCase());
 
@@ -2442,7 +2388,7 @@ export default function C2SPage() {
     workerProfile,
     allMinistries,
     myMinistryIds,
-    DEPARTMENT_CLUSTERS,
+    departmentClusters,
     selectedGroupClusterFilter,
     groupSearchQuery,
     mentees,
@@ -2608,9 +2554,9 @@ export default function C2SPage() {
   const activeClusterOptions = useMemo(() => {
     const deptKey = (headDepartment || "Outreach").toUpperCase();
     const baseList =
-      DEPARTMENT_CLUSTERS[deptKey] ||
-      DEPARTMENT_CLUSTERS[headDepartment] ||
-      DEPARTMENT_CLUSTERS["OUTREACH"] ||
+      departmentClusters[deptKey] ||
+      departmentClusters[headDepartment] ||
+      departmentClusters["OUTREACH"] ||
       [];
 
     return baseList;
@@ -2682,8 +2628,8 @@ export default function C2SPage() {
           if (!isMatch) {
             let deptMatch = false;
             const deptClusters = (
-              DEPARTMENT_CLUSTERS[selectedDeptFilter] ||
-              DEPARTMENT_CLUSTERS[selectedDeptFilter.toUpperCase()] ||
+              departmentClusters[selectedDeptFilter] ||
+              departmentClusters[selectedDeptFilter.toUpperCase()] ||
               []
             ).map((c) => c.value.toLowerCase());
             if (deptClusters.some((c) => cluster.includes(c))) {
@@ -2758,7 +2704,7 @@ export default function C2SPage() {
     selectedManualFilter,
     selectedDeptFilter,
     searchQuery,
-    DEPARTMENT_CLUSTERS,
+    departmentClusters,
     activeClusterOptions,
     workers,
     myMinistryIds,
@@ -2884,7 +2830,7 @@ export default function C2SPage() {
   const mentorClusterLabel =
     myAssignedGroup?.name ||
     allMinistries?.find((m: any) => m.id === workerProfile?.majorMinistryId)?.name ||
-    "Outreach Cluster 4";
+    "";
 
   if (!canManageC2S && !canViewC2SAnalytics && !isSuperAdmin) {
     return (
@@ -2965,7 +2911,8 @@ export default function C2SPage() {
                 mentees={mentees || []}
                 workers={workers || []}
                 devotions={allDevotions}
-                departmentClusters={DEPARTMENT_CLUSTERS}
+                departmentClusters={departmentClusters}
+                departmentSettings={departmentSettings || []}
                 onViewDevotion={(dev) => setViewingDevotion(dev)}
               />
             </TabsContent>
@@ -3010,7 +2957,7 @@ export default function C2SPage() {
                       <SelectItem value="all" className="text-xs font-bold text-primary">
                         All Departments & Ministries
                       </SelectItem>
-                      {Object.entries(DEPARTMENT_CLUSTERS).map(([dept, items]) => {
+                      {Object.entries(departmentClusters).map(([dept, items]) => {
                         const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
                         return (
                           <SelectGroup key={dept}>
@@ -3246,7 +3193,7 @@ export default function C2SPage() {
                       <SelectItem value="all" className="text-xs font-bold text-primary">
                         All Departments & Ministries
                       </SelectItem>
-                      {Object.entries(DEPARTMENT_CLUSTERS).map(([dept, items]) => {
+                      {Object.entries(departmentClusters).map(([dept, items]) => {
                         const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
                         return (
                           <SelectGroup key={dept}>
@@ -3560,7 +3507,7 @@ export default function C2SPage() {
               devotions={allDevotions}
               workers={workers || []}
               canGenerateReport={canGenerateAnalyticsReport}
-              departmentClusters={DEPARTMENT_CLUSTERS}
+              departmentClusters={departmentClusters}
               headDepartment={headDepartment}
               isSuperAdmin={isAdminUser}
               isMinistryHead={isMinistryHeadUser}
@@ -3672,3 +3619,4 @@ export default function C2SPage() {
     </AppLayout>
   );
 }
+

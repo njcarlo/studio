@@ -119,19 +119,17 @@ function AdminDashboard() {
   // Stat 1: Reservations Today
   const todayReservations = useMemo(() => {
     if (!bookings || bookings.length === 0) return 0;
-    const count = (bookings as any[]).filter((b) => {
+    return (bookings as any[]).filter((b) => {
       if (!b.start) return false;
       const d = b.start instanceof Date ? b.start : new Date(b.start);
       return format(d, "yyyy-MM-dd") === todayStr || isToday(d);
     }).length;
-    // If no bookings today, show total active reservations or count
-    return count > 0 ? count : (bookings as any[]).filter((b) => b.status === "Approved" || b.status?.startsWith("Pending")).length || bookings.length;
   }, [bookings, todayStr]);
 
   // Stat 2: Clock Ins Today
   const todayClockIns = useMemo(() => {
     if (!attendanceRecords) return 0;
-    const count = (attendanceRecords as any[]).filter((a) => {
+    return (attendanceRecords as any[]).filter((a) => {
       if (!a.time) return false;
       const d =
         a.time instanceof Date
@@ -139,7 +137,6 @@ function AdminDashboard() {
           : new Date(a.time?.seconds ? a.time.seconds * 1000 : a.time);
       return a.type === "Clock In" && (format(d, "yyyy-MM-dd") === todayStr || isToday(d));
     }).length;
-    return count > 0 ? count : (attendanceRecords as any[]).filter((a) => a.type === "Clock In").length;
   }, [attendanceRecords, todayStr]);
 
   // Stat 3: Meals Claimed & Issued
@@ -209,15 +206,28 @@ function AdminDashboard() {
       });
 
       const total = currentWeekData.reduce((acc, curr) => acc + curr.count, 0);
-      // Mock or calculate previous period for comparison
-      const prevTotal = Math.max(0, total > 0 ? Math.round(total * 0.8) : 0);
+
+      // Compute previous week's real data for genuine comparison
+      const prevWeekData = dayNames.map((_, idx) => {
+        const targetDate = subDays(now, 13 - idx);
+        const targetStr = format(targetDate, "yyyy-MM-dd");
+        return (attendanceRecords as any[])?.filter((a) => {
+          if (!a.time) return false;
+          const d =
+            a.time instanceof Date
+              ? a.time
+              : new Date(a.time?.seconds ? a.time.seconds * 1000 : a.time);
+          return a.type === "Clock In" && format(d, "yyyy-MM-dd") === targetStr;
+        }).length ?? 0;
+      });
+      const prevTotal = prevWeekData.reduce((acc, curr) => acc + curr, 0);
       const diff = total - prevTotal;
-      const pct = prevTotal > 0 ? Math.round((diff / prevTotal) * 100) : 25;
+      const pct = prevTotal > 0 ? Math.round((diff / prevTotal) * 100) : 0;
 
       return {
         chartData: currentWeekData,
-        periodTotal: total > 0 ? total : (attendanceRecords?.length || 20),
-        prevPeriodTotal: prevTotal > 0 ? prevTotal : 16,
+        periodTotal: total,
+        prevPeriodTotal: prevTotal,
         pctChange: pct,
       };
     } else {
