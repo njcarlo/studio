@@ -178,9 +178,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Nav pathname={currentPathname} />
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 min-w-0 max-w-full overflow-x-hidden">
+      <SidebarInset className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 min-w-0 max-w-full overflow-x-hidden flex flex-col">
         <ImpersonationBanner />
-        <header className="flex h-14 md:h-[52px] items-center gap-2.5 sm:gap-4 border-b border-border/50 bg-white/95 dark:bg-card/95 backdrop-blur-md px-3 sm:px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content shadow-2xs">
+        <header className="flex h-14 md:h-[52px] items-center gap-2.5 sm:gap-4 border-b border-border/50 bg-white/95 dark:bg-card/95 backdrop-blur-md px-3 sm:px-4 lg:px-6 fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] box-content shadow-2xs">
           <div className="md:hidden flex items-center gap-2 shrink-0">
             <HeaderMobileTrigger />
             <div className="flex items-center gap-2">
@@ -198,7 +198,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="w-full flex-1" />
           <UserNav />
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:gap-6 lg:p-6 min-w-0 max-w-full overflow-x-hidden">
+        {/* Spacer to push content below the fixed header */}
+        <div className="h-14 md:h-[52px] shrink-0 pt-[env(safe-area-inset-top)] box-content" />
+        <main className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:gap-6 lg:p-6 min-w-0 max-w-full overflow-x-hidden overflow-y-auto">
           {children}
         </main>
       </SidebarInset>
@@ -233,8 +235,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="text-[10px] font-semibold leading-none">Rooms</span>
         </Button>
 
-        {/* Connects with Sidebar to open the side menu */}
-        <MobileSidebarTrigger />
+        {/* Connects with Sidebar to open the side menu - removed */}
       </div>
     </SidebarProvider>
   );

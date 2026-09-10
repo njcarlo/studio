@@ -430,9 +430,9 @@ export default function ScheduleCalendarPage() {
               </div>
             </div>
           ) : viewMode === "week" ? (
-            /* Week Hourly Time Grid Matrix */
-            <div className="overflow-x-auto">
-              <div className="min-w-[800px]">
+            /* Week Hourly Time Grid Matrix - scrollable on mobile */
+            <div className="overflow-x-auto -mx-6">
+              <div className="min-w-[600px] px-6">
                 {/* Header Row: Days of the Week */}
                 <div className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-gray-200 dark:border-border">
                   <div className="border-r border-gray-200/80 dark:border-border/80 py-3" />
@@ -532,99 +532,88 @@ export default function ScheduleCalendarPage() {
               </div>
             </div>
           ) : (
-            /* Day View Matrix by Rooms */
-            <div className="overflow-x-auto">
-              <div
-                style={{
-                  minWidth: `${Math.max(700, dayRooms.length * 130 + 70)}px`,
-                }}
-              >
-                {/* Header Row: Rooms */}
-                <div
-                  className="grid border-b border-gray-200 dark:border-border"
-                  style={{
-                    gridTemplateColumns: `70px repeat(${Math.max(1, dayRooms.length)}, minmax(120px, 1fr))`,
-                  }}
-                >
-                  <div className="border-r border-gray-200/80 dark:border-border/80 py-3" />
-
-                  {dayRooms.map((room) => (
-                    <div
-                      key={room.id}
-                      className="py-3 px-2 text-center border-r border-gray-200/80 dark:border-border/80 last:border-r-0"
-                    >
-                      <p className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate">
-                        {room.name}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Hourly Rows (8 AM to 8 PM) */}
-                {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(
-                  (hour) => {
-                    const hourLabel =
-                      hour === 12
-                        ? "12 PM"
-                        : hour > 12
-                          ? `${hour - 12} PM`
-                          : `${hour} AM`;
+            /* Day View — vertical room list on mobile, grid on desktop */
+            <div>
+              {/* ── MOBILE: vertical list of rooms with their bookings ── */}
+              <div className="lg:hidden space-y-3">
+                {dayRooms.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-12">No rooms found.</p>
+                ) : (
+                  dayRooms.map((room) => {
+                    const roomBookings = approvedBookings
+                      .filter((b) =>
+                        b.roomId === room.id &&
+                        isSameDay(toJsDate(b.start), currentDate)
+                      )
+                      .sort((a, b) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime());
 
                     return (
-                      <div
-                        key={hour}
-                        className="grid border-b border-gray-200/70 dark:border-border/70 min-h-[52px]"
-                        style={{
-                          gridTemplateColumns: `70px repeat(${Math.max(1, dayRooms.length)}, minmax(120px, 1fr))`,
-                        }}
-                      >
-                        {/* Time Label on left */}
-                        <div className="border-r border-gray-200/80 dark:border-border/80 text-xs font-medium text-gray-400 dark:text-gray-500 flex items-center justify-center p-2 select-none">
-                          {hourLabel}
+                      <div key={room.id} className="rounded-xl border border-gray-200 dark:border-border overflow-hidden">
+                        <div className="bg-gray-50 dark:bg-muted/40 px-4 py-2.5 border-b border-gray-200 dark:border-border">
+                          <p className="text-xs font-bold text-gray-700 dark:text-gray-200">{room.name}</p>
                         </div>
+                        {roomBookings.length === 0 ? (
+                          <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 italic">No reservations today</div>
+                        ) : (
+                          <div className="divide-y divide-gray-100 dark:divide-border">
+                            {roomBookings.map((booking) => {
+                              const worker = workers?.find((w) => w.id === booking.workerProfileId);
+                              const startTime = toJsDate(booking.start);
+                              const endTime = toJsDate(booking.end);
+                              const requesterName = worker ? `${worker.firstName} ${worker.lastName}` : booking.name || "Requester";
+                              return (
+                                <div key={booking.id} onClick={() => handleBookingClick(booking)} className="px-4 py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors border-l-[3px] border-l-blue-500">
+                                  <div>
+                                    <p className="text-xs font-bold text-gray-800 dark:text-gray-100 leading-snug">{booking.title}</p>
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{requesterName}</p>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">{format(startTime, "h:mm a")}</p>
+                                    <p className="text-[10px] text-gray-400">– {format(endTime, "h:mm a")}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
 
-                        {/* Room Slots for this Hour */}
+              {/* ── DESKTOP: original horizontal grid ── */}
+              <div className="hidden lg:block overflow-x-auto">
+                <div style={{ minWidth: `${Math.max(700, dayRooms.length * 130 + 70)}px` }}>
+                  <div className="grid border-b border-gray-200 dark:border-border" style={{ gridTemplateColumns: `70px repeat(${Math.max(1, dayRooms.length)}, minmax(120px, 1fr))` }}>
+                    <div className="border-r border-gray-200/80 dark:border-border/80 py-3" />
+                    {dayRooms.map((room) => (
+                      <div key={room.id} className="py-3 px-2 text-center border-r border-gray-200/80 dark:border-border/80 last:border-r-0">
+                        <p className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate">{room.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((hour) => {
+                    const hourLabel = hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+                    return (
+                      <div key={hour} className="grid border-b border-gray-200/70 dark:border-border/70 min-h-[52px]" style={{ gridTemplateColumns: `70px repeat(${Math.max(1, dayRooms.length)}, minmax(120px, 1fr))` }}>
+                        <div className="border-r border-gray-200/80 dark:border-border/80 text-xs font-medium text-gray-400 dark:text-gray-500 flex items-center justify-center p-2 select-none">{hourLabel}</div>
                         {dayRooms.map((room) => {
                           const slotBookings = approvedBookings.filter((b) => {
                             const start = toJsDate(b.start);
-                            return (
-                              b.roomId === room.id &&
-                              isSameDay(start, currentDate) &&
-                              start.getHours() === hour
-                            );
+                            return b.roomId === room.id && isSameDay(start, currentDate) && start.getHours() === hour;
                           });
-
                           return (
-                            <div
-                              key={room.id}
-                              className="border-r border-gray-200/70 dark:border-border/70 last:border-r-0 p-1 relative flex flex-col justify-center"
-                            >
+                            <div key={room.id} className="border-r border-gray-200/70 dark:border-border/70 last:border-r-0 p-1 relative flex flex-col justify-center">
                               {slotBookings.map((booking) => {
-                                const worker = workers?.find(
-                                  (w) => w.id === booking.workerProfileId
-                                );
+                                const worker = workers?.find((w) => w.id === booking.workerProfileId);
                                 const startTime = toJsDate(booking.start);
                                 const endTime = toJsDate(booking.end);
-                                const requesterName = worker
-                                  ? `${worker.firstName} ${worker.lastName}`
-                                  : booking.name || "Requester";
-
+                                const requesterName = worker ? `${worker.firstName} ${worker.lastName}` : booking.name || "Requester";
                                 return (
-                                  <div
-                                    key={booking.id}
-                                    onClick={() =>
-                                      handleBookingClick(booking)
-                                    }
-                                    className="w-full h-full min-h-[38px] rounded-md border-l-[3px] border-l-blue-500 bg-blue-50/90 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200 px-2 py-1 flex flex-col justify-center cursor-pointer hover:opacity-90 transition-all shadow-2xs"
-                                    title={`${booking.title} (${format(startTime, "h:mm a")} - ${format(endTime, "h:mm a")})`}
-                                  >
-                                    <span className="text-[11px] font-bold leading-tight">
-                                      {format(startTime, "HH:mm")}-
-                                      {format(endTime, "HH:mm")}
-                                    </span>
-                                    <span className="text-[10px] text-gray-600 dark:text-gray-300 truncate leading-tight mt-0.5">
-                                      {requesterName}
-                                    </span>
+                                  <div key={booking.id} onClick={() => handleBookingClick(booking)} className="w-full h-full min-h-[38px] rounded-md border-l-[3px] border-l-blue-500 bg-blue-50/90 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200 px-2 py-1 flex flex-col justify-center cursor-pointer hover:opacity-90 transition-all shadow-2xs" title={`${booking.title} (${format(startTime, "h:mm a")} - ${format(endTime, "h:mm a")})`}>
+                                    <span className="text-[11px] font-bold leading-tight">{format(startTime, "HH:mm")}-{format(endTime, "HH:mm")}</span>
+                                    <span className="text-[10px] text-gray-600 dark:text-gray-300 truncate leading-tight mt-0.5">{requesterName}</span>
                                   </div>
                                 );
                               })}
@@ -633,8 +622,8 @@ export default function ScheduleCalendarPage() {
                         })}
                       </div>
                     );
-                  }
-                )}
+                  })}
+                </div>
               </div>
             </div>
           )}

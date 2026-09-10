@@ -539,7 +539,99 @@ export default function AllReservationsPage() {
                 </p>
               </div>
             ) : (
-              <Table>
+              <>
+                {/* ── MOBILE CARD LIST (below lg) ── */}
+                <div className="lg:hidden divide-y divide-gray-100 dark:divide-border">
+                  {filteredBookings.map((booking) => {
+                    const room = getRoom(booking.roomId);
+                    const area = getArea(room?.areaId);
+                    const requesterName = getRequesterName(booking);
+                    const initials = getInitials(requesterName);
+                    const startTime = toJsDate(booking.start);
+                    const endTime = toJsDate(booking.end);
+                    const createdDate = booking.dateRequested ? toJsDate(booking.dateRequested) : startTime;
+                    const reqId = booking.requestId || `REQ-${booking.id?.slice(0, 4)}`;
+                    const isChecked = selectedIds.includes(booking.id);
+                    const isApproved = booking.status === "Approved";
+                    const isPending = booking.status?.toLowerCase().startsWith("pending");
+
+                    return (
+                      <div key={booking.id} className={cn("p-4 transition-colors", isChecked ? "bg-blue-50/40 dark:bg-blue-950/20" : "bg-white dark:bg-card hover:bg-gray-50/60 dark:hover:bg-muted/30")}>
+                        {/* Top row: checkbox + ID + status + actions */}
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2.5">
+                            <Checkbox checked={isChecked} onCheckedChange={(c) => handleSelectRow(booking.id, !!c)} />
+                            <span className="text-xs font-mono font-semibold text-gray-600 dark:text-gray-400">{reqId}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isApproved ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Approved
+                              </span>
+                            ) : isPending ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Pending
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> {booking.status}
+                              </span>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button type="button" className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-muted text-gray-500 hover:text-gray-800 transition-colors">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem onClick={() => { setSelectedBooking(booking); setIsDetailsOpen(true); }} className="text-xs cursor-pointer font-medium">View Details</DropdownMenuItem>
+                                {isPending && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleStatusUpdate(booking.id, "Approved")} className="text-xs cursor-pointer font-medium text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5 mr-1.5" />Approve</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleStatusUpdate(booking.id, "Rejected")} className="text-xs cursor-pointer font-medium text-rose-600 dark:text-rose-400"><X className="h-3.5 w-3.5 mr-1.5" />Reject</DropdownMenuItem>
+                                  </>
+                                )}
+                                <DropdownMenuItem onClick={() => handleDeleteBooking(booking.id)} className="text-xs cursor-pointer font-medium text-red-600 dark:text-red-400"><Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+
+                        {/* Requester */}
+                        <div className="flex items-center gap-2.5 mb-2.5">
+                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 text-[10px] font-bold flex items-center justify-center shrink-0">{initials}</div>
+                          <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{requesterName}</span>
+                        </div>
+
+                        {/* Details grid */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Room</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">{room?.name || "—"}</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-[11px]">{area?.name || "—"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Date</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">{format(startTime, "MMM d, yyyy")}</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-[11px]">{format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Pax</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">{booking.pax || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Created</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">{format(createdDate, "MMM d, yyyy")}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ── DESKTOP TABLE (lg and above) ── */}
+                <div className="hidden lg:block">
+                <Table>
                 <TableHeader>
                   <TableRow className="bg-[#F8F9FA] dark:bg-muted/40 hover:bg-[#F8F9FA] border-b border-gray-200 dark:border-border">
                     <TableHead className="w-12 px-4 py-3.5 text-center">
@@ -756,6 +848,8 @@ export default function AllReservationsPage() {
                   })}
                 </TableBody>
               </Table>
+              </div>
+              </>
             )}
           </div>
         </div>
