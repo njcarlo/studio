@@ -35,11 +35,27 @@ const MobileSidebarTrigger = () => {
   return (
     <Button
       variant="ghost"
-      className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground"
+      className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground active:scale-95 transition-all"
       onClick={() => setOpenMobile(true)}
     >
       <Menu className="h-5 w-5" />
       <span className="text-[10px] font-medium leading-none">More</span>
+    </Button>
+  );
+};
+
+const HeaderMobileTrigger = () => {
+  const { setOpenMobile } = useSidebar();
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-9 w-9 -ml-1 text-muted-foreground hover:text-foreground active:scale-95 transition-all md:hidden shrink-0"
+      onClick={() => setOpenMobile(true)}
+      aria-label="Open Navigation Menu"
+    >
+      <Menu className="h-5 w-5" />
     </Button>
   );
 };
@@ -162,56 +178,59 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Nav pathname={currentPathname} />
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+      <SidebarInset className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 min-w-0 max-w-full overflow-x-hidden">
         <ImpersonationBanner />
-        <header className="flex h-12 md:h-[52px] items-center gap-4 border-b border-border/40 bg-white dark:bg-card px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content">
-          <div className="md:hidden flex items-center gap-2">
-            <Image
-              src="/church-logo.png"
-              alt="COG Logo"
-              width={24}
-              height={24}
-              className="w-6 h-6 rounded-sm"
-              priority
-            />
-            <span className="text-sm font-semibold font-headline">COG App</span>
+        <header className="flex h-14 md:h-[52px] items-center gap-2.5 sm:gap-4 border-b border-border/50 bg-white/95 dark:bg-card/95 backdrop-blur-md px-3 sm:px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content shadow-2xs">
+          <div className="md:hidden flex items-center gap-2 shrink-0">
+            <HeaderMobileTrigger />
+            <div className="flex items-center gap-2">
+              <Image
+                src="/church-logo.png"
+                alt="COG Logo"
+                width={26}
+                height={26}
+                className="w-6 h-6 rounded-sm object-contain"
+                priority
+              />
+              <span className="text-sm font-bold font-headline tracking-tight">COG App</span>
+            </div>
           </div>
           <div className="w-full flex-1" />
           <UserNav />
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+        <main className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:gap-6 lg:p-6 min-w-0 max-w-full overflow-x-hidden">
           {children}
         </main>
       </SidebarInset>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t flex justify-around items-center z-50 pb-[env(safe-area-inset-bottom)] box-content">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border/60 flex justify-around items-center z-50 pb-[env(safe-area-inset-bottom)] box-content shadow-lg">
         <Button
           variant="ghost"
-          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary"
-          data-active={currentPathname === "/dashboard"}
+          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground data-[active=true]:text-primary active:scale-95 transition-all"
+          data-active={currentPathname === "/dashboard" || currentPathname === "/"}
           onClick={() => router.push("/dashboard")}
         >
           <LayoutDashboard className="h-5 w-5" />
-          <span className="text-[10px] font-medium leading-none">Home</span>
+          <span className="text-[10px] font-semibold leading-none">Home</span>
         </Button>
         <Button
           variant="ghost"
-          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary"
+          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground data-[active=true]:text-primary active:scale-95 transition-all"
           data-active={currentPathname.startsWith("/workers/my-qr")}
           onClick={() => router.push("/workers/my-qr")}
         >
           <QrCode className="h-5 w-5" />
-          <span className="text-[10px] font-medium leading-none">My QR Code</span>
+          <span className="text-[10px] font-semibold leading-none">My QR</span>
         </Button>
         <Button
           variant="ghost"
-          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none data-[active=true]:text-primary"
+          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground data-[active=true]:text-primary active:scale-95 transition-all"
           data-active={currentPathname.startsWith("/reservations")}
           onClick={() => router.push("/reservations/calendar")}
         >
           <CalendarIcon className="h-5 w-5" />
-          <span className="text-[10px] font-medium leading-none">Rooms</span>
+          <span className="text-[10px] font-semibold leading-none">Rooms</span>
         </Button>
 
         {/* Connects with Sidebar to open the side menu */}

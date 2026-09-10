@@ -530,11 +530,11 @@ export function InventoryTable({
             </div>
 
             {/* Right Primary Action Group */}
-            <div className="flex items-center gap-2 self-end lg:self-auto shrink-0">
+            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start sm:justify-end shrink-0">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs hover:bg-primary/5 hover:text-primary"
+                className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs hover:bg-primary/5 hover:text-primary flex-1 sm:flex-initial"
                 onClick={onScanClick || (() => setIsFastScanOpen(true))}
               >
                 <ScanBarcode className="h-3.5 w-3.5 text-primary" />
@@ -547,10 +547,10 @@ export function InventoryTable({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs"
+                    className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs flex-1 sm:flex-initial"
                   >
                     <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>CSV Actions</span>
+                    <span>CSV</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48 rounded-xl">
@@ -571,7 +571,7 @@ export function InventoryTable({
               {/* Primary + Add Item Button */}
               <Button
                 size="sm"
-                className="h-8 text-xs font-bold rounded-xl gap-1.5 shadow-sm"
+                className="h-8 text-xs font-bold rounded-xl gap-1.5 shadow-sm flex-1 sm:flex-initial"
                 onClick={() => {
                   setModalItem(null);
                   setIsItemModalOpen(true);
@@ -724,8 +724,178 @@ export function InventoryTable({
             </div>
           )}
 
-          {/* ── THE MASTER TABLE ── */}
-          <div className="overflow-x-auto">
+          {/* ── MOBILE CARD LIST VIEW (FOR SMARTPHONES) ── */}
+          <div className="block md:hidden divide-y divide-border/60">
+            {loading && items.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2.5 text-muted-foreground">
+                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                <span className="text-xs font-medium">Loading inventory items...</span>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="py-12 px-4 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
+                <div className="h-12 w-12 rounded-2xl bg-muted/60 flex items-center justify-center text-muted-foreground/60 border border-border/60">
+                  <Package className="h-6 w-6" />
+                </div>
+                <span className="text-sm font-bold text-foreground">No inventory items found</span>
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  {hasActiveFilters
+                    ? 'No items matched your search filters.'
+                    : 'Get started by clicking "+ Add Item" above.'}
+                </p>
+              </div>
+            ) : (
+              items.map((item) => {
+                const isSelected = selectedIds.has(item.id);
+                const statusMeta = getStatusMeta(item.status);
+                const categoryClass = getCategoryBadgeStyle(item.category?.name);
+                const isLow = item.stock <= (item.minStock > 0 ? item.minStock : 5) && item.stock > 0;
+                const isOut = item.stock === 0;
+
+                return (
+                  <div
+                    key={`mob-${item.id}`}
+                    className={`p-3.5 space-y-2.5 transition-colors ${
+                      isSelected ? 'bg-primary/5' : 'bg-card'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelect(item.id)}
+                          className="mt-1"
+                        />
+                        <div
+                          onClick={() => {
+                            setModalItem(item);
+                            setIsItemModalOpen(true);
+                          }}
+                          className="w-12 h-12 rounded-xl bg-muted/40 border border-border/70 overflow-hidden flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                        >
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="h-5 w-5 text-muted-foreground/60" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4
+                            onClick={() => {
+                              setModalItem(item);
+                              setIsItemModalOpen(true);
+                            }}
+                            className="text-xs font-bold text-foreground hover:text-primary cursor-pointer line-clamp-1"
+                          >
+                            {item.name}
+                          </h4>
+                          <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                            {item.inventoryCode || item.id.slice(0, 8).toUpperCase()}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${categoryClass}`}>
+                              {item.category?.name || 'Unassigned'}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${statusMeta.badge}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
+                              <span>{statusMeta.label}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dropdown menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0">
+                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                          <DropdownMenuItem
+                            className="gap-2 cursor-pointer"
+                            onClick={() => {
+                              setModalItem(item);
+                              setIsItemModalOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Edit Item</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2 cursor-pointer"
+                            onClick={() => {
+                              setStockAdjustItem(item);
+                              setAdjustAction('Stock In');
+                              setAdjustQuantity(1);
+                              setAdjustNote('');
+                            }}
+                          >
+                            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Adjust Stock...</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2 cursor-pointer"
+                            onClick={() => handleSingleQR(item)}
+                          >
+                            <QrCode className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Print QR Label</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+                            onClick={() => {
+                              setDeleteConfirmId(item.id);
+                              setDeleteConfirmName(item.name);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Delete Item</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 text-xs border-t border-border/40">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate max-w-[150px]">{item.location || 'No location'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-muted-foreground">Stock:</span>
+                        <span className={`font-mono font-bold ${isOut ? 'text-rose-600' : isLow ? 'text-amber-600' : 'text-foreground'}`}>
+                          {item.stock} {item.unit || 'pcs'}
+                        </span>
+                        <div className="flex items-center gap-0.5 ml-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 w-6 p-0 rounded-md"
+                            disabled={item.stock <= 0}
+                            onClick={() => handleQuickStock(item, 'Stock Out')}
+                            title="Quick -1"
+                          >
+                            <ArrowDown className="h-3 w-3 text-amber-600" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 w-6 p-0 rounded-md"
+                            onClick={() => handleQuickStock(item, 'Stock In')}
+                            title="Quick +1"
+                          >
+                            <ArrowUp className="h-3 w-3 text-emerald-600" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* ── THE MASTER TABLE (FOR DESKTOP & TABLETS) ── */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader className="bg-muted/40 border-b border-border/70">
                 <TableRow className="hover:bg-transparent">

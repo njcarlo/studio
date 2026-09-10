@@ -43,6 +43,7 @@ import { ActivityFeed } from '@/components/inventory/activity-feed';
 import { BorrowingsPanel } from '@/components/inventory/borrowings-panel';
 import { CategoriesPanel } from '@/components/inventory/categories-panel';
 import { StockLogsPanel } from '@/components/inventory/stock-logs-panel';
+import { cn } from '@/lib/utils';
 import { ReportsPanel } from '@/components/inventory/reports-panel';
 import { SettingsPanel } from '@/components/inventory/settings-panel';
 import { StockScanModal } from '@/components/inventory/stock-scan-modal';
@@ -160,23 +161,23 @@ function InventoryPageContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsCameraScannerOpen(true)}
-              className="gap-2 rounded-xl border-border/80 shadow-2xs text-xs font-semibold"
+              className="gap-2 rounded-xl border-border/80 shadow-2xs text-xs font-semibold flex-1 sm:flex-initial"
             >
               <ScanBarcode className="h-4 w-4 text-primary" />
-              Quick Scan (Camera)
+              <span>Quick Scan (Camera)</span>
             </Button>
             <Button
               size="sm"
               onClick={() => setIsScanModalOpen(true)}
-              className="gap-2 rounded-xl shadow-xs text-xs font-semibold"
+              className="gap-2 rounded-xl shadow-xs text-xs font-semibold flex-1 sm:flex-initial"
             >
               <ScanBarcode className="h-4 w-4" />
-              Scan Barcode (Handheld)
+              <span>Scan Barcode (Handheld)</span>
             </Button>
           </div>
         </div>
@@ -343,6 +344,36 @@ function InventoryPageContent() {
           </Card>
         </div>
 
+        {/* ── MOBILE-FRIENDLY HORIZONTAL TAB BAR ── */}
+        <div className="overflow-x-auto no-scrollbar pb-1">
+          <div className="inline-flex p-1 bg-muted/60 dark:bg-muted/30 rounded-2xl border border-border/60 gap-1 min-w-max">
+            {INVENTORY_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isSelected = tab.id === activeTab;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                    isSelected
+                      ? "bg-background text-primary shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <Icon className={cn("h-3.5 w-3.5", isSelected ? "text-primary" : "text-muted-foreground")} />
+                  <span>{tab.label}</span>
+                  {tab.id === "borrowings" && overdueAlerts.length > 0 && (
+                    <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-destructive text-destructive-foreground">
+                      {overdueAlerts.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* ── SECTION HEADER & STREAMLINED VIEW SWITCHER ── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl bg-card border border-border/70 shadow-xs">
           <div className="flex items-center gap-3">
@@ -366,7 +397,7 @@ function InventoryPageContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="hidden md:flex items-center gap-2 self-start md:self-auto">
             {activeTab === "items" && (
               <Button
                 variant="outline"

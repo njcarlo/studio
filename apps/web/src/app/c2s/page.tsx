@@ -3692,14 +3692,14 @@ export default function C2SPage() {
           </div>
 
           {/* Top-Right High Visibility Action Button */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {activeTab === "devotions" && (
               <Button
                 onClick={() => {
                   setEditingDevotion(null);
                   setIsDevotionSheetOpen(true);
                 }}
-                className="shadow-sm font-semibold text-xs h-9 px-4 gap-1.5"
+                className="shadow-sm font-semibold text-xs h-9 px-4 gap-1.5 w-full sm:w-auto"
               >
                 <PlusCircle className="h-4 w-4" />
                 Submit Devotion Record
@@ -3711,7 +3711,7 @@ export default function C2SPage() {
                   setSelectedMentee(isMentorUser && workerProfile ? { mentorId: workerProfile.id } : null);
                   setIsMenteeSheetOpen(true);
                 }}
-                className="shadow-sm font-semibold text-xs h-9 px-4 gap-1.5"
+                className="shadow-sm font-semibold text-xs h-9 px-4 gap-1.5 w-full sm:w-auto"
               >
                 <UserPlus className="h-4 w-4" />
                 Add Mentee
@@ -3720,13 +3720,47 @@ export default function C2SPage() {
           </div>
         </div>
 
-        {/* Tabs Content Views (Navigated via sidebar sub-items) */}
+        {/* In-page Tab Navigation for Mobile & Quick Desktop Switching */}
         <Tabs
           defaultValue="devotions"
           value={activeTab}
           onValueChange={handleTabChange}
-          className="w-full"
+          className="w-full space-y-4 sm:space-y-6"
         >
+          <div className="overflow-x-auto no-scrollbar pb-1">
+            <TabsList className="h-10 p-1 bg-muted/60 dark:bg-muted/30 rounded-xl inline-flex w-full sm:w-auto min-w-max border border-border/50">
+              {isAdminUser && (
+                <TabsTrigger
+                  value="overview"
+                  className="rounded-lg text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs flex items-center gap-1.5"
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  <span>Overview</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="devotions"
+                className="rounded-lg text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs flex items-center gap-1.5"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                <span>Devotions</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="mentees"
+                className="rounded-lg text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs flex items-center gap-1.5"
+              >
+                <Users className="h-3.5 w-3.5" />
+                <span>Mentees</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="analytics"
+                className="rounded-lg text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs flex items-center gap-1.5"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span>Analytics</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ══════════════════ TAB 0: ADMIN OVERVIEW ══════════════════ */}
           {isSuperAdmin && (
@@ -3768,7 +3802,7 @@ export default function C2SPage() {
               {/* Filter controls: Super Admin/Admin sees All Departments, Ministry Head sees their Department Clusters, Mentor sees no dropdown */}
               <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 {isAdminUser ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
                     <Select
                       value={selectedDeptFilter === "all" ? "" : selectedDeptFilter}
                       onValueChange={(val) => {
@@ -3812,7 +3846,7 @@ export default function C2SPage() {
                           setSelectedDeptFilter("all");
                           setSelectedClusterFilter("all");
                         }}
-                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
                         title="Clear filter"
                       >
                         <X className="h-3.5 w-3.5 mr-1" /> Clear
@@ -3820,7 +3854,7 @@ export default function C2SPage() {
                     )}
                   </div>
                 ) : isMinistryHeadUser ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
                     <Select
                       value={selectedClusterFilter === "all" ? "" : selectedClusterFilter}
                       onValueChange={(val) => {
@@ -3853,7 +3887,7 @@ export default function C2SPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedClusterFilter("all")}
-                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
                         title="Clear filter"
                       >
                         <X className="h-3.5 w-3.5 mr-1" /> Clear
@@ -4095,7 +4129,7 @@ export default function C2SPage() {
               {/* Filter controls & Action buttons */}
               <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 {isAdminUser ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
                     <Select
                       value={selectedGroupClusterFilter === "all" ? "" : selectedGroupClusterFilter}
                       onValueChange={(val) => setSelectedGroupClusterFilter(val || "all")}
@@ -4156,7 +4190,7 @@ export default function C2SPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedGroupClusterFilter("all")}
-                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
                         title="Clear filter"
                       >
                         <X className="h-3.5 w-3.5 mr-1" /> Clear
@@ -4164,7 +4198,7 @@ export default function C2SPage() {
                     )}
                   </div>
                 ) : isMinistryHeadUser ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
                     <Select
                       value={selectedGroupClusterFilter === "all" ? "" : selectedGroupClusterFilter}
                       onValueChange={(val) => setSelectedGroupClusterFilter(val || "all")}
@@ -4202,7 +4236,7 @@ export default function C2SPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedGroupClusterFilter("all")}
-                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
                         title="Clear filter"
                       >
                         <X className="h-3.5 w-3.5 mr-1" /> Clear

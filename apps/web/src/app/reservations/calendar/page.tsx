@@ -749,41 +749,44 @@ export default function ReservationCalendarPage() {
   return (
     <AppLayout>
       {/* Toolbar */}
-      <div className="flex flex-col gap-2 mb-4">
-        {/* Row 1: nav arrows + date label + view tabs */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8">
+      <div className="flex flex-col gap-3 mb-4">
+        {/* Mobile & Desktop responsive toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center justify-between sm:justify-start gap-1 w-full sm:w-auto">
+            <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8 shrink-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h2 className="text-sm sm:text-base font-semibold tracking-tight whitespace-nowrap">
+            <h2 className="text-sm sm:text-base font-semibold tracking-tight text-center truncate px-2">
               {dateRangeDisplay}
             </h2>
-            <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8">
+            <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8 shrink-0">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <Tabs
-            value={view}
-            onValueChange={(v) => setView(v as "month" | "week" | "day")}
-          >
-            <TabsList className="h-8">
-              <TabsTrigger value="month" className="text-xs sm:text-sm px-2 sm:px-4">Month</TabsTrigger>
-              <TabsTrigger value="week" className="text-xs sm:text-sm px-2 sm:px-4">Week</TabsTrigger>
-              <TabsTrigger value="day" className="text-xs sm:text-sm px-2 sm:px-4">Day</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        {/* Row 2: Today + Book a Room */}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleToday} className="h-8 px-3 text-xs sm:text-sm font-medium">
-            Today
-          </Button>
-          {canCreateRoomReservation && (
-            <Button onClick={() => router.push("/reservations/new")} className="h-8 gap-1 text-xs sm:text-sm">
-              <PlusCircle className="h-3.5 w-3.5" /> Book a Room
-            </Button>
-          )}
+
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+            <Tabs
+              value={view}
+              onValueChange={(v) => setView(v as "month" | "week" | "day")}
+              className="w-auto"
+            >
+              <TabsList className="h-8">
+                <TabsTrigger value="month" className="text-xs px-2 sm:px-4">Month</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs px-2 sm:px-4">Week</TabsTrigger>
+                <TabsTrigger value="day" className="text-xs px-2 sm:px-4">Day</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" onClick={handleToday} className="h-8 px-2.5 text-xs font-medium">
+                Today
+              </Button>
+              {canCreateRoomReservation && (
+                <Button onClick={() => router.push("/reservations/new")} className="h-8 gap-1 text-xs">
+                  <PlusCircle className="h-3.5 w-3.5" /> Book a Room
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
