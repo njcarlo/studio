@@ -340,7 +340,7 @@ export function Nav({
           if (isCollapsed) {
             return (
               <SidebarMenuItem key={item.href}>
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
                       isActive={pathname.startsWith(item.href)}
