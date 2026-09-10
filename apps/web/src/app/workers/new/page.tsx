@@ -1,21 +1,96 @@
 "use client";
 
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
-import { WorkerForm } from "@/components/workers/worker-form";
 import { useRoles } from "@/hooks/use-roles";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkers } from "@/hooks/use-workers";
-import { LoaderCircle } from "lucide-react";
-import { 
-  createWorkerWithAuth, 
-  createApproval as createApprovalSql
-} from "@/actions/db";
+import { LoaderCircle, ArrowLeft, ArrowRight, User, Building2, FileText, ClipboardCheck, CheckCircle2 } from "lucide-react";
+import { createWorkerWithAuth, createApproval as createApprovalSql } from "@/actions/db";
 import { useAuditLog } from "@/hooks/use-audit-log";
+import { Input } from "@studio/ui";
+import { cn } from "@/lib/utils";
 import type { Worker } from "@studio/types";
 
+// ── Step definitions ──────────────────────────────────────────────────────────
+const STEPS = [
+  { id: 1, label: "Personal Information", sub: "Worker details",        icon: User },
+  { id: 2, label: "Church Assignment",    sub: "Role & ministry",       icon: Building2 },
+  { id: 3, label: "Additional Information", sub: "Notes & emergency",   icon: FileText },
+  { id: 4, label: "Review",               sub: "Confirm & Submit",      icon: ClipboardCheck },
+];
+
+// ── Stepper ───────────────────────────────────────────────────────────────────
+function Stepper({ currentStep }: { currentStep: number }) {
+  return (
+    <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark px-6 py-4">
+      <div className="flex items-center justify-between">
+        {STEPS.map((step, i) => {
+          const Icon = step.icon;
+          const isActive = step.id === currentStep;
+          const isDone = step.id < currentStep;
+          return (
+            <React.Fragment key={step.id}>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className={cn(
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                  isDone ? "bg-emerald-500 text-white" :
+                  isActive ? "bg-primary text-white" :
+                  "bg-muted text-muted-foreground"
+                )}>
+                  {isDone ? <CheckCircle2 className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                </div>
+                <div className="hidden sm:block min-w-0">
+                  <p className={cn("text-xs font-bold leading-tight", isActive ? "text-foreground" : isDone ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                    {step.label}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground leading-tight">{step.sub}</p>
+                </div>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div className={cn("flex-1 max-w-[60px] h-px mx-3 shrink-0", step.id < currentStep ? "bg-emerald-400" : "bg-border/60")} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Field component ───────────────────────────────────────────────────────────
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-foreground">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+// ── Onboarding Tips ───────────────────────────────────────────────────────────
+function OnboardingTips({ tips }: { tips: string[] }) {
+  return (
+    <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5">
+      <h3 className="text-sm font-bold text-foreground mb-3">Onboarding Tips</h3>
+      <ul className="space-y-2">
+        {tips.map((tip, i) => (
+          <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+            {tip}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function NewWorkerPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -23,99 +98,339 @@ export default function NewWorkerPage() {
   const { roles, isLoading: rolesLoading } = useRoles();
   const { ministries, isLoading: ministriesLoading } = useMinistries();
   const { workerProfile, canManageWorkers, isLoading: userRoleLoading } = useUserRole();
-  const { createWorker: createWorkerHook } = useWorkers();
 
   const isLoading = rolesLoading || ministriesLoading || userRoleLoading;
 
-  const handleSave = async (workerData: Partial<Worker>, roleIds: string[]) => {
-    if (!workerData.firstName || !workerData.lastName || !workerData.email) {
-      toast({
-        variant: "destructive",
-        title: "Missing required fields",
-        description: "Please fill out first name, last name, and email.",
-      });
-      return;
-    }
+  const [step, setStep] = useState(1);
 
+  // Form state — Step 1: Personal Information
+  const [firstName, setFirstName]   = useState("");
+  const [lastName, setLastName]     = useState("");
+  const [email, setEmail]           = useState("");
+  const [phone, setPhone]           = useState("");
+  const [birthDate, setBirthDate]   = useState("");
+  const [address, setAddress]       = useState("");
+
+  // Form state — Step 2: Church Assignment
+  const [roleId, setRoleId]               = useState("");
+  const [majorMinistryId, setMajorMinistryId] = useState("");
+  const [minorMinistryId, setMinorMinistryId] = useState("");
+  const [employmentType, setEmploymentType]   = useState("");
+  const [startDate, setStartDate]             = useState("");
+  const [status, setStatus]               = useState("Pending Approval");
+
+  // Form state — Step 3: Additional Information
+  const [remarks, setRemarks]             = useState("");
+  const [isSeniorPastor, setIsSeniorPastor] = useState(false);
+  const [isPastor, setIsPastor]           = useState(false);
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+
+  const [saving, setSaving] = useState(false);
+
+  const validateStep1 = () => {
+    if (!firstName.trim()) { toast({ variant: "destructive", title: "First name is required" }); return false; }
+    if (!lastName.trim())  { toast({ variant: "destructive", title: "Last name is required" }); return false; }
+    if (!email.trim())     { toast({ variant: "destructive", title: "Email is required" }); return false; }
+    if (!phone.trim())     { toast({ variant: "destructive", title: "Mobile number is required" }); return false; }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (step === 1 && !validateStep1()) return;
+    setStep(s => Math.min(4, s + 1));
+  };
+
+  const handlePrev = () => setStep(s => Math.max(1, s - 1));
+
+  const handleSubmit = async () => {
+    if (!validateStep1()) { setStep(1); return; }
+    setSaving(true);
     try {
-      // Generate a temporary workerId if not provided (like in the original logic)
       const workerId = String(20000 + Math.floor(Math.random() * 10000)).padStart(6, "0");
-      const dataToSave = {
-        ...workerData,
-        workerId: workerData.workerId || workerId,
-      };
-
-      const newWorker = await createWorkerWithAuth(dataToSave, roleIds, workerProfile?.id);
-
-      await logAction(
-        "Created Worker",
-        "Workers",
-        `Created worker: ${dataToSave.firstName} ${dataToSave.lastName} (EID: ${dataToSave.workerId})`,
-        newWorker.id,
-        `${dataToSave.firstName} ${dataToSave.lastName}`,
-      );
-
-      if (workerProfile && dataToSave.status === "Pending Approval") {
-        await createApprovalSql({
-          requester: `${workerProfile.firstName} ${workerProfile.lastName}`,
-          type: "New Worker",
-          details: `New worker registration for ${dataToSave.firstName} ${dataToSave.lastName}.`,
-          status: "Pending",
-          workerId: newWorker.id,
-        });
-        toast({
-          title: "Worker Added",
-          description: `${dataToSave.firstName} ${dataToSave.lastName} has been added and is now pending approval.`,
-        });
-      } else {
-        toast({
-          title: "Worker Added",
-          description: `${dataToSave.firstName} ${dataToSave.lastName} has been added successfully.`,
-        });
+      const data = { firstName, lastName, email, phone, birthDate, address, majorMinistryId, minorMinistryId, roleId: roleId || "viewer", employmentType, status, workerId, avatarUrl: "", remarks, isSeniorPastor, isPastor };
+      const newWorker = await createWorkerWithAuth(data, roleId ? [roleId] : [], workerProfile?.id);
+      await logAction("Created Worker", "Workers", `Created worker: ${firstName} ${lastName}`, newWorker.id, `${firstName} ${lastName}`);
+      if (status === "Pending Approval") {
+        await createApprovalSql({ requester: `${workerProfile?.firstName} ${workerProfile?.lastName}`, type: "New Worker", details: `New worker registration for ${firstName} ${lastName}.`, status: "Pending", workerId: newWorker.id });
       }
-
+      toast({ title: "Worker Added", description: `${firstName} ${lastName} has been added successfully.` });
       router.push("/workers");
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Save Failed",
-        description: error.message || "Could not save worker profile.",
-      });
+      toast({ variant: "destructive", title: "Save Failed", description: error.message || "Could not save worker profile." });
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="flex justify-center py-10">
-          <LoaderCircle className="h-8 w-8 animate-spin" />
-        </div>
-      </AppLayout>
-    );
-  }
+  if (isLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+  if (!canManageWorkers) return <AppLayout><div className="p-10 text-center"><h1 className="text-2xl font-bold">Access Denied</h1></div></AppLayout>;
 
-  if (!canManageWorkers) {
-    return (
-      <AppLayout>
-        <div className="p-10 text-center">
-          <h1 className="text-2xl font-bold">Access Denied</h1>
-          <p>You do not have permission to manage workers.</p>
-        </div>
-      </AppLayout>
-    );
-  }
+  const step1Tips = [
+    "Use the worker's legal name for accurate records.",
+    "Email is used for login and notifications.",
+    "Role determines what the worker can access in COG App.",
+    "You can change ministry and role anytime later.",
+  ];
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <WorkerForm
-          worker={null}
-          roles={roles}
-          ministries={ministries}
-          onSave={handleSave}
-          onClose={() => router.push("/workers")}
-          canManage={canManageWorkers}
-        />
+      <div className="space-y-6 pb-12">
+
+        {/* Page header */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Register a new worker</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              A guided onboarding flow — your progress saves automatically as you type.
+            </p>
+          </div>
+          <button
+            onClick={() => router.push("/workers")}
+            className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+        </div>
+
+        {/* Stepper */}
+        <Stepper currentStep={step} />
+
+        {/* Content + Tips */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6 items-start">
+
+          {/* Form card */}
+          <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
+            <div className="px-7 pt-7 pb-4 border-b border-border/40">
+              <h2 className="text-lg font-bold text-foreground">{STEPS[step - 1].label}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Step {step} of {STEPS.length}</p>
+            </div>
+
+            <div className="px-7 py-6">
+              {step === 1 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                  <Field label="First name" required>
+                    <Input value={firstName} onChange={e => setFirstName(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
+                  </Field>
+                  <Field label="Last name" required>
+                    <Input value={lastName} onChange={e => setLastName(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
+                  </Field>
+                  <Field label="Email" required>
+                    <Input type="email" value={email} onChange={e => setEmail(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
+                  </Field>
+                  <Field label="Mobile number" required>
+                    <Input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
+                  </Field>
+                  <Field label="Birth date">
+                    <Input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
+                  </Field>
+                  <Field label="Address">
+                    <Input value={address} onChange={e => setAddress(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
+                  </Field>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="flex flex-col gap-6">
+                  {/* Role cards */}
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-3">
+                      Choose a role <span className="text-red-500">*</span>
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        {
+                          id: "worker", label: "WORKER",
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="#6366f1" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                            </svg>
+                          ),
+                          color: "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800",
+                        },
+                        {
+                          id: "ministry_head", label: "MINISTRY HEAD",
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="#10b981" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                            </svg>
+                          ),
+                          color: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
+                        },
+                        {
+                          id: "admin", label: "ADMIN",
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="#f97316" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          ),
+                          color: "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800",
+                        },
+                      ].map(card => {
+                        const role = roles.find(r => r.name.toLowerCase().includes(card.id.replace("_", " ")) || r.id === card.id);
+                        const isSelected = roleId === (role?.id || card.id);
+                        return (
+                          <button
+                            key={card.id}
+                            type="button"
+                            onClick={() => setRoleId(role?.id || card.id)}
+                            className={cn(
+                              "flex flex-col items-center justify-center gap-3 py-6 rounded-2xl border-2 transition-all cursor-pointer",
+                              isSelected
+                                ? "border-primary bg-primary/5 shadow-sm"
+                                : `${card.color} hover:border-primary/40`
+                            )}
+                          >
+                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", card.color)}>
+                              {card.icon}
+                            </div>
+                            <span className={cn("text-xs font-black tracking-widest", isSelected ? "text-primary" : "text-muted-foreground")}>
+                              {card.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Ministry, Worker type, Start date */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-5">
+                    <Field label="Ministry" required>
+                      <select value={majorMinistryId} onChange={e => setMajorMinistryId(e.target.value)}
+                        className="h-10 rounded-xl border border-border/60 bg-background px-3 text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                        <option value="">Select ministry</option>
+                        {ministries.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Worker type" required>
+                      <select value={employmentType} onChange={e => setEmploymentType(e.target.value)}
+                        className="h-10 rounded-xl border border-border/60 bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+                        <option value="">Select type</option>
+                        <option value="Full-Time">Full-Time</option>
+                        <option value="Part-Time">Part-Time</option>
+                        <option value="Volunteer">Volunteer</option>
+                        <option value="On-Call">On-Call</option>
+                      </select>
+                    </Field>
+                    <Field label="Start date" required>
+                      <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                        className="h-10 rounded-xl border-border/60 bg-background" />
+                    </Field>
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="flex flex-col gap-5">
+                  {/* Toggle cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { label: "Senior Pastor", desc: "Mark this worker as a senior pastor.", value: isSeniorPastor, set: setIsSeniorPastor },
+                      { label: "Pastor",        desc: "Mark this worker as a pastor.",        value: isPastor,       set: setIsPastor },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background px-4 py-3.5">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                        </div>
+                        {/* Toggle switch */}
+                        <button
+                          type="button"
+                          onClick={() => item.set(!item.value)}
+                          className={cn(
+                            "relative w-11 h-6 rounded-full transition-colors shrink-0",
+                            item.value ? "bg-primary" : "bg-muted-foreground/25"
+                          )}
+                        >
+                          <span className={cn(
+                            "absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200",
+                            item.value ? "translate-x-6" : "translate-x-1"
+                          )} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Notes */}
+                  <Field label="Notes">
+                    <textarea
+                      value={remarks}
+                      onChange={e => setRemarks(e.target.value)}
+                      rows={4}
+                      placeholder=""
+                      className="rounded-xl border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none w-full"
+                    />
+                    <p className="text-[11px] text-muted-foreground">Any context that may help administrators.</p>
+                  </Field>
+
+                  {/* Emergency contact */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                    <Field label="Emergency contact name">
+                      <Input value={emergencyName} onChange={e => setEmergencyName(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
+                    </Field>
+                    <Field label="Emergency contact phone">
+                      <Input type="tel" value={emergencyPhone} onChange={e => setEmergencyPhone(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
+                    </Field>
+                  </div>
+                </div>
+              )}
+
+              {step === 4 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Please review the information before submitting.</p>
+                  <div className="rounded-xl border border-border/60 bg-muted/30 divide-y divide-border/40">
+                    {[
+                      ["First Name", firstName], ["Last Name", lastName],
+                      ["Email", email], ["Phone", phone],
+                      ["Birth Date", birthDate || "—"], ["Address", address || "—"],
+                      ["Role", roles.find(r => r.id === roleId)?.name || "—"],
+                      ["Major Ministry", ministries.find(m => m.id === majorMinistryId)?.name || "—"],
+                      ["Minor Ministry", ministries.find(m => m.id === minorMinistryId)?.name || "—"],
+                      ["Employment Type", employmentType], ["Status", status],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex items-center justify-between px-4 py-2.5">
+                        <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+                        <span className="text-sm text-foreground font-medium">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer navigation */}
+            <div className="px-7 py-5 border-t border-border/40 flex items-center justify-between">
+              <button
+                onClick={handlePrev}
+                disabled={step === 1}
+                className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" /> Previous
+              </button>
+
+              {step < 4 ? (
+                <button
+                  onClick={handleNext}
+                  className="flex items-center gap-1.5 h-9 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  Continue <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 h-9 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
+                >
+                  {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  Submit
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Onboarding Tips sidebar */}
+          <OnboardingTips tips={step1Tips} />
+        </div>
       </div>
     </AppLayout>
   );

@@ -730,7 +730,7 @@ export default function AllReservationsPage() {
                         {/* Floor / Room */}
                         <TableCell className="py-4 px-4 text-center align-middle">
                           <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                            <p className="text-xs text-muted-foreground font-medium">
                               {area?.name || "5th Floor"},
                             </p>
                             <p className="text-xs text-gray-800 dark:text-gray-200 font-semibold mt-0.5">

@@ -168,12 +168,31 @@ const allNavItems: NavItem[] = [
     icon: UserCheck,
     label: "Attendance",
     permissionKey: "canViewAttendance",
+    subItems: [
+      { href: "/attendance?tab=personal", label: "Personal Log" },
+      {
+        href: "/attendance?tab=manual",
+        label: "Manual Attendance",
+        anyPermissionKeys: ["isMinistryHead", "canManageWorkers", "canOperateScanner"],
+      },
+      {
+        href: "/attendance?tab=records",
+        label: "Attendance Records",
+        anyPermissionKeys: ["isMinistryHead", "canManageWorkers", "canOperateScanner"],
+      },
+    ],
   },
   {
     href: "/reports",
     icon: BarChart3,
     label: "Reports",
     permissionKey: "canViewReports",
+    subItems: [
+      { href: "/reports?tab=attendance",   label: "Attendance" },
+      { href: "/reports?tab=meal-stubs",   label: "Meal Stub Claims" },
+      { href: "/reports?tab=allocations",  label: "Allocations" },
+      { href: "/reports?tab=reservations", label: "Reservations" },
+    ],
   },
   {
     href: "/inventory",
@@ -193,43 +212,6 @@ const allNavItems: NavItem[] = [
     href: "/settings",
     icon: Settings,
     label: "Settings",
-    subItems: [
-      {
-        href: "/settings/roles",
-        label: "Role Management",
-        permissionKey: "canManageRoles",
-      },
-      {
-        href: "/settings/departments",
-        label: "Department Management",
-        permissionKey: "canManageMinistries",
-      },
-      {
-        href: "/settings/ministries",
-        label: "Ministry Management",
-        permissionKey: "canManageMinistries",
-      },
-      {
-        href: "/settings/meal-stubs",
-        label: "Meal Stub Allocation",
-        permissionKey: "canManageMinistries",
-      },
-      {
-        href: "/settings/rooms",
-        label: "Facilities Management",
-        permissionKey: "canManageFacilities",
-      },
-      {
-        href: "/settings/transaction-logs",
-        label: "Transaction Logs",
-        permissionKey: "canViewTransactionLogs",
-      },
-      {
-        href: "/settings/ors-sync",
-        label: "ORS Legacy Sync",
-        permissionKey: "canManageOrsSync",
-      },
-    ],
   },
 ];
 

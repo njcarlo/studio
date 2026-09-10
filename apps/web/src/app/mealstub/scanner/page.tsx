@@ -5,37 +5,35 @@ import Link from "next/link";
 import { Button } from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
-import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History } from "lucide-react";
+import { ScanLine, ArrowLeft, LoaderCircle, SwitchCamera, History } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@studio/ui";
-import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow } from "date-fns";
 import { getMealStubs, updateMealStub, createScanLog } from "@/actions/db";
 import { useWorkers } from "@/hooks/use-workers";
+import jsQR from "jsqr";
 
 type ScanLogEntry = { id: string; details: string; scannerName: string; timestamp: Date };
 
 export default function QRScannerPage() {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
-    const [isBarcodeDetectorSupported, setIsBarcodeDetectorSupported] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
     const [scanLogs, setScanLogs] = useState<ScanLogEntry[]>([]);
 
     const { workers } = useWorkers();
+    const animFrameRef = useRef<number>(0);
+    const streamRef = useRef<MediaStream | null>(null);
 
+    // Get camera devices on auth
     useEffect(() => {
         if (!isAuthenticated) return;
-        if (typeof (window as any).BarcodeDetector === 'undefined') {
-            setIsBarcodeDetectorSupported(false);
-            toast({ variant: 'destructive', title: 'QR Scanner Not Supported', description: 'Use Chrome or Edge for QR scanning.', duration: 5000 });
-            return;
-        }
         const getDevices = async () => {
             try {
                 await navigator.mediaDevices.getUserMedia({ video: true });
@@ -76,7 +74,6 @@ export default function QRScannerPage() {
         try {
             const worker = workers?.find(w => w.id === workerId || w.workerId === workerId);
 
-            // Token validation
             if (worker?.qrToken && token && worker.qrToken !== token) {
                 toast({ variant: 'destructive', title: 'Invalid or Expired QR', description: 'Please use your latest QR code.' });
                 setTimeout(resetScanner, 3000);
@@ -86,7 +83,6 @@ export default function QRScannerPage() {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // Fetch today's issued stubs for this worker
             const stubs = await getMealStubs({ workerId, dateFrom: today });
             const validStub = stubs.find(s => s.status === 'Issued');
 
@@ -118,40 +114,86 @@ export default function QRScannerPage() {
         }
     }, [isProcessing, workers, toast, resetScanner]);
 
-    // Camera + BarcodeDetector loop
+    // jsQR scan loop
     useEffect(() => {
-        if (!isAuthenticated || !videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || !selectedDeviceId) return;
+        if (!isAuthenticated || !hasCameraPermission || !selectedDeviceId) return;
 
         const videoElement = videoRef.current;
-        const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-        let stream: MediaStream;
-        let animationFrameId: number;
+        const canvas = canvasRef.current;
+        if (!videoElement || !canvas) return;
 
-        const detect = async () => {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+
+        const scan = () => {
             if (videoElement.readyState >= 2 && !isProcessing) {
-                try {
-                    const barcodes = await barcodeDetector.detect(videoElement);
-                    if (barcodes.length > 0 && barcodes[0].rawValue) handleScan(barcodes[0].rawValue);
-                } catch { /* ignore single frame errors */ }
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'dontInvert',
+                });
+                if (code?.data) {
+                    handleScan(code.data);
+                    return; // pause loop while processing
+                }
             }
-            animationFrameId = requestAnimationFrame(detect);
+            animFrameRef.current = requestAnimationFrame(scan);
         };
 
         const start = async () => {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: selectedDeviceId } } });
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: selectedDeviceId } },
+                });
+                streamRef.current = stream;
                 videoElement.srcObject = stream;
                 videoElement.play().catch(console.error);
-                animationFrameId = requestAnimationFrame(detect);
-            } catch (err) { console.error('Camera stream error:', err); }
+                animFrameRef.current = requestAnimationFrame(scan);
+            } catch (err) {
+                console.error('Camera stream error:', err);
+            }
         };
 
         start();
+
         return () => {
-            cancelAnimationFrame(animationFrameId);
-            stream?.getTracks().forEach(t => t.stop());
+            cancelAnimationFrame(animFrameRef.current);
+            streamRef.current?.getTracks().forEach(t => t.stop());
         };
-    }, [selectedDeviceId, hasCameraPermission, isBarcodeDetectorSupported, isProcessing, handleScan, isAuthenticated]);
+    }, [selectedDeviceId, hasCameraPermission, isAuthenticated]);
+
+    // Resume scan loop after processing finishes
+    useEffect(() => {
+        if (isProcessing) return;
+        const videoElement = videoRef.current;
+        const canvas = canvasRef.current;
+        if (!videoElement || !canvas || !isAuthenticated || !hasCameraPermission) return;
+
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+
+        const scan = () => {
+            if (videoElement.readyState >= 2) {
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'dontInvert',
+                });
+                if (code?.data) {
+                    handleScan(code.data);
+                    return;
+                }
+            }
+            animFrameRef.current = requestAnimationFrame(scan);
+        };
+
+        animFrameRef.current = requestAnimationFrame(scan);
+        return () => cancelAnimationFrame(animFrameRef.current);
+    }, [isProcessing, isAuthenticated, hasCameraPermission, handleScan]);
 
     if (!isAuthenticated) {
         return (
@@ -184,9 +226,7 @@ export default function QRScannerPage() {
                     <h1 className="text-2xl font-headline font-bold">Meal Stub Scanner</h1>
                     <p className="text-sm text-muted-foreground">Scan QR codes to claim meal stubs.</p>
                 </div>
-                <Button asChild variant="outline">
-                    <Link href="/dashboard"><ArrowLeft className="mr-2 h-4 w-4" />Back to Dashboard</Link>
-                </Button>
+
             </header>
 
             <main className="grid flex-grow grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-6 lg:p-8 overflow-hidden">
@@ -200,6 +240,8 @@ export default function QRScannerPage() {
                         <div className="w-full max-w-md">
                             <div className="relative w-full aspect-square bg-slate-900 rounded-lg overflow-hidden">
                                 <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                                {/* Hidden canvas used for jsQR frame capture */}
+                                <canvas ref={canvasRef} className="hidden" />
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="w-64 h-64 border-4 border-dashed border-primary rounded-lg" />
                                 </div>
@@ -224,12 +266,6 @@ export default function QRScannerPage() {
                                 <Alert variant="destructive" className="mt-4">
                                     <AlertTitle>Camera Access Required</AlertTitle>
                                     <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
-                                </Alert>
-                            )}
-                            {!isBarcodeDetectorSupported && (
-                                <Alert variant="destructive" className="mt-4">
-                                    <AlertTitle>Scanner Not Supported</AlertTitle>
-                                    <AlertDescription>Try using Chrome or Edge.</AlertDescription>
                                 </Alert>
                             )}
                         </div>

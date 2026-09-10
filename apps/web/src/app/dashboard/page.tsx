@@ -376,9 +376,6 @@ function AdminDashboard() {
           iconClass="text-blue-600"
           iconBgClass="bg-blue-50 dark:bg-blue-950/40"
           accentColor="bg-blue-500"
-          badgeText="Active"
-          badgeClass="bg-blue-50 dark:bg-blue-950/60 text-blue-600"
-          href="/reservations/all"
         />
         <StatCard
           icon={Clock}
@@ -388,9 +385,6 @@ function AdminDashboard() {
           iconClass="text-emerald-600"
           iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
           accentColor="bg-emerald-500"
-          badgeText="Live"
-          badgeClass="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600"
-          href="/attendance"
         />
         <StatCard
           icon={Utensils}
@@ -399,9 +393,6 @@ function AdminDashboard() {
           subtitle={`of ${totalMealsIssued} issued (${mealClaimPct}%)`}
           iconClass="text-orange-600"
           iconBgClass="bg-orange-50 dark:bg-orange-950/40"
-          accentColor="bg-orange-500"
-          progress={mealClaimPct}
-          href="/meals"
         />
         <StatCard
           icon={AlertCircle}
@@ -412,9 +403,6 @@ function AdminDashboard() {
           iconClass="text-amber-600"
           iconBgClass="bg-amber-50 dark:bg-amber-950/40"
           accentColor={pendingApprovals > 0 ? "bg-rose-500" : "bg-amber-500"}
-          badgeText={pendingApprovals > 0 ? "Action" : "Clear"}
-          badgeClass={pendingApprovals > 0 ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 animate-pulse" : "bg-muted text-muted-foreground"}
-          href="/approvals"
         />
       </div>
 
@@ -757,9 +745,6 @@ function WorkerDashboard() {
           iconClass="text-emerald-600"
           iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
           accentColor="bg-emerald-500"
-          badgeText="Today"
-          badgeClass="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600"
-          href="/workers/my-qr"
         />
         <StatCard
           icon={Utensils}
@@ -769,7 +754,6 @@ function WorkerDashboard() {
           iconClass="text-orange-600"
           iconBgClass="bg-orange-50 dark:bg-orange-950/40"
           accentColor="bg-orange-500"
-          href="/meals"
         />
         <StatCard
           icon={Calendar}
@@ -843,9 +827,6 @@ function StatCard({
   iconBgClass,
   accentColor,
   progress,
-  badgeText,
-  badgeClass,
-  href,
 }: {
   icon: React.ElementType;
   label: string;
@@ -856,17 +837,9 @@ function StatCard({
   iconBgClass: string;
   accentColor?: string;
   progress?: number;
-  badgeText?: string;
-  badgeClass?: string;
-  href?: string;
 }) {
-  const content = (
-    <div
-      className={cn(
-        "group relative overflow-hidden rounded-2xl border-0 border-none shadow-card-dark bg-card transition-all duration-200 block h-full",
-        href && "hover:-translate-y-1 hover:shadow-2xl cursor-pointer"
-      )}
-    >
+  return (
+    <div className="relative overflow-hidden rounded-2xl border-0 border-none shadow-card-dark bg-card block h-full">
       {/* Top Accent Strip */}
       <div
         className={cn(
@@ -874,31 +847,21 @@ function StatCard({
           accentColor || "bg-primary"
         )}
       />
-      <div className="p-5">
+      <div className="p-6 pb-6">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {label}
             </p>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-black tracking-tight font-headline text-foreground leading-none">
+            <div className="mt-4 flex items-baseline gap-2">
+              <span className="text-4xl sm:text-5xl font-black tracking-tight font-headline text-foreground leading-none">
                 {value}
               </span>
-              {badgeText && (
-                <span
-                  className={cn(
-                    "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                    badgeClass || "bg-primary/10 text-primary"
-                  )}
-                >
-                  {badgeText}
-                </span>
-              )}
             </div>
           </div>
           <div
             className={cn(
-              "p-2.5 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-transform duration-200 group-hover:scale-110",
+              "p-2.5 rounded-xl flex items-center justify-center shrink-0 shadow-xs",
               iconBgClass
             )}
           >
@@ -918,23 +881,13 @@ function StatCard({
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between text-xs">
+        <div className="mt-4 text-xs">
           <span className={cn("text-muted-foreground font-medium", subtitleClass)}>
             {subtitle}
           </span>
-          {href && (
-            <span className="text-[11px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-              Open <ArrowRight className="h-3 w-3" />
-            </span>
-          )}
         </div>
       </div>
     </div>
   );
-
-  if (href) {
-    return <Link href={href} className="block h-full">{content}</Link>;
-  }
-
-  return content;
 }
+

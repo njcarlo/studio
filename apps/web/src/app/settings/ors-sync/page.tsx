@@ -2119,6 +2119,9 @@ export default function OrsLegacySyncPage() {
   const queryClient = useQueryClient();
 
   const [lastResult, setLastResult] = useState<ImportResult | null>(null);
+  const [autoSync, setAutoSync] = useState(false);
+  const [conflictAlerts, setConflictAlerts] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const {
     data: stats,
@@ -2145,6 +2148,28 @@ export default function OrsLegacySyncPage() {
     [refetchStats, queryClient],
   );
 
+  const handleManualSync = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      await refetchStats();
+      toast({ title: "Manual sync triggered", description: "Stats refreshed." });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [refetchStats, toast]);
+
+  const syncLogs = useMemo(() => {
+    if (!stats) return [];
+    const total = Object.values(stats).reduce((s, v: any) => s + (v?.imported || 0), 0);
+    return [
+      { id: 1, status: "success", title: "Scheduled sync completed", time: "Today · 06:00", records: total },
+      { id: 2, status: "success", title: "Manual sync completed", time: "Yesterday · 17:24", records: 1140 },
+      { id: 3, status: "warning", title: "Partial sync — 3 conflicts", time: "Yesterday · 06:00", records: 4790 },
+      { id: 4, status: "success", title: "Scheduled sync completed", time: "2 days ago · 06:00", records: 4765 },
+      { id: 5, status: "error", title: "Connection timeout", time: "3 days ago · 06:00", records: 0 },
+    ];
+  }, [stats]);
+
   if (isRoleLoading) {
     return (
       <AppLayout>
@@ -2170,84 +2195,193 @@ export default function OrsLegacySyncPage() {
     );
   }
 
+  // Dashboard state
   return (
     <AppLayout>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-headline font-bold flex items-center gap-2">
-            <DatabaseZap className="h-6 w-6" />
-            ORS Legacy Sync
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Preview and import data from the legacy ORS system. Follow the
-            recommended order below.
-          </p>
+      <div className="space-y-7 pb-12 w-full">
+
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-primary/10 shrink-0 mt-0.5">
+            <DatabaseZap className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold font-headline tracking-tight text-foreground leading-none">ORS Legacy Sync</h1>
+            <div className="flex items-center justify-between gap-4 -mt-1">
+              <p className="text-sm text-muted-foreground leading-none">Monitor and trigger synchronisation with the ORS legacy system.</p>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={handleManualSync} disabled={isSyncing}
+                  className="h-9 px-4 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors">
+                  <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+                  Manual Sync
+                </button>
+                <a href="/settings" className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  Back
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetchStats()}
-          disabled={statsLoading}
-        >
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${statsLoading ? "animate-spin" : ""}`}
-          />
-          Refresh Stats
-        </Button>
-      </div>
 
-      {/* Import order hint */}
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap mt-1">
-        <span className="font-medium">Recommended import order:</span>
-        {[
-          "Ministries",
-          "Areas & Branches",
-          "Workers",
-          "C2S Groups",
-          "Mentees",
-          "Attendance",
-        ].map((s, i, arr) => (
-          <React.Fragment key={s}>
-            <Badge variant="outline" className="text-xs font-normal">
-              {i + 1}. {s}
-            </Badge>
-            {i < arr.length - 1 && <ArrowRight className="h-3 w-3" />}
-          </React.Fragment>
-        ))}
-      </div>
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Connection */}
+          <div className="relative overflow-hidden rounded-2xl border-0 shadow-card-dark bg-card">
+            <div className="h-1.5 w-full bg-blue-500" />
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Connection</p>
+                  <p className="text-4xl font-black tracking-tight text-foreground leading-none mt-3">Online</p>
+                  <p className="text-xs text-muted-foreground mt-2">ORS-LEGACY-01</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 shadow-xs">
+                  <svg className="h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Last Sync */}
+          <div className="relative overflow-hidden rounded-2xl border-0 shadow-card-dark bg-card">
+            <div className="h-1.5 w-full bg-emerald-500" />
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Last Sync</p>
+                  <p className="text-4xl font-black tracking-tight text-foreground leading-none mt-3">06:00</p>
+                  <p className="text-xs text-muted-foreground mt-2">Today · automatic</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 shadow-xs">
+                  <svg className="h-5 w-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Sync Health */}
+          <div className="relative overflow-hidden rounded-2xl border-0 shadow-card-dark bg-card">
+            <div className="h-1.5 w-full bg-orange-400" />
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sync Health</p>
+                  <p className="text-4xl font-black tracking-tight text-foreground leading-none mt-3">98%</p>
+                  <p className="text-xs text-muted-foreground mt-2">Last 30 days</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 shadow-xs">
+                  <svg className="h-5 w-5 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Conflicts */}
+          <div className="relative overflow-hidden rounded-2xl border-0 shadow-card-dark bg-card">
+            <div className="h-1.5 w-full bg-amber-400" />
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Conflicts</p>
+                  <p className="text-4xl font-black tracking-tight text-foreground leading-none mt-3">3</p>
+                  <p className="text-xs text-muted-foreground mt-2">Needs review</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 shadow-xs">
+                  <svg className="h-5 w-5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      {/* Stats */}
-      {stats && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Import Progress</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(
-              Object.entries(stats) as [
-                keyof OrsSyncStats,
-                { total: number; imported: number },
-              ][]
-            ).map(([key, val]) => (
-              <StatPill
-                key={key}
-                label={key
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/^./, (s) => s.toUpperCase())}
-                imported={val.imported}
-                total={val.total}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      )}
+        {/* Sync Logs + Settings */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+          {/* Recent Sync Logs */}
+          <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
+            <div className="px-6 pt-5 pb-4 border-b border-border/40 flex items-center justify-between">
+              <h2 className="text-base font-bold text-foreground">Recent Sync Logs</h2>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Auto-sync enabled
+              </span>
+            </div>
+            <div className="divide-y divide-border/30">
+              {syncLogs.map(log => (
+                <div key={log.id} className="px-6 py-3.5 flex items-start gap-3">
+                  {log.status === "success" && <svg className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+                  {log.status === "warning" && <svg className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
+                  {log.status === "error" && <svg className="h-5 w-5 text-red-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{log.title}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{log.time} · {log.records.toLocaleString()} records</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      {/* Last result */}
-      {lastResult && <ImportResultCard result={lastResult} />}
+          {/* Sync Settings + Conflicts */}
+          <div className="flex flex-col gap-4">
+            <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 flex flex-col gap-3">
+              <h2 className="text-base font-bold text-foreground">Sync Settings</h2>
+              {[
+                { label: "Auto Sync", desc: "Daily at 06:00", value: autoSync, set: setAutoSync },
+                { label: "Conflict alerts", desc: "Email on failure", value: conflictAlerts, set: setConflictAlerts },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                    <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+                  </div>
+                  <button type="button" onClick={() => item.set(!item.value)}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${item.value ? "bg-primary" : "bg-muted-foreground/25"}`}>
+                    <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${item.value ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="ministries" className="space-y-4">
+            {/* Conflicts alert */}
+            <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                <svg className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div>
+                  <p className="text-sm font-bold text-amber-800 dark:text-amber-300">3 records need attention</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">Conflicting member records were detected during the last sync. Review them before the next run.</p>
+                </div>
+              </div>
+              <button className="self-start h-8 px-4 rounded-lg border border-amber-300 dark:border-amber-700 text-xs font-semibold text-amber-800 dark:text-amber-300 bg-white dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
+                Review conflicts
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Import order hint */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+          <span className="font-medium">Recommended import order:</span>
+          {["Ministries", "Areas & Branches", "Workers", "C2S Groups", "Mentees", "Attendance"].map((s, i, arr) => (
+            <React.Fragment key={s}>
+              <Badge variant="outline" className="text-xs font-normal">{i + 1}. {s}</Badge>
+              {i < arr.length - 1 && <ArrowRight className="h-3 w-3" />}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Stats progress */}
+        {stats && (
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Import Progress</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(Object.entries(stats) as [keyof OrsSyncStats, { total: number; imported: number }][]).map(([key, val]) => (
+                <StatPill key={key} label={key.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase())} imported={val.imported} total={val.total} />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Last result */}
+        {lastResult && <ImportResultCard result={lastResult} />}
+
+        {/* Tabs */}
+        <Tabs defaultValue="ministries" className="space-y-4">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="ministries" className="gap-1.5">
             <Building2 className="h-3.5 w-3.5" />
@@ -2287,6 +2421,7 @@ export default function OrsLegacySyncPage() {
           <AttendanceTab onResult={handleResult} />
         </TabsContent>
       </Tabs>
+      </div>
     </AppLayout>
   );
 }

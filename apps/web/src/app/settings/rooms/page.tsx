@@ -225,14 +225,10 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
 
     return (
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
                 <div>
                     <CardTitle>Areas</CardTitle>
                     <CardDescription>Manage areas or floors within your satellites.</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={onImport}><Upload className="mr-2 h-4 w-4" /> Import</Button>
-                    <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Area</Button>
                 </div>
             </CardHeader>
             <CardContent>
@@ -242,8 +238,8 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
                             <TableHead>Area ID</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Satellite</TableHead>
-                            <TableHead>Rooms</TableHead>
-                            <TableHead className="w-[100px] text-right">Actions</TableHead>
+                            <TableHead className="text-center">Rooms</TableHead>
+                            <TableHead className="w-[80px] text-center">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -255,8 +251,8 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete, 
                                     <TableCell className="font-mono text-xs">{area.areaId || area.id}</TableCell>
                                     <TableCell className="font-medium">{area.name}</TableCell>
                                     <TableCell>{getBranchName(area.branchId)}</TableCell>
-                                    <TableCell>{roomCount}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-center">{roomCount}</TableCell>
+                                    <TableCell className="text-center">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
@@ -435,72 +431,77 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
         const area = areas.find(a => a.id === areaIdValue);
         if (!area) return { areaName: 'N/A', branchName: 'N/A' };
         const branch = branches.find(b => b.id === area.branchId);
-        return {
-            areaName: area.name,
-            branchName: branch ? branch.name : 'N/A'
-        };
+        return { areaName: area.name, branchName: branch ? branch.name : 'N/A' };
     };
 
+    const [search, setSearch] = useState('');
+    const filtered = rooms.filter(r => !search || r.name.toLowerCase().includes(search.toLowerCase()));
+
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle>Rooms</CardTitle>
-                    <CardDescription>Manage bookable rooms and their elements.</CardDescription>
+        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
+            <div className="px-5 py-3 border-b border-border/40 flex items-center gap-3">
+                <div className="relative flex-1 max-w-xs">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" placeholder="Search rooms..." value={search} onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={onImport}><Upload className="mr-2 h-4 w-4" /> Import</Button>
-                    <Button onClick={onAdd}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Room Name</TableHead>
-                            <TableHead>Area</TableHead>
-                            <TableHead>Satellite</TableHead>
-                            <TableHead>Capacity</TableHead>
-                            <TableHead>Weight</TableHead>
-                            <TableHead>Elements</TableHead>
-                            <TableHead className="w-[100px] text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading && <TableRow><TableCell colSpan={6} className="text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>}
-                        {rooms.map(room => {
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead>
+                        <tr className="bg-muted/40 border-b border-border/40">
+                            {['Name', 'Location', 'Capacity', 'Status', 'Actions'].map(h => (
+                                <th key={h} className={`px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground ${h === 'Name' || h === 'Location' ? 'text-left' : 'text-center'}`}>{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {isLoading ? (
+                            <tr><td colSpan={5} className="py-12 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" /></td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan={5} className="py-12 text-center text-sm text-muted-foreground">No rooms found.</td></tr>
+                        ) : filtered.map(room => {
                             const { areaName, branchName } = getAreaAndBranch(room.areaId);
+                            const status = (room as any).status || 'Active';
                             return (
-                                <TableRow key={room.id}>
-                                    <TableCell className="font-medium">{room.name}</TableCell>
-                                    <TableCell>{areaName}</TableCell>
-                                    <TableCell>{branchName}</TableCell>
-                                    <TableCell>{room.capacity}</TableCell>
-                                    <TableCell>{room.weight || 0}</TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-wrap gap-1">
-                                            {room.elements?.map(elmId => {
-                                                const elem = venueElements.find(e => e.id === elmId);
-                                                return <Badge key={elmId} variant="secondary">{elem?.name || elmId}</Badge>;
-                                            })}
+                                <tr key={room.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
+                                    <td className="px-5 py-3.5">
+                                        <div className="flex items-center gap-2.5">
+                                            <svg className="h-4 w-4 text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                            <span className="text-sm font-semibold text-foreground">{room.name}</span>
                                         </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
+                                    </td>
+                                    <td className="px-5 py-3.5 text-sm text-foreground">{areaName}</td>
+                                    <td className="px-5 py-3.5 text-center">
+                                        <span className="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                            {room.capacity} seats
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-3.5 text-center">
+                                        {status === 'Maintenance'
+                                            ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Maintenance</span>
+                                            : <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active</span>}
+                                    </td>
+                                    <td className="px-5 py-3.5 text-center">
                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-36">
                                                 <DropdownMenuItem onSelect={() => setTimeout(() => onEdit(room), 100)}>Edit</DropdownMenuItem>
                                                 <DropdownMenuItem onSelect={() => setTimeout(() => onDelete(room), 100)} className="text-destructive">Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            )
+                                    </td>
+                                </tr>
+                            );
                         })}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     );
 }
 
@@ -533,6 +534,7 @@ export default function RoomManagementPage() {
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
     const [isRoomImportSheetOpen, setIsRoomImportSheetOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'rooms' | 'areas'>('rooms');
 
     const isLoading = roomsDataLoading || isRoleLoading || venueElementsLoading;
 
@@ -796,25 +798,60 @@ export default function RoomManagementPage() {
 
     return (
         <AppLayout>
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-headline font-bold">Facilities Management</h1>
-            </div>
-            <p className="text-muted-foreground">Manage your organization's physical structure: satellites, areas, and rooms.</p>
+            <div className="space-y-7 pb-12 w-full">
 
-            <Tabs defaultValue="rooms" className="mt-4">
-                <TabsList>
-                    <TabsTrigger value="rooms">Rooms</TabsTrigger>
-                    <TabsTrigger value="areas">Areas</TabsTrigger>
-                    <TabsTrigger value="branches">Satellites</TabsTrigger>
-                </TabsList>
-                <TabsContent value="rooms" className="mt-4">
+                {/* Header */}
+                <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-xl bg-primary/10 shrink-0 mt-0.5">
+                        <svg className="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div className="flex-1">
+                        <h1 className="text-2xl font-bold font-headline tracking-tight text-foreground leading-none">Facilities Management</h1>
+                        <div className="flex items-center justify-between gap-4 -mt-1">
+                            <p className="text-sm text-muted-foreground leading-none">Rooms, areas and satellite campuses in one place.</p>
+                            <a href="/settings" className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors shrink-0">
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                                Back
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tab bar + actions */}
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
+                        <button
+                            onClick={() => setActiveTab('rooms')}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === 'rooms' ? 'bg-card shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                            Rooms
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('areas')}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === 'areas' ? 'bg-card shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                            Areas
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => activeTab === 'rooms' ? setIsRoomImportSheetOpen(true) : setIsAreaImportSheetOpen(true)}
+                            className="h-9 px-3.5 flex items-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors">
+                            <Upload className="h-4 w-4 text-muted-foreground" /> Import
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (activeTab === 'rooms') { setSelectedRoom(null); setIsRoomSheetOpen(true); }
+                                else { setSelectedArea(null); setIsAreaSheetOpen(true); }
+                            }}
+                            className="h-9 px-4 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+                            <PlusCircle className="h-4 w-4" /> {activeTab === 'rooms' ? 'Add Room' : 'Add Area'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                {activeTab === 'rooms' && (
                     <RoomsTab
-                        rooms={[...(rooms || [])].sort((a, b) => {
-                            const weightA = a.weight ?? 0;
-                            const weightB = b.weight ?? 0;
-                            if (weightA !== weightB) return weightA - weightB;
-                            return a.name.localeCompare(b.name);
-                        })}
+                        rooms={[...(rooms || [])].sort((a, b) => { const wa = a.weight ?? 0, wb = b.weight ?? 0; return wa !== wb ? wa - wb : a.name.localeCompare(b.name); })}
                         areas={areas || []}
                         branches={branches || []}
                         venueElements={venueElements || []}
@@ -824,8 +861,8 @@ export default function RoomManagementPage() {
                         onDelete={(room) => setRoomToDelete(room)}
                         onImport={() => setIsRoomImportSheetOpen(true)}
                     />
-                </TabsContent>
-                <TabsContent value="areas" className="mt-4">
+                )}
+                {activeTab === 'areas' && (
                     <AreasTab
                         areas={areas || []}
                         branches={branches || []}
@@ -836,18 +873,8 @@ export default function RoomManagementPage() {
                         onDelete={(area) => setAreaToDelete(area)}
                         onImport={() => setIsAreaImportSheetOpen(true)}
                     />
-                </TabsContent>
-                <TabsContent value="branches" className="mt-4">
-                    <BranchesTab
-                        branches={branches || []}
-                        areas={areas || []}
-                        isLoading={isLoading}
-                        onAdd={() => { setSelectedBranch(null); setIsBranchSheetOpen(true); }}
-                        onEdit={(loc) => { setSelectedBranch(loc); setIsBranchSheetOpen(true); }}
-                        onDelete={(loc) => setBranchToDelete(loc)}
-                    />
-                </TabsContent>
-            </Tabs>
+                )}
+            </div>
 
             {/* Sheets */}
             <Sheet open={isBranchSheetOpen} onOpenChange={setIsBranchSheetOpen}>

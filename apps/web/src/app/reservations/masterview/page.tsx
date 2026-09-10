@@ -186,7 +186,7 @@ export default function MasterviewPage() {
       <div className="w-full space-y-6 pb-12">
         {/* Header Section */}
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold font-headline text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
             Schedule Masterview
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -195,9 +195,9 @@ export default function MasterviewPage() {
         </div>
 
         {/* Search Bar & View Mode Toggle Card */}
-        <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-card-dark flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
               placeholder="Search by title, purpose, or room..."
@@ -206,37 +206,31 @@ export default function MasterviewPage() {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="pl-9 text-sm h-10 bg-white dark:bg-background border-gray-200 dark:border-border rounded-lg"
+              className="pl-9 text-sm h-10 bg-background border-border/60 rounded-xl"
             />
           </div>
 
-          <div className="bg-gray-100 dark:bg-muted p-1 rounded-xl flex items-center self-end sm:self-auto border border-gray-200/50 dark:border-border/50">
+          <div className="bg-muted/50 p-1 rounded-xl flex items-center self-end sm:self-auto border border-border/40">
             <button
               type="button"
-              onClick={() => {
-                setViewMode("history");
-                setCurrentPage(1);
-              }}
+              onClick={() => { setViewMode("history"); setCurrentPage(1); }}
               className={cn(
                 "px-5 py-1.5 text-xs font-semibold rounded-lg transition-all",
                 viewMode === "history"
-                  ? "bg-white dark:bg-card shadow-xs text-gray-800 dark:text-foreground"
-                  : "text-gray-500 hover:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground"
+                  ? "bg-card shadow-xs text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               History
             </button>
             <button
               type="button"
-              onClick={() => {
-                setViewMode("upcoming");
-                setCurrentPage(1);
-              }}
+              onClick={() => { setViewMode("upcoming"); setCurrentPage(1); }}
               className={cn(
                 "px-5 py-1.5 text-xs font-semibold rounded-lg transition-all",
                 viewMode === "upcoming"
-                  ? "bg-white dark:bg-card shadow-xs text-gray-800 dark:text-foreground"
-                  : "text-gray-500 hover:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground"
+                  ? "bg-card shadow-xs text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Upcoming
@@ -245,19 +239,15 @@ export default function MasterviewPage() {
         </div>
 
         {/* Table Container Card */}
-        <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs overflow-hidden flex flex-col min-h-[480px]">
+        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden flex flex-col min-h-[480px]">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-32 gap-3 flex-grow">
               <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Loading schedule records...
-              </p>
+              <p className="text-sm text-muted-foreground">Loading schedule records...</p>
             </div>
           ) : filteredBookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 text-center flex-grow">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                No Reservations Found
-              </h3>
+              <h3 className="text-lg font-semibold text-foreground">No Reservations Found</h3>
               <p className="text-sm text-muted-foreground max-w-sm mt-1">
                 No approved reservations match your current search criteria.
               </p>
@@ -334,28 +324,27 @@ export default function MasterviewPage() {
               <div className="hidden lg:block overflow-x-auto flex-grow">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-[#F8F9FA] dark:bg-muted/40 hover:bg-[#F8F9FA] border-b border-gray-200 dark:border-border">
-                      <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-8 text-left w-[24%]">
+                    <TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border/60">
+                      <TableHead className="font-bold text-muted-foreground text-[11px] uppercase tracking-wider h-11 px-8 text-left w-[24%]">
                         Venue
                       </TableHead>
-                      <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-left w-[26%]">
+                      <TableHead className="font-bold text-muted-foreground text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[26%]">
                         Date & Time
                       </TableHead>
-                      <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-left w-[26%]">
+                      <TableHead className="font-bold text-muted-foreground text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[26%]">
                         Event Details
                       </TableHead>
-                      <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-center w-[18%]">
+                      <TableHead className="font-bold text-muted-foreground text-[11px] uppercase tracking-wider h-11 px-6 text-center w-[18%]">
                         Requirements
                       </TableHead>
-                      <TableHead className="w-[6%] h-12 px-6"></TableHead>
+                      <TableHead className="w-[6%] h-11 px-6" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedBookings.map((booking) => {
                       const room = rooms?.find((r) => r.id === booking.roomId);
                       const area = areas?.find(
-                        (a) =>
-                          a.id === room?.areaId || a.areaId === room?.areaId
+                        (a) => a.id === room?.areaId || a.areaId === room?.areaId
                       );
                       const startTime = toJsDate(booking.start);
                       const endTime = toJsDate(booking.end);
@@ -371,53 +360,44 @@ export default function MasterviewPage() {
                       return (
                         <TableRow
                           key={booking.id}
-                          className="hover:bg-gray-50/60 dark:hover:bg-muted/30 border-b border-gray-100 dark:border-border/60 transition-colors"
+                          className="hover:bg-muted/20 border-b border-border/40 transition-colors"
                         >
                           {/* Venue */}
-                          <TableCell className="py-3.5 px-8 align-middle">
-                            <div>
-                              <p className="font-bold text-sm text-gray-800 dark:text-gray-100 leading-snug">
-                                {room?.name || "Unassigned Room"}
-                              </p>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                {area?.name || "First Floor"}
-                              </p>
-                            </div>
+                          <TableCell className="py-4 px-8 align-middle">
+                            <p className="font-bold text-sm text-foreground leading-snug">
+                              {room?.name || "Unassigned Room"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {area?.name || "First Floor"}
+                            </p>
                           </TableCell>
 
                           {/* Date & Time */}
-                          <TableCell className="py-3.5 px-6 align-middle">
-                            <div>
-                              <p className="font-bold text-sm text-gray-800 dark:text-gray-100 leading-snug">
-                                {format(startTime, "MMMM d, yyyy")}
-                              </p>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                {format(startTime, "h:mm a")} -{" "}
-                                {format(endTime, "h:mm a")}
-                              </p>
-                            </div>
+                          <TableCell className="py-4 px-6 align-middle">
+                            <p className="font-bold text-sm text-foreground leading-snug">
+                              {format(startTime, "MMMM d, yyyy")}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                            </p>
                           </TableCell>
 
                           {/* Event Details */}
-                          <TableCell className="py-3.5 px-6 align-middle">
-                            <div>
-                              <p className="font-bold text-sm text-gray-800 dark:text-gray-100 leading-snug">
-                                {booking.title}
-                              </p>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                {booking.purpose || "Meeting"}
-                              </p>
-                            </div>
+                          <TableCell className="py-4 px-6 align-middle">
+                            <p className="font-bold text-sm text-foreground leading-snug">
+                              {booking.title}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+                              {booking.purpose || "Meeting"}
+                            </p>
                           </TableCell>
 
                           {/* Requirements */}
-                          <TableCell className="py-3.5 px-6 align-middle text-center">
+                          <TableCell className="py-4 px-6 align-middle text-center">
                             {hasRequestedElements ? (
                               <div className="flex flex-wrap gap-1 justify-center max-w-[180px] mx-auto">
                                 {booking.requestedElements.map((elId: string) => {
-                                  const el = venueElements?.find(
-                                    (v) => v.id === elId
-                                  );
+                                  const el = venueElements?.find((v) => v.id === elId);
                                   return (
                                     <Badge
                                       key={elId}
@@ -432,43 +412,32 @@ export default function MasterviewPage() {
                             ) : hasEquipment ? (
                               <div className="flex flex-wrap gap-1 justify-center max-w-[180px] mx-auto">
                                 {booking.equipment_TV && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800 rounded-md"
-                                  >
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800 rounded-md">
                                     TV
                                   </Badge>
                                 )}
                                 {booking.equipment_Mic && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 rounded-md"
-                                  >
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 rounded-md">
                                     Mic
                                   </Badge>
                                 )}
                                 {booking.equipment_Speakers && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] px-1.5 py-0.5 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-800 rounded-md"
-                                  >
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-800 rounded-md">
                                     Audio
                                   </Badge>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                                None
-                              </span>
+                              <span className="text-xs text-muted-foreground/50">None</span>
                             )}
                           </TableCell>
 
                           {/* Info Button */}
-                          <TableCell className="py-3.5 px-6 align-middle text-right">
+                          <TableCell className="py-4 px-6 align-middle text-right">
                             <button
                               type="button"
                               onClick={() => handleBookingClick(booking)}
-                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-muted"
+                              className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted"
                               title="View details"
                             >
                               <Info className="h-4 w-4 stroke-[1.75]" />
@@ -483,14 +452,11 @@ export default function MasterviewPage() {
               {/* end desktop table */}
               
               {/* Pagination Footer */}
-              <div className="mt-auto p-4 px-8 border-t border-gray-100 dark:border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="mt-auto p-4 px-8 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
                   Showing{" "}
                   {totalRecords > 0
-                    ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(
-                        currentPage * ITEMS_PER_PAGE,
-                        totalRecords
-                      )}`
+                    ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}–${Math.min(currentPage * ITEMS_PER_PAGE, totalRecords)}`
                     : "0"}{" "}
                   of {totalRecords} records
                 </p>
@@ -500,7 +466,7 @@ export default function MasterviewPage() {
                     type="button"
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-border text-gray-500 hover:bg-gray-50 dark:hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
@@ -513,8 +479,8 @@ export default function MasterviewPage() {
                       className={cn(
                         "h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all",
                         currentPage === page
-                          ? "bg-blue-600 text-white shadow-xs"
-                          : "border border-gray-200 dark:border-border text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-muted"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "border border-border text-foreground hover:bg-muted"
                       )}
                     >
                       {page}
@@ -523,11 +489,9 @@ export default function MasterviewPage() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className="h-8 w-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-border text-gray-500 hover:bg-gray-50 dark:hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>

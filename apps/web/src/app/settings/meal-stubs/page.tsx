@@ -1,422 +1,260 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@studio/ui";
 import { Input } from "@studio/ui";
-import { Button } from "@studio/ui";
-import { Badge } from "@studio/ui";
-import { Checkbox } from "@studio/ui";
-import { LoaderCircle, Utensils, Save, Search, ChevronDown, ChevronRight, Settings2, ShieldCheck } from "lucide-react";
-import type { Ministry, Department, MealStubSettings } from "@studio/types";
+import { LoaderCircle, Utensils, Save, Search, ChevronDown, ChevronUp, ArrowLeft, Calendar } from "lucide-react";
+import type { Ministry, Department } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { useToast } from "@/hooks/use-toast";
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from "@studio/ui";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useDepartments } from "@/hooks/use-departments";
 import { useSettings } from "@/hooks/use-settings";
+import { cn } from "@/lib/utils";
 
-const DEPARTMENTS: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
-const WEEKDAYS = [
-    { label: 'Monday', value: 1 },
-    { label: 'Tuesday', value: 2 },
-    { label: 'Wednesday', value: 3 },
-    { label: 'Thursday', value: 4 },
-    { label: 'Friday', value: 5 },
-    { label: 'Saturday', value: 6 },
-];
+const DEPARTMENTS: Department[] = ["Worship", "Outreach", "Relationship", "Discipleship", "Administration"];
+
+function StatCard({ label, value, sub, icon: Icon, iconBg, accentColor }: {
+  label: string; value: string | number; sub?: string;
+  icon: React.ElementType; iconBg: string; accentColor: string;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border-0 shadow-card-dark bg-card">
+      <div className={cn("h-1.5 w-full", accentColor)} />
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+            <p className="text-4xl font-black tracking-tight text-foreground leading-none mt-3">{value}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-2">{sub}</p>}
+          </div>
+          <div className={cn("p-2.5 rounded-xl flex items-center justify-center shrink-0 shadow-xs", iconBg)}>
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MealStubAllocationPage() {
-    const { isSuperAdmin, canManageMinistries, isLoading: isRoleLoading } = useUserRole();
-    const { toast } = useToast();
-    const { logAction } = useAuditLog();
+  const { isSuperAdmin, canManageMinistries, isLoading: isRoleLoading } = useUserRole();
+  const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
-    const [search, setSearch] = useState("");
-    const [saving, setSaving] = useState<string | null>(null);
-    const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set(DEPARTMENTS));
+  const [search, setSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState<"all" | Department>("all");
+  const [saving, setSaving] = useState<string | null>(null);
+  const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set([DEPARTMENTS[0]]));
+  const [ministryEdits, setMinistryEdits] = useState<Record<string, number>>({});
+  const [deptEdits, setDeptEdits] = useState<Record<string, number>>({});
 
-    // Local state for edits
-    const [ministryEdits, setMinistryEdits] = useState<Record<string, number>>({});
-    const [deptEdits, setDeptEdits] = useState<Record<string, number>>({});
-    const [tempDisabledDays, setTempDisabledDays] = useState<number[]>([]);
+  const { ministries, isLoading: ministriesLoading, updateMinistry } = useMinistries();
+  const { departments, isLoading: departmentsLoading, upsertDepartment } = useDepartments();
+  const { settings: globalSettings, isLoading: settingsLoading } = useSettings("mealstubs");
 
-    const { ministries, isLoading: ministriesLoading, updateMinistry } = useMinistries();
-    const { departments, isLoading: departmentsLoading, upsertDepartment } = useDepartments();
-    const { settings: globalSettings, isLoading: settingsLoading, updateSettings } = useSettings('mealstubs');
+  const isLoading = ministriesLoading || departmentsLoading || isRoleLoading || settingsLoading;
 
-    useEffect(() => {
-        if ((globalSettings as any)?.disabledVolunteerDays) {
-            setTempDisabledDays((globalSettings as any).disabledVolunteerDays);
-        }
-    }, [globalSettings]);
+  const getDeptInfo = (dept: string) => (departments as any[])?.find(d => d.id === dept);
+  const getDeptPool = (dept: string) => { const e = deptEdits[dept]; return e !== undefined ? e : (getDeptInfo(dept)?.mealStubWeekdayAllocation || 0); };
+  const getDeptAllocated = (dept: string) => {
+    return ((ministries as any[])?.filter(m => m.department === dept) || []).reduce((sum: number, m: any) => {
+      const e = ministryEdits[m.id]; return sum + (e !== undefined ? e : (m.mealStubWeeklyLimit || 0));
+    }, 0);
+  };
 
-    // --- Department Pool Helpers ---
-    const getDeptInfo = (dept: string) => (departments as any[])?.find(d => d.id === dept);
+  // Global stats
+  const totalPool = useMemo(() => DEPARTMENTS.reduce((s, d) => s + getDeptPool(d), 0), [departments, deptEdits]);
+  const totalAllocated = useMemo(() => DEPARTMENTS.reduce((s, d) => s + getDeptAllocated(d), 0), [ministries, ministryEdits, departments, deptEdits]);
+  const totalRemaining = Math.max(0, totalPool - totalAllocated);
+  const restrictedDays = (globalSettings as any)?.disabledVolunteerDays?.length ?? 2;
 
-    const getDeptAllocated = (dept: string) => {
-        const deptMinistries = (ministries as any[])?.filter(m => m.department === dept) || [];
-        return deptMinistries.reduce((sum, m) => {
-            const edit = ministryEdits[m.id];
-            return sum + (edit !== undefined ? edit : (m.mealStubWeeklyLimit || 0));
-        }, 0);
-    };
+  const handleDeptEdit = (dept: string, value: string) => { const n = parseInt(value) || 0; if (n >= 0) setDeptEdits(p => ({ ...p, [dept]: n })); };
+  const handleMinistryEdit = (id: string, value: string) => { const n = parseInt(value) || 0; if (n >= 0) setMinistryEdits(p => ({ ...p, [id]: n })); };
 
-    const getDeptPool = (dept: string) => {
-        const info = getDeptInfo(dept);
-        const edit = deptEdits[dept];
-        return edit !== undefined ? edit : (info?.mealStubWeekdayAllocation || 0);
-    };
+  const handleSaveDeptPool = async (dept: string) => {
+    const value = deptEdits[dept]; if (value === undefined) return;
+    setSaving(`dept-${dept}`);
+    try {
+      await upsertDepartment({ id: dept, data: { mealStubWeekdayAllocation: value } });
+      toast({ title: "Department Pool Updated" });
+      setDeptEdits(p => { const n = { ...p }; delete n[dept]; return n; });
+    } catch { toast({ variant: "destructive", title: "Save Failed" }); }
+    finally { setSaving(null); }
+  };
 
-    // --- Edit Handlers ---
-    const handleDeptEdit = (dept: string, value: string) => {
-        const num = parseInt(value) || 0;
-        if (num < 0) return;
-        setDeptEdits(prev => ({ ...prev, [dept]: num }));
-    };
+  const handleSaveMinistry = async (ministry: any) => {
+    const value = ministryEdits[ministry.id]; if (value === undefined) return;
+    setSaving(ministry.id);
+    try {
+      await updateMinistry({ id: ministry.id, data: { mealStubWeeklyLimit: value } });
+      await logAction("Updated Ministry Allocation", "Settings", `${ministry.name}: ${value}`);
+      toast({ title: "Saved" });
+      setMinistryEdits(p => { const n = { ...p }; delete n[ministry.id]; return n; });
+    } catch { toast({ variant: "destructive", title: "Save Failed" }); }
+    finally { setSaving(null); }
+  };
 
-    const handleMinistryEdit = (ministryId: string, value: string) => {
-        const num = parseInt(value) || 0;
-        if (num < 0) return;
-        setMinistryEdits(prev => ({ ...prev, [ministryId]: num }));
-    };
+  const toggleDept = (dept: string) => setExpandedDepts(p => { const n = new Set(p); n.has(dept) ? n.delete(dept) : n.add(dept); return n; });
 
-    const toggleDisabledDay = (day: number) => {
-        setTempDisabledDays(prev =>
-            prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-        );
-    };
+  if (isLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+  if (!isSuperAdmin && !canManageMinistries) return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle></CardHeader></Card></AppLayout>;
 
-    // --- Save Actions ---
-    const handleSaveSettings = async () => {
-        setSaving('settings');
-        try {
-            await updateSettings({
-                disabledVolunteerDays: tempDisabledDays
-            });
-            toast({ title: "Global Settings Saved", description: "Volunteer day restrictions updated." });
-            await logAction('Updated Meal Stub Settings', 'Settings', `Disabled volunteer days: ${tempDisabledDays.join(', ')}`);
-        } catch (error) {
-            console.error(error);
-            toast({ variant: "destructive", title: "Save Failed" });
-        } finally {
-            setSaving(null);
-        }
-    };
+  return (
+    <AppLayout>
+      <div className="space-y-7 pb-12 w-full">
 
-    const handleSaveDeptPool = async (dept: string) => {
-        const value = deptEdits[dept];
-        if (value === undefined) return;
-
-        setSaving(`dept-${dept}`);
-        try {
-            await upsertDepartment({
-                id: dept,
-                data: {
-                    mealStubWeekdayAllocation: value,
-                }
-            });
-
-            toast({ title: "Department Pool Updated", description: `${dept} allocation saved.` });
-            setDeptEdits(prev => {
-                const next = { ...prev };
-                delete next[dept];
-                return next;
-            });
-        } catch (error) {
-            console.error(error);
-            toast({ variant: "destructive", title: "Save Failed" });
-        } finally {
-            setSaving(null);
-        }
-    };
-
-    const handleSaveMinistry = async (ministry: Ministry) => {
-        const value = ministryEdits[ministry.id];
-        if (value === undefined) return;
-
-        const deptTotal = getDeptPool(ministry.department);
-        const currentAllocated = getDeptAllocated(ministry.department);
-
-        if (currentAllocated > deptTotal) {
-            toast({
-                variant: "destructive",
-                title: "Exceeds Department Pool",
-                description: `Distribution for ${ministry.department} (${currentAllocated}) exceeds the pool of ${deptTotal}.`
-            });
-            return;
-        }
-
-        setSaving(ministry.id);
-        try {
-            await updateMinistry({
-                id: ministry.id,
-                data: {
-                    mealStubWeeklyLimit: value
-                }
-            });
-            await logAction('Updated Ministry Allocation', 'Settings', `Updated weekly limit for ${ministry.name}: ${value}`);
-            toast({ title: "Ministry Allocation Saved" });
-            setMinistryEdits(prev => {
-                const next = { ...prev };
-                delete next[ministry.id];
-                return next;
-            });
-        } catch (error) {
-            console.error(error);
-            toast({ variant: "destructive", title: "Save Failed" });
-        } finally {
-            setSaving(null);
-        }
-    };
-
-    const toggleDept = (dept: string) => {
-        setExpandedDepts(prev => {
-            const next = new Set(prev);
-            if (next.has(dept)) next.delete(dept);
-            else next.add(dept);
-            return next;
-        });
-    };
-
-    const isLoading = ministriesLoading || departmentsLoading || isRoleLoading || settingsLoading;
-
-    if (isLoading) {
-        return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
-    }
-
-    if (!isSuperAdmin && !canManageMinistries) {
-        return (
-            <AppLayout>
-                <Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>Unauthorized access.</CardDescription></CardHeader></Card>
-            </AppLayout>
-        );
-    }
-
-    const hasSettingsChanges = JSON.stringify(tempDisabledDays.sort()) !== JSON.stringify(((globalSettings as any)?.disabledVolunteerDays || []).sort());
-
-    return (
-        <AppLayout>
-            <div className="mb-6">
-                <div className="flex items-center gap-3 mb-1">
-                    <Utensils className="h-6 w-6 text-primary" />
-                    <h1 className="text-2xl font-headline font-bold">Meal Stub Allocation</h1>
-                </div>
-                <p className="text-sm text-muted-foreground">Manage consolidated department pools and distribution to ministries.</p>
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-primary/10 shrink-0 mt-0.5">
+            <Utensils className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold font-headline tracking-tight text-foreground leading-none">Meal Stub Allocation</h1>
+            <div className="flex items-center justify-between gap-4 -mt-1">
+              <p className="text-sm text-muted-foreground leading-none">Distribute the weekly meal stub pool across departments and ministries.</p>
+              <Link href="/settings" className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors shrink-0">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Link>
             </div>
+          </div>
+        </div>
 
-            <div className="grid gap-6 lg:grid-cols-3 mb-8">
-                {/* Global Volunteer Settings */}
-                <Card className="lg:col-span-1 border-amber-200">
-                    <CardHeader className="pb-3 text-amber-900 bg-amber-50/50">
-                        <div className="flex items-center gap-2">
-                            <Settings2 className="h-4 w-4" />
-                            <CardTitle className="text-sm">Volunteer Weekday Controls</CardTitle>
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard label="Weekly Pool" value={totalPool.toLocaleString()} icon={Utensils} iconBg="bg-blue-50 dark:bg-blue-950/40 text-blue-500" accentColor="bg-blue-500" />
+          <StatCard label="Allocated" value={totalAllocated.toLocaleString()} icon={() => <svg viewBox="0 0 24 24" className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>} iconBg="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500" accentColor="bg-emerald-500" />
+          <StatCard label="Remaining" value={totalRemaining.toLocaleString()} icon={() => <svg viewBox="0 0 24 24" className="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>} iconBg="bg-orange-50 dark:bg-orange-950/40 text-orange-500" accentColor="bg-orange-400" />
+          <StatCard label="Restricted Days" value={restrictedDays} sub="Mon · Fri" icon={Calendar} iconBg="bg-amber-50 dark:bg-amber-950/40 text-amber-500" accentColor="bg-amber-400" />
+        </div>
+
+        {/* Search + dept filter */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative w-56">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input type="text" placeholder="Search ministries...." value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
+            {(["all", ...DEPARTMENTS] as const).map(d => (
+              <button key={d} onClick={() => setDeptFilter(d as any)}
+                className={cn("px-3 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap",
+                  deptFilter === d ? "bg-card shadow-xs text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                {d === "all" ? "All" : d}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Department sections */}
+        <div className="flex flex-col gap-4">
+          {DEPARTMENTS.filter(dept => deptFilter === "all" || deptFilter === dept).map(dept => {
+            const pool = getDeptPool(dept);
+            const allocated = getDeptAllocated(dept);
+            const remaining = pool - allocated;
+            const pct = pool > 0 ? Math.min(100, Math.round((allocated / pool) * 100)) : 0;
+            const isOver = allocated > pool;
+            const isExpanded = expandedDepts.has(dept);
+            const hasDeptEdits = deptEdits[dept] !== undefined;
+
+            const deptMinistries = ((ministries as any[])?.filter(m => m.department === dept) || [])
+              .filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()))
+              .sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+            if (search && deptMinistries.length === 0) return null;
+
+            return (
+              <div key={dept} className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
+                {/* Department header — clickable */}
+                <button onClick={() => toggleDept(dept)} className="w-full px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/20 transition-colors text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-primary/10 shrink-0">
+                      <Utensils className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">{dept}</h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        Pool <span className="font-semibold text-foreground">{pool}</span>
+                        {" · "}Allocated <span className={cn("font-semibold", isOver ? "text-red-500" : "text-foreground")}>{allocated}</span>
+                        {" · "}Remaining <span className="font-semibold text-foreground">{remaining}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className={cn("h-full rounded-full transition-all", isOver ? "bg-red-500" : "bg-primary")} style={{ width: `${pct}%` }} />
+                    </div>
+                    {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                  </div>
+                </button>
+
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div className="border-t border-border/40 px-6 py-5 flex flex-col gap-4">
+                    {/* Dept pool input */}
+                    <div className="flex items-center justify-between gap-4 bg-muted/30 rounded-xl p-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Department Weekly Pool</p>
+                        <input type="number" min="0" value={pool} onChange={e => handleDeptEdit(dept, e.target.value)}
+                          className="w-28 h-9 rounded-xl border border-border/60 bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+                      </div>
+                      <button onClick={() => handleSaveDeptPool(dept)} disabled={!hasDeptEdits || saving === `dept-${dept}`}
+                        className={cn("h-9 px-3.5 flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-colors",
+                          hasDeptEdits ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-border/60 text-muted-foreground cursor-not-allowed")}>
+                        {saving === `dept-${dept}` ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        Save Pool
+                      </button>
+                    </div>
+
+                    {/* Ministry limits */}
+                    {deptMinistries.length > 0 && (
+                      <div className="border border-border/60 rounded-xl overflow-hidden">
+                        <div className="px-4 py-2.5 bg-muted/40 border-b border-border/40">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ministry Weekly Limits</p>
                         </div>
-                        <CardDescription className="text-amber-700/70 text-[11px]">
-                            Disable volunteer allocation for specific days (Mon-Sat).
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-4 space-y-4">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                            {WEEKDAYS.map(day => (
-                                <div key={day.value} className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id={`day-${day.value}`}
-                                        checked={tempDisabledDays.includes(day.value)}
-                                        onCheckedChange={() => toggleDisabledDay(day.value)}
-                                    />
-                                    <label htmlFor={`day-${day.value}`} className="text-xs font-medium leading-none cursor-pointer">
-                                        {day.label}
-                                    </label>
+                        <div className="divide-y divide-border/30">
+                          {deptMinistries.map((m: any) => {
+                            const editVal = ministryEdits[m.id];
+                            const current = editVal !== undefined ? editVal : (m.mealStubWeeklyLimit || 0);
+                            const changed = editVal !== undefined;
+                            const mPct = pool > 0 ? Math.min(100, Math.round((current / pool) * 100)) : 0;
+                            return (
+                              <div key={m.id} className="px-4 py-3.5 flex flex-col gap-2">
+                                <div className="flex items-center justify-between gap-4">
+                                  <p className="text-sm font-semibold text-foreground">{m.name}</p>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <p className="text-[11px] text-muted-foreground">Limit</p>
+                                    <input type="number" min="0" value={current} onChange={e => handleMinistryEdit(m.id, e.target.value)}
+                                      className="w-20 h-8 rounded-lg border border-border/60 bg-background px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary" />
+                                    <button onClick={() => handleSaveMinistry(m)} disabled={!changed || saving === m.id}
+                                      className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors",
+                                        changed ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-border/60 text-muted-foreground cursor-not-allowed")}>
+                                      {saving === m.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                    </button>
+                                  </div>
                                 </div>
-                            ))}
-                        </div>
-                        <Button
-                            className="w-full h-8 text-xs bg-amber-600 hover:bg-amber-700"
-                            disabled={!hasSettingsChanges || saving === 'settings'}
-                            onClick={handleSaveSettings}
-                        >
-                            {saving === 'settings' && <LoaderCircle className="h-3 w-3 animate-spin mr-2" />}
-                            Update Restrictions
-                        </Button>
-                    </CardContent>
-                </Card>
-
-                {/* Pool Overview / Help */}
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <ShieldCheck className="h-4 w-4 text-primary" />
-                            <CardTitle className="text-sm">Allocation Rules</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="text-xs text-muted-foreground">
-                        <div className="space-y-4">
-                            <p>Workers are limited to <span className="font-bold text-foreground">1 meal stub per day</span>. Assignments are managed through ministry distributions from the department's weekly pool.</p>
-                            <div className="grid md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <p className="font-bold text-foreground">Weekly Pool Distribution</p>
-                                    <ul className="list-disc list-inside space-y-1">
-                                        <li>Managed via "Weekly Limit" below.</li>
-                                        <li>Each issued stub (any day) deducts from the pool.</li>
-                                    </ul>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${mPct}%` }} />
+                                  </div>
+                                  <span className="text-[11px] text-muted-foreground w-8 text-right shrink-0">{mPct}%</span>
                                 </div>
-                                <div className="space-y-2">
-                                    <p className="font-bold text-foreground">Volunteer Restrictions</p>
-                                    <ul className="list-disc list-inside space-y-1">
-                                        <li>Always limited to 1 per day.</li>
-                                        <li>Controlled by the day-of-week checkboxes.</li>
-                                    </ul>
-                                </div>
-                            </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <div className="relative mb-6 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Search ministries..."
-                    className="pl-9"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                />
-            </div>
-
-            <div className="space-y-6">
-                {DEPARTMENTS.map(dept => {
-                    const pool = getDeptPool(dept);
-                    const allocated = getDeptAllocated(dept);
-                    const isExpanded = expandedDepts.has(dept);
-                    const hasDeptEdits = deptEdits[dept] !== undefined;
-
-                    const pct = pool > 0 ? Math.round((allocated / pool) * 100) : 0;
-                    const isOver = allocated > pool;
-                    const remaining = pool - allocated;
-
-                    const deptMinistries = ((ministries as any[])?.filter(m => m.department === dept) || [])
-                        .filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()))
-                        .sort((a, b) => a.name.localeCompare(b.name));
-
-                    if (search && deptMinistries.length === 0) return null;
-
-                    return (
-                        <Card key={dept} className="overflow-hidden">
-                            <Collapsible open={isExpanded} onOpenChange={() => toggleDept(dept)}>
-                                <CollapsibleTrigger asChild>
-                                    <div className="cursor-pointer hover:bg-muted/30 transition-colors py-4 px-6 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                                            <div>
-                                                <h3 className="text-base font-bold">{dept} Department</h3>
-                                                <p className="text-xs text-muted-foreground">{deptMinistries.length} ministries</p>
-                                            </div>
-                                        </div>
-                                        <Badge variant="outline" className={`font-mono px-3 py-1 ${isOver ? 'bg-destructive/10 text-destructive border-destructive/30' : 'bg-primary/5 text-primary border-primary/20'}`}>
-                                            Weekly Pool: {allocated} / {pool}
-                                        </Badge>
-                                    </div>
-                                </CollapsibleTrigger>
-
-                                <CollapsibleContent>
-                                    <CardContent className="pt-0">
-                                        <div className="bg-muted/40 border rounded-lg p-4 mb-4">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Department Weekly Pool</h4>
-                                                <Button
-                                                    size="sm" variant="outline"
-                                                    disabled={!hasDeptEdits || saving === `dept-${dept}`}
-                                                    onClick={() => handleSaveDeptPool(dept)}
-                                                    className="h-7 text-xs"
-                                                >
-                                                    {saving === `dept-${dept}` ? <LoaderCircle className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
-                                                    Save Pool
-                                                </Button>
-                                            </div>
-                                            <div className="grid md:grid-cols-2 gap-6 items-center">
-                                                <div className="space-y-2">
-                                                    <Input
-                                                        type="number" min="0" value={pool}
-                                                        onChange={e => handleDeptEdit(dept, e.target.value)}
-                                                        className="h-9"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <div className="h-2 w-full bg-background rounded-full overflow-hidden border">
-                                                        <div
-                                                            className={`h-full rounded-full transition-all ${isOver ? 'bg-destructive' : 'bg-primary'}`}
-                                                            style={{ width: `${Math.min(100, pct)}%` }}
-                                                        />
-                                                    </div>
-                                                    <div className="flex justify-between text-[10px]">
-                                                        <span className="text-muted-foreground">Allocated: {allocated}</span>
-                                                        <span className={isOver ? 'text-destructive font-bold' : 'text-muted-foreground'}>
-                                                            {isOver ? `Over by ${Math.abs(remaining)}` : `${remaining} available`}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="rounded-md border overflow-hidden">
-                                            <Table>
-                                                <TableHeader><TableRow className="bg-muted/30">
-                                                    <TableHead className="text-xs">Ministry</TableHead>
-                                                    <TableHead className="text-xs w-[130px]">Weekly Limit</TableHead>
-                                                    <TableHead className="text-xs text-right w-[80px]"></TableHead>
-                                                </TableRow></TableHeader>
-                                                <TableBody>
-                                                    {deptMinistries.map(m => {
-                                                        const editVal = ministryEdits[m.id];
-                                                        const current = editVal !== undefined ? editVal : (m.mealStubWeeklyLimit || 0);
-                                                        const changed = editVal !== undefined;
-                                                        return (
-                                                            <TableRow key={m.id}>
-                                                                <TableCell className="font-medium text-sm">{m.name}</TableCell>
-                                                                <TableCell>
-                                                                    <Input
-                                                                        type="number" min="0" value={current}
-                                                                        onChange={e => handleMinistryEdit(m.id, e.target.value)}
-                                                                        className="w-24 h-8 text-sm"
-                                                                    />
-                                                                </TableCell>
-                                                                <TableCell className="text-right">
-                                                                    <Button size="sm" variant="ghost" disabled={!changed || saving === m.id} onClick={() => handleSaveMinistry(m)} className="h-8 w-8 p-0">
-                                                                        {saving === m.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className={`h-4 w-4 ${changed ? 'text-primary' : 'text-muted-foreground'}`} />}
-                                                                    </Button>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        );
-                                                    })}
-                                                    <TableRow className="bg-muted/20 font-semibold italic">
-                                                        <TableCell className="text-xs text-muted-foreground">Allocated to Ministries</TableCell>
-                                                        <TableCell><span className={`text-sm ${isOver ? 'text-destructive' : ''}`}>{allocated}</span> / {pool}</TableCell>
-                                                        <TableCell />
-                                                    </TableRow>
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </CardContent>
-                                </CollapsibleContent>
-                            </Collapsible>
-                        </Card>
-                    );
-                })}
-            </div>
-        </AppLayout>
-    );
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </AppLayout>
+  );
 }

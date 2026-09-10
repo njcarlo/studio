@@ -1,850 +1,451 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import Papa from "papaparse";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
-import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
-import { HeartHandshake, User as UserIcon, Users, LoaderCircle, Upload, PlusCircle, MoreHorizontal, Edit, Trash2, UserCog, Utensils } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@studio/ui";
+import {
+  Building2, HeartHandshake, User as UserIcon, Users, LoaderCircle,
+  Upload, PlusCircle, MoreHorizontal, Edit, Trash2, UserCog, Utensils,
+  Eye, ArrowLeft, Search,
+} from "lucide-react";
 import type { Ministry, Worker, Department } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuditLog } from "@/hooks/use-audit-log";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@studio/ui";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose,
 } from "@studio/ui";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@studio/ui";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@studio/ui";
 import { Label } from "@studio/ui";
 import { Input } from "@studio/ui";
 import { Textarea } from "@studio/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
-import { Copy, ClipboardCheck } from "lucide-react";
+import { Copy, ClipboardCheck, Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useWorkers } from "@/hooks/use-workers";
 import { createMinistries } from "@/actions/db";
+import { cn } from "@/lib/utils";
 
-const generateMinistryId = (name: string, department: string) => {
-  const firstLetter = department.charAt(0).toUpperCase();
-  const cleanedName = name.trim();
-  return `${firstLetter}-${cleanedName}`;
-};
+const generateMinistryId = (name: string, department: string) =>
+  `${department.charAt(0).toUpperCase()}-${name.trim()}`;
 
-
-const ImportSheet = ({ onImport, onClose }: { onImport: (csvData: string) => void; onClose: () => void; }) => {
-  const [csvData, setCsvData] = useState('');
-  const csvFormat = "name,department";
-
-  return (
-    <>
-      <SheetHeader>
-        <SheetTitle className="font-headline">Import Ministries</SheetTitle>
-        <SheetDescription>
-          Paste CSV data below to bulk-import ministries. The first line must be a header row with `name` and `department`.
-        </SheetDescription>
-      </SheetHeader>
-      <div className="py-4 space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="csv-format">Required CSV Format</Label>
-          <Input id="csv-format" readOnly defaultValue={csvFormat} className="font-mono text-xs" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            The `department` column must use a number code:<br />
-            1 = Worship, 2 = Outreach, 3 = Relationship, 4 = Discipleship, 5 = Administration.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="csv-data">CSV Data</Label>
-          <Textarea
-            id="csv-data"
-            value={csvData}
-            onChange={(e) => setCsvData(e.target.value)}
-            placeholder={`name,department\nPrayer Ministry,1\nWelcome Team,3`}
-            className="h-64 font-mono text-xs"
-          />
-        </div>
-      </div>
-      <SheetFooter>
-        <SheetClose asChild>
-          <Button type="button" variant="secondary">Cancel</Button>
-        </SheetClose>
-        <Button onClick={() => onImport(csvData)}>Process Import</Button>
-      </SheetFooter>
-    </>
-  )
+// ── Worker initials ────────────────────────────────────────────────────────────
+function WorkerInitials({ name }: { name: string }) {
+  const parts = name.trim().split(" ");
+  const init = parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
+  return <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-[11px] font-black shrink-0">{init}</span>;
 }
 
-const MinistryForm = ({ ministry, workers, departments, onSave, onClose }: { ministry: Partial<Ministry> | null; workers: Worker[]; departments: Department[]; onSave: (data: Partial<Ministry>) => void; onClose: () => void; }) => {
-  const [formData, setFormData] = useState<Partial<Ministry>>({ name: '', description: '', department: 'Worship', leaderId: '', headId: '' });
-
-  useEffect(() => {
-    if (ministry) {
-      setFormData(ministry);
-    } else {
-      setFormData({ name: '', description: '', department: 'Worship', leaderId: '', headId: '', weight: 0 });
-    }
-  }, [ministry]);
-
-  const handleChange = (field: keyof Ministry, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  }
-
+// ── Ministry Form ──────────────────────────────────────────────────────────────
+function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
+  ministry: Partial<Ministry> | null; workers: Worker[]; departments: Department[];
+  onSave: (data: Partial<Ministry>) => void; onClose: () => void;
+}) {
+  const [formData, setFormData] = useState<Partial<Ministry>>({ name: "", description: "", department: "Worship", leaderId: "", headId: "" });
+  useEffect(() => { if (ministry) setFormData(ministry); else setFormData({ name: "", description: "", department: "Worship", leaderId: "", headId: "", weight: 0 }); }, [ministry]);
+  const set = (field: keyof Ministry, value: string | number) => setFormData(p => ({ ...p, [field]: value }));
   return (
     <>
-      <SheetHeader>
-        <SheetTitle className="font-headline">{ministry ? 'Edit Ministry' : 'Add New Ministry'}</SheetTitle>
-        <SheetDescription>Fill in the details for the ministry.</SheetDescription>
-      </SheetHeader>
+      <SheetHeader><SheetTitle className="font-headline">{ministry ? "Edit Ministry" : "Add New Ministry"}</SheetTitle><SheetDescription>Fill in the details for the ministry.</SheetDescription></SheetHeader>
       <div className="grid gap-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Ministry Name</Label>
-          <Input id="name" value={formData.name} onChange={e => handleChange('name', e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea id="description" value={formData.description} onChange={e => handleChange('description', e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="department">Department</Label>
-          <Select value={formData.department} onValueChange={(value: string) => handleChange('department', value)}>
-            <SelectTrigger id="department"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {departments.map(dep => <SelectItem key={dep} value={dep}>{dep}</SelectItem>)}
-            </SelectContent>
+        <div className="space-y-2"><Label>Ministry Name</Label><Input value={formData.name} onChange={e => set("name", e.target.value)} /></div>
+        <div className="space-y-2"><Label>Description</Label><Textarea value={formData.description} onChange={e => set("description", e.target.value)} /></div>
+        <div className="space-y-2"><Label>Department</Label>
+          <Select value={formData.department} onValueChange={v => set("department", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="leader">Leader</Label>
-          <Select value={formData.leaderId || 'none'} onValueChange={(value: string) => handleChange('leaderId', value === 'none' ? '' : value)}>
-            <SelectTrigger id="leader"><SelectValue placeholder="Select a leader" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {workers.map(w => <SelectItem key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}
-            </SelectContent>
+        <div className="space-y-2"><Label>Leader</Label>
+          <Select value={formData.leaderId || "none"} onValueChange={v => set("leaderId", v === "none" ? "" : v)}>
+            <SelectTrigger><SelectValue placeholder="Select a leader" /></SelectTrigger>
+            <SelectContent><SelectItem value="none">None</SelectItem>{workers.map(w => <SelectItem key={w.id} value={w.id}>{w.firstName} {w.lastName}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="head">Ministry Head</Label>
-          <Select value={formData.headId || 'none'} onValueChange={(value: string) => handleChange('headId', value === 'none' ? '' : value)}>
-            <SelectTrigger id="head"><SelectValue placeholder="Select a ministry head" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {workers.map(w => <SelectItem key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}
-            </SelectContent>
+        <div className="space-y-2"><Label>Ministry Head</Label>
+          <Select value={formData.headId || "none"} onValueChange={v => set("headId", v === "none" ? "" : v)}>
+            <SelectTrigger><SelectValue placeholder="Select a ministry head" /></SelectTrigger>
+            <SelectContent><SelectItem value="none">None</SelectItem>{workers.map(w => <SelectItem key={w.id} value={w.id}>{w.firstName} {w.lastName}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="weight">Weight (for sorting)</Label>
-          <Input id="weight" type="number" value={formData.weight ?? 0} onChange={e => handleChange('weight', parseInt(e.target.value, 10) || 0)} placeholder="0" />
-        </div>
+        <div className="space-y-2"><Label>Weight (for sorting)</Label><Input type="number" value={formData.weight ?? 0} onChange={e => set("weight", parseInt(e.target.value, 10) || 0)} /></div>
       </div>
-      <SheetFooter>
-        <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-        <Button onClick={() => onSave(formData)}>Save Changes</Button>
-      </SheetFooter>
+      <SheetFooter><SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose><Button onClick={() => onSave(formData)}>Save Changes</Button></SheetFooter>
     </>
   );
-};
+}
 
-const AppointApproverForm = ({
-  ministry,
-  workers,
-  onSave,
-  onClose,
-  type = 'approver'
-}: {
-  ministry: Ministry;
-  workers: Worker[];
-  onSave: (ministryId: string, userId: string | null, type: 'approver' | 'assigner' | 'head') => void;
-  onClose: () => void;
-  type?: 'approver' | 'assigner' | 'head'
-}) => {
-  const initialValue = type === 'approver'
-    ? (ministry.approverId || 'none')
-    : type === 'assigner'
-      ? (ministry.mealStubAssignerId || 'none')
-      : (ministry.headId || 'none');
-  const [selectedUserId, setSelectedUserId] = useState<string>(initialValue);
-
-  const sortedWorkers = [...workers].sort((a, b) => a.firstName.localeCompare(b.firstName));
-
+// ── Appoint Sheet ──────────────────────────────────────────────────────────────
+function AppointSheet({ ministry, workers, onSave, onClose, type = "approver" }: {
+  ministry: Ministry; workers: Worker[];
+  onSave: (id: string, userId: string | null, type: "approver" | "assigner" | "head") => void;
+  onClose: () => void; type?: "approver" | "assigner" | "head";
+}) {
+  const init = type === "approver" ? (ministry.approverId || "none") : type === "assigner" ? (ministry.mealStubAssignerId || "none") : (ministry.headId || "none");
+  const [sel, setSel] = useState<string>(init);
+  const sorted = [...workers].sort((a, b) => a.firstName.localeCompare(b.firstName));
+  const label = type === "approver" ? "Approver" : type === "assigner" ? "Meal Stub Assigner" : "Ministry Head";
   return (
     <>
-      <SheetHeader>
-        <SheetTitle className="font-headline">
-          {type === 'approver' ? 'Appoint Approver' : type === 'assigner' ? 'Appoint Meal Stub Assigner' : 'Appoint Ministry Head'}
-        </SheetTitle>
-        <SheetDescription>
-          {type === 'approver'
-            ? `Select a worker to be the approver for ${ministry.name}. The approver can approve and reject requests related to this ministry.`
-            : type === 'assigner'
-              ? `Select a worker to be the Meal Stub Assigner for ${ministry.name}. This person can assign meal stubs for Sundays.`
-              : `Select a worker to be the Ministry Head for ${ministry.name}.`
-          }
-        </SheetDescription>
-      </SheetHeader>
+      <SheetHeader><SheetTitle>Appoint {label}</SheetTitle><SheetDescription>Select a worker for {ministry.name}.</SheetDescription></SheetHeader>
       <div className="grid gap-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="worker-select">{type === 'approver' ? 'Approver' : type === 'assigner' ? 'Meal Stub Assigner' : 'Ministry Head'}</Label>
-          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger id="worker-select"><SelectValue placeholder={`Select a ${type === 'head' ? 'ministry head' : type}`} /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None (Remove {type === 'approver' ? 'Approver' : type === 'assigner' ? 'Assigner' : 'Ministry Head'})</SelectItem>
-              {sortedWorkers.map(w => <SelectItem key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}`}</SelectItem>)}
-            </SelectContent>
+        <div className="space-y-2"><Label>{label}</Label>
+          <Select value={sel} onValueChange={setSel}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="none">None (Remove {label})</SelectItem>{sorted.map(w => <SelectItem key={w.id} value={w.id}>{w.firstName} {w.lastName}</SelectItem>)}</SelectContent>
           </Select>
         </div>
       </div>
-      <SheetFooter>
-        <SheetClose asChild><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button></SheetClose>
-        <Button onClick={() => onSave(ministry.id, selectedUserId === 'none' ? null : selectedUserId, type)}>Save Changes</Button>
-      </SheetFooter>
+      <SheetFooter><SheetClose asChild><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button></SheetClose><Button onClick={() => onSave(ministry.id, sel === "none" ? null : sel, type)}>Save Changes</Button></SheetFooter>
     </>
   );
-};
+}
 
-const MinistryDetailsSheet = ({ ministry, workers, members, onEdit, onClose }: {
-  ministry: Ministry;
-  workers: Worker[];
-  members: Worker[];
-  onEdit: () => void;
-  onClose: () => void;
-}) => {
-  const [copied, setCopied] = useState(false);
-  const getWorker = (id: string) => workers.find(w => w.id === id);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const leader = getWorker(ministry.leaderId);
-  const head = ministry.headId ? getWorker(ministry.headId) : null;
-  const approver = ministry.approverId ? getWorker(ministry.approverId) : null;
-  const assigner = ministry.mealStubAssignerId ? getWorker(ministry.mealStubAssignerId) : null;
-
+// ── Import Sheet ───────────────────────────────────────────────────────────────
+function ImportSheetContent({ onImport, onClose }: { onImport: (csv: string) => void; onClose: () => void }) {
+  const [csvData, setCsvData] = useState("");
   return (
     <>
-      <SheetHeader>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-primary/10 rounded-lg text-primary">
-            <HeartHandshake className="h-6 w-6" />
-          </div>
-          <div>
-            <SheetTitle className="font-headline text-2xl">{ministry.name}</SheetTitle>
-            <SheetDescription>{ministry.department} Department</SheetDescription>
-          </div>
-        </div>
-      </SheetHeader>
-
-      <div className="py-6 space-y-6">
-        <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-muted-foreground uppercase text-[10px] font-bold tracking-wider">Ministry ID</Label>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs gap-1.5"
-              onClick={() => copyToClipboard(ministry.id)}
-            >
-              {copied ? <ClipboardCheck className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? 'Copied' : 'Copy'}
-            </Button>
-          </div>
-          <p className="font-mono text-sm break-all font-semibold select-all">{ministry.id}</p>
-        </div>
-
-        {ministry.description && (
-          <div className="space-y-2">
-            <Label className="text-muted-foreground text-xs">Description</Label>
-            <p className="text-sm leading-relaxed">{ministry.description}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <Label className="text-muted-foreground text-xs">Ministry Leadership</Label>
-            <div className="space-y-4">
-              <ProfileItem label="Leader" worker={leader} />
-              <ProfileItem label="Ministry Head" worker={head} />
-            </div>
-          </div>
-          <div className="space-y-3">
-            <Label className="text-muted-foreground text-xs">Operational Roles</Label>
-            <div className="space-y-4">
-              <ProfileItem label="Approver" worker={approver} />
-              <ProfileItem label="Meal Assigner" worker={assigner} />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-muted-foreground text-xs">Members ({members.length})</Label>
-          </div>
-          <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-            {members.map(member => (
-              <div key={member.id} className="flex items-center gap-2 p-2 rounded-md border bg-card/50">
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src={member.avatarUrl} alt={member.firstName} />
-                  <AvatarFallback className="text-[10px]">{member.firstName[0]}</AvatarFallback>
-                </Avatar>
-                <div className="truncate">
-                  <p className="text-xs font-medium truncate">{member.firstName} {member.lastName}</p>
-                </div>
-              </div>
-            ))}
-            {members.length === 0 && <p className="text-xs text-muted-foreground italic col-span-2 py-4 text-center">No members found.</p>}
-          </div>
-        </div>
+      <SheetHeader><SheetTitle>Import Ministries</SheetTitle><SheetDescription>Paste CSV data. First line must be: name,department (1=Worship, 2=Outreach, 3=Relationship, 4=Discipleship, 5=Administration)</SheetDescription></SheetHeader>
+      <div className="py-4 space-y-4">
+        <Input readOnly defaultValue="name,department" className="font-mono text-xs" />
+        <Textarea value={csvData} onChange={e => setCsvData(e.target.value)} placeholder={`name,department\nPrayer Ministry,1`} className="h-64 font-mono text-xs" />
       </div>
-
-      <SheetFooter className="gap-2 sm:gap-0">
-        <Button variant="outline" className="flex-1" onClick={onEdit}>Edit Ministry</Button>
-        <SheetClose asChild>
-          <Button variant="secondary" className="flex-1">Close</Button>
-        </SheetClose>
-      </SheetFooter>
+      <SheetFooter><SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose><Button onClick={() => onImport(csvData)}>Process Import</Button></SheetFooter>
     </>
   );
-};
+}
 
-const ProfileItem = ({ label, worker }: { label: string; worker?: Worker | null }) => (
-  <div className="space-y-1.5">
-    <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">{label}</p>
-    {worker ? (
-      <div className="flex items-center gap-2">
-        <Avatar className="h-7 w-7">
-          <AvatarImage src={worker.avatarUrl} />
-          <AvatarFallback>{worker.firstName?.[0]}</AvatarFallback>
-        </Avatar>
-        <div className="truncate">
-          <p className="text-xs font-medium truncate">{worker.firstName} {worker.lastName}</p>
-          <p className="text-[9px] text-muted-foreground truncate">{worker.roleId}</p>
-        </div>
-      </div>
-    ) : (
-      <p className="text-[10px] text-muted-foreground italic">Unassigned</p>
-    )}
-  </div>
-);
-
-
+// ── Main page ──────────────────────────────────────────────────────────────────
 export default function MinistryManagementPage() {
   const { canManageMinistries, canAppointApprovers, workerProfile, isLoading: isRoleLoading } = useUserRole();
   const { ministries, isLoading: ministriesLoading, createMinistry, updateMinistry, deleteMinistry } = useMinistries();
-  const { workers, isLoading: workersLoading } = useWorkers();
+  const { workers, isLoading: workersLoading } = useWorkers({ limit: 999999 });
   const { toast } = useToast();
   const { logAction } = useAuditLog();
 
-  const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
-  const [isFormSheetOpen, setIsFormSheetOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
-  const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
-  const [selectedMinistryDetails, setSelectedMinistryDetails] = useState<Ministry | null>(null);
-  const [ministryToDelete, setMinistryToDelete] = useState<Ministry | null>(null);
-  const [isAppointApproverSheetOpen, setIsAppointApproverSheetOpen] = useState(false);
-  const [appointType, setAppointType] = useState<'approver' | 'assigner' | 'head'>('approver');
-  const [ministryToAppoint, setMinistryToAppoint] = useState<Ministry | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsMinistry, setDetailsMinistry] = useState<Ministry | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Ministry | null>(null);
+  const [appointOpen, setAppointOpen] = useState(false);
+  const [appointType, setAppointType] = useState<"approver" | "assigner" | "head">("approver");
+  const [appointTarget, setAppointTarget] = useState<Ministry | null>(null);
+  const [search, setSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState<"all" | Department>("all");
 
-  const getWorker = (workerId: string) => workers?.find(w => w.id === workerId);
-
+  const departments: Department[] = ["Worship", "Outreach", "Relationship", "Discipleship", "Administration"];
+  const getWorker = (id?: string | null) => id ? workers?.find(w => w.id === id) : null;
   const isLoading = ministriesLoading || workersLoading || isRoleLoading;
-
-  const departments: Department[] = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'];
-
-  const canAppointForMinistry = (ministry: Ministry) => {
-    return canAppointApprovers || ministry.leaderId === workerProfile?.id;
-  };
-
-  const handleOpenImport = () => setIsImportSheetOpen(true);
-  const handleAddNew = () => {
-    setSelectedMinistry(null);
-    setIsFormSheetOpen(true);
-  };
-  const handleEdit = (ministry: Ministry) => {
-    setSelectedMinistry(ministry);
-    setIsFormSheetOpen(true);
-  };
 
   const handleSaveMinistry = async (data: Partial<Ministry>) => {
     try {
       if (selectedMinistry) {
         await updateMinistry({ id: selectedMinistry.id, data });
-        await logAction('Updated Ministry (SQL)', 'Ministries', `Updated configuration for "${data.name || selectedMinistry.name}"`);
-        toast({ title: 'Ministry Updated' });
+        await logAction("Updated Ministry", "Ministries", `Updated "${data.name || selectedMinistry.name}"`);
+        toast({ title: "Ministry Updated" });
       } else {
-        const customId = generateMinistryId(data.name || 'New', data.department as string || 'Worship');
-        await createMinistry({
-          ...data,
-          id: customId,
-          description: data.description || '',
-          leaderId: data.leaderId || '',
-          headId: data.headId || ''
-        });
-        await logAction('Created Ministry (SQL)', 'Ministries', `Created new ministry "${data.name}" in ${data.department}`);
-        toast({ title: 'Ministry Added', description: `Assigned ID: ${customId}` });
+        const id = generateMinistryId(data.name || "New", data.department as string || "Worship");
+        await createMinistry({ ...data, id, description: data.description || "", leaderId: data.leaderId || "", headId: data.headId || "" });
+        await logAction("Created Ministry", "Ministries", `Created "${data.name}" in ${data.department}`);
+        toast({ title: "Ministry Added" });
       }
-      setIsFormSheetOpen(false);
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save ministry.' });
-    }
+      setFormOpen(false);
+    } catch { toast({ variant: "destructive", title: "Save Failed" }); }
   };
 
-  const handleSaveAppointedUser = async (ministryId: string, userId: string | null, type: 'approver' | 'assigner' | 'head') => {
+  const handleSaveAppointed = async (ministryId: string, userId: string | null, type: "approver" | "assigner" | "head") => {
     try {
-      const field = type === 'approver' ? 'approverId' : type === 'assigner' ? 'mealStubAssignerId' : 'headId';
-      await updateMinistry({ id: ministryId, data: { [field]: userId === null ? '' : userId } });
-      const minInfo = ministries?.find((m: Ministry) => m.id === ministryId);
-      const wInfo = userId ? getWorker(userId) : null;
-      await logAction('Updated Ministry Assignment', 'Ministries', `Assigned ${wInfo ? `${wInfo.firstName} ${wInfo.lastName}` : 'None'} as ${type} for "${minInfo?.name}"`);
-      toast({ title: `${type === 'approver' ? 'Approver' : type === 'assigner' ? 'Meal Stub Assigner' : 'Ministry Head'} Updated` });
-      setIsAppointApproverSheetOpen(false);
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: `Could not update ${type}.` });
-    }
+      const field = type === "approver" ? "approverId" : type === "assigner" ? "mealStubAssignerId" : "headId";
+      await updateMinistry({ id: ministryId, data: { [field]: userId === null ? "" : userId } });
+      const label = type === "approver" ? "Approver" : type === "assigner" ? "Meal Stub Assigner" : "Ministry Head";
+      toast({ title: `${label} Updated` });
+      setAppointOpen(false);
+    } catch { toast({ variant: "destructive", title: "Update Failed" }); }
   };
 
-  const handleDeleteMinistry = async () => {
-    if (!ministryToDelete) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteMinistry(ministryToDelete.id);
-      await logAction('Deleted Ministry (SQL)', 'Ministries', `Deleted ministry "${ministryToDelete.name}"`);
-      toast({ title: 'Ministry Deleted' });
-      setMinistryToDelete(null);
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete ministry.' });
-    }
+      await deleteMinistry(deleteTarget.id);
+      await logAction("Deleted Ministry", "Ministries", `Deleted "${deleteTarget.name}"`);
+      toast({ title: "Ministry Deleted" });
+      setDeleteTarget(null);
+    } catch { toast({ variant: "destructive", title: "Delete Failed" }); }
   };
 
-  const handleImportMinistries = (csvData: string) => {
-    const departmentMap: { [key: string]: Department } = {
-      '1': 'Worship',
-      '2': 'Outreach',
-      '3': 'Relationship',
-      '4': 'Discipleship',
-      '5': 'Administration',
-    };
-
+  const handleImport = (csvData: string) => {
+    const deptMap: Record<string, Department> = { "1": "Worship", "2": "Outreach", "3": "Relationship", "4": "Discipleship", "5": "Administration" };
     Papa.parse(csvData, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const newMinistries = results.data;
-        if (newMinistries.length === 0) {
-          toast({ variant: 'destructive', title: 'No Data Found', description: 'The CSV data was empty or invalid.' });
-          return;
-        }
+      header: true, skipEmptyLines: true,
+      complete: async results => {
+        const data = (results.data as any[]).map(row => {
+          const dept = deptMap[row.department];
+          if (!row.name || !dept) return null;
+          return { id: generateMinistryId(row.name, dept), name: row.name, department: dept, description: "", leaderId: "", headId: "" };
+        }).filter(Boolean);
+        if (!data.length) { toast({ variant: "destructive", title: "No valid rows found" }); return; }
+        try { await createMinistries(data as any[]); toast({ title: "Import Successful", description: `${data.length} ministries imported.` }); setImportOpen(false); }
+        catch { toast({ variant: "destructive", title: "Import Failed" }); }
+      },
+    });
+  };
 
-        try {
-          const importData = newMinistries.map((newMinistry: any) => {
-            const departmentCode = newMinistry.department;
-            const departmentName = departmentMap[departmentCode];
+  const filteredMinistries = (ministries as Ministry[] || []).filter(m => {
+    const q = search.trim().toLowerCase();
+    if (q && !m.name.toLowerCase().includes(q)) return false;
+    if (deptFilter !== "all" && m.department !== deptFilter) return false;
+    return true;
+  }).sort((a, b) => { const wa = a.weight ?? 0, wb = b.weight ?? 0; return wa !== wb ? wa - wb : a.name.localeCompare(b.name); });
 
-            if (!newMinistry.name || !departmentName) {
-              return null;
-            }
-
-            const customId = generateMinistryId(newMinistry.name, departmentName);
-            return {
-              id: customId,
-              name: newMinistry.name,
-              department: departmentName,
-              description: '',
-              leaderId: '',
-              headId: ''
-            };
-          }).filter(Boolean);
-
-          if (importData.length === 0) {
-            toast({
-              variant: "destructive",
-              title: "Import Failed",
-              description: `No valid rows found. Please check the department codes and ensure all ministries have a name.`,
-            });
-            return;
-          }
-
-          await createMinistries(importData as any[]);
-
-          const importedCount = importData.length;
-          const skippedCount = newMinistries.length - importedCount;
-
-          let description = `${importedCount} ministries were imported.`;
-          if (skippedCount > 0) {
-            description += ` ${skippedCount} rows were skipped due to invalid data.`
-          }
-
-          toast({
-            title: "Import Successful",
-            description: description
-          });
-          setIsImportSheetOpen(false);
-
-        } catch (error) {
-          toast({
-            variant: "destructive",
-            title: "Import Failed",
-            description: "An error occurred during the import. Check console for details.",
-          });
-          console.error("Import error:", error);
-        }
-      }
-    })
-  }
-
-  if (isLoading) {
-    return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
-  }
-
-  if (!canManageMinistries) {
-    return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You do not have permission to view this page.</CardDescription></CardHeader></Card></AppLayout>;
-  }
+  if (isLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+  if (!canManageMinistries) return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>No permission.</CardDescription></CardHeader></Card></AppLayout>;
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-headline font-bold">Ministry Management</h1>
-        {canManageMinistries && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleOpenImport}>
-              <Upload className="mr-2 h-4 w-4" /> Import
-            </Button>
-            <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Ministry
-            </Button>
+      <div className="space-y-7 pb-12 w-full">
+
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-primary/10 shrink-0 mt-0.5">
+            <Building2 className="h-4 w-4 text-primary" />
           </div>
-        )}
-      </div>
-
-      <div className="space-y-8 mt-4">
-        {!isLoading && departments.map(department => {
-          const departmentMinistries = ministries?.filter(m => m.department === department);
-
-          if (!departmentMinistries || departmentMinistries.length === 0) {
-            return null;
-          }
-
-          return (
-            <div key={department}>
-              <h2 className="text-xl font-headline font-semibold mb-4 border-b pb-2">{department}</h2>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {departmentMinistries.sort((a, b) => {
-                  const weightA = a.weight ?? 0;
-                  const weightB = b.weight ?? 0;
-                  if (weightA !== weightB) return weightA - weightB;
-                  return a.name.localeCompare(b.name);
-                }).map(ministry => {
-                  const leader = getWorker(ministry.leaderId);
-                  const members = workers?.filter(w => w.majorMinistryId === ministry.id || w.minorMinistryId === ministry.id) || [];
-
-                  return (
-                    <Card key={ministry.id}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary/10 rounded-lg text-primary">
-                              <HeartHandshake className="h-5 w-5" />
-                            </div>
-                            <div className="cursor-pointer" onClick={() => {
-                              setSelectedMinistryDetails(ministry);
-                              setIsDetailsSheetOpen(true);
-                            }}>
-                              <div className="flex items-center gap-2">
-                                <CardTitle className="text-lg hover:text-primary transition-colors">{ministry.name}</CardTitle>
-                                {ministry.weight !== undefined && (
-                                  <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-medium">W: {ministry.weight}</span>
-                                )}
-                              </div>
-                              <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{ministry.id}</p>
-                            </div>
-                          </div>
-                          {(canManageMinistries || canAppointForMinistry(ministry)) && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {canAppointForMinistry(ministry) && (
-                                  <>
-                                    <DropdownMenuItem onSelect={() => {
-                                      setTimeout(() => {
-                                        setMinistryToAppoint(ministry);
-                                        setAppointType('approver');
-                                        setIsAppointApproverSheetOpen(true);
-                                      }, 100);
-                                    }}>
-                                      <UserCog className="mr-2 h-4 w-4" /> Appoint Approver
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => {
-                                      setTimeout(() => {
-                                        setMinistryToAppoint(ministry);
-                                        setAppointType('assigner');
-                                        setIsAppointApproverSheetOpen(true);
-                                      }, 100);
-                                    }}>
-                                      <Utensils className="mr-2 h-4 w-4" /> Appoint Meal Assigner
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => {
-                                      setTimeout(() => {
-                                        setMinistryToAppoint(ministry);
-                                        setAppointType('head');
-                                        setIsAppointApproverSheetOpen(true);
-                                      }, 100);
-                                    }}>
-                                      <Users className="mr-2 h-4 w-4" /> Appoint Ministry Head
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {canManageMinistries && (
-                                  <>
-                                    <DropdownMenuItem onSelect={() => setTimeout(() => handleEdit(ministry), 100)}>
-                                      <Edit className="mr-2 h-4 w-4" /> Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setTimeout(() => setMinistryToDelete(ministry), 100)} className="text-destructive">
-                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground h-10 overflow-hidden">{ministry.description || "No description."}</p>
-
-                        <div>
-                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                            <UserCog className="h-4 w-4" />
-                            Approver
-                          </h4>
-                          {ministry.approverId && getWorker(ministry.approverId) ? (() => {
-                            const approver = getWorker(ministry.approverId)!;
-                            return (
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={approver.avatarUrl} alt={`${approver.firstName} ${approver.lastName}`} />
-                                  <AvatarFallback>{approver.firstName?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="text-sm font-medium">{`${approver.firstName} ${approver.lastName}`}</p>
-                                  <p className="text-xs text-muted-foreground">{approver.roleId}</p>
-                                </div>
-                              </div>
-                            );
-                          })() : (
-                            <p className="text-sm text-muted-foreground">No approver assigned.</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                            <Utensils className="h-4 w-4" />
-                            Meal Stub Assigner
-                          </h4>
-                          {ministry.mealStubAssignerId && getWorker(ministry.mealStubAssignerId) ? (() => {
-                            const assigner = getWorker(ministry.mealStubAssignerId)!;
-                            return (
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={assigner.avatarUrl} alt={`${assigner.firstName} ${assigner.lastName}`} />
-                                  <AvatarFallback>{assigner.firstName?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="text-sm font-medium">{`${assigner.firstName} ${assigner.lastName}`}</p>
-                                  <p className="text-xs text-muted-foreground">{assigner.roleId}</p>
-                                </div>
-                              </div>
-                            );
-                          })() : (
-                            <p className="text-sm text-muted-foreground">No assigner assigned.</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                            <Users className="h-4 w-4" />
-                            Ministry Head
-                          </h4>
-                          {ministry.headId && getWorker(ministry.headId) ? (() => {
-                            const head = getWorker(ministry.headId)!;
-                            return (
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={head.avatarUrl} alt={`${head.firstName} ${head.lastName}`} />
-                                  <AvatarFallback>{head.firstName?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="text-sm font-medium">{`${head.firstName} ${head.lastName}`}</p>
-                                  <p className="text-xs text-muted-foreground">{head.roleId}</p>
-                                </div>
-                              </div>
-                            );
-                          })() : (
-                            <p className="text-sm text-muted-foreground">No ministry head assigned.</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                            <UserIcon className="h-4 w-4" />
-                            Leader
-                          </h4>
-                          {leader ? (
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={leader.avatarUrl} alt={`${leader.firstName} ${leader.lastName}`} />
-                                <AvatarFallback>{leader.firstName?.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="text-sm font-medium">{`${leader.firstName} ${leader.lastName}`}</p>
-                                <p className="text-xs text-muted-foreground">{leader.roleId}</p>
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">No leader assigned.</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
-                            <Users className="h-4 w-4" />
-                            Members ({members.length})
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            <TooltipProvider>
-                              {members.map(member => member && (
-                                <Tooltip key={member.id}>
-                                  <TooltipTrigger>
-                                    <Avatar className="h-8 w-8 border-2 border-background">
-                                      <AvatarImage src={member.avatarUrl} alt={`${member.firstName} ${member.lastName}`} />
-                                      <AvatarFallback>{member.firstName?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{`${member.firstName} ${member.lastName}`}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ))}
-                            </TooltipProvider>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full text-xs text-muted-foreground mt-2"
-                          onClick={() => {
-                            setSelectedMinistryDetails(ministry);
-                            setIsDetailsSheetOpen(true);
-                          }}
-                        >
-                          View Full Details
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold font-headline tracking-tight text-foreground leading-none">Ministry Management</h1>
+            <div className="flex items-center justify-between gap-4 -mt-1">
+              <p className="text-sm text-muted-foreground leading-none">Manage ministries, leaders and weekly allocations.</p>
+              <Link href="/settings" className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors shrink-0">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Link>
             </div>
-          );
-        })}
+          </div>
+        </div>
+
+        {/* Toolbar */}
+        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="relative w-56">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input type="text" placeholder="Search ministries...." value={search} onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            {/* Dept filter tabs */}
+            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40 overflow-x-auto">
+              {(["all", ...departments] as const).map(d => (
+                <button key={d} onClick={() => setDeptFilter(d as any)}
+                  className={cn("px-3 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap",
+                    deptFilter === d ? "bg-card shadow-xs text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  {d === "all" ? "All" : d}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button onClick={() => { setSelectedMinistry(null); setFormOpen(true); }}
+            className="h-9 px-4 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shrink-0">
+            <PlusCircle className="h-4 w-4" /> Add Ministry
+          </button>
+        </div>
+
+        {/* Ministry cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredMinistries.length === 0 ? (
+            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">No ministries found.</p>
+          ) : filteredMinistries.map(ministry => {
+            const head = getWorker(ministry.headId);
+            const approver = getWorker(ministry.approverId);
+            const assigner = getWorker(ministry.mealStubAssignerId);
+            const memberCount = (workers || []).filter(w => w.majorMinistryId === ministry.id || w.minorMinistryId === ministry.id).length;
+            const weeklyPool = (ministry as any).mealStubWeeklyLimit || 0;
+
+            return (
+              <div key={ministry.id} className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 flex flex-col gap-4">
+                {/* Card header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">{ministry.name}</h3>
+                    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary mt-0.5">{ministry.department}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="p-2 rounded-xl bg-primary/10 shrink-0">
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => { setDetailsMinistry(ministry); setDetailsOpen(true); }}><Eye className="mr-2 h-3.5 w-3.5" /> View Details</DropdownMenuItem>
+                        {canManageMinistries && <DropdownMenuItem onClick={() => { setSelectedMinistry(ministry); setFormOpen(true); }}><Edit className="mr-2 h-3.5 w-3.5" /> Edit</DropdownMenuItem>}
+                        <DropdownMenuItem onClick={() => { setAppointTarget(ministry); setAppointType("head"); setAppointOpen(true); }}><Users className="mr-2 h-3.5 w-3.5" /> Appoint Head</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setAppointTarget(ministry); setAppointType("approver"); setAppointOpen(true); }}><UserCog className="mr-2 h-3.5 w-3.5" /> Appoint Approver</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setAppointTarget(ministry); setAppointType("assigner"); setAppointOpen(true); }}><Utensils className="mr-2 h-3.5 w-3.5" /> Appoint Assigner</DropdownMenuItem>
+                        {canManageMinistries && <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(ministry)}><Trash2 className="mr-2 h-3.5 w-3.5" /> Delete</DropdownMenuItem>}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+
+                {/* Ministry Head */}
+                <div className="rounded-xl border border-border/60 bg-background px-3 py-2.5 flex items-center gap-2.5">
+                  {head ? (
+                    <>
+                      <WorkerInitials name={`${head.firstName} ${head.lastName}`} />
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{head.firstName} {head.lastName}</p>
+                        <p className="text-[10px] text-muted-foreground">Ministry Head</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <span className="text-xs italic">No head assigned</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Approver + Assigner */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-muted-foreground flex items-center gap-1 mb-0.5">
+                      <UserCog className="h-3 w-3" /> Approver
+                    </p>
+                    <p className="font-semibold text-foreground truncate">{approver ? `${approver.firstName} ${approver.lastName}` : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground flex items-center gap-1 mb-0.5">
+                      <Utensils className="h-3 w-3" /> Meal Stub Assigner
+                    </p>
+                    <p className="font-semibold text-foreground truncate">{assigner ? `${assigner.firstName} ${assigner.lastName}` : "—"}</p>
+                  </div>
+                </div>
+
+                {/* Members + Weekly pool */}
+                <div className="flex items-center justify-between pt-1 border-t border-border/30">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Users className="h-3.5 w-3.5" /> {memberCount} members
+                  </span>
+                  {weeklyPool > 0 && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      ✦ {weeklyPool}/week
+                    </span>
+                  )}
+                </div>
+
+                {/* View Details */}
+                <button onClick={() => { setDetailsMinistry(ministry); setDetailsOpen(true); }}
+                  className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border border-border/60 bg-background text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors">
+                  <Eye className="h-4 w-4" /> View Details
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <Sheet open={isImportSheetOpen} onOpenChange={setIsImportSheetOpen}>
-        <SheetContent className="sm:max-w-lg">
-          <ImportSheet onImport={handleImportMinistries} onClose={() => setIsImportSheetOpen(false)} />
+      {/* Ministry Form Sheet */}
+      <Sheet open={formOpen} onOpenChange={setFormOpen}>
+        <SheetContent className="sm:max-w-md">
+          <MinistryForm ministry={selectedMinistry} workers={workers || []} departments={departments} onSave={handleSaveMinistry} onClose={() => setFormOpen(false)} />
         </SheetContent>
       </Sheet>
 
-      <Sheet open={isDetailsSheetOpen} onOpenChange={setIsDetailsSheetOpen}>
-        <SheetContent className="sm:max-w-xl overflow-y-auto">
-          {selectedMinistryDetails && workers && (
-            <MinistryDetailsSheet
-              ministry={selectedMinistryDetails}
-              workers={workers}
-              members={workers.filter(w => w.majorMinistryId === selectedMinistryDetails.id || w.minorMinistryId === selectedMinistryDetails.id)}
-              onEdit={() => {
-                setIsDetailsSheetOpen(false);
-                setSelectedMinistry(selectedMinistryDetails);
-                setIsFormSheetOpen(true);
-              }}
-              onClose={() => setIsDetailsSheetOpen(false)}
-            />
-          )}
+      {/* Appoint Sheet */}
+      <Sheet open={appointOpen} onOpenChange={setAppointOpen}>
+        <SheetContent className="sm:max-w-md">
+          {appointTarget && <AppointSheet ministry={appointTarget} workers={workers || []} onSave={handleSaveAppointed} onClose={() => setAppointOpen(false)} type={appointType} />}
         </SheetContent>
       </Sheet>
 
-      <Sheet open={isFormSheetOpen} onOpenChange={setIsFormSheetOpen}>
-        <SheetContent className="sm:max-w-lg">
-          {workers && (
-            <MinistryForm
-              ministry={selectedMinistry}
-              workers={workers}
-              departments={departments}
-              onSave={handleSaveMinistry}
-              onClose={() => setIsFormSheetOpen(false)}
-            />
-          )}
+      {/* Import Sheet */}
+      <Sheet open={importOpen} onOpenChange={setImportOpen}>
+        <SheetContent className="sm:max-w-md">
+          <ImportSheetContent onImport={handleImport} onClose={() => setImportOpen(false)} />
         </SheetContent>
       </Sheet>
 
-      <Sheet open={isAppointApproverSheetOpen} onOpenChange={setIsAppointApproverSheetOpen}>
-        <SheetContent className="sm:max-w-lg">
-          {workers && ministryToAppoint && (
-            <AppointApproverForm
-              ministry={ministryToAppoint}
-              workers={workers}
-              type={appointType}
-              onSave={handleSaveAppointedUser}
-              onClose={() => setIsAppointApproverSheetOpen(false)}
-            />
-          )}
+      {/* Details Sheet */}
+      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          {detailsMinistry && (() => {
+            const m = detailsMinistry;
+            const head = getWorker(m.headId);
+            const approver = getWorker(m.approverId);
+            const assigner = getWorker(m.mealStubAssignerId);
+            const leader = getWorker(m.leaderId);
+            const members = (workers || []).filter(w => w.majorMinistryId === m.id || w.minorMinistryId === m.id);
+            return (
+              <div className="flex flex-col gap-5 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-primary/10"><Building2 className="h-5 w-5 text-primary" /></div>
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">{m.name}</h2>
+                    <p className="text-xs text-muted-foreground">{m.department} Department</p>
+                  </div>
+                </div>
+                {m.description && <p className="text-sm text-muted-foreground">{m.description}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  {[{ label: "Ministry Head", w: head }, { label: "Leader", w: leader }, { label: "Approver", w: approver }, { label: "Meal Assigner", w: assigner }].map(({ label, w }) => (
+                    <div key={label} className="rounded-xl border border-border/60 bg-background p-3">
+                      <p className="text-[10px] text-muted-foreground mb-1.5">{label}</p>
+                      {w ? <div className="flex items-center gap-2"><WorkerInitials name={`${w.firstName} ${w.lastName}`} /><p className="text-xs font-semibold text-foreground truncate">{w.firstName} {w.lastName}</p></div>
+                        : <p className="text-xs text-muted-foreground italic">Unassigned</p>}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-3">Members ({members.length})</p>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    {members.map(w => (
+                      <div key={w.id} className="flex items-center gap-2 rounded-lg border border-border/60 p-2">
+                        <WorkerInitials name={`${w.firstName} ${w.lastName}`} />
+                        <p className="text-xs font-medium text-foreground truncate">{w.firstName} {w.lastName}</p>
+                      </div>
+                    ))}
+                    {members.length === 0 && <p className="col-span-2 text-xs text-muted-foreground italic text-center py-4">No members.</p>}
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2 border-t border-border/40">
+                  <button onClick={() => { setSelectedMinistry(m); setDetailsOpen(false); setFormOpen(true); }}
+                    className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl border border-border/60 text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors">
+                    <Edit className="h-4 w-4" /> Edit
+                  </button>
+                  <button onClick={() => setDetailsOpen(false)}
+                    className="flex-1 h-9 flex items-center justify-center rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+                    Close
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={!!ministryToDelete} onOpenChange={(open) => !open && setMinistryToDelete(null)}>
+      {/* Delete Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the ministry <span className="font-bold">{ministryToDelete?.name}</span>.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Delete ministry?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete <span className="font-bold">{deleteTarget?.name}</span>.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteMinistry}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </AppLayout>
   );
 }
-
-

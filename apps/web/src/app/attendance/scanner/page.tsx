@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import { ScanLine, ArrowLeft, LoaderCircle, User as UserIcon, SwitchCamera, History } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@studio/ui";
-import { useAuthStore } from "@studio/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow, isToday } from "date-fns";
@@ -16,20 +15,21 @@ import { useAttendance } from "@/hooks/use-attendance";
 import { useScanLogs } from "@/hooks/use-scan-logs";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { Tabs, TabsList, TabsTrigger } from "@studio/ui";
-
+import jsQR from "jsqr";
 
 export default function QRScannerPage() {
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const animFrameRef = useRef<number>(0);
+    const streamRef = useRef<MediaStream | null>(null);
+
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [scannedWorker, setScannedWorker] = useState<any | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [scanMode, setScanMode] = useState<'Attendance' | 'Meal Stub'>('Attendance');
-
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
-    const [isBarcodeDetectorSupported, setIsBarcodeDetectorSupported] = useState(true);
-
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
 
@@ -38,62 +38,36 @@ export default function QRScannerPage() {
     const { createAttendanceRecord: createAttendanceSql } = useAttendance();
     const { mealStubs: allMealStubs, updateMealStub: updateMealStubSql } = useMealStubs();
 
+    // Get camera devices on auth
     useEffect(() => {
-        const getDevices = async () => {
-            try {
-                await navigator.mediaDevices.getUserMedia({ video: true });
-                setHasCameraPermission(true);
-
-                const allDevices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
-                setDevices(videoDevices);
-
-                if (videoDevices.length > 0 && !selectedDeviceId) {
-                    setSelectedDeviceId(videoDevices[0].deviceId);
-                }
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'Camera Access Denied',
-                    description: 'Please enable camera permissions in your browser settings to use this feature.',
-                });
-            }
-        };
+        if (!isAuthenticated) return;
 
         if (typeof navigator.mediaDevices?.enumerateDevices === 'undefined') {
-            toast({
-                variant: 'destructive',
-                title: 'Camera Not Supported',
-                description: 'Your browser does not support camera access.',
-            });
+            toast({ variant: 'destructive', title: 'Camera Not Supported', description: 'Your browser does not support camera access.' });
             setHasCameraPermission(false);
             return;
         }
 
-        if (typeof (window as any).BarcodeDetector === 'undefined') {
-            setIsBarcodeDetectorSupported(false);
-            toast({
-                variant: 'destructive',
-                title: 'QR Scanner Not Supported',
-                description: 'Your browser does not support built-in QR code scanning. Please use a recent version of Chrome or Edge.',
-                duration: 5000,
-            });
-        }
-
-        if (isAuthenticated) {
-            getDevices();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [toast, isAuthenticated]);
+        const getDevices = async () => {
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: true });
+                setHasCameraPermission(true);
+                const allDevices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+                setDevices(videoDevices);
+                if (videoDevices.length > 0) setSelectedDeviceId(videoDevices[0].deviceId);
+            } catch {
+                setHasCameraPermission(false);
+                toast({ variant: 'destructive', title: 'Camera Access Denied', description: 'Please enable camera permissions in your browser settings.' });
+            }
+        };
+        getDevices();
+    }, [isAuthenticated, toast]);
 
     const handleSwitchCamera = () => {
         if (devices.length < 2) return;
-
-        const currentIndex = devices.findIndex(device => device.deviceId === selectedDeviceId);
-        const nextIndex = (currentIndex + 1) % devices.length;
-        setSelectedDeviceId(devices[nextIndex].deviceId);
+        const idx = devices.findIndex(d => d.deviceId === selectedDeviceId);
+        setSelectedDeviceId(devices[(idx + 1) % devices.length].deviceId);
     };
 
     const resetScanner = useCallback(() => {
@@ -103,11 +77,7 @@ export default function QRScannerPage() {
 
     const logScanEvent = useCallback(async (logData: any) => {
         try {
-            await createScanLogSql({
-                ...logData,
-                scannerId: 'public_scanner',
-                scannerName: `Public Kiosk Scanner`,
-            });
+            await createScanLogSql({ ...logData, scannerId: 'public_scanner', scannerName: 'Public Kiosk Scanner' });
         } catch (e) {
             console.error("Failed to write to scan log", e);
         }
@@ -115,10 +85,8 @@ export default function QRScannerPage() {
 
     const handleScan = useCallback(async (data: string) => {
         if (!data || isProcessing) return;
-
         setIsProcessing(true);
 
-        // EXPECT DATA FORMAT: TYPE:ID[:TOKEN_OR_TIMESTAMP]
         const [type, payload, tokenOrTs] = data.split(':');
         const worker = allWorkers?.find(w => w.id === payload || w.workerId === payload);
 
@@ -128,35 +96,21 @@ export default function QRScannerPage() {
                 setTimeout(resetScanner, 2000);
                 return;
             }
-
             if (!worker) {
                 toast({ variant: 'destructive', title: 'Worker Not Found', description: 'The scanned ID does not correspond to any worker.' });
                 setTimeout(resetScanner, 2000);
                 return;
             }
-
-            // RESTRICTION: Only FT and On-Call for attendance
             if (worker.employmentType !== 'Full-Time' && worker.employmentType !== 'On-Call') {
-                toast({
-                    variant: 'destructive',
-                    title: 'Attendance Restricted',
-                    description: 'Attendance clock-in is only available for Full-Time and On-Call personnel.',
-                });
+                toast({ variant: 'destructive', title: 'Attendance Restricted', description: 'Attendance clock-in is only available for Full-Time and On-Call personnel.' });
                 setTimeout(resetScanner, 3000);
                 return;
             }
-
-            // SECURITY CHECK: Verify if the token in the QR matches the one in DB
             if (worker.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Invalid or Expired QR',
-                    description: 'This QR code has been regenerated. Please use your latest QR code.',
-                });
+                toast({ variant: 'destructive', title: 'Invalid or Expired QR', description: 'This QR code has been regenerated. Please use your latest QR code.' });
                 setTimeout(resetScanner, 3000);
                 return;
             }
-
             setScannedWorker(worker);
             return;
         }
@@ -167,19 +121,12 @@ export default function QRScannerPage() {
                 setTimeout(resetScanner, 2000);
                 return;
             }
-
             try {
-                // SECURITY CHECK: Verify if the token in the QR matches the one in DB
                 if (worker?.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Invalid or Expired QR',
-                        description: 'This QR code has been regenerated. Please use your latest QR code.',
-                    });
+                    toast({ variant: 'destructive', title: 'Invalid or Expired QR', description: 'This QR code has been regenerated. Please use your latest QR code.' });
                     setTimeout(resetScanner, 3000);
                     return;
                 }
-
                 if (tokenOrTs && !isNaN(parseInt(tokenOrTs)) && tokenOrTs.length > 10) {
                     const diffMins = (Date.now() - parseInt(tokenOrTs)) / 1000 / 60;
                     if (diffMins > 5) {
@@ -188,31 +135,17 @@ export default function QRScannerPage() {
                         return;
                     }
                 }
-
                 const todaysStub = allMealStubs?.find(s => {
                     if (s.workerId !== payload && s.workerId !== worker?.id) return false;
                     if (s.status !== 'Issued') return false;
                     const d = s.date instanceof Date ? s.date : new Date(s.date);
                     return isToday(d);
                 });
-
                 if (todaysStub) {
-                    await updateMealStubSql({
-                        id: todaysStub.id,
-                        data: {
-                            status: 'Claimed',
-                            claimedAt: new Date()
-                        }
-                    });
+                    await updateMealStubSql({ id: todaysStub.id, data: { status: 'Claimed', claimedAt: new Date() } });
                     const details = `Claimed meal stub for ${todaysStub.workerName}.`;
                     toast({ title: "Meal Stub Claimed!", description: details });
-                    logScanEvent({
-                        scanType: 'Meal Stub',
-                        details,
-                        mealStubId: todaysStub.id,
-                        targetUserId: todaysStub.workerId,
-                        targetUserName: todaysStub.workerName
-                    });
+                    logScanEvent({ scanType: 'Meal Stub', details, mealStubId: todaysStub.id, targetUserId: todaysStub.workerId, targetUserName: todaysStub.workerName });
                 } else {
                     const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
                     toast({ variant: "destructive", title: "No Meal Stub Found", description: `No valid meal stub found for ${workerName} for today.` });
@@ -231,23 +164,12 @@ export default function QRScannerPage() {
     }, [isProcessing, scanMode, allWorkers, allMealStubs, updateMealStubSql, toast, resetScanner, logScanEvent]);
 
     const handleRecordAttendance = useCallback(async (type: 'Clock In' | 'Clock Out') => {
-        if (!scannedWorker || !scannedWorker.id) return;
-
+        if (!scannedWorker?.id) return;
         try {
-            await createAttendanceSql({
-                workerProfileId: scannedWorker.id,
-                type,
-            });
-
+            await createAttendanceSql({ workerProfileId: scannedWorker.id, type });
             const details = `${type === 'Clock In' ? 'Timed in' : 'Timed out'} ${scannedWorker.firstName} ${scannedWorker.lastName}.`;
             toast({ title: "Success", description: details });
-
-            logScanEvent({
-                scanType: 'Attendance',
-                details,
-                targetUserId: scannedWorker.id,
-                targetUserName: `${scannedWorker.firstName} ${scannedWorker.lastName}`,
-            });
+            logScanEvent({ scanType: 'Attendance', details, targetUserId: scannedWorker.id, targetUserName: `${scannedWorker.firstName} ${scannedWorker.lastName}` });
         } catch (e) {
             console.error("Failed to record attendance", e);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not record attendance.' });
@@ -256,93 +178,102 @@ export default function QRScannerPage() {
         }
     }, [createAttendanceSql, logScanEvent, resetScanner, scannedWorker, toast]);
 
+    // jsQR scan loop — start camera stream
     useEffect(() => {
-        if (!isAuthenticated || !videoRef.current || !hasCameraPermission || !isBarcodeDetectorSupported || !selectedDeviceId) {
-            return;
-        }
+        if (!isAuthenticated || !hasCameraPermission || !selectedDeviceId) return;
 
         const videoElement = videoRef.current;
-        const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-        let stream: MediaStream;
-        let animationFrameId: number;
+        const canvas = canvasRef.current;
+        if (!videoElement || !canvas) return;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
 
-        const detectQrCode = async () => {
-            if (videoElement.readyState >= 2) {
-                if (isProcessing || scannedWorker) {
-                    animationFrameId = requestAnimationFrame(detectQrCode);
+        const scan = () => {
+            if (videoElement.readyState >= 2 && !isProcessing && !scannedWorker) {
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'dontInvert',
+                });
+                if (code?.data) {
+                    handleScan(code.data);
                     return;
                 }
-
-                try {
-                    const barcodes = await barcodeDetector.detect(videoElement);
-                    if (barcodes.length > 0 && barcodes[0].rawValue) {
-                        handleScan(barcodes[0].rawValue);
-                    }
-                } catch (error) {
-                    if (error instanceof Error && error.name === 'InvalidStateError') {
-                        console.warn("Barcode detection failed for one frame:", error);
-                    } else {
-                        console.error("Barcode detection failed:", error);
-                    }
-                }
             }
-            animationFrameId = requestAnimationFrame(detectQrCode);
+            animFrameRef.current = requestAnimationFrame(scan);
         };
 
-        const startStream = async () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-
-            const constraints = { video: { deviceId: { exact: selectedDeviceId } } };
+        const start = async () => {
             try {
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                if (videoElement) {
-                    videoElement.srcObject = stream;
-                    videoElement.play().catch(e => console.error("Video play failed", e));
-                    cancelAnimationFrame(animationFrameId);
-                    animationFrameId = requestAnimationFrame(detectQrCode);
-                }
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: selectedDeviceId } },
+                });
+                streamRef.current = stream;
+                videoElement.srcObject = stream;
+                videoElement.play().catch(console.error);
+                animFrameRef.current = requestAnimationFrame(scan);
             } catch (err) {
-                console.error('Error with camera stream:', err);
+                console.error('Camera stream error:', err);
             }
         };
 
-        startStream();
+        start();
 
         return () => {
-            cancelAnimationFrame(animationFrameId);
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
+            cancelAnimationFrame(animFrameRef.current);
+            streamRef.current?.getTracks().forEach(t => t.stop());
         };
-    }, [selectedDeviceId, hasCameraPermission, isBarcodeDetectorSupported, isProcessing, scannedWorker, handleScan, isAuthenticated]);
+    }, [selectedDeviceId, hasCameraPermission, isAuthenticated]);
 
+    // Resume scanning after processing/worker dismissed
+    useEffect(() => {
+        if (isProcessing || scannedWorker) return;
+        const videoElement = videoRef.current;
+        const canvas = canvasRef.current;
+        if (!videoElement || !canvas || !isAuthenticated || !hasCameraPermission) return;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+
+        const scan = () => {
+            if (videoElement.readyState >= 2) {
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'dontInvert',
+                });
+                if (code?.data) {
+                    handleScan(code.data);
+                    return;
+                }
+            }
+            animFrameRef.current = requestAnimationFrame(scan);
+        };
+
+        animFrameRef.current = requestAnimationFrame(scan);
+        return () => cancelAnimationFrame(animFrameRef.current);
+    }, [isProcessing, scannedWorker, isAuthenticated, hasCameraPermission, handleScan]);
 
     if (!isAuthenticated) {
         return (
             <div className="flex h-screen items-center justify-center bg-background">
                 <Card className="w-full max-w-sm">
                     <CardHeader>
-                        <CardTitle className="font-headline text-center 2xl">Scanner Login</CardTitle>
+                        <CardTitle className="font-headline text-center text-2xl">Scanner Login</CardTitle>
                         <CardDescription className="text-center">Enter the kiosk password to activate the scanner.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={(e) => {
                             e.preventDefault();
-                            if (passwordInput === 'c0g4@sm4!!!') {
-                                setIsAuthenticated(true);
-                            } else {
-                                toast({ variant: 'destructive', title: 'Invalid Password', description: 'Incorrect kiosk password.' });
-                            }
+                            if (passwordInput === 'c0g4@sm4!!!') setIsAuthenticated(true);
+                            else toast({ variant: 'destructive', title: 'Invalid Password', description: 'Incorrect kiosk password.' });
                         }} className="flex flex-col gap-4">
-                            <input
-                                type="password"
+                            <input type="password"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                placeholder="Scanner Password"
-                                value={passwordInput}
-                                onChange={e => setPasswordInput(e.target.value)}
-                            />
+                                placeholder="Scanner Password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} />
                             <Button type="submit">Unlock Scanner</Button>
                         </form>
                     </CardContent>
@@ -365,25 +296,16 @@ export default function QRScannerPage() {
                             <TabsTrigger value="Meal Stub">Meal Stub</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                    <Button asChild variant="outline">
-                        <Link href="/dashboard">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Dashboard
-                        </Link>
-                    </Button>
+
                 </div>
             </header>
 
             <main className="grid flex-grow grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-6 lg:p-8 overflow-hidden">
                 <Card className="flex flex-col">
                     <CardHeader className="text-center">
-                        <div className="flex justify-center items-center">
-                            <ScanLine className="h-10 w-10 text-primary" />
-                        </div>
+                        <div className="flex justify-center"><ScanLine className="h-10 w-10 text-primary" /></div>
                         <CardTitle className="font-headline text-2xl">Live Scan</CardTitle>
-                        <CardDescription>
-                            Position the QR code in the frame ({scanMode} Mode).
-                        </CardDescription>
+                        <CardDescription>Position the QR code in the frame ({scanMode} Mode).</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-grow items-center justify-center">
                         {scannedWorker ? (
@@ -409,6 +331,8 @@ export default function QRScannerPage() {
                             <div className="w-full max-w-md">
                                 <div className="relative w-full aspect-square bg-slate-900 rounded-lg overflow-hidden">
                                     <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                                    {/* Hidden canvas for jsQR frame capture */}
+                                    <canvas ref={canvasRef} className="hidden" />
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <div className="w-64 h-64 border-4 border-dashed border-primary rounded-lg" />
                                     </div>
@@ -418,7 +342,6 @@ export default function QRScannerPage() {
                                         </div>
                                     )}
                                     <div className="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 animate-pulse" />
-
                                     {devices.length > 1 && (
                                         <div className="absolute bottom-4 right-4">
                                             <Button size="icon" onClick={handleSwitchCamera}>
@@ -428,37 +351,30 @@ export default function QRScannerPage() {
                                         </div>
                                     )}
                                 </div>
-
                                 <div className="mt-4">
-                                    {hasCameraPermission === false ? (
+                                    {hasCameraPermission === false && (
                                         <Alert variant="destructive">
                                             <AlertTitle>Camera Access Required</AlertTitle>
-                                            <AlertDescription>
-                                                Please allow camera access to use this feature.
-                                            </AlertDescription>
+                                            <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
                                         </Alert>
-                                    ) : !isBarcodeDetectorSupported ? (
-                                        <Alert variant="destructive">
-                                            <AlertTitle>Scanner Not Supported</AlertTitle>
-                                            <AlertDescription>
-                                                Your browser does not support built-in QR scanning. Try using Chrome or Edge.
-                                            </AlertDescription>
-                                        </Alert>
-                                    ) : null}
+                                    )}
                                 </div>
                             </div>
                         )}
                     </CardContent>
                 </Card>
+
                 <Card className="flex flex-col">
                     <CardHeader>
-                        <CardTitle className="text-xl flex items-center gap-2 font-headline"><History className="h-5 w-5" /> Recent Scans</CardTitle>
+                        <CardTitle className="text-xl flex items-center gap-2 font-headline">
+                            <History className="h-5 w-5" /> Recent Scans
+                        </CardTitle>
                         <CardDescription>A log of the most recent scan events.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow overflow-hidden">
                         <ScrollArea className="h-full pr-4">
                             {logsLoading && <div className="flex justify-center items-center h-full"><LoaderCircle className="h-6 w-6 animate-spin" /></div>}
-                            {!logsLoading && scanLogs && scanLogs.length === 0 && (
+                            {!logsLoading && (!scanLogs || scanLogs.length === 0) && (
                                 <p className="text-sm text-center text-muted-foreground py-4">No recent scans.</p>
                             )}
                             <div className="space-y-4">
