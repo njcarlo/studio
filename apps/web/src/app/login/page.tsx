@@ -127,14 +127,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="mx-auto max-w-sm w-full">
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      {/* Background Image */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/cog-bg.png"
+          alt="Background"
+          fill
+          className="object-cover"
+          priority
+          quality={90}
+        />
+        {/* Overlay for better card visibility */}
+        <div className="absolute inset-0 bg-black/30" />
+        {/* Vignette effect - dark shadow around edges */}
+        <div className="absolute inset-0 shadow-[inset_0_0_120px_60px_rgba(0,0,0,0.5)]" />
+      </div>
+
+      <Card className="relative z-10 mx-auto max-w-md w-full shadow-[0_8px_32px_0_rgba(0,0,0,0.9),0_0_80px_rgba(0, 0, 0, 0.9)] backdrop-blur-xl bg-black/10 border border-black/20 dark:bg-black/5 dark:border-black/10">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center items-center">
-            <Image src="/church-logo.png" alt="COG Logo" width={64} height={64} className="rounded-sm" />
+            <Image src="/church-logo.png" alt="COG Logo" width={80} height={80} className="rounded-sm drop-shadow-[0_4px_8px_rgba(0, 0, 0, 0.9)]" />
           </div>
-          <CardTitle className="font-headline text-2xl">COG App</CardTitle>
-          <CardDescription>
+          <CardTitle className="font-headline text-2xl text-white">COG App</CardTitle>
+          <CardDescription className="text-white/90">
             {mode === "email" ? "Enter your email and password" : "Enter your Worker ID and password"}
           </CardDescription>
         </CardHeader>
@@ -162,7 +178,7 @@ export default function LoginPage() {
 
             {/* Identifier */}
             <div className="grid gap-2">
-              <Label htmlFor="identifier">{mode === "email" ? "Email" : "Worker ID"}</Label>
+              <Label htmlFor="identifier" className="text-white">{mode === "email" ? "Email" : "Worker ID"}</Label>
               <Input
                 id="identifier"
                 type={mode === "email" ? "email" : "text"}
@@ -178,13 +194,13 @@ export default function LoginPage() {
             {/* Password */}
             <div className="grid gap-2">
               <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-white">Password</Label>
                 {mode === "email" && (
                   <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
                     <DialogTrigger asChild>
                       <button
                         type="button"
-                        className="ml-auto inline-block text-sm underline hover:text-primary transition-colors"
+                        className="ml-auto inline-block text-sm underline text-white/90 hover:text-white transition-colors"
                       >
                         Forgot password?
                       </button>

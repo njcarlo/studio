@@ -91,6 +91,76 @@ import {
   TooltipTrigger,
 } from "@studio/ui";
 
+const MobileRoomCard = ({
+  room,
+  roomBookings,
+  onBookingClick,
+}: {
+  room: any;
+  roomBookings: any[];
+  onBookingClick: (b: any) => void;
+}) => {
+  const [showDetails, setShowDetails] = React.useState(false);
+
+  return (
+    <div className="rounded-lg border bg-muted/20 overflow-hidden">
+      {/* Room header + Show Details button */}
+      <div className="px-3 py-2 bg-muted/40 border-b flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold truncate">{room.name}</p>
+        {roomBookings.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            className="shrink-0 text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-full transition-colors"
+          >
+            {showDetails ? "Hide" : `Show Details (${roomBookings.length})`}
+          </button>
+        )}
+      </div>
+
+      {/* Content */}
+      {roomBookings.length === 0 ? (
+        <p className="text-xs text-muted-foreground px-3 py-2 italic">No bookings</p>
+      ) : showDetails ? (
+        <div className="divide-y">
+          {roomBookings
+            .sort((a: any, b: any) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime())
+            .map((booking: any) => {
+              const bookingStart = toJsDate(booking.start);
+              const bookingEnd = toJsDate(booking.end);
+              const statusClass =
+                booking.status === "Approved"
+                  ? "bg-green-50 border-l-4 border-l-green-500"
+                  : booking.status.startsWith("Pending")
+                    ? "bg-yellow-50 border-l-4 border-l-yellow-500"
+                    : "bg-red-50 border-l-4 border-l-red-500";
+              return (
+                <div
+                  key={booking.id}
+                  onClick={() => onBookingClick(booking)}
+                  className={`px-3 py-2.5 cursor-pointer ${statusClass}`}
+                >
+                  <p className="text-sm font-semibold">{booking.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {format(bookingStart, "p")} – {format(bookingEnd, "p")}
+                  </p>
+                </div>
+              );
+            })}
+        </div>
+      ) : (
+        /* Collapsed: just show count pill */
+        <div className="px-3 py-2 flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+          <p className="text-xs text-muted-foreground">
+            {roomBookings.length} booking{roomBookings.length > 1 ? "s" : ""} today
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const DayView = ({
   bookings,
   rooms,
@@ -178,41 +248,12 @@ const DayView = ({
                   {areaRooms.map((room) => {
                     const roomBookings = dayBookings.filter((b) => b.roomId === room.id);
                     return (
-                      <div key={room.id} className="rounded-lg border bg-muted/20 overflow-hidden">
-                        <div className="px-3 py-2 bg-muted/40 border-b">
-                          <p className="text-sm font-semibold">{room.name}</p>
-                        </div>
-                        {roomBookings.length === 0 ? (
-                          <p className="text-xs text-muted-foreground px-3 py-2 italic">No bookings</p>
-                        ) : (
-                          <div className="divide-y">
-                            {roomBookings
-                              .sort((a, b) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime())
-                              .map((booking) => {
-                                const bookingStart = toJsDate(booking.start);
-                                const bookingEnd = toJsDate(booking.end);
-                                const statusClass =
-                                  booking.status === "Approved"
-                                    ? "bg-green-50 border-l-4 border-l-green-500"
-                                    : booking.status.startsWith("Pending")
-                                      ? "bg-yellow-50 border-l-4 border-l-yellow-500"
-                                      : "bg-red-50 border-l-4 border-l-red-500";
-                                return (
-                                  <div
-                                    key={booking.id}
-                                    onClick={() => onBookingClick(booking)}
-                                    className={`px-3 py-2 cursor-pointer ${statusClass}`}
-                                  >
-                                    <p className="text-sm font-semibold">{booking.title}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {format(bookingStart, "p")} – {format(bookingEnd, "p")}
-                                    </p>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        )}
-                      </div>
+                      <MobileRoomCard
+                        key={room.id}
+                        room={room}
+                        roomBookings={roomBookings}
+                        onBookingClick={onBookingClick}
+                      />
                     );
                   })}
                 </div>

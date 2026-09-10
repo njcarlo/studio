@@ -264,7 +264,74 @@ export default function MasterviewPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto flex-grow">
+              {/* ── MOBILE CARD LIST (hidden on lg+) ── */}
+              <div className="flex flex-col divide-y divide-gray-100 dark:divide-border lg:hidden flex-grow">
+                {paginatedBookings.map((booking) => {
+                  const room = rooms?.find((r) => r.id === booking.roomId);
+                  const area = areas?.find(
+                    (a) => a.id === room?.areaId || a.areaId === room?.areaId
+                  );
+                  const startTime = toJsDate(booking.start);
+                  const endTime = toJsDate(booking.end);
+                  const hasEquipment = booking.equipment_TV || booking.equipment_Mic || booking.equipment_Speakers;
+                  const hasRequestedElements = booking.requestedElements && booking.requestedElements.length > 0;
+
+                  return (
+                    <div
+                      key={booking.id}
+                      className="p-4 hover:bg-gray-50/60 dark:hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          {/* Title */}
+                          <p className="font-bold text-sm text-gray-800 dark:text-gray-100 leading-snug truncate">
+                            {booking.title}
+                          </p>
+                          {/* Venue */}
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            📍 {room?.name || "Unassigned"} · {area?.name || "First Floor"}
+                          </p>
+                          {/* Date & Time */}
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            📅 {format(startTime, "MMM d, yyyy")} · {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                          </p>
+                          {/* Requirements */}
+                          {(hasRequestedElements || hasEquipment) && (
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {hasRequestedElements
+                                ? booking.requestedElements.map((elId: string) => {
+                                    const el = venueElements?.find((v) => v.id === elId);
+                                    return (
+                                      <Badge key={elId} variant="outline" className="text-[9px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 rounded-md">
+                                        {el ? el.name : elId}
+                                      </Badge>
+                                    );
+                                  })
+                                : <>
+                                    {booking.equipment_TV && <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 rounded-md">TV</Badge>}
+                                    {booking.equipment_Mic && <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 rounded-md">Mic</Badge>}
+                                    {booking.equipment_Speakers && <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 rounded-md">Audio</Badge>}
+                                  </>
+                              }
+                            </div>
+                          )}
+                        </div>
+                        {/* Info button */}
+                        <button
+                          type="button"
+                          onClick={() => handleBookingClick(booking)}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-muted shrink-0"
+                        >
+                          <Info className="h-4 w-4 stroke-[1.75]" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── DESKTOP TABLE (hidden on mobile) ── */}
+              <div className="hidden lg:block overflow-x-auto flex-grow">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-[#F8F9FA] dark:bg-muted/40 hover:bg-[#F8F9FA] border-b border-gray-200 dark:border-border">
@@ -413,7 +480,8 @@ export default function MasterviewPage() {
                   </TableBody>
                 </Table>
               </div>
-
+              {/* end desktop table */}
+              
               {/* Pagination Footer */}
               <div className="mt-auto p-4 px-8 border-t border-gray-100 dark:border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="text-xs text-gray-500 dark:text-gray-400">

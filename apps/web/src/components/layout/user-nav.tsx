@@ -111,11 +111,11 @@ export function UserNav() {
           className="flex items-center gap-2 p-1 sm:px-2 rounded-lg hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none"
         >
           {/* Avatar circle */}
-          <div className="h-7.5 w-7.5 sm:h-8 sm:w-8 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white font-bold flex items-center justify-center text-xs shadow-sm shrink-0">
+          <div className="h-8 w-8 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white font-bold flex items-center justify-center text-sm shadow-sm shrink-0 ring-2 ring-indigo-300/50">
             {initial}
           </div>
 
-          {/* User info */}
+          {/* User info - hidden on mobile, shown on sm+ */}
           <div className="hidden sm:flex flex-col text-left">
             <span className="text-xs sm:text-[13px] font-bold text-foreground leading-tight">
               {displayName}
