@@ -180,6 +180,14 @@ const allNavItems: NavItem[] = [
     icon: Package,
     label: "Inventory",
     permissionKey: "canAccessInventory",
+    subItems: [
+      { href: "/inventory?tab=items", label: "Items & Catalog" },
+      { href: "/inventory?tab=borrowings", label: "Borrowings" },
+      { href: "/inventory?tab=logs", label: "Stock Logs" },
+      { href: "/inventory?tab=categories", label: "Categories" },
+      { href: "/inventory?tab=reports", label: "Reports & Analytics" },
+      { href: "/inventory?tab=settings", label: "Settings & Checklists" },
+    ],
   },
   {
     href: "/settings",
@@ -244,10 +252,14 @@ export function Nav({
   /** Check if a given href is the active route */
   const isActiveHref = (href: string) => {
     if (href.includes("?")) {
-      // For hrefs with query params, compare the full URL
+      if (href === "/inventory?tab=items" && pathname === "/inventory" && !searchParams.get("tab")) {
+        return true;
+      }
+      if (href === "/c2s?tab=devotions" && pathname === "/c2s" && !searchParams.get("tab")) {
+        return true;
+      }
       return currentUrl === href;
     }
-    // For plain paths, compare pathname only
     return pathname === href;
   };
 
