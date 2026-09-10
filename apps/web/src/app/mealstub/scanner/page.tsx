@@ -206,7 +206,7 @@ export default function QRScannerPage() {
                     <CardContent>
                         <form onSubmit={(e) => {
                             e.preventDefault();
-                            if (passwordInput === 'c0g4@sm4!!!') setIsAuthenticated(true);
+                            if (passwordInput === 'CogMain123') setIsAuthenticated(true);
                             else toast({ variant: 'destructive', title: 'Invalid Password' });
                         }} className="flex flex-col gap-4">
                             <input type="password" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
