@@ -474,8 +474,38 @@ function MealsPageContent() {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          {/* In-page Tab Navigation for Mobile & Fast Switching */}
+          <div className="overflow-x-auto no-scrollbar pb-1">
+            <TabsList className="h-10 p-1 bg-muted/60 dark:bg-muted/30 rounded-xl inline-flex w-full sm:w-auto min-w-max border border-border/50">
+              <TabsTrigger
+                value="view"
+                className="rounded-lg text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs flex items-center gap-1.5"
+              >
+                <QrCode className="h-3.5 w-3.5" />
+                <span>View Meal Stub</span>
+              </TabsTrigger>
+              {(isMealStubAssigner || canManageAllMealStubs || isMinistryHead) && (
+                <TabsTrigger
+                  value="assign"
+                  className="rounded-lg text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs flex items-center gap-1.5"
+                >
+                  <Ticket className="h-3.5 w-3.5" />
+                  <span>Assign Meal Stub</span>
+                </TabsTrigger>
+              )}
+              {(isMealStubAssigner || canManageAllMealStubs || isMinistryHead) && (
+                <TabsTrigger
+                  value="reports"
+                  className="rounded-lg text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs flex items-center gap-1.5"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  <span>Reports</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
 
-          <TabsContent value="view" className="space-y-6">
+          <TabsContent value="view" className="space-y-6 mt-0">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Column: Personal Meal Stub QR Card */}
               <div className="lg:col-span-5 bg-white dark:bg-card rounded-2xl border border-gray-200/90 dark:border-border p-6 shadow-xs flex flex-col justify-between min-h-[520px]">

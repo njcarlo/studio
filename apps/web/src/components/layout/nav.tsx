@@ -136,11 +136,11 @@ const allNavItems: NavItem[] = [
     subItems: [
       {
         href: "/c2s?tab=overview",
-        label: "Admin Overview",
+        label: "Overview",
         permissionKey: "isSuperAdmin",
       },
       { href: "/c2s?tab=devotions", label: "Devotions" },
-      { href: "/c2s?tab=groups", label: "Groups & Mentees" },
+      { href: "/c2s?tab=mentees", label: "Mentees" },
       { href: "/c2s?tab=analytics", label: "Analytics" },
     ],
   },
@@ -180,6 +180,14 @@ const allNavItems: NavItem[] = [
     icon: Package,
     label: "Inventory",
     permissionKey: "canAccessInventory",
+    subItems: [
+      { href: "/inventory?tab=items", label: "Items & Catalog" },
+      { href: "/inventory?tab=borrowings", label: "Borrowings" },
+      { href: "/inventory?tab=logs", label: "Stock Logs" },
+      { href: "/inventory?tab=categories", label: "Categories" },
+      { href: "/inventory?tab=reports", label: "Reports & Analytics" },
+      { href: "/inventory?tab=settings", label: "Settings & Checklists" },
+    ],
   },
   {
     href: "/settings",
@@ -244,10 +252,14 @@ export function Nav({
   /** Check if a given href is the active route */
   const isActiveHref = (href: string) => {
     if (href.includes("?")) {
-      // For hrefs with query params, compare the full URL
+      if (href === "/inventory?tab=items" && pathname === "/inventory" && !searchParams.get("tab")) {
+        return true;
+      }
+      if (href === "/c2s?tab=devotions" && pathname === "/c2s" && !searchParams.get("tab")) {
+        return true;
+      }
       return currentUrl === href;
     }
-    // For plain paths, compare pathname only
     return pathname === href;
   };
 
@@ -294,8 +306,14 @@ export function Nav({
     return hasAccess(item.permissionKey);
   });
 
-  const { state: sidebarState } = useSidebar();
+  const { state: sidebarState, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
+
+  const handleNavClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <nav className={cn("flex flex-col", className)}>
@@ -320,13 +338,13 @@ export function Nav({
                   tooltip={{ children: item.label }}
                 >
                   {isExternal ? (
-                    <a href={item.href} target="_blank" rel="noopener noreferrer">
+                    <a href={item.href} target="_blank" rel="noopener noreferrer" onClick={handleNavClick}>
                       <item.icon className="size-4" />
                       <span>{item.label}</span>
                       <ExternalLink className="size-3 ml-auto opacity-50" />
                     </a>
                   ) : (
-                    <Link href={item.href}>
+                    <Link href={item.href} onClick={handleNavClick}>
                       <item.icon className="size-4" />
                       <span>{item.label}</span>
                     </Link>
@@ -360,7 +378,7 @@ export function Nav({
                         hasAccess("canManageMinistries") ||
                         hasAccess("canManageFacilities")) && (
                         <DropdownMenuItem asChild>
-                          <Link href={item.href}>General</Link>
+                          <Link href={item.href} onClick={handleNavClick}>General</Link>
                         </DropdownMenuItem>
                       )}
 
@@ -379,8 +397,8 @@ export function Nav({
                             <DropdownMenuPortal>
                               <DropdownMenuSubContent>
                                 {visibleNestedItems.map((nested) => (
-                                  <DropdownMenuItem key={nested.href} asChild>
-                                    <Link href={nested.href}>
+                                   <DropdownMenuItem key={nested.href} asChild>
+                                    <Link href={nested.href} onClick={handleNavClick}>
                                       {nested.label}
                                     </Link>
                                   </DropdownMenuItem>
@@ -396,7 +414,7 @@ export function Nav({
                           key={subItem.href + subItem.label}
                           asChild
                         >
-                          <Link href={subItem.href}>{subItem.label}</Link>
+                          <Link href={subItem.href} onClick={handleNavClick}>{subItem.label}</Link>
                         </DropdownMenuItem>
                       );
                     })}
@@ -438,7 +456,7 @@ export function Nav({
                             asChild
                             isActive={isActiveHref(item.href)}
                           >
-                            <Link href={item.href}>
+                            <Link href={item.href} onClick={handleNavClick}>
                               <span>General</span>
                             </Link>
                           </SidebarMenuSubButton>
@@ -478,7 +496,7 @@ export function Nav({
                                         asChild
                                         isActive={isActiveHref(nested.href)}
                                       >
-                                        <Link href={nested.href}>
+                                        <Link href={nested.href} onClick={handleNavClick}>
                                           <span>{nested.label}</span>
                                         </Link>
                                       </SidebarMenuSubButton>
@@ -497,7 +515,7 @@ export function Nav({
                             asChild
                             isActive={isActiveHref(subItem.href)}
                           >
-                            <Link href={subItem.href}>
+                            <Link href={subItem.href} onClick={handleNavClick}>
                               <span>{subItem.label}</span>
                             </Link>
                           </SidebarMenuSubButton>

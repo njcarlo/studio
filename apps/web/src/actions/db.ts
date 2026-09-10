@@ -1061,10 +1061,37 @@ export async function createC2SMentee(data: {
     email: string;
     phone: string;
     status: string;
-    groupId: string;
+    groupId?: string;
     mentorId: string;
 }) {
-    const mentee = await prisma.c2SMentee.create({ data });
+    let finalGroupId = data.groupId;
+    if (!finalGroupId) {
+        let group = await prisma.c2SGroup.findFirst({
+            where: { mentorId: data.mentorId },
+        });
+        if (!group) {
+            group = await prisma.c2SGroup.create({
+                data: {
+                    name: "Default Group",
+                    mentorId: data.mentorId,
+                    menteeIds: [],
+                },
+            });
+        }
+        finalGroupId = group.id;
+    }
+
+    const mentee = await prisma.c2SMentee.create({
+        data: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            phone: data.phone,
+            status: data.status,
+            groupId: finalGroupId,
+            mentorId: data.mentorId,
+        },
+    });
     revalidatePath('/c2s');
     return mentee;
 }
