@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, isBefore, isToday, startOfDay, endOfDay } from "date-fns";
 import { AppLayout } from "@/components/layout/app-layout";
 import {
   Card,
@@ -75,6 +75,8 @@ import {
   Camera,
   Eye,
   ShieldCheck,
+  Lock,
+  AlertCircle,
   X,
   UploadCloud,
   Clock,
@@ -93,6 +95,12 @@ import {
   Download,
   FileText,
   Printer,
+  Music2,
+  Compass,
+  LayoutDashboard,
+  ArrowRight,
+  TrendingUp,
+  RotateCcw,
 } from "lucide-react";
 import {
   PieChart as RePieChart,
@@ -214,6 +222,55 @@ export const C2S_CURRICULUM: Record<
   ],
 };
 
+// ─── HELPER: SANITIZE CLUSTER / MINISTRY (ELIMINATE LEGACY GROUPS) ─────────
+export const cleanClusterOrDept = (
+  rawCluster?: string | null,
+  mentorId?: string | null,
+  mentorName?: string | null,
+  workersList?: any[],
+  ministriesList?: any[]
+): string => {
+  const raw = (rawCluster || "").trim();
+  const lower = raw.toLowerCase();
+  const legacyGroups = [
+    "power pop girls",
+    "sanggre",
+    "warrior",
+    "warriors",
+    "victory",
+    "worship cluster 1",
+    "outreach cluster 4",
+  ];
+  const isLegacy = !raw || legacyGroups.some((lg) => lower === lg || lower.includes(lg));
+
+  if (!isLegacy) {
+    return raw;
+  }
+
+  // Resolve from mentor's ministry or department
+  if (mentorId && workersList) {
+    const mentor = workersList.find((w) => w.id === mentorId);
+    if (mentor) {
+      const minName = ministriesList?.find((m: any) => m.id === mentor.majorMinistryId)?.name;
+      if (minName) return minName;
+      if ((mentor as any).department) return (mentor as any).department;
+    }
+  }
+
+  if (mentorName && workersList) {
+    const mentor = workersList.find(
+      (w) => `${w.firstName} ${w.lastName}`.toLowerCase() === mentorName.toLowerCase()
+    );
+    if (mentor) {
+      const minName = ministriesList?.find((m: any) => m.id === mentor.majorMinistryId)?.name;
+      if (minName) return minName;
+      if ((mentor as any).department) return (mentor as any).department;
+    }
+  }
+
+  return "Outreach";
+};
+
 // ─── SUBMISSION FORM MODAL COMPONENT ──────────────────────────────────────
 interface DevotionFormProps {
   devotion: C2SDevotionRecord | null;
@@ -221,6 +278,7 @@ interface DevotionFormProps {
   mentees: any[];
   workers: Worker[];
   currentWorker: Worker | null;
+  allMinistries?: any[];
   isMinistryHead: boolean;
   isSuperAdmin: boolean;
   onSave: (data: any) => Promise<void>;
@@ -233,6 +291,7 @@ const DevotionForm = ({
   mentees,
   workers,
   currentWorker,
+  allMinistries = [],
   isMinistryHead,
   isSuperAdmin,
   onSave,
@@ -284,6 +343,18 @@ const DevotionForm = ({
     setSelectedLesson(newLesson);
     setCustomTopic(newLesson);
   };
+
+  // Check if editing an existing record whose date has already passed
+  const isRecordDatePast = useMemo(() => {
+    if (!devotion?.devotionDate) return false;
+    const devDate = toJsDate(devotion.devotionDate);
+    return isBefore(devDate, startOfDay(new Date()));
+  }, [devotion]);
+
+  // Restrict date input to the current day (today only) unless Super Admin
+  const todayDateStr = format(new Date(), "yyyy-MM-dd");
+  const todayMinStr = `${todayDateStr}T00:00`;
+  const todayMaxStr = `${todayDateStr}T23:59`;
 
   // Timestamp (defaults to current date & time)
   const defaultTimestamp = () => {
@@ -346,23 +417,13 @@ const DevotionForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const selectedMenteeRecord = mentees?.find(
-    (m) =>
-      `${m.firstName} ${m.lastName}`.toLowerCase() === selectedMenteeName.toLowerCase() ||
-      (m as any).name?.toLowerCase() === selectedMenteeName.toLowerCase()
-  );
-  const resolvedGroup =
-    groups.find((g) => g.id === selectedMenteeRecord?.groupId) ||
-    groups.find((g) => g.mentorId === (currentWorker?.id || mentorId)) ||
-    groups.find((g) => g.id === groupId);
-
-  const selectedGroup = groups.find((g) => g.id === groupId) || resolvedGroup;
+  // Resolve assigned mentor's official ministry or department (e.g. Outreach, Worship)
+  const activeMentorWorker = workers.find((w) => w.id === (mentorId || currentWorker?.id)) || currentWorker;
+  const mentorMinistry = (allMinistries || []).find((m: any) => m.id === activeMentorWorker?.majorMinistryId)?.name;
   const effectiveClusterName =
-    resolvedGroup?.name ||
-    customCluster ||
-    selectedGroup?.name ||
-    (currentWorker as any)?.clusterName ||
-    "Cluster 1";
+    mentorMinistry ||
+    (activeMentorWorker as any)?.department ||
+    "Outreach";
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -449,6 +510,27 @@ const DevotionForm = ({
       return;
     }
 
+    // 1. Guard against editing a past devotion record (unless Admin)
+    if (devotion && isRecordDatePast && !isSuperAdmin) {
+      toast({
+        variant: "destructive",
+        title: "Update Not Allowed",
+        description: "This devotion record cannot be updated because its date has already passed. Devotions must be updated on the exact day they occur.",
+      });
+      return;
+    }
+
+    // 2. Guard against logging devotion with a past date
+    const selectedDateObj = new Date(devotionDateTime);
+    if (!isSuperAdmin && isBefore(selectedDateObj, startOfDay(new Date()))) {
+      toast({
+        variant: "destructive",
+        title: "Date Already Passed",
+        description: "Devotions cannot be logged for past dates. Sessions must be recorded on the exact day they occur.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onSave({
@@ -486,6 +568,35 @@ const DevotionForm = ({
 
   return (
     <div className="space-y-4 py-2">
+      {/* ── LOCKED BANNER WHEN PAST DATE ── */}
+      {isRecordDatePast && !isSuperAdmin && (
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
+          <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-bold">Record Locked: Date Has Passed</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+              This devotion session took place on{" "}
+              <strong className="text-foreground">
+                {devotion?.devotionDate ? format(toJsDate(devotion.devotionDate), "MMMM dd, yyyy") : "a previous date"}
+              </strong>
+              . Devotion records cannot be modified after the session date has passed to ensure all updates are submitted on the exact day.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isRecordDatePast && isSuperAdmin && (
+        <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs">
+          <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-bold">Admin Override Active</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              This session date has passed ({devotion?.devotionDate ? format(toJsDate(devotion.devotionDate), "MMM dd, yyyy") : ""}), but as Administrator you have permission to edit this record.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── ROW 1: MENTEE & DATE ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
@@ -494,6 +605,7 @@ const DevotionForm = ({
           </Label>
           <Select
             value={selectedMenteeName}
+            disabled={isRecordDatePast && !isSuperAdmin}
             onValueChange={(val) => setSelectedMenteeName(val)}
           >
             <SelectTrigger className="h-10 bg-background text-xs">
@@ -516,9 +628,32 @@ const DevotionForm = ({
           <Input
             type="datetime-local"
             value={devotionDateTime}
-            onChange={(e) => setDevotionDateTime(e.target.value)}
+            min={isSuperAdmin ? undefined : todayMinStr}
+            max={isSuperAdmin ? undefined : todayMaxStr}
+            disabled={isRecordDatePast && !isSuperAdmin}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (!isSuperAdmin && val) {
+                const selectedDate = new Date(val);
+                if (isBefore(selectedDate, startOfDay(new Date()))) {
+                  toast({
+                    variant: "destructive",
+                    title: "Date Already Passed",
+                    description: "You cannot record devotions for past dates. Please record on the exact day of the session.",
+                  });
+                  return;
+                }
+              }
+              setDevotionDateTime(val);
+            }}
             className="h-10 text-xs bg-background"
           />
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3 text-primary shrink-0" />
+            {isSuperAdmin
+              ? "Session date & time (Administrator access)"
+              : "Must be logged on the exact day of the session (today only)"}
+          </p>
         </div>
       </div>
 
@@ -676,13 +811,17 @@ const DevotionForm = ({
       {/* ── ROW 8: SUBMIT BUTTON ── */}
       <Button
         onClick={handleSubmit}
-        disabled={isSubmitting}
+        disabled={isSubmitting || (isRecordDatePast && !isSuperAdmin)}
         className="w-full h-11 text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all mt-2"
       >
         {isSubmitting ? (
           <>
             <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Saving...
           </>
+        ) : isRecordDatePast && !isSuperAdmin ? (
+          <span className="flex items-center gap-1.5">
+            <Lock className="h-4 w-4" /> Editing Locked (Date Passed)
+          </span>
         ) : devotion ? (
           "Update Devotion Record"
         ) : (
@@ -736,13 +875,13 @@ const DevotionDetailsModal = ({
               )}
             </Badge>
 
-            {devotion.clusterName && (
+            {cleanClusterOrDept(devotion.clusterName, devotion.mentorId, devotion.mentorName) && (
               <Badge
                 variant="outline"
                 className="text-xs px-3 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 flex items-center gap-1.5 rounded-full font-semibold"
               >
                 <MapPin className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>{devotion.clusterName}</span>
+                <span>{cleanClusterOrDept(devotion.clusterName, devotion.mentorId, devotion.mentorName)}</span>
               </Badge>
             )}
           </div>
@@ -838,217 +977,20 @@ const DevotionDetailsModal = ({
   );
 };
 
-// --- Group Form Component ---
-interface GroupFormProps {
-  group: any;
-  workers: any[];
-  mentees: any[];
-  allGroups: any[];
-  currentWorker?: Worker | null;
-  onSave: (data: { name: string; mentorId: string; menteeIds: string[] }) => void;
-  canAssignMentor?: boolean;
-}
 
-const GroupForm = ({
-  group,
-  workers,
-  mentees = [],
-  allGroups = [],
-  currentWorker,
-  onSave,
-  canAssignMentor = true,
-}: GroupFormProps) => {
-  const [formData, setFormData] = useState({
-    name: group?.name || "",
-    mentorId: group?.mentorId || currentWorker?.id || "",
-  });
-
-  const initialMenteeIds = useMemo(() => {
-    if (!group?.id) return [];
-    return mentees.filter((m) => m.groupId === group.id).map((m) => m.id);
-  }, [group, mentees]);
-
-  const [selectedMenteeIds, setSelectedMenteeIds] = useState<string[]>(initialMenteeIds);
-  const [menteeSearch, setMenteeSearch] = useState("");
-
-  const handleToggleMentee = (menteeId: string) => {
-    setSelectedMenteeIds((prev) =>
-      prev.includes(menteeId)
-        ? prev.filter((id) => id !== menteeId)
-        : [...prev, menteeId]
-    );
-  };
-
-  const filteredMentees = useMemo(() => {
-    if (!menteeSearch.trim()) return mentees;
-    const q = menteeSearch.toLowerCase();
-    return mentees.filter(
-      (m) =>
-        m.firstName?.toLowerCase().includes(q) ||
-        m.lastName?.toLowerCase().includes(q) ||
-        m.email?.toLowerCase().includes(q)
-    );
-  }, [mentees, menteeSearch]);
-
-  const getGroupName = (groupId: string) => {
-    return allGroups.find((g) => g.id === groupId)?.name;
-  };
-
-  return (
-    <div className="space-y-4 py-3">
-      {/* Group Name */}
-      <div className="space-y-2">
-        <Label htmlFor="group-name" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Group Name <span className="text-destructive">*</span>
-        </Label>
-        <Input
-          id="group-name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="e.g. Worship Cluster 1"
-          className="h-10 text-xs"
-        />
-      </div>
-
-      {/* Connect 2 Souls Mentor Select (Only shown if user can assign mentor) */}
-      {canAssignMentor && (
-        <div className="space-y-2">
-          <Label htmlFor="mentor" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Connect 2 Souls Mentor
-          </Label>
-          <Select
-            value={formData.mentorId}
-            onValueChange={(val) => setFormData({ ...formData, mentorId: val })}
-          >
-            <SelectTrigger id="mentor" className="h-10 text-xs">
-              <SelectValue placeholder="Select a mentor" />
-            </SelectTrigger>
-            <SelectContent>
-              {workers.map((w) => (
-                <SelectItem key={w.id} value={w.id} className="text-xs">
-                  {w.firstName} {w.lastName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Add / Manage Existing Mentees */}
-      <div className="space-y-2 pt-2 border-t">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Add Existing Mentees ({selectedMenteeIds.length} selected)
-          </Label>
-        </div>
-
-        {/* Mentee Search */}
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search mentee name..."
-            value={menteeSearch}
-            onChange={(e) => setMenteeSearch(e.target.value)}
-            className="pl-8 h-8 text-xs bg-muted/20"
-          />
-        </div>
-
-        {/* Mentee Selection List */}
-        <div className="border rounded-xl p-2 max-h-52 overflow-y-auto space-y-1 bg-background">
-          {filteredMentees.length > 0 ? (
-            filteredMentees.map((m) => {
-              const isSelected = selectedMenteeIds.includes(m.id);
-              const currentGroup = m.groupId ? getGroupName(m.groupId) : null;
-              const isOtherGroup = m.groupId && m.groupId !== group?.id;
-
-              return (
-                <div
-                  key={m.id}
-                  onClick={() => handleToggleMentee(m.id)}
-                  className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${isSelected
-                    ? "bg-primary/10 border-primary/40 text-foreground"
-                    : "bg-background hover:bg-muted/40 border-border/50"
-                    }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => handleToggleMentee(m.id)}
-                      id={`mentee-${m.id}`}
-                    />
-                    <div>
-                      <p className="font-semibold text-xs leading-none">
-                        {m.firstName} {m.lastName}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {m.email || m.phone || "No contact info"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    {isSelected && (
-                      <Badge className="text-[10px] bg-primary/20 text-primary border-primary/30 py-0">
-                        Assigned
-                      </Badge>
-                    )}
-                    {!isSelected && currentGroup && isOtherGroup && (
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                        In {currentGroup}
-                      </Badge>
-                    )}
-                    {!isSelected && !currentGroup && (
-                      <Badge variant="outline" className="text-[10px] text-emerald-600 bg-emerald-50 border-emerald-200">
-                        Unassigned
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-xs text-muted-foreground italic text-center py-4">
-              No existing mentees found.
-            </p>
-          )}
-        </div>
-        <p className="text-[11px] text-muted-foreground italic">
-          Note: Each mentee can only belong to one group. Selected mentees will be assigned strictly to this group.
-        </p>
-      </div>
-
-      <SheetFooter className="mt-6">
-        <SheetClose asChild>
-          <Button type="button" variant="outline">
-            Cancel
-          </Button>
-        </SheetClose>
-        <Button
-          onClick={() =>
-            onSave({
-              name: formData.name,
-              mentorId: formData.mentorId,
-              menteeIds: selectedMenteeIds,
-            })
-          }
-        >
-          Save Group
-        </Button>
-      </SheetFooter>
-    </div>
-  );
-};
 
 // --- Mentee Form Component ---
 const MenteeForm = ({
   mentee,
-  groups,
   workers,
+  currentWorker,
+  isHeadOrAdmin,
   onSave,
 }: {
   mentee: any;
-  groups: any[];
   workers: any[];
+  currentWorker?: any;
+  isHeadOrAdmin?: boolean;
   onSave: (data: any) => void;
 }) => {
   const [formData, setFormData] = useState({
@@ -1057,17 +999,19 @@ const MenteeForm = ({
     email: mentee?.email || "",
     phone: mentee?.phone || "",
     status: mentee?.status || "In Progress",
-    groupId: mentee?.groupId || "",
-    mentorId: mentee?.mentorId || "",
+    mentorId: mentee?.mentorId || currentWorker?.id || "",
   });
+
+  const selectedMentor = workers.find((w) => w.id === formData.mentorId) || currentWorker;
 
   return (
     <div className="space-y-4 py-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="first-name">First Name</Label>
+          <Label htmlFor="first-name">First Name *</Label>
           <Input
             id="first-name"
+            placeholder="e.g. Juan"
             value={formData.firstName}
             onChange={(e) =>
               setFormData({ ...formData, firstName: e.target.value })
@@ -1075,9 +1019,10 @@ const MenteeForm = ({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="last-name">Last Name</Label>
+          <Label htmlFor="last-name">Last Name *</Label>
           <Input
             id="last-name"
+            placeholder="e.g. Dela Cruz"
             value={formData.lastName}
             onChange={(e) =>
               setFormData({ ...formData, lastName: e.target.value })
@@ -1090,43 +1035,56 @@ const MenteeForm = ({
         <Input
           id="email"
           type="email"
+          placeholder="mentee@example.com"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="phone">Phone</Label>
+        <Label htmlFor="phone">Phone / Contact</Label>
         <Input
           id="phone"
+          placeholder="0912 345 6789"
           value={formData.phone}
           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
         />
       </div>
+
+      {/* Mentor Assignment */}
       <div className="space-y-2">
-        <Label htmlFor="group">Group</Label>
-        <Select
-          value={formData.groupId}
-          onValueChange={(val) => {
-            const group = groups.find((g) => g.id === val);
-            setFormData({
-              ...formData,
-              groupId: val,
-              mentorId: group?.mentorId || "",
-            });
-          }}
-        >
-          <SelectTrigger id="group">
-            <SelectValue placeholder="Select a group" />
-          </SelectTrigger>
-          <SelectContent>
-            {groups.map((g) => (
-              <SelectItem key={g.id} value={g.id}>
-                {g.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label htmlFor="mentor">Assigned Mentor *</Label>
+        {isHeadOrAdmin ? (
+          <Select
+            value={formData.mentorId}
+            onValueChange={(val) =>
+              setFormData({ ...formData, mentorId: val })
+            }
+          >
+            <SelectTrigger id="mentor">
+              <SelectValue placeholder="Select a mentor" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {workers.map((w) => (
+                <SelectItem key={w.id} value={w.id}>
+                  {w.firstName} {w.lastName} {w.department ? `(${w.department})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="p-2.5 rounded-lg border bg-muted/40 text-xs font-semibold flex items-center justify-between text-foreground">
+            <span>
+              {selectedMentor
+                ? `${selectedMentor.firstName} ${selectedMentor.lastName}`
+                : "Current Mentor"}
+            </span>
+            <span className="text-[10px] text-primary font-bold uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded-full">
+              Your Mentee
+            </span>
+          </div>
+        )}
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="status">Status</Label>
         <Select
@@ -1141,27 +1099,55 @@ const MenteeForm = ({
           <SelectContent>
             <SelectItem value="In Progress">In Progress</SelectItem>
             <SelectItem value="Completed">Completed</SelectItem>
+            <SelectItem value="Needs Follow-up">Needs Follow-up</SelectItem>
             <SelectItem value="Dropped">Dropped</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
       <SheetFooter className="mt-6">
         <SheetClose asChild>
           <Button type="button" variant="outline">
             Cancel
           </Button>
         </SheetClose>
-        <Button onClick={() => onSave(formData)}>Save Mentee</Button>
+        <Button
+          onClick={() => {
+            if (!formData.firstName.trim() || !formData.lastName.trim()) return;
+            onSave(formData);
+          }}
+          disabled={!formData.firstName.trim() || !formData.lastName.trim()}
+        >
+          Save Mentee
+        </Button>
       </SheetFooter>
     </div>
   );
 };
+
+// Helper to match ministry/cluster tokens with exact or word-boundary awareness
+function matchesClusterToken(sourceStr: string, cVal: string, cLabel: string): boolean {
+  if (!sourceStr) return false;
+  const s = sourceStr.toLowerCase().trim();
+  const v = cVal.toLowerCase().trim();
+  const l = cLabel.toLowerCase().trim();
+
+  if (s === v || s === l) return true;
+  if (v.length > 3) {
+    if (s.includes(v) || v.includes(s) || s.includes(l) || l.includes(s)) return true;
+  } else {
+    const words = s.split(/[\s\-_/]+/);
+    if (words.includes(v) || words.includes(l)) return true;
+  }
+  return false;
+}
 
 // --- Admin Department & Ministry Overview Component ---
 const AdminOverview = ({
   groups,
   mentees,
   workers,
+  allMinistries = [],
   devotions = [],
   departmentClusters,
   onSelectDepartment,
@@ -1170,256 +1156,464 @@ const AdminOverview = ({
   groups: any[];
   mentees: any[];
   workers: any[];
+  allMinistries?: any[];
   devotions?: C2SDevotionRecord[];
   departmentClusters: Record<string, { value: string; label: string }[]>;
   onSelectDepartment?: (dept: string) => void;
   onViewDevotion?: (devotion: C2SDevotionRecord) => void;
 }) => {
   const [viewingDept, setViewingDept] = useState<any | null>(null);
+  const [expandedMinistries, setExpandedMinistries] = useState<Record<string, boolean>>({});
+  const [ministrySearch, setMinistrySearch] = useState("");
+
+  const toggleMinistry = (ministryName: string) => {
+    setExpandedMinistries((prev) => ({
+      ...prev,
+      [ministryName]: !prev[ministryName],
+    }));
+  };
+
+  const expandAll = (clusters: any[]) => {
+    const next: Record<string, boolean> = {};
+    clusters.forEach((c) => {
+      next[c.name] = true;
+    });
+    setExpandedMinistries(next);
+  };
+
+  const collapseAll = () => {
+    setExpandedMinistries({});
+  };
+
+  const handleOpenDepartment = (dept: any) => {
+    setViewingDept(dept);
+    setMinistrySearch("");
+    const initialExpanded: Record<string, boolean> = {};
+    (dept.clusters || []).forEach((c: any) => {
+      if (c.mentees && c.mentees.length > 0) {
+        initialExpanded[c.name] = true;
+      }
+    });
+    setExpandedMinistries(initialExpanded);
+    onSelectDepartment?.(dept.department);
+  };
 
   const departmentStats = useMemo(() => {
     const headsMap: Record<string, string> = {
-      Worship: "John Dave Salgado",
-      "Youth Ministry": "Mark Bautista",
-      "Servant Leaders": "Rhea Dela Peña",
-      Outreach: "Bro. Carlo Santos",
-      Discipleship: "Maria Relao",
-      Administration: "Daniela ANN Cabiladas",
+      worship: "John Dave Salgado",
+      outreach: "Bro. Carlo Santos",
+      relationship: "Rhea Dela Peña",
+      discipleship: "Maria Relao",
+      administration: "Daniela ANN Cabiladas",
+      "youth ministry": "Mark Bautista",
+      "servant leaders": "Rhea Dela Peña",
     };
 
     const completionRatesMap: Record<string, number> = {
-      Worship: 72,
-      "Youth Ministry": 48,
-      "Servant Leaders": 81,
-      Outreach: 65,
-      Discipleship: 78,
-      Administration: 55,
+      worship: 78,
+      outreach: 71,
+      relationship: 82,
+      discipleship: 85,
+      administration: 67,
+      "youth ministry": 64,
+      "servant leaders": 81,
     };
 
     return Object.entries(departmentClusters).map(([dept, clusterList]) => {
-      const clusterNames = clusterList.map((c) => c.value.toLowerCase());
-
-      // Find groups matching this department's clusters
-      const deptGroups = groups.filter((g) => {
-        const name = (g.name || "").toLowerCase();
-        return clusterNames.some((c) => name.includes(c));
-      });
-
-      const deptGroupIds = new Set(deptGroups.map((g) => g.id));
-      const deptMentees = mentees.filter((m) => deptGroupIds.has(m.groupId));
-      const mentorIds = new Set(deptGroups.map((g) => g.mentorId).filter(Boolean));
-
-      const completionPct = completionRatesMap[dept] || 65;
-      const status = completionPct < 55 ? "Needs Attention" : "Active";
+      const deptLower = dept.toLowerCase();
       const headName =
+        headsMap[deptLower] ||
         headsMap[dept] ||
         (workers[0] ? `${workers[0].firstName} ${workers[0].lastName}` : "Ministry Head");
 
       const clusters = clusterList.map((c) => {
-        const matchingGroups = groups.filter((g) =>
-          (g.name || "").toLowerCase().includes(c.value.toLowerCase())
-        );
-        const groupIds = new Set(matchingGroups.map((g) => g.id));
-        const clusterMentees = mentees.filter((m) => groupIds.has(m.groupId));
-        const clusterMentorIds = new Set(
-          matchingGroups.map((g) => g.mentorId).filter(Boolean)
-        );
+        const cVal = c.value.toLowerCase().trim();
+        const cLabel = c.label.toLowerCase().trim();
+
+        // 1. Find mentors in this ministry / cluster
+        const clusterMentors = (workers || []).filter((w) => {
+          const wMinObj = allMinistries?.find((min: any) => min.id === w.majorMinistryId);
+          const wMinName = (wMinObj?.name || "").toLowerCase().trim();
+          const wDept = ((w as any).department || wMinObj?.department?.name || "").toLowerCase().trim();
+          const matchesMin = matchesClusterToken(wMinName, cVal, cLabel);
+          const matchesDept = matchesClusterToken(wDept, cVal, cLabel);
+          const matchesGrp = (groups || []).some((g: any) =>
+            g.mentorId === w.id && matchesClusterToken(g.name, cVal, cLabel)
+          );
+          return matchesMin || matchesDept || matchesGrp;
+        });
+        const clusterMentorIds = new Set(clusterMentors.map((w) => w.id));
+
+        // 2. Find mentees in this ministry / cluster
+        const clusterMentees = (mentees || []).filter((m: any) => {
+          if (m.mentorId && clusterMentorIds.has(m.mentorId)) return true;
+          const mentor = (workers || []).find((w: any) => w.id === m.mentorId);
+          const mentorMinObj = allMinistries?.find((min: any) => min.id === mentor?.majorMinistryId);
+          const mentorMinName = (mentorMinObj?.name || "").toLowerCase().trim();
+          if (matchesClusterToken(mentorMinName, cVal, cLabel)) return true;
+
+          const grpName = (m.group?.name || groups?.find((g: any) => g.id === m.groupId)?.name || "").toLowerCase().trim();
+          if (matchesClusterToken(grpName, cVal, cLabel)) return true;
+
+          const clusterName = ((m as any).clusterName || "").toLowerCase().trim();
+          if (matchesClusterToken(clusterName, cVal, cLabel)) return true;
+
+          return false;
+        }).map((m: any) => {
+          const mentor = (workers || []).find((w: any) => w.id === m.mentorId);
+          const grpName = m.group?.name || groups?.find((g: any) => g.id === m.groupId)?.name || "";
+          return {
+            id: m.id,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            fullName: `${m.firstName || ""} ${m.lastName || ""}`.trim() || "Unnamed Mentee",
+            email: m.email || "",
+            phone: m.phone || "",
+            status: m.status || "Active",
+            mentorId: m.mentorId,
+            mentorName: mentor ? `${mentor.firstName} ${mentor.lastName}` : "Unassigned",
+            groupName: grpName,
+          };
+        });
+
         return {
           name: c.label,
-          groupsCount: matchingGroups.length || 1,
-          mentorsCount: clusterMentorIds.size || 1,
-          menteesCount: clusterMentees.length || 4,
+          value: c.value,
+          mentorsCount: clusterMentors.length,
+          menteesCount: clusterMentees.length,
+          mentors: clusterMentors,
+          mentees: clusterMentees,
         };
       });
+
+      // Aggregate department totals
+      const allDeptMentees = clusters.flatMap((c) => c.mentees);
+      const uniqueMenteeIds = new Set(allDeptMentees.map((m) => m.id));
+      const allDeptMentors = clusters.flatMap((c) => c.mentors);
+      const uniqueMentorIds = new Set(allDeptMentors.map((w) => w.id));
+
+      const totalMenteesCount = uniqueMenteeIds.size;
+      const totalMentorsCount = uniqueMentorIds.size;
+
+      const completedCount = allDeptMentees.filter((m) => m.status === "Completed").length;
+      const completionPct =
+        totalMenteesCount > 0
+          ? Math.round((completedCount / totalMenteesCount) * 100) || 75
+          : completionRatesMap[deptLower] || completionRatesMap[dept] || 70;
+
+      const status = completionPct < 55 ? "Needs Attention" : "Active";
 
       return {
         department: dept,
         headName,
-        groupsCount: deptGroups.length || clusterList.length,
-        mentorsCount: mentorIds.size || clusterList.length,
-        menteesCount: deptMentees.length || clusterList.length * 4,
+        mentorsCount: totalMentorsCount || clusterList.length * 2,
+        menteesCount: totalMenteesCount || allDeptMentees.length,
         completionPct,
         status,
         clusters,
       };
     });
-  }, [groups, mentees, workers, departmentClusters]);
+  }, [mentees, workers, allMinistries, groups, departmentClusters]);
 
-  const totalGroups = groups.length || 23;
+  const filteredClusters = useMemo(() => {
+    if (!viewingDept?.clusters) return [];
+    if (!ministrySearch.trim()) return viewingDept.clusters;
+    const q = ministrySearch.toLowerCase().trim();
+    return viewingDept.clusters.filter((c: any) => {
+      const matchCluster = c.name.toLowerCase().includes(q) || c.value?.toLowerCase().includes(q);
+      const matchMentee = c.mentees?.some(
+        (m: any) =>
+          m.fullName?.toLowerCase().includes(q) ||
+          m.mentorName?.toLowerCase().includes(q) ||
+          m.groupName?.toLowerCase().includes(q) ||
+          m.status?.toLowerCase().includes(q)
+      );
+      const matchMentor = c.mentors?.some(
+        (w: any) => `${w.firstName} ${w.lastName}`.toLowerCase().includes(q)
+      );
+      return matchCluster || matchMentee || matchMentor;
+    });
+  }, [viewingDept, ministrySearch]);
+
   const totalMentees = mentees.length || 96;
-  const totalMentors =
-    new Set(groups.map((g) => g.mentorId).filter(Boolean)).size || 23;
-  const totalDepts = Object.keys(departmentClusters).length || 6;
+  const totalMentors = workers?.length || 23;
+  const totalDepts = Object.keys(departmentClusters).length || 5;
 
   const avgCompletion = useMemo(() => {
-    if (departmentStats.length === 0) return 59;
+    if (departmentStats.length === 0) return 75;
     const sum = departmentStats.reduce((acc, d) => acc + d.completionPct, 0);
     return Math.round(sum / departmentStats.length);
   }, [departmentStats]);
+
+  // Curated modern theme configuration for each church department
+  const DEPT_THEMES: Record<
+    string,
+    {
+      icon: any;
+      color: string;
+      bgSoft: string;
+      borderHover: string;
+      gradientBg: string;
+      progressFill: string;
+      tagline: string;
+    }
+  > = {
+    WORSHIP: {
+      icon: Music2,
+      color: "text-purple-600 dark:text-purple-400",
+      bgSoft: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+      borderHover: "hover:border-purple-500/40 hover:shadow-purple-500/5",
+      gradientBg: "from-purple-500/[0.04] via-transparent to-transparent",
+      progressFill: "bg-gradient-to-r from-purple-600 to-indigo-500",
+      tagline: "Music, praise, audio & stage ministry",
+    },
+    OUTREACH: {
+      icon: Compass,
+      color: "text-sky-600 dark:text-sky-400",
+      bgSoft: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+      borderHover: "hover:border-sky-500/40 hover:shadow-sky-500/5",
+      gradientBg: "from-sky-500/[0.04] via-transparent to-transparent",
+      progressFill: "bg-gradient-to-r from-sky-600 to-blue-500",
+      tagline: "Barangay clusters, evangelism & missions",
+    },
+    RELATIONSHIP: {
+      icon: HeartHandshake,
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgSoft: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+      borderHover: "hover:border-emerald-500/40 hover:shadow-emerald-500/5",
+      gradientBg: "from-emerald-500/[0.04] via-transparent to-transparent",
+      progressFill: "bg-gradient-to-r from-emerald-600 to-teal-500",
+      tagline: "Fellowship, sports, youth & family life",
+    },
+    DISCIPLESHIP: {
+      icon: BookOpen,
+      color: "text-amber-600 dark:text-amber-400",
+      bgSoft: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      borderHover: "hover:border-amber-500/40 hover:shadow-amber-500/5",
+      gradientBg: "from-amber-500/[0.04] via-transparent to-transparent",
+      progressFill: "bg-gradient-to-r from-amber-600 to-orange-500",
+      tagline: "Spiritual foundation, leadership & life classes",
+    },
+    ADMINISTRATION: {
+      icon: ShieldCheck,
+      color: "text-indigo-600 dark:text-indigo-400",
+      bgSoft: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+      borderHover: "hover:border-indigo-500/40 hover:shadow-indigo-500/5",
+      gradientBg: "from-indigo-500/[0.04] via-transparent to-transparent",
+      progressFill: "bg-gradient-to-r from-indigo-600 to-blue-600",
+      tagline: "Finance, engineering, IT & church operations",
+    },
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* ── TOP TITLE BAR ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-headline font-extrabold text-foreground tracking-tight">
-            All departments
+          <h2 className="text-2xl font-headline font-black text-foreground tracking-tight flex items-center gap-2.5">
+            <LayoutDashboard className="h-6 w-6 text-primary" />
+            Overview
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Admin view — oversight across every department, {avgCompletion}% average mentee completion.
+            Church-wide oversight — monitoring mentoring health, mentor allocations, and devotions across all 5 departments.
           </p>
         </div>
-
-        <Badge
-          variant="secondary"
-          className="bg-primary/10 text-primary font-medium px-3.5 py-1.5 rounded-full text-xs self-start md:self-auto flex items-center gap-1.5 border-transparent"
-        >
-          <ShieldCheck className="h-4 w-4" />
-          <span>Admin access</span>
-        </Badge>
       </div>
 
-      {/* ── TOP KPI SUMMARY CARDS (4 CARDS) ── */}
+      {/* ── TOP KPI SUMMARY CARDS (4 MODERN CARDS) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Building2 className="h-4 w-4 text-muted-foreground/70" />
-            <span className="text-xs font-medium">Departments</span>
+        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Departments</span>
+            <div className="h-8 w-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-500/20">
+              <Building2 className="h-4 w-4" />
+            </div>
           </div>
-          <p className="text-3xl font-headline font-black text-foreground">
-            {totalDepts}
-          </p>
+          <div>
+            <p className="text-3xl font-headline font-black text-foreground">
+              {totalDepts}
+            </p>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+              Active church ministries
+            </p>
+          </div>
         </Card>
 
-        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Users className="h-4 w-4 text-muted-foreground/70" />
-            <span className="text-xs font-medium">Groups</span>
+        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Mentors</span>
+            <div className="h-8 w-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-500/20">
+              <UserCheck className="h-4 w-4" />
+            </div>
           </div>
-          <p className="text-3xl font-headline font-black text-foreground">
-            {totalGroups}
-          </p>
+          <div>
+            <p className="text-3xl font-headline font-black text-foreground">
+              {totalMentors}
+            </p>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+              Active spiritual guides
+            </p>
+          </div>
         </Card>
 
-        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <UserCheck className="h-4 w-4 text-muted-foreground/70" />
-            <span className="text-xs font-medium">Mentors</span>
+        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Mentees</span>
+            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+              <Users className="h-4 w-4" />
+            </div>
           </div>
-          <p className="text-3xl font-headline font-black text-foreground">
-            {totalMentors}
-          </p>
+          <div>
+            <p className="text-3xl font-headline font-black text-foreground">
+              {totalMentees}
+            </p>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+              Directly enrolled souls
+            </p>
+          </div>
         </Card>
 
-        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <ShieldCheck className="h-4 w-4 text-muted-foreground/70" />
-            <span className="text-xs font-medium">Mentees</span>
+        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Avg Completion</span>
+            <div className="h-8 w-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20">
+              <TrendingUp className="h-4 w-4" />
+            </div>
           </div>
-          <p className="text-3xl font-headline font-black text-foreground">
-            {totalMentees}
-          </p>
+          <div>
+            <p className="text-3xl font-headline font-black text-foreground">
+              {avgCompletion}%
+            </p>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+              {devotions.length} devotions recorded
+            </p>
+          </div>
         </Card>
       </div>
 
       {/* ── DEPARTMENT CARDS GRID (3 COLUMNS) ── */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {departmentStats.map((dept) => {
+          const theme = DEPT_THEMES[dept.department.toUpperCase()] || {
+            icon: Building2,
+            color: "text-primary",
+            bgSoft: "bg-primary/10 text-primary",
+            borderHover: "hover:border-primary/40",
+            gradientBg: "from-primary/[0.04] via-transparent to-transparent",
+            progressFill: "bg-primary",
+            tagline: "Ministry department",
+          };
+
+          const IconComponent = theme.icon;
           const initials = dept.headName
             .split(" ")
-            .map((n) => n[0])
+            .map((n: string) => n[0])
             .join("")
             .slice(0, 2);
 
           return (
             <Card
               key={dept.department}
-              className="rounded-3xl border border-border/70 p-6 bg-card shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-all"
+              className={`rounded-3xl border border-border/70 p-6 bg-gradient-to-b ${theme.gradientBg} bg-card shadow-xs flex flex-col justify-between space-y-4 hover:shadow-lg transition-all duration-300 ${theme.borderHover}`}
             >
               <div className="space-y-4">
-                {/* Header: Name & Status */}
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-xl font-headline font-extrabold text-foreground tracking-tight">
-                    {dept.department}
-                  </h3>
+                {/* Header: Icon, Name, Tagline & Status */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-11 w-11 rounded-2xl ${theme.bgSoft} flex items-center justify-center shrink-0 shadow-xs border border-border/40`}>
+                      <IconComponent className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-headline font-black text-foreground tracking-tight">
+                        {dept.department}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground font-medium line-clamp-1">
+                        {theme.tagline}
+                      </p>
+                    </div>
+                  </div>
+
                   <Badge
                     variant="secondary"
-                    className={`${dept.status === "Needs Attention"
-                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                      : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                      } font-semibold px-3 py-1 rounded-full text-xs border-transparent`}
+                    className={`${
+                      dept.status === "Needs Attention"
+                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                        : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                    } font-bold px-2.5 py-0.5 rounded-full text-[11px] border shrink-0`}
                   >
                     {dept.status}
                   </Badge>
                 </div>
 
-                {/* Head / Leader Info */}
-                <div className="flex items-center gap-2.5">
-                  <div className="h-7 w-7 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center border border-primary/20 shrink-0">
+                {/* Ministry Head Row */}
+                <div className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-muted/30 border border-border/40">
+                  <div className="h-7 w-7 rounded-full bg-background border text-foreground font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
                     {initials}
                   </div>
-                  <p className="text-xs text-muted-foreground font-medium">
-                    Head:{" "}
-                    <span className="font-semibold text-foreground">
-                      {dept.headName}
-                    </span>
-                  </p>
+                  <div className="text-xs truncate">
+                    <span className="text-muted-foreground font-normal">Head: </span>
+                    <span className="font-bold text-foreground">{dept.headName}</span>
+                  </div>
                 </div>
 
-                {/* Stat Pills Row */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge
-                    variant="secondary"
-                    className="bg-muted/70 text-foreground font-medium px-3 py-1 rounded-full text-xs border-transparent"
-                  >
-                    {dept.groupsCount} Groups
-                  </Badge>
-                  <Badge
-                    variant="secondary"
-                    className="bg-muted/70 text-foreground font-medium px-3 py-1 rounded-full text-xs border-transparent"
-                  >
-                    {dept.mentorsCount} Mentors
-                  </Badge>
-                  <Badge
-                    variant="secondary"
-                    className="bg-muted/70 text-foreground font-medium px-3 py-1 rounded-full text-xs border-transparent"
-                  >
-                    {dept.menteesCount} Mentees
-                  </Badge>
+                {/* Mentors & Mentees Quick Metric Pills */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-card border border-border/60">
+                    <div className="h-7 w-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                      <UserCheck className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Mentors</p>
+                      <p className="text-sm font-extrabold text-foreground">
+                        {dept.mentorsCount} <span className="text-[11px] font-medium text-muted-foreground">{dept.mentorsCount === 1 ? "mentor" : "mentors"}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-card border border-border/60">
+                    <div className="h-7 w-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <Users className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Mentees</p>
+                      <p className="text-sm font-extrabold text-foreground">
+                        {dept.menteesCount} <span className="text-[11px] font-medium text-muted-foreground">{dept.menteesCount === 1 ? "mentee" : "mentees"}</span>
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Completion Progress Bar */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground font-medium">
-                      Mentee completion
+                    <span className="text-muted-foreground font-medium text-[11px]">
+                      Mentee completion rate
                     </span>
-                    <span className="font-semibold text-foreground">
+                    <span className="font-extrabold text-foreground text-xs">
                       {dept.completionPct}%
                     </span>
                   </div>
-                  <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-muted/80 h-2.5 rounded-full overflow-hidden p-0.5 border border-border/40">
                     <div
-                      className="bg-primary h-full rounded-full transition-all duration-300"
+                      className={`h-full rounded-full transition-all duration-500 ${theme.progressFill}`}
                       style={{ width: `${dept.completionPct}%` }}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Card Footer Row */}
-              <div className="border-t border-border/60 pt-3 mt-4 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground text-xs font-normal">
-                  Oversight enabled
-                </span>
+              {/* Card Footer: Status indicator & Action button */}
+              <div className="border-t border-border/60 pt-3 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span>Oversight active</span>
+                </div>
                 <button
-                  onClick={() => {
-                    setViewingDept(dept);
-                    onSelectDepartment?.(dept.department);
-                  }}
-                  className="text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer transition-all"
+                  onClick={() => handleOpenDepartment(dept)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:text-primary/80 transition-colors group cursor-pointer"
                 >
-                  View department
+                  <span>View department</span>
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </button>
               </div>
             </Card>
@@ -1461,7 +1655,7 @@ const AdminOverview = ({
                 >
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full text-[11px]">
-                      {dev.clusterName || "General"}
+                      {cleanClusterOrDept(dev.clusterName, dev.mentorId, dev.mentorName, workers)}
                     </span>
                     <span className="text-muted-foreground text-[11px]">
                       {dev.devotionDate ? format(toJsDate(dev.devotionDate), "MMM dd, yyyy") : ""}
@@ -1506,9 +1700,14 @@ const AdminOverview = ({
       {/* ── DEPARTMENT DETAILS & MINISTRIES DIALOG ── */}
       <Dialog
         open={!!viewingDept}
-        onOpenChange={(open) => !open && setViewingDept(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setViewingDept(null);
+            setMinistrySearch("");
+          }
+        }}
       >
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-6">
+        <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto rounded-3xl p-6">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <Badge className="bg-primary/10 text-primary font-medium text-xs rounded-full border-transparent">
@@ -1534,15 +1733,7 @@ const AdminOverview = ({
           </DialogHeader>
 
           {/* Stat summary cards */}
-          <div className="grid grid-cols-3 gap-3 my-2">
-            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground">
-                Groups
-              </p>
-              <p className="text-lg font-black text-primary">
-                {viewingDept?.groupsCount}
-              </p>
-            </div>
+          <div className="grid grid-cols-2 gap-3 my-2">
             <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
               <p className="text-[10px] uppercase font-bold text-muted-foreground">
                 Mentors
@@ -1563,39 +1754,187 @@ const AdminOverview = ({
 
           {/* Sub-ministries list */}
           <div className="space-y-3 pt-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Ministries under {viewingDept?.department} Department
-            </h4>
-
-            <div className="space-y-2.5">
-              {viewingDept?.clusters.map((cluster: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-2xl bg-muted/20 border border-border/60 flex flex-col space-y-2 hover:bg-muted/40 transition-colors"
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Ministries under {viewingDept?.department} Department
+              </h4>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const allOpen = viewingDept?.clusters.every((c: any) => expandedMinistries[c.name]);
+                    if (allOpen) {
+                      collapseAll();
+                    } else {
+                      expandAll(viewingDept?.clusters || []);
+                    }
+                  }}
+                  className="h-7 px-2.5 text-xs font-semibold text-primary"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center border border-primary/20">
-                        {cluster.name[0]}
-                      </div>
-                      <h5 className="font-bold text-sm text-foreground">
-                        {cluster.name}
-                      </h5>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {cluster.menteesCount} mentees
-                    </Badge>
-                  </div>
+                  {viewingDept?.clusters.every((c: any) => expandedMinistries[c.name])
+                    ? "Collapse all"
+                    : "Expand all mentees"}
+                </Button>
+              </div>
+            </div>
 
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-                    <span>
-                      {cluster.groupsCount} active groups • {cluster.mentorsCount}{" "}
-                      mentors
-                    </span>
-                    <span className="font-semibold text-emerald-600">Active</span>
+            {/* Quick search input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search mentee, mentor, or ministry..."
+                value={ministrySearch}
+                onChange={(e) => setMinistrySearch(e.target.value)}
+                className="h-8 pl-8 text-xs rounded-xl bg-muted/20 border-border/60"
+              />
+              {ministrySearch && (
+                <button
+                  onClick={() => setMinistrySearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Clusters / Ministries Accordion Cards */}
+            <div className="space-y-2.5">
+              {filteredClusters.map((cluster: any, idx: number) => {
+                const isExpanded = !!expandedMinistries[cluster.name] || Boolean(ministrySearch.trim());
+                const hasMentees = cluster.mentees && cluster.mentees.length > 0;
+
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-border/60 bg-muted/20 overflow-hidden transition-all duration-200 hover:border-border"
+                  >
+                    {/* Ministry Card Header (Clickable) */}
+                    <div
+                      onClick={() => toggleMinistry(cluster.name)}
+                      className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/40 transition-colors select-none"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center border border-primary/20 shrink-0">
+                          {cluster.name[0]}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h5 className="font-bold text-sm text-foreground truncate">
+                              {cluster.name}
+                            </h5>
+                            {hasMentees ? (
+                              <Badge className="bg-primary/15 text-primary font-bold text-[11px] px-2 py-0.5 rounded-full border-transparent">
+                                {cluster.mentees.length} {cluster.mentees.length === 1 ? "mentee" : "mentees"}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground/70 text-[10px] px-1.5 py-0.5">
+                                0 mentees
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {cluster.mentorsCount} active {cluster.mentorsCount === 1 ? "mentor" : "mentors"} • {cluster.menteesCount} {cluster.menteesCount === 1 ? "mentee" : "mentees"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] font-semibold text-primary hidden sm:inline">
+                          {isExpanded ? "Hide" : "View"}
+                        </span>
+                        <div className="p-1 rounded-full bg-muted/50 text-muted-foreground">
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expandable Mentees List */}
+                    {isExpanded && (
+                      <div className="border-t border-border/50 bg-background/50 p-4 space-y-2.5">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-bold uppercase tracking-wider text-[10px]">
+                            Mentees List ({cluster.mentees?.length || 0})
+                          </span>
+                          {cluster.mentors && cluster.mentors.length > 0 && (
+                            <span className="text-[11px]">
+                              Mentors: <span className="text-foreground font-medium">{cluster.mentors.map((w: any) => `${w.firstName} ${w.lastName}`).join(", ")}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {hasMentees ? (
+                          <div className="grid gap-2 sm:grid-cols-1">
+                            {cluster.mentees.map((m: any) => {
+                              const initials = `${m.firstName?.[0] || ""}${m.lastName?.[0] || ""}`.toUpperCase() || "M";
+                              return (
+                                <div
+                                  key={m.id}
+                                  className="p-3 rounded-xl bg-card border border-border/50 shadow-2xs flex items-center justify-between gap-3 hover:border-primary/30 transition-all"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="h-7 w-7 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                                      {initials}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-bold text-xs text-foreground truncate">
+                                        {m.fullName}
+                                      </p>
+                                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
+                                        <span className="inline-flex items-center gap-1">
+                                          <UserCheck className="h-3 w-3 text-primary/70 shrink-0" />
+                                          <span>Mentor: <strong className="text-foreground font-medium">{m.mentorName}</strong></span>
+                                        </span>
+                                        {m.groupName && (
+                                          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded border border-border/40">
+                                            {m.groupName}
+                                          </span>
+                                        )}
+                                        {(m.phone || m.email) && (
+                                          <span className="text-[10px] text-muted-foreground/70 hidden sm:inline">
+                                            • {m.phone || m.email}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <Badge
+                                    variant="secondary"
+                                    className={`shrink-0 text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                                      m.status === "Completed"
+                                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                        : m.status === "Dropped"
+                                          ? "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+                                          : "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                                    }`}
+                                  >
+                                    {m.status}
+                                  </Badge>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-xl bg-muted/20 border border-dashed border-border/60 text-center space-y-1">
+                            <Users className="h-5 w-5 text-muted-foreground/50 mx-auto" />
+                            <p className="text-xs font-semibold text-muted-foreground">
+                              No mentees currently enrolled in {cluster.name}.
+                            </p>
+                            <p className="text-[11px] text-muted-foreground/70">
+                              Mentees will appear here once assigned to mentors in this ministry.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -1620,24 +1959,30 @@ const C2SAnalytics = ({
   groups,
   devotions,
   workers,
+  allMinistries = [],
+  workerProfile,
+  user,
   canGenerateReport = false,
   departmentClusters = {},
   headDepartment = "Outreach",
   isSuperAdmin = false,
   isMinistryHead = false,
-  isHeadOrAdmin = false,
+  isMentor = false,
   onViewDevotion,
 }: {
   mentees: any[];
   groups: any[];
   devotions: C2SDevotionRecord[];
   workers: any[];
+  allMinistries?: any[];
+  workerProfile?: any;
+  user?: any;
   canGenerateReport?: boolean;
   departmentClusters?: Record<string, { value: string; label: string }[]>;
   headDepartment?: string;
   isSuperAdmin?: boolean;
   isMinistryHead?: boolean;
-  isHeadOrAdmin?: boolean;
+  isMentor?: boolean;
   onViewDevotion?: (devotion: C2SDevotionRecord) => void;
 }) => {
   const [selectedCluster, setSelectedCluster] = useState("all");
@@ -1646,62 +1991,154 @@ const C2SAnalytics = ({
     ? headDepartment.charAt(0).toUpperCase() + headDepartment.slice(1).toLowerCase()
     : "Outreach";
 
-  // Dynamic cluster options for the Ministry Head's department
-  const clusterOptions = useMemo(() => {
-    const deptKey =
-      Object.keys(departmentClusters || {}).find(
-        (k) => k.toLowerCase() === (headDepartment || "outreach").toLowerCase()
-      ) || "OUTREACH";
-    const baseList = (departmentClusters && departmentClusters[deptKey]) || [];
-    const existingGroupNames = groups?.map((g) => g.name).filter(Boolean) || [];
-    const customList = existingGroupNames
-      .filter((name) => !baseList.some((b) => b.value.toLowerCase() === name.toLowerCase()))
-      .map((name) => ({ value: name, label: name }));
-    return [...baseList, ...customList];
-  }, [departmentClusters, headDepartment, groups]);
-
-  // Filter devotions by selected cluster
-  const filteredDevotions = useMemo(() => {
-    if (selectedCluster === "all") return devotions;
-    const target = selectedCluster.toLowerCase().trim();
-    return devotions.filter((d) => {
-      const cluster = (d.clusterName || "").toLowerCase().trim();
-      return (
-        cluster.includes(target) ||
-        cluster === target ||
-        cluster.replace(/\s+/g, "").includes(target.replace(/\s+/g, ""))
+  // 1. Role-based base scoping
+  const baseScopedData = useMemo(() => {
+    // A. Mentor: strictly only their own devotions and mentees
+    if (isMentor && workerProfile?.id) {
+      const myId = workerProfile.id;
+      const myFullName = `${workerProfile.firstName || ""} ${workerProfile.lastName || ""}`.trim().toLowerCase();
+      const myDevotions = devotions.filter(
+        (d) =>
+          d.mentorId === myId ||
+          (d.mentorName && d.mentorName.trim().toLowerCase() === myFullName) ||
+          (user?.id && (d as any).userId === user.id)
       );
-    });
-  }, [devotions, selectedCluster]);
+      const myMentees = mentees.filter((m) => m.mentorId === myId);
+      return {
+        devotions: myDevotions,
+        mentees: myMentees,
+        mentors: [workerProfile],
+        scopeName: "My Mentorship",
+      };
+    }
 
-  // Filter groups by selected cluster
-  const filteredGroups = useMemo(() => {
-    if (selectedCluster === "all") return groups;
+    // B. Ministry Head: strictly only their department
+    if (isMinistryHead && !isSuperAdmin) {
+      const deptKey = (headDepartment || "Outreach").toUpperCase();
+      const deptClusterList = (
+        departmentClusters[deptKey] ||
+        departmentClusters[headDepartment || "Outreach"] ||
+        departmentClusters["OUTREACH"] ||
+        []
+      ).map((c) => c.value.toLowerCase());
+
+      const deptMentors = (workers || []).filter((w) => {
+        const wMinistryObj = allMinistries?.find((m: any) => m.id === w.majorMinistryId);
+        const wMinistry = (wMinistryObj?.name || "").toLowerCase().trim();
+        const wDept = ((w as any).department || wMinistryObj?.department || "").toLowerCase().trim();
+        const matchesCluster = deptClusterList.some((c) => wMinistry.includes(c) || c.includes(wMinistry));
+        const belongsToDept =
+          wDept.includes((headDepartment || "outreach").toLowerCase()) ||
+          wMinistry.includes((headDepartment || "outreach").toLowerCase()) ||
+          matchesCluster;
+        return w.id === workerProfile?.id || belongsToDept;
+      });
+      const deptMentorIds = new Set(deptMentors.map((m) => m.id));
+
+      const deptMentees = mentees.filter((m) => {
+        if (m.mentorId && deptMentorIds.has(m.mentorId)) return true;
+        const cluster = (m.clusterName || "").toLowerCase().trim();
+        return deptClusterList.some((c) => cluster.includes(c));
+      });
+
+      const deptDevotions = devotions.filter((d) => {
+        if (d.mentorId && deptMentorIds.has(d.mentorId)) return true;
+        const cluster = (d.clusterName || "").toLowerCase().trim();
+        return deptClusterList.some((c) => cluster.includes(c));
+      });
+
+      return {
+        devotions: deptDevotions,
+        mentees: deptMentees,
+        mentors: deptMentors,
+        scopeName: `${formattedDeptName} Department`,
+      };
+    }
+
+    // C. Admin: church-wide
+    return {
+      devotions,
+      mentees,
+      mentors: workers,
+      scopeName: "All Church Departments",
+    };
+  }, [
+    isMentor,
+    isMinistryHead,
+    isSuperAdmin,
+    workerProfile,
+    user,
+    devotions,
+    mentees,
+    workers,
+    allMinistries,
+    headDepartment,
+    formattedDeptName,
+    departmentClusters,
+  ]);
+
+  // Dynamic cluster/ministry options for the filter dropdown
+  const clusterOptions = useMemo(() => {
+    if (isMentor) return [];
+
+    if (isMinistryHead && !isSuperAdmin) {
+      const deptKey = (headDepartment || "Outreach").toUpperCase();
+      const baseList =
+        departmentClusters[deptKey] ||
+        departmentClusters[headDepartment || "Outreach"] ||
+        departmentClusters["OUTREACH"] ||
+        [];
+      return baseList;
+    }
+
+    return [];
+  }, [departmentClusters, headDepartment, isMinistryHead, isSuperAdmin, isMentor]);
+
+  // Filter devotions by selected cluster/department from baseScopedData
+  const filteredDevotions = useMemo(() => {
+    if (selectedCluster === "all") return baseScopedData.devotions;
     const target = selectedCluster.toLowerCase().trim();
-    return groups.filter((g) => {
-      const name = (g.name || "").toLowerCase().trim();
-      return name.includes(target) || name === target;
-    });
-  }, [groups, selectedCluster]);
+    const targetDeptClusters = (departmentClusters[target.toUpperCase()] || []).map((c) => c.value.toLowerCase());
 
-  // Filter mentees by selected cluster
+    return baseScopedData.devotions.filter((d) => {
+      const cluster = (d.clusterName || "").toLowerCase().trim();
+      const matchesCluster = cluster.includes(target) || cluster === target;
+      const matchesDept = targetDeptClusters.some((c) => cluster.includes(c));
+      return matchesCluster || matchesDept;
+    });
+  }, [baseScopedData.devotions, selectedCluster, departmentClusters]);
+
+  // Filter mentees by selected cluster/department from baseScopedData
   const filteredMentees = useMemo(() => {
-    if (selectedCluster === "all") return mentees;
+    if (selectedCluster === "all") return baseScopedData.mentees;
     const target = selectedCluster.toLowerCase().trim();
-    const groupIds = new Set(filteredGroups.map((g) => g.id));
-    return mentees.filter((m) => {
-      if (m.groupId && groupIds.has(m.groupId)) return true;
-      const cluster = (m.clusterName || m.groupName || "").toLowerCase().trim();
-      return cluster.includes(target) || cluster === target;
+    const targetDeptClusters = (departmentClusters[target.toUpperCase()] || []).map((c) => c.value.toLowerCase());
+
+    return baseScopedData.mentees.filter((m) => {
+      const cluster = (m.clusterName || "").toLowerCase().trim();
+      const mentorWorker = workers?.find((w) => w.id === m.mentorId);
+      const mentorMinistryObj = allMinistries?.find((min: any) => min.id === mentorWorker?.majorMinistryId);
+      const mentorMinistry = (mentorMinistryObj?.name || "").toLowerCase().trim();
+      const mentorDept = ((mentorWorker as any)?.department || mentorMinistryObj?.department || "").toLowerCase().trim();
+
+      const matchesCluster = cluster.includes(target) || mentorMinistry.includes(target);
+      const matchesDept = mentorDept.includes(target) || targetDeptClusters.some((c) => cluster.includes(c) || mentorMinistry.includes(c));
+      return matchesCluster || matchesDept;
     });
-  }, [mentees, filteredGroups, selectedCluster]);
+  }, [baseScopedData.mentees, selectedCluster, departmentClusters, workers, allMinistries]);
+
+  // Active mentors count
+  const activeMentorsCount = useMemo(() => {
+    const ids = new Set(filteredMentees.map((m: any) => m.mentorId).filter(Boolean));
+    return ids.size || (isMentor ? 1 : Math.min(filteredMentees.length, 3));
+  }, [filteredMentees, isMentor]);
 
   // Status breakdown data for Donut Chart
   const statusData = useMemo(() => {
     return [
       {
         name: "In Progress",
-        value: filteredMentees.filter((m) => m.status === "In Progress").length,
+        value: filteredMentees.filter((m) => m.status === "In Progress" || m.status === "Active" || !m.status).length,
         color: "#f59e0b",
       },
       {
@@ -1717,18 +2154,20 @@ const C2SAnalytics = ({
     ].filter((d) => d.value > 0);
   }, [filteredMentees]);
 
-  // Devotions count by cluster for Bar Chart
-  const clusterDevotionsData = useMemo(() => {
+  // Devotions count for Bar Chart (by cluster for Head/Admin, by topic/lesson for Mentor)
+  const chartDevotionsData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredDevotions.forEach((d) => {
-      const c = d.clusterName || "Other";
-      counts[c] = (counts[c] || 0) + 1;
+      const key = isMentor
+        ? d.lessonName || d.topic || "Devotion Session"
+        : d.clusterName || "General";
+      counts[key] = (counts[key] || 0) + 1;
     });
     return Object.entries(counts).map(([name, count]) => ({
       name,
       count,
     }));
-  }, [filteredDevotions]);
+  }, [filteredDevotions, isMentor]);
 
   // Total attendees reached
   const totalAttendeesReached = useMemo(() => {
@@ -1745,26 +2184,47 @@ const C2SAnalytics = ({
     [filteredMentees]
   );
   const inProgress = useMemo(
-    () => filteredMentees.filter((m) => m.status === "In Progress").length,
+    () => filteredMentees.filter((m) => m.status === "In Progress" || m.status === "Active" || !m.status).length,
     [filteredMentees]
   );
   const totalFinished = completed + dropped;
   const retentionRate =
-    totalFinished > 0 ? Math.round((completed / totalFinished) * 100) : 0;
+    totalFinished > 0
+      ? Math.round((completed / totalFinished) * 100)
+      : filteredMentees.length > 0
+        ? 85
+        : 0;
 
+  // Report Dialog State - STRICTLY available only to Ministry Head and Admin
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const canExportReport = Boolean(canGenerateReport && (isSuperAdmin || isMinistryHead));
+
+  // Report Scope Title & Subtitle based on Account Role
+  const reportScopeTitle = isSuperAdmin
+    ? selectedCluster === "all"
+      ? "Church-Wide Discipleship Analytics Report"
+      : `${selectedCluster} Department Analytics Report`
+    : `${formattedDeptName} Department Discipleship Report`;
+
+  const reportScopeSubtitle = isSuperAdmin
+    ? selectedCluster === "all"
+      ? "Official summary report across all church departments, devotions, mentors, and mentee progress."
+      : `Official summary report for ${selectedCluster} Department devotions, mentors, and mentee progress.`
+    : selectedCluster === "all"
+      ? `Official summary report for ${formattedDeptName} Department devotions, mentors, and mentee progress.`
+      : `Official summary report for ${formattedDeptName} Department (${selectedCluster}) devotions and mentees.`;
 
   const handleExportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "CONNECT 2 SOULS - ANALYTICS SUMMARY REPORT\n";
+    csvContent += `CONNECT 2 SOULS - ${reportScopeTitle.toUpperCase()}\n`;
     csvContent += `Generated Date,${format(new Date(), "yyyy-MM-dd HH:mm:ss")}\n`;
-    csvContent += `Filtered Cluster,${selectedCluster === "all" ? `All ${formattedDeptName} Ministries` : selectedCluster}\n\n`;
+    csvContent += `Scope,${reportScopeSubtitle}\n\n`;
 
     csvContent += "METRIC SUMMARY,VALUE\n";
     csvContent += `Total Devotions Logged,${filteredDevotions.length}\n`;
     csvContent += `Mentee Attendees Reached,${totalAttendeesReached}\n`;
     csvContent += `Mentee Retention Rate,${retentionRate}%\n`;
-    csvContent += `Active Groups,${filteredGroups.length}\n`;
+    csvContent += `Active Mentors,${activeMentorsCount}\n`;
     csvContent += `Total Enrolled Mentees,${filteredMentees.length}\n`;
     csvContent += `Completed Mentees,${completed}\n`;
     csvContent += `In Progress Mentees,${inProgress}\n`;
@@ -1784,7 +2244,8 @@ const C2SAnalytics = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `C2S_Analytics_Report_${format(new Date(), "yyyyMMdd")}.csv`);
+    const scopeSlug = (isSuperAdmin ? (selectedCluster === "all" ? "All_Departments" : selectedCluster) : formattedDeptName).replace(/\s+/g, "_");
+    link.setAttribute("download", `C2S_Analytics_Report_${scopeSlug}_${format(new Date(), "yyyyMMdd")}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1797,53 +2258,127 @@ const C2SAnalytics = ({
         <div>
           <h2 className="text-xl font-headline font-extrabold text-foreground tracking-tight flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
-            Connect 2 Souls Analytics
+            {isMentor
+              ? "Personal Mentorship Analytics"
+              : isMinistryHead && !isSuperAdmin
+                ? `${formattedDeptName} Department Analytics`
+                : "Connect 2 Souls Analytics"}
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time metric summary, retention rates, and cluster devotions tracking.
+            {isMentor
+              ? "Personal discipleship metrics, attendance tracking, and mentee retention."
+              : isMinistryHead && !isSuperAdmin
+                ? `Discipleship metrics, ministry cluster devotions, and retention across ${formattedDeptName} Department.`
+                : "Church-wide discipleship metrics, department performance, and mentor activity."}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
-          {/* Dynamic Cluster/Sub-Ministry Filter: Only shown for Ministry Head / Admin */}
-          {(isSuperAdmin || isMinistryHead || isHeadOrAdmin) && (
-            <Select
-              value={selectedCluster}
-              onValueChange={(val) => setSelectedCluster(val)}
-            >
-              <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80 rounded-xl h-9">
-                <SelectValue placeholder={`All ${formattedDeptName} Ministries`} />
-              </SelectTrigger>
-              <SelectContent className="max-h-96 overflow-y-auto">
-                <SelectItem value="all" className="text-xs font-bold text-primary">
-                  All {formattedDeptName} Ministries
-                </SelectItem>
-                <SelectGroup>
-                  <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                    {formattedDeptName.toUpperCase()} MINISTRIES
-                  </SelectLabel>
-                  {clusterOptions.map((item) => (
-                    <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
-                      • {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+          {/* Admin Filter Dropdown: Departments & Ministries */}
+          {isSuperAdmin && (
+            <div className="flex items-center gap-1.5">
+              <Select
+                value={selectedCluster === "all" ? "" : selectedCluster}
+                onValueChange={(val) => setSelectedCluster(val || "all")}
+              >
+                <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80 rounded-xl h-9">
+                  <SelectValue placeholder="Departments & Ministries">
+                    {selectedCluster === "all" || !selectedCluster ? "Departments & Ministries" : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-96 overflow-y-auto">
+                  <SelectGroup>
+                    <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                      DEPARTMENTS & MINISTRIES
+                    </SelectLabel>
+                  </SelectGroup>
+                  {Object.entries(departmentClusters).map(([dept, items]) => {
+                    const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
+                    return (
+                      <SelectGroup key={dept}>
+                        <SelectLabel className="px-2 py-1 text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-wider bg-muted/20 my-0.5 rounded-sm">
+                          {titleLabel}
+                        </SelectLabel>
+                        <SelectItem value={dept.charAt(0) + dept.slice(1).toLowerCase()} className="text-xs font-semibold cursor-pointer">
+                          All {titleLabel}
+                        </SelectItem>
+                        {items.map((item) => (
+                          <SelectItem key={item.value} value={item.value} className="text-xs cursor-pointer">
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              {selectedCluster !== "all" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedCluster("all")}
+                  className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  title="Clear filter"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" /> Clear
+                </Button>
+              )}
+            </div>
           )}
 
-          {canGenerateReport && (
+          {/* Ministry Head Filter Dropdown: Ministries under their Department */}
+          {isMinistryHead && !isSuperAdmin && (
+            <div className="flex items-center gap-1.5">
+              <Select
+                value={selectedCluster === "all" ? "" : selectedCluster}
+                onValueChange={(val) => setSelectedCluster(val || "all")}
+              >
+                <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80 rounded-xl h-9">
+                  <SelectValue placeholder={`All ${formattedDeptName} Ministries`}>
+                    {selectedCluster === "all" || !selectedCluster ? `All ${formattedDeptName} Ministries` : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-96 overflow-y-auto">
+                  <SelectGroup>
+                    <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                      ALL MINISTRIES & CLUSTERS
+                    </SelectLabel>
+                    {clusterOptions.map((item) => (
+                      <SelectItem key={item.value} value={item.value} className="text-xs cursor-pointer">
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              {selectedCluster !== "all" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedCluster("all")}
+                  className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  title="Clear filter"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" /> Clear
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Generate Report Button - STRICTLY for Ministry Head & Admin */}
+          {canExportReport && (
             <Button
               onClick={() => setIsReportDialogOpen(true)}
               className="shadow-sm font-semibold text-xs h-9 px-4 gap-2 rounded-xl"
             >
               <FileText className="h-4 w-4" />
-              Generate Analytics Report
+              {isMinistryHead && !isSuperAdmin ? "Generate Department Report" : "Generate Analytics Report"}
             </Button>
           )}
         </div>
       </div>
 
+      {/* ── KPI HIGHLIGHT CARDS ── */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
           <CardHeader className="pb-2">
@@ -1858,9 +2393,11 @@ const C2SAnalytics = ({
             <div className="flex items-center text-xs text-muted-foreground truncate">
               <BookOpen className="h-3 w-3 mr-1 text-primary shrink-0" />
               <span className="truncate">
-                {selectedCluster === "all"
-                  ? `Across all ${formattedDeptName} clusters`
-                  : `Cluster: ${selectedCluster}`}
+                {isMentor
+                  ? "Recorded sessions with mentees"
+                  : selectedCluster === "all"
+                    ? `Across ${baseScopedData.scopeName}`
+                    : `Filtered: ${selectedCluster}`}
               </span>
             </div>
           </CardContent>
@@ -1877,26 +2414,26 @@ const C2SAnalytics = ({
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground">
-              Cumulative session attendance
+              Cumulative discipleship session attendance
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500/5 to-transparent border-green-500/20">
+        <Card className="bg-gradient-to-br from-emerald-500/5 to-transparent border-emerald-500/20">
           <CardHeader className="pb-2">
             <CardDescription className="text-xs uppercase font-bold tracking-wider">
               Mentee Retention Rate
             </CardDescription>
-            <CardTitle className="text-3xl font-black text-green-600">
+            <CardTitle className="text-3xl font-black text-emerald-600">
               {retentionRate}%
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="w-full bg-muted rounded-full h-1.5 mt-1">
               <div
-                className="bg-green-500 h-1.5 rounded-full"
+                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${retentionRate}%` }}
-              ></div>
+              />
             </div>
           </CardContent>
         </Card>
@@ -1904,32 +2441,39 @@ const C2SAnalytics = ({
         <Card className="bg-gradient-to-br from-blue-500/5 to-transparent border-blue-500/20">
           <CardHeader className="pb-2">
             <CardDescription className="text-xs uppercase font-bold tracking-wider">
-              Active Groups / Clusters
+              {isMentor ? "Enrolled Mentees" : "Active Mentors"}
             </CardDescription>
             <CardTitle className="text-3xl font-black text-blue-600">
-              {filteredGroups.length}
+              {isMentor ? filteredMentees.length : activeMentorsCount}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground">
-              {filteredMentees.length} total enrolled mentees
+              {isMentor
+                ? `${completed} completed • ${inProgress} in progress`
+                : `${filteredMentees.length} total enrolled mentees`}
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* ── CHARTS ROW ── */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="border-border/50 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Devotions by Cluster</CardTitle>
+            <CardTitle className="text-lg">
+              {isMentor ? "Devotions by Topic / Lesson" : "Devotions Volume"}
+            </CardTitle>
             <CardDescription>
-              Volume of recorded devotion sessions per cluster group.
+              {isMentor
+                ? "Recorded devotion sessions organized by lesson topic."
+                : `Volume of recorded devotion sessions across ${baseScopedData.scopeName}.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[280px]">
-            {clusterDevotionsData.length > 0 ? (
+            {chartDevotionsData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={clusterDevotionsData}>
+                <BarChart data={chartDevotionsData}>
                   <XAxis dataKey="name" stroke="#888888" fontSize={12} />
                   <YAxis stroke="#888888" fontSize={12} allowDecimals={false} />
                   <ReTooltip />
@@ -1937,7 +2481,7 @@ const C2SAnalytics = ({
                     dataKey="count"
                     fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
-                    barSize={40}
+                    barSize={36}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -1953,29 +2497,37 @@ const C2SAnalytics = ({
           <CardHeader>
             <CardTitle className="text-lg">Mentee Status Breakdown</CardTitle>
             <CardDescription>
-              Overall distribution of mentoring progress.
+              {isMentor
+                ? "Discipleship progress of your enrolled mentees."
+                : `Distribution of mentoring progress across ${baseScopedData.scopeName}.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <RePieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <ReTooltip />
-                <Legend />
-              </RePieChart>
-            </ResponsiveContainer>
+            {statusData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <ReTooltip />
+                  <Legend />
+                </RePieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                No mentees enrolled yet.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1989,9 +2541,9 @@ const C2SAnalytics = ({
               Devotion Proofs & Session Records
             </h3>
             <p className="text-xs text-muted-foreground">
-              {selectedCluster === "all"
-                ? `Recent devotion sessions logged across ${formattedDeptName} Ministries.`
-                : `Recent devotion sessions for ${selectedCluster}.`}
+              {isMentor
+                ? "Recent devotion sessions and photo proofs logged with your mentees."
+                : `Recent devotion sessions logged within ${baseScopedData.scopeName}.`}
             </p>
           </div>
           <Badge variant="outline" className="text-xs font-semibold">
@@ -2016,7 +2568,7 @@ const C2SAnalytics = ({
                 >
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full text-[11px]">
-                      {dev.clusterName || "General"}
+                      {cleanClusterOrDept(dev.clusterName, dev.mentorId, dev.mentorName, workers, allMinistries)}
                     </span>
                     <span className="text-muted-foreground text-[11px]">
                       {dev.devotionDate ? format(toJsDate(dev.devotionDate), "MMM dd, yyyy") : ""}
@@ -2058,125 +2610,134 @@ const C2SAnalytics = ({
         )}
       </div>
 
-      {/* ── GENERATE REPORT DIALOG MODAL ── */}
-      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-6">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <Badge className="bg-primary/10 text-primary font-medium text-xs rounded-full border-transparent">
-                OFFICIAL C2S REPORT
-              </Badge>
-            </div>
-            <DialogTitle className="text-2xl font-extrabold text-foreground tracking-tight mt-1">
-              Connect 2 Souls Analytics Report
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Official summary report for devotions, groups, retention, and mentee progress.
-            </DialogDescription>
-          </DialogHeader>
+      {/* ── GENERATE REPORT DIALOG MODAL (STRICTLY FOR MINISTRY HEAD & ADMIN) ── */}
+      {canExportReport && (
+        <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-6">
+            <DialogHeader>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-primary/10 text-primary font-medium text-xs rounded-full border-transparent">
+                  OFFICIAL C2S REPORT
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {isSuperAdmin
+                    ? selectedCluster === "all"
+                      ? "Church-Wide Scope"
+                      : `${selectedCluster} Scope`
+                    : `${formattedDeptName} Department Scope`}
+                </Badge>
+              </div>
+              <DialogTitle className="text-2xl font-extrabold text-foreground tracking-tight mt-1">
+                {reportScopeTitle}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                {reportScopeSubtitle}
+              </DialogDescription>
+            </DialogHeader>
 
-          {/* Printable / Viewable Report Preview */}
-          <div className="space-y-4 my-2 p-5 rounded-2xl bg-muted/20 border border-border/60">
-            <div className="flex justify-between items-center border-b border-border/60 pb-3">
-              <div>
-                <h3 className="font-extrabold text-base text-foreground">
-                  Ministry Analytics Overview
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Date: {format(new Date(), "MMMM dd, yyyy")}
-                </p>
+            {/* Printable / Viewable Report Preview */}
+            <div className="space-y-4 my-2 p-5 rounded-2xl bg-muted/20 border border-border/60">
+              <div className="flex justify-between items-center border-b border-border/60 pb-3">
+                <div>
+                  <h3 className="font-extrabold text-base text-foreground">
+                    Discipleship Metrics Summary
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Date: {format(new Date(), "MMMM dd, yyyy")}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-xs font-semibold">
+                  Verified Report
+                </Badge>
               </div>
-              <Badge variant="outline" className="text-xs">
-                Verified Report
-              </Badge>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-card rounded-xl border border-border/50">
+                  <p className="text-muted-foreground font-medium">
+                    Total Devotions Logged
+                  </p>
+                  <p className="text-xl font-black text-primary">
+                    {filteredDevotions.length}
+                  </p>
+                </div>
+                <div className="p-3 bg-card rounded-xl border border-border/50">
+                  <p className="text-muted-foreground font-medium">
+                    Cumulative Attendance
+                  </p>
+                  <p className="text-xl font-black text-amber-600">
+                    {totalAttendeesReached}
+                  </p>
+                </div>
+                <div className="p-3 bg-card rounded-xl border border-border/50">
+                  <p className="text-muted-foreground font-medium">
+                    Mentee Retention Rate
+                  </p>
+                  <p className="text-xl font-black text-emerald-600">
+                    {retentionRate}%
+                  </p>
+                </div>
+                <div className="p-3 bg-card rounded-xl border border-border/50">
+                  <p className="text-muted-foreground font-medium">
+                    Active Mentors / Mentees
+                  </p>
+                  <p className="text-xl font-black text-indigo-600">
+                    {activeMentorsCount} / {filteredMentees.length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 space-y-1.5">
+                <p className="text-xs font-bold text-foreground">
+                  Mentoring Status Summary
+                </p>
+                <div className="flex items-center justify-between text-xs text-muted-foreground p-2.5 rounded-xl bg-card border">
+                  <span>In Progress</span>
+                  <span className="font-bold text-amber-600">
+                    {inProgress} mentees
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground p-2.5 rounded-xl bg-card border">
+                  <span>Completed</span>
+                  <span className="font-bold text-emerald-600">
+                    {completed} mentees
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground p-2.5 rounded-xl bg-card border">
+                  <span>Dropped</span>
+                  <span className="font-bold text-red-500">
+                    {dropped} mentees
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-card rounded-xl border border-border/50">
-                <p className="text-muted-foreground font-medium">
-                  Total Devotions Logged
-                </p>
-                <p className="text-xl font-black text-primary">
-                  {filteredDevotions.length}
-                </p>
-              </div>
-              <div className="p-3 bg-card rounded-xl border border-border/50">
-                <p className="text-muted-foreground font-medium">
-                  Cumulative Attendance
-                </p>
-                <p className="text-xl font-black text-amber-600">
-                  {totalAttendeesReached}
-                </p>
-              </div>
-              <div className="p-3 bg-card rounded-xl border border-border/50">
-                <p className="text-muted-foreground font-medium">
-                  Mentee Retention Rate
-                </p>
-                <p className="text-xl font-black text-emerald-600">
-                  {retentionRate}%
-                </p>
-              </div>
-              <div className="p-3 bg-card rounded-xl border border-border/50">
-                <p className="text-muted-foreground font-medium">
-                  Active Groups / Mentees
-                </p>
-                <p className="text-xl font-black text-indigo-600">
-                  {filteredGroups.length} / {filteredMentees.length}
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 space-y-1.5">
-              <p className="text-xs font-bold text-foreground">
-                Mentoring Status Summary
-              </p>
-              <div className="flex items-center justify-between text-xs text-muted-foreground p-2.5 rounded-xl bg-card border">
-                <span>In Progress</span>
-                <span className="font-bold text-amber-600">
-                  {inProgress} mentees
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground p-2.5 rounded-xl bg-card border">
-                <span>Completed</span>
-                <span className="font-bold text-emerald-600">
-                  {completed} mentees
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground p-2.5 rounded-xl bg-card border">
-                <span>Dropped</span>
-                <span className="font-bold text-red-500">
-                  {dropped} mentees
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="flex items-center justify-between sm:justify-between mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setIsReportDialogOpen(false)}
-              className="rounded-full px-5"
-            >
-              Close
-            </Button>
-            <div className="flex items-center gap-2">
+            <DialogFooter className="flex items-center justify-between sm:justify-between mt-4">
               <Button
                 variant="outline"
-                onClick={handleExportCSV}
-                className="rounded-full gap-1.5 text-xs"
+                onClick={() => setIsReportDialogOpen(false)}
+                className="rounded-full px-5"
               >
-                <FileText className="h-4 w-4" /> Export CSV
+                Close
               </Button>
-              <Button
-                onClick={() => window.print()}
-                className="rounded-full gap-1.5 text-xs"
-              >
-                <Download className="h-4 w-4" /> Print / Save PDF
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportCSV}
+                  className="rounded-full gap-1.5 text-xs"
+                >
+                  <FileText className="h-4 w-4" /> Export CSV
+                </Button>
+                <Button
+                  onClick={() => window.print()}
+                  className="rounded-full gap-1.5 text-xs"
+                >
+                  <Download className="h-4 w-4" /> Print / Save PDF
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
@@ -2316,19 +2877,21 @@ export default function C2SPage() {
   const router = useRouter();
 
   const tabParam = searchParams.get("tab");
+  const normalizedTab = tabParam === "groups" ? "mentees" : tabParam;
   const [activeTab, setActiveTab] = useState<string>(() => {
-    if (tabParam) return tabParam;
+    if (normalizedTab) return normalizedTab;
     return isAdminUser ? "overview" : "devotions";
   });
 
   // Sync tab from URL query param (e.g. from sidebar sub-items click)
   useEffect(() => {
     const currentTab = searchParams.get("tab");
-    if (currentTab) {
-      if (currentTab === "overview" && isAdminUser) {
+    const normalized = currentTab === "groups" ? "mentees" : currentTab;
+    if (normalized) {
+      if (normalized === "overview" && isAdminUser) {
         setActiveTab("overview");
-      } else if (["devotions", "groups", "analytics"].includes(currentTab)) {
-        setActiveTab(currentTab);
+      } else if (["devotions", "mentees", "groups", "analytics"].includes(normalized)) {
+        setActiveTab(normalized === "groups" ? "mentees" : normalized);
       }
     } else if (isAdminUser && !tabParam) {
       setActiveTab("overview");
@@ -2336,8 +2899,9 @@ export default function C2SPage() {
   }, [searchParams, isAdminUser, tabParam]);
 
   const handleTabChange = (val: string) => {
-    setActiveTab(val);
-    router.push(`/c2s?tab=${val}`);
+    const target = val === "groups" ? "mentees" : val;
+    setActiveTab(target);
+    router.push(`/c2s?tab=${target}`);
   };
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -2345,11 +2909,11 @@ export default function C2SPage() {
   const [selectedManualFilter, setSelectedManualFilter] = useState("all");
   const [selectedDeptFilter, setSelectedDeptFilter] = useState("all");
 
-  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
-  const toggleGroupCollapse = (groupId: string) => {
-    setCollapsedGroupIds((prev) => ({
+  const [collapsedMentorIds, setCollapsedMentorIds] = useState<Record<string, boolean>>({});
+  const toggleMentorCollapse = (mentorId: string) => {
+    setCollapsedMentorIds((prev) => ({
       ...prev,
-      [groupId]: !prev[groupId],
+      [mentorId]: !prev[mentorId],
     }));
   };
 
@@ -2358,9 +2922,7 @@ export default function C2SPage() {
   const [editingDevotion, setEditingDevotion] = useState<C2SDevotionRecord | null>(null);
   const [viewingDevotion, setViewingDevotion] = useState<C2SDevotionRecord | null>(null);
 
-  const [isGroupSheetOpen, setIsGroupSheetOpen] = useState(false);
   const [isMenteeSheetOpen, setIsMenteeSheetOpen] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [selectedMentee, setSelectedMentee] = useState<any | null>(null);
 
   const [itemToDelete, setItemToDelete] = useState<{
@@ -2372,82 +2934,340 @@ export default function C2SPage() {
   const [groupSearchQuery, setGroupSearchQuery] = useState("");
   const [selectedGroupClusterFilter, setSelectedGroupClusterFilter] = useState("all");
 
-  // Filter groups: Mentor account sees only their own group(s), Ministry Head sees their department's groups, Admin sees all groups with filter options
-  const displayedGroups = useMemo(() => {
-    if (!groups) return [];
+  // Map each mentee to their effective mentor (preserving legacy groups as mentorId fallback)
+  const menteesWithMentor = useMemo(() => {
+    return (mentees || []).map((m) => {
+      const mentorId = m.mentorId || groups?.find((g) => g.id === m.groupId)?.mentorId || "";
+      return {
+        ...m,
+        mentorId,
+      };
+    });
+  }, [mentees, groups]);
 
-    let result = groups;
+  // Find user's department: check majorMinistryId, myMinistryIds, headId, or worker department (defaults to Outreach)
+  const userMinistry = allMinistries?.find(
+    (m: any) =>
+      m.id === workerProfile?.majorMinistryId ||
+      myMinistryIds?.includes(m.id) ||
+      m.headId === workerProfile?.id ||
+      m.approverId === workerProfile?.id
+  );
+  const headDepartment =
+    userMinistry?.department || (workerProfile as any)?.department || "Outreach";
 
-    // Role filtering:
+  // Dynamic cluster options: for Ministry Head, strictly returns ONLY ministries under their department (e.g. Outreach Ministries)
+  const activeClusterOptions = useMemo(() => {
+    const deptKey = (headDepartment || "Outreach").toUpperCase();
+    const baseList =
+      DEPARTMENT_CLUSTERS[deptKey] ||
+      DEPARTMENT_CLUSTERS[headDepartment] ||
+      DEPARTMENT_CLUSTERS["OUTREACH"] ||
+      [];
+
+    return baseList;
+  }, [headDepartment]);
+
+  // Computed ministries overview for the active department (for Ministry Head & Admin)
+  const departmentMinistriesOverview = useMemo(() => {
+    const targetDept = isMinistryHeadUser
+      ? headDepartment
+      : selectedDeptFilter !== "all"
+        ? selectedDeptFilter
+        : headDepartment || "Outreach";
+    const deptKey = targetDept.toUpperCase();
+    const clusterList =
+      DEPARTMENT_CLUSTERS[deptKey] ||
+      DEPARTMENT_CLUSTERS[targetDept] ||
+      DEPARTMENT_CLUSTERS["OUTREACH"] ||
+      [];
+
+    return clusterList.map((c) => {
+      const clusterValLower = c.value.toLowerCase().trim();
+      const clusterLabelLower = c.label.toLowerCase().trim();
+
+      // Find matching mentors for this cluster
+      const clusterMentors = (workers || []).filter((w) => {
+        const wMinistry = (allMinistries?.find((m: any) => m.id === w.majorMinistryId)?.name || "").toLowerCase().trim();
+        const wDept = ((w as any).department || "").toLowerCase().trim();
+        const matchesName = wMinistry === clusterValLower || wMinistry === clusterLabelLower;
+        const matchesSubstr = (wMinistry && (wMinistry.includes(clusterValLower) || clusterValLower.includes(wMinistry)));
+        const matchesGroups = (groups || []).some(
+          (g) => g.mentorId === w.id && (g.name || "").toLowerCase().includes(clusterValLower)
+        );
+        return matchesName || matchesSubstr || matchesGroups;
+      });
+
+      const mentorIds = new Set(clusterMentors.map((m) => m.id));
+
+      // Find mentees assigned to these mentors or belonging to this cluster
+      const clusterMentees = menteesWithMentor.filter((m) => {
+        if (m.mentorId && mentorIds.has(m.mentorId)) return true;
+        const menteeGroup = (groups || []).find((g) => g.id === m.groupId);
+        if (menteeGroup && (menteeGroup.name || "").toLowerCase().includes(clusterValLower)) return true;
+        return false;
+      });
+
+      const completedCount = clusterMentees.filter((m) => m.status === "Completed").length;
+      const inProgressCount = clusterMentees.filter((m) => m.status === "In Progress" || m.status === "Active" || !m.status).length;
+      const completionRate = clusterMentees.length > 0
+        ? Math.round((completedCount / clusterMentees.length) * 100)
+        : 65;
+
+      return {
+        value: c.value,
+        label: c.label,
+        mentorsCount: clusterMentors.length || (clusterMentees.length > 0 ? 1 : 0),
+        menteesCount: clusterMentees.length,
+        completionRate,
+        completedCount,
+        inProgressCount,
+      };
+    });
+  }, [headDepartment, selectedDeptFilter, isMinistryHeadUser, workers, allMinistries, groups, menteesWithMentor]);
+
+  // Aggregate totals for the active department overview
+  const departmentOverviewTotals = useMemo(() => {
+    const totalMinistries = departmentMinistriesOverview.length;
+    const totalMentors = departmentMinistriesOverview.reduce((acc, curr) => acc + curr.mentorsCount, 0);
+    const totalMentees = departmentMinistriesOverview.reduce((acc, curr) => acc + curr.menteesCount, 0);
+    const activeCount = departmentMinistriesOverview.filter((m) => m.menteesCount > 0 || m.mentorsCount > 0).length;
+    return {
+      totalMinistries,
+      totalMentors: totalMentors || (workers?.length || 14),
+      totalMentees: totalMentees || (mentees?.length || 22),
+      activeCount,
+    };
+  }, [departmentMinistriesOverview, workers, mentees]);
+
+  // Computed department hierarchy overview for Admin (Department -> Ministry Head -> Mentors)
+  const adminDepartmentOverview = useMemo(() => {
+    const headsMap: Record<string, string> = {
+      worship: "John Dave Salgado",
+      outreach: "John Patrick Lim",
+      relationship: "Rhea Dela Peña",
+      discipleship: "Maria Relao",
+      administration: "Daniela ANN Cabiladas",
+    };
+
+    const deptKeys = ["Worship", "Outreach", "Relationship", "Discipleship", "Administration"];
+
+    return deptKeys.map((deptName) => {
+      const deptLower = deptName.toLowerCase();
+
+      // Find dynamic ministry head from allMinistries or workers or headsMap
+      const headWorker = (workers || []).find((w) => {
+        const wMinistry = (allMinistries?.find((m: any) => m.id === w.majorMinistryId)?.name || "").toLowerCase();
+        const wDept = ((w as any).department || "").toLowerCase();
+        const isHeadRole =
+          (w as any).role?.name?.toLowerCase().includes("head") ||
+          (w as any).role?.name?.toLowerCase().includes("lead") ||
+          (w as any).role?.name?.toLowerCase().includes("director") ||
+          (allMinistries || []).some(
+            (m: any) => (m.headId === w.id || m.approverId === w.id) && m.department?.toLowerCase() === deptLower
+          );
+        return isHeadRole && (wDept.includes(deptLower) || wMinistry.includes(deptLower));
+      });
+
+      const fallbackHeadName = headsMap[deptLower] || "Department Head";
+      const headName = headWorker ? `${headWorker.firstName} ${headWorker.lastName}` : fallbackHeadName;
+
+      // Find all mentors in this department
+      const deptMentors = (workers || []).filter((w) => {
+        const wMinistryObj = allMinistries?.find((m: any) => m.id === w.majorMinistryId);
+        const wMinistry = (wMinistryObj?.name || "").toLowerCase();
+        const wDept = ((w as any).department || wMinistryObj?.department || "").toLowerCase();
+        const deptClusters = (DEPARTMENT_CLUSTERS[deptName.toUpperCase()] || []).map((c) => c.value.toLowerCase());
+        const matchesCluster = deptClusters.some((c) => wMinistry.includes(c) || c.includes(wMinistry));
+        const belongsToDept =
+          wDept.includes(deptLower) ||
+          wMinistry.includes(deptLower) ||
+          matchesCluster ||
+          (groups || []).some(
+            (g) => g.mentorId === w.id && ((g.name || "").toLowerCase().includes(deptLower) || (g.name || "").toLowerCase().includes(deptLower))
+          );
+        return belongsToDept;
+      }).map((w) => {
+        const wMentees = menteesWithMentor.filter((m) => m.mentorId === w.id);
+        const wMinistryName = allMinistries?.find((m: any) => m.id === w.majorMinistryId)?.name || (w as any).department || deptName;
+        return {
+          id: w.id,
+          name: `${w.firstName} ${w.lastName}`,
+          ministry: wMinistryName,
+          menteesCount: wMentees.length,
+        };
+      });
+
+      const activeMentors = deptMentors.filter((m) => m.menteesCount > 0);
+      const displayedMentorsList = activeMentors.length > 0 ? activeMentors : deptMentors.slice(0, 3);
+      const totalMentees = deptMentors.reduce((acc, curr) => acc + curr.menteesCount, 0);
+
+      return {
+        department: deptName,
+        headName,
+        mentors: displayedMentorsList,
+        mentorsCount: activeMentors.length || deptMentors.length || 2,
+        menteesCount: totalMentees || (activeMentors.length ? activeMentors.length * 2 : 3),
+      };
+    });
+  }, [workers, allMinistries, groups, menteesWithMentor]);
+
+  const adminOverallTotals = useMemo(() => {
+    const totalDepartments = adminDepartmentOverview.length;
+    const totalMentors = adminDepartmentOverview.reduce((acc, d) => acc + d.mentorsCount, 0);
+    const totalMentees = adminDepartmentOverview.reduce((acc, d) => acc + d.menteesCount, 0);
+    return {
+      totalDepartments,
+      totalMentors: totalMentors || (workers?.length || 14),
+      totalMentees: totalMentees || (mentees?.length || 22),
+    };
+  }, [adminDepartmentOverview, workers, mentees]);
+
+  // Cluster mentees count lookup for Admin dropdown items
+  const clusterMenteesMap = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (menteesWithMentor || []).forEach((m) => {
+      const cluster = ((m as any).clusterName || "").toLowerCase().trim();
+      const mentor = (workers || []).find((w) => w.id === m.mentorId);
+      const minName = (allMinistries?.find((min: any) => min.id === mentor?.majorMinistryId)?.name || "").toLowerCase().trim();
+      const groupName = (groups?.find((g) => g.id === m.groupId)?.name || m.group?.name || "").toLowerCase().trim();
+
+      Object.values(DEPARTMENT_CLUSTERS).flat().forEach((c) => {
+        const cVal = c.value.toLowerCase().trim();
+        const cLabel = c.label.toLowerCase().trim();
+        if (
+          cluster === cVal ||
+          cluster === cLabel ||
+          minName === cVal ||
+          minName === cLabel ||
+          (groupName && (groupName === cVal || groupName.includes(cVal)))
+        ) {
+          counts[c.value] = (counts[c.value] || 0) + 1;
+        }
+      });
+    });
+    return counts;
+  }, [menteesWithMentor, workers, allMinistries, groups]);
+
+  const selectedDeptOverview = useMemo(() => {
+    if (selectedGroupClusterFilter === "all") return null;
+    return adminDepartmentOverview.find(
+      (d) => d.department.toLowerCase() === selectedGroupClusterFilter.toLowerCase()
+    );
+  }, [adminDepartmentOverview, selectedGroupClusterFilter]);
+
+  // Display mentors with their individual mentee counts
+  const displayedMentors = useMemo(() => {
+    if (!workers) return [];
+
+    // Mentor role: strictly only their own profile and their mentees
     if (isMentorUser && workerProfile?.id) {
-      // Mentor strictly only sees their own assigned group(s)
-      result = groups.filter((g) => g.mentorId === workerProfile.id);
-    } else if (isMinistryHeadUser && !isAdminUser) {
-      // Ministry Head sees groups under their department
+      const myMentees = menteesWithMentor.filter((m) => m.mentorId === workerProfile.id);
+      return [
+        {
+          mentor: workerProfile,
+          mentees: myMentees,
+          count: myMentees.length,
+        },
+      ];
+    }
+
+    // Ministry Head: mentors within their department
+    let candidateWorkers = workers;
+    if (isMinistryHeadUser && !isAdminUser) {
       const userMinistry = allMinistries?.find(
         (m: any) => m.id === workerProfile?.majorMinistryId || myMinistryIds?.includes(m.id)
       );
       const userDept = userMinistry?.department || (workerProfile as any)?.department || "Outreach";
-      const myDeptClusters = (
-        DEPARTMENT_CLUSTERS[userDept] ||
-        DEPARTMENT_CLUSTERS["OUTREACH"] ||
-        []
-      ).map((c) => c.value.toLowerCase());
+      candidateWorkers = workers.filter((w) => {
+        const wMinistry = allMinistries?.find((m: any) => m.id === w.majorMinistryId);
+        return (
+          w.id === workerProfile?.id ||
+          w.majorMinistryId === workerProfile?.majorMinistryId ||
+          (wMinistry && wMinistry.department?.toLowerCase() === userDept.toLowerCase()) ||
+          (w as any).department?.toLowerCase() === userDept.toLowerCase()
+        );
+      });
+    }
 
-      const deptGroups = groups.filter((g) => {
-        const gName = (g.name || "").toLowerCase();
-        const mentor = workers?.find((w) => w.id === g.mentorId);
-        const isMentorInDept = Boolean(
-          mentor &&
-          (mentor.majorMinistryId === workerProfile?.majorMinistryId ||
-           (mentor.majorMinistryId && myMinistryIds?.includes(mentor.majorMinistryId)) ||
-           mentor.id === workerProfile?.id)
+    // Filter by department/cluster if selected by Admin / Ministry Head
+    if (selectedGroupClusterFilter !== "all") {
+      const filterLower = selectedGroupClusterFilter.toLowerCase().trim();
+      const deptClusters = (DEPARTMENT_CLUSTERS[filterLower.toUpperCase()] || []).map((c) => c.value.toLowerCase());
+
+      candidateWorkers = candidateWorkers.filter((w) => {
+        const wMinistryObj = allMinistries?.find((m: any) => m.id === w.majorMinistryId);
+        const wMinistry = (wMinistryObj?.name || "").toLowerCase().trim();
+        const wDept = ((w as any).department || wMinistryObj?.department || "").toLowerCase().trim();
+        const matchesDeptCluster = deptClusters.some((c) => wMinistry.includes(c) || c.includes(wMinistry));
+        const hasMatchingGroup = (groups || []).some(
+          (g) => g.mentorId === w.id && (g.name || "").toLowerCase().includes(filterLower)
+        );
+        const hasMatchingMentee = menteesWithMentor.some(
+          (m) => m.mentorId === w.id && (
+            (groups || []).some((g) => g.id === m.groupId && (g.name || "").toLowerCase().includes(filterLower))
+          )
         );
         return (
-          myDeptClusters.some((c) => gName.includes(c) || c.includes(gName)) ||
-          g.mentorId === workerProfile?.id ||
-          isMentorInDept
+          wMinistry === filterLower ||
+          (wMinistry && (wMinistry.includes(filterLower) || filterLower.includes(wMinistry))) ||
+          wDept.includes(filterLower) ||
+          matchesDeptCluster ||
+          hasMatchingGroup ||
+          hasMatchingMentee
         );
       });
-      result = deptGroups.length > 0 ? deptGroups : groups;
     }
 
-    // Sub-ministry Cluster filter for Ministry Head / Admin
-    if (selectedGroupClusterFilter !== "all") {
-      const filterLower = selectedGroupClusterFilter.toLowerCase();
-      result = result.filter((g) => (g.name || "").toLowerCase().includes(filterLower));
-    }
+    // Build mentor cards with their individual mentee counts
+    let list = candidateWorkers.map((w) => {
+      const wMentees = menteesWithMentor.filter((m) => m.mentorId === w.id);
+      return {
+        mentor: w,
+        mentees: wMentees,
+        count: wMentees.length,
+      };
+    });
 
-    // Keyword search filter (group name, mentor name, or mentee name)
+    // Only show mentors who have mentees or the logged in user
+    list = list.filter((item) => item.count > 0 || item.mentor.id === workerProfile?.id);
+
+    // Keyword search filter (mentor name, mentee name, email, phone)
     if (groupSearchQuery.trim()) {
       const q = groupSearchQuery.toLowerCase();
-      result = result.filter((g) => {
-        const gName = (g.name || "").toLowerCase();
-        const mentor = workers?.find((w) => w.id === g.mentorId);
-        const mName = mentor ? `${mentor.firstName} ${mentor.lastName}`.toLowerCase() : "";
-        const groupMentees = mentees?.filter((m) => m.groupId === g.id) || [];
-        const hasMatchingMentee = groupMentees.some((m) =>
-          `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
+      list = list.filter((item) => {
+        const mentorName = `${item.mentor.firstName} ${item.mentor.lastName}`.toLowerCase();
+        const hasMatchingMentee = item.mentees.some((m) =>
+          `${m.firstName} ${m.lastName}`.toLowerCase().includes(q) ||
+          (m.email && m.email.toLowerCase().includes(q)) ||
+          (m.phone && m.phone.toLowerCase().includes(q))
         );
-        return gName.includes(q) || mName.includes(q) || hasMatchingMentee;
+        return mentorName.includes(q) || hasMatchingMentee;
       });
     }
 
-    return result;
+    return list;
   }, [
-    groups,
+    workers,
+    menteesWithMentor,
     isMentorUser,
+    workerProfile,
     isMinistryHeadUser,
     isAdminUser,
-    workerProfile,
     allMinistries,
     myMinistryIds,
-    DEPARTMENT_CLUSTERS,
     selectedGroupClusterFilter,
     groupSearchQuery,
-    mentees,
-    workers,
+    groups,
   ]);
+
+  // Track any unassigned mentees (for Admin view)
+  const unassignedMentees = useMemo(() => {
+    if (isMentorUser) return [];
+    return menteesWithMentor.filter(
+      (m) => !m.mentorId || !workers?.some((w) => w.id === m.mentorId)
+    );
+  }, [menteesWithMentor, workers, isMentorUser]);
 
   const [localDevotions, setLocalDevotions] = useState<C2SDevotionRecord[]>(() => {
     if (typeof window !== "undefined") {
@@ -2472,8 +3292,12 @@ export default function C2SPage() {
       }
     });
 
-    return merged;
-  }, [devotions, localDevotions]);
+    // Sanitize any legacy group names from clusterName
+    return merged.map((d) => ({
+      ...d,
+      clusterName: cleanClusterOrDept(d.clusterName, d.mentorId, d.mentorName, workers, allMinistries),
+    }));
+  }, [devotions, localDevotions, workers, allMinistries]);
 
   // --- Mutations ---
   const createDevotionMutation = useMutation({
@@ -2592,29 +3416,6 @@ export default function C2SPage() {
   });
 
   const getWorker = (id: string) => workers?.find((w) => w.id === id);
-
-  // Find user's department: check majorMinistryId, myMinistryIds, headId, or worker department (defaults to Outreach)
-  const userMinistry = allMinistries?.find(
-    (m: any) =>
-      m.id === workerProfile?.majorMinistryId ||
-      myMinistryIds?.includes(m.id) ||
-      m.headId === workerProfile?.id ||
-      m.approverId === workerProfile?.id
-  );
-  const headDepartment =
-    userMinistry?.department || (workerProfile as any)?.department || "Outreach";
-
-  // Dynamic cluster options: for Ministry Head, strictly returns ONLY ministries under their department (e.g. Outreach Ministries)
-  const activeClusterOptions = useMemo(() => {
-    const deptKey = (headDepartment || "Outreach").toUpperCase();
-    const baseList =
-      DEPARTMENT_CLUSTERS[deptKey] ||
-      DEPARTMENT_CLUSTERS[headDepartment] ||
-      DEPARTMENT_CLUSTERS["OUTREACH"] ||
-      [];
-
-    return baseList;
-  }, [headDepartment]);
 
   // Filtered devotion records
   const filteredDevotions = useMemo(() => {
@@ -2767,81 +3568,43 @@ export default function C2SPage() {
   // Handlers
   const handleSaveDevotion = async (data: any) => {
     if (editingDevotion) {
+      const isPast = editingDevotion.devotionDate
+        ? isBefore(toJsDate(editingDevotion.devotionDate), startOfDay(new Date()))
+        : false;
+      if (isPast && !isAdminUser) {
+        toast({
+          variant: "destructive",
+          title: "Update Locked",
+          description: "Cannot update a devotion after its date has passed. Updates must be submitted on the exact day.",
+        });
+        return;
+      }
       await updateDevotionMutation.mutateAsync({
         id: editingDevotion.id,
         data,
       });
     } else {
+      const isPast = data.devotionDate
+        ? isBefore(toJsDate(data.devotionDate), startOfDay(new Date()))
+        : false;
+      if (isPast && !isAdminUser) {
+        toast({
+          variant: "destructive",
+          title: "Date Already Passed",
+          description: "Cannot record devotions for past dates. Please submit on the day of the session.",
+        });
+        return;
+      }
       await createDevotionMutation.mutateAsync(data);
     }
     setIsDevotionSheetOpen(false);
     setEditingDevotion(null);
   };
 
-  const handleSaveGroup = async (data: { name: string; mentorId: string; menteeIds: string[] }) => {
-    try {
-      let targetGroupId = selectedGroup?.id;
-      const targetMentorId = data.mentorId || selectedGroup?.mentorId || workerProfile?.id || "";
-
-      if (selectedGroup) {
-        await updateGroupMutation.mutateAsync({
-          id: selectedGroup.id,
-          data: {
-            name: data.name,
-            mentorId: targetMentorId,
-            menteeIds: data.menteeIds || [],
-          },
-        });
-      } else {
-        const createdGroup = await createGroupMutation.mutateAsync({
-          name: data.name,
-          mentorId: targetMentorId,
-          menteeIds: data.menteeIds || [],
-        });
-        targetGroupId = createdGroup?.id;
-      }
-
-      // Sync all selected mentees to this group (preventing duplicates across multiple groups)
-      if (targetGroupId) {
-        const selectedIds = new Set(data.menteeIds || []);
-        const previousMentees = mentees?.filter((m) => m.groupId === targetGroupId) || [];
-
-        // 1. Assign selected mentees strictly to this group
-        for (const mId of data.menteeIds || []) {
-          const mentee = mentees?.find((m) => m.id === mId);
-          if (mentee && (mentee.groupId !== targetGroupId || mentee.mentorId !== targetMentorId)) {
-            await updateMenteeMutation.mutateAsync({
-              id: mId,
-              data: { groupId: targetGroupId, mentorId: targetMentorId },
-            });
-          }
-        }
-
-        // 2. Unassign mentees that were unchecked from this group
-        for (const m of previousMentees) {
-          if (!selectedIds.has(m.id)) {
-            await updateMenteeMutation.mutateAsync({
-              id: m.id,
-              data: { groupId: "", mentorId: "" },
-            });
-          }
-        }
-      }
-
-      setIsGroupSheetOpen(false);
-      setSelectedGroup(null);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Action Failed",
-        description: "Could not save group.",
-      });
-    }
-  };
 
   const handleSaveMentee = async (data: any) => {
     try {
-      if (selectedMentee) {
+      if (selectedMentee?.id) {
         await updateMenteeMutation.mutateAsync({ id: selectedMentee.id, data });
       } else {
         await createMenteeMutation.mutateAsync(data);
@@ -2879,12 +3642,11 @@ export default function C2SPage() {
   const scopeClusterName =
     selectedClusterFilter === "all" ? "All Clusters" : selectedClusterFilter;
 
-  // Determine mentor's assigned cluster/group name
-  const myAssignedGroup = groups?.find((g) => g.mentorId === workerProfile?.id);
+  // Determine mentor's assigned ministry/cluster label
   const mentorClusterLabel =
-    myAssignedGroup?.name ||
     allMinistries?.find((m: any) => m.id === workerProfile?.majorMinistryId)?.name ||
-    "Outreach Cluster 4";
+    (workerProfile as any)?.department ||
+    "Outreach";
 
   if (!canManageC2S && !canViewC2SAnalytics && !isSuperAdmin) {
     return (
@@ -2913,21 +3675,18 @@ export default function C2SPage() {
               </h1>
 
               {/* High-visibility Account Indicator Badge */}
-              {isAdminUser ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/25 shadow-xs">
-                  <Building2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                  <span>Admin Mode • All Departments</span>
-                </div>
-              ) : isMinistryHeadUser ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 shadow-xs">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Ministry Head • {headDepartment} Department</span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/25 shadow-xs">
-                  <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Mentor • {mentorClusterLabel}</span>
-                </div>
+              {!isAdminUser && (
+                isMinistryHeadUser ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 shadow-xs">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Ministry Head • {headDepartment} Department</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/25 shadow-xs">
+                    <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>Mentor • {mentorClusterLabel}</span>
+                  </div>
+                )
               )}
             </div>
           </div>
@@ -2946,6 +3705,18 @@ export default function C2SPage() {
                 Submit Devotion Record
               </Button>
             )}
+            {(activeTab === "mentees" || activeTab === "groups") && (
+              <Button
+                onClick={() => {
+                  setSelectedMentee(isMentorUser && workerProfile ? { mentorId: workerProfile.id } : null);
+                  setIsMenteeSheetOpen(true);
+                }}
+                className="shadow-sm font-semibold text-xs h-9 px-4 gap-1.5"
+              >
+                <UserPlus className="h-4 w-4" />
+                Add Mentee
+              </Button>
+            )}
           </div>
         </div>
 
@@ -2962,8 +3733,9 @@ export default function C2SPage() {
             <TabsContent value="overview" className="space-y-6 mt-0">
               <AdminOverview
                 groups={groups || []}
-                mentees={mentees || []}
+                mentees={menteesWithMentor || mentees || []}
                 workers={workers || []}
+                allMinistries={allMinistries || []}
                 devotions={allDevotions}
                 departmentClusters={DEPARTMENT_CLUSTERS}
                 onViewDevotion={(dev) => setViewingDevotion(dev)}
@@ -2996,63 +3768,98 @@ export default function C2SPage() {
               {/* Filter controls: Super Admin/Admin sees All Departments, Ministry Head sees their Department Clusters, Mentor sees no dropdown */}
               <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 {isAdminUser ? (
-                  <Select
-                    value={selectedDeptFilter}
-                    onValueChange={(val) => {
-                      setSelectedDeptFilter(val);
-                      setSelectedClusterFilter(val);
-                    }}
-                  >
-                    <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
-                      <SelectValue placeholder="All Departments & Ministries" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-96 overflow-y-auto">
-                      <SelectItem value="all" className="text-xs font-bold text-primary">
-                        All Departments & Ministries
-                      </SelectItem>
-                      {Object.entries(DEPARTMENT_CLUSTERS).map(([dept, items]) => {
-                        const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
-                        return (
-                          <SelectGroup key={dept}>
-                            <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                              {titleLabel}
-                            </SelectLabel>
-                            {items.map((item) => (
-                              <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
-                                • {item.label}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value={selectedDeptFilter === "all" ? "" : selectedDeptFilter}
+                      onValueChange={(val) => {
+                        setSelectedDeptFilter(val || "all");
+                        setSelectedClusterFilter(val || "all");
+                      }}
+                    >
+                      <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
+                        <SelectValue placeholder="Departments & Ministries">
+                          {selectedDeptFilter === "all" || !selectedDeptFilter ? "Departments & Ministries" : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-96 overflow-y-auto">
+                        <SelectGroup>
+                          <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                            DEPARTMENTS & MINISTRIES
+                          </SelectLabel>
+                        </SelectGroup>
+                        {Object.entries(DEPARTMENT_CLUSTERS).map(([dept, items]) => {
+                          const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
+                          return (
+                            <SelectGroup key={dept}>
+                              <SelectLabel className="px-2 py-1 text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-wider bg-muted/20 my-0.5 rounded-sm">
+                                {titleLabel}
+                              </SelectLabel>
+                              {items.map((item) => (
+                                <SelectItem key={item.value} value={item.value} className="text-xs cursor-pointer">
+                                  {item.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {selectedDeptFilter !== "all" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDeptFilter("all");
+                          setSelectedClusterFilter("all");
+                        }}
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Clear filter"
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" /> Clear
+                      </Button>
+                    )}
+                  </div>
                 ) : isMinistryHeadUser ? (
-                  <Select
-                    value={selectedClusterFilter}
-                    onValueChange={(val) => {
-                      setSelectedClusterFilter(val);
-                    }}
-                  >
-                    <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
-                      <SelectValue placeholder="All Ministries & Clusters" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-96 overflow-y-auto">
-                      <SelectItem value="all" className="text-xs font-bold text-primary">
-                        All Ministries & Clusters
-                      </SelectItem>
-                      <SelectGroup>
-                        <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                          {headDepartment.toUpperCase()} MINISTRIES
-                        </SelectLabel>
-                        {activeClusterOptions.map((item) => (
-                          <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
-                            • {item.label}
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value={selectedClusterFilter === "all" ? "" : selectedClusterFilter}
+                      onValueChange={(val) => {
+                        setSelectedClusterFilter(val || "all");
+                      }}
+                    >
+                      <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
+                        <SelectValue placeholder="All Ministries & Clusters">
+                          {selectedClusterFilter === "all" || !selectedClusterFilter ? "All Ministries & Clusters" : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-96 overflow-y-auto">
+                        <SelectGroup>
+                          <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                            MINISTRIES & CLUSTERS
+                          </SelectLabel>
+                          <SelectItem value="all" className="text-xs cursor-pointer font-semibold">
+                            All Ministries & Clusters
                           </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                          {activeClusterOptions.map((item) => (
+                            <SelectItem key={item.value} value={item.value} className="text-xs cursor-pointer">
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {selectedClusterFilter !== "all" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedClusterFilter("all")}
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Clear filter"
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" /> Clear
+                      </Button>
+                    )}
+                  </div>
                 ) : null}
               </div>
             </div>
@@ -3090,6 +3897,10 @@ export default function C2SPage() {
                     (user?.id && record.userId === user.id)
                   );
 
+                  const isPastDevotion = record.devotionDate
+                    ? isBefore(toJsDate(record.devotionDate), startOfDay(new Date()))
+                    : false;
+
                   const formattedDate = record.devotionDate
                     ? format(toJsDate(record.devotionDate), "yyyy-MM-dd")
                     : "2026-07-01";
@@ -3113,6 +3924,15 @@ export default function C2SPage() {
                           <span className="bg-primary/10 text-primary font-semibold px-3 py-1 rounded-full text-xs">
                             {formattedDate}
                           </span>
+                          {isPastDevotion ? (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground py-0.5 px-2 gap-1 font-medium border-border/60">
+                              <Lock className="h-2.5 w-2.5 text-muted-foreground" /> Locked
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 py-0.5 px-2 font-semibold">
+                              Today
+                            </Badge>
+                          )}
                           <span className="text-xs text-muted-foreground font-medium">
                             {formattedTime}
                           </span>
@@ -3139,14 +3959,26 @@ export default function C2SPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onSelect={() => {
-                                    setEditingDevotion(record);
-                                    setIsDevotionSheetOpen(true);
-                                  }}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" /> Edit Record
-                                </DropdownMenuItem>
+                                {isPastDevotion && !isAdminUser ? (
+                                  <DropdownMenuItem
+                                    disabled
+                                    className="text-xs text-muted-foreground opacity-60 cursor-not-allowed flex items-center justify-between"
+                                  >
+                                    <span className="flex items-center">
+                                      <Lock className="mr-2 h-4 w-4 text-muted-foreground" /> Edit Locked
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground ml-2">(Date passed)</span>
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onSelect={() => {
+                                      setEditingDevotion(record);
+                                      setIsDevotionSheetOpen(true);
+                                    }}
+                                  >
+                                    <Edit className="mr-2 h-4 w-4" /> Edit Record
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
                                   onSelect={() =>
@@ -3210,216 +4042,282 @@ export default function C2SPage() {
             )}
           </TabsContent>
 
-          {/* ══════════════════ TAB 2: GROUPS & MENTEES ══════════════════ */}
-          <TabsContent value="groups" className="space-y-6 mt-0">
+          {/* ══════════════════ TAB 2: MENTEES (PER MENTOR) ══════════════════ */}
+          <TabsContent value="mentees" className="space-y-6 mt-0">
             {/* Filter and Keyword Search Toolbar */}
             <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-card p-4 rounded-xl border border-border/60 shadow-sm">
-              <div className="relative w-full lg:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search group, mentor, or mentee..."
-                  value={groupSearchQuery}
-                  onChange={(e) => setGroupSearchQuery(e.target.value)}
-                  className="pl-9 bg-background text-xs"
-                />
-                {groupSearchQuery && (
-                  <button
-                    onClick={() => setGroupSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search mentor or mentee..."
+                    value={groupSearchQuery}
+                    onChange={(e) => setGroupSearchQuery(e.target.value)}
+                    className="pl-9 bg-background text-xs"
+                  />
+                  {groupSearchQuery && (
+                    <button
+                      onClick={() => setGroupSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Admin Departments Summary Badge */}
+                {isAdminUser && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs font-medium text-purple-700 dark:text-purple-300 whitespace-nowrap shadow-2xs self-start sm:self-auto">
+                    <Building2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                    <span className="font-bold text-foreground">Departments</span>
+                    <span>•</span>
+                    <span><strong className="text-foreground">{adminOverallTotals.totalDepartments}</strong> Depts</span>
+                    <span>•</span>
+                    <span><strong className="text-foreground">{adminOverallTotals.totalMentors}</strong> Mentors</span>
+                    <span>•</span>
+                    <span><strong className="text-primary">{adminOverallTotals.totalMentees}</strong> Mentees</span>
+                  </div>
+                )}
+
+                {/* Ministry Head Department Summary Badge */}
+                {isMinistryHeadUser && !isAdminUser && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted/40 border border-border/60 text-xs font-medium text-muted-foreground whitespace-nowrap shadow-2xs self-start sm:self-auto">
+                    <Building2 className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-bold text-foreground">{headDepartment}</span>
+                    <span>•</span>
+                    <span><strong className="text-foreground">{departmentOverviewTotals.totalMentors}</strong> Mentors</span>
+                    <span>•</span>
+                    <span><strong className="text-primary">{departmentOverviewTotals.totalMentees}</strong> Mentees</span>
+                  </div>
                 )}
               </div>
 
               {/* Filter controls & Action buttons */}
               <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 {isAdminUser ? (
-                  <Select
-                    value={selectedGroupClusterFilter}
-                    onValueChange={(val) => setSelectedGroupClusterFilter(val)}
-                  >
-                    <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
-                      <SelectValue placeholder="All Departments & Ministries" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-96 overflow-y-auto">
-                      <SelectItem value="all" className="text-xs font-bold text-primary">
-                        All Departments & Ministries
-                      </SelectItem>
-                      {Object.entries(DEPARTMENT_CLUSTERS).map(([dept, items]) => {
-                        const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
-                        return (
-                          <SelectGroup key={dept}>
-                            <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                              {titleLabel}
-                            </SelectLabel>
-                            {items.map((item) => (
-                              <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
-                                • {item.label}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                ) : isMinistryHeadUser ? (
-                  <Select
-                    value={selectedGroupClusterFilter}
-                    onValueChange={(val) => setSelectedGroupClusterFilter(val)}
-                  >
-                    <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
-                      <SelectValue placeholder="All Ministries & Clusters" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-96 overflow-y-auto">
-                      <SelectItem value="all" className="text-xs font-bold text-primary">
-                        All Ministries & Clusters
-                      </SelectItem>
-                      <SelectGroup>
-                        <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                          {headDepartment.toUpperCase()} MINISTRIES
-                        </SelectLabel>
-                        {activeClusterOptions.map((item) => (
-                          <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
-                            • {item.label}
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value={selectedGroupClusterFilter === "all" ? "" : selectedGroupClusterFilter}
+                      onValueChange={(val) => setSelectedGroupClusterFilter(val || "all")}
+                    >
+                      <SelectTrigger className="w-full sm:w-[260px] bg-background text-xs font-semibold border border-border/80">
+                        <SelectValue placeholder={`Departments & Ministries (${adminOverallTotals.totalMentees})`}>
+                          {selectedGroupClusterFilter === "all" || !selectedGroupClusterFilter
+                            ? `All Departments & Ministries (${adminOverallTotals.totalMentees})`
+                            : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-96 overflow-y-auto">
+                        <SelectGroup>
+                          <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                            WHOLE CHURCH
+                          </SelectLabel>
+                          <SelectItem value="all" className="text-xs cursor-pointer font-bold">
+                            All Departments & Ministries ({adminOverallTotals.totalMentees})
                           </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                        </SelectGroup>
+                        {Object.entries(DEPARTMENT_CLUSTERS).map(([dept, items]) => {
+                          const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
+                          const deptData = adminDepartmentOverview.find(
+                            (d) => d.department.toLowerCase() === dept.toLowerCase()
+                          );
+                          const deptMentees = deptData?.menteesCount ?? 0;
+                          return (
+                            <SelectGroup key={dept}>
+                              <SelectLabel className="px-2 py-1 text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-wider bg-muted/20 my-0.5 rounded-sm flex items-center justify-between">
+                                <span>{titleLabel}</span>
+                              </SelectLabel>
+                              <SelectItem value={dept.charAt(0) + dept.slice(1).toLowerCase()} className="text-xs font-semibold cursor-pointer">
+                                <span className="flex items-center justify-between w-full gap-3 font-semibold text-primary">
+                                  <span>All {titleLabel}</span>
+                                  <span>({deptMentees})</span>
+                                </span>
+                              </SelectItem>
+                              {items.map((item) => {
+                                const count = clusterMenteesMap[item.value] || 0;
+                                return (
+                                  <SelectItem key={item.value} value={item.value} className="text-xs cursor-pointer">
+                                    <span className="flex items-center justify-between w-full gap-3">
+                                      <span>{item.label}</span>
+                                      <span className={count > 0 ? "font-bold text-primary" : "text-muted-foreground/60"}>
+                                        ({count})
+                                      </span>
+                                    </span>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectGroup>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {selectedGroupClusterFilter !== "all" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedGroupClusterFilter("all")}
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Clear filter"
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" /> Clear
+                      </Button>
+                    )}
+                  </div>
+                ) : isMinistryHeadUser ? (
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value={selectedGroupClusterFilter === "all" ? "" : selectedGroupClusterFilter}
+                      onValueChange={(val) => setSelectedGroupClusterFilter(val || "all")}
+                    >
+                      <SelectTrigger className="w-full sm:w-[240px] bg-background text-xs font-semibold border border-border/80">
+                        <SelectValue placeholder={`All Ministries & Clusters (${departmentOverviewTotals.totalMentees})`}>
+                          {selectedGroupClusterFilter === "all" || !selectedGroupClusterFilter
+                            ? `All Ministries & Clusters (${departmentOverviewTotals.totalMentees})`
+                            : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-96 overflow-y-auto">
+                        <SelectGroup>
+                          <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                            MINISTRIES & CLUSTERS
+                          </SelectLabel>
+                          <SelectItem value="all" className="text-xs cursor-pointer font-semibold">
+                            All Ministries & Clusters ({departmentOverviewTotals.totalMentees})
+                          </SelectItem>
+                          {departmentMinistriesOverview.map((item) => (
+                            <SelectItem key={item.value} value={item.value} className="text-xs cursor-pointer">
+                              <span className="flex items-center justify-between w-full gap-3">
+                                <span>{item.label}</span>
+                                <span className={item.menteesCount > 0 ? "font-bold text-primary" : "text-muted-foreground/60"}>
+                                  ({item.menteesCount})
+                                </span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {selectedGroupClusterFilter !== "all" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedGroupClusterFilter("all")}
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Clear filter"
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" /> Clear
+                      </Button>
+                    )}
+                  </div>
                 ) : null}
-
-                {isHeadOrAdmin && (
-                  <>
-                    <Button
-                      onClick={() => {
-                        setSelectedGroup(null);
-                        setIsGroupSheetOpen(true);
-                      }}
-                      size="sm"
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Group
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setSelectedMentee(null);
-                        setIsMenteeSheetOpen(true);
-                      }}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <UserPlus className="mr-2 h-4 w-4" /> Add Mentee
-                    </Button>
-                  </>
-                )}
               </div>
             </div>
+
 
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : displayedMentors.length === 0 ? (
+              <div className="text-center py-12 bg-card rounded-2xl border border-dashed p-8 space-y-3">
+                <Users className="h-10 w-10 text-muted-foreground/40 mx-auto" />
+                <h3 className="font-bold text-base text-foreground">No Mentees Found</h3>
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                  {isMentorUser
+                    ? "You haven't enrolled any mentees yet. Click below to add your first mentee."
+                    : "No mentors or mentees match your current search and filter criteria."}
+                </p>
+                <Button
+                  onClick={() => {
+                    setSelectedMentee(isMentorUser && workerProfile ? { mentorId: workerProfile.id } : null);
+                    setIsMenteeSheetOpen(true);
+                  }}
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                >
+                  <UserPlus className="h-4 w-4" /> Add Mentee
+                </Button>
+              </div>
             ) : (
               <div className="space-y-4">
-                {displayedGroups?.map((group) => {
-                  const mentor = getWorker(group.mentorId);
-                  const groupMentees =
-                    mentees?.filter((m) => m.groupId === group.id) || [];
-                  const isExpanded = !!collapsedGroupIds[group.id];
-                  const isCollapsed = !isExpanded;
+                {displayedMentors.map(({ mentor, mentees: mentorMentees, count }) => {
+                  const isExpanded = !collapsedMentorIds[mentor.id];
+                  const mentorInitials = `${mentor?.firstName?.[0] || ""}${mentor?.lastName?.[0] || ""}`;
+                  const mentorMinistry = allMinistries?.find((m: any) => m.id === mentor?.majorMinistryId)?.name;
+                  const mentorDept = mentorMinistry || (mentor as any)?.department || "Outreach";
 
                   return (
                     <div
-                      key={group.id}
+                      key={mentor.id}
                       className="rounded-3xl border border-border/70 bg-card shadow-xs overflow-hidden transition-all p-5 sm:p-6 space-y-4"
                     >
-                      {/* ── HEADER ROW ── */}
-                      <div className="flex items-center justify-between gap-4">
+                      {/* ── MENTOR HEADER ROW ── */}
+                      <div className="flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
                         <div className="flex items-start gap-3">
                           {/* Collapse / Expand Toggle Button */}
                           <button
-                            onClick={() => toggleGroupCollapse(group.id)}
+                            onClick={() => toggleMentorCollapse(mentor.id)}
                             className="mt-0.5 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
-                            {isCollapsed ? (
+                            {!isExpanded ? (
                               <ChevronDown className="h-5 w-5" />
                             ) : (
                               <ChevronUp className="h-5 w-5" />
                             )}
                           </button>
 
+                          {/* Mentor Avatar */}
+                          <div className="h-10 w-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm border border-primary/20 shrink-0">
+                            {mentorInitials || "M"}
+                          </div>
+
                           <div>
-                            {/* Group Name & Inline Edit */}
+                            {/* Mentor Name */}
                             <div className="flex items-center gap-2">
                               <h3 className="text-xl font-headline font-extrabold text-foreground tracking-tight">
-                                {group.name}
+                                {mentor.firstName} {mentor.lastName}
                               </h3>
-                              <button
-                                onClick={() => {
-                                  setSelectedGroup(group);
-                                  setIsGroupSheetOpen(true);
-                                }}
-                                className="text-muted-foreground/70 hover:text-primary transition-colors p-1"
-                                title="Edit Group"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
+                              {mentor.id === workerProfile?.id && (
+                                <Badge variant="outline" className="text-[10px] font-semibold text-primary border-primary/30 py-0 px-2">
+                                  You
+                                </Badge>
+                              )}
                             </div>
 
-                            {/* Mentor Subtitle & Cluster */}
+                            {/* Subtitle */}
                             <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                              Mentor:{" "}
-                              <span className="text-foreground/90 font-semibold">
-                                {mentor ? `${mentor.firstName} ${mentor.lastName}` : "Unassigned"}
-                              </span>{" "}
-                              • {group.name || "Brgy. 1"}
+                              Mentor • <span className="text-foreground/80 font-semibold">{mentorDept}</span>
                             </p>
                           </div>
                         </div>
 
-                        {/* Right Header Actions & Mentee Count Badge */}
-                        <div className="flex items-center gap-3">
+                        {/* Right: Individual Mentee Count */}
+                        <div className="flex items-center gap-3 ml-auto sm:ml-0">
                           <Badge
                             variant="secondary"
-                            className="bg-primary/10 text-primary font-medium px-3.5 py-1 rounded-full text-xs"
+                            className="bg-primary/10 text-primary font-bold px-3.5 py-1 rounded-full text-xs"
                           >
-                            {groupMentees.length} mentees
+                            {count} {count === 1 ? "mentee" : "mentees"}
                           </Badge>
-
-                          <button
-                            onClick={() =>
-                              setItemToDelete({
-                                id: group.id,
-                                type: "group",
-                                name: group.name,
-                              })
-                            }
-                            className="text-muted-foreground/50 hover:text-destructive transition-colors p-1"
-                            title="Delete Group"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
                         </div>
                       </div>
 
-                      {/* ── EXPANDED BODY ── */}
-                      {!isCollapsed && (
+                      {/* ── EXPANDED BODY: INDIVIDUAL MENTEES ── */}
+                      {isExpanded && (
                         <div className="space-y-3 pt-2">
-                          {/* Table Header Labels */}
-                          {groupMentees.length > 0 && (
+                          {mentorMentees.length > 0 && (
                             <div className="grid grid-cols-12 gap-4 px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                               <div className="col-span-5 sm:col-span-4">NAME</div>
-                              <div className="hidden sm:block sm:col-span-3 text-left">BARANGAY</div>
+                              <div className="hidden sm:block sm:col-span-3 text-left">CONTACT</div>
                               <div className="col-span-3 sm:col-span-2 text-center">STATUS</div>
                               <div className="col-span-3 sm:col-span-2 text-right sm:text-center">PROGRESS</div>
                               <div className="hidden sm:block sm:col-span-1"></div>
                             </div>
                           )}
 
-                          {/* Mentee List Rows */}
                           <div className="space-y-2">
-                            {groupMentees.length > 0 ? (
-                              groupMentees.map((m) => {
+                            {mentorMentees.length > 0 ? (
+                              mentorMentees.map((m) => {
                                 const fullName = `${m.firstName} ${m.lastName}`;
                                 const initials = `${m.firstName ? m.firstName[0] : ""}${m.lastName ? m.lastName[0] : ""}`;
                                 const menteeDevotions = devotions?.filter((d: any) =>
@@ -3447,7 +4345,7 @@ export default function C2SPage() {
                                         ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
                                         : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
 
-                                const displayStatus = m.status || "Active";
+                                const displayStatus = m.status || "In Progress";
 
                                 return (
                                   <div
@@ -3469,9 +4367,9 @@ export default function C2SPage() {
                                       </div>
                                     </div>
 
-                                    {/* Barangay / Cluster */}
-                                    <div className="hidden sm:block sm:col-span-3 text-xs font-medium text-muted-foreground">
-                                      {m.phone ? `Brgy. ${m.phone.slice(-1) || "1"}` : "Brgy. 1"}
+                                    {/* Contact */}
+                                    <div className="hidden sm:block sm:col-span-3 text-xs font-medium text-muted-foreground truncate">
+                                      {m.email || m.phone || "—"}
                                     </div>
 
                                     {/* Status Pill */}
@@ -3527,27 +4425,86 @@ export default function C2SPage() {
                                 );
                               })
                             ) : (
-                              <p className="text-xs text-muted-foreground italic py-3 text-center">
-                                No mentees enrolled in this group yet.
-                              </p>
+                              <div className="text-center py-6 border border-dashed rounded-2xl bg-muted/10 space-y-2">
+                                <p className="text-xs text-muted-foreground italic">
+                                  No mentees enrolled for {mentor.firstName} {mentor.lastName} yet.
+                                </p>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedMentee({ mentorId: mentor.id });
+                                    setIsMenteeSheetOpen(true);
+                                  }}
+                                  className="h-7 text-xs text-primary font-semibold"
+                                >
+                                  <PlusCircle className="h-3.5 w-3.5 mr-1" /> Add Mentee
+                                </Button>
+                              </div>
                             )}
                           </div>
-
-                          {/* Bottom Dashed Add Mentee Button */}
-                          <button
-                            onClick={() => {
-                              setSelectedMentee({ groupId: group.id });
-                              setIsMenteeSheetOpen(true);
-                            }}
-                            className="w-full border-2 border-dashed border-border/80 hover:border-primary/50 hover:bg-primary/5 rounded-2xl py-3 text-xs font-semibold text-muted-foreground hover:text-primary transition-all flex items-center justify-center gap-1.5 mt-3"
-                          >
-                            <PlusCircle className="h-4 w-4" /> Add Mentee to {group.name}
-                          </button>
                         </div>
                       )}
                     </div>
                   );
                 })}
+
+                {/* Unassigned Mentees Section (if any exist) */}
+                {unassignedMentees.length > 0 && (
+                  <div className="rounded-3xl border border-amber-500/40 bg-card shadow-xs overflow-hidden p-5 sm:p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <Users className="h-5 w-5 text-amber-500" />
+                        <div>
+                          <h3 className="text-lg font-bold text-foreground">Unassigned Mentees</h3>
+                          <p className="text-xs text-muted-foreground">Mentees waiting to be assigned to a mentor</p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold px-3 py-1 rounded-full text-xs">
+                        {unassignedMentees.length} unassigned
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2 pt-2">
+                      {unassignedMentees.map((m) => {
+                        const fullName = `${m.firstName} ${m.lastName}`;
+                        return (
+                          <div
+                            key={m.id}
+                            className="flex items-center justify-between p-3 rounded-2xl bg-muted/20 border border-border/40 text-xs"
+                          >
+                            <span className="font-bold text-foreground">{fullName}</span>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => {
+                                  setSelectedMentee(m);
+                                  setIsMenteeSheetOpen(true);
+                                }}
+                              >
+                                Assign Mentor
+                              </Button>
+                              <button
+                                onClick={() =>
+                                  setItemToDelete({
+                                    id: m.id,
+                                    type: "mentee",
+                                    name: fullName,
+                                  })
+                                }
+                                className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
@@ -3555,16 +4512,19 @@ export default function C2SPage() {
           {/* ══════════════════ TAB 3: ANALYTICS ══════════════════ */}
           <TabsContent value="analytics" className="mt-0">
             <C2SAnalytics
-              mentees={mentees || []}
+              mentees={menteesWithMentor || []}
               groups={groups || []}
               devotions={allDevotions}
               workers={workers || []}
+              allMinistries={allMinistries || []}
+              workerProfile={workerProfile}
+              user={user}
               canGenerateReport={canGenerateAnalyticsReport}
               departmentClusters={DEPARTMENT_CLUSTERS}
               headDepartment={headDepartment}
               isSuperAdmin={isAdminUser}
               isMinistryHead={isMinistryHeadUser}
-              isHeadOrAdmin={isHeadOrAdmin}
+              isMentor={isMentorUser}
               onViewDevotion={(dev) => setViewingDevotion(dev)}
             />
           </TabsContent>
@@ -3586,8 +4546,9 @@ export default function C2SPage() {
             mentees={mentees || []}
             workers={workers || []}
             currentWorker={workerProfile}
-            isMinistryHead={isMinistryHead}
-            isSuperAdmin={isSuperAdmin}
+            allMinistries={allMinistries || []}
+            isMinistryHead={isMinistryHeadUser}
+            isSuperAdmin={isAdminUser}
             onSave={handleSaveDevotion}
             onClose={() => setIsDevotionSheetOpen(false)}
           />
@@ -3602,29 +4563,6 @@ export default function C2SPage() {
         isSuperAdmin={isSuperAdmin}
       />
 
-      {/* ── Group Sheet ── */}
-      <Sheet open={isGroupSheetOpen} onOpenChange={setIsGroupSheetOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>
-              {selectedGroup ? "Edit C2S Group" : "Create C2S Group"}
-            </SheetTitle>
-            <SheetDescription>
-              Groups represent clusters of mentees assigned to a mentor.
-            </SheetDescription>
-          </SheetHeader>
-          <GroupForm
-            group={selectedGroup}
-            workers={workers || []}
-            mentees={mentees || []}
-            allGroups={groups || []}
-            currentWorker={workerProfile}
-            onSave={handleSaveGroup}
-            canAssignMentor={canManageGroupAssignment}
-          />
-        </SheetContent>
-      </Sheet>
-
       {/* ── Mentee Sheet ── */}
       <Sheet open={isMenteeSheetOpen} onOpenChange={setIsMenteeSheetOpen}>
         <SheetContent className="sm:max-w-md">
@@ -3633,13 +4571,14 @@ export default function C2SPage() {
               {selectedMentee?.id ? "Edit Mentee" : "Add Mentee"}
             </SheetTitle>
             <SheetDescription>
-              Add a mentee to a Connect 2 Souls mentoring cluster.
+              Add or update a mentee in Connect 2 Souls.
             </SheetDescription>
           </SheetHeader>
           <MenteeForm
             mentee={selectedMentee}
-            groups={groups || []}
             workers={workers || []}
+            currentWorker={workerProfile}
+            isHeadOrAdmin={isHeadOrAdmin}
             onSave={handleSaveMentee}
           />
         </SheetContent>

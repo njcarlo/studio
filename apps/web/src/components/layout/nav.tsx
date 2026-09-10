@@ -136,11 +136,11 @@ const allNavItems: NavItem[] = [
     subItems: [
       {
         href: "/c2s?tab=overview",
-        label: "Admin Overview",
+        label: "Overview",
         permissionKey: "isSuperAdmin",
       },
       { href: "/c2s?tab=devotions", label: "Devotions" },
-      { href: "/c2s?tab=groups", label: "Groups & Mentees" },
+      { href: "/c2s?tab=mentees", label: "Mentees" },
       { href: "/c2s?tab=analytics", label: "Analytics" },
     ],
   },

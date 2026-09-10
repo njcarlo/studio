@@ -82,8 +82,7 @@ const ImpersonationBanner = () => {
   if (isHead) {
     indicatorLabel = `Ministry Head • ${headDept} Department`;
   } else {
-    const assignedGroup = c2sGroups?.find((g: any) => g.mentorId === workerProfile?.id);
-    const clusterLabel = assignedGroup?.name || userMinistry?.name || "Outreach Cluster 4";
+    const clusterLabel = userMinistry?.name || (workerProfile as any)?.department || "Outreach";
     indicatorLabel = `Mentor • ${clusterLabel}`;
   }
 
