@@ -613,7 +613,7 @@ export default function WorkersPage() {
               </p>
               <div className="flex items-center gap-1.5">
                 <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors">
+                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-2xs font-bold text-sm">
                   ‹
                 </button>
                 {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
@@ -626,14 +626,14 @@ export default function WorkersPage() {
                   return (
                     <button key={pageNum} onClick={() => setCurrentPage(pageNum)}
                       className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all",
-                        currentPage === pageNum ? "bg-primary text-primary-foreground shadow-xs" : "border border-border text-foreground hover:bg-muted"
+                        currentPage === pageNum ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 shadow-2xs"
                       )}>
                       {pageNum}
                     </button>
                   );
                 })}
                 <button onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))} disabled={currentPage === pagination.totalPages || pagination.totalPages === 0}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors">
+                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-2xs font-bold text-sm">
                   ›
                 </button>
               </div>

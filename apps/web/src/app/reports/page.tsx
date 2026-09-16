@@ -352,7 +352,7 @@ function AttendanceTab() {
               return (
                 <button key={pageNum} onClick={() => setPage(pageNum)}
                   className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all",
-                    page === pageNum ? "bg-primary text-primary-foreground shadow-xs" : "border border-border text-foreground hover:bg-muted")}>
+                    page === pageNum ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-border text-foreground hover:bg-muted")}>
                   {pageNum}
                 </button>
               );
@@ -566,7 +566,7 @@ function MealStubClaimsTab() {
                 let n = i + 1;
                 if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; }
                 if (n <= 0 || n > totalPages) return null;
-                return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-primary text-primary-foreground shadow-xs" : "border border-border text-foreground hover:bg-muted")}>{n}</button>;
+                return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-border text-foreground hover:bg-muted")}>{n}</button>;
               })}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0}
                 className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors">
@@ -804,7 +804,7 @@ function AllocationsTab() {
             </p>
             <div className="flex items-center gap-1">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"><ChevronLeft className="h-4 w-4" /></button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let n = i + 1; if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; } if (n <= 0 || n > totalPages) return null; return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-primary text-primary-foreground shadow-xs" : "border border-border text-foreground hover:bg-muted")}>{n}</button>; })}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let n = i + 1; if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; } if (n <= 0 || n > totalPages) return null; return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-border text-foreground hover:bg-muted")}>{n}</button>; })}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"><ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
@@ -1034,7 +1034,7 @@ function ReservationsTab() {
             </p>
             <div className="flex items-center gap-1">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"><ChevronLeft className="h-4 w-4" /></button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let n = i + 1; if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; } if (n <= 0 || n > totalPages) return null; return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-primary text-primary-foreground shadow-xs" : "border border-border text-foreground hover:bg-muted")}>{n}</button>; })}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let n = i + 1; if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; } if (n <= 0 || n > totalPages) return null; return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-border text-foreground hover:bg-muted")}>{n}</button>; })}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"><ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>

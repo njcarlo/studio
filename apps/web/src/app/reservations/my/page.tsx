@@ -11,6 +11,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  DatePicker,
   Table,
   TableBody,
   TableCell,
@@ -257,19 +258,19 @@ export default function MyReservationsPage() {
         </div>
 
         {/* Main Card Container */}
-        <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border p-6 shadow-xs overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden">
           {/* Top Controls Row */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             {/* Tab Switcher Pills */}
-            <div className="bg-gray-100 dark:bg-muted p-1 rounded-xl flex items-center border border-gray-200/50 dark:border-border/50 self-start">
+            <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs self-start">
               <button
                 type="button"
                 onClick={() => setActiveTab("upcoming")}
                 className={cn(
-                  "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                  "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
                   activeTab === "upcoming"
-                    ? "bg-white dark:bg-card shadow-xs text-gray-800 dark:text-foreground"
-                    : "text-gray-500 hover:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground"
+                    ? "bg-sidebar text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
                 )}
               >
                 Upcoming
@@ -278,10 +279,10 @@ export default function MyReservationsPage() {
                 type="button"
                 onClick={() => setActiveTab("active")}
                 className={cn(
-                  "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                  "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
                   activeTab === "active"
-                    ? "bg-white dark:bg-card shadow-xs text-gray-800 dark:text-foreground"
-                    : "text-gray-500 hover:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground"
+                    ? "bg-sidebar text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
                 )}
               >
                 Active
@@ -290,10 +291,10 @@ export default function MyReservationsPage() {
                 type="button"
                 onClick={() => setActiveTab("history")}
                 className={cn(
-                  "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                  "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
                   activeTab === "history"
-                    ? "bg-white dark:bg-card shadow-xs text-gray-800 dark:text-foreground"
-                    : "text-gray-500 hover:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground"
+                    ? "bg-sidebar text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
                 )}
               >
                 History
@@ -303,32 +304,27 @@ export default function MyReservationsPage() {
             {/* Right Controls: Search, Date Picker, Status Filter */}
             <div className="flex flex-wrap items-center gap-2.5">
               {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <div className="relative w-52 sm:w-72">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
                 <Input
                   type="text"
-                  placeholder="Search ID, room..."
+                  placeholder="Search ID, room, purpose..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-9 text-xs rounded-xl border-gray-200 dark:border-border w-44 sm:w-56"
+                  className="pl-9 pr-4 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
                 />
               </div>
 
               {/* Date Filter */}
-              <div className="relative">
-                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                <Input
-                  type="date"
-                  placeholder="dd/mm/yyyy"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="pl-8 h-9 text-xs rounded-xl border-gray-200 dark:border-border w-36"
-                />
-              </div>
+              <DatePicker
+                value={dateFilter}
+                onChange={setDateFilter}
+                align="end"
+              />
 
               {/* Status Select */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-9 w-36 text-xs rounded-xl border-gray-200 dark:border-border font-medium">
+                <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -350,7 +346,7 @@ export default function MyReservationsPage() {
           </div>
 
           {/* Table Content */}
-          <div className="border border-gray-200/80 dark:border-border rounded-xl mt-6 overflow-hidden">
+          <div className="border border-border/60 rounded-2xl mt-5 overflow-hidden">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-24 gap-3">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
@@ -359,8 +355,8 @@ export default function MyReservationsPage() {
                 </p>
               </div>
             ) : filteredBookings.length === 0 ? (
-              <div className="py-20 text-center text-gray-400 dark:text-gray-500">
-                <p className="text-sm font-medium">No reservations found.</p>
+              <div className="py-20 text-center text-muted-foreground">
+                <p className="text-sm font-semibold text-foreground">No reservations found.</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   You have no {activeTab} reservations matching your search.
                 </p>
@@ -376,26 +372,26 @@ export default function MyReservationsPage() {
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#F8F9FA] dark:bg-muted/40 hover:bg-[#F8F9FA] border-b border-gray-200 dark:border-border">
-                    <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-center w-[14%]">
+                  <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                    <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-center w-[14%]">
                       ID
                     </TableHead>
-                    <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-center w-[22%]">
+                    <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[24%]">
                       Floor / Room
                     </TableHead>
-                    <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-center w-[18%]">
+                    <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[18%]">
                       Date
                     </TableHead>
-                    <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-center w-[18%]">
+                    <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[18%]">
                       Time
                     </TableHead>
-                    <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-4 text-center w-[8%]">
+                    <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[8%]">
                       Pax
                     </TableHead>
-                    <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-center w-[12%]">
+                    <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-center w-[10%]">
                       Status
                     </TableHead>
-                    <TableHead className="font-bold text-gray-700 dark:text-gray-200 text-xs h-12 px-6 text-center w-[8%]">
+                    <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-center w-[8%]">
                       Actions
                     </TableHead>
                   </TableRow>

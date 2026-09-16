@@ -15,6 +15,7 @@ import {
   SelectGroup,
   SelectLabel,
   Checkbox,
+  DatePicker,
 } from "@studio/ui";
 import {
   Calendar as CalendarIcon,
@@ -398,7 +399,7 @@ export default function NewReservationPage() {
                 <Input
                   value={generatedRequestId || "REQ-1000"}
                   disabled
-                  className="bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300 border-0 rounded-xl h-10 text-xs font-medium cursor-not-allowed"
+                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-xs font-medium cursor-not-allowed shadow-2xs"
                 />
               </div>
 
@@ -409,7 +410,7 @@ export default function NewReservationPage() {
                 <Input
                   value={format(new Date(), "MMM d, yyyy")}
                   disabled
-                  className="bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300 border-0 rounded-xl h-10 text-xs font-medium cursor-not-allowed"
+                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-xs font-medium cursor-not-allowed shadow-2xs"
                 />
               </div>
             </div>
@@ -424,7 +425,7 @@ export default function NewReservationPage() {
                   value={requesterName}
                   onChange={(e) => setRequesterName(e.target.value)}
                   placeholder="System Admin"
-                  className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus-visible:ring-1 focus-visible:ring-blue-500"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
               </div>
 
@@ -433,7 +434,7 @@ export default function NewReservationPage() {
                   Ministry
                 </label>
                 <Select value={ministryId} onValueChange={setMinistryId}>
-                  <SelectTrigger className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus:ring-1 focus:ring-blue-500">
+                  <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                     <SelectValue placeholder="Administration" />
                   </SelectTrigger>
                   <SelectContent>
@@ -457,7 +458,7 @@ export default function NewReservationPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@gmail.com"
-                className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus-visible:ring-1 focus-visible:ring-blue-500"
+                className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
               />
             </div>
 
@@ -470,7 +471,7 @@ export default function NewReservationPage() {
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 placeholder="Describe the event or meeting...."
-                className="border border-gray-200 dark:border-border rounded-xl min-h-[110px] p-3 text-xs leading-relaxed text-gray-800 dark:text-gray-100 focus-visible:ring-1 focus-visible:ring-blue-500"
+                className="bg-background dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl min-h-[110px] p-3 text-xs leading-relaxed text-slate-800 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
               />
             </div>
 
@@ -481,11 +482,11 @@ export default function NewReservationPage() {
                   <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                     Select Date
                   </label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus-visible:ring-1 focus-visible:ring-blue-500"
+                    onChange={setSelectedDate}
+                    className="w-full h-10 rounded-xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 shadow-2xs"
+                    align="start"
                   />
                 </div>
 
@@ -494,7 +495,7 @@ export default function NewReservationPage() {
                     Start Time
                   </label>
                   <Select value={startTime} onValueChange={setStartTime}>
-                    <SelectTrigger className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus:ring-1 focus:ring-blue-500">
+                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                       <SelectValue placeholder="Start" />
                     </SelectTrigger>
                     <SelectContent>
@@ -516,7 +517,7 @@ export default function NewReservationPage() {
                     End Time
                   </label>
                   <Select value={endTime} onValueChange={setEndTime}>
-                    <SelectTrigger className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus:ring-1 focus:ring-blue-500">
+                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                       <SelectValue placeholder="End" />
                     </SelectTrigger>
                     <SelectContent>
@@ -544,7 +545,7 @@ export default function NewReservationPage() {
                 Floor / Room
               </label>
               <Select value={roomId} onValueChange={setRoomId}>
-                <SelectTrigger className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus:ring-1 focus:ring-blue-500">
+                <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                   <SelectValue placeholder="Select floor / room" />
                 </SelectTrigger>
                 <SelectContent>
@@ -586,7 +587,7 @@ export default function NewReservationPage() {
                   value={pax}
                   onChange={(e) => setPax(e.target.value)}
                   placeholder="Number of people"
-                  className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus-visible:ring-1 focus-visible:ring-blue-500"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
                 {selectedRoom && (
                   <p
@@ -613,7 +614,7 @@ export default function NewReservationPage() {
                   value={numTables}
                   onChange={(e) => setNumTables(e.target.value)}
                   placeholder="0"
-                  className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus-visible:ring-1 focus-visible:ring-blue-500"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
               </div>
 
@@ -626,7 +627,7 @@ export default function NewReservationPage() {
                   value={numChairs}
                   onChange={(e) => setNumChairs(e.target.value)}
                   placeholder="0"
-                  className="bg-gray-100/90 dark:bg-muted text-gray-800 dark:text-gray-100 border-0 rounded-xl h-10 text-xs font-medium focus-visible:ring-1 focus-visible:ring-blue-500"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
               </div>
             </div>
@@ -648,7 +649,7 @@ export default function NewReservationPage() {
                       return (
                         <div
                           key={element.id}
-                          className="flex items-center space-x-2 bg-gray-50 dark:bg-muted/40 p-2.5 rounded-xl border border-gray-200/60 dark:border-border/60"
+                          className="flex items-center space-x-2.5 bg-slate-50/80 dark:bg-muted/30 p-2.5 rounded-xl border border-slate-200/70 dark:border-border/60 hover:border-sidebar/30 transition-all"
                         >
                           <Checkbox
                             id={`element-${element.id}`}
@@ -680,18 +681,18 @@ export default function NewReservationPage() {
               )}
 
             {/* ORS Guidelines Section (Retained before Submit & Cancel buttons) */}
-            <div className="bg-amber-50/60 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-200/70 dark:border-amber-900/40 space-y-2.5 mt-6">
-              <div className="font-bold text-xs text-amber-800 dark:text-amber-300">
+            <div className="bg-slate-50/90 dark:bg-muted/30 p-4 rounded-xl border border-slate-200/90 dark:border-border space-y-2.5 mt-6 shadow-2xs">
+              <div className="font-bold text-xs text-slate-900 dark:text-white">
                 ORS Guidelines
               </div>
-              <p className="text-xs leading-relaxed text-amber-900/80 dark:text-amber-300/80">
+              <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                 1. Rooms must be left clean and tidy after use.
                 <br />
                 2. Switch off all lights, AC, and equipment before leaving.
                 <br />
                 3. Report any damage immediately to the facilities manager.
               </p>
-              <div className="flex items-center space-x-2 pt-1 border-t border-amber-200/50 dark:border-amber-900/30">
+              <div className="flex items-center space-x-2 pt-2 border-t border-slate-200/70 dark:border-border/60">
                 <Checkbox
                   id="guidelines"
                   checked={guidelinesAccepted}
@@ -699,7 +700,7 @@ export default function NewReservationPage() {
                 />
                 <label
                   htmlFor="guidelines"
-                  className="text-xs font-semibold cursor-pointer text-amber-900 dark:text-amber-200 select-none"
+                  className="text-xs font-semibold cursor-pointer text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white select-none transition-colors"
                 >
                   I understand and will follow the ORS guidelines
                 </label>
@@ -712,7 +713,7 @@ export default function NewReservationPage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
-                className="rounded-xl px-6 h-10 text-xs font-semibold border-gray-200 dark:border-border"
+                className="rounded-xl px-6 h-10 text-xs font-semibold border-slate-200/90 dark:border-border hover:bg-slate-100 dark:hover:bg-muted"
               >
                 Cancel
               </Button>
@@ -722,8 +723,8 @@ export default function NewReservationPage() {
                 className={cn(
                   "rounded-xl px-7 h-10 text-xs font-bold shadow-xs gap-1.5 transition-all",
                   guidelinesAccepted
-                    ? "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-sm"
-                    : "bg-blue-600/40 text-white dark:bg-blue-900/40 dark:text-white/80 cursor-not-allowed"
+                    ? "bg-sidebar hover:bg-sidebar/90 text-white cursor-pointer shadow-sm"
+                    : "bg-sidebar/40 text-white dark:bg-sidebar/40 dark:text-white/80 cursor-not-allowed"
                 )}
               >
                 {isSubmitting && (

@@ -1633,11 +1633,23 @@ const C2SAnalytics = ({
         (k) => k.toLowerCase() === (headDepartment || "outreach").toLowerCase()
       ) || "OUTREACH";
     const baseList = (departmentClusters && departmentClusters[deptKey]) || [];
-    const existingGroupNames = groups?.map((g) => g.name).filter(Boolean) || [];
+    const existingGroupNames = Array.from(
+      new Set(groups?.map((g) => g.name).filter(Boolean) || [])
+    );
     const customList = existingGroupNames
-      .filter((name) => !baseList.some((b) => b.value.toLowerCase() === name.toLowerCase()))
-      .map((name) => ({ value: name, label: name }));
-    return [...baseList, ...customList];
+      .filter((name) => !baseList.some((b) => b.value.toLowerCase().trim() === name.toLowerCase().trim()))
+      .map((name) => ({ value: name.trim(), label: name.trim() }));
+
+    const seen = new Set<string>();
+    const uniqueOptions: { value: string; label: string }[] = [];
+    for (const item of [...baseList, ...customList]) {
+      const lower = (item.value || "").toLowerCase().trim();
+      if (lower && !seen.has(lower)) {
+        seen.add(lower);
+        uniqueOptions.push({ value: item.value.trim(), label: item.label.trim() });
+      }
+    }
+    return uniqueOptions;
   }, [departmentClusters, headDepartment, groups]);
 
   // Filter devotions by selected cluster
@@ -1802,8 +1814,8 @@ const C2SAnalytics = ({
                   <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
                     {formattedDeptName.toUpperCase()} MINISTRIES
                   </SelectLabel>
-                  {clusterOptions.map((item) => (
-                    <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
+                  {clusterOptions.map((item, idx) => (
+                    <SelectItem key={`analytics-cluster-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
                       • {item.label}
                     </SelectItem>
                   ))}
@@ -2206,11 +2218,21 @@ export default function C2SPage() {
   const departmentClusters = useMemo<Record<string, { value: string; label: string }[]>>(() => {
     if (!allMinistries || allMinistries.length === 0) return {};
     const map: Record<string, { value: string; label: string }[]> = {};
+    const seenPerDept: Record<string, Set<string>> = {};
     for (const m of allMinistries) {
-      const deptCode = (m.departmentCode || m.department || "").toUpperCase();
+      if (!m || !m.name) continue;
+      const deptCode = (m.departmentCode || m.department || "").toUpperCase().trim();
       if (!deptCode) continue;
-      if (!map[deptCode]) map[deptCode] = [];
-      map[deptCode].push({ value: m.name, label: m.name });
+      if (!map[deptCode]) {
+        map[deptCode] = [];
+        seenPerDept[deptCode] = new Set();
+      }
+      const trimmedName = m.name.trim();
+      const lower = trimmedName.toLowerCase();
+      if (!seenPerDept[deptCode].has(lower)) {
+        seenPerDept[deptCode].add(lower);
+        map[deptCode].push({ value: trimmedName, label: trimmedName });
+      }
     }
     return map;
   }, [allMinistries]);
@@ -2559,8 +2581,17 @@ export default function C2SPage() {
       departmentClusters["OUTREACH"] ||
       [];
 
-    return baseList;
-  }, [headDepartment]);
+    const seen = new Set<string>();
+    const uniqueList: { value: string; label: string }[] = [];
+    for (const item of baseList) {
+      const lower = (item.value || "").toLowerCase().trim();
+      if (lower && !seen.has(lower)) {
+        seen.add(lower);
+        uniqueList.push({ value: item.value.trim(), label: item.label.trim() });
+      }
+    }
+    return uniqueList;
+  }, [headDepartment, departmentClusters]);
 
   // Filtered devotion records
   const filteredDevotions = useMemo(() => {
@@ -2964,8 +2995,8 @@ export default function C2SPage() {
                             <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
                               {titleLabel}
                             </SelectLabel>
-                            {items.map((item) => (
-                              <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
+                            {items.map((item, idx) => (
+                              <SelectItem key={`admin-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
                                 • {item.label}
                               </SelectItem>
                             ))}
@@ -2992,8 +3023,8 @@ export default function C2SPage() {
                         <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
                           {headDepartment.toUpperCase()} MINISTRIES
                         </SelectLabel>
-                        {activeClusterOptions.map((item) => (
-                          <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
+                        {activeClusterOptions.map((item, idx) => (
+                          <SelectItem key={`head-cluster-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
                             • {item.label}
                           </SelectItem>
                         ))}
@@ -3200,8 +3231,8 @@ export default function C2SPage() {
                             <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
                               {titleLabel}
                             </SelectLabel>
-                            {items.map((item) => (
-                              <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
+                            {items.map((item, idx) => (
+                              <SelectItem key={`grp-admin-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
                                 • {item.label}
                               </SelectItem>
                             ))}
@@ -3226,8 +3257,8 @@ export default function C2SPage() {
                         <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
                           {headDepartment.toUpperCase()} MINISTRIES
                         </SelectLabel>
-                        {activeClusterOptions.map((item) => (
-                          <SelectItem key={item.value} value={item.value} className="text-xs pl-6 cursor-pointer">
+                        {activeClusterOptions.map((item, idx) => (
+                          <SelectItem key={`grp-head-cluster-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
                             • {item.label}
                           </SelectItem>
                         ))}

@@ -253,7 +253,7 @@ export default function ApprovalsPage() {
     if (selectedIds.size === filteredRequests.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredRequests.map(r => r.id)));
+      setSelectedIds(new Set(filteredRequests.map(r => r.id).filter((id): id is string => Boolean(id))));
     }
   };
 
@@ -444,30 +444,31 @@ export default function ApprovalsPage() {
                       const ministry = worker
                         ? ministries?.find(m => m.id === worker.majorMinistryId)
                         : null;
-                      const isSelected = selectedIds.has(req.id);
+                      const reqId = req.id || "";
+                      const isSelected = selectedIds.has(reqId);
                       const canManage = checkCanManage(req);
                       const isPending = req.status.startsWith("Pending");
                       const reqDate = req.date ? new Date(req.date as any) : null;
 
                       return (
                         <tr
-                          key={req.id}
+                          key={reqId || Math.random().toString()}
                           className={cn(
                             "border-b border-border/30 transition-colors cursor-pointer",
                             isSelected ? "bg-primary/5" : "hover:bg-muted/20"
                           )}
                           onClick={() => setSelectedRequest(req)}
                         >
-                          <td className="px-4 py-3.5" onClick={e => { e.stopPropagation(); toggleSelect(req.id); }}>
+                          <td className="px-4 py-3.5" onClick={e => { e.stopPropagation(); toggleSelect(reqId); }}>
                             <input
                               type="checkbox"
                               className="rounded border-border"
                               checked={isSelected}
-                              onChange={() => toggleSelect(req.id)}
+                              onChange={() => toggleSelect(reqId)}
                             />
                           </td>
                           <td className="px-4 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap">
-                            REQ-{req.id.slice(-4).toUpperCase()}
+                            REQ-{reqId.slice(-4).toUpperCase()}
                           </td>
                           <td className="px-4 py-3.5">
                             <p className="text-sm font-semibold text-foreground leading-snug line-clamp-1">{req.details}</p>
@@ -562,7 +563,7 @@ export default function ApprovalsPage() {
 
                     {/* Request ID + details */}
                     <div className="mt-3">
-                      <p className="text-[10px] font-mono text-muted-foreground mb-0.5">REQ-{req.id.slice(-4).toUpperCase()}</p>
+                      <p className="text-[10px] font-mono text-muted-foreground mb-0.5">REQ-{(req.id || "").slice(-4).toUpperCase()}</p>
                       <p className="text-sm font-bold text-foreground leading-snug line-clamp-2">{req.details}</p>
                     </div>
 
@@ -668,7 +669,7 @@ export default function ApprovalsPage() {
 
                           {/* REQ ID + details */}
                           <div>
-                            <p className="text-[10px] font-mono text-muted-foreground mb-0.5">REQ-{req.id.slice(-4).toUpperCase()}</p>
+                            <p className="text-[10px] font-mono text-muted-foreground mb-0.5">REQ-{(req.id || "").slice(-4).toUpperCase()}</p>
                             <p className="text-sm font-bold text-foreground leading-snug line-clamp-2">{req.details}</p>
                           </div>
 

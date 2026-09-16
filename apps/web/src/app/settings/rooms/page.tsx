@@ -819,15 +819,15 @@ export default function RoomManagementPage() {
 
                 {/* Tab bar + actions */}
                 <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
+                    <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-muted p-1 rounded-xl border border-slate-200/70 dark:border-border/50 shadow-2xs">
                         <button
                             onClick={() => setActiveTab('rooms')}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === 'rooms' ? 'bg-card shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'rooms' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}>
                             Rooms
                         </button>
                         <button
                             onClick={() => setActiveTab('areas')}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === 'areas' ? 'bg-card shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'areas' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}>
                             Areas
                         </button>
                     </div>

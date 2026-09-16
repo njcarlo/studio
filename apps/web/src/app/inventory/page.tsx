@@ -346,7 +346,7 @@ function InventoryPageContent() {
 
         {/* ── MOBILE-FRIENDLY HORIZONTAL TAB BAR ── */}
         <div className="overflow-x-auto no-scrollbar pb-1">
-          <div className="inline-flex p-1 bg-muted/60 dark:bg-muted/30 rounded-2xl border border-border/60 gap-1 min-w-max">
+          <div className="inline-flex p-1 bg-slate-100/90 dark:bg-muted rounded-xl border border-slate-200/70 dark:border-border/50 gap-1 min-w-max shadow-2xs">
             {INVENTORY_TABS.map((tab) => {
               const Icon = tab.icon;
               const isSelected = tab.id === activeTab;
@@ -355,13 +355,13 @@ function InventoryPageContent() {
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
                     isSelected
-                      ? "bg-background text-primary shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      ? "bg-sidebar text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
                   )}
                 >
-                  <Icon className={cn("h-3.5 w-3.5", isSelected ? "text-primary" : "text-muted-foreground")} />
+                  <Icon className={cn("h-3.5 w-3.5", isSelected ? "text-white" : "text-muted-foreground")} />
                   <span>{tab.label}</span>
                   {tab.id === "borrowings" && overdueAlerts.length > 0 && (
                     <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-destructive text-destructive-foreground">

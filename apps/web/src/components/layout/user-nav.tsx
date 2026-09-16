@@ -108,30 +108,25 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 p-1 sm:px-2 rounded-lg hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none"
+          className="flex items-center gap-1.5 p-1 sm:px-2 mr-5 sm:mr-8 lg:mr-12 rounded-lg hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none"
         >
           {/* Avatar circle */}
           <div className="h-8 w-8 rounded-full bg-indigo-600 dark:bg-indigo-500 text-white font-bold flex items-center justify-center text-sm shadow-sm shrink-0 ring-2 ring-indigo-300/50">
             {initial}
           </div>
 
-          {/* User info - hidden on mobile, shown on sm+ */}
-          <div className="hidden sm:flex flex-col text-left">
-            <span className="text-xs sm:text-[13px] font-bold text-foreground leading-tight">
-              {displayName}
-            </span>
-            <span className="text-[11px] text-muted-foreground leading-tight font-normal">
-              {indicatorBadge || roleName}
-            </span>
-          </div>
+          {/* User name - font-medium and nudged down slightly */}
+          <span className="hidden sm:inline-block text-xs sm:text-[13px] font-medium text-foreground leading-none ml-1 translate-y-[1px]">
+            {displayName}
+          </span>
 
-          {/* Down Chevron */}
-          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-0.5" />
+          {/* Down Chevron - closer to text */}
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 translate-y-[1px]" />
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className="w-56 mt-1.5 shadow-lg rounded-xl" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal sm:hidden">
+        <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-semibold leading-none">{displayName}</p>
             <p className="text-xs leading-none text-muted-foreground">
@@ -139,7 +134,7 @@ export function UserNav() {
             </p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator className="sm:hidden" />
+        <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
           {impersonatedWorkerId ? (

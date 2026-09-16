@@ -90,7 +90,6 @@ const allNavItems: NavItem[] = [
         label: "Schedule Calendar",
         permissionKey: "canViewScheduleMasterview",
       },
-      { href: "/reservations/calendar", label: "View Schedules" },
       { href: "/reservations/my", label: "My Reservations" },
       { href: "/reservations/new", label: "Reserve a Room" },
       {
@@ -155,13 +154,6 @@ const allNavItems: NavItem[] = [
     icon: Users,
     label: "Workers",
     permissionKey: "canManageWorkers",
-    subItems: [
-      {
-        href: "/workers",
-        label: "Worker Management",
-        permissionKey: "canManageWorkers",
-      },
-    ],
   },
   {
     href: "/attendance",
@@ -242,6 +234,9 @@ export function Nav({
       }
       return currentUrl === href;
     }
+    if (href === "/workers") {
+      return pathname === "/workers" || (pathname.startsWith("/workers/") && !pathname.startsWith("/workers/my-qr"));
+    }
     return pathname === href;
   };
 
@@ -300,7 +295,7 @@ export function Nav({
   return (
     <nav className={cn("flex flex-col", className)}>
       <SidebarGroup>
-        <SidebarGroupLabel className="uppercase tracking-wider text-[10px] font-semibold text-muted-foreground/60 px-3 mb-1">
+        <SidebarGroupLabel className="uppercase tracking-wider text-[10px] font-semibold text-white/60 px-3 mb-1">
           Menu
         </SidebarGroupLabel>
         <SidebarGroupContent>
@@ -412,8 +407,9 @@ export function Nav({
               key={item.href}
               asChild
               defaultOpen={pathname.startsWith(item.href)}
+              className="group/collapsible"
             >
-              <SidebarMenuItem className="flex flex-col">
+              <SidebarMenuItem className="flex flex-col group/collapsible">
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton
                     isActive={pathname.startsWith(item.href)}
@@ -423,7 +419,7 @@ export function Nav({
                       <item.icon className="size-4" />
                       <span>{item.label}</span>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-90" />
+                    <ChevronRight className="size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
@@ -462,12 +458,13 @@ export function Nav({
                                 isActiveHref(n.href),
                               )
                             }
+                            className="group/subcollapsible"
                           >
-                            <SidebarMenuSubItem className="flex flex-col">
+                            <SidebarMenuSubItem className="flex flex-col group/subcollapsible">
                               <CollapsibleTrigger asChild>
                                 <SidebarMenuSubButton className="justify-between w-full">
                                   <span>{subItem.label}</span>
-                                  <ChevronRight className="size-3 shrink-0 transition-transform duration-200 data-[state=open]:rotate-90" />
+                                  <ChevronRight className="size-3 shrink-0 transition-transform duration-200 group-data-[state=open]/subcollapsible:rotate-90" />
                                 </SidebarMenuSubButton>
                               </CollapsibleTrigger>
                               <CollapsibleContent>

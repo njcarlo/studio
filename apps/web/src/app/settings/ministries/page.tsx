@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@stud
 import {
   Building2, HeartHandshake, User as UserIcon, Users, LoaderCircle,
   Upload, PlusCircle, MoreHorizontal, Edit, Trash2, UserCog, Utensils,
-  Eye, ArrowLeft, Search,
+  Eye, ArrowLeft, Search, Copy, ClipboardCheck,
 } from "lucide-react";
 import type { Ministry, Worker, Department } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -29,7 +29,7 @@ import { Label } from "@studio/ui";
 import { Input } from "@studio/ui";
 import { Textarea } from "@studio/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
-import { Copy, ClipboardCheck, Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useWorkers } from "@/hooks/use-workers";
 import { createMinistries } from "@/actions/db";
