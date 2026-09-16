@@ -99,6 +99,10 @@ function InventoryPageContent() {
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   const [overdueAlerts, setOverdueAlerts] = useState<any[]>([]);
 
+  // Derive active tab metadata
+  const activeTabMeta = INVENTORY_TABS.find(tab => tab.id === activeTab) || INVENTORY_TABS[0];
+  const ActiveIcon = activeTabMeta.icon;
+
   const { stats, fetchStats } = useInventory();
 
   useEffect(() => {
@@ -193,7 +197,6 @@ function InventoryPageContent() {
           </div>
         )}
 
-<<<<<<< Updated upstream
         {/* ── MODERN KPI STAT CARDS (INTERACTIVE QUICK ACCESS) ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* 1. Total Catalog */}
@@ -435,8 +438,6 @@ function InventoryPageContent() {
           </div>
         </div>
 
-=======
->>>>>>> Stashed changes
         {/* ── TAB PANELS CONTENT ── */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-6">
           <TabsContent value="items" className="space-y-6 mt-0">

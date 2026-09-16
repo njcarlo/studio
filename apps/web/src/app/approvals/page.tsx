@@ -349,43 +349,17 @@ export default function ApprovalsPage() {
         )}
 
         {/* Table / Cards / Kanban container */}
-<<<<<<< HEAD
-        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden">
-          {/* Top Controls Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            {/* Status filter tabs (Matching Room Reservations) */}
-            <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs self-start overflow-x-auto max-w-full gap-1">
-              {(["all", "pending", "approved", "rejected", "completed"] as const).map(s => (
-=======
         <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
           {/* Toolbar */}
           <div className="flex items-center justify-center px-2 md:px-5 py-3 border-b border-border/40" style={{ backgroundColor: '#1e3a8a' }}>
             {/* Status filter tabs */}
             <div className="flex items-center gap-1 md:gap-2 w-full justify-center">
               {(["all", "pending", "approved", "rejected"] as const).map(s => (
->>>>>>> bf632bf (Mobile view & Settings)
                 <button
                   key={s}
                   type="button"
                   onClick={() => setStatusFilter(s)}
                   className={cn(
-<<<<<<< HEAD
-                    "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
-                    statusFilter === s
-                      ? "bg-sidebar text-white shadow-xs"
-                      : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
-                  )}
-                >
-                  <span>{s.charAt(0).toUpperCase() + s.slice(1)}</span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold",
-                      statusFilter === s
-                        ? "bg-white/20 text-white"
-                        : "bg-slate-200/80 dark:bg-muted/80 text-slate-700 dark:text-slate-300"
-                    )}
-                  >
-=======
                     "flex items-center gap-1 md:gap-1.5 px-2 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-semibold transition-colors whitespace-nowrap",
                     statusFilter === s
                       ? "bg-white text-blue-600 shadow-sm"
@@ -397,67 +371,63 @@ export default function ApprovalsPage() {
                     "inline-flex items-center justify-center min-w-[16px] md:min-w-[18px] h-[16px] md:h-[18px] px-1 rounded-full text-[9px] md:text-[10px] font-bold",
                     statusFilter === s ? "bg-blue-500 text-white" : "bg-white/20 text-white"
                   )}>
->>>>>>> bf632bf (Mobile view & Settings)
                     {statusCounts[s]}
                   </span>
                 </button>
               ))}
             </div>
-<<<<<<< HEAD
-
-            {/* View mode toggle (Matching Room Reservations style) */}
-            <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs gap-1 self-start sm:self-auto">
-              {([
-                { key: "table", icon: LayoutList, label: "Table" },
-                { key: "cards", icon: LayoutGrid, label: "Cards" },
-                { key: "kanban", icon: KanbanSquare, label: "Kanban" },
-              ] as const).map(({ key, icon: Icon, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setViewMode(key)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                    viewMode === key
-                      ? "bg-white dark:bg-card shadow-xs text-foreground"
-                      : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
-=======
->>>>>>> bf632bf (Mobile view & Settings)
           </div>
 
           {/* Table View */}
           {viewMode === "table" && (
-<<<<<<< HEAD
-            <div className="border border-border/60 rounded-2xl mt-5 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                      <th className="w-10 px-4 py-3.5 text-center whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          className="rounded border-sidebar-border accent-sidebar cursor-pointer"
-                          checked={selectedIds.size === filteredRequests.length && filteredRequests.length > 0}
-                          onChange={toggleSelectAll}
-                        />
-                      </th>
-                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Request ID</th>
-                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Request</th>
-                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Requestor</th>
-                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Ministry</th>
-                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Date</th>
-                      <th className="px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Status</th>
-                      <th className="px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Type</th>
-                      <th className="w-14 px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Action</th>
-=======
             <>
+              {/* Mobile list view */}
+              <div className="md:hidden divide-y divide-border/30">
+                {filteredRequests.length === 0 ? (
+                  <div className="py-20 text-center text-sm text-muted-foreground">
+                    No requests found.
+                  </div>
+                ) : (
+                  filteredRequests.map(req => {
+                    const worker = workers?.find(w => w.id === req.workerId);
+                    const ministry = worker ? ministries?.find(m => m.id === worker.majorMinistryId) : null;
+                    const reqId = req.id || "";
+                    const reqDate = req.date ? new Date(req.date as any) : null;
+
+                    return (
+                      <div
+                        key={reqId || Math.random().toString()}
+                        className="p-4 flex items-center justify-between gap-3"
+                      >
+                        {/* Left: Basic info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2.5 mb-1.5">
+                            <Initials name={req.requester} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-foreground leading-tight truncate">{req.requester}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"}</p>
+                            </div>
+                          </div>
+                          <p className="text-[10px] font-mono text-muted-foreground mb-1">REQ-{reqId.slice(-4).toUpperCase()}</p>
+                          <p className="text-xs text-muted-foreground truncate">{req.details}</p>
+                        </div>
+
+                        {/* Right: Status + Details button */}
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          <StatusBadge status={req.status} />
+                          <button
+                            onClick={() => setSelectedRequest(req)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
+                          >
+                            Details
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
               {/* Mobile list view */}
               <div className="md:hidden divide-y divide-border/30">
                 {filteredRequests.length === 0 ? (
@@ -531,53 +501,44 @@ export default function ApprovalsPage() {
                 <tbody>
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-20 text-center text-sm text-muted-foreground">
+                      <td colSpan={9} className="py-20 text-center text-sm text-muted-foreground font-medium">
                         No requests found.
                       </td>
->>>>>>> bf632bf (Mobile view & Settings)
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRequests.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="py-20 text-center text-sm text-muted-foreground font-medium">
-                          No requests found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredRequests.map(req => {
-                        const worker = workers?.find(w => w.id === req.workerId);
-                        const ministry = worker
-                          ? ministries?.find(m => m.id === worker.majorMinistryId)
-                          : null;
-                        const reqId = req.id || "";
-                        const isSelected = selectedIds.has(reqId);
-                        const canManage = checkCanManage(req);
-                        const isPending = req.status.startsWith("Pending");
-                        const reqDate = req.date ? new Date(req.date as any) : null;
+                  ) : (
+                    filteredRequests.map(req => {
+                      const worker = workers?.find(w => w.id === req.workerId);
+                      const ministry = worker
+                        ? ministries?.find(m => m.id === worker.majorMinistryId)
+                        : null;
+                      const reqId = req.id || "";
+                      const isSelected = selectedIds.has(reqId);
+                      const canManage = checkCanManage(req);
+                      const isPending = req.status.startsWith("Pending");
+                      const reqDate = req.date ? new Date(req.date as any) : null;
 
-                        return (
-                          <tr
-                            key={reqId || Math.random().toString()}
-                            className={cn(
-                              "border-b border-gray-100 dark:border-border/60 transition-colors cursor-pointer",
-                              isSelected ? "bg-primary/5" : "hover:bg-slate-50/70 dark:hover:bg-muted/30"
-                            )}
-                            onClick={() => setSelectedRequest(req)}
-                          >
-                            <td className="px-4 py-3.5 text-center" onClick={e => { e.stopPropagation(); toggleSelect(reqId); }}>
-                              <input
-                                type="checkbox"
-                                className="rounded border-border accent-sidebar cursor-pointer"
-                                checked={isSelected}
-                                onChange={() => toggleSelect(reqId)}
-                              />
-                            </td>
-                            <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap font-medium">
-                              REQ-{reqId.slice(-4).toUpperCase()}
-                            </td>
-                            <td className="px-5 py-3.5">
-                              <p className="text-sm font-semibold text-foreground leading-snug line-clamp-1">{req.details}</p>
+                      return (
+                        <tr
+                          key={reqId || Math.random().toString()}
+                          className={cn(
+                            "border-b border-gray-100 dark:border-border/60 transition-colors cursor-pointer",
+                            isSelected ? "bg-primary/5" : "hover:bg-slate-50/70 dark:hover:bg-muted/30"
+                          )}
+                          onClick={() => setSelectedRequest(req)}
+                        >
+                          <td className="px-4 py-3.5 text-center" onClick={e => { e.stopPropagation(); toggleSelect(reqId); }}>
+                            <input
+                              type="checkbox"
+                              className="rounded border-border accent-sidebar cursor-pointer"
+                              checked={isSelected}
+                              onChange={() => toggleSelect(reqId)}
+                            />
+                          </td>
+                          <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap font-medium">
+                            REQ-{reqId.slice(-4).toUpperCase()}
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <p className="text-sm font-semibold text-foreground leading-snug line-clamp-1">{req.details}</p>
                             </td>
                             <td className="px-5 py-3.5">
                               <div className="flex items-center gap-2">
@@ -636,17 +597,12 @@ export default function ApprovalsPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
             </>
           )}
 
           {/* Cards View */}
           {viewMode === "cards" && (
-<<<<<<< HEAD
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch auto-rows-fr">
-=======
             <div className="p-3 md:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 items-stretch auto-rows-fr">
->>>>>>> bf632bf (Mobile view & Settings)
               {filteredRequests.length === 0 ? (
                 <p className="col-span-full py-16 text-center text-sm text-muted-foreground">No requests found.</p>
               ) : filteredRequests.map(req => {
@@ -736,13 +692,8 @@ export default function ApprovalsPage() {
 
           {/* Kanban View */}
           {viewMode === "kanban" && (
-<<<<<<< HEAD
-            <div className="mt-5 overflow-x-auto">
-              <div className="flex gap-4 min-w-[900px]">
-=======
             <div className="p-3 md:p-5 overflow-x-auto">
               <div className="flex gap-3 md:gap-4 min-w-max">
->>>>>>> bf632bf (Mobile view & Settings)
                 {([
                   { key: "pending",  label: "PENDING",      color: "text-amber-500",   bg: "bg-amber-50/60 dark:bg-amber-950/20",   border: "border-amber-200/60 dark:border-amber-800/40",  requests: filteredRequests.filter(r => r.status === "Pending" || r.status === "Pending Ministry Approval" || r.status === "Pending Outgoing Approval") },
                   { key: "review",   label: "UNDER REVIEW", color: "text-blue-500",    bg: "bg-blue-50/60 dark:bg-blue-950/20",     border: "border-blue-200/60 dark:border-blue-800/40",    requests: filteredRequests.filter(r => r.status === "Pending Admin Approval" || r.status === "Pending Incoming Approval") },

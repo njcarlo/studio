@@ -210,11 +210,9 @@ const allNavItems: NavItem[] = [
 export function Nav({
   pathname,
   className,
-  onOpenMySettings,
 }: {
   pathname: string;
   className?: string;
-  onOpenMySettings?: () => void;
 }) {
   const userRole = useUserRole();
   const { isLoading, needsSeeding, workerProfile, isSuperAdmin, isMinistryHead } = userRole;
@@ -522,18 +520,14 @@ export function Nav({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onOpenMySettings?.();
-                  if (isMobile) {
-                    setTimeout(() => setOpenMobile(false), 100);
-                  }
-                }}
+                asChild
+                isActive={pathname === "/my-settings"}
                 tooltip={{ children: "My Settings" }}
               >
-                <Settings className="size-4" />
-                <span>My Settings</span>
+                <Link href="/my-settings">
+                  <Settings className="size-4" />
+                  <span>My Settings</span>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

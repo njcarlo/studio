@@ -1177,10 +1177,10 @@ export async function getC2SDevotionRecords(params?: {
             where.clusterName = params.clusterName;
         }
 
-        const records = await (prisma as any).c2SDevotionRecord.findMany({
+        const records = await prisma.c2SDevotionRecord.findMany({
             where,
             orderBy: {
-                devotionDate: 'desc',
+                createdAt: 'desc',
             },
         });
         return records || [];
@@ -1213,7 +1213,7 @@ export async function createC2SDevotionRecord(data: {
     let validGroupId: string | null = null;
     if (data.groupId) {
         try {
-            const groupExists = await (prisma as any).c2SGroup.findUnique({
+            const groupExists = await prisma.c2SGroup.findUnique({
                 where: { id: data.groupId },
             });
             if (groupExists) {
@@ -1223,6 +1223,41 @@ export async function createC2SDevotionRecord(data: {
             validGroupId = null;
         }
     }
+
+    // Upload photos to Supabase Storage if they are base64 strings
+    let uploadedPhotoUrls: string[] = [];
+    if (data.photoUrls && data.photoUrls.length > 0) {
+        const { uploadBase64ToSupabase } = await import('@/lib/upload-to-supabase');
+        for (const photoUrl of data.photoUrls) {
+            if (photoUrl.startsWith('data:image')) {
+                // This is a base64 string, upload to Supabase
+                try {
+                    const publicUrl = await uploadBase64ToSupabase(photoUrl, 'Devotion-Photos', 'c2s');
+                    uploadedPhotoUrls.push(publicUrl);
+                } catch (error) {
+                    console.error('Error uploading photo to Supabase:', error);
+                    // Fallback to base64 if upload fails
+                    uploadedPhotoUrls.push(photoUrl);
+                }
+            } else {
+                // Already a URL, keep it
+                uploadedPhotoUrls.push(photoUrl);
+            }
+        }
+    } else if (data.photoUrl && data.photoUrl.startsWith('data:image')) {
+        // Upload single photo
+        const { uploadBase64ToSupabase } = await import('@/lib/upload-to-supabase');
+        try {
+            const publicUrl = await uploadBase64ToSupabase(data.photoUrl, 'Devotion-Photos', 'c2s');
+            uploadedPhotoUrls.push(publicUrl);
+        } catch (error) {
+            console.error('Error uploading photo to Supabase:', error);
+            uploadedPhotoUrls.push(data.photoUrl);
+        }
+    }
+
+    const finalPhotoUrl = uploadedPhotoUrls[0] || data.photoUrl || null;
+    const finalPhotoUrls = uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls : (data.photoUrls || (data.photoUrl ? [data.photoUrl] : []));
 
     const payload = {
         manualType: data.manualType || 'C2S Devotional Manual',
@@ -1240,25 +1275,22 @@ export async function createC2SDevotionRecord(data: {
         attendeeCount: data.attendeeCount ?? (data.attendeeNames ? data.attendeeNames.length : 0),
         reflectionNotes: data.reflectionNotes,
         prayerRequests: data.prayerRequests || null,
-        photoUrl: data.photoUrl || (data.photoUrls && data.photoUrls[0]) || null,
-        photoUrls: data.photoUrls || (data.photoUrl ? [data.photoUrl] : []),
+        photoUrl: finalPhotoUrl,
+        photoUrls: finalPhotoUrls,
         status: data.status || 'Submitted',
     };
 
     try {
-        const record = await (prisma as any).c2SDevotionRecord.create({
+        const record = await prisma.c2SDevotionRecord.create({
             data: payload,
         });
         revalidatePath('/c2s');
         return record;
     } catch (err: any) {
         console.error("Error creating C2SDevotionRecord in DB:", err);
-        return {
-            id: `dev-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            ...payload,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
+        console.error("Payload:", JSON.stringify(payload, null, 2));
+        // Throw the error instead of returning a mock object
+        throw new Error(`Failed to create devotion record: ${err.message}`);
     }
 }
 
@@ -1282,6 +1314,38 @@ export async function updateC2SDevotionRecord(id: string, data: {
     photoUrls?: string[];
     status?: string;
 }) {
+    // Upload photos to Supabase Storage if they are base64 strings
+    let uploadedPhotoUrls: string[] = [];
+    if (data.photoUrls && data.photoUrls.length > 0) {
+        const { uploadBase64ToSupabase } = await import('@/lib/upload-to-supabase');
+        for (const photoUrl of data.photoUrls) {
+            if (photoUrl.startsWith('data:image')) {
+                // This is a base64 string, upload to Supabase
+                try {
+                    const publicUrl = await uploadBase64ToSupabase(photoUrl, 'Devotion-Photos', 'c2s');
+                    uploadedPhotoUrls.push(publicUrl);
+                } catch (error) {
+                    console.error('Error uploading photo to Supabase:', error);
+                    // Fallback to base64 if upload fails
+                    uploadedPhotoUrls.push(photoUrl);
+                }
+            } else {
+                // Already a URL, keep it
+                uploadedPhotoUrls.push(photoUrl);
+            }
+        }
+    } else if (data.photoUrl && data.photoUrl.startsWith('data:image')) {
+        // Upload single photo
+        const { uploadBase64ToSupabase } = await import('@/lib/upload-to-supabase');
+        try {
+            const publicUrl = await uploadBase64ToSupabase(data.photoUrl, 'Devotion-Photos', 'c2s');
+            uploadedPhotoUrls.push(publicUrl);
+        } catch (error) {
+            console.error('Error uploading photo to Supabase:', error);
+            uploadedPhotoUrls.push(data.photoUrl);
+        }
+    }
+
     const updateData: any = {};
     if (data.manualType !== undefined) updateData.manualType = data.manualType;
     if (data.moduleName !== undefined) updateData.moduleName = data.moduleName;
@@ -1300,16 +1364,22 @@ export async function updateC2SDevotionRecord(id: string, data: {
     }
     if (data.reflectionNotes !== undefined) updateData.reflectionNotes = data.reflectionNotes;
     if (data.prayerRequests !== undefined) updateData.prayerRequests = data.prayerRequests;
-    if (data.photoUrls !== undefined) {
+    
+    // Use uploaded URLs if available
+    if (uploadedPhotoUrls.length > 0) {
+        updateData.photoUrls = uploadedPhotoUrls;
+        updateData.photoUrl = uploadedPhotoUrls[0];
+    } else if (data.photoUrls !== undefined) {
         updateData.photoUrls = data.photoUrls;
         updateData.photoUrl = data.photoUrl || (data.photoUrls.length > 0 ? data.photoUrls[0] : null);
     } else if (data.photoUrl !== undefined) {
         updateData.photoUrl = data.photoUrl;
         updateData.photoUrls = data.photoUrl ? [data.photoUrl] : [];
     }
+    
     if (data.status !== undefined) updateData.status = data.status;
 
-    const record = await (prisma as any).c2SDevotionRecord.update({
+    const record = await prisma.c2SDevotionRecord.update({
         where: { id },
         data: updateData,
         include: {
@@ -1321,7 +1391,7 @@ export async function updateC2SDevotionRecord(id: string, data: {
 }
 
 export async function deleteC2SDevotionRecord(id: string) {
-    await (prisma as any).c2SDevotionRecord.delete({ where: { id } });
+    await prisma.c2SDevotionRecord.delete({ where: { id } });
     revalidatePath('/c2s');
 }
 

@@ -12,7 +12,6 @@ import {
 } from "@studio/ui";
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
-import { MySettingsDialog } from "@/components/layout/my-settings-dialog";
 import {
   LoaderCircle,
   Info,
@@ -133,7 +132,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
-  const [mySettingsOpen, setMySettingsOpen] = useState(false);
 
   useEffect(() => {
     // If auth is done loading and there's no user, redirect to login
@@ -180,7 +178,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="h-[1px] bg-white/15 mx-1.5 mt-2.5 mb-1 group-data-[collapsible=icon]:hidden" />
         </SidebarHeader>
         <SidebarContent>
-          <Nav pathname={currentPathname} onOpenMySettings={() => setMySettingsOpen(true)} />
+          <Nav pathname={currentPathname} />
         </SidebarContent>
       </Sidebar>
       {/* Fixed Header - mobile only. Desktop uses the sidebar header instead. */}
@@ -249,9 +247,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Connects with Sidebar to open the side menu - removed */}
       </div>
-
-      {/* My Settings Dialog */}
-      <MySettingsDialog open={mySettingsOpen} onOpenChange={setMySettingsOpen} />
     </SidebarProvider>
   );
 }

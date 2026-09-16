@@ -268,7 +268,6 @@ export function BorrowingsPanel() {
       </Card>
 
       {/* Borrowings Table */}
-<<<<<<< Updated upstream
       <Card className="shadow-sm border overflow-hidden">
 
         {/* Mobile card list */}
@@ -359,10 +358,6 @@ export function BorrowingsPanel() {
 
         {/* Desktop table */}
         <div className="overflow-x-auto hidden md:block">
-=======
-      <Card className="rounded-2xl border border-slate-200/90 dark:border-border/80 shadow-xs overflow-hidden bg-card">
-        <div className="overflow-x-auto">
->>>>>>> Stashed changes
           <Table>
             <TableHeader className="bg-slate-50/90 dark:bg-muted/40 border-b border-slate-200/80 dark:border-border/70">
               <TableRow>

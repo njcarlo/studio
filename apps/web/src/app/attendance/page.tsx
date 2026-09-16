@@ -379,14 +379,6 @@ export default function AttendancePage() {
                 <h2 className="text-base font-bold text-foreground font-headline">This week's personal log</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Recent attendance history.</p>
               </div>
-<<<<<<< HEAD
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-sidebar">
-                    <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                      {["Date", "Time In", "Time Out", "Total Hours", "Status"].map(h => (
-                        <th key={h} className="px-6 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">{h}</th>
-=======
               <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
                 <div className="px-7 pt-5 pb-4 border-b border-border/40">
                   <h2 className="text-base font-bold text-foreground">This week's personal log</h2>
@@ -442,7 +434,6 @@ export default function AttendancePage() {
                           <td className="px-8 py-3.5 text-sm text-muted-foreground whitespace-nowrap">{formatHours(s.totalMinutes)}</td>
                           <td className="px-8 py-3.5"><StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} /></td>
                         </tr>
->>>>>>> bf632bf (Mobile view & Settings)
                       ))}
                     </tr>
                   </thead>
@@ -467,96 +458,6 @@ export default function AttendancePage() {
 
         {/* ── Manual Attendance ── */}
         {activeTab === "manual" && isAssigner && (
-<<<<<<< HEAD
-          <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
-            {/* Top Controls Row */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              {/* Status Filter Tabs (Matching Room Reservations & Workers style) */}
-              <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs self-start overflow-x-auto max-w-full gap-1">
-                {[
-                  { id: "all", label: "All", count: manualStatusCounts.all },
-                  { id: "timed-in", label: "Timed In", count: manualStatusCounts["timed-in"] },
-                  { id: "timed-out", label: "Timed Out", count: manualStatusCounts["timed-out"] },
-                  { id: "not-yet", label: "Not Yet Timed In", count: manualStatusCounts["not-yet"] },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setStatusFilter(tab.id)}
-                    className={cn(
-                      "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
-                      statusFilter === tab.id
-                        ? "bg-sidebar text-white shadow-xs"
-                        : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
-                    )}
-                  >
-                    <span>{tab.label}</span>
-                    <span
-                      className={cn(
-                        "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold",
-                        statusFilter === tab.id
-                          ? "bg-white/20 text-white"
-                          : "bg-slate-200/80 dark:bg-muted/80 text-slate-700 dark:text-slate-300"
-                      )}
-                    >
-                      {tab.count}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Right Controls */}
-              <div className="flex items-center gap-2.5 self-start lg:self-auto flex-wrap sm:flex-nowrap">
-                <div className="relative w-full sm:w-60">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search ID, worker name..."
-                    value={assignSearch}
-                    onChange={e => setAssignSearch(e.target.value)}
-                    className="w-full pl-9 pr-8 h-10 rounded-2xl border border-slate-200/90 dark:border-border bg-slate-50/50 dark:bg-muted/30 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-2xs focus:outline-none focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all"
-                  />
-                  {assignSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setAssignSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <Select value={ministryFilter} onValueChange={setMinistryFilter}>
-                  <SelectTrigger className="h-10 w-[145px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                    <SelectValue placeholder="All Ministries" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-                    <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
-                    {(ministries as any[]).map(m => (
-                      <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                    <SelectValue placeholder="All Roles" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-                    <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Roles</SelectItem>
-                    {(roles as any[]).map(r => (
-                      <SelectItem key={r.id} value={r.name} className="text-xs font-medium cursor-pointer">{r.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="border border-gray-200/80 dark:border-border rounded-2xl mt-5 overflow-hidden">
-              <div className="overflow-x-auto">
-=======
           <div className="flex flex-col gap-5">
             <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex flex-col gap-3">
               <div className="relative w-full">
@@ -631,7 +532,6 @@ export default function AttendancePage() {
 
               {/* Desktop table view */}
               <div className="overflow-x-auto hidden md:block">
->>>>>>> bf632bf (Mobile view & Settings)
                 <table className="w-full">
                   <thead className="bg-sidebar">
                     <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
@@ -824,17 +724,6 @@ export default function AttendancePage() {
                     )}
                   </div>
 
-<<<<<<< HEAD
-                  {/* Ministry */}
-                  <Select value={recordsMinistryFilter} onValueChange={setRecordsMinistryFilter}>
-                    <SelectTrigger className="h-10 w-[140px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                      <SelectValue placeholder="All Ministries" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-                      <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
-                      {(ministries as any[]).map(m => (
-                        <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
-=======
             {/* Search + filters + range */}
             <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex flex-col gap-3">
               <div className="relative w-full">
@@ -940,14 +829,60 @@ export default function AttendancePage() {
                     <tr className="bg-muted/40 border-b border-border/40">
                       {["Worker", "Worker ID", "Role", "Ministry", "Date", "Time In", "Time Out", "Hours", "Status", "Actions"].map(h => (
                         <th key={h} className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{h}</th>
->>>>>>> bf632bf (Mobile view & Settings)
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recordsLoading ? (
+                      <tr><td colSpan={10} className="py-14 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" /></td></tr>
+                    ) : filteredRecordRows.length === 0 ? (
+                      <tr><td colSpan={10} className="py-14 text-center text-sm text-muted-foreground">No records found.</td></tr>
+                    ) : filteredRecordRows.map((row, idx) => {
+                      const roleName = getRoleName(row.worker);
+                      const ministry = (ministries as any[]).find(m => m.id === row.worker.majorMinistryId);
+                      return (
+                        <tr key={idx} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
+                              <span className="text-sm font-semibold text-foreground">{row.worker.firstName} {row.worker.lastName}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground">{fmtId(row.worker.workerId)}</td>
+                          <td className="px-5 py-3.5"><RoleBadge role={roleName} /></td>
+                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{ministry?.name || "—"}</td>
+                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{format(row.date, "MMM d, yyyy")}</td>
+                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{row.timeIn ? format(row.timeIn, "H:mm") : "—"}</td>
+                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{row.timeOut ? format(row.timeOut, "H:mm") : "—"}</td>
+                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{formatHours(row.hours)}</td>
+                          <td className="px-5 py-3.5">
+                            <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold",
+                              row.status === "present" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              row.status === "late" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                              row.status === "absent" ? "bg-red-50 text-red-700 border border-red-200" :
+                              "bg-blue-50 text-blue-700 border border-blue-200")}>
+                              {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
-                  {/* Role */}
-                  <Select value={recordsRoleFilter} onValueChange={setRecordsRoleFilter}>
-                    <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+      </div>
+    </AppLayout>
+  );
+}
                       <SelectValue placeholder="All Roles" />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">

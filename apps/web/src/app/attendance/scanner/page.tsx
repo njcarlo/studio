@@ -294,15 +294,6 @@ export default function QRScannerPage() {
                     <h1 className="text-2xl font-headline font-bold">Attendance Scanner</h1>
                     <p className="text-sm text-muted-foreground">Scan QR codes for attendance.</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <Tabs value={scanMode} onValueChange={(v: any) => setScanMode(v)} className="w-[300px]">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="Attendance">Attendance</TabsTrigger>
-                            <TabsTrigger value="Meal Stub">Meal Stub</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-
-                </div>
             </header>
 
             <main className="grid flex-grow grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-6 lg:p-8 overflow-hidden">

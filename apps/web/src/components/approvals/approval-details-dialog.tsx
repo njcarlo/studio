@@ -97,27 +97,6 @@ export function ApprovalDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-<<<<<<< HEAD
-      <DialogContent
-        className="sm:max-w-[540px] p-0 overflow-hidden !border-0 !border-none !outline-none !ring-0 rounded-3xl shadow-2xl bg-sidebar [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:!bg-transparent [&>button]:hover:!bg-transparent [&>button]:focus:!bg-transparent [&>button]:data-[state=open]:!bg-transparent [&>button]:!border-0 [&>button]:!border-none [&>button]:!outline-none [&>button]:!ring-0 [&>button]:!ring-offset-0 [&>button]:focus:!ring-0 [&>button]:focus:!outline-none [&>button]:focus-visible:!ring-0 [&>button]:focus-visible:!outline-none [&>button]:top-4.5 [&>button]:right-5 sm:[&>button]:top-5 sm:[&>button]:right-6 [&>button]:p-0.5 [&>button]:transition-opacity"
-        style={{ border: "none", outline: "none", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)" }}
-      >
-        <DialogTitle className="sr-only">{request.type} Request Details</DialogTitle>
-        
-        {/* Signature Header Banner */}
-        <div className="bg-sidebar px-6 pt-4.5 pb-4.5 sm:px-7 sm:pt-5 sm:pb-4.5 relative overflow-hidden rounded-t-3xl flex items-center">
-          <div className="flex items-center gap-3.5 relative z-10 text-white">
-            <div className="p-2.5 bg-white/15 backdrop-blur-md rounded-xl border border-white/20 shadow-xs shrink-0 flex items-center justify-center">
-              {getIconForType(request.type)}
-            </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold font-headline tracking-tight text-white leading-tight">
-                {request.type}
-              </h2>
-              <p className="text-white/80 text-xs font-medium mt-0.5">
-                Request Details
-              </p>
-=======
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl [&>button]:text-white [&>button]:top-4 [&>button]:right-4">
         <DialogTitle className="sr-only">{request.type} Request Details</DialogTitle>
         <div className={cn("h-24 flex items-end p-6", request.status === "Approved" ? "bg-green-600" : request.status === "Rejected" ? "bg-red-600" : "")}
@@ -127,7 +106,6 @@ export function ApprovalDetailsDialog({
             <div>
               <h2 className="text-xl font-bold font-headline leading-tight text-white">{request.type}</h2>
               <p className="text-white/80 text-sm">Request Details</p>
->>>>>>> bf632bf (Mobile view & Settings)
             </div>
           </div>
         </div>

@@ -4999,7 +4999,7 @@ export default function C2SPage() {
       </div>
 
       {/* ── Submit / Edit Devotion Record Sheet ── */}
-      <Sheet open={isDevotionSheetOpen} onOpenChange={setIsDevotionSheetOpen}>
+      <Sheet open={isDevotionSheetOpen} onOpenChange={setIsDevotionSheetOpen} modal={false}>
         <SheetContent className="sm:max-w-2xl overflow-y-auto w-full">
           <SheetHeader>
             <SheetTitle className="text-xl font-bold flex items-center gap-2">

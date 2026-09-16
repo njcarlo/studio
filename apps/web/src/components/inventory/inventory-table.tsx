@@ -467,15 +467,8 @@ export function InventoryTable({
               <Button
                 variant={!selectedStatus && !selectedType ? 'default' : 'ghost'}
                 size="sm"
-<<<<<<< Updated upstream
                 className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
                   !selectedStatus && !selectedType ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
-=======
-                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all cursor-pointer ${
-                  !selectedStatus && !selectedType
-                    ? 'bg-sidebar hover:bg-sidebar/90 text-white shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground'
->>>>>>> Stashed changes
                 }`}
                 onClick={() => {
                   setSelectedStatus('');
@@ -491,11 +484,7 @@ export function InventoryTable({
               <Button
                 variant={selectedStatus === 'Low Stock' ? 'default' : 'ghost'}
                 size="sm"
-<<<<<<< Updated upstream
                 className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
-=======
-                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all cursor-pointer ${
->>>>>>> Stashed changes
                   selectedStatus === 'Low Stock'
                     ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-2xs'
                     : 'text-muted-foreground hover:text-foreground hover:bg-amber-500/10'
@@ -512,11 +501,7 @@ export function InventoryTable({
               <Button
                 variant={selectedType === 'EQUIPMENT' ? 'default' : 'ghost'}
                 size="sm"
-<<<<<<< Updated upstream
                 className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
-=======
-                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all cursor-pointer ${
->>>>>>> Stashed changes
                   selectedType === 'EQUIPMENT' ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={() => {
@@ -531,11 +516,7 @@ export function InventoryTable({
               <Button
                 variant={selectedType === 'CONSUMABLE' ? 'default' : 'ghost'}
                 size="sm"
-<<<<<<< Updated upstream
                 className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
-=======
-                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all cursor-pointer ${
->>>>>>> Stashed changes
                   selectedType === 'CONSUMABLE' ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={() => {
