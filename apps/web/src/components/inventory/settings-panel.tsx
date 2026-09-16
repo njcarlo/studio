@@ -133,17 +133,29 @@ export function SettingsPanel() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full animate-in fade-in duration-200">
       {/* Header */}
-      <Card className="shadow-sm border">
-        <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="font-bold text-base">Checklist & Inspection Templates</h3>
-            <p className="text-xs text-muted-foreground">
-              Customize standard verification steps required during equipment checkout and return workflows.
-            </p>
+      <Card className="rounded-2xl border border-slate-200/90 dark:border-border/80 shadow-xs bg-card">
+        <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-sidebar/10 text-sidebar dark:text-blue-400 border border-sidebar/20 flex items-center justify-center shrink-0">
+              <Settings className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-bold font-headline text-lg text-foreground tracking-tight">
+                Checklist &amp; Inspection Templates
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Customize standard verification steps required during equipment checkout and return workflows.
+              </p>
+            </div>
           </div>
-          <Button onClick={handleSave} disabled={saving} className="gap-2 shadow">
+
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="h-10 px-5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs sm:text-sm shadow-xs cursor-pointer flex items-center gap-2 shrink-0 transition-all"
+          >
             <Save className="h-4 w-4" />
             {saving ? 'Saving...' : 'Save Configuration'}
           </Button>
@@ -151,103 +163,161 @@ export function SettingsPanel() {
       </Card>
 
       {successMsg && (
-        <div className="p-3 text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center gap-2">
+        <div className="p-3.5 text-xs sm:text-sm bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center gap-2.5 shadow-2xs animate-in fade-in">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span>{successMsg}</span>
+          <span className="font-semibold">{successMsg}</span>
         </div>
       )}
 
       {/* Grid of Checklist Configurations */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Checkout Checklist */}
-        <Card className="shadow-sm border">
-          <CardHeader className="p-5 border-b bg-muted/20">
-            <div className="flex items-center gap-2">
-              <FileCheck className="h-4 w-4 text-primary" />
-              <CardTitle className="text-sm font-bold">Checkout Checklist Items</CardTitle>
-            </div>
-            <CardDescription className="text-xs">
-              Steps verified before handing equipment to workers
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-5 space-y-4">
-            <div className="space-y-2">
-              {checkoutTemplate?.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-2.5 rounded-lg border bg-card flex items-center justify-between gap-2 text-xs"
-                >
-                  <span className="font-medium text-foreground">{item.label}</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-                    onClick={() => removeCheckoutItem(item.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+        <Card className="rounded-2xl border border-slate-200/90 dark:border-border/80 shadow-xs bg-card overflow-hidden flex flex-col justify-between">
+          <CardHeader className="p-5 border-b border-slate-200/70 dark:border-border/60 bg-slate-50/70 dark:bg-muted/30">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-sidebar/10 text-sidebar dark:text-blue-400 flex items-center justify-center shrink-0 border border-sidebar/20">
+                  <FileCheck className="h-4 w-4" />
                 </div>
-              ))}
+                <div>
+                  <CardTitle className="text-sm font-bold text-foreground">
+                    Checkout Checklist Items
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Steps verified before handing equipment to workers
+                  </CardDescription>
+                </div>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sidebar/10 text-sidebar dark:text-blue-400 border border-sidebar/20 shrink-0">
+                {checkoutTemplate?.items.length || 0} items
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+            <div className="space-y-2">
+              {(!checkoutTemplate?.items || checkoutTemplate.items.length === 0) ? (
+                <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-xl">
+                  No checkout checklist items yet. Add one below.
+                </div>
+              ) : (
+                checkoutTemplate.items.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    className="p-3 sm:px-4 rounded-xl border border-slate-200/80 dark:border-border/60 bg-slate-50/50 dark:bg-muted/20 flex items-center justify-between gap-3 hover:border-sidebar/40 hover:bg-slate-50/90 transition-all group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-6 h-6 rounded-lg bg-sidebar/10 text-sidebar dark:text-blue-400 font-bold text-[11px] flex items-center justify-center shrink-0 border border-sidebar/20">
+                        {idx + 1}
+                      </div>
+                      <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                        {item.label}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      onClick={() => removeCheckoutItem(item.id)}
+                      title="Delete Item"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Add item */}
-            <div className="flex gap-2 pt-2">
+            <div className="flex items-center gap-2 pt-3 border-t border-slate-200/60 dark:border-border/40">
               <Input
                 placeholder="New checkout checklist item..."
                 value={newCheckoutItem}
                 onChange={(e) => setNewCheckoutItem(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCheckoutItem())}
-                className="h-9 text-xs"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200/80 dark:border-border/60 focus:ring-2 focus:ring-primary/30 flex-1"
               />
-              <Button size="sm" variant="outline" onClick={addCheckoutItem} className="h-9">
+              <Button
+                type="button"
+                onClick={addCheckoutItem}
+                className="h-10 px-4 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer shrink-0"
+              >
                 <Plus className="h-4 w-4" />
+                <span>Add</span>
               </Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Return Checklist */}
-        <Card className="shadow-sm border">
-          <CardHeader className="p-5 border-b bg-muted/20">
-            <div className="flex items-center gap-2">
-              <FileCheck className="h-4 w-4 text-emerald-600" />
-              <CardTitle className="text-sm font-bold">Return Inspection Checklist</CardTitle>
-            </div>
-            <CardDescription className="text-xs">
-              Inspection criteria checked when equipment is returned
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-5 space-y-4">
-            <div className="space-y-2">
-              {returnTemplate?.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-2.5 rounded-lg border bg-card flex items-center justify-between gap-2 text-xs"
-                >
-                  <span className="font-medium text-foreground">{item.label}</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-                    onClick={() => removeReturnItem(item.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+        <Card className="rounded-2xl border border-slate-200/90 dark:border-border/80 shadow-xs bg-card overflow-hidden flex flex-col justify-between">
+          <CardHeader className="p-5 border-b border-slate-200/70 dark:border-border/60 bg-slate-50/70 dark:bg-muted/30">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                  <FileCheck className="h-4 w-4" />
                 </div>
-              ))}
+                <div>
+                  <CardTitle className="text-sm font-bold text-foreground">
+                    Return Inspection Checklist
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Inspection criteria checked when equipment is returned
+                  </CardDescription>
+                </div>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                {returnTemplate?.items.length || 0} items
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+            <div className="space-y-2">
+              {(!returnTemplate?.items || returnTemplate.items.length === 0) ? (
+                <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-xl">
+                  No return inspection items yet. Add one below.
+                </div>
+              ) : (
+                returnTemplate.items.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    className="p-3 sm:px-4 rounded-xl border border-slate-200/80 dark:border-border/60 bg-slate-50/50 dark:bg-muted/20 flex items-center justify-between gap-3 hover:border-sidebar/40 hover:bg-slate-50/90 transition-all group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] flex items-center justify-center shrink-0 border border-emerald-500/20">
+                        {idx + 1}
+                      </div>
+                      <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                        {item.label}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      onClick={() => removeReturnItem(item.id)}
+                      title="Delete Item"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Add item */}
-            <div className="flex gap-2 pt-2">
+            <div className="flex items-center gap-2 pt-3 border-t border-slate-200/60 dark:border-border/40">
               <Input
                 placeholder="New return inspection item..."
                 value={newReturnItem}
                 onChange={(e) => setNewReturnItem(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addReturnItem())}
-                className="h-9 text-xs"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200/80 dark:border-border/60 focus:ring-2 focus:ring-primary/30 flex-1"
               />
-              <Button size="sm" variant="outline" onClick={addReturnItem} className="h-9">
+              <Button
+                type="button"
+                onClick={addReturnItem}
+                className="h-10 px-4 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer shrink-0"
+              >
                 <Plus className="h-4 w-4" />
+                <span>Add</span>
               </Button>
             </div>
           </CardContent>

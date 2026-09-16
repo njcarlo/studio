@@ -58,8 +58,16 @@ import {
   RadioGroup,
   RadioGroupItem,
   Checkbox,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@studio/ui";
+import { cn, toJsDate } from "@/lib/utils";
 import {
+  Plus,
   PlusCircle,
   Users,
   UserPlus,
@@ -111,7 +119,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { C2SGroup, C2SMentee, C2SDevotionRecord, Worker } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
-import { toJsDate } from "@/lib/utils";
 import {
   createC2SGroup,
   createC2SMentee,
@@ -129,6 +136,45 @@ import {
   getMinistries,
   getDepartmentSettings,
 } from "@/actions/db";
+
+// ── StatCard Component (Consistent with Dashboard & Attendance) ───────────────
+function StatCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  accentColor,
+  iconClass,
+  iconBgClass,
+}: {
+  label: string;
+  value: number | string;
+  sub?: string;
+  icon: React.ElementType;
+  accentColor: string;
+  iconClass: string;
+  iconBgClass: string;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-border shadow-xs bg-white dark:bg-card h-full">
+      <div className={cn("h-1.5 w-full", accentColor)} />
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+            <div className="mt-3">
+              <span className="text-4xl font-black tracking-tight font-headline text-foreground leading-none">{value}</span>
+            </div>
+            {sub && <p className="text-xs text-muted-foreground mt-2 font-medium">{sub}</p>}
+          </div>
+          <div className={cn("p-2.5 rounded-xl flex items-center justify-center shrink-0 shadow-xs", iconBgClass)}>
+            <Icon className={cn("h-5 w-5", iconClass)} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── DYNAMIC CURRICULUM DATA ───────────────────────────────────────────────
 export const C2S_CURRICULUM: Record<
@@ -673,7 +719,7 @@ const DevotionForm = ({
         ) : devotion ? (
           "Update Devotion Record"
         ) : (
-          "📖 Submit Devotion Record"
+          "Submit Devotion Record"
         )}
       </Button>
     </div>
@@ -1043,10 +1089,28 @@ const MenteeForm = ({
     lastName: mentee?.lastName || "",
     email: mentee?.email || "",
     phone: mentee?.phone || "",
-    status: mentee?.status || "In Progress",
+    status: mentee?.status || "Active",
+    mentorId:
+      mentee?.mentorId ||
+      (mentee?.groupId ? groups.find((g) => g.id === mentee.groupId)?.mentorId : "") ||
+      (workers.length === 1 ? workers[0].id : ""),
     groupId: mentee?.groupId || "",
-    mentorId: mentee?.mentorId || "",
   });
+
+  useEffect(() => {
+    setFormData({
+      firstName: mentee?.firstName || "",
+      lastName: mentee?.lastName || "",
+      email: mentee?.email || "",
+      phone: mentee?.phone || "",
+      status: mentee?.status || "Active",
+      mentorId:
+        mentee?.mentorId ||
+        (mentee?.groupId ? groups.find((g) => g.id === mentee.groupId)?.mentorId : "") ||
+        (workers.length === 1 ? workers[0].id : ""),
+      groupId: mentee?.groupId || "",
+    });
+  }, [mentee, groups, workers]);
 
   return (
     <div className="space-y-4 py-4">
@@ -1090,25 +1154,25 @@ const MenteeForm = ({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="group">Group</Label>
+        <Label htmlFor="mentor">Assigned Mentor</Label>
         <Select
-          value={formData.groupId}
+          value={formData.mentorId}
           onValueChange={(val) => {
-            const group = groups.find((g) => g.id === val);
+            const matchedGroup = groups.find((g) => g.mentorId === val);
             setFormData({
               ...formData,
-              groupId: val,
-              mentorId: group?.mentorId || "",
+              mentorId: val,
+              groupId: matchedGroup?.id || formData.groupId || "",
             });
           }}
         >
-          <SelectTrigger id="group">
-            <SelectValue placeholder="Select a group" />
+          <SelectTrigger id="mentor">
+            <SelectValue placeholder="Select a mentor" />
           </SelectTrigger>
-          <SelectContent>
-            {groups.map((g) => (
-              <SelectItem key={g.id} value={g.id}>
-                {g.name}
+          <SelectContent className="max-h-60 overflow-y-auto">
+            {workers.map((w) => (
+              <SelectItem key={w.id} value={w.id}>
+                {w.firstName} {w.lastName}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1126,9 +1190,8 @@ const MenteeForm = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="Completed">Completed</SelectItem>
-            <SelectItem value="Dropped">Dropped</SelectItem>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -1144,6 +1207,69 @@ const MenteeForm = ({
   );
 };
 
+// ── Department Visual Metadata Helper (Matching WORDA reference diagram) ───────
+function getDepartmentMeta(deptName: string) {
+  const upper = (deptName || "").toUpperCase();
+  if (upper.includes("WORSHIP") || upper === "W") {
+    return {
+      displayName: "Worship",
+      code: "W",
+      circleBg: "bg-[#112e7e] text-white shadow-xs",
+      accentBar: "bg-[#112e7e]",
+      icon: Sparkles,
+      iconBg: "bg-[#112e7e]/10 dark:bg-[#112e7e]/25",
+      iconColor: "text-[#112e7e] dark:text-blue-400",
+      progressGradient: "from-[#112e7e] to-blue-500",
+    };
+  }
+  if (upper.includes("OUTREACH") || upper === "O") {
+    return {
+      displayName: "Outreach",
+      code: "O",
+      circleBg: "bg-amber-500 text-white shadow-xs",
+      accentBar: "bg-amber-500",
+      icon: HeartHandshake,
+      iconBg: "bg-amber-50 dark:bg-amber-950/40",
+      iconColor: "text-amber-600 dark:text-amber-400",
+      progressGradient: "from-amber-500 to-yellow-400",
+    };
+  }
+  if (upper.includes("RELATIONSHIP") || upper === "R") {
+    return {
+      displayName: "Relationship",
+      code: "R",
+      circleBg: "bg-red-600 text-white shadow-xs",
+      accentBar: "bg-red-600",
+      icon: Heart,
+      iconBg: "bg-red-50 dark:bg-red-950/40",
+      iconColor: "text-red-600 dark:text-red-400",
+      progressGradient: "from-red-600 to-rose-400",
+    };
+  }
+  if (upper.includes("DISCIPLESHIP") || upper === "D") {
+    return {
+      displayName: "Discipleship",
+      code: "D",
+      circleBg: "bg-emerald-600 text-white shadow-xs",
+      accentBar: "bg-emerald-600",
+      icon: GraduationCap,
+      iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+      progressGradient: "from-emerald-600 to-green-400",
+    };
+  }
+  return {
+    displayName: "Administration",
+    code: "A",
+    circleBg: "bg-zinc-900 dark:bg-zinc-800 text-white shadow-xs",
+    accentBar: "bg-zinc-900 dark:bg-zinc-300",
+    icon: Building2,
+    iconBg: "bg-zinc-100 dark:bg-zinc-800",
+    iconColor: "text-zinc-900 dark:text-zinc-100",
+    progressGradient: "from-zinc-900 to-slate-600",
+  };
+}
+
 // --- Admin Department & Ministry Overview Component ---
 const AdminOverview = ({
   groups,
@@ -1152,6 +1278,7 @@ const AdminOverview = ({
   devotions = [],
   departmentClusters,
   departmentSettings = [],
+  allMinistries = [],
   onSelectDepartment,
   onViewDevotion,
 }: {
@@ -1161,23 +1288,180 @@ const AdminOverview = ({
   devotions?: C2SDevotionRecord[];
   departmentClusters: Record<string, { value: string; label: string }[]>;
   departmentSettings?: any[];
+  allMinistries?: any[];
   onSelectDepartment?: (dept: string) => void;
   onViewDevotion?: (devotion: C2SDevotionRecord) => void;
 }) => {
   const [viewingDept, setViewingDept] = useState<any | null>(null);
+  const [activeDetailTab, setActiveDetailTab] = useState<"ministries" | "mentors" | "mentees">("ministries");
+  const [detailSearch, setDetailSearch] = useState("");
+  const [detailMinistryFilter, setDetailMinistryFilter] = useState("all");
 
   const departmentStats = useMemo(() => {
-    return Object.entries(departmentClusters).map(([dept, clusterList]) => {
-      const clusterNames = clusterList.map((c) => c.value.toLowerCase());
+    // Standard 5 Five-Fold Departments in strict WORDA order
+    const WORDA_ORDER = ["WORSHIP", "OUTREACH", "RELATIONSHIP", "DISCIPLESHIP", "ADMINISTRATION"];
+
+    // Filter entries to only full department names, ignoring single-letter codes
+    const filteredEntries = Object.entries(departmentClusters).filter(([dept]) => {
+      const u = dept.toUpperCase().trim();
+      return u.length > 2 && (WORDA_ORDER.includes(u) || !["O", "W", "R", "D", "A"].includes(u));
+    });
+
+    // Make sure standard 5 departments are always present
+    const existing = new Set(filteredEntries.map(([d]) => d.toUpperCase().trim()));
+    const allEntries = [...filteredEntries];
+    for (const vd of WORDA_ORDER) {
+      if (!existing.has(vd)) {
+        allEntries.push([vd, []]);
+      }
+    }
+
+    // Sort strictly in WORDA order: Worship -> Outreach -> Relationship -> Discipleship -> Administration
+    const sortedEntries = allEntries.sort((a, b) => {
+      const ia = WORDA_ORDER.indexOf(a[0].toUpperCase().trim());
+      const ib = WORDA_ORDER.indexOf(b[0].toUpperCase().trim());
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a[0].localeCompare(b[0]);
+    });
+
+    return sortedEntries.map(([dept, clusterList]) => {
+      const deptUpper = dept.toUpperCase().trim();
+      const clusterNames = (clusterList || []).map((c) => c.value.toLowerCase());
+      const codeMap: Record<string, string> = {
+        WORSHIP: "w",
+        OUTREACH: "o",
+        RELATIONSHIP: "r",
+        DISCIPLESHIP: "d",
+        ADMINISTRATION: "a",
+      };
+      const deptCode = codeMap[deptUpper] || "";
 
       const deptGroups = groups.filter((g) => {
         const name = (g.name || "").toLowerCase();
-        return clusterNames.some((c) => name.includes(c));
+        const mentor = workers?.find((w) => w.id === g.mentorId);
+        const mentorDept = ((mentor as any)?.department || "").toUpperCase();
+        return (
+          clusterNames.some((c) => name.includes(c)) ||
+          (deptCode && name.startsWith(deptCode + " -")) ||
+          mentorDept.includes(deptUpper)
+        );
       });
 
       const deptGroupIds = new Set(deptGroups.map((g) => g.id));
-      const deptMentees = mentees.filter((m) => deptGroupIds.has(m.groupId));
-      const mentorIds = new Set(deptGroups.map((g) => g.mentorId).filter(Boolean));
+
+      // Gather all mentees under this department with complete information
+      const deptMentees = mentees
+        .filter((m) => {
+          if (m.groupId && deptGroupIds.has(m.groupId)) return true;
+          const mentor = workers?.find((w) => w.id === m.mentorId);
+          const mentorDept = ((mentor as any)?.department || "").toUpperCase();
+          if (mentorDept && mentorDept.includes(deptUpper)) return true;
+          return false;
+        })
+        .map((m) => {
+          const fullName = `${m.firstName || ""} ${m.lastName || ""}`.trim() || "Unnamed Mentee";
+          const initials = `${m.firstName?.[0] || ""}${m.lastName?.[0] || ""}`.toUpperCase() || "M";
+          const grp = groups.find((g) => g.id === m.groupId);
+          const mentor = workers.find(
+            (w) => w.id === m.mentorId || (grp?.mentorId && w.id === grp.mentorId)
+          );
+          const mentorName = mentor ? `${mentor.firstName} ${mentor.lastName}`.trim() : "Unassigned";
+
+          let ministryName = "General Ministry";
+          if (grp?.name) {
+            if (grp.name.includes(" - ")) {
+              const parts = grp.name.split(" - ");
+              ministryName = parts[1]?.trim() || parts[0]?.trim();
+            } else {
+              ministryName = grp.name;
+            }
+          } else if (mentor?.majorMinistryId) {
+            const min = (allMinistries || []).find((x: any) => x.id === mentor.majorMinistryId);
+            if (min?.name) ministryName = min.name;
+          }
+
+          const menteeDevos = devotions.filter((d) =>
+            d.attendeeNames?.some((n) => n.toLowerCase().includes(fullName.toLowerCase()))
+          );
+          const lastSessionDate = menteeDevos[0]?.devotionDate
+            ? format(toJsDate(menteeDevos[0].devotionDate), "MMM dd, yyyy")
+            : "—";
+
+          const progressPct =
+            m.status === "Completed"
+              ? 100
+              : m.status === "Dropped"
+              ? 25
+              : menteeDevos.length > 0
+              ? Math.min(100, Math.max(30, Math.round((menteeDevos.length / 24) * 100)))
+              : 60;
+
+          return {
+            ...m,
+            fullName,
+            initials,
+            mentorName,
+            ministryName,
+            progressPct,
+            lastSessionDate,
+          };
+        });
+
+      const mentorIdSet = new Set<string>();
+      deptGroups.forEach((g) => {
+        if (g.mentorId) mentorIdSet.add(g.mentorId);
+      });
+      deptMentees.forEach((m) => {
+        if (m.mentorId) mentorIdSet.add(m.mentorId);
+      });
+
+      const deptMentors = Array.from(mentorIdSet)
+        .map((mId) => {
+          const w = workers.find((worker) => worker.id === mId);
+          if (!w) return null;
+          const mentorGroups = deptGroups.filter((g) => g.mentorId === w.id);
+          const mentorGroupIds = new Set(mentorGroups.map((g) => g.id));
+
+          // Mentees assigned to this mentor
+          const mentorMentees = deptMentees.filter(
+            (m) => m.mentorId === w.id || (m.groupId && mentorGroupIds.has(m.groupId))
+          );
+
+          // Find which ministry they belong to
+          let ministryName = "General Ministry";
+          if (mentorGroups[0]?.name) {
+            if (mentorGroups[0].name.includes(" - ")) {
+              const parts = mentorGroups[0].name.split(" - ");
+              ministryName = parts[1]?.trim() || parts[0]?.trim();
+            } else {
+              ministryName = mentorGroups[0].name;
+            }
+          } else if (mentorMentees[0]?.ministryName) {
+            ministryName = mentorMentees[0].ministryName;
+          } else if (w.majorMinistryId) {
+            const min = (allMinistries || []).find((x: any) => x.id === w.majorMinistryId);
+            if (min?.name) ministryName = min.name;
+          }
+
+          const fullName = `${w.firstName || ""} ${w.lastName || ""}`.trim() || "Unnamed Mentor";
+          const initials = `${w.firstName?.[0] || ""}${w.lastName?.[0] || ""}`.toUpperCase() || "M";
+
+          return {
+            id: w.id,
+            fullName,
+            initials,
+            email: w.email,
+            phone: w.phone,
+            ministryName,
+            groupsCount: mentorGroups.length,
+            groups: mentorGroups,
+            menteesCount: mentorMentees.length,
+            mentees: mentorMentees,
+          };
+        })
+        .filter(Boolean);
 
       // Compute real completion rate from mentee statuses
       const completedCount = deptMentees.filter((m) => m.status === "Completed").length;
@@ -1187,7 +1471,11 @@ const AdminOverview = ({
       const status = completionPct < 55 ? "Needs Attention" : "Active";
 
       // Derive head name from departmentSettings.headId → workers
-      const deptSetting = departmentSettings?.find((s: any) => s.id === dept);
+      const deptSetting = departmentSettings?.find((s: any) => {
+        const sid = (s.id || "").toUpperCase();
+        const sname = (s.name || "").toUpperCase();
+        return sid === deptUpper || sname === deptUpper || sid.includes(deptUpper) || deptUpper.includes(sid);
+      });
       const headWorker = deptSetting?.headId
         ? workers.find((w) => w.id === deptSetting.headId)
         : null;
@@ -1195,47 +1483,118 @@ const AdminOverview = ({
         ? `${headWorker.firstName} ${headWorker.lastName}`
         : "—";
 
-      const clusters = clusterList.map((c) => {
+      const clusters = (clusterList || []).map((c) => {
         const matchingGroups = groups.filter((g) =>
           (g.name || "").toLowerCase().includes(c.value.toLowerCase())
         );
         const groupIds = new Set(matchingGroups.map((g) => g.id));
-        const clusterMentees = mentees.filter((m) => groupIds.has(m.groupId));
+        const clusterMentees = deptMentees.filter((m) =>
+          (m.groupId && groupIds.has(m.groupId)) ||
+          m.ministryName.toLowerCase().includes(c.value.toLowerCase()) ||
+          m.ministryName.toLowerCase().includes(c.label.toLowerCase())
+        );
         const clusterMentorIds = new Set(
           matchingGroups.map((g) => g.mentorId).filter(Boolean)
         );
+        const clusterMentors = deptMentors.filter((dm: any) =>
+          dm && (clusterMentorIds.has(dm.id) || dm.ministryName.toLowerCase().includes(c.value.toLowerCase()) || dm.ministryName.toLowerCase().includes(c.label.toLowerCase()))
+        );
+
         return {
           name: c.label,
+          value: c.value,
           groupsCount: matchingGroups.length,
-          mentorsCount: clusterMentorIds.size,
+          mentorsCount: clusterMentors.length || clusterMentorIds.size,
           menteesCount: clusterMentees.length,
+          mentors: clusterMentors,
+          mentees: clusterMentees,
         };
       });
 
       return {
-        department: dept,
+        department: deptUpper.charAt(0) + deptUpper.slice(1).toLowerCase(),
+        rawDept: deptUpper,
         headName,
         groupsCount: deptGroups.length,
-        mentorsCount: mentorIds.size,
+        mentorsCount: deptMentors.length || mentorIdSet.size,
         menteesCount: deptMentees.length,
+        deptMentees,
+        deptMentors,
+        deptGroups,
         completionPct,
         status,
         clusters,
       };
     });
-  }, [groups, mentees, workers, departmentClusters, departmentSettings]);
+  }, [groups, mentees, workers, devotions, departmentClusters, departmentSettings, allMinistries]);
 
   const totalGroups = groups.length;
   const totalMentees = mentees.length;
   const totalMentors =
     new Set(groups.map((g) => g.mentorId).filter(Boolean)).size;
-  const totalDepts = Object.keys(departmentClusters).length;
+  const totalDepts = departmentStats.length;
 
   const avgCompletion = useMemo(() => {
     if (departmentStats.length === 0) return 0;
     const sum = departmentStats.reduce((acc, d) => acc + d.completionPct, 0);
     return Math.round(sum / departmentStats.length);
   }, [departmentStats]);
+
+  // Filtered mentors inside the department details modal
+  const modalFilteredMentors = useMemo(() => {
+    if (!viewingDept) return [];
+    let list = viewingDept.deptMentors || [];
+
+    if (detailMinistryFilter !== "all") {
+      const target = detailMinistryFilter.toLowerCase().trim();
+      list = list.filter((m: any) =>
+        (m.ministryName || "").toLowerCase().includes(target)
+      );
+    }
+
+    if (detailSearch.trim()) {
+      const q = detailSearch.toLowerCase().trim();
+      list = list.filter(
+        (m: any) =>
+          m.fullName.toLowerCase().includes(q) ||
+          (m.email && m.email.toLowerCase().includes(q)) ||
+          (m.phone && m.phone.includes(q)) ||
+          (m.ministryName && m.ministryName.toLowerCase().includes(q)) ||
+          (m.mentees && m.mentees.some((me: any) => me.fullName.toLowerCase().includes(q)))
+      );
+    }
+
+    return list;
+  }, [viewingDept, detailMinistryFilter, detailSearch]);
+
+  // Filtered mentees inside the department details modal
+  const modalFilteredMentees = useMemo(() => {
+    if (!viewingDept) return [];
+    let list = viewingDept.deptMentees || [];
+
+    if (detailMinistryFilter !== "all") {
+      const target = detailMinistryFilter.toLowerCase().trim();
+      list = list.filter((m: any) =>
+        (m.ministryName || "").toLowerCase().includes(target)
+      );
+    }
+
+    if (detailSearch.trim()) {
+      const q = detailSearch.toLowerCase().trim();
+      list = list.filter(
+        (m: any) =>
+          m.fullName.toLowerCase().includes(q) ||
+          (m.email && m.email.toLowerCase().includes(q)) ||
+          (m.phone && m.phone.includes(q)) ||
+          (m.mentorName && m.mentorName.toLowerCase().includes(q)) ||
+          (m.ministryName && m.ministryName.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }, [viewingDept, detailMinistryFilter, detailSearch]);
+
+  const viewingDeptMeta = viewingDept ? getDepartmentMeta(viewingDept.rawDept || viewingDept.department) : null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -1246,163 +1605,174 @@ const AdminOverview = ({
             All departments
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Admin view — oversight across every department, {avgCompletion}% average mentee completion.
+            Admin view — oversight across every department in WORDA order, {avgCompletion}% average mentee completion.
           </p>
         </div>
-
-        <Badge
-          variant="secondary"
-          className="bg-primary/10 text-primary font-medium px-3.5 py-1.5 rounded-full text-xs self-start md:self-auto flex items-center gap-1.5 border-transparent"
-        >
-          <ShieldCheck className="h-4 w-4" />
-          <span>Admin access</span>
-        </Badge>
       </div>
 
       {/* ── TOP KPI SUMMARY CARDS (4 CARDS) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Building2 className="h-4 w-4 text-muted-foreground/70" />
-            <span className="text-xs font-medium">Departments</span>
-          </div>
-          <p className="text-3xl font-headline font-black text-foreground">
-            {totalDepts}
-          </p>
-        </Card>
-
-        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Users className="h-4 w-4 text-muted-foreground/70" />
-            <span className="text-xs font-medium">Groups</span>
-          </div>
-          <p className="text-3xl font-headline font-black text-foreground">
-            {totalGroups}
-          </p>
-        </Card>
-
-        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <UserCheck className="h-4 w-4 text-muted-foreground/70" />
-            <span className="text-xs font-medium">Mentors</span>
-          </div>
-          <p className="text-3xl font-headline font-black text-foreground">
-            {totalMentors}
-          </p>
-        </Card>
-
-        <Card className="rounded-2xl border border-border/70 p-5 bg-card shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <ShieldCheck className="h-4 w-4 text-muted-foreground/70" />
-            <span className="text-xs font-medium">Mentees</span>
-          </div>
-          <p className="text-3xl font-headline font-black text-foreground">
-            {totalMentees}
-          </p>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="DEPARTMENTS"
+          value={totalDepts}
+          sub="active departments"
+          icon={Building2}
+          accentColor="bg-sidebar"
+          iconClass="text-sidebar dark:text-blue-400"
+          iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+        />
+        <StatCard
+          label="GROUPS"
+          value={totalGroups}
+          sub="mentorship clusters"
+          icon={Users}
+          accentColor="bg-blue-500"
+          iconClass="text-blue-600 dark:text-blue-400"
+          iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+        />
+        <StatCard
+          label="MENTORS"
+          value={totalMentors}
+          sub="spiritual mentors"
+          icon={UserCheck}
+          accentColor="bg-emerald-500"
+          iconClass="text-emerald-600 dark:text-emerald-400"
+          iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+        />
+        <StatCard
+          label="MENTEES"
+          value={totalMentees}
+          sub="registered souls"
+          icon={ShieldCheck}
+          accentColor="bg-purple-500"
+          iconClass="text-purple-600 dark:text-purple-400"
+          iconBgClass="bg-purple-50 dark:bg-purple-950/40"
+        />
       </div>
 
-      {/* ── DEPARTMENT CARDS GRID (3 COLUMNS) ── */}
+      {/* ── DEPARTMENT CARDS GRID (3 COLUMNS) STRICTLY IN WORDA ORDER ── */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {departmentStats.map((dept) => {
-          const initials = dept.headName
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .slice(0, 2);
+          const meta = getDepartmentMeta(dept.rawDept || dept.department);
+          const DeptIcon = meta.icon;
+          const initials = dept.headName !== "—"
+            ? dept.headName
+                .split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()
+            : "?";
 
           return (
-            <Card
+            <div
               key={dept.department}
-              className="rounded-3xl border border-border/70 p-6 bg-card shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-all"
+              className="relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-border/80 bg-white dark:bg-card shadow-xs hover:border-sidebar/40 hover:shadow-md transition-all flex flex-col justify-between"
             >
-              <div className="space-y-4">
-                {/* Header: Name & Status */}
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-xl font-headline font-extrabold text-foreground tracking-tight">
-                    {dept.department}
-                  </h3>
-                  <Badge
-                    variant="secondary"
-                    className={`${dept.status === "Needs Attention"
-                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                      : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                      } font-semibold px-3 py-1 rounded-full text-xs border-transparent`}
-                  >
-                    {dept.status}
-                  </Badge>
-                </div>
+              {/* Top Accent Color Bar */}
+              <div className={cn("h-1.5 w-full", meta.accentBar)} />
 
-                {/* Head / Leader Info */}
-                <div className="flex items-center gap-2.5">
-                  <div className="h-7 w-7 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center border border-primary/20 shrink-0">
-                    {initials}
+              <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
+                {/* Header: WORDA Circular Badge, Name & Status */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-black text-base shadow-xs shrink-0 tracking-tight", meta.circleBg)}>
+                      {meta.code}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-headline font-bold text-foreground tracking-tight truncate">
+                        {meta.displayName}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                        <DeptIcon className={cn("h-3 w-3 inline", meta.iconColor)} /> Department
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground font-medium">
-                    Head:{" "}
-                    <span className="font-semibold text-foreground">
-                      {dept.headName}
-                    </span>
-                  </p>
+
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 border",
+                      dept.status === "Needs Attention"
+                        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                        : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full shrink-0",
+                        dept.status === "Needs Attention" ? "bg-amber-500" : "bg-emerald-500"
+                      )}
+                    />
+                    {dept.status}
+                  </span>
                 </div>
 
-                {/* Stat Pills Row */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge
-                    variant="secondary"
-                    className="bg-muted/70 text-foreground font-medium px-3 py-1 rounded-full text-xs border-transparent"
-                  >
-                    {dept.groupsCount} Groups
-                  </Badge>
-                  <Badge
-                    variant="secondary"
-                    className="bg-muted/70 text-foreground font-medium px-3 py-1 rounded-full text-xs border-transparent"
-                  >
-                    {dept.mentorsCount} Mentors
-                  </Badge>
-                  <Badge
-                    variant="secondary"
-                    className="bg-muted/70 text-foreground font-medium px-3 py-1 rounded-full text-xs border-transparent"
-                  >
-                    {dept.menteesCount} Mentees
-                  </Badge>
+                {/* Department Head Box */}
+                <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-muted/20 border border-slate-100 dark:border-border/40">
+                  <div className="w-7 h-7 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground font-bold text-[10px] flex items-center justify-center shrink-0">
+                    {dept.headName !== "—" ? initials : "?"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Department Head
+                    </p>
+                    <p className="text-xs font-semibold text-foreground truncate">
+                      {dept.headName !== "—" ? dept.headName : "Unassigned"}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Completion Progress Bar */}
+                {/* 3-Box Mini Metric Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-muted/20 border border-slate-100 dark:border-border/40 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Groups</p>
+                    <p className="text-base font-black text-foreground font-headline mt-0.5">{dept.groupsCount}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-muted/20 border border-slate-100 dark:border-border/40 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Mentors</p>
+                    <p className="text-base font-black text-foreground font-headline mt-0.5">{dept.mentorsCount}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-muted/20 border border-slate-100 dark:border-border/40 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Mentees</p>
+                    <p className="text-base font-black text-foreground font-headline mt-0.5">{dept.menteesCount}</p>
+                  </div>
+                </div>
+
+                {/* Completion Progress */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground font-medium">
-                      Mentee completion
-                    </span>
-                    <span className="font-semibold text-foreground">
-                      {dept.completionPct}%
-                    </span>
+                    <span className="text-muted-foreground font-medium">Mentee completion</span>
+                    <span className="font-bold text-foreground font-headline">{dept.completionPct}%</span>
                   </div>
-                  <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-100 dark:bg-muted/50 h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-primary h-full rounded-full transition-all duration-300"
+                      className={cn("h-full rounded-full transition-all duration-300 bg-gradient-to-r", meta.progressGradient)}
                       style={{ width: `${dept.completionPct}%` }}
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Card Footer Row */}
-              <div className="border-t border-border/60 pt-3 mt-4 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground text-xs font-normal">
-                  Oversight enabled
-                </span>
-                <button
-                  onClick={() => {
-                    setViewingDept(dept);
-                    onSelectDepartment?.(dept.department);
-                  }}
-                  className="text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer transition-all"
-                >
-                  View department
-                </button>
+                {/* Card Footer */}
+                <div className="border-t border-slate-100 dark:border-border/40 pt-3 flex items-center justify-between text-xs">
+                  <span className="inline-flex items-center text-xs text-muted-foreground font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
+                    Oversight enabled
+                  </span>
+                  <button
+                    onClick={() => {
+                      setViewingDept(dept);
+                      setActiveDetailTab("ministries");
+                      setDetailSearch("");
+                      setDetailMinistryFilter("all");
+                      onSelectDepartment?.(dept.department);
+                    }}
+                    className="h-7 px-3 rounded-lg bg-sidebar/5 hover:bg-sidebar/10 text-sidebar dark:text-blue-400 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    View department
+                  </button>
+                </div>
               </div>
-            </Card>
+            </div>
           );
         })}
       </div>
@@ -1483,107 +1853,512 @@ const AdminOverview = ({
         )}
       </div>
 
-      {/* ── DEPARTMENT DETAILS & MINISTRIES DIALOG ── */}
+      {/* ── DEPARTMENT DETAILS & MINISTRIES / MENTEES DIALOG ── */}
       <Dialog
         open={!!viewingDept}
-        onOpenChange={(open) => !open && setViewingDept(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setViewingDept(null);
+            setDetailSearch("");
+            setDetailMinistryFilter("all");
+          }
+        }}
       >
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-6">
+        <DialogContent className="sm:max-w-3xl lg:max-w-4xl max-h-[88vh] overflow-y-auto rounded-3xl p-6">
           <DialogHeader>
-            <div className="flex items-center gap-2">
-              <Badge className="bg-primary/10 text-primary font-medium text-xs rounded-full border-transparent">
-                DEPARTMENT BREAKDOWN
-              </Badge>
-              <Badge
-                className={`${viewingDept?.status === "Needs Attention"
-                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                  : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                  } font-semibold text-xs border-transparent`}
-              >
-                {viewingDept?.status}
-              </Badge>
-            </div>
-            <DialogTitle className="text-2xl font-extrabold text-foreground tracking-tight mt-1">
-              {viewingDept?.department} Department
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Assigned Head:{" "}
-              <strong className="text-foreground">{viewingDept?.headName}</strong>{" "}
-              • {viewingDept?.completionPct}% overall mentee completion rate.
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Stat summary cards */}
-          <div className="grid grid-cols-3 gap-3 my-2">
-            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground">
-                Groups
-              </p>
-              <p className="text-lg font-black text-primary">
-                {viewingDept?.groupsCount}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground">
-                Mentors
-              </p>
-              <p className="text-lg font-black text-indigo-600">
-                {viewingDept?.mentorsCount}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground">
-                Mentees
-              </p>
-              <p className="text-lg font-black text-amber-600">
-                {viewingDept?.menteesCount}
-              </p>
-            </div>
-          </div>
-
-          {/* Sub-ministries list */}
-          <div className="space-y-3 pt-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Ministries under {viewingDept?.department} Department
-            </h4>
-
-            <div className="space-y-2.5">
-              {viewingDept?.clusters.map((cluster: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-2xl bg-muted/20 border border-border/60 flex flex-col space-y-2 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center border border-primary/20">
-                        {cluster.name[0]}
-                      </div>
-                      <h5 className="font-bold text-sm text-foreground">
-                        {cluster.name}
-                      </h5>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {cluster.menteesCount} mentees
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                {viewingDeptMeta && (
+                  <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-black text-base shadow-xs shrink-0 tracking-tight", viewingDeptMeta.circleBg)}>
+                    {viewingDeptMeta.code}
+                  </div>
+                )}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <DialogTitle className="text-2xl font-extrabold text-foreground tracking-tight">
+                      {viewingDept?.department} Department
+                    </DialogTitle>
+                    <Badge
+                      className={`${
+                        viewingDept?.status === "Needs Attention"
+                          ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                          : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                      } font-semibold text-xs border-transparent`}
+                    >
+                      {viewingDept?.status}
                     </Badge>
                   </div>
-
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-                    <span>
-                      {cluster.groupsCount} active groups • {cluster.mentorsCount}{" "}
-                      mentors
-                    </span>
-                    <span className="font-semibold text-emerald-600">Active</span>
-                  </div>
+                  <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                    Assigned Head: <strong className="text-foreground">{viewingDept?.headName}</strong> •{" "}
+                    {viewingDept?.completionPct}% overall mentee completion rate.
+                  </DialogDescription>
                 </div>
-              ))}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* 4-Card Mini Stats Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-2">
+            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Ministries</p>
+              <p className="text-xl font-black text-foreground font-headline mt-0.5">
+                {viewingDept?.clusters?.length || 0}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Groups</p>
+              <p className="text-xl font-black text-sidebar dark:text-blue-400 font-headline mt-0.5">
+                {viewingDept?.groupsCount || 0}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Mentors</p>
+              <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-headline mt-0.5">
+                {viewingDept?.mentorsCount || 0}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Mentees</p>
+              <p className="text-xl font-black text-purple-600 dark:text-purple-400 font-headline mt-0.5">
+                {viewingDept?.menteesCount || 0}
+              </p>
             </div>
           </div>
 
-          <DialogFooter className="mt-4">
+          {/* Tab Switcher & Search Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3 pt-2">
+            <div className="bg-slate-100 dark:bg-muted p-1 rounded-xl flex items-center gap-1 self-start">
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab("ministries")}
+                className={cn(
+                  "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
+                  activeDetailTab === "ministries"
+                    ? "bg-sidebar text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
+                )}
+              >
+                <span>Ministries</span>
+                <span className={cn(
+                  "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                  activeDetailTab === "ministries" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-muted/80 text-slate-700 dark:text-slate-300"
+                )}>
+                  {viewingDept?.clusters?.length || 0}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab("mentors")}
+                className={cn(
+                  "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
+                  activeDetailTab === "mentors"
+                    ? "bg-sidebar text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
+                )}
+              >
+                <span>Mentors</span>
+                <span className={cn(
+                  "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                  activeDetailTab === "mentors" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-muted/80 text-slate-700 dark:text-slate-300"
+                )}>
+                  {viewingDept?.deptMentors?.length || 0}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab("mentees")}
+                className={cn(
+                  "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
+                  activeDetailTab === "mentees"
+                    ? "bg-sidebar text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
+                )}
+              >
+                <span>Mentees</span>
+                <span className={cn(
+                  "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                  activeDetailTab === "mentees" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-muted/80 text-slate-700 dark:text-slate-300"
+                )}>
+                  {viewingDept?.deptMentees?.length || 0}
+                </span>
+              </button>
+            </div>
+
+            {/* Search & Ministry Filter Toolbar (For Mentors & Mentees tabs) */}
+            {activeDetailTab !== "ministries" && (
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                {viewingDept?.clusters?.length > 0 && (
+                  <Select value={detailMinistryFilter} onValueChange={setDetailMinistryFilter}>
+                    <SelectTrigger className="h-8 w-36 text-xs rounded-xl border-slate-200 dark:border-border">
+                      <SelectValue placeholder="All Ministries" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs">All Ministries</SelectItem>
+                      {viewingDept.clusters.map((c: any) => (
+                        <SelectItem key={c.value} value={c.name} className="text-xs">
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <div className="relative w-full sm:w-48">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    placeholder={activeDetailTab === "mentors" ? "Search mentors & mentees..." : "Search mentees..."}
+                    value={detailSearch}
+                    onChange={(e) => setDetailSearch(e.target.value)}
+                    className="pl-8 pr-3 h-8 text-xs rounded-xl border-slate-200 dark:border-border"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── VIEW 1: MINISTRIES UNDER THIS DEPARTMENT ── */}
+          {activeDetailTab === "ministries" && (
+            <div className="space-y-3 pt-2">
+              {(!viewingDept?.clusters || viewingDept.clusters.length === 0) ? (
+                <div className="p-8 text-center text-xs text-muted-foreground border border-dashed rounded-2xl">
+                  No ministries configured under this department.
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {viewingDept.clusters.map((cluster: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-2xl bg-slate-50/70 dark:bg-muted/20 border border-slate-200/80 dark:border-border/60 flex flex-col justify-between space-y-3 hover:border-sidebar/40 hover:shadow-xs transition-all"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="h-8 w-8 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 border border-sidebar/20">
+                            {cluster.name[0]}
+                          </div>
+                          <div className="min-w-0">
+                            <h5 className="font-bold text-sm text-foreground truncate">
+                              {cluster.name}
+                            </h5>
+                            <p className="text-[11px] text-muted-foreground">
+                              {cluster.groupsCount} groups • {cluster.mentorsCount} mentors
+                            </p>
+                          </div>
+                        </div>
+
+                        <Badge variant="outline" className="text-xs font-semibold shrink-0">
+                          {cluster.menteesCount} mentees
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-border/40">
+                        <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDetailMinistryFilter(cluster.name);
+                            setActiveDetailTab("mentors");
+                          }}
+                          className="h-7 px-3 rounded-lg bg-sidebar hover:bg-sidebar/90 text-white font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                        >
+                          View Mentors ({cluster.mentorsCount}) →
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── VIEW 2: MENTORS & THEIR ASSIGNED MENTEES ── */}
+          {activeDetailTab === "mentors" && (
+            <div className="space-y-4 pt-2">
+              {detailMinistryFilter !== "all" && (
+                <div className="flex items-center justify-between px-3.5 py-2 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200/60 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200">
+                  <span>Filtered to ministry: <strong>{detailMinistryFilter}</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => setDetailMinistryFilter("all")}
+                    className="text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              )}
+
+              {modalFilteredMentors.length === 0 ? (
+                <div className="p-12 text-center text-xs text-muted-foreground border border-dashed rounded-2xl">
+                  <UserCheck className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="font-semibold text-foreground text-sm">No mentors found</p>
+                  <p className="mt-0.5">
+                    {detailSearch || detailMinistryFilter !== "all"
+                      ? "Try adjusting your search query or ministry filter."
+                      : "No mentors are registered under this department yet."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {modalFilteredMentors.map((mentor: any) => (
+                    <div
+                      key={mentor.id}
+                      className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3"
+                    >
+                      {/* Mentor Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border/40">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
+                            {mentor.initials}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-sm text-foreground">
+                                {mentor.fullName}
+                              </h4>
+                              <Badge variant="outline" className="text-[10px] font-semibold bg-muted/40">
+                                {mentor.ministryName}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {mentor.email || mentor.phone || "Mentor"} {mentor.groupsCount > 0 ? `• ${mentor.groupsCount} active group(s)` : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <Badge className="bg-sidebar text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
+                            {mentor.menteesCount} Assigned {mentor.menteesCount === 1 ? "Mentee" : "Mentees"}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Mentor's Assigned Mentees List */}
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5 text-primary" />
+                          Mentees under {mentor.fullName} ({mentor.mentees.length})
+                        </p>
+
+                        {mentor.mentees.length === 0 ? (
+                          <div className="p-3 bg-muted/20 border border-dashed rounded-xl text-center text-xs text-muted-foreground">
+                            No mentees assigned to this mentor yet.
+                          </div>
+                        ) : (
+                          <div className="border border-border/60 rounded-xl overflow-hidden bg-background">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-slate-50 dark:bg-muted/40 border-b border-border/40">
+                                  <TableHead className="text-[10px] uppercase font-bold text-muted-foreground h-8 px-3 text-left">Mentee</TableHead>
+                                  <TableHead className="text-[10px] uppercase font-bold text-muted-foreground h-8 px-3 text-left">Ministry</TableHead>
+                                  <TableHead className="text-[10px] uppercase font-bold text-muted-foreground h-8 px-3 text-center">Status</TableHead>
+                                  <TableHead className="text-[10px] uppercase font-bold text-muted-foreground h-8 px-3 text-center">Progress</TableHead>
+                                  <TableHead className="text-[10px] uppercase font-bold text-muted-foreground h-8 px-3 text-center">Last Session</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {mentor.mentees.map((me: any) => {
+                                  const isMenteeActive = (me.status || "Active").toLowerCase() === "active";
+                                  const displayStatus = isMenteeActive ? "Active" : me.status || "Inactive";
+                                  const statusColorClass =
+                                    me.status === "Completed"
+                                      ? "bg-purple-500/15 text-purple-700 dark:text-purple-300"
+                                      : isMenteeActive
+                                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                      : "bg-slate-500/15 text-slate-700 dark:text-slate-300";
+
+                                  return (
+                                    <TableRow key={me.id} className="border-b border-border/30 hover:bg-muted/15 transition-colors text-xs">
+                                      <TableCell className="px-3 py-2.5">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-6 h-6 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                            {me.initials}
+                                          </div>
+                                          <div>
+                                            <p className="font-semibold text-foreground leading-tight text-xs">{me.fullName}</p>
+                                            <p className="text-[10px] text-muted-foreground">{me.email || me.phone || "No contact"}</p>
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="px-3 py-2.5 text-[11px] text-muted-foreground">
+                                        {me.ministryName}
+                                      </TableCell>
+                                      <TableCell className="px-3 py-2.5 text-center">
+                                        <Badge variant="secondary" className={cn(statusColorClass, "px-2 py-0.2 rounded-full text-[10px] font-bold border-transparent")}>
+                                          {displayStatus}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="px-3 py-2.5 text-center">
+                                        <div className="flex items-center justify-center gap-1.5">
+                                          <div className="w-12 bg-muted h-1.5 rounded-full overflow-hidden">
+                                            <div
+                                              className="bg-sidebar h-full rounded-full"
+                                              style={{ width: `${me.progressPct}%` }}
+                                            />
+                                          </div>
+                                          <span className="font-bold text-[10px] text-muted-foreground">
+                                            {me.progressPct}%
+                                          </span>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="px-3 py-2.5 text-center font-mono text-[10px] text-muted-foreground">
+                                        {me.lastSessionDate}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── VIEW 3: ALL MENTEES UNDER THIS DEPARTMENT ── */}
+          {activeDetailTab === "mentees" && (
+            <div className="space-y-3 pt-2">
+              {detailMinistryFilter !== "all" && (
+                <div className="flex items-center justify-between px-3 py-2 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200/60 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200">
+                  <span>Filtered to ministry: <strong>{detailMinistryFilter}</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => setDetailMinistryFilter("all")}
+                    className="text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              )}
+
+              {modalFilteredMentees.length === 0 ? (
+                <div className="p-12 text-center text-xs text-muted-foreground border border-dashed rounded-2xl">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="font-semibold text-foreground text-sm">No mentees found</p>
+                  <p className="mt-0.5">
+                    {detailSearch || detailMinistryFilter !== "all"
+                      ? "Try adjusting your search query or ministry filter."
+                      : "No mentees are registered under this department yet."}
+                  </p>
+                </div>
+              ) : (
+                <div className="border border-border/70 rounded-2xl overflow-hidden bg-card">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-10 px-4 text-left">
+                          Mentee
+                        </TableHead>
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-10 px-4 text-left">
+                          Ministry
+                        </TableHead>
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-10 px-4 text-left">
+                          Assigned Mentor
+                        </TableHead>
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-10 px-3 text-center">
+                          Status
+                        </TableHead>
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-10 px-3 text-center">
+                          Progress
+                        </TableHead>
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-10 px-3 text-center">
+                          Last Session
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {modalFilteredMentees.map((m: any) => {
+                        const isMenteeActive = (m.status || "Active").toLowerCase() === "active";
+                        const displayStatus = isMenteeActive ? "Active" : m.status || "Inactive";
+                        const statusColorClass =
+                          m.status === "Completed"
+                            ? "bg-purple-500/15 text-purple-700 dark:text-purple-300"
+                            : isMenteeActive
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            : "bg-slate-500/15 text-slate-700 dark:text-slate-300";
+
+                        return (
+                          <TableRow key={m.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors">
+                            {/* Mentee */}
+                            <TableCell className="px-4 py-3 align-middle">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-[10px] font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
+                                  {m.initials}
+                                </div>
+                                <div className="overflow-hidden">
+                                  <p className="font-bold text-foreground text-xs leading-none truncate">
+                                    {m.fullName}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                                    {m.email || m.phone || "No contact info"}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+
+                            {/* Ministry */}
+                            <TableCell className="px-4 py-3 align-middle">
+                              <Badge variant="outline" className="text-[10px] font-semibold bg-muted/40">
+                                {m.ministryName}
+                              </Badge>
+                            </TableCell>
+
+                            {/* Assigned Mentor */}
+                            <TableCell className="px-4 py-3 align-middle">
+                              <span className="text-xs font-medium text-foreground truncate">
+                                {m.mentorName}
+                              </span>
+                            </TableCell>
+
+                            {/* Status */}
+                            <TableCell className="px-3 py-3 text-center align-middle">
+                              <Badge variant="secondary" className={cn(statusColorClass, "px-2.5 py-0.5 rounded-full text-[10px] font-bold border-transparent")}>
+                                {displayStatus}
+                              </Badge>
+                            </TableCell>
+
+                            {/* Progress */}
+                            <TableCell className="px-3 py-3 align-middle text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-14 bg-muted h-1.5 rounded-full overflow-hidden">
+                                  <div
+                                    className="bg-sidebar h-full rounded-full transition-all duration-300"
+                                    style={{ width: `${m.progressPct}%` }}
+                                  />
+                                </div>
+                                <span className="font-bold text-muted-foreground text-[11px]">
+                                  {m.progressPct}%
+                                </span>
+                              </div>
+                            </TableCell>
+
+                            {/* Last Session */}
+                            <TableCell className="px-3 py-3 text-center align-middle font-mono text-[11px] text-muted-foreground">
+                              {m.lastSessionDate}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 pt-2 border-t border-border/60 flex items-center justify-between sm:justify-between">
+            <span className="text-xs text-muted-foreground font-medium">
+              Showing {activeDetailTab === "ministries" ? `${viewingDept?.clusters?.length || 0} Ministries` : activeDetailTab === "mentors" ? `${modalFilteredMentors.length} Mentors` : `${modalFilteredMentees.length} Mentees`}
+            </span>
             <Button
               variant="outline"
               onClick={() => setViewingDept(null)}
-              className="rounded-full px-6"
+              className="rounded-xl px-5 text-xs font-semibold cursor-pointer border-slate-200 dark:border-border"
             >
               Close
             </Button>
@@ -1787,8 +2562,7 @@ const C2SAnalytics = ({
       {/* ── TOP ACTION HEADER BAR ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-5 rounded-3xl border border-border/70 shadow-xs">
         <div>
-          <h2 className="text-xl font-headline font-extrabold text-foreground tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-headline font-extrabold text-foreground tracking-tight">
             Connect 2 Souls Analytics
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -1803,11 +2577,11 @@ const C2SAnalytics = ({
               value={selectedCluster}
               onValueChange={(val) => setSelectedCluster(val)}
             >
-              <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80 rounded-xl h-9">
+              <SelectTrigger className="w-full sm:w-[230px] bg-white dark:bg-muted/30 text-xs font-semibold text-foreground border border-slate-200/90 dark:border-border rounded-2xl h-10 shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                 <SelectValue placeholder={`All ${formattedDeptName} Ministries`} />
               </SelectTrigger>
               <SelectContent className="max-h-96 overflow-y-auto">
-                <SelectItem value="all" className="text-xs font-bold text-primary">
+                <SelectItem value="all" className="text-xs font-bold text-sidebar dark:text-blue-400">
                   All {formattedDeptName} Ministries
                 </SelectItem>
                 <SelectGroup>
@@ -1827,7 +2601,7 @@ const C2SAnalytics = ({
           {canGenerateReport && (
             <Button
               onClick={() => setIsReportDialogOpen(true)}
-              className="shadow-sm font-semibold text-xs h-9 px-4 gap-2 rounded-xl"
+              className="h-10 px-4 gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
             >
               <FileText className="h-4 w-4" />
               Generate Analytics Report
@@ -2147,7 +2921,7 @@ const C2SAnalytics = ({
             <Button
               variant="outline"
               onClick={() => setIsReportDialogOpen(false)}
-              className="rounded-full px-5"
+              className="rounded-xl px-5 text-xs font-semibold cursor-pointer border-slate-200 dark:border-border"
             >
               Close
             </Button>
@@ -2155,13 +2929,13 @@ const C2SAnalytics = ({
               <Button
                 variant="outline"
                 onClick={handleExportCSV}
-                className="rounded-full gap-1.5 text-xs"
+                className="rounded-xl gap-1.5 text-xs font-semibold cursor-pointer border-slate-200 dark:border-border"
               >
                 <FileText className="h-4 w-4" /> Export CSV
               </Button>
               <Button
                 onClick={() => window.print()}
-                className="rounded-full gap-1.5 text-xs"
+                className="rounded-xl gap-1.5 text-xs bg-sidebar hover:bg-sidebar/90 text-white font-bold shadow-xs cursor-pointer"
               >
                 <Download className="h-4 w-4" /> Print / Save PDF
               </Button>
@@ -2214,24 +2988,77 @@ export default function C2SPage() {
     queryFn: getDepartmentSettings,
   });
 
-  // Derive department → ministry list from DB instead of static hardcoded map
+  // Derive department → ministry list from DB with complete Outreach ministries mapping
   const departmentClusters = useMemo<Record<string, { value: string; label: string }[]>>(() => {
-    if (!allMinistries || allMinistries.length === 0) return {};
-    const map: Record<string, { value: string; label: string }[]> = {};
-    const seenPerDept: Record<string, Set<string>> = {};
+    const defaultOutreach = [
+      { value: "Cluster 1", label: "Cluster 1" },
+      { value: "Cluster 2", label: "Cluster 2" },
+      { value: "Cluster 3", label: "Cluster 3" },
+      { value: "Cluster 4", label: "Cluster 4" },
+      { value: "Cluster 5", label: "Cluster 5" },
+      { value: "Cluster 6", label: "Cluster 6" },
+      { value: "Cluster 7", label: "Cluster 7" },
+      { value: "Cluster 8", label: "Cluster 8" },
+      { value: "Cluster 9", label: "Cluster 9" },
+      { value: "YO", label: "Youth Outreach" },
+      { value: "WEYJ", label: "WEYJ" },
+      { value: "TAPAT", label: "TAPAT" },
+    ];
+
+    const map: Record<string, { value: string; label: string }[]> = {
+      OUTREACH: [...defaultOutreach],
+      O: [...defaultOutreach],
+    };
+
+    if (!allMinistries || allMinistries.length === 0) return map;
+
+    const seenPerDept: Record<string, Set<string>> = {
+      OUTREACH: new Set(defaultOutreach.map((x) => x.value.toLowerCase())),
+      O: new Set(defaultOutreach.map((x) => x.value.toLowerCase())),
+    };
+
     for (const m of allMinistries) {
       if (!m || !m.name) continue;
-      const deptCode = (m.departmentCode || m.department || "").toUpperCase().trim();
-      if (!deptCode) continue;
-      if (!map[deptCode]) {
-        map[deptCode] = [];
-        seenPerDept[deptCode] = new Set();
+      const rawCode = (m.departmentCode || "").toUpperCase().trim();
+      const rawDeptName = (
+        typeof m.department === "string"
+          ? m.department
+          : m.department?.name || ""
+      ).toUpperCase().trim();
+
+      const targetKeys = new Set<string>();
+      if (rawCode) targetKeys.add(rawCode);
+      if (rawDeptName) targetKeys.add(rawDeptName);
+
+      if (rawCode === "O" || rawDeptName.includes("OUTREACH")) {
+        targetKeys.add("O");
+        targetKeys.add("OUTREACH");
+      } else if (rawCode === "R" || rawDeptName.includes("RELATIONSHIP")) {
+        targetKeys.add("R");
+        targetKeys.add("RELATIONSHIP");
+      } else if (rawCode === "D" || rawDeptName.includes("DISCIPLESHIP")) {
+        targetKeys.add("D");
+        targetKeys.add("DISCIPLESHIP");
+      } else if (rawCode === "A" || rawDeptName.includes("ADMIN")) {
+        targetKeys.add("A");
+        targetKeys.add("ADMINISTRATION");
+      } else if (rawCode === "W" || rawDeptName.includes("WORSHIP")) {
+        targetKeys.add("W");
+        targetKeys.add("WORSHIP");
       }
-      const trimmedName = m.name.trim();
-      const lower = trimmedName.toLowerCase();
-      if (!seenPerDept[deptCode].has(lower)) {
-        seenPerDept[deptCode].add(lower);
-        map[deptCode].push({ value: trimmedName, label: trimmedName });
+
+      for (const k of targetKeys) {
+        if (!map[k]) {
+          map[k] = [];
+          seenPerDept[k] = new Set();
+        }
+        const trimmedName = m.name.trim();
+        const lower = trimmedName.toLowerCase();
+        if (!seenPerDept[k].has(lower)) {
+          seenPerDept[k].add(lower);
+          const displayLabel = trimmedName === "YO" ? "Youth Outreach" : trimmedName;
+          map[k].push({ value: trimmedName, label: displayLabel });
+        }
       }
     }
     return map;
@@ -2285,6 +3112,7 @@ export default function C2SPage() {
 
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<string>(() => {
+    if (tabParam === "mentees" || tabParam === "groups") return "mentees";
     if (tabParam) return tabParam;
     return isAdminUser ? "overview" : "devotions";
   });
@@ -2295,8 +3123,8 @@ export default function C2SPage() {
     if (currentTab) {
       if (currentTab === "overview" && isAdminUser) {
         setActiveTab("overview");
-      } else if (["devotions", "groups", "analytics"].includes(currentTab)) {
-        setActiveTab(currentTab);
+      } else if (["devotions", "groups", "mentees", "analytics"].includes(currentTab)) {
+        setActiveTab(currentTab === "groups" ? "mentees" : currentTab);
       }
     } else if (isAdminUser && !tabParam) {
       setActiveTab("overview");
@@ -2304,14 +3132,16 @@ export default function C2SPage() {
   }, [searchParams, isAdminUser, tabParam]);
 
   const handleTabChange = (val: string) => {
-    setActiveTab(val);
-    router.push(`/c2s?tab=${val}`);
+    const normalized = val === "groups" ? "mentees" : val;
+    setActiveTab(normalized);
+    router.push(`/c2s?tab=${normalized}`);
   };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClusterFilter, setSelectedClusterFilter] = useState("all");
   const [selectedManualFilter, setSelectedManualFilter] = useState("all");
   const [selectedDeptFilter, setSelectedDeptFilter] = useState("all");
+  const [menteeDeptFilter, setMenteeDeptFilter] = useState("all");
 
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const toggleGroupCollapse = (groupId: string) => {
@@ -2382,22 +3212,34 @@ export default function C2SPage() {
 
     // Sub-ministry Cluster filter for Ministry Head / Admin
     if (selectedGroupClusterFilter !== "all") {
-      const filterLower = selectedGroupClusterFilter.toLowerCase();
-      result = result.filter((g) => (g.name || "").toLowerCase().includes(filterLower));
+      const filterLower = selectedGroupClusterFilter.toLowerCase().trim();
+      result = result.filter((g) => {
+        const gName = (g.name || "").toLowerCase();
+        const mentor = workers?.find((w) => w.id === g.mentorId);
+        const mMin = allMinistries?.find((m: any) => m.id === mentor?.majorMinistryId);
+        const minName = (mMin?.name || "").toLowerCase();
+        const minDept = (mMin?.department || (mentor as any)?.department || "").toLowerCase();
+        return (
+          gName.includes(filterLower) ||
+          minName.includes(filterLower) ||
+          minDept.includes(filterLower) ||
+          filterLower.includes(minName)
+        );
+      });
     }
 
-    // Keyword search filter (group name, mentor name, or mentee name)
+    // Keyword search filter (mentor name, mentee name, or group name)
     if (groupSearchQuery.trim()) {
-      const q = groupSearchQuery.toLowerCase();
+      const q = groupSearchQuery.toLowerCase().trim();
       result = result.filter((g) => {
         const gName = (g.name || "").toLowerCase();
         const mentor = workers?.find((w) => w.id === g.mentorId);
         const mName = mentor ? `${mentor.firstName} ${mentor.lastName}`.toLowerCase() : "";
-        const groupMentees = mentees?.filter((m) => m.groupId === g.id) || [];
+        const groupMentees = mentees?.filter((m) => m.groupId === g.id || (g.mentorId && m.mentorId === g.mentorId)) || [];
         const hasMatchingMentee = groupMentees.some((m) =>
           `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
         );
-        return gName.includes(q) || mName.includes(q) || hasMatchingMentee;
+        return mName.includes(q) || hasMatchingMentee || gName.includes(q);
       });
     }
 
@@ -2818,7 +3660,7 @@ export default function C2SPage() {
 
   const handleSaveMentee = async (data: any) => {
     try {
-      if (selectedMentee) {
+      if (selectedMentee?.id) {
         await updateMenteeMutation.mutateAsync({ id: selectedMentee.id, data });
       } else {
         await createMenteeMutation.mutateAsync(data);
@@ -2863,11 +3705,324 @@ export default function C2SPage() {
     allMinistries?.find((m: any) => m.id === workerProfile?.majorMinistryId)?.name ||
     "";
 
+  const [menteeStatusFilter, setMenteeStatusFilter] = useState("all");
+  const [selectedMinistryFilter, setSelectedMinistryFilter] = useState("all");
+
+  // Helper to determine the Ministry of a mentee
+  const getMenteeMinistry = (m: any) => {
+    // 1. If mentee has a group, check group name for ministry name
+    const group = groups?.find((g) => g.id === m.groupId);
+    if (group?.name) {
+      const gLower = group.name.toLowerCase();
+      for (const opt of activeClusterOptions) {
+        if (
+          gLower.includes(opt.value.toLowerCase()) ||
+          gLower.includes(opt.label.toLowerCase()) ||
+          opt.label.toLowerCase().includes(gLower)
+        ) {
+          return opt.label;
+        }
+      }
+      if (group.name.includes(" - ")) {
+        const parts = group.name.split(" - ");
+        return parts[1]?.trim() || parts[0]?.trim();
+      }
+    }
+
+    // 2. Check assigned mentor's ministry
+    const mentor = workers?.find(
+      (w) => w.id === m.mentorId || (group?.mentorId && w.id === group.mentorId)
+    );
+    if (mentor?.majorMinistryId) {
+      const min = allMinistries?.find((min: any) => min.id === mentor.majorMinistryId);
+      if (min?.name) {
+        return min.name === "YO" ? "Youth Outreach" : min.name;
+      }
+    }
+
+    return "Cluster 1";
+  };
+
+  // Helper to determine the Department of a mentee
+  const getMenteeDepartment = (m: any) => {
+    // 1. Check assigned mentor's major ministry / department
+    const group = groups?.find((g) => g.id === m.groupId);
+    const mentor = workers?.find(
+      (w) => w.id === m.mentorId || (group?.mentorId && w.id === group.mentorId)
+    );
+    if (mentor) {
+      if (mentor.majorMinistryId) {
+        const min = allMinistries?.find((min: any) => min.id === mentor.majorMinistryId);
+        const rawDept = typeof min?.department === "string" ? min.department : min?.department?.name;
+        if (rawDept) {
+          const dUpper = rawDept.toUpperCase().trim();
+          if (dUpper === "O" || dUpper.includes("OUTREACH")) return "Outreach";
+          if (dUpper === "R" || dUpper.includes("RELATIONSHIP")) return "Relationship";
+          if (dUpper === "D" || dUpper.includes("DISCIPLESHIP")) return "Discipleship";
+          if (dUpper === "A" || dUpper.includes("ADMIN")) return "Administration";
+          if (dUpper === "W" || dUpper.includes("WORSHIP")) return "Worship";
+          return rawDept;
+        }
+      }
+      const mDept = (mentor as any).department;
+      if (mDept) {
+        const dUpper = String(mDept).toUpperCase().trim();
+        if (dUpper === "O" || dUpper.includes("OUTREACH")) return "Outreach";
+        if (dUpper === "R" || dUpper.includes("RELATIONSHIP")) return "Relationship";
+        if (dUpper === "D" || dUpper.includes("DISCIPLESHIP")) return "Discipleship";
+        if (dUpper === "A" || dUpper.includes("ADMIN")) return "Administration";
+        if (dUpper === "W" || dUpper.includes("WORSHIP")) return "Worship";
+        return String(mDept);
+      }
+    }
+
+    // 2. Check mentee ministry name against departmentClusters
+    const minName = getMenteeMinistry(m).toLowerCase().trim();
+    for (const [deptKey, clusterList] of Object.entries(departmentClusters)) {
+      if (clusterList.some((c) => c.value.toLowerCase() === minName || c.label.toLowerCase() === minName)) {
+        const dUpper = deptKey.toUpperCase();
+        if (dUpper === "O" || dUpper.includes("OUTREACH")) return "Outreach";
+        if (dUpper === "R" || dUpper.includes("RELATIONSHIP")) return "Relationship";
+        if (dUpper === "D" || dUpper.includes("DISCIPLESHIP")) return "Discipleship";
+        if (dUpper === "A" || dUpper.includes("ADMIN")) return "Administration";
+        if (dUpper === "W" || dUpper.includes("WORSHIP")) return "Worship";
+      }
+    }
+
+    return "Outreach";
+  };
+
+  const adminDepartments = useMemo(() => [
+    { value: "OUTREACH", label: "Outreach Department" },
+    { value: "RELATIONSHIP", label: "Relationship Department" },
+    { value: "DISCIPLESHIP", label: "Discipleship Department" },
+    { value: "ADMINISTRATION", label: "Administration Department" },
+    { value: "WORSHIP", label: "Worship Department" },
+  ], []);
+
+  const availableMinistriesForMenteeFilter = useMemo(() => {
+    if (!isAdminUser) return activeClusterOptions;
+    if (menteeDeptFilter === "all") {
+      const all: { value: string; label: string }[] = [];
+      const seen = new Set<string>();
+      Object.entries(departmentClusters).forEach(([_, list]) => {
+        list.forEach((item) => {
+          const key = item.value.toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            all.push(item);
+          }
+        });
+      });
+      return all.length > 0 ? all : activeClusterOptions;
+    }
+
+    const key = menteeDeptFilter.toUpperCase();
+    const deptList =
+      departmentClusters[key] ||
+      (key.includes("OUTREACH") ? departmentClusters["OUTREACH"] || departmentClusters["O"] : []) ||
+      [];
+    return deptList.length > 0 ? deptList : activeClusterOptions;
+  }, [isAdminUser, menteeDeptFilter, departmentClusters, activeClusterOptions]);
+
+  // Direct mentees for mentor role
+  const myMentees = useMemo(() => {
+    if (!workerProfile?.id) return [];
+    const myGroupIds = new Set(
+      groups?.filter((g) => g.mentorId === workerProfile.id).map((g) => g.id) || []
+    );
+    return (
+      mentees?.filter(
+        (m) =>
+          m.mentorId === workerProfile.id ||
+          (m.groupId && myGroupIds.has(m.groupId))
+      ) || []
+    );
+  }, [mentees, groups, workerProfile]);
+
+  const filteredMyMentees = useMemo(() => {
+    let list = myMentees;
+    if (menteeStatusFilter !== "all") {
+      const isTargetActive = menteeStatusFilter.toLowerCase() === "active";
+      list = list.filter((m) => {
+        const s = (m.status || "Active").toLowerCase();
+        const isActive = s === "active";
+        return isTargetActive ? isActive : !isActive;
+      });
+    }
+    if (groupSearchQuery.trim()) {
+      const q = groupSearchQuery.toLowerCase().trim();
+      list = list.filter((m) => {
+        const fullName = `${m.firstName} ${m.lastName}`.toLowerCase();
+        const email = (m.email || "").toLowerCase();
+        const phone = (m.phone || "").toLowerCase();
+        return fullName.includes(q) || email.includes(q) || phone.includes(q);
+      });
+    }
+    return list;
+  }, [myMentees, menteeStatusFilter, groupSearchQuery]);
+
+  // Mentors list under ministry head's department / admin scope
+  const departmentMentors = useMemo(() => {
+    if (isAdminUser) return workers || [];
+    if (!isMinistryHeadUser) return workers || [];
+    const myDeptClusters = activeClusterOptions.map((c) => c.value.toLowerCase());
+    const list = (workers || []).filter((w) => {
+      if (w.id === workerProfile?.id) return true;
+      if (w.majorMinistryId === workerProfile?.majorMinistryId) return true;
+      if (w.majorMinistryId && myMinistryIds?.includes(w.majorMinistryId)) return true;
+      const wMin = allMinistries?.find((m: any) => m.id === w.majorMinistryId);
+      const wDept = (wMin?.department || (w as any)?.department || "").toLowerCase();
+      if (wDept && wDept === headDepartment.toLowerCase()) return true;
+      if (wMin?.name && myDeptClusters.some((c) => wMin.name.toLowerCase().includes(c))) return true;
+      const hasGroupInDept = groups?.some((g) => g.mentorId === w.id);
+      return hasGroupInDept;
+    });
+    return list.length > 0 ? list : (workers || []);
+  }, [isAdminUser, isMinistryHeadUser, workers, workerProfile, activeClusterOptions, myMinistryIds, allMinistries, headDepartment, groups]);
+
+  // Individual mentees under ministry head's department / admin scope
+  const headDepartmentMentees = useMemo(() => {
+    if (isAdminUser) return mentees || [];
+    if (isMentorUser) return myMentees;
+
+    const deptMentorIds = new Set(departmentMentors.map((m) => m.id));
+    const deptGroupIds = new Set(
+      groups?.filter((g) => {
+        if (g.mentorId && deptMentorIds.has(g.mentorId)) return true;
+        const gName = (g.name || "").toLowerCase();
+        const myDeptClusters = activeClusterOptions.map((c) => c.value.toLowerCase());
+        return myDeptClusters.some((c) => gName.includes(c) || c.includes(gName));
+      }).map((g) => g.id) || []
+    );
+
+    const scoped = (mentees || []).filter((m) => {
+      if (m.mentorId && deptMentorIds.has(m.mentorId)) return true;
+      if (m.groupId && deptGroupIds.has(m.groupId)) return true;
+      if (m.mentorId === workerProfile?.id) return true;
+      if (!m.mentorId && !m.groupId) return true;
+      return false;
+    });
+
+    return scoped.length > 0 ? scoped : (mentees || []);
+  }, [isAdminUser, isMentorUser, myMentees, departmentMentors, groups, activeClusterOptions, mentees, workerProfile]);
+
+  // Filtered individual mentees for Ministry Head / Admin table view
+  const filteredHeadMentees = useMemo(() => {
+    let list = headDepartmentMentees;
+
+    if (selectedMinistryFilter !== "all") {
+      const target = selectedMinistryFilter.toLowerCase().trim();
+      list = list.filter((m) => {
+        const minName = getMenteeMinistry(m).toLowerCase().trim();
+        if (target === "yo" || target.includes("youth outreach")) {
+          return minName === "yo" || minName.includes("youth outreach") || minName.includes("youth");
+        }
+        return minName === target || minName.includes(target) || target.includes(minName);
+      });
+    }
+
+    if (isAdminUser && menteeDeptFilter !== "all") {
+      const targetDept = menteeDeptFilter.toUpperCase().trim();
+      list = list.filter((m) => {
+        const mDept = getMenteeDepartment(m).toUpperCase().trim();
+        return (
+          mDept === targetDept ||
+          targetDept.includes(mDept) ||
+          mDept.includes(targetDept) ||
+          (targetDept.startsWith("O") && mDept.startsWith("O")) ||
+          (targetDept.startsWith("R") && mDept.startsWith("R")) ||
+          (targetDept.startsWith("D") && mDept.startsWith("D")) ||
+          (targetDept.startsWith("A") && mDept.startsWith("A")) ||
+          (targetDept.startsWith("W") && mDept.startsWith("W"))
+        );
+      });
+    }
+
+    if (menteeStatusFilter !== "all") {
+      const isTargetActive = menteeStatusFilter.toLowerCase() === "active";
+      list = list.filter((m) => {
+        const s = (m.status || "Active").toLowerCase();
+        const isActive = s === "active";
+        return isTargetActive ? isActive : !isActive;
+      });
+    }
+
+    if (groupSearchQuery.trim()) {
+      const q = groupSearchQuery.toLowerCase().trim();
+      list = list.filter((m) => {
+        const fullName = `${m.firstName} ${m.lastName}`.toLowerCase();
+        const email = (m.email || "").toLowerCase();
+        const phone = (m.phone || "").toLowerCase();
+        const mentor = workers?.find(
+          (w) => w.id === m.mentorId || (m.groupId && groups?.find((g) => g.id === m.groupId)?.mentorId === w.id)
+        );
+        const mentorName = mentor ? `${mentor.firstName} ${mentor.lastName}`.toLowerCase() : "";
+        const ministry = getMenteeMinistry(m).toLowerCase();
+        return (
+          fullName.includes(q) ||
+          email.includes(q) ||
+          phone.includes(q) ||
+          mentorName.includes(q) ||
+          ministry.includes(q)
+        );
+      });
+    }
+
+    return list;
+  }, [headDepartmentMentees, selectedMinistryFilter, menteeDeptFilter, menteeStatusFilter, groupSearchQuery, groups, workers, allMinistries, activeClusterOptions, isAdminUser, departmentClusters]);
+
+  const devotionStats = useMemo(() => {
+    const list = filteredDevotions || [];
+    const total = list.length;
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const thisMonth = list.filter((d: any) => {
+      if (!d.devotionDate) return false;
+      const date = toJsDate(d.devotionDate);
+      return date >= thisMonthStart;
+    }).length;
+
+    const uniqueMentees = new Set<string>();
+    list.forEach((d: any) => {
+      if (Array.isArray(d.attendeeNames)) {
+        d.attendeeNames.forEach((name: string) => {
+          if (name && name.trim()) uniqueMentees.add(name.trim().toLowerCase());
+        });
+      }
+    });
+
+    const withPhotos = list.filter(
+      (d: any) => (d.photoUrls && d.photoUrls.length > 0) || d.photoUrl
+    ).length;
+
+    return {
+      total,
+      thisMonth,
+      uniqueMentees: uniqueMentees.size || (mentees?.length ?? 0),
+      withPhotos,
+    };
+  }, [filteredDevotions, mentees]);
+
+  const currentDisplayedMentees = useMemo(() => {
+    return isMentorUser ? filteredMyMentees : filteredHeadMentees;
+  }, [isMentorUser, filteredMyMentees, filteredHeadMentees]);
+
+  const menteeStats = useMemo(() => {
+    const list = currentDisplayedMentees || [];
+    const total = list.length;
+    const active = list.filter((m: any) => m.status === "Active" || !m.status).length;
+    const completed = list.filter((m: any) => m.status === "Completed").length;
+    const inactive = list.filter((m: any) => m.status === "Inactive" || m.status === "Dropped").length;
+    return { total, active, completed, inactive };
+  }, [currentDisplayedMentees]);
+
   if (!canManageC2S && !canViewC2SAnalytics && !isSuperAdmin) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
-          <HeartHandshake className="h-12 w-12 text-muted-foreground/50" />
+          <ShieldCheck className="h-12 w-12 text-muted-foreground/50" />
           <h2 className="text-xl font-semibold">Access Denied</h2>
           <p className="text-muted-foreground text-center max-w-md">
             You don't have permission to access Connect 2 Souls. Contact an administrator to request access.
@@ -2879,63 +4034,26 @@ export default function C2SPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col space-y-6">
-        {/* ── TOP TOOLBAR ── */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl font-headline font-bold text-foreground tracking-tight flex items-center gap-2">
-                <HeartHandshake className="h-8 w-8 text-primary" />
-                Connect 2 Souls
-              </h1>
-
-              {/* High-visibility Account Indicator Badge */}
-              {isAdminUser ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/25 shadow-xs">
-                  <Building2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                  <span>Admin Mode • All Departments</span>
-                </div>
-              ) : isMinistryHeadUser ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 shadow-xs">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Ministry Head • {headDepartment} Department</span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/25 shadow-xs">
-                  <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Mentor • {mentorClusterLabel}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Top-Right High Visibility Action Button */}
-          <div className="flex items-center gap-3">
-            {activeTab === "devotions" && (
-              <Button
-                onClick={() => {
-                  setEditingDevotion(null);
-                  setIsDevotionSheetOpen(true);
-                }}
-                className="shadow-sm font-semibold text-xs h-9 px-4 gap-1.5"
-              >
-                <PlusCircle className="h-4 w-4" />
-                Submit Devotion Record
-              </Button>
-            )}
+      <div className="flex flex-col space-y-6 pb-12 w-full">
+        {/* ── TOP HEADER ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-headline font-bold text-foreground tracking-tight">
+              Connect 2 Souls
+            </h1>
           </div>
         </div>
 
         {/* Tabs Content Views (Navigated via sidebar sub-items) */}
         <Tabs
           defaultValue="devotions"
-          value={activeTab}
+          value={activeTab === "groups" ? "mentees" : activeTab}
           onValueChange={handleTabChange}
-          className="w-full"
+          className="w-full space-y-6"
         >
 
           {/* ══════════════════ TAB 0: ADMIN OVERVIEW ══════════════════ */}
-          {isSuperAdmin && (
+          {(isSuperAdmin || isAdminUser) && (
             <TabsContent value="overview" className="space-y-6 mt-0">
               <AdminOverview
                 groups={groups || []}
@@ -2944,6 +4062,7 @@ export default function C2SPage() {
                 devotions={allDevotions}
                 departmentClusters={departmentClusters}
                 departmentSettings={departmentSettings || []}
+                allMinistries={allMinistries || []}
                 onViewDevotion={(dev) => setViewingDevotion(dev)}
               />
             </TabsContent>
@@ -2951,27 +4070,67 @@ export default function C2SPage() {
 
           {/* ══════════════════ TAB 1: DEVOTIONS ══════════════════ */}
           <TabsContent value="devotions" className="space-y-6 mt-0">
+            {/* Devotions KPI Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="TOTAL DEVOTIONS"
+                value={devotionStats.total}
+                sub="recorded sessions"
+                icon={BookOpen}
+                accentColor="bg-sidebar"
+                iconClass="text-sidebar dark:text-blue-400"
+                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+              />
+              <StatCard
+                label="THIS MONTH"
+                value={devotionStats.thisMonth}
+                sub="recent sessions"
+                icon={Calendar}
+                accentColor="bg-blue-500"
+                iconClass="text-blue-600 dark:text-blue-400"
+                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+              />
+              <StatCard
+                label="MENTEES REACHED"
+                value={devotionStats.uniqueMentees}
+                sub="participating mentees"
+                icon={Users}
+                accentColor="bg-emerald-500"
+                iconClass="text-emerald-600 dark:text-emerald-400"
+                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+              />
+              <StatCard
+                label="PHOTO VERIFIED"
+                value={devotionStats.withPhotos}
+                sub="sessions with photos"
+                icon={Camera}
+                accentColor="bg-purple-500"
+                iconClass="text-purple-600 dark:text-purple-400"
+                iconBgClass="bg-purple-50 dark:bg-purple-950/40"
+              />
+            </div>
+
             {/* Filter and Keyword Search Toolbar */}
-            <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-card p-4 rounded-xl border border-border/60 shadow-sm">
-              <div className="relative w-full lg:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-white dark:bg-card p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-border shadow-xs">
+              <div className="relative w-full lg:w-80">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
                 <Input
                   placeholder="Search keyword (lesson, mentee, mentor, prayer)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-background text-xs"
+                  className="pl-9 pr-8 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Filter controls: Super Admin/Admin sees All Departments, Ministry Head sees their Department Clusters, Mentor sees no dropdown */}
+              {/* Filter controls */}
               <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 {isAdminUser ? (
                   <Select
@@ -2981,7 +4140,7 @@ export default function C2SPage() {
                       setSelectedClusterFilter(val);
                     }}
                   >
-                    <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
+                    <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
                       <SelectValue placeholder="All Departments & Ministries" />
                     </SelectTrigger>
                     <SelectContent className="max-h-96 overflow-y-auto">
@@ -3012,7 +4171,7 @@ export default function C2SPage() {
                       setSelectedClusterFilter(val);
                     }}
                   >
-                    <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
+                    <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
                       <SelectValue placeholder="All Ministries & Clusters" />
                     </SelectTrigger>
                     <SelectContent className="max-h-96 overflow-y-auto">
@@ -3032,6 +4191,17 @@ export default function C2SPage() {
                     </SelectContent>
                   </Select>
                 ) : null}
+
+                <Button
+                  onClick={() => {
+                    setEditingDevotion(null);
+                    setIsDevotionSheetOpen(true);
+                  }}
+                  className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-bold text-xs h-10 px-4 gap-1.5 rounded-2xl transition-colors cursor-pointer shrink-0"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  Submit Devotion Record
+                </Button>
               </div>
             </div>
 
@@ -3051,8 +4221,7 @@ export default function C2SPage() {
                 </p>
               </div>
             ) : (
-
-              <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+              <div className="grid gap-4 sm:gap-5 md:grid-cols-1 lg:grid-cols-2">
                 {filteredDevotions.map((record) => {
                   const photos = record.photoUrls?.length
                     ? record.photoUrls
@@ -3081,14 +4250,15 @@ export default function C2SPage() {
                       : "Mentee";
 
                   return (
-                    <Card
+                    <div
                       key={record.id}
-                      className="overflow-hidden border border-border/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col bg-card"
+                      className="rounded-2xl border border-slate-200/90 dark:border-border/80 bg-white dark:bg-card p-5 sm:p-6 flex flex-col hover:border-sidebar/40 hover:shadow-md transition-all shadow-2xs"
                     >
                       {/* ── TOP HEADER BAR: DATE PILL, TIME, VIEW PHOTO BUTTON & MENU ── */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="bg-primary/10 text-primary font-semibold px-3 py-1 rounded-full text-xs">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            <Calendar className="h-3.5 w-3.5 text-blue-500 shrink-0" />
                             {formattedDate}
                           </span>
                           <span className="text-xs text-muted-foreground font-medium">
@@ -3102,7 +4272,7 @@ export default function C2SPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => setViewingDevotion(record)}
-                              className="h-8 px-3 rounded-full text-xs font-semibold text-primary border-border/80 hover:bg-muted/60 flex items-center gap-1.5 transition-colors"
+                              className="h-8.5 px-3 rounded-xl text-xs font-bold bg-sidebar/5 hover:bg-sidebar/10 text-sidebar dark:text-blue-400 border border-sidebar/20 hover:border-sidebar/40 flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                             >
                               <Camera className="h-3.5 w-3.5" />
                               <span>View Photo</span>
@@ -3112,21 +4282,22 @@ export default function C2SPage() {
                           {(isAuthor || isMinistryHeadUser || isAdminUser) && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                <Button variant="ghost" size="icon" className="h-8.5 w-8.5 rounded-xl hover:bg-slate-100 dark:hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
+                              <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border border-border bg-popover">
                                 <DropdownMenuItem
                                   onSelect={() => {
                                     setEditingDevotion(record);
                                     setIsDevotionSheetOpen(true);
                                   }}
+                                  className="cursor-pointer text-xs font-medium"
                                 >
                                   <Edit className="mr-2 h-4 w-4" /> Edit Record
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
+                                  className="text-destructive focus:text-destructive cursor-pointer text-xs font-medium"
                                   onSelect={() =>
                                     setItemToDelete({
                                       id: record.id,
@@ -3144,25 +4315,29 @@ export default function C2SPage() {
                       </div>
 
                       {/* ── TITLE & SUBTITLE ── */}
-                      <div className="mt-3 space-y-0.5">
+                      <div className="mt-3.5 space-y-1">
                         <h3
                           onClick={() => setViewingDevotion(record)}
-                          className="text-base font-bold text-foreground hover:text-primary cursor-pointer transition-colors leading-tight"
+                          className="text-base sm:text-lg font-bold text-foreground font-headline hover:text-sidebar cursor-pointer transition-colors leading-snug"
                         >
                           {record.lessonName || record.topic}
                         </h3>
-                        <p className="text-xs text-muted-foreground font-normal">
-                          {attendeesString} with {record.mentorName || "Mentor"}
-                        </p>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                          <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>
+                            {attendeesString} with <strong className="font-semibold text-foreground">{record.mentorName || "Mentor"}</strong>
+                          </span>
+                        </div>
                       </div>
 
                       {/* ── REFLECTION BOX ── */}
                       {record.reflectionNotes && (
-                        <div className="mt-3 bg-muted/40 dark:bg-muted/20 p-3.5 rounded-xl border border-border/50 space-y-1">
-                          <p className="text-xs font-semibold text-muted-foreground">
+                        <div className="mt-3.5 bg-slate-50/90 dark:bg-muted/25 p-4 rounded-2xl border border-slate-200/70 dark:border-border/60 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-sidebar dark:text-blue-400">
+                            <Sparkles className="h-3 w-3 text-sidebar dark:text-blue-400" />
                             Reflection
-                          </p>
-                          <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                          </div>
+                          <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap font-normal">
                             {record.reflectionNotes}
                           </p>
                         </div>
@@ -3170,362 +4345,636 @@ export default function C2SPage() {
 
                       {/* ── PRAYER REQUEST LINE ── */}
                       {record.prayerRequests && (
-                        <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Heart className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-border/50 flex items-start gap-2 text-xs text-muted-foreground">
+                          <Heart className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
                           <span>
-                            <strong className="font-semibold text-muted-foreground">
+                            <strong className="font-bold text-foreground">
                               Prayer Request:
                             </strong>{" "}
                             {record.prayerRequests}
                           </span>
                         </div>
                       )}
-                    </Card>
+                    </div>
                   );
                 })}
               </div>
-
             )}
           </TabsContent>
 
           {/* ══════════════════ TAB 2: GROUPS & MENTEES ══════════════════ */}
-          <TabsContent value="groups" className="space-y-6 mt-0">
-            {/* Filter and Keyword Search Toolbar */}
-            <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-card p-4 rounded-xl border border-border/60 shadow-sm">
-              <div className="relative w-full lg:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search group, mentor, or mentee..."
-                  value={groupSearchQuery}
-                  onChange={(e) => setGroupSearchQuery(e.target.value)}
-                  className="pl-9 bg-background text-xs"
-                />
-                {groupSearchQuery && (
-                  <button
-                    onClick={() => setGroupSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+          <TabsContent value="mentees" className="space-y-6 mt-0">
+            {/* Stat Cards for Mentees */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="TOTAL MENTEES"
+                value={menteeStats.total}
+                sub="registered souls"
+                icon={Users}
+                accentColor="bg-sidebar"
+                iconClass="text-sidebar dark:text-blue-400"
+                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+              />
+              <StatCard
+                label="ACTIVE MENTEES"
+                value={menteeStats.active}
+                sub="currently mentoring"
+                icon={CheckCircle2}
+                accentColor="bg-emerald-500"
+                iconClass="text-emerald-600 dark:text-emerald-400"
+                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+              />
+              <StatCard
+                label="COMPLETED JOURNEY"
+                value={menteeStats.completed}
+                sub="graduated curriculum"
+                icon={GraduationCap}
+                accentColor="bg-purple-500"
+                iconClass="text-purple-600 dark:text-purple-400"
+                iconBgClass="bg-purple-50 dark:bg-purple-950/40"
+              />
+              <StatCard
+                label="INACTIVE / DROPPED"
+                value={menteeStats.inactive}
+                sub="requires follow-up"
+                icon={Clock}
+                accentColor="bg-amber-500"
+                iconClass="text-amber-600 dark:text-amber-400"
+                iconBgClass="bg-amber-50 dark:bg-amber-950/40"
+              />
+            </div>
+            {isMentorUser ? (
+              /* ── MENTOR VIEW: DIRECT MENTEES TABLE (Room Reservations Admin Table Style) ── */
+              <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden flex flex-col min-h-[480px]">
+                {/* Controls Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+                  {/* Left: Search input */}
+                  <div className="relative w-full sm:w-72 shrink-0">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+                    <Input
+                      type="text"
+                      placeholder="Search mentee name, email, phone..."
+                      value={groupSearchQuery}
+                      onChange={(e) => setGroupSearchQuery(e.target.value)}
+                      className="pl-9 pr-8 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
+                    />
+                    {groupSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setGroupSearchQuery("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
 
-              {/* Filter controls & Action buttons */}
-              <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-                {isAdminUser ? (
-                  <Select
-                    value={selectedGroupClusterFilter}
-                    onValueChange={(val) => setSelectedGroupClusterFilter(val)}
-                  >
-                    <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
-                      <SelectValue placeholder="All Departments & Ministries" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-96 overflow-y-auto">
-                      <SelectItem value="all" className="text-xs font-bold text-primary">
-                        All Departments & Ministries
-                      </SelectItem>
-                      {Object.entries(departmentClusters).map(([dept, items]) => {
-                        const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
-                        return (
-                          <SelectGroup key={dept}>
-                            <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                              {titleLabel}
-                            </SelectLabel>
-                            {items.map((item, idx) => (
-                              <SelectItem key={`grp-admin-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
-                                • {item.label}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                ) : isMinistryHeadUser ? (
-                  <Select
-                    value={selectedGroupClusterFilter}
-                    onValueChange={(val) => setSelectedGroupClusterFilter(val)}
-                  >
-                    <SelectTrigger className="w-full sm:w-[220px] bg-background text-xs font-semibold border border-border/80">
-                      <SelectValue placeholder="All Ministries & Clusters" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-96 overflow-y-auto">
-                      <SelectItem value="all" className="text-xs font-bold text-primary">
-                        All Ministries & Clusters
-                      </SelectItem>
-                      <SelectGroup>
-                        <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                          {headDepartment.toUpperCase()} MINISTRIES
-                        </SelectLabel>
-                        {activeClusterOptions.map((item, idx) => (
-                          <SelectItem key={`grp-head-cluster-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
-                            • {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                ) : null}
+                  {/* Right: Status Filter & Mentee Count Badge */}
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <Select value={menteeStatusFilter} onValueChange={setMenteeStatusFilter}>
+                      <SelectTrigger className="h-10 w-[130px] sm:w-36 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-xs cursor-pointer">
+                          All Statuses
+                        </SelectItem>
+                        <SelectItem value="Active" className="text-xs cursor-pointer">
+                          Active
+                        </SelectItem>
+                        <SelectItem value="Inactive" className="text-xs cursor-pointer">
+                          Inactive
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                {isHeadOrAdmin && (
-                  <>
                     <Button
                       onClick={() => {
-                        setSelectedGroup(null);
-                        setIsGroupSheetOpen(true);
+                        setSelectedMentee(myAssignedGroup ? { groupId: myAssignedGroup.id, mentorId: myAssignedGroup.mentorId } : null);
+                        setIsMenteeSheetOpen(true);
                       }}
-                      size="sm"
+                      className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-semibold text-xs h-10 px-4 gap-1.5 rounded-2xl shrink-0 transition-colors cursor-pointer"
                     >
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Group
+                      <PlusCircle className="h-4 w-4" />
+                      Add Mentee
                     </Button>
+                  </div>
+                </div>
+
+                {/* Table Container */}
+                <div className="border border-border/60 rounded-2xl mt-4 overflow-hidden flex-grow flex flex-col bg-card">
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-3 flex-grow">
+                      <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-xs text-muted-foreground font-medium">Loading mentees...</p>
+                    </div>
+                  ) : filteredMyMentees.length === 0 ? (
+                    <div className="py-16 text-center text-muted-foreground flex-grow flex flex-col items-center justify-center">
+                      <div className="p-3 rounded-2xl bg-slate-100 dark:bg-muted/50 mb-3 text-slate-400">
+                        <Users className="h-6 w-6" />
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">No mentees found</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                        {groupSearchQuery || menteeStatusFilter !== "all"
+                          ? "Try adjusting your search or filter criteria."
+                          : "No mentees are assigned under your mentorship yet."}
+                      </p>
+                      <Button
+                        onClick={() => {
+                          setSelectedMentee(myAssignedGroup ? { groupId: myAssignedGroup.id, mentorId: myAssignedGroup.mentorId } : null);
+                          setIsMenteeSheetOpen(true);
+                        }}
+                        className="shadow-sm font-semibold text-xs h-9 px-4 gap-1.5 mt-4"
+                      >
+                        <PlusCircle className="h-4 w-4" /> Add Mentee
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto flex-grow">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                            <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-5 text-left w-[30%]">
+                              Mentee
+                            </TableHead>
+                            <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left w-[20%]">
+                              Barangay
+                            </TableHead>
+                            <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[15%]">
+                              Status
+                            </TableHead>
+                            <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[15%]">
+                              Progress
+                            </TableHead>
+                            <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[12%]">
+                              Last Session
+                            </TableHead>
+                            <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[8%]">
+                              Actions
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredMyMentees.map((m) => {
+                            const fullName = `${m.firstName} ${m.lastName}`.trim();
+                            const initials = `${m.firstName ? m.firstName[0] : ""}${m.lastName ? m.lastName[0] : ""}`.toUpperCase();
+                            const menteeDevotions = allDevotions?.filter((d: any) =>
+                              d.attendeeNames?.some((name: string) => name.toLowerCase().includes(fullName.toLowerCase()))
+                            ) || [];
+                            const lastSessionDate = menteeDevotions[0]?.devotionDate
+                              ? format(toJsDate(menteeDevotions[0].devotionDate), "yyyy-MM-dd")
+                              : "2026-09-04";
+
+                            const progressPct =
+                              m.status === "Completed"
+                                ? 100
+                                : m.status === "Dropped"
+                                  ? 25
+                                  : menteeDevotions.length > 0
+                                    ? Math.min(100, Math.max(30, Math.round((menteeDevotions.length / 24) * 100)))
+                                    : 65;
+
+                            const isMenteeActive = (m.status || "Active").toLowerCase() === "active";
+                            const displayStatus = isMenteeActive ? "Active" : "Inactive";
+                            const statusColorClass = isMenteeActive
+                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                              : "bg-slate-500/15 text-slate-700 dark:text-slate-300";
+
+                            return (
+                              <TableRow
+                                key={m.id}
+                                className="border-b border-border/40 hover:bg-muted/20 transition-colors"
+                              >
+                                <TableCell className="px-5 py-3.5 align-middle">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
+                                      {initials}
+                                    </div>
+                                    <div className="overflow-hidden">
+                                      <p className="font-bold text-foreground text-xs leading-none truncate">
+                                        {fullName}
+                                      </p>
+                                      <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                                        {m.email || m.phone || "No contact info"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </TableCell>
+
+                                <TableCell className="px-4 py-3.5 text-xs text-muted-foreground align-middle">
+                                  {m.phone ? `Brgy. ${m.phone.slice(-1) || "1"}` : "Brgy. 1"}
+                                </TableCell>
+
+                                <TableCell className="px-4 py-3.5 text-center align-middle">
+                                  <Badge
+                                    variant="secondary"
+                                    className={`${statusColorClass} font-semibold px-3 py-1 rounded-full text-[11px] border-transparent`}
+                                  >
+                                    {displayStatus}
+                                  </Badge>
+                                </TableCell>
+
+                                <TableCell className="px-4 py-3.5 align-middle text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <div className="w-16 bg-muted h-1.5 rounded-full overflow-hidden">
+                                      <div
+                                        className="bg-primary h-full rounded-full transition-all duration-300"
+                                        style={{ width: `${progressPct}%` }}
+                                      />
+                                    </div>
+                                    <span className="font-semibold text-muted-foreground text-xs">
+                                      {progressPct}%
+                                    </span>
+                                  </div>
+                                </TableCell>
+
+                                <TableCell className="px-4 py-3.5 text-xs text-muted-foreground text-center align-middle font-mono">
+                                  {lastSessionDate}
+                                </TableCell>
+
+                                <TableCell className="px-4 py-3.5 text-center align-middle">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedMentee(m);
+                                        setIsMenteeSheetOpen(true);
+                                      }}
+                                      className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-muted"
+                                      title="Edit Mentee"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        setItemToDelete({
+                                          id: m.id,
+                                          type: "mentee",
+                                          name: fullName,
+                                        })
+                                      }
+                                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+                                      title="Delete Mentee"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* ── MINISTRY HEAD / ADMIN VIEW: INDIVIDUAL MENTEES TABLE (Room Reservations Admin Table Style) ── */
+              <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden flex flex-col min-h-[480px]">
+                {/* Controls Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+                  {/* Left: Search input */}
+                  <div className="relative w-full sm:w-72 shrink-0">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+                    <Input
+                      type="text"
+                      placeholder="Search mentee or mentor..."
+                      value={groupSearchQuery}
+                      onChange={(e) => setGroupSearchQuery(e.target.value)}
+                      className="pl-9 pr-8 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
+                    />
+                    {groupSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setGroupSearchQuery("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Right: Department Filter (Admin), Ministry Filter, Status Filter & Add Mentee */}
+                  <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+                    {/* Admin Department Filter */}
+                    {isAdminUser && (
+                      <Select
+                        value={menteeDeptFilter}
+                        onValueChange={(val) => {
+                          setMenteeDeptFilter(val);
+                          setSelectedMinistryFilter("all");
+                        }}
+                      >
+                        <SelectTrigger className="h-10 w-[160px] sm:w-44 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                          <SelectValue placeholder="All Departments">
+                            {menteeDeptFilter === "all"
+                              ? "All Departments"
+                              : adminDepartments.find((d) => d.value === menteeDeptFilter)?.label ||
+                                menteeDeptFilter}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72 overflow-y-auto">
+                          <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
+                            All Departments
+                          </SelectItem>
+                          {adminDepartments.map((dept) => (
+                            <SelectItem
+                              key={`mentee-dept-${dept.value}`}
+                              value={dept.value}
+                              className="text-xs cursor-pointer"
+                            >
+                              {dept.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    {/* Ministries Filter */}
+                    <Select value={selectedMinistryFilter} onValueChange={setSelectedMinistryFilter}>
+                      <SelectTrigger className="h-10 w-[160px] sm:w-48 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                        <SelectValue placeholder="All Ministries">
+                          {selectedMinistryFilter === "all"
+                            ? "All Ministries"
+                            : availableMinistriesForMenteeFilter.find((c) => c.value === selectedMinistryFilter)?.label ||
+                              selectedMinistryFilter}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72 overflow-y-auto">
+                        <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
+                          All Ministries
+                        </SelectItem>
+                        {availableMinistriesForMenteeFilter.map((item, idx) => (
+                          <SelectItem
+                            key={`head-ministry-fltr-${item.value}-${idx}`}
+                            value={item.value}
+                            className="text-xs cursor-pointer"
+                          >
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Status Filter */}
+                    <Select value={menteeStatusFilter} onValueChange={setMenteeStatusFilter}>
+                      <SelectTrigger className="h-10 w-[130px] sm:w-36 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-xs cursor-pointer">
+                          All Statuses
+                        </SelectItem>
+                        <SelectItem value="Active" className="text-xs cursor-pointer">
+                          Active
+                        </SelectItem>
+                        <SelectItem value="Inactive" className="text-xs cursor-pointer">
+                          Inactive
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+
                     <Button
                       onClick={() => {
                         setSelectedMentee(null);
                         setIsMenteeSheetOpen(true);
                       }}
-                      variant="outline"
-                      size="sm"
+                      className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-semibold text-xs h-10 px-4 gap-1.5 rounded-2xl shrink-0 transition-colors cursor-pointer"
                     >
-                      <UserPlus className="mr-2 h-4 w-4" /> Add Mentee
+                      <PlusCircle className="h-4 w-4" />
+                      Add Mentee
                     </Button>
-                  </>
-                )}
-              </div>
-            </div>
+                  </div>
+                </div>
 
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {displayedGroups?.map((group) => {
-                  const mentor = getWorker(group.mentorId);
-                  const groupMentees =
-                    mentees?.filter((m) => m.groupId === group.id) || [];
-                  const isExpanded = !!collapsedGroupIds[group.id];
-                  const isCollapsed = !isExpanded;
-
-                  return (
-                    <div
-                      key={group.id}
-                      className="rounded-3xl border border-border/70 bg-card shadow-xs overflow-hidden transition-all p-5 sm:p-6 space-y-4"
-                    >
-                      {/* ── HEADER ROW ── */}
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          {/* Collapse / Expand Toggle Button */}
-                          <button
-                            onClick={() => toggleGroupCollapse(group.id)}
-                            className="mt-0.5 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            {isCollapsed ? (
-                              <ChevronDown className="h-5 w-5" />
-                            ) : (
-                              <ChevronUp className="h-5 w-5" />
-                            )}
-                          </button>
-
-                          <div>
-                            {/* Group Name & Inline Edit */}
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-xl font-headline font-extrabold text-foreground tracking-tight">
-                                {group.name}
-                              </h3>
-                              <button
-                                onClick={() => {
-                                  setSelectedGroup(group);
-                                  setIsGroupSheetOpen(true);
-                                }}
-                                className="text-muted-foreground/70 hover:text-primary transition-colors p-1"
-                                title="Edit Group"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-
-                            {/* Mentor Subtitle & Cluster */}
-                            <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                              Mentor:{" "}
-                              <span className="text-foreground/90 font-semibold">
-                                {mentor ? `${mentor.firstName} ${mentor.lastName}` : "Unassigned"}
-                              </span>{" "}
-                              • {group.name || "Brgy. 1"}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Right Header Actions & Mentee Count Badge */}
-                        <div className="flex items-center gap-3">
-                          <Badge
-                            variant="secondary"
-                            className="bg-primary/10 text-primary font-medium px-3.5 py-1 rounded-full text-xs"
-                          >
-                            {groupMentees.length} mentees
-                          </Badge>
-
-                          <button
-                            onClick={() =>
-                              setItemToDelete({
-                                id: group.id,
-                                type: "group",
-                                name: group.name,
-                              })
-                            }
-                            className="text-muted-foreground/50 hover:text-destructive transition-colors p-1"
-                            title="Delete Group"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* ── EXPANDED BODY ── */}
-                      {!isCollapsed && (
-                        <div className="space-y-3 pt-2">
-                          {/* Table Header Labels */}
-                          {groupMentees.length > 0 && (
-                            <div className="grid grid-cols-12 gap-4 px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                              <div className="col-span-5 sm:col-span-4">NAME</div>
-                              <div className="hidden sm:block sm:col-span-3 text-left">BARANGAY</div>
-                              <div className="col-span-3 sm:col-span-2 text-center">STATUS</div>
-                              <div className="col-span-3 sm:col-span-2 text-right sm:text-center">PROGRESS</div>
-                              <div className="hidden sm:block sm:col-span-1"></div>
-                            </div>
-                          )}
-
-                          {/* Mentee List Rows */}
-                          <div className="space-y-2">
-                            {groupMentees.length > 0 ? (
-                              groupMentees.map((m) => {
-                                const fullName = `${m.firstName} ${m.lastName}`;
-                                const initials = `${m.firstName ? m.firstName[0] : ""}${m.lastName ? m.lastName[0] : ""}`;
-                                const menteeDevotions = devotions?.filter((d: any) =>
-                                  d.attendeeNames?.some((name: string) => name.toLowerCase().includes(fullName.toLowerCase()))
-                                ) || [];
-                                const lastSessionDate = menteeDevotions[0]?.devotionDate
-                                  ? format(toJsDate(menteeDevotions[0].devotionDate), "yyyy-MM-dd")
-                                  : "2026-07-01";
-
-                                const progressPct =
-                                  m.status === "Completed"
-                                    ? 100
-                                    : m.status === "Dropped"
-                                      ? 25
-                                      : menteeDevotions.length > 0
-                                        ? Math.min(100, Math.max(30, Math.round((menteeDevotions.length / 24) * 100)))
-                                        : 55;
-
-                                const statusColorClass =
-                                  m.status === "Completed"
-                                    ? "bg-blue-500/15 text-blue-700 dark:text-blue-300"
-                                    : m.status === "Dropped"
-                                      ? "bg-destructive/15 text-destructive"
-                                      : m.status === "Needs Follow-up"
-                                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                                        : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
-
-                                const displayStatus = m.status || "Active";
-
-                                return (
-                                  <div
-                                    key={m.id}
-                                    className="grid grid-cols-12 gap-4 items-center p-3 sm:p-3.5 rounded-2xl bg-muted/20 hover:bg-muted/40 border border-border/40 text-xs transition-colors"
-                                  >
-                                    {/* Mentee Name & Initials */}
-                                    <div className="col-span-5 sm:col-span-4 flex items-center gap-3">
-                                      <div className="h-8 w-8 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center border border-primary/20 shrink-0">
-                                        {initials}
-                                      </div>
-                                      <div className="overflow-hidden">
-                                        <p className="font-bold text-foreground text-xs leading-none truncate">
-                                          {fullName}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground mt-1">
-                                          Last: {lastSessionDate}
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    {/* Barangay / Cluster */}
-                                    <div className="hidden sm:block sm:col-span-3 text-xs font-medium text-muted-foreground">
-                                      {m.phone ? `Brgy. ${m.phone.slice(-1) || "1"}` : "Brgy. 1"}
-                                    </div>
-
-                                    {/* Status Pill */}
-                                    <div className="col-span-3 sm:col-span-2 flex justify-center">
-                                      <Badge
-                                        variant="secondary"
-                                        className={`${statusColorClass} font-semibold px-3 py-1 rounded-full text-[11px] border-transparent`}
-                                      >
-                                        {displayStatus}
-                                      </Badge>
-                                    </div>
-
-                                    {/* Progress Bar & Percentage */}
-                                    <div className="col-span-3 sm:col-span-2 flex items-center justify-end sm:justify-center gap-2">
-                                      <div className="w-16 bg-muted h-1.5 rounded-full overflow-hidden hidden sm:block">
-                                        <div
-                                          className="bg-primary h-full rounded-full transition-all duration-300"
-                                          style={{ width: `${progressPct}%` }}
-                                        />
-                                      </div>
-                                      <span className="font-semibold text-muted-foreground text-xs">
-                                        {progressPct}%
-                                      </span>
-                                    </div>
-
-                                    {/* Mentee Row Actions */}
-                                    <div className="hidden sm:flex sm:col-span-1 items-center justify-end gap-1">
-                                      <button
-                                        onClick={() => {
-                                          setSelectedMentee(m);
-                                          setIsMenteeSheetOpen(true);
-                                        }}
-                                        className="p-1 text-muted-foreground hover:text-primary transition-colors"
-                                        title="Edit Mentee"
-                                      >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          setItemToDelete({
-                                            id: m.id,
-                                            type: "mentee",
-                                            name: fullName,
-                                          })
-                                        }
-                                        className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                                        title="Delete Mentee"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <p className="text-xs text-muted-foreground italic py-3 text-center">
-                                No mentees enrolled in this group yet.
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Bottom Dashed Add Mentee Button */}
-                          <button
-                            onClick={() => {
-                              setSelectedMentee({ groupId: group.id });
-                              setIsMenteeSheetOpen(true);
-                            }}
-                            className="w-full border-2 border-dashed border-border/80 hover:border-primary/50 hover:bg-primary/5 rounded-2xl py-3 text-xs font-semibold text-muted-foreground hover:text-primary transition-all flex items-center justify-center gap-1.5 mt-3"
-                          >
-                            <PlusCircle className="h-4 w-4" /> Add Mentee to {group.name}
-                          </button>
-                        </div>
-                      )}
+                {/* Table Container */}
+                <div className="border border-border/60 rounded-2xl mt-4 overflow-hidden flex-grow flex flex-col bg-card">
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-3 flex-grow">
+                      <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-xs text-muted-foreground font-medium">Loading mentees...</p>
                     </div>
-                  );
-                })}
+                  ) : filteredHeadMentees.length === 0 ? (
+                    <div className="py-16 text-center text-muted-foreground flex-grow flex flex-col items-center justify-center">
+                      <div className="p-3 rounded-2xl bg-slate-100 dark:bg-muted/50 mb-3 text-slate-400">
+                        <Users className="h-6 w-6" />
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">No mentees found</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                        {groupSearchQuery || menteeStatusFilter !== "all" || selectedMinistryFilter !== "all"
+                          ? "Try adjusting your search or filter criteria."
+                          : "No mentees are registered in this ministry yet."}
+                      </p>
+                      <Button
+                        onClick={() => {
+                          setSelectedMentee(null);
+                          setIsMenteeSheetOpen(true);
+                        }}
+                        variant="outline"
+                        className="mt-4 text-xs font-semibold rounded-2xl gap-1.5 h-9"
+                      >
+                        <PlusCircle className="h-3.5 w-3.5 text-primary" />
+                        Add First Mentee
+                      </Button>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-5 text-left w-[22%]">
+                            Mentee
+                          </TableHead>
+                          {isAdminUser && (
+                            <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left w-[13%]">
+                              Department
+                            </TableHead>
+                          )}
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left w-[15%]">
+                            Assigned Mentor
+                          </TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left w-[14%]">
+                            Ministry
+                          </TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left w-[10%]">
+                            Barangay
+                          </TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[9%]">
+                            Status
+                          </TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[9%]">
+                            Progress
+                          </TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[5%]">
+                            Last Session
+                          </TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[3%]">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredHeadMentees.map((m) => {
+                          const fullName = `${m.firstName} ${m.lastName}`.trim();
+                          const initials = `${m.firstName ? m.firstName[0] : ""}${m.lastName ? m.lastName[0] : ""}`.toUpperCase();
+
+                          const mentor = workers?.find(
+                            (w) => w.id === m.mentorId || (m.groupId && groups?.find((g) => g.id === m.groupId)?.mentorId === w.id)
+                          );
+                          const mentorName = mentor ? `${mentor.firstName} ${mentor.lastName}`.trim() : "Unassigned";
+                          const mentorInitials = mentor
+                            ? `${mentor.firstName?.[0] || ""}${mentor.lastName?.[0] || ""}`.toUpperCase()
+                            : "UA";
+                          const menteeMinistry = getMenteeMinistry(m);
+                          const menteeDepartment = getMenteeDepartment(m);
+
+                          const menteeDevotions = allDevotions?.filter((d: any) =>
+                            d.attendeeNames?.some((name: string) => name.toLowerCase().includes(fullName.toLowerCase()))
+                          ) || [];
+                          const lastSessionDate = menteeDevotions[0]?.devotionDate
+                            ? format(toJsDate(menteeDevotions[0].devotionDate), "yyyy-MM-dd")
+                            : "2026-09-04";
+
+                          const progressPct =
+                            m.status === "Completed"
+                              ? 100
+                              : m.status === "Dropped"
+                                ? 25
+                                : menteeDevotions.length > 0
+                                  ? Math.min(100, Math.max(30, Math.round((menteeDevotions.length / 24) * 100)))
+                                  : 65;
+
+                          const isMenteeActive = (m.status || "Active").toLowerCase() === "active";
+                          const displayStatus = isMenteeActive ? "Active" : "Inactive";
+                          const statusColorClass = isMenteeActive
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            : "bg-slate-500/15 text-slate-700 dark:text-slate-300";
+
+                          return (
+                            <TableRow
+                              key={m.id}
+                              className="border-b border-border/40 hover:bg-muted/20 transition-colors"
+                            >
+                              {/* Mentee */}
+                              <TableCell className="px-5 py-3.5 align-middle">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
+                                    {initials}
+                                  </div>
+                                  <div className="overflow-hidden">
+                                    <p className="font-bold text-foreground text-xs leading-none truncate">
+                                      {fullName}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                                      {m.email || m.phone || "No contact info"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </TableCell>
+
+                              {/* Department (Admin only) */}
+                              {isAdminUser && (
+                                <TableCell className="px-4 py-3.5 text-xs align-middle">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[11px] font-semibold bg-slate-100 dark:bg-muted/40 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-border"
+                                  >
+                                    {menteeDepartment}
+                                  </Badge>
+                                </TableCell>
+                              )}
+
+                              {/* Assigned Mentor */}
+                              <TableCell className="px-4 py-3.5 align-middle">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 border border-primary/20">
+                                    {mentorInitials}
+                                  </div>
+                                  <span className="text-xs font-medium text-foreground truncate">
+                                    {mentorName}
+                                  </span>
+                                </div>
+                              </TableCell>
+
+                              {/* Ministry */}
+                              <TableCell className="px-4 py-3.5 align-middle">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] font-medium bg-muted/40 text-foreground border-border/80 rounded-lg px-2.5 py-0.5"
+                                >
+                                  {menteeMinistry}
+                                </Badge>
+                              </TableCell>
+
+                              {/* Barangay */}
+                              <TableCell className="px-4 py-3.5 text-xs text-muted-foreground align-middle">
+                                {m.phone ? `Brgy. ${m.phone.slice(-1) || "1"}` : "Brgy. 1"}
+                              </TableCell>
+
+                              {/* Status */}
+                              <TableCell className="px-4 py-3.5 text-center align-middle">
+                                <Badge
+                                  variant="secondary"
+                                  className={`${statusColorClass} font-semibold px-3 py-1 rounded-full text-[11px] border-transparent`}
+                                >
+                                  {displayStatus}
+                                </Badge>
+                              </TableCell>
+
+                              {/* Progress */}
+                              <TableCell className="px-4 py-3.5 align-middle text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <div className="w-16 bg-muted h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                      className="bg-primary h-full rounded-full transition-all duration-300"
+                                      style={{ width: `${progressPct}%` }}
+                                    />
+                                  </div>
+                                  <span className="font-semibold text-muted-foreground text-xs">
+                                    {progressPct}%
+                                  </span>
+                                </div>
+                              </TableCell>
+
+                              {/* Last Session */}
+                              <TableCell className="px-4 py-3.5 text-xs text-muted-foreground text-center align-middle font-mono">
+                                {lastSessionDate}
+                              </TableCell>
+
+                              {/* Actions */}
+                              <TableCell className="px-4 py-3.5 text-center align-middle">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedMentee(m);
+                                      setIsMenteeSheetOpen(true);
+                                    }}
+                                    className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-muted cursor-pointer"
+                                    title="Edit Mentee"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setItemToDelete({
+                                        id: m.id,
+                                        type: "mentee",
+                                        name: fullName,
+                                      })
+                                    }
+                                    className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10 cursor-pointer"
+                                    title="Delete Mentee"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
               </div>
             )}
           </TabsContent>
@@ -3580,29 +5029,6 @@ export default function C2SPage() {
         isSuperAdmin={isSuperAdmin}
       />
 
-      {/* ── Group Sheet ── */}
-      <Sheet open={isGroupSheetOpen} onOpenChange={setIsGroupSheetOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>
-              {selectedGroup ? "Edit C2S Group" : "Create C2S Group"}
-            </SheetTitle>
-            <SheetDescription>
-              Groups represent clusters of mentees assigned to a mentor.
-            </SheetDescription>
-          </SheetHeader>
-          <GroupForm
-            group={selectedGroup}
-            workers={workers || []}
-            mentees={mentees || []}
-            allGroups={groups || []}
-            currentWorker={workerProfile}
-            onSave={handleSaveGroup}
-            canAssignMentor={canManageGroupAssignment}
-          />
-        </SheetContent>
-      </Sheet>
-
       {/* ── Mentee Sheet ── */}
       <Sheet open={isMenteeSheetOpen} onOpenChange={setIsMenteeSheetOpen}>
         <SheetContent className="sm:max-w-md">
@@ -3611,7 +5037,7 @@ export default function C2SPage() {
               {selectedMentee?.id ? "Edit Mentee" : "Add Mentee"}
             </SheetTitle>
             <SheetDescription>
-              Add a mentee to a Connect 2 Souls mentoring cluster.
+              Manage mentee profile and assigned mentor.
             </SheetDescription>
           </SheetHeader>
           <MenteeForm

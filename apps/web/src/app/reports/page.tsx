@@ -278,19 +278,28 @@ function AttendanceTab() {
       </div>
 
       {/* Table */}
-      <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-        <div className="px-6 pt-5 pb-4 border-b border-border/40 flex items-center justify-between gap-4">
+      <div className="bg-card rounded-2xl border border-border/70 shadow-xs overflow-hidden">
+        <div className="px-6 pt-5 pb-4 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-bold text-foreground">Recent Attendance Records</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Worker clock in and out activity log.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 h-8 rounded-lg border border-border/60 bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+          <div className="flex items-center gap-2.5">
+            <div className="relative w-64 sm:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search records..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 h-10 rounded-xl border border-border/80 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              />
             </div>
-            <button onClick={handleExport} className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-border/60 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors">
-              <Download className="h-3.5 w-3.5" /> Export
+            <button
+              onClick={handleExport}
+              className="h-10 px-4 flex items-center gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+            >
+              <Download className="h-4 w-4" /> Export CSV
             </button>
           </div>
         </div>
@@ -391,8 +400,8 @@ function AttendanceTab() {
               if (pageNum <= 0 || pageNum > totalPages) return null;
               return (
                 <button key={pageNum} onClick={() => setPage(pageNum)}
-                  className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all",
-                    page === pageNum ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-border text-foreground hover:bg-muted")}>
+                  className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                    page === pageNum ? "bg-sidebar text-white font-bold shadow-xs" : "border border-border/80 text-foreground hover:bg-muted/40")}>
                   {pageNum}
                 </button>
               );
@@ -526,17 +535,28 @@ function MealStubClaimsTab() {
       {/* Table + Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6 items-start">
         {/* Table */}
-        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-          <div className="px-6 pt-5 pb-4 border-b border-border/40 flex items-center justify-between gap-4">
-            <h2 className="text-base font-bold text-foreground">Recent Attendance Records</h2>
-            <div className="flex items-center gap-2">
-              <div className="relative w-44">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <input type="text" placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                  className="w-full pl-8 pr-3 h-8 rounded-lg border border-border/60 bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+        <div className="bg-card rounded-2xl border border-border/70 shadow-xs overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-foreground">Meal Stub Claims Records</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Summary of claimed and unclaimed meal coupons.</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="relative w-64 sm:w-72">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search records..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  className="w-full pl-10 pr-4 h-10 rounded-xl border border-border/80 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                />
               </div>
-              <button onClick={handleExport} className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-border/60 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors">
-                <Download className="h-3.5 w-3.5" /> Export
+              <button
+                onClick={handleExport}
+                className="h-10 px-4 flex items-center gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+              >
+                <Download className="h-4 w-4" /> Export CSV
               </button>
             </div>
           </div>
@@ -636,7 +656,7 @@ function MealStubClaimsTab() {
                 let n = i + 1;
                 if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; }
                 if (n <= 0 || n > totalPages) return null;
-                return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-border text-foreground hover:bg-muted")}>{n}</button>;
+                return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all cursor-pointer", page === n ? "bg-sidebar text-white font-bold shadow-xs" : "border border-border text-foreground hover:bg-muted")}>{n}</button>;
               })}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0}
                 className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors">
@@ -818,17 +838,28 @@ function AllocationsTab() {
       {/* Table + Usage sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
         {/* Table */}
-        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-          <div className="px-6 pt-5 pb-4 border-b border-border/40 flex items-center justify-between gap-4">
-            <h2 className="text-base font-bold text-foreground">Recent Attendance Records</h2>
-            <div className="flex items-center gap-2">
-              <div className="relative w-44">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <input type="text" placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                  className="w-full pl-8 pr-3 h-8 rounded-lg border border-border/60 bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+        <div className="bg-card rounded-2xl border border-border/70 shadow-xs overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-foreground">Meal Stub Allocation Records</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Worker limits and remaining quota tracking.</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="relative w-64 sm:w-72">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search records..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  className="w-full pl-10 pr-4 h-10 rounded-xl border border-border/80 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                />
               </div>
-              <button onClick={handleExport} className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-border/60 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors">
-                <Download className="h-3.5 w-3.5" /> Export
+              <button
+                onClick={handleExport}
+                className="h-10 px-4 flex items-center gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+              >
+                <Download className="h-4 w-4" /> Export CSV
               </button>
             </div>
           </div>
@@ -916,7 +947,7 @@ function AllocationsTab() {
             </p>
             <div className="flex items-center gap-1">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"><ChevronLeft className="h-4 w-4" /></button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let n = i + 1; if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; } if (n <= 0 || n > totalPages) return null; return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-border text-foreground hover:bg-muted")}>{n}</button>; })}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let n = i + 1; if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; } if (n <= 0 || n > totalPages) return null; return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all cursor-pointer", page === n ? "bg-sidebar text-white font-bold shadow-xs" : "border border-border text-foreground hover:bg-muted")}>{n}</button>; })}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"><ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
@@ -1084,17 +1115,28 @@ function ReservationsTab() {
       {/* Table + Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
         {/* Table */}
-        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-          <div className="px-6 pt-5 pb-4 border-b border-border/40 flex items-center justify-between gap-4">
-            <h2 className="text-base font-bold text-foreground">Recent Attendance Records</h2>
-            <div className="flex items-center gap-2">
-              <div className="relative w-44">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <input type="text" placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                  className="w-full pl-8 pr-3 h-8 rounded-lg border border-border/60 bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+        <div className="bg-card rounded-2xl border border-border/70 shadow-xs overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-foreground">Room Reservations Records</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Facility bookings and scheduling log.</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="relative w-64 sm:w-72">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search records..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  className="w-full pl-10 pr-4 h-10 rounded-xl border border-border/80 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                />
               </div>
-              <button onClick={handleExport} className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-border/60 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors">
-                <Download className="h-3.5 w-3.5" /> Export
+              <button
+                onClick={handleExport}
+                className="h-10 px-4 flex items-center gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+              >
+                <Download className="h-4 w-4" /> Export CSV
               </button>
             </div>
           </div>
@@ -1197,7 +1239,7 @@ function ReservationsTab() {
             </p>
             <div className="flex items-center gap-1">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"><ChevronLeft className="h-4 w-4" /></button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let n = i + 1; if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; } if (n <= 0 || n > totalPages) return null; return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all", page === n ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-border text-foreground hover:bg-muted")}>{n}</button>; })}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { let n = i + 1; if (totalPages > 5 && page > 3) { n = page - 3 + i; if (n + (5 - i) > totalPages) n = totalPages - 4 + i; } if (n <= 0 || n > totalPages) return null; return <button key={n} onClick={() => setPage(n)} className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all cursor-pointer", page === n ? "bg-sidebar text-white font-bold shadow-xs" : "border border-border text-foreground hover:bg-muted")}>{n}</button>; })}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none transition-colors"><ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
@@ -1272,12 +1314,9 @@ export default function ReportsPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Reports &amp; Analytics</h1>
-          <div className="flex items-center justify-between gap-4 mt-0.5">
-            <p className="text-sm text-muted-foreground">Monitor attendance, meal stub usage, allocations, and room reservations across the organization.</p>
-            <button className="h-9 px-4 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shrink-0">
-              <Download className="h-4 w-4" /> Export All Reports
-            </button>
-          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Monitor attendance, meal stub usage, allocations, and room reservations across the organization.
+          </p>
         </div>
 
         {/* Tab content */}

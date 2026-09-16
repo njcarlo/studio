@@ -254,7 +254,11 @@ export function BorrowingsPanel() {
                 <option value="RETURNED">Returned</option>
               </select>
 
-              <Button size="sm" className="gap-1.5 shadow" onClick={() => setIsCheckoutOpen(true)}>
+              <Button
+                size="sm"
+                className="gap-1.5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs cursor-pointer"
+                onClick={() => setIsCheckoutOpen(true)}
+              >
                 <Plus className="h-4 w-4" />
                 Checkout Item
               </Button>
@@ -264,6 +268,7 @@ export function BorrowingsPanel() {
       </Card>
 
       {/* Borrowings Table */}
+<<<<<<< Updated upstream
       <Card className="shadow-sm border overflow-hidden">
 
         {/* Mobile card list */}
@@ -354,16 +359,20 @@ export function BorrowingsPanel() {
 
         {/* Desktop table */}
         <div className="overflow-x-auto hidden md:block">
+=======
+      <Card className="rounded-2xl border border-slate-200/90 dark:border-border/80 shadow-xs overflow-hidden bg-card">
+        <div className="overflow-x-auto">
+>>>>>>> Stashed changes
           <Table>
-            <TableHeader className="bg-muted/40">
+            <TableHeader className="bg-slate-50/90 dark:bg-muted/40 border-b border-slate-200/80 dark:border-border/70">
               <TableRow>
-                <TableHead>Item Details</TableHead>
-                <TableHead>Borrower</TableHead>
-                <TableHead>Borrowed Date</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Condition / Notes</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Item Details</TableHead>
+                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Borrower</TableHead>
+                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Borrowed Date</TableHead>
+                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</TableHead>
+                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Status</TableHead>
+                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Condition / Notes</TableHead>
+                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -390,7 +399,7 @@ export function BorrowingsPanel() {
                   const isOverdue = b.status === 'BORROWED' && b.dueDate && new Date(b.dueDate) < new Date();
 
                   return (
-                    <TableRow key={b.id}>
+                    <TableRow key={b.id} className="hover:bg-slate-50/60 dark:hover:bg-muted/20 border-b border-slate-100 dark:border-border/40 transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-lg bg-muted border overflow-hidden flex items-center justify-center shrink-0">

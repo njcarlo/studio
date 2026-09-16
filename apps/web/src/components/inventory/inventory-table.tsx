@@ -467,8 +467,15 @@ export function InventoryTable({
               <Button
                 variant={!selectedStatus && !selectedType ? 'default' : 'ghost'}
                 size="sm"
+<<<<<<< Updated upstream
                 className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
                   !selectedStatus && !selectedType ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
+=======
+                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all cursor-pointer ${
+                  !selectedStatus && !selectedType
+                    ? 'bg-sidebar hover:bg-sidebar/90 text-white shadow-2xs'
+                    : 'text-muted-foreground hover:text-foreground'
+>>>>>>> Stashed changes
                 }`}
                 onClick={() => {
                   setSelectedStatus('');
@@ -484,7 +491,11 @@ export function InventoryTable({
               <Button
                 variant={selectedStatus === 'Low Stock' ? 'default' : 'ghost'}
                 size="sm"
+<<<<<<< Updated upstream
                 className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
+=======
+                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all cursor-pointer ${
+>>>>>>> Stashed changes
                   selectedStatus === 'Low Stock'
                     ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-2xs'
                     : 'text-muted-foreground hover:text-foreground hover:bg-amber-500/10'
@@ -501,7 +512,11 @@ export function InventoryTable({
               <Button
                 variant={selectedType === 'EQUIPMENT' ? 'default' : 'ghost'}
                 size="sm"
+<<<<<<< Updated upstream
                 className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
+=======
+                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all cursor-pointer ${
+>>>>>>> Stashed changes
                   selectedType === 'EQUIPMENT' ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={() => {
@@ -516,7 +531,11 @@ export function InventoryTable({
               <Button
                 variant={selectedType === 'CONSUMABLE' ? 'default' : 'ghost'}
                 size="sm"
+<<<<<<< Updated upstream
                 className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
+=======
+                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all cursor-pointer ${
+>>>>>>> Stashed changes
                   selectedType === 'CONSUMABLE' ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={() => {
@@ -534,10 +553,10 @@ export function InventoryTable({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs hover:bg-primary/5 hover:text-primary flex-1 sm:flex-initial"
+                className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs hover:border-sidebar/40 hover:text-sidebar flex-1 sm:flex-initial cursor-pointer"
                 onClick={onScanClick || (() => setIsFastScanOpen(true))}
               >
-                <ScanBarcode className="h-3.5 w-3.5 text-primary" />
+                <ScanBarcode className="h-3.5 w-3.5 text-sidebar dark:text-blue-400" />
                 <span>Scan Barcode</span>
               </Button>
 
@@ -547,7 +566,7 @@ export function InventoryTable({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs flex-1 sm:flex-initial"
+                    className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs flex-1 sm:flex-initial cursor-pointer"
                   >
                     <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>CSV</span>
@@ -571,7 +590,7 @@ export function InventoryTable({
               {/* Primary + Add Item Button */}
               <Button
                 size="sm"
-                className="h-8 text-xs font-bold rounded-xl gap-1.5 shadow-sm flex-1 sm:flex-initial"
+                className="h-8 text-xs font-bold rounded-xl gap-1.5 bg-sidebar hover:bg-sidebar/90 text-white shadow-xs flex-1 sm:flex-initial cursor-pointer"
                 onClick={() => {
                   setModalItem(null);
                   setIsItemModalOpen(true);
@@ -897,7 +916,7 @@ export function InventoryTable({
           {/* ── THE MASTER TABLE (FOR DESKTOP & TABLETS) ── */}
           <div className="hidden md:block overflow-x-auto">
             <Table>
-              <TableHeader className="bg-muted/40 border-b border-border/70">
+              <TableHeader className="bg-slate-50/90 dark:bg-muted/40 border-b border-slate-200/80 dark:border-border/70">
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-10 pl-4">
                     <Checkbox
@@ -905,18 +924,18 @@ export function InventoryTable({
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead className="w-12 text-xs font-bold text-muted-foreground uppercase tracking-wider">Item</TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider min-w-[200px]">
-                    Name & Code
+                  <TableHead className="w-12 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Item</TableHead>
+                  <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider min-w-[200px]">
+                    Name &amp; Code
                   </TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Category</TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Type</TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">
-                    Stock & Health
+                  <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Category</TableHead>
+                  <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Type</TableHead>
+                  <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-center">
+                    Stock &amp; Health
                   </TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location</TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Condition</TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-right pr-4">
+                  <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Location</TableHead>
+                  <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Condition</TableHead>
+                  <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-right pr-4">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -975,8 +994,8 @@ export function InventoryTable({
                     return (
                       <TableRow
                         key={item.id}
-                        className={`group transition-colors border-b border-border/50 ${
-                          isSelected ? 'bg-primary/5' : 'hover:bg-muted/20'
+                        className={`group transition-colors border-b border-slate-100 dark:border-border/40 ${
+                          isSelected ? 'bg-sidebar/5' : 'hover:bg-slate-50/60 dark:hover:bg-muted/20'
                         }`}
                       >
                         {/* 1. Checkbox */}

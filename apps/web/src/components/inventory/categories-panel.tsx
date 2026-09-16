@@ -131,7 +131,7 @@ export function CategoriesPanel() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <Card className="shadow-sm border">
+      <Card className="rounded-2xl border border-slate-200/90 dark:border-border/80 shadow-xs">
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <h3 className="font-bold text-base">Inventory Categories</h3>
@@ -139,7 +139,11 @@ export function CategoriesPanel() {
               Organize and classify equipment and consumables across ministries and teams.
             </p>
           </div>
-          <Button size="sm" className="gap-1.5 shadow" onClick={openAdd}>
+          <Button
+            size="sm"
+            className="gap-1.5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs cursor-pointer"
+            onClick={openAdd}
+          >
             <Plus className="h-4 w-4" />
             Add Category
           </Button>

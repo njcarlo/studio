@@ -50,21 +50,24 @@ export function ReportsPanel() {
       `}</style>
 
       {/* Header Panel */}
-      <Card className="shadow-sm border print-card">
+      <Card className="rounded-2xl border border-slate-200/90 dark:border-border/80 shadow-xs print-card">
         <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-sidebar/10 text-sidebar dark:text-blue-400 border border-sidebar/20 flex items-center justify-center shrink-0">
               <BarChart3 className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground leading-tight">Inventory Analytics & Report</h2>
+              <h2 className="text-lg font-bold text-foreground leading-tight">Inventory Analytics &amp; Report</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Data-driven insights for consumables, high-usage equipment, and safety reorders.
               </p>
             </div>
           </div>
 
-          <Button onClick={handleExportPDF} className="no-print gap-2 shadow">
+          <Button
+            onClick={handleExportPDF}
+            className="no-print gap-2 h-10 px-4 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs sm:text-sm shadow-xs cursor-pointer"
+          >
             <Printer className="h-4 w-4" />
             Export / Print PDF
           </Button>
