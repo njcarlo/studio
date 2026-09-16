@@ -136,35 +136,17 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        <DropdownMenuGroup>
-          {impersonatedWorkerId ? (
-            <DropdownMenuItem onSelect={stopImpersonation} className="cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4 text-muted-foreground" />
-              <span>Exit Impersonation</span>
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/profile" className="flex items-center">
-                <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                <span>Profile</span>
-              </Link>
-            </DropdownMenuItem>
-          )}
-
-          <DropdownMenuItem asChild className="cursor-pointer">
-            <Link href="/workers/my-qr" className="flex items-center">
-              <QrCode className="mr-2 h-4 w-4 text-muted-foreground" />
-              <span>My QR Code</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem onSelect={handleChangePassword} className="cursor-pointer">
-            <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
-            <span>Change Password</span>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
+        {impersonatedWorkerId && (
+          <>
+            <DropdownMenuGroup>
+              <DropdownMenuItem onSelect={stopImpersonation} className="cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4 text-muted-foreground" />
+                <span>Exit Impersonation</span>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+          </>
+        )}
 
         <DropdownMenuItem
           onSelect={handleLogout}

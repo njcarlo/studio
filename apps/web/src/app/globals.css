@@ -10,7 +10,7 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%; /* #2563eb - Royal Blue */
+    --primary: 222 67% 32%; /* #1e3a8a - Dark Navy Blue */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
@@ -31,14 +31,14 @@
     --chart-4: 40 100% 66%; /* #ffbf53 */
     --chart-5: 2 97% 68%;   /* #fd625e */
 
-    --sidebar-background: 224 76% 28%; /* #112e7e - Exact Royal Blue */
+    --sidebar-background: 222 67% 32%; /* #1e3a8a */
     --sidebar-foreground: 210 40% 98%; /* Crisp White */
-    --sidebar-primary: 217 91% 60%; /* #3b82f6 */
+    --sidebar-primary: 222 67% 32%; /* #1e3a8a */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 70% 36%; /* #1744a0 - Active / Hover blue highlight */
+    --sidebar-accent: 222 60% 40%; /* slightly lighter hover */
     --sidebar-accent-foreground: 0 0% 100%; /* Pure White */
-    --sidebar-border: 224 60% 36%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-border: 222 55% 40%;
+    --sidebar-ring: 222 67% 32%;
   }
 
   .dark {
@@ -48,7 +48,7 @@
     --card-foreground: 230 10% 70%;
     --popover: 150 4% 21%;
     --popover-foreground: 230 10% 70%;
-    --primary: 237 46% 53%;
+    --primary: 222 67% 32%; /* #1e3a8a - Dark Navy Blue */
     --primary-foreground: 0 0% 100%;
     --secondary: 150 3% 25%;
     --secondary-foreground: 230 10% 70%;
@@ -68,14 +68,14 @@
     --chart-4: 40 100% 66%;
     --chart-5: 2 97% 68%;
 
-    --sidebar-background: 224 76% 28%; /* #112e7e - Exact Royal Blue in dark mode */
+    --sidebar-background: 222 67% 32%; /* #1e3a8a */
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary: 222 67% 32%; /* #1e3a8a */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 70% 36%;
+    --sidebar-accent: 222 60% 40%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 224 60% 36%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-border: 222 55% 40%;
+    --sidebar-ring: 222 67% 32%;
   }
 }
 

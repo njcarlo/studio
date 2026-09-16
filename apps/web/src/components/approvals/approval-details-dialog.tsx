@@ -97,6 +97,7 @@ export function ApprovalDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+<<<<<<< HEAD
       <DialogContent
         className="sm:max-w-[540px] p-0 overflow-hidden !border-0 !border-none !outline-none !ring-0 rounded-3xl shadow-2xl bg-sidebar [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:!bg-transparent [&>button]:hover:!bg-transparent [&>button]:focus:!bg-transparent [&>button]:data-[state=open]:!bg-transparent [&>button]:!border-0 [&>button]:!border-none [&>button]:!outline-none [&>button]:!ring-0 [&>button]:!ring-offset-0 [&>button]:focus:!ring-0 [&>button]:focus:!outline-none [&>button]:focus-visible:!ring-0 [&>button]:focus-visible:!outline-none [&>button]:top-4.5 [&>button]:right-5 sm:[&>button]:top-5 sm:[&>button]:right-6 [&>button]:p-0.5 [&>button]:transition-opacity"
         style={{ border: "none", outline: "none", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)" }}
@@ -116,6 +117,17 @@ export function ApprovalDetailsDialog({
               <p className="text-white/80 text-xs font-medium mt-0.5">
                 Request Details
               </p>
+=======
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl [&>button]:text-white [&>button]:top-4 [&>button]:right-4">
+        <DialogTitle className="sr-only">{request.type} Request Details</DialogTitle>
+        <div className={cn("h-24 flex items-end p-6", request.status === "Approved" ? "bg-green-600" : request.status === "Rejected" ? "bg-red-600" : "")}
+          style={request.status !== "Approved" && request.status !== "Rejected" ? { backgroundColor: '#1e3a8a' } : undefined}>
+          <div className="flex items-center gap-4 text-white">
+            <div className="p-3 bg-white/20 backdrop-blur-md rounded-xl">{getIconForType(request.type)}</div>
+            <div>
+              <h2 className="text-xl font-bold font-headline leading-tight text-white">{request.type}</h2>
+              <p className="text-white/80 text-sm">Request Details</p>
+>>>>>>> bf632bf (Mobile view & Settings)
             </div>
           </div>
         </div>

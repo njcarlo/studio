@@ -694,40 +694,37 @@ export default function AllReservationsPage() {
                       <div
                         key={booking.id}
                         className={cn(
-                          "p-4 transition-colors",
-                          isChecked
-                            ? "bg-sidebar/5 dark:bg-sidebar/10"
-                            : "bg-card hover:bg-muted/20"
+                          "overflow-hidden rounded-none border-b border-border/60 transition-colors",
+                          isChecked ? "bg-sidebar/5 dark:bg-sidebar/10" : "bg-card"
                         )}
                       >
-                        {/* Top row: Checkbox + ID + Status + Actions */}
-                        <div className="flex items-center justify-between gap-2 mb-3">
+                        {/* Blue header: Checkbox + ID + Status + Actions */}
+                        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar">
                           <div className="flex items-center gap-2.5">
                             <Checkbox
                               checked={isChecked}
-                              onCheckedChange={(c) =>
-                                handleSelectRow(booking.id, !!c)
-                              }
+                              onCheckedChange={(c) => handleSelectRow(booking.id, !!c)}
+                              className="border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-sidebar"
                             />
-                            <span className="text-xs font-mono font-bold text-foreground">
+                            <span className="text-xs font-mono font-bold text-white">
                               {reqId}
                             </span>
                           </div>
 
                           <div className="flex items-center gap-2">
                             {isApproved ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                                 Approved
                               </span>
                             ) : isPending ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-400/20 text-amber-200 border border-amber-400/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                                 Pending
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-400/20 text-rose-200 border border-rose-400/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
                                 {booking.status}
                               </span>
                             )}
@@ -787,6 +784,7 @@ export default function AllReservationsPage() {
                         </div>
 
                         {/* Event Title & Purpose */}
+                        <div className="p-4">
                         <div className="mb-2">
                           <p className="text-sm font-bold text-foreground">
                             {booking.title}
@@ -849,6 +847,7 @@ export default function AllReservationsPage() {
                             </p>
                           </div>
                         </div>
+                        </div>{/* end body padding */}
                       </div>
                     );
                   })}

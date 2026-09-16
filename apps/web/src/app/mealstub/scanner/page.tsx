@@ -149,7 +149,12 @@ export default function QRScannerPage() {
                 });
                 streamRef.current = stream;
                 videoElement.srcObject = stream;
-                videoElement.play().catch(console.error);
+                videoElement.play().catch((err) => {
+                    // Ignore AbortError when video is interrupted
+                    if (err.name !== 'AbortError') {
+                        console.error('Video play error:', err);
+                    }
+                });
                 animFrameRef.current = requestAnimationFrame(scan);
             } catch (err) {
                 console.error('Camera stream error:', err);

@@ -698,16 +698,78 @@ function MealsPageContent() {
 
             {/* Workers Table Card */}
             <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden flex flex-col">
-              <div className="p-5 sm:p-6 pb-4 border-b border-border/40 space-y-0.5">
-                <h3 className="font-bold text-base text-foreground font-headline">
+              <div className="p-5 sm:p-6 pb-4 border-b border-border/40 space-y-0.5 bg-sidebar">
+                <h3 className="font-bold text-base text-white font-headline">
                   Workers
                 </h3>
-                <p className="text-xs text-muted-foreground font-medium">
+                <p className="text-xs text-white/70 font-medium">
                   Assigning for {format(assignDateObj, "MMMM d, yyyy")}
                 </p>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* ── MOBILE CARD LIST (below sm) ── */}
+              <div className="sm:hidden divide-y divide-border/40">
+                {filteredAssignerWorkers.length === 0 ? (
+                  <p className="py-12 text-center text-xs text-muted-foreground font-medium">No workers found.</p>
+                ) : (
+                  filteredAssignerWorkers.map((w) => {
+                    const dayCount = getStubCountForDate((allMealStubsInRange as any) || [], w.id, assignDateObj);
+                    const isAllocated = dayCount >= 1;
+                    const initials = `${w.firstName?.[0] || ""}${w.lastName?.[0] || ""}`.toUpperCase();
+
+                    return (
+                      <div key={w.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/20 transition-colors">
+                        {/* Checkbox */}
+                        <Checkbox checked={selectedWorkerIds.includes(w.id)} onCheckedChange={() => toggleSelectWorker(w.id)} />
+
+                        {/* Avatar */}
+                        <div className="w-8 h-8 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 font-bold text-[11px] flex items-center justify-center shrink-0">
+                          {initials}
+                        </div>
+
+                        {/* Name + Type + Status */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-xs text-foreground truncate">{w.firstName} {w.lastName}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {/* Type badge */}
+                            {w.employmentType === "Full-Time" ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">Full-Time</span>
+                            ) : w.employmentType === "On-Call" ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">On-Call</span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">{w.employmentType || "Volunteer"}</span>
+                            )}
+                            {/* Status badge */}
+                            {isAllocated ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Allocated
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-muted dark:text-slate-400 border border-slate-200 dark:border-border">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> Not Allocated
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action button */}
+                        {isAllocated ? (
+                          <Button variant="outline" size="sm" onClick={() => handleCancelStub(w.id)} disabled={isAssigning} className="shrink-0 rounded-xl px-3 h-8 text-xs font-semibold shadow-2xs">
+                            Reassign
+                          </Button>
+                        ) : (
+                          <Button size="sm" onClick={() => issueStub(w.id, 1)} disabled={isAssigning} className="shrink-0 bg-sidebar hover:bg-sidebar/90 text-white rounded-xl px-4 h-8 text-xs font-semibold shadow-xs">
+                            Assign
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* ── DESKTOP TABLE (sm and above) ── */}
+              <div className="hidden sm:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
@@ -737,33 +799,20 @@ function MealsPageContent() {
                   <TableBody>
                     {filteredAssignerWorkers.length === 0 ? (
                       <TableRow>
-                        <TableCell
-                          colSpan={5}
-                          className="py-12 text-center text-xs text-muted-foreground font-medium"
-                        >
+                        <TableCell colSpan={5} className="py-12 text-center text-xs text-muted-foreground font-medium">
                           No workers found.
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredAssignerWorkers.map((w) => {
-                        const dayCount = getStubCountForDate(
-                          (allMealStubsInRange as any) || [],
-                          w.id,
-                          assignDateObj
-                        );
+                        const dayCount = getStubCountForDate((allMealStubsInRange as any) || [], w.id, assignDateObj);
                         const isAllocated = dayCount >= 1;
                         const initials = `${w.firstName?.[0] || ""}${w.lastName?.[0] || ""}`.toUpperCase();
 
                         return (
-                          <TableRow
-                            key={w.id}
-                            className="hover:bg-muted/20 border-b border-border/40 transition-colors"
-                          >
+                          <TableRow key={w.id} className="hover:bg-muted/20 border-b border-border/40 transition-colors">
                             <TableCell className="px-4 py-3.5 text-center">
-                              <Checkbox
-                                checked={selectedWorkerIds.includes(w.id)}
-                                onCheckedChange={() => toggleSelectWorker(w.id)}
-                              />
+                              <Checkbox checked={selectedWorkerIds.includes(w.id)} onCheckedChange={() => toggleSelectWorker(w.id)} />
                             </TableCell>
                             <TableCell className="px-5 py-3.5">
                               <div className="flex items-center gap-2.5">
@@ -836,23 +885,23 @@ function MealsPageContent() {
 
             {/* Ministry Pool Panel */}
             {ministryPoolData.length > 0 && (
-              <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-border/40">
+              <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden space-y-5">
+                <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-border/40 bg-sidebar">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground">
+                    <div className="p-2 rounded-xl bg-white/20 text-white">
                       <Layers className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-base text-foreground font-headline">
+                      <h3 className="font-bold text-base text-white font-headline">
                         Ministry Stub Pool
                       </h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Weekly mealstub allocation remaining for {isSelectedSunday ? <span className="font-semibold text-amber-600">the selected Sunday</span> : 'this week'}.
+                      <p className="text-xs text-white/70 mt-0.5">
+                        Weekly mealstub allocation remaining for {isSelectedSunday ? <span className="font-semibold text-amber-300">the selected Sunday</span> : 'this week'}.
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-4 pt-1">
+                <div className="space-y-4 px-5 sm:px-6 pb-5 sm:pb-6">
                   {ministryPoolData.map(pool => {
                     const pct = Math.min(100, Math.round((pool.used / pool.limit) * 100));
                     const isNearFull = pct >= 80;

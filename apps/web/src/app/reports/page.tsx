@@ -233,36 +233,34 @@ function AttendanceTab() {
 
       {/* Filters */}
       <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input type="text" placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <SelectFilter value={ministryFilter} onChange={v => { setMinistryFilter(v); setPage(1); }}>
-              <option value="all">Ministry</option>
-              {(ministries as any[] || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </SelectFilter>
-            <SelectFilter value={workerTypeFilter} onChange={v => { setWorkerTypeFilter(v); setPage(1); }} minWidth="120px">
-              <option value="all">Worker Type</option>
-              <option value="Full-Time">Full-Time</option>
-              <option value="Part-Time">Part-Time</option>
-              <option value="Volunteer">Volunteer</option>
-              <option value="On-Call">On-Call</option>
-            </SelectFilter>
-            <SelectFilter value={statusFilter} onChange={v => { setStatusFilter(v); setPage(1); }} minWidth="110px">
-              <option value="all">Status</option>
-              <option value="present">Present</option>
-              <option value="late">Late</option>
-              <option value="absent">Absent</option>
-              <option value="incomplete">Incomplete</option>
-            </SelectFilter>
-          </div>
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input type="text" placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+        <div className="flex flex-wrap items-center gap-2 w-full">
+          <SelectFilter value={ministryFilter} onChange={v => { setMinistryFilter(v); setPage(1); }}>
+            <option value="all">Ministry</option>
+            {(ministries as any[] || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </SelectFilter>
+          <SelectFilter value={workerTypeFilter} onChange={v => { setWorkerTypeFilter(v); setPage(1); }} minWidth="120px">
+            <option value="all">Worker Type</option>
+            <option value="Full-Time">Full-Time</option>
+            <option value="Part-Time">Part-Time</option>
+            <option value="Volunteer">Volunteer</option>
+            <option value="On-Call">On-Call</option>
+          </SelectFilter>
+          <SelectFilter value={statusFilter} onChange={v => { setStatusFilter(v); setPage(1); }} minWidth="110px">
+            <option value="all">Status</option>
+            <option value="present">Present</option>
+            <option value="late">Late</option>
+            <option value="absent">Absent</option>
+            <option value="incomplete">Incomplete</option>
+          </SelectFilter>
         </div>
         {/* Range pills */}
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
             <SlidersHorizontal className="h-3.5 w-3.5" /> Filters:
           </span>
           {([
@@ -271,7 +269,7 @@ function AttendanceTab() {
             { key: "custom", label: "Custom Range" },
           ] as const).map(r => (
             <button key={r.key} onClick={() => setRange(r.key)}
-              className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors",
+              className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap",
                 range === r.key ? "bg-foreground text-background border-foreground" : "bg-card border-border/60 text-foreground hover:bg-muted/40")}>
               {r.label}
             </button>
@@ -296,7 +294,49 @@ function AttendanceTab() {
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        
+        {/* Mobile list view */}
+        <div className="md:hidden divide-y divide-border/30">
+          {paginatedRows.length === 0 ? (
+            <div className="py-14 text-center text-sm text-muted-foreground">No records found.</div>
+          ) : paginatedRows.map((row, i) => {
+            const ministry = (ministries as any[] || []).find(m => m.id === row.worker.majorMinistryId);
+            return (
+              <div key={i} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">{row.worker.firstName} {row.worker.lastName}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"}</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={row.status} />
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  <p className="mb-1">{format(row.date, "MMM d, yyyy")}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <p className="font-semibold uppercase tracking-wider mb-0.5">Time In</p>
+                      <p className="text-foreground font-mono">{row.timeIn ? format(row.timeIn, "H:mm") : "——"}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-wider mb-0.5">Time Out</p>
+                      <p className="text-foreground font-mono">{row.timeOut ? format(row.timeOut, "H:mm") : "——"}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-wider mb-0.5">Hours</p>
+                      <p className="text-foreground font-mono">{row.hours != null ? `${(row.hours / 60).toFixed(1)}h` : "——"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full">
             <thead>
               <tr className="bg-muted/40 border-b border-border/40">
@@ -461,20 +501,8 @@ function MealStubClaimsTab() {
 
       {/* Filter bar */}
       <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <SlidersHorizontal className="h-3.5 w-3.5" /> Filters:
-            </span>
-            {([{ key: "today", label: "Today" }, { key: "this-week", label: "This Week" }, { key: "custom", label: "Custom Range" }] as const).map(r => (
-              <button key={r.key} onClick={() => setRange(r.key)}
-                className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors",
-                  range === r.key ? "bg-foreground text-background border-foreground" : "bg-card border-border/60 text-foreground hover:bg-muted/40")}>
-                {r.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 sm:ml-auto self-end sm:self-auto">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <SelectFilter value={ministryFilter} onChange={v => { setMinistryFilter(v); setPage(1); }}>
               <option value="all">Ministry</option>
               {(ministries as any[] || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -512,7 +540,49 @@ function MealStubClaimsTab() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          
+          {/* Mobile list view */}
+          <div className="md:hidden divide-y divide-border/30">
+            {paginated.length === 0 ? (
+              <div className="py-14 text-center text-sm text-muted-foreground">No records found.</div>
+            ) : paginated.map((s, i) => (
+              <div key={i} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <WorkerInitials name={s.workerName} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">{s.workerName}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{s.ministry?.name || "—"}</p>
+                    </div>
+                  </div>
+                  <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap",
+                    s.status === "Claimed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200")}>
+                    <span className={cn("w-1.5 h-1.5 rounded-full", s.status === "Claimed" ? "bg-emerald-500" : "bg-amber-500")} />
+                    {s.status}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">Issued:</span>
+                    <span>{format(toJsDate(s.date), "MMM d, yyyy")}</span>
+                  </div>
+                  {(s as any).claimedAt && (
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">Claimed:</span>
+                      <span>{format(toJsDate((s as any).claimedAt), "MMM d, yyyy")}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">Type:</span>
+                    <span className="px-2 py-0.5 rounded-md bg-muted text-foreground font-medium">{s.stubType ? s.stubType.charAt(0).toUpperCase() + s.stubType.slice(1) : "Daily"}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="bg-muted/40 border-b border-border/40">
@@ -544,7 +614,7 @@ function MealStubClaimsTab() {
                     </td>
                     <td className="px-5 py-3.5">
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-muted text-muted-foreground border border-border/60 capitalize">
-                        {(s as any).stubType || "—"}
+                        {(s as any).stubType ? ((s as any).stubType.charAt(0).toUpperCase() + (s as any).stubType.slice(1)) : "Daily"}
                       </span>
                     </td>
                   </tr>
@@ -716,20 +786,20 @@ function AllocationsTab() {
 
       {/* Filter bar */}
       <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <SlidersHorizontal className="h-3.5 w-3.5" /> Filters:
             </span>
             {([{ key: "today", label: "Today" }, { key: "this-week", label: "This Week" }, { key: "custom", label: "Custom Range" }] as const).map(r => (
               <button key={r.key} onClick={() => setRange(r.key)}
-                className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors",
+                className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap",
                   range === r.key ? "bg-foreground text-background border-foreground" : "bg-card border-border/60 text-foreground hover:bg-muted/40")}>
                 {r.label}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 sm:ml-auto self-end sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full">
             <SelectFilter value={ministryFilter} onChange={v => { setMinistryFilter(v); setPage(1); }}>
               <option value="all">Ministry</option>
               {(ministries as any[] || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -762,7 +832,49 @@ function AllocationsTab() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile list view */}
+          <div className="md:hidden divide-y divide-border/30">
+            {paginated.length === 0 ? (
+              <div className="py-14 text-center text-sm text-muted-foreground">No workers found.</div>
+            ) : paginated.map((worker, i) => {
+              const s = getStats(worker.id);
+              const min = getMinistry(worker.majorMinistryId);
+              return (
+                <div key={i} className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <WorkerInitials name={`${worker.firstName} ${worker.lastName}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate">{worker.firstName} {worker.lastName}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{min?.name || "—"}</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-muted text-muted-foreground border border-border/60 shrink-0">
+                      {worker.employmentType || "—"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div className="bg-muted/30 rounded-lg p-2.5">
+                      <p className="text-muted-foreground font-semibold uppercase tracking-wider mb-1">Weekday</p>
+                      <p className="text-foreground font-bold text-sm">{s.weekday}/{s.weekdayLimit}</p>
+                    </div>
+                    <div className="bg-muted/30 rounded-lg p-2.5">
+                      <p className="text-muted-foreground font-semibold uppercase tracking-wider mb-1">Sunday</p>
+                      <p className="text-foreground font-bold text-sm">{s.sunday}/{s.sundayLimit}</p>
+                    </div>
+                    <div className="bg-primary/5 rounded-lg p-2.5">
+                      <p className="text-muted-foreground font-semibold uppercase tracking-wider mb-1">Left</p>
+                      <p className="text-primary font-bold text-sm">{s.remaining}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="bg-muted/40 border-b border-border/40">
@@ -941,20 +1053,20 @@ function ReservationsTab() {
 
       {/* Filter bar */}
       <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <SlidersHorizontal className="h-3.5 w-3.5" /> Filters:
             </span>
             {([{ key: "today", label: "Today" }, { key: "this-week", label: "This Week" }, { key: "custom", label: "Custom Range" }] as const).map(r => (
               <button key={r.key} onClick={() => setRange(r.key)}
-                className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors",
+                className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap",
                   range === r.key ? "bg-foreground text-background border-foreground" : "bg-card border-border/60 text-foreground hover:bg-muted/40")}>
                 {r.label}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 sm:ml-auto self-end sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full">
             <SelectFilter value={ministryFilter} onChange={v => { setMinistryFilter(v); setPage(1); }}>
               <option value="all">Ministry</option>
               {(ministries as any[] || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -986,7 +1098,58 @@ function ReservationsTab() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile list view */}
+          <div className="md:hidden divide-y divide-border/30">
+            {paginated.length === 0 ? (
+              <div className="py-14 text-center text-sm text-muted-foreground">No records found.</div>
+            ) : paginated.map((r, i) => {
+              const start = toJsDate(r.start);
+              const end = toJsDate(r.end);
+              const w = r.workerProfileId ? getWorker(r.workerProfileId) : null;
+              const min = r.workerProfileId ? getWorkerMinistry(r.workerProfileId) : null;
+              const name = w ? `${w.firstName} ${w.lastName}` : "Unknown";
+              return (
+                <div key={i} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <WorkerInitials name={name} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate">{name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{min?.name || "—"}</p>
+                      </div>
+                    </div>
+                    {r.status === "Approved" && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Approved</span>}
+                    {r.status?.startsWith("Pending") && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Pending</span>}
+                    {r.status === "Rejected" && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Rejected</span>}
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1 pl-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">Facility:</span>
+                      <span>{getRoomName(r.roomId)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">Date:</span>
+                      <span>{format(start, "MMM d, yyyy")}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">Time:</span>
+                      <span>{format(start, "H:mm")} - {format(end, "H:mm")}</span>
+                    </div>
+                    {(r.purpose || r.title) && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">Purpose:</span>
+                        <span className="truncate ml-2 max-w-[60%] text-right">{r.purpose || r.title}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="bg-muted/40 border-b border-border/40">

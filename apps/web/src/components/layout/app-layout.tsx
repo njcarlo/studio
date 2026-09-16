@@ -12,6 +12,7 @@ import {
 } from "@studio/ui";
 import { Nav } from "@/components/layout/nav";
 import { UserNav } from "@/components/layout/user-nav";
+import { MySettingsDialog } from "@/components/layout/my-settings-dialog";
 import {
   LoaderCircle,
   Info,
@@ -28,6 +29,7 @@ import { useImpersonation } from "@/hooks/use-impersonation";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@studio/ui";
 import { useSidebar } from "@studio/ui";
+import { useState } from "react";
 
 const MobileSidebarTrigger = () => {
   const { setOpenMobile } = useSidebar();
@@ -131,6 +133,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
+  const [mySettingsOpen, setMySettingsOpen] = useState(false);
 
   useEffect(() => {
     // If auth is done loading and there's no user, redirect to login
@@ -157,7 +160,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
-        <SidebarHeader className="pb-1 px-3 pt-2.5">
+        <SidebarHeader className="pb-1 px-3 pt-2.5 sticky top-0 z-10 bg-sidebar">
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
               <Image
@@ -165,7 +168,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 alt="COG Logo"
                 width={62}
                 height={62}
-                className="w-[62px] h-[62px] rounded-sm object-contain shrink-0"
+                className="w-[62px] h-[62px] object-contain shrink-0"
                 priority
               />
               <span className="text-[26px] font-extrabold font-headline tracking-tight text-white translate-y-0.5 leading-none">
@@ -177,30 +180,39 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="h-[1px] bg-white/15 mx-1.5 mt-2.5 mb-1 group-data-[collapsible=icon]:hidden" />
         </SidebarHeader>
         <SidebarContent>
-          <Nav pathname={currentPathname} />
+          <Nav pathname={currentPathname} onOpenMySettings={() => setMySettingsOpen(true)} />
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 min-w-0 max-w-full flex flex-col">
-        <ImpersonationBanner />
-        <header className="flex h-14 md:h-[52px] w-full max-w-full items-center gap-2.5 sm:gap-4 border-b border-border/50 bg-white/95 dark:bg-card/95 backdrop-blur-md px-3 sm:px-4 lg:px-6 sticky top-0 z-40 pt-[env(safe-area-inset-top)] box-content shadow-2xs">
-          <div className="md:hidden flex items-center gap-2.5 shrink-0">
-            <HeaderMobileTrigger />
-            <div className="flex items-center gap-1.5">
-              <Image
-                src="/church-logo.png"
-                alt="COG Logo"
-                width={42}
-                height={42}
-                className="w-[42px] h-[42px] rounded-sm object-contain shrink-0"
-                priority
-              />
-              <span className="text-xl font-extrabold font-headline tracking-tight text-neutral-700 dark:text-neutral-200 translate-y-0.5 leading-none">COG APP</span>
-            </div>
+      {/* Fixed Header - mobile only. Desktop uses the sidebar header instead. */}
+      <header className="md:hidden flex h-14 items-center gap-2.5 border-b border-border/50 bg-white/95 dark:bg-card/95 backdrop-blur-md px-3 fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] box-content shadow-2xs">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <HeaderMobileTrigger />
+          <div className="flex items-center gap-2">
+            <Image
+              src="/church-logo.png"
+              alt="COG Logo"
+              width={36}
+              height={36}
+              className="w-9 h-9 object-contain"
+              priority
+            />
+            <span className="text-lg font-extrabold font-headline tracking-tight">COG APP</span>
           </div>
+        </div>
+        <div className="w-full flex-1" />
+        <UserNav />
+      </header>
+
+      <SidebarInset className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 min-w-0 max-w-full flex flex-col h-screen overflow-hidden">
+        <ImpersonationBanner />
+        {/* Desktop header bar (inside SidebarInset, sticky) */}
+        <header className="hidden md:flex h-[52px] items-center gap-4 border-b border-border/50 bg-white/95 dark:bg-card/95 backdrop-blur-md px-4 lg:px-6 sticky top-0 z-40 shrink-0 shadow-2xs">
           <div className="w-full flex-1" />
           <UserNav />
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-3 sm:p-4 lg:gap-6 lg:p-6 min-w-0 max-w-full">
+        {/* Mobile spacer so content doesn't hide behind fixed header */}
+        <div className="md:hidden h-14 shrink-0 pt-[env(safe-area-inset-top)] box-content" />
+        <main className="flex-1 overflow-y-auto flex flex-col gap-4 p-3 sm:p-4 lg:gap-6 lg:p-6 min-w-0 max-w-full">
           {children}
         </main>
       </SidebarInset>
@@ -237,6 +249,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Connects with Sidebar to open the side menu - removed */}
       </div>
+
+      {/* My Settings Dialog */}
+      <MySettingsDialog open={mySettingsOpen} onOpenChange={setMySettingsOpen} />
     </SidebarProvider>
   );
 }

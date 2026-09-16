@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
-import { Sheet, SheetContent } from "@studio/ui";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@studio/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -219,6 +219,7 @@ export default function WorkersPage() {
   const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
   const [isBatchMealStubSheetOpen, setIsBatchMealStubSheetOpen] = useState(false);
   const [isAssigningStubs, setIsAssigningStubs] = useState(false);
+  const [selectedWorkerForDetails, setSelectedWorkerForDetails] = useState<Worker | null>(null);
 
   const handleAddNew = () => router.push("/workers/new");
   const handleEdit = (worker: Worker) => router.push(`/workers/${worker.id}/edit`);
@@ -482,23 +483,37 @@ export default function WorkersPage() {
       <div className="space-y-7 pb-12">
 
         {/* Header */}
+<<<<<<< HEAD
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+=======
+        <div className="flex flex-col gap-4">
+>>>>>>> bf632bf (Mobile view & Settings)
           <div>
             <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Workers</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               Monitor workforce, assign roles and ministries, and register new workers.
             </p>
           </div>
+<<<<<<< HEAD
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <div className="relative w-64 sm:w-72">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
               <Input
                 placeholder="Search workers, emails, IDs..."
                 className="pl-9 pr-4 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 h-10 bg-white dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-2xl shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
+=======
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search workers..."
+                className="pl-9 w-full h-9 text-sm bg-card border-border/60 rounded-xl"
+>>>>>>> bf632bf (Mobile view & Settings)
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
               />
             </div>
+<<<<<<< HEAD
             <button
               onClick={() => setIsImportSheetOpen(true)}
               className="h-10 px-3.5 flex items-center gap-2 rounded-2xl border border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 text-xs font-semibold text-foreground hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors shadow-2xs cursor-pointer"
@@ -517,6 +532,29 @@ export default function WorkersPage() {
             >
               <PlusCircle className="h-4 w-4" /> Add Worker
             </button>
+=======
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setIsImportSheetOpen(true)}
+                className="h-9 px-3.5 flex items-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Upload className="h-4 w-4 text-muted-foreground" />
+                <span className="hidden sm:inline">Import</span>
+              </button>
+              <button
+                className="h-9 px-3.5 flex items-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Download className="h-4 w-4 text-muted-foreground" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+              <button
+                onClick={handleAddNew}
+                className="h-9 px-3 sm:px-4 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap"
+              >
+                <PlusCircle className="h-4 w-4" /> Add Worker
+              </button>
+            </div>
+>>>>>>> bf632bf (Mobile view & Settings)
           </div>
         </div>
 
@@ -615,6 +653,7 @@ export default function WorkersPage() {
             </div>
           </div>
 
+<<<<<<< HEAD
           {/* Bulk Selection Bar */}
           {selectedWorkerIds.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/90 dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl px-4 py-2.5 mt-4">
@@ -622,6 +661,170 @@ export default function WorkersPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <button onClick={() => setIsBatchMoveSheetOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-lg border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors cursor-pointer">
                   <UserCog className="h-3 w-3" /> Change Ministry
+=======
+        {/* Main Table */}
+        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
+          {/* Mobile list view */}
+          <div className="md:hidden divide-y divide-border/30">
+            {workersLoading ? (
+              <div className="py-16 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" /></div>
+            ) : workers.length === 0 ? (
+              <div className="py-16 text-center text-sm text-muted-foreground">No workers found.</div>
+            ) : (
+              workers.map(worker => {
+                const ministry = ministries.find(m => m.id === worker.majorMinistryId);
+                const roleLabel = getWorkerRoleLabel(worker);
+                return (
+                  <div key={worker.id} className="p-4 flex items-center justify-between gap-3">
+                    {/* Left: Basic info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <WorkerInitials name={`${worker.firstName} ${worker.lastName}`} avatarUrl={worker.avatarUrl} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground leading-tight truncate">{worker.firstName} {worker.lastName}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"}</p>
+                        </div>
+                      </div>
+                      <p className="text-[10px] font-mono text-muted-foreground mb-1">{formatWorkerId(worker.workerId)}</p>
+                      <div className="flex items-center gap-2">
+                        <RoleBadge role={roleLabel} />
+                        <StatusBadge status={worker.status} />
+                      </div>
+                    </div>
+
+                    {/* Right: Details button */}
+                    <button
+                      onClick={() => setSelectedWorkerForDetails(worker)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 transition-colors whitespace-nowrap shrink-0"
+                    >
+                      Details
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="overflow-x-auto hidden md:block">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-muted/40 border-b border-border/40">
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border"
+                      checked={workers.length > 0 && workers.every(w => selectedWorkerIds.includes(w.id))}
+                      onChange={() => toggleSelectAll(workers)}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("name")}>
+                    Worker {sortField === "name" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("workerId")}>
+                    Worker ID {sortField === "workerId" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Role</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Ministry</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Type</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Contact</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("status")}>
+                    Status {sortField === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Registered</th>
+                  <th className="w-10 px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {workersLoading ? (
+                  <tr><td colSpan={10} className="py-16 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" /></td></tr>
+                ) : workers.length === 0 ? (
+                  <tr><td colSpan={10} className="py-16 text-center text-sm text-muted-foreground">No workers found.</td></tr>
+                ) : workers.map(worker => {
+                  const ministry = ministries.find(m => m.id === worker.majorMinistryId);
+                  const isSelected = selectedWorkerIds.includes(worker.id);
+                  const roleLabel = getWorkerRoleLabel(worker);
+                  const registeredDate = worker.createdAt ? new Date(worker.createdAt as any) : null;
+
+                  return (
+                    <tr
+                      key={worker.id}
+                      className={cn("border-b border-border/30 transition-colors", isSelected ? "bg-primary/5" : "hover:bg-muted/20")}
+                    >
+                      <td className="px-4 py-3.5" onClick={e => { e.stopPropagation(); toggleSelectWorker(worker.id); }}>
+                        <input type="checkbox" className="rounded border-border" checked={isSelected} onChange={() => toggleSelectWorker(worker.id)} />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <WorkerInitials name={`${worker.firstName} ${worker.lastName}`} avatarUrl={worker.avatarUrl} />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground leading-tight">{worker.firstName} {worker.lastName}</p>
+                            <p className="text-[11px] text-muted-foreground truncate max-w-[160px]">{worker.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap">
+                        {formatWorkerId(worker.workerId)}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <RoleBadge role={roleLabel} />
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
+                        {ministry?.name || "—"}
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
+                        {worker.employmentType || "—"}
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
+                        {worker.phone || "—"}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <StatusBadge status={worker.status} />
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
+                        {registeredDate ? registeredDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onSelect={() => setTimeout(() => handleEdit(worker), 100)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setTimeout(() => handlePasswordReset(worker), 100)}>
+                              <Mail className="mr-2 h-4 w-4" /> Send Reset Link
+                            </DropdownMenuItem>
+                            {worker.id !== user?.uid && (
+                              <DropdownMenuItem onSelect={() => setTimeout(() => handleImpersonate(worker), 100)}>
+                                <LogIn className="mr-2 h-4 w-4" /> Impersonate
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onSelect={() => setTimeout(() => handleDelete(worker.id), 100)} className="text-destructive">
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {pagination && pagination.total > 0 && (
+            <div className="px-6 py-4 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-xs text-muted-foreground">
+                Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, pagination.total)} of {pagination.total.toLocaleString()} workers
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-2xs font-bold text-sm">
+                  ‹
+>>>>>>> bf632bf (Mobile view & Settings)
                 </button>
                 {isMealStubAssigner && (
                   <button onClick={() => setIsBatchMealStubSheetOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer">
@@ -824,6 +1027,99 @@ export default function WorkersPage() {
       <Sheet open={isBatchMealStubSheetOpen} onOpenChange={setIsBatchMealStubSheetOpen}>
         <SheetContent className="sm:max-w-md">
           <BatchMealStubSheet selectedCount={selectedWorkerIds.length} onSave={handleBatchMealStub} onClose={() => setIsBatchMealStubSheetOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      {/* Worker Details Sheet */}
+      <Sheet open={!!selectedWorkerForDetails} onOpenChange={(open) => !open && setSelectedWorkerForDetails(null)}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          {selectedWorkerForDetails && (
+            <div className="space-y-6">
+              {/* Header */}
+              <SheetHeader>
+                <SheetTitle>Worker Details</SheetTitle>
+                <p className="text-sm text-muted-foreground">View worker information</p>
+              </SheetHeader>
+
+              {/* Worker Info */}
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
+                <WorkerInitials name={`${selectedWorkerForDetails.firstName} ${selectedWorkerForDetails.lastName}`} avatarUrl={selectedWorkerForDetails.avatarUrl} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-bold text-foreground leading-tight">{selectedWorkerForDetails.firstName} {selectedWorkerForDetails.lastName}</p>
+                  <p className="text-sm text-muted-foreground truncate">{selectedWorkerForDetails.email}</p>
+                </div>
+                <StatusBadge status={selectedWorkerForDetails.status} />
+              </div>
+
+              {/* Details Grid */}
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Worker ID</p>
+                  <p className="text-sm font-mono text-foreground">{formatWorkerId(selectedWorkerForDetails.workerId)}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</p>
+                  <div><RoleBadge role={getWorkerRoleLabel(selectedWorkerForDetails)} /></div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ministry</p>
+                  <p className="text-sm text-foreground">{ministries.find(m => m.id === selectedWorkerForDetails.majorMinistryId)?.name || "—"}</p>
+                </div>
+
+                {selectedWorkerForDetails.minorMinistryId && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Secondary Ministry</p>
+                    <p className="text-sm text-foreground">{ministries.find(m => m.id === selectedWorkerForDetails.minorMinistryId)?.name || "—"}</p>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employment Type</p>
+                  <p className="text-sm text-foreground">{selectedWorkerForDetails.employmentType || "—"}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone</p>
+                  <p className="text-sm text-foreground">{selectedWorkerForDetails.phone || "—"}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</p>
+                  <p className="text-sm text-foreground break-all">{selectedWorkerForDetails.email || "—"}</p>
+                </div>
+
+                {selectedWorkerForDetails.createdAt && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Registered</p>
+                    <p className="text-sm text-foreground">
+                      {new Date(selectedWorkerForDetails.createdAt as any).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4 border-t border-border/40">
+                <button
+                  onClick={() => {
+                    setSelectedWorkerForDetails(null);
+                    handleEdit(selectedWorkerForDetails);
+                  }}
+                  className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  Edit Worker
+                </button>
+                <button
+                  onClick={() => setSelectedWorkerForDetails(null)}
+                  className="h-10 px-4 flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </AppLayout>

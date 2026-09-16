@@ -458,9 +458,78 @@ export default function ScheduleCalendarPage() {
               </div>
             </div>
           ) : viewMode === "week" ? (
-            /* Week Hourly Time Grid Matrix - scrollable on mobile */
-            <div className="overflow-x-scroll -m-5 sm:-m-6">
-              <div className="min-w-[760px]">
+            /* Week view */
+            <div>
+              {/* ── MOBILE: vertical day-by-day list ── */}
+              <div className="lg:hidden space-y-3">
+                {weekDays.map((day, dIdx) => {
+                  const isDayToday = isToday(day);
+                  const dayEvents = approvedBookings.filter((b) =>
+                    isSameDay(toJsDate(b.start), day)
+                  ).sort((a, b) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime());
+
+                  return (
+                    <div key={day.toISOString()} className="rounded-xl border border-gray-200 dark:border-border overflow-hidden">
+                      {/* Day header */}
+                      <div className={cn(
+                        "px-4 py-2.5 border-b border-gray-200 dark:border-border flex items-center gap-3",
+                        isDayToday ? "bg-sidebar/10 dark:bg-blue-950/20" : "bg-gray-50 dark:bg-muted/40"
+                      )}>
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shrink-0",
+                          isDayToday ? "bg-sidebar text-white shadow-xs" : "bg-transparent text-gray-700 dark:text-gray-200"
+                        )}>
+                          {format(day, "d")}
+                        </div>
+                        <div>
+                          <p className={cn("text-xs font-extrabold uppercase tracking-wider", isDayToday ? "text-sidebar dark:text-blue-400" : "text-gray-500 dark:text-gray-400")}>
+                            {format(day, "EEEE")}
+                          </p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500">{format(day, "MMMM d, yyyy")}</p>
+                        </div>
+                        {dayEvents.length > 0 && (
+                          <span className="ml-auto text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                            {dayEvents.length} event{dayEvents.length > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      {/* Events */}
+                      {dayEvents.length === 0 ? (
+                        <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 italic">No events</div>
+                      ) : (
+                        <div className="divide-y divide-gray-100 dark:divide-border">
+                          {dayEvents.map((booking, bIdx) => {
+                            const room = rooms?.find((r) => r.id === booking.roomId);
+                            const color = EVENT_COLORS[bIdx % EVENT_COLORS.length];
+                            const startTime = toJsDate(booking.start);
+                            const endTime = toJsDate(booking.end);
+                            return (
+                              <div
+                                key={booking.id}
+                                onClick={() => handleBookingClick(booking)}
+                                className={cn("px-4 py-3 flex items-center justify-between gap-3 cursor-pointer border-l-[3px] hover:opacity-90 transition-all", color.bg, color.text, color.border)}
+                              >
+                                <div>
+                                  <p className="text-xs font-bold leading-snug">{booking.title}</p>
+                                  <p className="text-[11px] opacity-75 mt-0.5">{room?.name || "Room"}</p>
+                                </div>
+                                <div className="text-right shrink-0 text-[11px] font-semibold opacity-80">
+                                  <p>{format(startTime, "h:mm a")}</p>
+                                  <p>– {format(endTime, "h:mm a")}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── DESKTOP: original horizontal time grid ── */}
+              <div className="hidden lg:block overflow-x-auto -mx-6">
+                <div className="min-w-[760px] px-6">
                 {/* Header Row: Days of the Week */}
                 <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50/90 dark:bg-muted/40 border-b border-slate-200/80 dark:border-border/80 sticky top-0 z-10">
                   <div className="border-r border-slate-200/80 dark:border-border/80 py-3" />
@@ -601,6 +670,7 @@ export default function ScheduleCalendarPage() {
                     );
                   }
                 )}
+              </div>
               </div>
             </div>
           ) : (

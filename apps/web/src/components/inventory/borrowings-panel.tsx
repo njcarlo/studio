@@ -265,7 +265,95 @@ export function BorrowingsPanel() {
 
       {/* Borrowings Table */}
       <Card className="shadow-sm border overflow-hidden">
-        <div className="overflow-x-auto">
+
+        {/* Mobile card list */}
+        <div className="md:hidden divide-y divide-border/40">
+          {loading && borrowings.length === 0 ? (
+            <div className="h-40 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              <span className="text-sm">Loading borrowings...</span>
+            </div>
+          ) : filteredBorrowings.length === 0 ? (
+            <div className="h-40 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <Package className="h-8 w-8 text-muted-foreground/40" />
+              <span className="text-sm font-semibold">No borrowing records found</span>
+            </div>
+          ) : filteredBorrowings.map((b) => {
+            const isOverdue = b.status === 'BORROWED' && b.dueDate && new Date(b.dueDate) < new Date();
+            return (
+              <div key={b.id} className="p-4 space-y-3">
+                {/* Item + Status */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-muted border overflow-hidden flex items-center justify-center shrink-0">
+                      {b.item?.imageUrl ? (
+                        <img src={b.item.imageUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="h-4 w-4 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-foreground truncate">{b.item?.name}</p>
+                      <p className="text-[10px] font-mono text-muted-foreground">{b.item?.inventoryCode || b.itemId.slice(0, 8)}</p>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={b.status === 'RETURNED' ? 'outline' : isOverdue ? 'destructive' : 'secondary'}
+                    className="text-[10px] shrink-0"
+                  >
+                    {b.status === 'RETURNED' ? 'Returned' : isOverdue ? 'Overdue' : 'Borrowed'}
+                  </Badge>
+                </div>
+
+                {/* Borrower */}
+                <div className="flex items-center gap-2 text-xs">
+                  <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="font-medium text-foreground">{b.borrowerName}</span>
+                  {b.borrowerEmail && <span className="text-muted-foreground truncate">· {b.borrowerEmail}</span>}
+                </div>
+
+                {/* Dates */}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    <span>{b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString() : '—'}</span>
+                  </div>
+                  {b.dueDate && (
+                    <div className={`flex items-center gap-1 ${isOverdue ? 'text-destructive font-bold' : ''}`}>
+                      {isOverdue && <AlertTriangle className="h-3 w-3" />}
+                      <Clock className="h-3 w-3" />
+                      <span>Due: {new Date(b.dueDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes */}
+                <p className="text-xs text-muted-foreground truncate">
+                  {b.status === 'RETURNED' ? b.returnNotes || b.returnCondition || 'Returned in good shape' : b.checkoutNotes || b.checkoutCondition || 'Standard checkout'}
+                </p>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Print item QR"
+                    onClick={() => setQrItem({ id: b.itemId, name: b.item?.name || 'Item', inventoryCode: b.item?.inventoryCode })}>
+                    <QrCode className="h-3.5 w-3.5" />
+                  </Button>
+                  {b.status === 'BORROWED' && (
+                    <Button size="sm" variant="outline"
+                      className="h-7 text-xs gap-1 border-emerald-300 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                      onClick={() => openReturnModal(b)}>
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Return
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table */}
+        <div className="overflow-x-auto hidden md:block">
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow>

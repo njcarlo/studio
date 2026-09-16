@@ -461,13 +461,13 @@ export function InventoryTable({
         {/* ── UNIFIED TABLE TOOLBAR CONTAINER ── */}
         <Card className="rounded-2xl border border-border/70 bg-card shadow-xs overflow-hidden">
           {/* Top Quick Filters & Primary Actions */}
-          <div className="p-4 border-b border-border/60 bg-muted/[0.15] flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <div className="p-2 sm:p-4 border-b border-border/60 bg-muted/[0.15] flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2 sm:gap-3">
             {/* Quick Segment Pills (1-Click Filters) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
               <Button
                 variant={!selectedStatus && !selectedType ? 'default' : 'ghost'}
                 size="sm"
-                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all ${
+                className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
                   !selectedStatus && !selectedType ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={() => {
@@ -476,15 +476,15 @@ export function InventoryTable({
                   setSkip(0);
                 }}
               >
-                <Boxes className="h-3.5 w-3.5" />
-                <span>All Catalog</span>
-                <span className="text-[10px] ml-0.5 opacity-70">({totalItems})</span>
+                <Boxes className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <span>All</span>
+                <span className="text-[9px] sm:text-[10px] ml-0.5 opacity-70">({totalItems})</span>
               </Button>
 
               <Button
                 variant={selectedStatus === 'Low Stock' ? 'default' : 'ghost'}
                 size="sm"
-                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all ${
+                className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
                   selectedStatus === 'Low Stock'
                     ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-2xs'
                     : 'text-muted-foreground hover:text-foreground hover:bg-amber-500/10'
@@ -494,14 +494,14 @@ export function InventoryTable({
                   setSkip(0);
                 }}
               >
-                <AlertTriangle className={`h-3.5 w-3.5 ${selectedStatus === 'Low Stock' ? 'text-white' : 'text-amber-600 dark:text-amber-400'}`} />
-                <span>Low Stock</span>
+                <AlertTriangle className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${selectedStatus === 'Low Stock' ? 'text-white' : 'text-amber-600 dark:text-amber-400'}`} />
+                <span>Low</span>
               </Button>
 
               <Button
                 variant={selectedType === 'EQUIPMENT' ? 'default' : 'ghost'}
                 size="sm"
-                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all ${
+                className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
                   selectedType === 'EQUIPMENT' ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={() => {
@@ -509,14 +509,14 @@ export function InventoryTable({
                   setSkip(0);
                 }}
               >
-                <Package className="h-3.5 w-3.5" />
+                <Package className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 <span>Equipment</span>
               </Button>
 
               <Button
                 variant={selectedType === 'CONSUMABLE' ? 'default' : 'ghost'}
                 size="sm"
-                className={`h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 transition-all ${
+                className={`h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 transition-all whitespace-nowrap ${
                   selectedType === 'CONSUMABLE' ? 'shadow-2xs' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={() => {
@@ -524,7 +524,7 @@ export function InventoryTable({
                   setSkip(0);
                 }}
               >
-                <Layers className="h-3.5 w-3.5" />
+                <Layers className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 <span>Consumables</span>
               </Button>
             </div>

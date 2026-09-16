@@ -210,9 +210,11 @@ const allNavItems: NavItem[] = [
 export function Nav({
   pathname,
   className,
+  onOpenMySettings,
 }: {
   pathname: string;
   className?: string;
+  onOpenMySettings?: () => void;
 }) {
   const userRole = useUserRole();
   const { isLoading, needsSeeding, workerProfile, isSuperAdmin, isMinistryHead } = userRole;
@@ -230,6 +232,9 @@ export function Nav({
         return true;
       }
       if (href === "/c2s?tab=devotions" && pathname === "/c2s" && !searchParams.get("tab")) {
+        return true;
+      }
+      if (href === "/my-settings?tab=password" && pathname === "/my-settings" && !searchParams.get("tab")) {
         return true;
       }
       return currentUrl === href;
@@ -508,6 +513,30 @@ export function Nav({
           );
         })}
       </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      {/* My Settings Button - Always visible */}
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onOpenMySettings?.();
+                  if (isMobile) {
+                    setTimeout(() => setOpenMobile(false), 100);
+                  }
+                }}
+                tooltip={{ children: "My Settings" }}
+              >
+                <Settings className="size-4" />
+                <span>My Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
     </nav>

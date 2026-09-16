@@ -345,8 +345,8 @@ function InventoryPageContent() {
         </div>
 
         {/* ── MOBILE-FRIENDLY HORIZONTAL TAB BAR ── */}
-        <div className="overflow-x-auto no-scrollbar pb-1">
-          <div className="inline-flex p-1 bg-slate-100/90 dark:bg-muted rounded-xl border border-slate-200/70 dark:border-border/50 gap-1 min-w-max shadow-2xs">
+        <div className="w-full">
+          <div className="flex p-1 bg-slate-100/90 dark:bg-muted rounded-xl border border-slate-200/70 dark:border-border/50 gap-0.5 shadow-2xs w-full">
             {INVENTORY_TABS.map((tab) => {
               const Icon = tab.icon;
               const isSelected = tab.id === activeTab;
@@ -355,16 +355,18 @@ function InventoryPageContent() {
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    "flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-lg transition-all cursor-pointer flex-1 min-w-0",
                     isSelected
                       ? "bg-sidebar text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
                   )}
                 >
-                  <Icon className={cn("h-3.5 w-3.5", isSelected ? "text-white" : "text-muted-foreground")} />
-                  <span>{tab.label}</span>
+                  <Icon className={cn("h-4 w-4 shrink-0", isSelected ? "text-white" : "text-muted-foreground")} />
+                  <span className="text-[9px] font-bold leading-none truncate w-full text-center">
+                    {tab.label.split(" ")[0]}
+                  </span>
                   {tab.id === "borrowings" && overdueAlerts.length > 0 && (
-                    <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-destructive text-destructive-foreground">
+                    <span className="px-1 rounded-full text-[8px] font-bold bg-destructive text-destructive-foreground">
                       {overdueAlerts.length}
                     </span>
                   )}
