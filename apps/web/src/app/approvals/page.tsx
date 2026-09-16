@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@stud
 import { Button } from "@studio/ui";
 import {
   LoaderCircle, GanttChartSquare, CheckCircle2, XCircle, Clock,
-  Search, Filter, MoreHorizontal, SlidersHorizontal,
+  Search, MoreHorizontal,
   LayoutList, LayoutGrid, KanbanSquare,
 } from "lucide-react";
 import { Input } from "@studio/ui";
@@ -33,29 +33,29 @@ import {
 function StatusBadge({ status }: { status: string }) {
   if (status === "Approved")
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
         Approved
       </span>
     );
   if (status === "Rejected")
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
         Rejected
       </span>
     );
   if (status === "Pending Admin Approval" || status === "Pending Incoming Approval")
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
         Under Review
       </span>
     );
   // All other Pending*
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap">
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
       Pending
     </span>
   );
@@ -299,30 +299,23 @@ export default function ApprovalsPage() {
   return (
     <AppLayout>
       <div className="space-y-7 pb-12">
-        {/* Header */}
-        <div className="flex flex-col gap-1">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Approvals</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Review and act on incoming requests across ministries, facilities, and operations.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search requests, requestors, IDs..."
-                  className="pl-9 w-64 h-9 text-sm bg-card border-border/60 rounded-xl"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <button className="h-9 px-3.5 flex items-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors">
-                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                Filters
-              </button>
-            </div>
+        {/* Search row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Approvals</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Review and act on incoming requests across ministries, facilities, and operations.
+            </p>
+          </div>
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Search requests, requestors, IDs..."
+              className="pl-9 pr-4 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 h-10 bg-background dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-2xl shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 
@@ -356,35 +349,40 @@ export default function ApprovalsPage() {
         )}
 
         {/* Table / Cards / Kanban container */}
-        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-          {/* Toolbar */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
-            {/* Status filter tabs */}
-            <div className="flex items-center gap-1">
+        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden">
+          {/* Top Controls Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Status filter tabs (Matching Room Reservations) */}
+            <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs self-start overflow-x-auto max-w-full gap-1">
               {(["all", "pending", "approved", "rejected", "completed"] as const).map(s => (
                 <button
                   key={s}
+                  type="button"
                   onClick={() => setStatusFilter(s)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors",
+                    "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
                     statusFilter === s
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                      ? "bg-sidebar text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
                   )}
                 >
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                  <span className={cn(
-                    "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold",
-                    statusFilter === s ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
-                  )}>
+                  <span>{s.charAt(0).toUpperCase() + s.slice(1)}</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold",
+                      statusFilter === s
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-200/80 dark:bg-muted/80 text-slate-700 dark:text-slate-300"
+                    )}
+                  >
                     {statusCounts[s]}
                   </span>
                 </button>
               ))}
             </div>
 
-            {/* View mode toggle */}
-            <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-0.5 border border-border/40">
+            {/* View mode toggle (Matching Room Reservations style) */}
+            <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs gap-1 self-start sm:self-auto">
               {([
                 { key: "table", icon: LayoutList, label: "Table" },
                 { key: "cards", icon: LayoutGrid, label: "Cards" },
@@ -392,16 +390,17 @@ export default function ApprovalsPage() {
               ] as const).map(({ key, icon: Icon, label }) => (
                 <button
                   key={key}
+                  type="button"
                   onClick={() => setViewMode(key)}
                   className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors",
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
                     viewMode === key
-                      ? "bg-card shadow-xs text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-white dark:bg-card shadow-xs text-foreground"
+                      : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
-                  {label}
+                  <span>{label}</span>
                 </button>
               ))}
             </div>
@@ -409,132 +408,134 @@ export default function ApprovalsPage() {
 
           {/* Table View */}
           {viewMode === "table" && (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-muted/40 border-b border-border/40">
-                    <th className="w-10 px-4 py-3">
-                      <input
-                        type="checkbox"
-                        className="rounded border-border"
-                        checked={selectedIds.size === filteredRequests.length && filteredRequests.length > 0}
-                        onChange={toggleSelectAll}
-                      />
-                    </th>
-                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Request ID</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Request</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Requestor</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Ministry</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Date</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Type</th>
-                    <th className="w-10 px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRequests.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="py-20 text-center text-sm text-muted-foreground">
-                        No requests found.
-                      </td>
+            <div className="border border-border/60 rounded-2xl mt-5 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                      <th className="w-10 px-4 py-3.5 text-center whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          className="rounded border-sidebar-border accent-sidebar cursor-pointer"
+                          checked={selectedIds.size === filteredRequests.length && filteredRequests.length > 0}
+                          onChange={toggleSelectAll}
+                        />
+                      </th>
+                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Request ID</th>
+                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Request</th>
+                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Requestor</th>
+                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Ministry</th>
+                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Date</th>
+                      <th className="px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Status</th>
+                      <th className="px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Type</th>
+                      <th className="w-14 px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Action</th>
                     </tr>
-                  ) : (
-                    filteredRequests.map(req => {
-                      const worker = workers?.find(w => w.id === req.workerId);
-                      const ministry = worker
-                        ? ministries?.find(m => m.id === worker.majorMinistryId)
-                        : null;
-                      const reqId = req.id || "";
-                      const isSelected = selectedIds.has(reqId);
-                      const canManage = checkCanManage(req);
-                      const isPending = req.status.startsWith("Pending");
-                      const reqDate = req.date ? new Date(req.date as any) : null;
+                  </thead>
+                  <tbody>
+                    {filteredRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-20 text-center text-sm text-muted-foreground font-medium">
+                          No requests found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredRequests.map(req => {
+                        const worker = workers?.find(w => w.id === req.workerId);
+                        const ministry = worker
+                          ? ministries?.find(m => m.id === worker.majorMinistryId)
+                          : null;
+                        const reqId = req.id || "";
+                        const isSelected = selectedIds.has(reqId);
+                        const canManage = checkCanManage(req);
+                        const isPending = req.status.startsWith("Pending");
+                        const reqDate = req.date ? new Date(req.date as any) : null;
 
-                      return (
-                        <tr
-                          key={reqId || Math.random().toString()}
-                          className={cn(
-                            "border-b border-border/30 transition-colors cursor-pointer",
-                            isSelected ? "bg-primary/5" : "hover:bg-muted/20"
-                          )}
-                          onClick={() => setSelectedRequest(req)}
-                        >
-                          <td className="px-4 py-3.5" onClick={e => { e.stopPropagation(); toggleSelect(reqId); }}>
-                            <input
-                              type="checkbox"
-                              className="rounded border-border"
-                              checked={isSelected}
-                              onChange={() => toggleSelect(reqId)}
-                            />
-                          </td>
-                          <td className="px-4 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap">
-                            REQ-{reqId.slice(-4).toUpperCase()}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <p className="text-sm font-semibold text-foreground leading-snug line-clamp-1">{req.details}</p>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-2">
-                              <Initials name={req.requester} />
-                              <span className="text-sm font-semibold text-foreground whitespace-nowrap">{req.requester}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                            {ministry?.name || "—"}
-                          </td>
-                          <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                            {reqDate ? format(reqDate, "MMM d, yyyy") : "—"}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <StatusBadge status={req.status} />
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className="text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md whitespace-nowrap">
-                              {req.type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem onClick={() => setSelectedRequest(req)}>
-                                  View Details
-                                </DropdownMenuItem>
-                                {canManage && isPending && (
-                                  <>
-                                    <DropdownMenuItem
-                                      className="text-emerald-600"
-                                      onClick={() => handleUpdateRequestStatus(req, "Approved")}
-                                    >
-                                      <CheckCircle2 className="h-3.5 w-3.5 mr-2" /> Approve
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-red-600"
-                                      onClick={() => handleUpdateRequestStatus(req, "Rejected")}
-                                    >
-                                      <XCircle className="h-3.5 w-3.5 mr-2" /> Reject
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                        return (
+                          <tr
+                            key={reqId || Math.random().toString()}
+                            className={cn(
+                              "border-b border-gray-100 dark:border-border/60 transition-colors cursor-pointer",
+                              isSelected ? "bg-primary/5" : "hover:bg-slate-50/70 dark:hover:bg-muted/30"
+                            )}
+                            onClick={() => setSelectedRequest(req)}
+                          >
+                            <td className="px-4 py-3.5 text-center" onClick={e => { e.stopPropagation(); toggleSelect(reqId); }}>
+                              <input
+                                type="checkbox"
+                                className="rounded border-border accent-sidebar cursor-pointer"
+                                checked={isSelected}
+                                onChange={() => toggleSelect(reqId)}
+                              />
+                            </td>
+                            <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap font-medium">
+                              REQ-{reqId.slice(-4).toUpperCase()}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <p className="text-sm font-semibold text-foreground leading-snug line-clamp-1">{req.details}</p>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-2">
+                                <Initials name={req.requester} />
+                                <span className="text-sm font-semibold text-foreground whitespace-nowrap">{req.requester}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap font-medium">
+                              {ministry?.name || "—"}
+                            </td>
+                            <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap font-medium">
+                              {reqDate ? format(reqDate, "MMM d, yyyy") : "—"}
+                            </td>
+                            <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                              <StatusBadge status={req.status} />
+                            </td>
+                            <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                              <span className="text-[11px] font-semibold text-muted-foreground bg-slate-100 dark:bg-muted/60 border border-slate-200/80 dark:border-border px-2.5 py-0.5 rounded-md whitespace-nowrap shadow-2xs">
+                                {req.type}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-center" onClick={e => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-md">
+                                  <DropdownMenuItem onClick={() => setSelectedRequest(req)} className="text-xs font-medium cursor-pointer">
+                                    View Details
+                                  </DropdownMenuItem>
+                                  {canManage && isPending && (
+                                    <>
+                                      <DropdownMenuItem
+                                        className="text-emerald-600 text-xs font-medium cursor-pointer"
+                                        onClick={() => handleUpdateRequestStatus(req, "Approved")}
+                                      >
+                                        <CheckCircle2 className="h-3.5 w-3.5 mr-2" /> Approve
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-red-600 text-xs font-medium cursor-pointer"
+                                        onClick={() => handleUpdateRequestStatus(req, "Rejected")}
+                                      >
+                                        <XCircle className="h-3.5 w-3.5 mr-2" /> Reject
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* Cards View */}
           {viewMode === "cards" && (
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch auto-rows-fr">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch auto-rows-fr">
               {filteredRequests.length === 0 ? (
                 <p className="col-span-full py-16 text-center text-sm text-muted-foreground">No requests found.</p>
               ) : filteredRequests.map(req => {
@@ -546,31 +547,33 @@ export default function ApprovalsPage() {
                 return (
                   <div
                     key={req.id}
-                    className="rounded-2xl border border-border/60 bg-card p-4 flex flex-col cursor-pointer hover:shadow-md transition-all h-full"
+                    className="rounded-2xl border border-slate-200/90 dark:border-border/80 bg-slate-50/60 dark:bg-muted/20 p-5 flex flex-col cursor-pointer hover:border-sidebar/40 hover:bg-card hover:shadow-md transition-all h-full shadow-2xs"
                     onClick={() => setSelectedRequest(req)}
                   >
                     {/* Top row: avatar + name/ministry + status badge */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
                         <Initials name={req.requester} />
-                        <div>
-                          <p className="text-sm font-bold text-foreground leading-tight">{req.requester}</p>
-                          <p className="text-[11px] text-muted-foreground">{ministry?.name || "—"}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-foreground leading-tight truncate">{req.requester}</p>
+                          <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{ministry?.name || "—"}</p>
                         </div>
                       </div>
                       <StatusBadge status={req.status} />
                     </div>
 
                     {/* Request ID + details */}
-                    <div className="mt-3">
-                      <p className="text-[10px] font-mono text-muted-foreground mb-0.5">REQ-{(req.id || "").slice(-4).toUpperCase()}</p>
+                    <div className="mt-3.5 space-y-1">
+                      <span className="inline-block text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-muted text-slate-700 dark:text-slate-300">
+                        REQ-{(req.id || "").slice(-4).toUpperCase()}
+                      </span>
                       <p className="text-sm font-bold text-foreground leading-snug line-clamp-2">{req.details}</p>
                     </div>
 
                     {/* Date */}
                     {reqDate && (
-                      <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <div className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                        <svg className="h-3.5 w-3.5 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="4" width="18" height="18" rx="2" />
                           <line x1="16" y1="2" x2="16" y2="6" />
                           <line x1="8" y1="2" x2="8" y2="6" />
@@ -581,24 +584,24 @@ export default function ApprovalsPage() {
                     )}
 
                     {/* Action buttons — always at bottom */}
-                    <div className="mt-auto pt-3 border-t border-border/30 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                    <div className="mt-auto pt-4 border-t border-slate-200/80 dark:border-border/60 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                       {canManage && isPending ? (
                         <>
                           <button
                             onClick={() => handleUpdateRequestStatus(req, "Approved")}
-                            className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                            className="flex-1 h-8.5 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300/90 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-950/60 shadow-2xs transition-all cursor-pointer"
                           >
                             <CheckCircle2 className="h-3.5 w-3.5" /> Approve
                           </button>
                           <button
                             onClick={() => handleUpdateRequestStatus(req, "Rejected")}
-                            className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                            className="flex-1 h-8.5 flex items-center justify-center gap-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-300/90 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 dark:hover:bg-red-950/60 shadow-2xs transition-all cursor-pointer"
                           >
                             <XCircle className="h-3.5 w-3.5" /> Reject
                           </button>
                           <button
                             onClick={() => setSelectedRequest(req)}
-                            className="h-8 px-3 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                            className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-white dark:bg-card border border-slate-200/90 dark:border-border text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-muted shadow-2xs transition-all cursor-pointer"
                           >
                             Details
                           </button>
@@ -607,7 +610,7 @@ export default function ApprovalsPage() {
                         <div className="w-full flex justify-end">
                           <button
                             onClick={() => setSelectedRequest(req)}
-                            className="h-8 px-3 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                            className="h-8.5 px-4 rounded-xl text-xs font-bold bg-white dark:bg-card border border-slate-200/90 dark:border-border text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-muted shadow-2xs transition-all cursor-pointer"
                           >
                             View Details
                           </button>
@@ -622,7 +625,7 @@ export default function ApprovalsPage() {
 
           {/* Kanban View */}
           {viewMode === "kanban" && (
-            <div className="p-5 overflow-x-auto">
+            <div className="mt-5 overflow-x-auto">
               <div className="flex gap-4 min-w-[900px]">
                 {([
                   { key: "pending",  label: "PENDING",      color: "text-amber-500",   bg: "bg-amber-50/60 dark:bg-amber-950/20",   border: "border-amber-200/60 dark:border-amber-800/40",  requests: filteredRequests.filter(r => r.status === "Pending" || r.status === "Pending Ministry Approval" || r.status === "Pending Outgoing Approval") },

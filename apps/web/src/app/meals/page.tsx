@@ -474,222 +474,140 @@ function MealsPageContent() {
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsContent value="view" className="space-y-6 mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Column: Personal Meal Stub QR Card */}
-              <div className="lg:col-span-5 bg-card rounded-2xl border border-border/60 shadow-card-dark p-6 flex flex-col justify-between min-h-[520px]">
-                <div>
-                  {/* Card Header Row */}
-                  <div className="flex items-center justify-between pb-4 border-b border-border/40">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground">
-                        <QrCode className="h-4 w-4" />
-                      </div>
-                      <span className="font-bold text-sm text-foreground font-headline">
-                        Personal Meal Stub
-                      </span>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      Active
-                    </span>
-                  </div>
-
-                  {/* QR Content */}
-                  <div className="py-6 flex flex-col items-center text-center">
-                    <h3 className="font-bold text-base text-foreground font-headline">
-                      Your Meal Stub QR
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-[280px] leading-relaxed">
-                      Scan this QR code at the meal stub scanner to claim your meal allocation.
-                    </p>
-
-                    {/* QR Image Box */}
-                    <div className="my-5 p-4 bg-white rounded-2xl border border-border/60 shadow-2xs flex items-center justify-center">
-                      {qrUrl ? (
-                        <Image
-                          src={qrUrl}
-                          alt="Meal Stub QR"
-                          width={220}
-                          height={220}
-                          className="rounded-lg"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-[220px] h-[220px] flex items-center justify-center">
-                          <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Worker ID Label */}
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        WORKER ID
-                      </p>
-                      <p className="font-mono font-bold text-xs bg-muted/60 text-foreground px-3 py-1 rounded-xl inline-block border border-border/40">
-                        {workerProfile?.workerId || (workerProfile?.id ? `COG-WK-${workerProfile.id.slice(0, 6).toUpperCase()}` : "COG-WK-002914")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Actions */}
-                <div className="pt-4 border-t border-border/40">
-                  <Button
-                    type="button"
-                    onClick={handleRegenerateQR}
-                    disabled={isRegenerating}
-                    className="w-full bg-sidebar hover:bg-sidebar/90 text-white rounded-xl py-2.5 text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer"
-                  >
-                    <RefreshCw
-                      className={cn("h-3.5 w-3.5", isRegenerating && "animate-spin")}
-                    />
-                    Regenerate QR Code
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground text-center mt-2.5">
-                    Refreshes every 24 hours · Last issued today
+            {/* Top Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              {/* Today's Allocation */}
+              <div className="rounded-2xl border border-border/60 shadow-card-dark bg-card p-5 sm:p-6 transition-all">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    TODAY'S ALLOCATION
                   </p>
+                  <div className="p-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-300">
+                    <UtensilsCrossed className="h-4 w-4" />
+                  </div>
                 </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-4xl sm:text-5xl font-black font-headline text-foreground tracking-tight leading-none">
+                    {myTodayCount}
+                  </span>
+                  <span className="text-2xl sm:text-3xl text-muted-foreground font-medium">
+                    / 1
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 font-medium">
+                  daily allocation
+                </p>
               </div>
 
-              {/* Right Column: Stat Cards + Issued Stubs Table */}
-              <div className="lg:col-span-7 space-y-6">
-                {/* Top 2 Stat Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                  {/* Today's Allocation */}
-                  <div className="rounded-2xl border border-border/60 shadow-card-dark bg-card p-5 sm:p-6 transition-all">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        TODAY'S ALLOCATION
-                      </p>
-                      <div className="p-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-300">
-                        <UtensilsCrossed className="h-4 w-4" />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-baseline gap-2">
-                      <span className="text-4xl sm:text-5xl font-black font-headline text-foreground tracking-tight leading-none">
-                        {myTodayCount}
-                      </span>
-                      <span className="text-2xl sm:text-3xl text-muted-foreground font-medium">
-                        / 1
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-3 font-medium">
-                      daily allocation
-                    </p>
-                  </div>
-
-                  {/* Weekly Usage */}
-                  <div className="rounded-2xl border border-border/60 shadow-card-dark bg-card p-5 sm:p-6 transition-all">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        WEEKLY USAGE
-                      </p>
-                      <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300">
-                        <CalendarDays className="h-4 w-4" />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-baseline gap-2">
-                      <span className="text-4xl sm:text-5xl font-black font-headline text-foreground tracking-tight leading-none">
-                        {myWeekCount}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-3 font-medium">
-                      of 7 days this week
-                    </p>
+              {/* Weekly Usage */}
+              <div className="rounded-2xl border border-border/60 shadow-card-dark bg-card p-5 sm:p-6 transition-all">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    WEEKLY USAGE
+                  </p>
+                  <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300">
+                    <CalendarDays className="h-4 w-4" />
                   </div>
                 </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-4xl sm:text-5xl font-black font-headline text-foreground tracking-tight leading-none">
+                    {myWeekCount}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 font-medium">
+                  of 7 days this week
+                </p>
+              </div>
+            </div>
 
-                {/* Issued Stubs Table Card */}
-                <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden flex flex-col">
-                  <div className="p-5 sm:p-6 pb-4 border-b border-border/40 space-y-0.5">
-                    <h3 className="font-bold text-base text-foreground font-headline">
-                      Issued Stubs
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Recent meal stub activity for your account.
-                    </p>
-                  </div>
+            {/* Issued Stubs Table Card */}
+            <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden flex flex-col">
+              <div className="p-5 sm:p-6 pb-4 border-b border-border/40 space-y-0.5">
+                <h3 className="font-bold text-base text-foreground font-headline">
+                  Issued Stubs
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Recent meal stub activity for your account.
+                </p>
+              </div>
 
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[40%]">
-                            Date
-                          </TableHead>
-                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[35%]">
-                            Time
-                          </TableHead>
-                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-center w-[25%]">
-                            Status
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(!mealStubs || mealStubs.length === 0) ? (
-                          <TableRow>
-                            <TableCell
-                              colSpan={3}
-                              className="py-12 text-center text-xs text-muted-foreground font-medium"
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                      <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[40%]">
+                        Date
+                      </TableHead>
+                      <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[35%]">
+                        Time
+                      </TableHead>
+                      <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-center w-[25%]">
+                        Status
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(!mealStubs || mealStubs.length === 0) ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={3}
+                          className="py-12 text-center text-xs text-muted-foreground font-medium"
+                        >
+                          No meal stub activity recorded.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      [...mealStubs]
+                        .sort((a, b) => {
+                          const da =
+                            a.date instanceof Date
+                              ? a.date
+                              : new Date(a.date as any);
+                          const db =
+                            b.date instanceof Date
+                              ? b.date
+                              : new Date(b.date as any);
+                          return db.getTime() - da.getTime();
+                        })
+                        .slice(0, 10)
+                        .map((stub: any) => {
+                          const d =
+                            stub.date instanceof Date
+                              ? stub.date
+                              : new Date(stub.date);
+                          const isClaimed =
+                            stub.status === "Claimed" || stub.claimedAt;
+
+                          return (
+                            <TableRow
+                              key={stub.id}
+                              className="hover:bg-gray-50/60 dark:hover:bg-muted/30 border-b border-gray-100 dark:border-border/60 transition-colors"
                             >
-                              No meal stub activity recorded.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          [...mealStubs]
-                            .sort((a, b) => {
-                              const da =
-                                a.date instanceof Date
-                                  ? a.date
-                                  : new Date(a.date as any);
-                              const db =
-                                b.date instanceof Date
-                                  ? b.date
-                                  : new Date(b.date as any);
-                              return db.getTime() - da.getTime();
-                            })
-                            .slice(0, 10)
-                            .map((stub: any) => {
-                              const d =
-                                stub.date instanceof Date
-                                  ? stub.date
-                                  : new Date(stub.date);
-                              const isClaimed =
-                                stub.status === "Claimed" || stub.claimedAt;
-
-                              return (
-                                <TableRow
-                                  key={stub.id}
-                                  className="hover:bg-muted/20 border-b border-border/40 transition-colors"
-                                >
-                                  <TableCell className="py-3.5 px-6 text-xs text-foreground font-medium">
-                                    {format(d, "MMMM d, yyyy")}
-                                  </TableCell>
-                                  <TableCell className="py-3.5 px-6 text-xs text-muted-foreground font-medium">
-                                    {format(d, "h:mm a")}
-                                  </TableCell>
-                                  <TableCell className="py-3.5 px-6 text-center align-middle">
-                                    {isClaimed ? (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-muted dark:text-slate-300 border border-slate-200 dark:border-border">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                                        Claimed
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                        Active
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
+                              <TableCell className="py-3.5 px-6 font-semibold text-xs text-foreground align-middle">
+                                {format(d, "EEE, MMM d, yyyy")}
+                              </TableCell>
+                              <TableCell className="py-3.5 px-6 text-xs text-muted-foreground font-medium align-middle">
+                                {format(d, "h:mm a")}
+                              </TableCell>
+                              <TableCell className="py-3.5 px-6 text-center align-middle">
+                                {isClaimed ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-muted dark:text-slate-300 border border-slate-200 dark:border-border">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                    Claimed
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    Active
+                                  </span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </TabsContent>

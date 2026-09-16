@@ -17,7 +17,7 @@ import {
   MoreHorizontal, PlusCircle, LoaderCircle, Upload, Download,
   LogIn, Users, UserCheck, UserX, Users2, Building2, Mail,
   Trash2, ArrowRightLeft, X, Ticket, Search, SlidersHorizontal,
-  ShieldCheck, UserCog,
+  ShieldCheck, UserCog, GraduationCap,
 } from "lucide-react";
 import { subDays, formatDistanceToNow } from "date-fns";
 import { getWeeklyWeekdayCount, getSundayCount } from "@studio/ui";
@@ -27,7 +27,7 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@studio/ui";
-import { Input } from "@studio/ui";
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@studio/ui";
 import type { Worker, Role, Ministry } from "@studio/types";
 import { useAuthStore } from "@studio/store";
 import { supabase } from "@studio/database";
@@ -106,7 +106,7 @@ function StatCard({ label, value, icon: Icon, accentColor, iconClass, iconBgClas
   iconClass: string; iconBgClass: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border-0 shadow-card-dark bg-card h-full">
+    <div className="relative overflow-hidden rounded-2xl border border-gray-200/80 dark:border-border shadow-xs bg-white dark:bg-card h-full">
       <div className={cn("h-1.5 w-full", accentColor)} />
       <div className="p-5">
         <div className="flex items-start justify-between gap-2">
@@ -149,6 +149,9 @@ export default function WorkersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
+  const [activeTab, setActiveTab] = useState<"all" | "active" | "inactive" | "heads" | "mentors" | "admins">("all");
+  const [ministryFilter, setMinistryFilter] = useState<string>("all");
+
   React.useEffect(() => {
     const timer = setTimeout(() => { setSearchQuery(searchInput); setCurrentPage(1); }, 400);
     return () => clearTimeout(timer);
@@ -163,7 +166,15 @@ export default function WorkersPage() {
   const { workers: allWorkers, pagination, isLoading: workersLoading,
     updateWorker: updateWorkerSql, createWorker: createWorkerSql,
     deleteWorker: deleteWorkerSqlMut, deleteWorkers: deleteWorkersSqlMut,
-  } = useWorkers({ page: currentPage, limit: itemsPerPage, search: searchQuery, searchMode, sortField, sortDir });
+  } = useWorkers({ 
+    page: currentPage, 
+    limit: itemsPerPage, 
+    search: searchQuery, 
+    searchMode, 
+    ministryIds: ministryFilter !== "all" ? [ministryFilter] : undefined,
+    sortField, 
+    sortDir 
+  });
 
   const { ministries, isLoading: ministriesLoading } = useMinistries();
   const { roles, isLoading: rolesLoading } = useRoles();
@@ -202,8 +213,6 @@ export default function WorkersPage() {
         [workerProfile?.majorMinistryId, workerProfile?.minorMinistryId].filter(Boolean) as string[]
   );
 
-  const workers = allWorkers;
-
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
   const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>([]);
   const [isBatchMoveSheetOpen, setIsBatchMoveSheetOpen] = useState(false);
@@ -213,6 +222,35 @@ export default function WorkersPage() {
 
   const handleAddNew = () => router.push("/workers/new");
   const handleEdit = (worker: Worker) => router.push(`/workers/${worker.id}/edit`);
+
+  const handleExportWorkers = () => {
+    if (!allWorkers || allWorkers.length === 0) {
+      toast({ variant: "destructive", title: "No data to export" });
+      return;
+    }
+    const exportData = allWorkers.map(w => ({
+      "Worker ID": formatWorkerId(w.workerId),
+      "First Name": w.firstName,
+      "Last Name": w.lastName,
+      "Email": w.email || "",
+      "Phone": w.phone || "",
+      "Role": getWorkerRoleLabel(w),
+      "Ministry": ministries.find(m => m.id === w.majorMinistryId)?.name || "",
+      "Employment Type": w.employmentType || "",
+      "Status": w.status,
+      "Registered": w.createdAt ? new Date(w.createdAt as any).toLocaleDateString() : "",
+    }));
+    const csv = Papa.unparse(exportData);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `workers_export_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "Workers Exported", description: `Exported ${exportData.length} records.` });
+  };
 
   const handlePasswordReset = async (worker: Worker) => {
     if (!worker.email) { toast({ variant: "destructive", title: "No email found" }); return; }
@@ -376,10 +414,60 @@ export default function WorkersPage() {
     }).length;
   }, [allWorkers, ministries]);
 
+  // Mentors count (Workers that serve as mentors / non-admin non-head workers)
+  const mentorsCount = useMemo(() => {
+    return allWorkers.filter(w => {
+      const roleName = getWorkerRoleLabel(w).toLowerCase();
+      if (roleName.includes("mentor")) return true;
+      const isHead = roleName.includes("head") || roleName.includes("pastor") || ministries.some(m => m.headId === w.id);
+      const isAdmin = roleName.includes("admin");
+      return !isHead && !isAdmin;
+    }).length;
+  }, [allWorkers, ministries, roles]);
+
   // Admins count
   const adminsCount = useMemo(() => {
     return allWorkers.filter(w => getWorkerRoleLabel(w).toLowerCase().includes("admin")).length;
   }, [allWorkers]);
+
+  const displayedWorkers = useMemo(() => {
+    let list = allWorkers || [];
+
+    if (activeTab === "active") {
+      list = list.filter(w => w.status === "Active");
+    } else if (activeTab === "inactive") {
+      list = list.filter(w => w.status === "Inactive");
+    } else if (activeTab === "heads") {
+      list = list.filter(w => {
+        const roleLabel = getWorkerRoleLabel(w).toLowerCase();
+        return roleLabel.includes("head") || roleLabel.includes("pastor") || ministries.some(m => m.headId === w.id);
+      });
+    } else if (activeTab === "mentors") {
+      list = list.filter(w => {
+        const roleLabel = getWorkerRoleLabel(w).toLowerCase();
+        if (roleLabel.includes("mentor")) return true;
+        const isHead = roleLabel.includes("head") || roleLabel.includes("pastor") || ministries.some(m => m.headId === w.id);
+        const isAdmin = roleLabel.includes("admin");
+        return !isHead && !isAdmin;
+      });
+    } else if (activeTab === "admins") {
+      list = list.filter(w => getWorkerRoleLabel(w).toLowerCase().includes("admin"));
+    }
+
+    return list;
+  }, [allWorkers, activeTab, ministries, roles]);
+
+  const tabCounts = useMemo(() => {
+    const list = allWorkers || [];
+    return {
+      all: totalWorkers || list.length,
+      active: totalActive || list.filter(w => w.status === "Active").length,
+      inactive: totalInactive || list.filter(w => w.status === "Inactive").length,
+      heads: ministryHeadsCount,
+      mentors: mentorsCount,
+      admins: adminsCount,
+    };
+  }, [allWorkers, totalWorkers, totalActive, totalInactive, ministryHeadsCount, mentorsCount, adminsCount]);
 
   if (isLoading) {
     return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
@@ -394,37 +482,38 @@ export default function WorkersPage() {
       <div className="space-y-7 pb-12">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Workers</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               Monitor workforce, assign roles and ministries, and register new workers.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="relative w-64 sm:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
               <Input
-                placeholder="Search requests, requestors, IDs..."
-                className="pl-9 w-64 h-9 text-sm bg-card border-border/60 rounded-xl"
+                placeholder="Search workers, emails, IDs..."
+                className="pl-9 pr-4 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 h-10 bg-white dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-2xl shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
               />
             </div>
             <button
               onClick={() => setIsImportSheetOpen(true)}
-              className="h-9 px-3.5 flex items-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+              className="h-10 px-3.5 flex items-center gap-2 rounded-2xl border border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 text-xs font-semibold text-foreground hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors shadow-2xs cursor-pointer"
             >
               <Upload className="h-4 w-4 text-muted-foreground" /> Import
             </button>
             <button
-              className="h-9 px-3.5 flex items-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+              onClick={handleExportWorkers}
+              className="h-10 px-3.5 flex items-center gap-2 rounded-2xl border border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 text-xs font-semibold text-foreground hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors shadow-2xs cursor-pointer"
             >
               <Download className="h-4 w-4 text-muted-foreground" /> Export
             </button>
             <button
               onClick={handleAddNew}
-              className="h-9 px-4 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
             >
               <PlusCircle className="h-4 w-4" /> Add Worker
             </button>
@@ -434,14 +523,14 @@ export default function WorkersPage() {
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Workers" value={totalWorkers} icon={Users} accentColor="bg-primary" iconClass="text-primary" iconBgClass="bg-primary/10" />
+          <StatCard label="Mentors" value={mentorsCount} icon={GraduationCap} accentColor="bg-blue-500" iconClass="text-blue-600" iconBgClass="bg-blue-50 dark:bg-blue-950/40" />
           <StatCard label="Ministry Heads" value={ministryHeadsCount} icon={ShieldCheck} accentColor="bg-emerald-500" iconClass="text-emerald-600" iconBgClass="bg-emerald-50 dark:bg-emerald-950/40" />
           <StatCard label="Admins" value={adminsCount} icon={UserCog} accentColor="bg-orange-400" iconClass="text-orange-500" iconBgClass="bg-orange-50 dark:bg-orange-950/40" />
-          <StatCard label="New This Month" value={newThisMonth} icon={PlusCircle} accentColor="bg-amber-400" iconClass="text-amber-500" iconBgClass="bg-amber-50 dark:bg-amber-950/40" />
         </div>
 
         {/* Ministry Distribution Chart */}
         {ministryChartData.length > 0 && (
-          <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-6">
+          <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-6">
             <h2 className="text-base font-bold text-foreground mb-0.5">Ministry Distribution</h2>
             <p className="text-xs text-muted-foreground mb-5">Workers per ministry.</p>
             <div className="h-[240px] w-full">
@@ -459,186 +548,250 @@ export default function WorkersPage() {
                   <YAxis fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} tick={{ fill: "#9ca3af" }} />
                   <Tooltip
                     contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)", fontSize: "12px" }}
-                    cursor={{ fill: "rgba(99,102,241,0.06)" }}
+                    cursor={{ fill: "rgba(17,46,126,0.06)" }}
                   />
-                  <Bar dataKey="count" name="Workers" fill="#818cf8" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="count" name="Workers" fill="#112e7e" radius={[6, 6, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         )}
 
-        {/* Filters + Bulk Bar */}
-        <div className="flex items-center justify-end">
-          <button className="h-9 px-3.5 flex items-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors">
-            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" /> Filters
-          </button>
-        </div>
+        {/* Main Table & Tabs Container */}
+        <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
+          {/* Top Controls Row */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* Status & Role Filter Tabs (Matching Room Reservations style) */}
+            <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs self-start overflow-x-auto max-w-full gap-1">
+              {[
+                { id: "all", label: "All", count: tabCounts.all },
+                { id: "active", label: "Active", count: tabCounts.active },
+                { id: "inactive", label: "Inactive", count: tabCounts.inactive },
+                { id: "mentors", label: "Mentors", count: tabCounts.mentors },
+                { id: "heads", label: "Ministry Heads", count: tabCounts.heads },
+                { id: "admins", label: "Admins", count: tabCounts.admins },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => { setActiveTab(tab.id as any); setCurrentPage(1); }}
+                  className={cn(
+                    "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+                    activeTab === tab.id
+                      ? "bg-sidebar text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold",
+                      activeTab === tab.id
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-200/80 dark:bg-muted/80 text-slate-700 dark:text-slate-300"
+                    )}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-        {selectedWorkerIds.length > 0 && (
-          <div className="flex items-center justify-between bg-card border border-border/60 rounded-2xl px-5 py-3 shadow-card-dark">
-            <span className="text-sm font-semibold text-foreground">{selectedWorkerIds.length} selected</span>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setIsBatchMoveSheetOpen(true)} className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors">
-                <UserCog className="h-3.5 w-3.5" /> Change Role
-              </button>
-              <button onClick={() => setIsBatchMoveSheetOpen(true)} className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors">
-                <Building2 className="h-3.5 w-3.5" /> Assign Ministry
-              </button>
-              <button onClick={() => setIsBatchDeleteDialogOpen(true)} className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
-                <UserX className="h-3.5 w-3.5" /> Deactivate
-              </button>
-              <button onClick={() => setSelectedWorkerIds([])} className="h-8 px-3 flex items-center gap-1.5 rounded-lg border border-border/60 text-muted-foreground text-xs font-semibold hover:bg-muted/40 transition-colors">
-                <X className="h-3.5 w-3.5" /> Clear
-              </button>
+            {/* Right Controls: Ministry Filter */}
+            <div className="flex items-center gap-2.5 self-start lg:self-auto">
+              <Select value={ministryFilter} onValueChange={(val) => { setMinistryFilter(val); setCurrentPage(1); }}>
+                <SelectTrigger className="h-10 w-[180px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3">
+                  <SelectValue placeholder="All Ministries" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs font-medium">All Ministries</SelectItem>
+                  {ministries?.map(m => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs font-medium">
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        )}
 
-        {/* Main Table */}
-        <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-muted/40 border-b border-border/40">
-                  <th className="w-10 px-4 py-3">
-                    <input
-                      type="checkbox"
-                      className="rounded border-border"
-                      checked={workers.length > 0 && workers.every(w => selectedWorkerIds.includes(w.id))}
-                      onChange={() => toggleSelectAll(workers)}
-                    />
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("name")}>
-                    Worker {sortField === "name" ? (sortDir === "asc" ? "↑" : "↓") : ""}
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("workerId")}>
-                    Worker ID {sortField === "workerId" ? (sortDir === "asc" ? "↑" : "↓") : ""}
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Role</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Ministry</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Type</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Contact</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("status")}>
-                    Status {sortField === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Registered</th>
-                  <th className="w-10 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {workersLoading ? (
-                  <tr><td colSpan={10} className="py-16 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" /></td></tr>
-                ) : workers.length === 0 ? (
-                  <tr><td colSpan={10} className="py-16 text-center text-sm text-muted-foreground">No workers found.</td></tr>
-                ) : workers.map(worker => {
-                  const ministry = ministries.find(m => m.id === worker.majorMinistryId);
-                  const isSelected = selectedWorkerIds.includes(worker.id);
-                  const roleLabel = getWorkerRoleLabel(worker);
-                  const registeredDate = worker.createdAt ? new Date(worker.createdAt as any) : null;
-
-                  return (
-                    <tr
-                      key={worker.id}
-                      className={cn("border-b border-border/30 transition-colors", isSelected ? "bg-primary/5" : "hover:bg-muted/20")}
-                    >
-                      <td className="px-4 py-3.5" onClick={e => { e.stopPropagation(); toggleSelectWorker(worker.id); }}>
-                        <input type="checkbox" className="rounded border-border" checked={isSelected} onChange={() => toggleSelectWorker(worker.id)} />
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <WorkerInitials name={`${worker.firstName} ${worker.lastName}`} avatarUrl={worker.avatarUrl} />
-                          <div>
-                            <p className="text-sm font-semibold text-foreground leading-tight">{worker.firstName} {worker.lastName}</p>
-                            <p className="text-[11px] text-muted-foreground truncate max-w-[160px]">{worker.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap">
-                        {formatWorkerId(worker.workerId)}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <RoleBadge role={roleLabel} />
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                        {ministry?.name || "—"}
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                        {worker.employmentType || "—"}
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                        {worker.phone || "—"}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <StatusBadge status={worker.status} />
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                        {registeredDate ? registeredDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem onSelect={() => setTimeout(() => handleEdit(worker), 100)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setTimeout(() => handlePasswordReset(worker), 100)}>
-                              <Mail className="mr-2 h-4 w-4" /> Send Reset Link
-                            </DropdownMenuItem>
-                            {worker.id !== user?.uid && (
-                              <DropdownMenuItem onSelect={() => setTimeout(() => handleImpersonate(worker), 100)}>
-                                <LogIn className="mr-2 h-4 w-4" /> Impersonate
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onSelect={() => setTimeout(() => handleDelete(worker.id), 100)} className="text-destructive">
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {pagination && pagination.total > 0 && (
-            <div className="px-6 py-4 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-xs text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, pagination.total)} of {pagination.total.toLocaleString()} workers
-              </p>
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-2xs font-bold text-sm">
-                  ‹
+          {/* Bulk Selection Bar */}
+          {selectedWorkerIds.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/90 dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl px-4 py-2.5 mt-4">
+              <span className="text-xs font-semibold text-foreground">{selectedWorkerIds.length} worker(s) selected</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={() => setIsBatchMoveSheetOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-lg border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors cursor-pointer">
+                  <UserCog className="h-3 w-3" /> Change Ministry
                 </button>
-                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                  let pageNum = i + 1;
-                  if (pagination.totalPages > 5 && currentPage > 3) {
-                    pageNum = currentPage - 3 + i;
-                    if (pageNum + (5 - i) > pagination.totalPages) pageNum = pagination.totalPages - 4 + i;
-                  }
-                  if (pageNum <= 0 || pageNum > pagination.totalPages) return null;
-                  return (
-                    <button key={pageNum} onClick={() => setCurrentPage(pageNum)}
-                      className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all",
-                        currentPage === pageNum ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 shadow-2xs"
-                      )}>
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                <button onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))} disabled={currentPage === pagination.totalPages || pagination.totalPages === 0}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-2xs font-bold text-sm">
-                  ›
+                {isMealStubAssigner && (
+                  <button onClick={() => setIsBatchMealStubSheetOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer">
+                    <Ticket className="h-3 w-3" /> Issue Stubs
+                  </button>
+                )}
+                <button onClick={() => setIsBatchDeleteDialogOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer">
+                  <Trash2 className="h-3 w-3" /> Delete
+                </button>
+                <button onClick={() => setSelectedWorkerIds([])} className="h-7 px-2.5 flex items-center gap-1.5 rounded-lg border border-border/60 text-muted-foreground text-xs font-semibold hover:bg-muted/40 transition-colors cursor-pointer">
+                  <X className="h-3 w-3" /> Clear
                 </button>
               </div>
             </div>
           )}
+
+          {/* Table Container */}
+          <div className="border border-gray-200/80 dark:border-border rounded-2xl mt-5 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-sidebar">
+                  <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                    <th className="w-10 px-4 py-3.5 bg-sidebar text-center">
+                      <input
+                        type="checkbox"
+                        className="rounded border-white/30 accent-sidebar cursor-pointer"
+                        checked={displayedWorkers.length > 0 && displayedWorkers.every(w => selectedWorkerIds.includes(w.id))}
+                        onChange={() => toggleSelectAll(displayedWorkers)}
+                      />
+                    </th>
+                    <th className="px-4 py-3.5 bg-sidebar text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("name")}>
+                      <div className="flex items-center gap-1.5">
+                        <span>Worker</span>
+                        {sortField === "name" && <span className="text-white/80">{sortDir === "asc" ? "↑" : "↓"}</span>}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3.5 bg-sidebar text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("workerId")}>
+                      <div className="flex items-center gap-1.5">
+                        <span>Worker ID</span>
+                        {sortField === "workerId" && <span className="text-white/80">{sortDir === "asc" ? "↑" : "↓"}</span>}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3.5 bg-sidebar text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Role</th>
+                    <th className="px-4 py-3.5 bg-sidebar text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Ministry</th>
+                    <th className="px-4 py-3.5 bg-sidebar text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Type</th>
+                    <th className="px-4 py-3.5 bg-sidebar text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Contact</th>
+                    <th className="px-4 py-3.5 bg-sidebar text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("status")}>
+                      <div className="flex items-center gap-1.5">
+                        <span>Status</span>
+                        {sortField === "status" && <span className="text-white/80">{sortDir === "asc" ? "↑" : "↓"}</span>}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3.5 bg-sidebar text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Registered</th>
+                    <th className="w-12 px-4 py-3.5 bg-sidebar text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workersLoading ? (
+                    <tr><td colSpan={10} className="py-20 text-center"><LoaderCircle className="mx-auto h-7 w-7 animate-spin text-primary" /></td></tr>
+                  ) : displayedWorkers.length === 0 ? (
+                    <tr><td colSpan={10} className="py-20 text-center text-sm font-medium text-muted-foreground">No workers found.</td></tr>
+                  ) : displayedWorkers.map(worker => {
+                    const ministry = ministries.find(m => m.id === worker.majorMinistryId);
+                    const isSelected = selectedWorkerIds.includes(worker.id);
+                    const roleLabel = getWorkerRoleLabel(worker);
+                    const registeredDate = worker.createdAt ? new Date(worker.createdAt as any) : null;
+
+                    return (
+                      <tr
+                        key={worker.id}
+                        className={cn("border-b border-gray-100 dark:border-border/60 transition-colors", isSelected ? "bg-primary/5" : "hover:bg-slate-50/70 dark:hover:bg-muted/30")}
+                      >
+                        <td className="px-4 py-3.5 text-center" onClick={e => { e.stopPropagation(); toggleSelectWorker(worker.id); }}>
+                          <input type="checkbox" className="rounded border-border accent-sidebar cursor-pointer" checked={isSelected} onChange={() => toggleSelectWorker(worker.id)} />
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <WorkerInitials name={`${worker.firstName} ${worker.lastName}`} avatarUrl={worker.avatarUrl} />
+                            <div>
+                              <p className="text-sm font-semibold text-foreground leading-tight">{worker.firstName} {worker.lastName}</p>
+                              <p className="text-[11px] text-muted-foreground truncate max-w-[160px]">{worker.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap font-medium">
+                          {formatWorkerId(worker.workerId)}
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <RoleBadge role={roleLabel} />
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
+                          {ministry?.name || "—"}
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
+                          {worker.employmentType || "—"}
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap font-mono text-xs">
+                          {worker.phone || "—"}
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <StatusBadge status={worker.status} />
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
+                          {registeredDate ? registeredDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onSelect={() => setTimeout(() => handleEdit(worker), 100)}>Edit</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setTimeout(() => handlePasswordReset(worker), 100)}>
+                                <Mail className="mr-2 h-4 w-4" /> Send Reset Link
+                              </DropdownMenuItem>
+                              {worker.id !== user?.uid && (
+                                <DropdownMenuItem onSelect={() => setTimeout(() => handleImpersonate(worker), 100)}>
+                                  <LogIn className="mr-2 h-4 w-4" /> Impersonate
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onSelect={() => setTimeout(() => handleDelete(worker.id), 100)} className="text-destructive">
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {pagination && pagination.total > 0 && (
+              <div className="px-6 py-4 border-t border-gray-200/80 dark:border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-card">
+                <p className="text-xs text-muted-foreground">
+                  Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, pagination.total)} of {pagination.total.toLocaleString()} workers
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                    className="h-8 w-8 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-2xs font-bold text-sm cursor-pointer">
+                    ‹
+                  </button>
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (pagination.totalPages > 5 && currentPage > 3) {
+                      pageNum = currentPage - 3 + i;
+                      if (pageNum + (5 - i) > pagination.totalPages) pageNum = pagination.totalPages - 4 + i;
+                    }
+                    if (pageNum <= 0 || pageNum > pagination.totalPages) return null;
+                    return (
+                      <button key={pageNum} onClick={() => setCurrentPage(pageNum)}
+                        className={cn("h-8 w-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                          currentPage === pageNum ? "bg-[#f4f4f7] text-neutral-800 font-bold dark:bg-neutral-800 dark:text-neutral-100" : "border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 shadow-2xs"
+                        )}>
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  <button onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))} disabled={currentPage === pagination.totalPages || pagination.totalPages === 0}
+                    className="h-8 w-8 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-2xs font-bold text-sm cursor-pointer">
+                    ›
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

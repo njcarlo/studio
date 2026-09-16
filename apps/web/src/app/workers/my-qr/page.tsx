@@ -46,9 +46,14 @@ import { cn } from "@/lib/utils";
 
 export default function MyQRCodePage() {
   const { user } = useAuthStore();
-  const { workerProfile, isLoading: roleLoading } = useUserRole();
+  const { workerProfile, allRoles, isLoading: roleLoading } = useUserRole();
   const { ministries } = useMinistries();
   const { toast } = useToast();
+
+  const roleName =
+    allRoles?.find((r: any) => r.id === workerProfile?.roleId)?.name ||
+    workerProfile?.roleId ||
+    "Member";
 
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isConfirmRegenOpen, setIsConfirmRegenOpen] = useState(false);
@@ -144,7 +149,7 @@ export default function MyQRCodePage() {
               variant="outline"
               size="sm"
               onClick={handlePrint}
-              className="h-9 px-3.5 text-xs font-semibold rounded-xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5"
+              className="h-9 px-3.5 text-xs font-semibold rounded-xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
               <span>Print Pass</span>
@@ -153,25 +158,10 @@ export default function MyQRCodePage() {
               variant="outline"
               size="sm"
               onClick={handleDownload}
-              className="h-9 px-3.5 text-xs font-semibold rounded-xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5"
+              className="h-9 px-3.5 text-xs font-semibold rounded-xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Download className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
               <span>Download QR</span>
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setIsConfirmRegenOpen(true)}
-              disabled={isRegenerating}
-              className="h-9 px-3.5 text-xs font-semibold rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs inline-flex items-center gap-1.5"
-            >
-              <RefreshCw
-                className={cn(
-                  "h-3.5 w-3.5",
-                  isRegenerating && "animate-spin"
-                )}
-              />
-              <span>Regenerate</span>
             </Button>
           </div>
         </div>
@@ -223,7 +213,7 @@ export default function MyQRCodePage() {
                 </div>
 
                 {/* User Profile Summary */}
-                <div className="space-y-1.5 border-t border-slate-200/70 dark:border-border/60 pt-4">
+                <div className="space-y-2 border-t border-slate-200/70 dark:border-border/60 pt-4">
                   <h3 className="text-lg font-bold font-headline text-gray-900 dark:text-white">
                     {workerProfile?.firstName || user?.name || "System"}{" "}
                     {workerProfile?.lastName || "User"}
@@ -237,6 +227,25 @@ export default function MyQRCodePage() {
                         {workerProfile.workerId}
                       </span>
                     )}
+                  </div>
+
+                  {/* Regenerate Button directly below role badge */}
+                  <div className="pt-1.5 flex justify-center print:hidden">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setIsConfirmRegenOpen(true)}
+                      disabled={isRegenerating}
+                      className="h-8 px-4 text-xs font-semibold rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                    >
+                      <RefreshCw
+                        className={cn(
+                          "h-3.5 w-3.5",
+                          isRegenerating && "animate-spin"
+                        )}
+                      />
+                      <span>Regenerate QR</span>
+                    </Button>
                   </div>
                 </div>
 

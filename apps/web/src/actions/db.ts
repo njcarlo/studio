@@ -830,6 +830,48 @@ export async function getAttendanceRecords(filters: { workerProfileId?: string; 
     });
 }
 
+export async function seedAttendanceData() {
+    const workers = await prisma.worker.findMany();
+    if (!workers.length) return { count: 0 };
+
+    const today = new Date();
+    const currentDay = today.getDay();
+    const diffToMonday = (currentDay + 6) % 7;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    let inserted = 0;
+    for (const worker of workers) {
+        // Mon in/out (On Time: 7:45 AM - 5:15 PM)
+        const monIn = new Date(monday); monIn.setHours(7, 45, 0, 0);
+        const monOut = new Date(monday); monOut.setHours(17, 15, 0, 0);
+
+        // Tue in/out (Late: 8:45 AM - 5:00 PM)
+        const tueIn = new Date(monday); tueIn.setDate(monday.getDate() + 1); tueIn.setHours(8, 45, 0, 0);
+        const tueOut = new Date(monday); tueOut.setDate(monday.getDate() + 1); tueOut.setHours(17, 0, 0, 0);
+
+        // Wed in/out (On Time: 7:55 AM - 5:30 PM)
+        const wedIn = new Date(monday); wedIn.setDate(monday.getDate() + 2); wedIn.setHours(7, 55, 0, 0);
+        const wedOut = new Date(monday); wedOut.setDate(monday.getDate() + 2); wedOut.setHours(17, 30, 0, 0);
+
+        await prisma.attendanceRecord.createMany({
+            data: [
+                { workerProfileId: worker.id, type: 'Clock In', time: monIn },
+                { workerProfileId: worker.id, type: 'Clock Out', time: monOut },
+                { workerProfileId: worker.id, type: 'Clock In', time: tueIn },
+                { workerProfileId: worker.id, type: 'Clock Out', time: tueOut },
+                { workerProfileId: worker.id, type: 'Clock In', time: wedIn },
+                { workerProfileId: worker.id, type: 'Clock Out', time: wedOut },
+            ]
+        });
+        inserted += 6;
+    }
+
+    revalidatePath('/attendance');
+    return { count: inserted };
+}
+
 export async function createAttendanceRecord(data: { workerProfileId: string; type: string }) {
     const record = await prisma.attendanceRecord.create({
         data: {
