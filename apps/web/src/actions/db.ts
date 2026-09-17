@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache';
 import { NotificationService } from '@/services/notification-service';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { EmailService } from '@/services/email-service';
+import { type AttendanceShiftSettings, DEFAULT_ATTENDANCE_SETTINGS } from '@/lib/attendance-config';
+
+export type { AttendanceShiftSettings };
 
 const DEPARTMENT_NAME_TO_CODE: Record<string, string> = {
     Worship: 'W',
@@ -721,6 +724,13 @@ export async function createBooking(data: any) {
     if (!workerProfileId) throw new Error('workerProfileId is required to create a booking');
     if (!roomId) throw new Error('roomId is required to create a booking');
 
+    if (rest.start) {
+        const startDate = new Date(rest.start);
+        if (startDate < new Date()) {
+            throw new Error('Cannot reserve a room for a past date or time.');
+        }
+    }
+
     // Strip fields not in the Booking schema to avoid Prisma validation errors
     const {
         requesterEmail: _re, dateRequested: _dr,
@@ -915,6 +925,198 @@ export async function createAttendanceRecord(data: { workerProfileId: string; ty
     revalidatePath('/attendance');
     revalidatePath('/meals');
     return record;
+}
+
+export async function getAttendanceSettings(): Promise<AttendanceShiftSettings> {
+    try {
+        const setting = await prisma.setting.findUnique({
+            where: { id: 'attendance_shift_settings' },
+        });
+        if (setting?.data) {
+            const data = typeof setting.data === 'string' ? JSON.parse(setting.data) : setting.data;
+            return {
+                ...DEFAULT_ATTENDANCE_SETTINGS,
+                ...data,
+            };
+        }
+    } catch (e) {
+        console.error("Failed to load attendance settings from DB", e);
+    }
+    return DEFAULT_ATTENDANCE_SETTINGS;
+}
+
+export async function updateAttendanceSettings(data: Partial<AttendanceShiftSettings>) {
+    const current = await getAttendanceSettings();
+    const updated: AttendanceShiftSettings = {
+        ...current,
+        ...data,
+    };
+    await prisma.setting.upsert({
+        where: { id: 'attendance_shift_settings' },
+        update: { data: updated as any },
+        create: { id: 'attendance_shift_settings', data: updated as any },
+    });
+    revalidatePath('/settings');
+    revalidatePath('/settings/attendance');
+    revalidatePath('/attendance/scanner');
+    return updated;
+}
+
+export async function recordAutoAttendance(workerProfileId: string) {
+    const worker = await prisma.worker.findUnique({ where: { id: workerProfileId } });
+    if (!worker) {
+        throw new Error("Worker not found");
+    }
+
+    // Load dynamic shift settings from database
+    const settings = await getAttendanceSettings();
+
+    // Parse shift start time (e.g. "09:00" -> 9 hours, 0 mins)
+    const [startHStr, startMStr] = (settings.shiftStartTime || "09:00").split(':');
+    const shiftStartHour = parseInt(startHStr, 10) || 9;
+    const shiftStartMin = parseInt(startMStr, 10) || 0;
+    const graceMinutes = typeof settings.gracePeriodMinutes === 'number' ? settings.gracePeriodMinutes : 15;
+
+    // Parse shift end time (e.g. "17:00" -> 17 hours, 0 mins)
+    const [endHStr, endMStr] = (settings.shiftEndTime || "17:00").split(':');
+    const shiftEndHour = parseInt(endHStr, 10) || 17;
+    const shiftEndMin = parseInt(endMStr, 10) || 0;
+    const cooldownMins = typeof settings.cooldownMinutes === 'number' ? settings.cooldownMinutes : 5;
+
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const todayRecords = await prisma.attendanceRecord.findMany({
+        where: {
+            workerProfileId: worker.id,
+            time: { gte: startOfDay, lte: endOfDay }
+        },
+        orderBy: { time: 'desc' }
+    });
+
+    const latestRecord = todayRecords[0];
+    const workerData = {
+        id: worker.id,
+        firstName: worker.firstName,
+        lastName: worker.lastName,
+        avatarUrl: worker.avatarUrl,
+        roleId: worker.roleId,
+        employmentType: worker.employmentType
+    };
+
+    const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+    const startCutoffTotalMinutes = shiftStartHour * 60 + shiftStartMin + graceMinutes;
+    const endCutoffTotalMinutes = shiftEndHour * 60 + shiftEndMin;
+
+    // Case 1: No attendance record yet today -> CLOCK IN
+    if (!latestRecord) {
+        const isOnTime = currentTotalMinutes <= startCutoffTotalMinutes;
+        const status = isOnTime ? 'On Time' : 'Late';
+        const statusBadgeColor = isOnTime ? 'emerald' : 'amber';
+
+        const record = await createAttendanceRecord({
+            workerProfileId: worker.id,
+            type: 'Clock In'
+        });
+
+        return {
+            success: true,
+            action: 'Clock In' as const,
+            status,
+            statusBadgeColor,
+            record,
+            time: now,
+            message: `Timed In successfully (${status})`,
+            worker: workerData
+        };
+    }
+
+    // Check cooldown time from the latest record
+    const diffMs = now.getTime() - new Date(latestRecord.time).getTime();
+    const diffMinutes = diffMs / (1000 * 60);
+
+    // Case 2: Latest record is Clock In
+    if (latestRecord.type === 'Clock In') {
+        // Dynamic cooldown check (default 5 minutes buffer)
+        if (diffMinutes < cooldownMins) {
+            const recordedTimeStr = new Date(latestRecord.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            return {
+                success: false,
+                action: 'Cooldown' as const,
+                status: 'Cooldown',
+                statusBadgeColor: 'amber',
+                record: latestRecord,
+                time: latestRecord.time,
+                message: `Already Timed In at ${recordedTimeStr}.`,
+                worker: workerData
+            };
+        }
+
+        // Past cooldown -> CLOCK OUT
+        const isCompleted = currentTotalMinutes >= endCutoffTotalMinutes;
+        const status = isCompleted ? 'Shift Completed' : 'Undertime';
+        const statusBadgeColor = isCompleted ? 'emerald' : 'amber';
+
+        const record = await createAttendanceRecord({
+            workerProfileId: worker.id,
+            type: 'Clock Out'
+        });
+
+        return {
+            success: true,
+            action: 'Clock Out' as const,
+            status,
+            statusBadgeColor,
+            record,
+            time: now,
+            message: `Timed Out successfully (${status})`,
+            worker: workerData
+        };
+    }
+
+    // Case 3: Latest record is Clock Out
+    if (latestRecord.type === 'Clock Out') {
+        // Cooldown check
+        if (diffMinutes < cooldownMins) {
+            const recordedTimeStr = new Date(latestRecord.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            return {
+                success: false,
+                action: 'Cooldown' as const,
+                status: 'Cooldown',
+                statusBadgeColor: 'amber',
+                record: latestRecord,
+                time: latestRecord.time,
+                message: `Already Timed Out at ${recordedTimeStr}.`,
+                worker: workerData
+            };
+        }
+
+        // Past cooldown -> Re-entry or Overtime CLOCK IN
+        const isOvertime = currentTotalMinutes >= endCutoffTotalMinutes;
+        const status = isOvertime ? 'Overtime In' : 'Re-entry In';
+        const statusBadgeColor = 'blue';
+
+        const record = await createAttendanceRecord({
+            workerProfileId: worker.id,
+            type: 'Clock In'
+        });
+
+        return {
+            success: true,
+            action: 'Clock In' as const,
+            status,
+            statusBadgeColor,
+            record,
+            time: now,
+            message: `Timed In for ${status}`,
+            worker: workerData
+        };
+    }
+
+    throw new Error('Unhandled attendance state');
 }
 
 // --- Rooms, Areas, Branches ---

@@ -163,6 +163,14 @@ export default function SettingsPage() {
               description="Application name, system preferences and global defaults."
               badge="12 preferences"
             />
+            <ModuleCard
+              href="/settings/attendance"
+              icon={Clock}
+              iconBg="bg-sidebar/10 text-sidebar"
+              title="Attendance & Shifts"
+              description="Configure shift hours, grace periods and kiosk rules."
+              badge="Auto Shift Rules"
+            />
             {canManageRoles && (
               <ModuleCard
                 href="/settings/roles"

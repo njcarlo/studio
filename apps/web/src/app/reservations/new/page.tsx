@@ -134,6 +134,39 @@ export default function NewReservationPage() {
     return slots;
   }, []);
 
+  // Check if selected date is in the past (before today)
+  const isDateInPast = useMemo(() => {
+    if (!selectedDate) return false;
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    const resDate = new Date(y, m - 1, d);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return resDate < todayStart;
+  }, [selectedDate]);
+
+  // Helper to check if a specific time slot on the selected date is in the past
+  const isSlotInPast = (timeVal: string) => {
+    if (!selectedDate) return false;
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    const resDate = new Date(y, m - 1, d);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (resDate < todayStart) return true;
+    if (resDate.getTime() === todayStart.getTime()) {
+      const [h, min] = timeVal.split(":").map(Number);
+      const slotTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, min, 0, 0);
+      return slotTime <= now;
+    }
+    return false;
+  };
+
+  // Check if current start time is already in the past
+  const isTimeInPast = useMemo(() => {
+    if (!startTime) return false;
+    return isSlotInPast(startTime);
+  }, [selectedDate, startTime]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -155,11 +188,29 @@ export default function NewReservationPage() {
       return;
     }
 
+    if (isDateInPast) {
+      toast({
+        variant: "destructive",
+        title: "Past Date Not Allowed",
+        description: "Room reservations cannot be made for past dates. Please pick today or a future date.",
+      });
+      return;
+    }
+
     if (!startTime || !endTime) {
       toast({
         variant: "destructive",
         title: "Missing Time",
         description: "Please specify both start and end times.",
+      });
+      return;
+    }
+
+    if (isTimeInPast) {
+      toast({
+        variant: "destructive",
+        title: "Past Time Not Allowed",
+        description: "The selected reservation start time has already passed. Please select an upcoming time slot.",
       });
       return;
     }
@@ -208,12 +259,20 @@ export default function NewReservationPage() {
       const [startH, startM] = startTime.split(":").map(Number);
       const [endH, endM] = endTime.split(":").map(Number);
 
-      const parsedDate = new Date(selectedDate);
-      const start = new Date(parsedDate);
-      start.setHours(startH, startM, 0, 0);
+      const [y, m, d] = selectedDate.split("-").map(Number);
+      const parsedDate = new Date(y, m - 1, d);
+      const start = new Date(y, m - 1, d, startH, startM, 0, 0);
+      const end = new Date(y, m - 1, d, endH, endM, 0, 0);
 
-      const end = new Date(parsedDate);
-      end.setHours(endH, endM, 0, 0);
+      if (start <= new Date()) {
+        toast({
+          variant: "destructive",
+          title: "Invalid Start Time",
+          description: "The reservation start time has already passed. Please select a future time slot.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       if (start >= end) {
         toast({
@@ -484,10 +543,25 @@ export default function NewReservationPage() {
                   </label>
                   <DatePicker
                     value={selectedDate}
-                    onChange={setSelectedDate}
+                    onChange={(d) => {
+                      setSelectedDate(d);
+                      if (startTime && isSlotInPast(startTime)) {
+                        setStartTime("");
+                      }
+                      if (endTime && isSlotInPast(endTime)) {
+                        setEndTime("");
+                      }
+                    }}
+                    disablePastDates={true}
                     className="w-full h-10 rounded-xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 shadow-2xs"
                     align="start"
                   />
+                  {isDateInPast && (
+                    <p className="text-[11px] font-semibold text-red-500 mt-1 flex items-center gap-1">
+                      <XCircle className="h-3.5 w-3.5 shrink-0" />
+                      Past dates are not allowed.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -499,17 +573,27 @@ export default function NewReservationPage() {
                       <SelectValue placeholder="Start" />
                     </SelectTrigger>
                     <SelectContent>
-                      {timeSlots.map((slot) => (
-                        <SelectItem
-                          key={`start-${slot.value}`}
-                          value={slot.value}
-                          className="text-xs"
-                        >
-                          {slot.display}
-                        </SelectItem>
-                      ))}
+                      {timeSlots.map((slot) => {
+                        const passed = isSlotInPast(slot.value);
+                        return (
+                          <SelectItem
+                            key={`start-${slot.value}`}
+                            value={slot.value}
+                            disabled={passed}
+                            className={cn("text-xs", passed && "opacity-40 line-through")}
+                          >
+                            {slot.display} {passed ? "(Passed)" : ""}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
+                  {isTimeInPast && (
+                    <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                      <Info className="h-3.5 w-3.5 shrink-0" />
+                      Time has already passed.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -521,15 +605,19 @@ export default function NewReservationPage() {
                       <SelectValue placeholder="End" />
                     </SelectTrigger>
                     <SelectContent>
-                      {timeSlots.map((slot) => (
-                        <SelectItem
-                          key={`end-${slot.value}`}
-                          value={slot.value}
-                          className="text-xs"
-                        >
-                          {slot.display}
-                        </SelectItem>
-                      ))}
+                      {timeSlots.map((slot) => {
+                        const passed = isSlotInPast(slot.value);
+                        return (
+                          <SelectItem
+                            key={`end-${slot.value}`}
+                            value={slot.value}
+                            disabled={passed}
+                            className={cn("text-xs", passed && "opacity-40 line-through")}
+                          >
+                            {slot.display} {passed ? "(Passed)" : ""}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -719,10 +807,10 @@ export default function NewReservationPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !guidelinesAccepted}
+                disabled={isSubmitting || !guidelinesAccepted || isDateInPast || isTimeInPast}
                 className={cn(
                   "rounded-xl px-7 h-10 text-xs font-bold shadow-xs gap-1.5 transition-all",
-                  guidelinesAccepted
+                  guidelinesAccepted && !isDateInPast && !isTimeInPast
                     ? "bg-sidebar hover:bg-sidebar/90 text-white cursor-pointer shadow-sm"
                     : "bg-sidebar/40 text-white dark:bg-sidebar/40 dark:text-white/80 cursor-not-allowed"
                 )}

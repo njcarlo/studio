@@ -50,6 +50,53 @@ export default function QRScannerPage() {
         getDevices();
     }, [isAuthenticated, toast]);
 
+    const playBeep = useCallback((type: 'success' | 'warning' | 'error' = 'success') => {
+        try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            if (type === 'success') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.12);
+                gain2.gain.setValueAtTime(0.12, ctx.currentTime + 0.12);
+                osc2.start(ctx.currentTime + 0.12);
+                osc2.stop(ctx.currentTime + 0.26);
+            } else if (type === 'warning') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.2);
+            } else {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, ctx.currentTime);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.25);
+            }
+        } catch {
+            // Audio context failed or blocked by browser policy, ignore safely
+        }
+    }, []);
+
     const resetScanner = useCallback(() => setIsProcessing(false), []);
 
     const addLog = (details: string) => {
@@ -66,6 +113,7 @@ export default function QRScannerPage() {
         const token = parts[2];
 
         if (type !== 'MEAL_STUB' && type !== 'COG_USER' && type !== 'ATTENDANCE') {
+            playBeep('error');
             toast({ variant: 'destructive', title: 'Invalid QR', description: 'This QR code is not valid for meal stubs.' });
             setTimeout(resetScanner, 2000);
             return;
@@ -75,6 +123,7 @@ export default function QRScannerPage() {
             const worker = workers?.find(w => w.id === workerId || w.workerId === workerId);
 
             if (worker?.qrToken && token && worker.qrToken !== token) {
+                playBeep('error');
                 toast({ variant: 'destructive', title: 'Invalid or Expired QR', description: 'Please use your latest QR code.' });
                 setTimeout(resetScanner, 3000);
                 return;
@@ -88,6 +137,7 @@ export default function QRScannerPage() {
 
             if (validStub) {
                 await updateMealStub(validStub.id, { status: 'Claimed', claimedAt: new Date() });
+                playBeep('success');
                 const workerName = worker ? `${worker.firstName} ${worker.lastName}` : workerId;
                 const details = `Claimed meal stub for ${workerName}.`;
                 toast({ title: 'Meal Stub Claimed!', description: details });
@@ -102,17 +152,19 @@ export default function QRScannerPage() {
                     scannerName: 'Public Kiosk Scanner',
                 });
             } else {
+                playBeep('warning');
                 const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'this user';
                 toast({ variant: 'destructive', title: 'No Meal Stub Found', description: `No valid meal stub for ${workerName} today.` });
                 addLog(`No stub found for ${workerName}.`);
             }
         } catch (e: any) {
+            playBeep('error');
             console.error('Meal stub scan error:', e);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not process meal stub scan.' });
         } finally {
             setTimeout(resetScanner, 3000);
         }
-    }, [isProcessing, workers, toast, resetScanner]);
+    }, [isProcessing, workers, toast, resetScanner, playBeep]);
 
     // jsQR scan loop
     useEffect(() => {

@@ -379,61 +379,12 @@ export default function AttendancePage() {
                 <h2 className="text-base font-bold text-foreground font-headline">This week's personal log</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Recent attendance history.</p>
               </div>
-              <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-                <div className="px-7 pt-5 pb-4 border-b border-border/40">
-                  <h2 className="text-base font-bold text-foreground">This week's personal log</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Recent attendance history.</p>
-                </div>
-                
-                {/* Mobile card view */}
-                <div className="md:hidden divide-y divide-border/30">
-                  {sessions.length === 0 ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">No records this week.</div>
-                  ) : sessions.map((s, i) => (
-                    <div key={i} className="p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-bold text-foreground">{format(s.date, "MMM d, yyyy")}</p>
-                        <StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} />
-                      </div>
-                      <div className="grid grid-cols-3 gap-3 text-xs">
-                        <div>
-                          <p className="text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Time In</p>
-                          <p className="text-foreground font-mono">{format(s.timeIn, "H:mm")}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Time Out</p>
-                          <p className="text-foreground font-mono">{s.timeOut ? format(s.timeOut, "H:mm") : "—"}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Total Hours</p>
-                          <p className="text-foreground font-mono">{formatHours(s.totalMinutes)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Desktop table view */}
-                <div className="overflow-x-auto hidden md:block">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-muted/40 border-b border-border/40">
-                        {["Date", "Time In", "Time Out", "Total Hours", "Status"].map(h => (
-                          <th key={h} className="px-8 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sessions.length === 0 ? (
-                        <tr><td colSpan={5} className="py-12 text-center text-sm text-muted-foreground">No records this week.</td></tr>
-                      ) : sessions.map((s, i) => (
-                        <tr key={i} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
-                          <td className="px-8 py-3.5 text-sm text-foreground whitespace-nowrap">{format(s.date, "MMM d, yyyy")}</td>
-                          <td className="px-8 py-3.5 text-sm text-muted-foreground whitespace-nowrap">{format(s.timeIn, "H:mm")}</td>
-                          <td className="px-8 py-3.5 text-sm text-muted-foreground whitespace-nowrap">{s.timeOut ? format(s.timeOut, "H:mm") : "—"}</td>
-                          <td className="px-8 py-3.5 text-sm text-muted-foreground whitespace-nowrap">{formatHours(s.totalMinutes)}</td>
-                          <td className="px-8 py-3.5"><StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} /></td>
-                        </tr>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-sidebar">
+                    <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                      {["Date", "Time In", "Time Out", "Total Hours", "Status"].map(h => (
+                        <th key={h} className="px-6 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -458,80 +409,94 @@ export default function AttendancePage() {
 
         {/* ── Manual Attendance ── */}
         {activeTab === "manual" && isAssigner && (
-          <div className="flex flex-col gap-5">
-            <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex flex-col gap-3">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input type="text" placeholder="Search ID, requestor, room..." value={assignSearch} onChange={e => setAssignSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
+            {/* Top Controls Row */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              {/* Status Filter Tabs (Matching Room Reservations & Workers style) */}
+              <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs self-start overflow-x-auto max-w-full gap-1">
+                {[
+                  { id: "all", label: "All", count: manualStatusCounts.all },
+                  { id: "timed-in", label: "Timed In", count: manualStatusCounts["timed-in"] },
+                  { id: "timed-out", label: "Timed Out", count: manualStatusCounts["timed-out"] },
+                  { id: "not-yet", label: "Not Yet Timed In", count: manualStatusCounts["not-yet"] },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.id)}
+                    className={cn(
+                      "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+                      statusFilter === tab.id
+                        ? "bg-sidebar text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
+                    )}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold",
+                        statusFilter === tab.id
+                          ? "bg-white/20 text-white"
+                          : "bg-slate-200/80 dark:bg-muted/80 text-slate-700 dark:text-slate-300"
+                      )}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
               </div>
-              <div className="flex flex-wrap items-center gap-2 w-full">
-                <SelectFilter value={ministryFilter} onChange={setMinistryFilter}>
-                  <option value="all">All Ministries</option>
-                  {(ministries as any[]).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </SelectFilter>
-                <SelectFilter value={roleFilter} onChange={setRoleFilter} minWidth="110px">
-                  <option value="all">All Roles</option>
-                  {(roles as any[]).map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-                </SelectFilter>
-                <SelectFilter value={statusFilter} onChange={setStatusFilter} minWidth="120px">
-                  <option value="all">All Statuses</option>
-                  <option value="timed-in">Timed In</option>
-                  <option value="timed-out">Timed Out</option>
-                  <option value="not-yet">Not Yet Timed In</option>
-                </SelectFilter>
+
+              {/* Right Controls */}
+              <div className="flex items-center gap-2.5 self-start lg:self-auto flex-wrap sm:flex-nowrap">
+                <div className="relative w-full sm:w-60">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search ID, worker name..."
+                    value={assignSearch}
+                    onChange={e => setAssignSearch(e.target.value)}
+                    className="w-full pl-9 pr-8 h-10 rounded-2xl border border-slate-200/90 dark:border-border bg-slate-50/50 dark:bg-muted/30 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-2xs focus:outline-none focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all"
+                  />
+                  {assignSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <Select value={ministryFilter} onValueChange={setMinistryFilter}>
+                  <SelectTrigger className="h-10 w-[145px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                    <SelectValue placeholder="All Ministries" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                    <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
+                    {(ministries as any[]).map(m => (
+                      <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                    <SelectValue placeholder="All Roles" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                    <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Roles</SelectItem>
+                    {(roles as any[]).map(r => (
+                      <SelectItem key={r.id} value={r.name} className="text-xs font-medium cursor-pointer">{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-              {/* Mobile list view */}
-              <div className="md:hidden divide-y divide-border/30">
-                {filteredWorkers.length === 0 ? (
-                  <div className="py-14 text-center text-sm text-muted-foreground">No workers found.</div>
-                ) : filteredWorkers.map(w => {
-                  const ws = workerStatusMap[w.id];
-                  const currentStatus = ws?.status ?? "not-yet";
-                  const lastTime = ws?.lastTime ? format(ws.lastTime, "H:mm") : null;
-                  const lastType = ws?.lastType;
-                  const ministry = (ministries as any[]).find(m => m.id === w.majorMinistryId);
-                  return (
-                    <div key={w.id} className="p-4 space-y-3">
-                      <div className="flex items-center gap-2.5 mb-2">
-                        <WorkerInitials name={`${w.firstName} ${w.lastName}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-foreground truncate">{w.firstName} {w.lastName}</p>
-                          <p className="text-[11px] font-mono text-muted-foreground">{fmtId(w.workerId)}</p>
-                        </div>
-                        <AttendanceStatusBadge status={currentStatus} />
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <span className="font-semibold">{ministry?.name || "—"}</span>
-                        {lastTime && <span className="ml-2">Last: {lastType === "Clock In" ? "In" : "Out"} · {lastTime}</span>}
-                      </div>
-                      <div className="flex gap-2">
-                        {currentStatus !== "timed-in" ? (
-                          <button onClick={async () => {
-                            await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
-                            const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === w.id && sd >= todayStart; });
-                            if (!hasStub) { try { await createMealStub({ workerId: w.id, workerName: `${w.firstName} ${w.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch {} }
-                            toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
-                          }} className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-                            <LogIn className="h-3.5 w-3.5" /> Time In
-                          </button>
-                        ) : (
-                          <button onClick={async () => { await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" }); toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` }); }}
-                            className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg border border-border/60 text-foreground text-xs font-semibold hover:bg-muted/40 transition-colors">
-                            <LogOut className="h-3.5 w-3.5" /> Time Out
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop table view */}
-              <div className="overflow-x-auto hidden md:block">
+            {/* Table */}
+            <div className="border border-gray-200/80 dark:border-border rounded-2xl mt-5 overflow-hidden">
+              <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-sidebar">
                     <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
@@ -724,165 +689,22 @@ export default function AttendancePage() {
                     )}
                   </div>
 
-            {/* Search + filters + range */}
-            <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-4 flex flex-col gap-3">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input type="text" placeholder="Search ID, requestor, room..." value={recordsSearch} onChange={e => setRecordsSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 h-9 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-              </div>
-              <div className="flex flex-wrap items-center gap-2 w-full">
-                <SelectFilter value={recordsMinistryFilter} onChange={setRecordsMinistryFilter}>
-                  <option value="all">All Ministries</option>
-                  {(ministries as any[]).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </SelectFilter>
-                <SelectFilter value={recordsRoleFilter} onChange={setRecordsRoleFilter} minWidth="110px">
-                  <option value="all">All Roles</option>
-                  {(roles as any[]).map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-                </SelectFilter>
-                <SelectFilter value={recordsStatusFilter} onChange={setRecordsStatusFilter} minWidth="120px">
-                  <option value="all">All Statuses</option>
-                  <option value="present">Present</option>
-                  <option value="late">Late</option>
-                  <option value="absent">Absent</option>
-                  <option value="incomplete">Incomplete</option>
-                </SelectFilter>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
-                  <SlidersHorizontal className="h-3.5 w-3.5" /> Range:
-                </span>
-                {([
-                  { key: "today", label: "Today" },
-                  { key: "yesterday", label: "Yesterday" },
-                  { key: "this-week", label: "This week" },
-                  { key: "this-month", label: "This month" },
-                  { key: "all-time", label: "All time" },
-                ] as const).map(r => (
-                  <button key={r.key} onClick={() => setRecordsRange(r.key)}
-                    className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap",
-                      recordsRange === r.key
-                        ? "bg-foreground text-background border-foreground"
-                        : "bg-card border-border/60 text-foreground hover:bg-muted/40")}>
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden">
-              {/* Mobile list view */}
-              <div className="md:hidden divide-y divide-border/30">
-                {recordsLoading ? (
-                  <div className="py-14 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" /></div>
-                ) : filteredRecordRows.length === 0 ? (
-                  <div className="py-14 text-center text-sm text-muted-foreground">No records found.</div>
-                ) : filteredRecordRows.map((row, idx) => {
-                  const roleName = getRoleName(row.worker);
-                  const ministry = (ministries as any[]).find(m => m.id === row.worker.majorMinistryId);
-                  return (
-                    <div key={idx} className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                          <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-foreground truncate">{row.worker.firstName} {row.worker.lastName}</p>
-                            <p className="text-[11px] font-mono text-muted-foreground">{fmtId(row.worker.workerId)}</p>
-                          </div>
-                        </div>
-                        <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap",
-                          row.status === "present" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          row.status === "late" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                          row.status === "absent" ? "bg-red-50 text-red-700 border border-red-200" :
-                          "bg-blue-50 text-blue-700 border border-blue-200")}>
-                          <span className={cn("w-1.5 h-1.5 rounded-full",
-                            row.status === "present" ? "bg-emerald-500" :
-                            row.status === "late" ? "bg-amber-500" :
-                            row.status === "absent" ? "bg-red-500" :
-                            "bg-blue-500")} />
-                          {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span>{ministry?.name || "—"}</span>
-                          <span>{format(row.date, "MMM d, yyyy")}</span>
-                        </div>
-                        {row.timeIn && row.timeOut && (
-                          <div className="flex items-center justify-between">
-                            <span>In: {format(row.timeIn, "H:mm")}</span>
-                            <span>Out: {format(row.timeOut, "H:mm")}</span>
-                            <span>{formatHours(row.hours)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop table view */}
-              <div className="overflow-x-auto hidden md:block">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-muted/40 border-b border-border/40">
-                      {["Worker", "Worker ID", "Role", "Ministry", "Date", "Time In", "Time Out", "Hours", "Status", "Actions"].map(h => (
-                        <th key={h} className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{h}</th>
+                  {/* Ministry */}
+                  <Select value={recordsMinistryFilter} onValueChange={setRecordsMinistryFilter}>
+                    <SelectTrigger className="h-10 w-[140px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                      <SelectValue placeholder="All Ministries" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                      <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
+                      {(ministries as any[]).map(m => (
+                        <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recordsLoading ? (
-                      <tr><td colSpan={10} className="py-14 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" /></td></tr>
-                    ) : filteredRecordRows.length === 0 ? (
-                      <tr><td colSpan={10} className="py-14 text-center text-sm text-muted-foreground">No records found.</td></tr>
-                    ) : filteredRecordRows.map((row, idx) => {
-                      const roleName = getRoleName(row.worker);
-                      const ministry = (ministries as any[]).find(m => m.id === row.worker.majorMinistryId);
-                      return (
-                        <tr key={idx} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-2.5">
-                              <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
-                              <span className="text-sm font-semibold text-foreground">{row.worker.firstName} {row.worker.lastName}</span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground">{fmtId(row.worker.workerId)}</td>
-                          <td className="px-5 py-3.5"><RoleBadge role={roleName} /></td>
-                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{ministry?.name || "—"}</td>
-                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{format(row.date, "MMM d, yyyy")}</td>
-                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{row.timeIn ? format(row.timeIn, "H:mm") : "—"}</td>
-                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{row.timeOut ? format(row.timeOut, "H:mm") : "—"}</td>
-                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{formatHours(row.hours)}</td>
-                          <td className="px-5 py-3.5">
-                            <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold",
-                              row.status === "present" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                              row.status === "late" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                              row.status === "absent" ? "bg-red-50 text-red-700 border border-red-200" :
-                              "bg-blue-50 text-blue-700 border border-blue-200")}>
-                              {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+                    </SelectContent>
+                  </Select>
 
-      </div>
-    </AppLayout>
-  );
-}
+                  {/* Role */}
+                  <Select value={recordsRoleFilter} onValueChange={setRecordsRoleFilter}>
+                    <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                       <SelectValue placeholder="All Roles" />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">

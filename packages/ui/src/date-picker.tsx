@@ -33,6 +33,8 @@ export interface DatePickerProps {
   popoverClassName?: string;
   align?: "start" | "center" | "end";
   disabled?: boolean;
+  minDate?: Date | string;
+  disablePastDates?: boolean;
 }
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -45,6 +47,8 @@ export function DatePicker({
   popoverClassName,
   align = "end",
   disabled = false,
+  minDate,
+  disablePastDates = false,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -62,12 +66,38 @@ export function DatePicker({
     return selectedDate || new Date();
   });
 
+  // Calculate normalized minDateTime (start of day)
+  const minDateTime = React.useMemo(() => {
+    if (minDate) {
+      const d = typeof minDate === "string" && minDate.length === 10
+        ? parseISO(minDate)
+        : new Date(minDate);
+      if (isValid(d)) {
+        const copy = new Date(d);
+        copy.setHours(0, 0, 0, 0);
+        return copy;
+      }
+    }
+    if (disablePastDates) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return today;
+    }
+    return null;
+  }, [minDate, disablePastDates]);
+
   // When value changes from outside, sync viewMonth
   React.useEffect(() => {
     if (selectedDate) {
       setViewMonth(selectedDate);
     }
   }, [selectedDate]);
+
+  // Check if previous month navigation is allowed
+  const canGoPrevMonth = React.useMemo(() => {
+    if (!minDateTime) return true;
+    return startOfMonth(viewMonth) > startOfMonth(minDateTime);
+  }, [viewMonth, minDateTime]);
 
   // Compute days for the month grid
   const daysInGrid = React.useMemo(() => {
@@ -79,6 +109,11 @@ export function DatePicker({
   }, [viewMonth]);
 
   const handleSelectDay = (day: Date) => {
+    const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    if (minDateTime && dayStart < minDateTime) {
+      return;
+    }
     const formatted = format(day, "yyyy-MM-dd");
     onChange?.(formatted);
     setOpen(false);
@@ -93,6 +128,10 @@ export function DatePicker({
   const handleToday = (e: React.MouseEvent) => {
     e.stopPropagation();
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (minDateTime && today < minDateTime) {
+      return;
+    }
     setViewMonth(today);
     onChange?.(format(today, "yyyy-MM-dd"));
     setOpen(false);
@@ -143,8 +182,14 @@ export function DatePicker({
           <div className="flex items-center gap-0.5">
             <button
               type="button"
+              disabled={!canGoPrevMonth}
               onClick={() => setViewMonth((prev) => subMonths(prev, 1))}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#112e7e] dark:hover:text-white transition-colors"
+              className={cn(
+                "p-1.5 rounded-lg transition-colors",
+                canGoPrevMonth
+                  ? "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#112e7e] dark:hover:text-white cursor-pointer"
+                  : "opacity-25 cursor-not-allowed text-slate-300 dark:text-slate-600"
+              )}
               aria-label="Previous Month"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -152,7 +197,7 @@ export function DatePicker({
             <button
               type="button"
               onClick={() => setViewMonth((prev) => addMonths(prev, 1))}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#112e7e] dark:hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#112e7e] dark:hover:text-white transition-colors cursor-pointer"
               aria-label="Next Month"
             >
               <ChevronRight className="h-4 w-4" />
@@ -179,30 +224,43 @@ export function DatePicker({
             const isCurrentMonth = isSameMonth(day, viewMonth);
             const isDayToday = isToday(day);
 
+            const dayStart = new Date(day);
+            dayStart.setHours(0, 0, 0, 0);
+            const isDayDisabled = minDateTime ? dayStart < minDateTime : false;
+
             return (
               <button
                 key={idx}
                 type="button"
-                onClick={() => handleSelectDay(day)}
+                disabled={isDayDisabled}
+                aria-disabled={isDayDisabled}
+                onClick={() => {
+                  if (!isDayDisabled) {
+                    handleSelectDay(day);
+                  }
+                }}
                 className={cn(
-                  "h-8 w-8 mx-auto text-xs rounded-xl flex items-center justify-center font-medium transition-all cursor-pointer",
+                  "h-8 w-8 mx-auto text-xs rounded-xl flex items-center justify-center font-medium transition-all",
+                  // Disabled state
+                  isDayDisabled &&
+                    "opacity-25 cursor-not-allowed text-slate-400 dark:text-slate-600 line-through select-none pointer-events-none",
                   // Selected state (Royal Blue #112e7e)
-                  isSelected &&
-                    "bg-[#112e7e] text-white font-bold shadow-xs hover:bg-[#112e7e] hover:text-white",
+                  !isDayDisabled && isSelected &&
+                    "bg-[#112e7e] text-white font-bold shadow-xs hover:bg-[#112e7e] hover:text-white cursor-pointer",
                   // Not selected, but is today
-                  !isSelected &&
+                  !isDayDisabled && !isSelected &&
                     isDayToday &&
-                    "border border-[#112e7e] text-[#112e7e] dark:text-blue-400 font-bold hover:bg-blue-50/70 dark:hover:bg-slate-800",
+                    "border border-[#112e7e] text-[#112e7e] dark:text-blue-400 font-bold hover:bg-blue-50/70 dark:hover:bg-slate-800 cursor-pointer",
                   // Normal day inside current month
-                  !isSelected &&
+                  !isDayDisabled && !isSelected &&
                     !isDayToday &&
                     isCurrentMonth &&
-                    "text-slate-800 dark:text-slate-200 hover:bg-blue-50/60 dark:hover:bg-slate-800 hover:text-[#112e7e] dark:hover:text-white",
+                    "text-slate-800 dark:text-slate-200 hover:bg-blue-50/60 dark:hover:bg-slate-800 hover:text-[#112e7e] dark:hover:text-white cursor-pointer",
                   // Outside days
-                  !isSelected &&
+                  !isDayDisabled && !isSelected &&
                     !isDayToday &&
                     !isCurrentMonth &&
-                    "text-slate-300 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-500"
+                    "text-slate-300 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-500 cursor-pointer"
                 )}
               >
                 {format(day, "d")}
