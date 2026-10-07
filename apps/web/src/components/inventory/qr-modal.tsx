@@ -46,7 +46,8 @@ export function QRModal({ isOpen, onClose, item, items }: QRModalProps) {
       try {
         const generated: QRRecord[] = [];
         for (const it of allItems) {
-          const payload = it.inventoryCode || it.id;
+          const rawCode = it.inventoryCode || it.id;
+          const payload = rawCode.startsWith('ITEM-') ? rawCode : `ITEM-${rawCode}`;
           const url = await QRCode.toDataURL(payload, {
             errorCorrectionLevel: 'M',
             margin: 2,
@@ -57,7 +58,7 @@ export function QRModal({ isOpen, onClose, item, items }: QRModalProps) {
             generated.push({
               itemId: it.id,
               itemName: it.name,
-              inventoryCode: it.inventoryCode,
+              inventoryCode: payload,
               pngDataUrl: url,
             });
           }

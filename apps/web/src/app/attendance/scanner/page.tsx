@@ -199,12 +199,6 @@ export default function QRScannerPage() {
                 setTimeout(resetScanner, 2000);
                 return;
             }
-            if (worker.employmentType !== 'Full-Time' && worker.employmentType !== 'On-Call') {
-                playBeep('error');
-                toast({ variant: 'destructive', title: 'Attendance Restricted', description: 'Attendance clock-in is only available for Full-Time and On-Call personnel.' });
-                setTimeout(resetScanner, 3000);
-                return;
-            }
             if (worker.qrToken && tokenOrTs && worker.qrToken !== tokenOrTs) {
                 playBeep('error');
                 toast({ variant: 'destructive', title: 'Invalid or Expired QR', description: 'This QR code has been regenerated. Please use your latest QR code.' });

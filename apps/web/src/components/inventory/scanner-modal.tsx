@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera, X, RefreshCw, AlertTriangle } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button } from '@studio/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button, Input } from '@studio/ui';
 import { decodeQrFromImageData } from '@/lib/qr-decoder';
 
 interface ScannerModalProps {
@@ -13,6 +13,7 @@ interface ScannerModalProps {
 
 export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalProps) {
   const [error, setError] = useState('');
+  const [manualCode, setManualCode] = useState('');
   const [cameraActive, setCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -80,7 +81,6 @@ export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalPro
         try {
           await videoRef.current.play();
         } catch (playErr: any) {
-          // Ignore AbortError when video is interrupted by reload/unmount
           if (playErr.name !== 'AbortError') {
             throw playErr;
           }
@@ -89,7 +89,7 @@ export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalPro
       }
     } catch (err: any) {
       console.error('Camera error:', err);
-      setError('Camera access denied or unavailable. Please grant camera permission.');
+      setError('Camera access denied or unavailable. You can enter or scan code manually below.');
       setCameraActive(false);
     }
   };
@@ -97,11 +97,19 @@ export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalPro
   useEffect(() => {
     if (isOpen) {
       startCamera();
+      setManualCode('');
     }
     return () => {
       stopCamera();
     };
   }, [isOpen]);
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualCode.trim()) return;
+    stopCamera();
+    onScan(manualCode.trim());
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -109,16 +117,16 @@ export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalPro
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
-            Scan QR / Barcode
+            Quick Scan
           </DialogTitle>
           <DialogDescription>
-            Point your camera at an item's QR code or barcode to scan.
+            Point your camera at a QR code or barcode to scan, or type code below.
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-2 space-y-3">
           {error && (
-            <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-lg flex items-center gap-2">
+            <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-xl flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -140,10 +148,28 @@ export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalPro
               <div className="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" />
             </div>
           </div>
+
+          {/* Manual Input Fallback */}
+          <form onSubmit={handleManualSubmit} className="flex gap-2 pt-1">
+            <Input
+              placeholder="Or type/scan code here..."
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value)}
+              className="text-xs h-9 rounded-xl font-mono"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!manualCode.trim()}
+              className="h-9 px-3.5 rounded-xl text-xs font-semibold cursor-pointer"
+            >
+              Enter
+            </Button>
+          </form>
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={onClose}>
             Cancel
           </Button>
         </div>

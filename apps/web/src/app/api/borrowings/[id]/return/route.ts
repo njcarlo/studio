@@ -24,6 +24,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const returnedQty = Number(quantity) || 1;
+    const isDamagedItem = Boolean(damaged || returnCondition === 'Damaged');
+
+    // Process photo evidence: try Supabase storage first, fallback to direct base64 in PostgreSQL
+    const rawPhotos = Array.isArray(returnPhotos)
+      ? returnPhotos
+      : (typeof returnPhotos === 'string' && returnPhotos ? [returnPhotos] : []);
+
+    const processedPhotos: string[] = [];
+    for (const photo of rawPhotos) {
+      if (typeof photo === 'string' && photo.startsWith('data:image')) {
+        try {
+          const { uploadBase64ToSupabase } = await import('@/lib/upload-to-supabase');
+          const publicUrl = await uploadBase64ToSupabase(photo, 'Devotion-Photos', 'inventory-damage');
+          processedPhotos.push(publicUrl);
+        } catch (storageErr) {
+          console.warn('[return] Supabase storage upload unavailable, storing photo directly in database:', storageErr);
+          processedPhotos.push(photo);
+        }
+      } else if (typeof photo === 'string' && photo.trim()) {
+        processedPhotos.push(photo);
+      }
+    }
 
     const updatedBorrowing = await prisma.$transaction(async (tx) => {
       const b = await tx.inventoryBorrowing.update({
@@ -34,7 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           returnNotes: returnNotes || null,
           returnCondition: returnCondition || null,
           returnChecklist: returnChecklist ? (returnChecklist as any) : undefined,
-          returnPhotos: Array.isArray(returnPhotos) ? returnPhotos : [],
+          returnPhotos: processedPhotos,
         },
         include: {
           item: { select: { id: true, name: true, inventoryCode: true, imageUrl: true } },
@@ -49,7 +71,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         where: { id: borrowing.itemId },
         data: {
           quantity: newStock,
-          status: damaged ? 'Damaged' : (newStock > 0 && currentItem?.status === 'Borrowed' ? 'Good Condition' : undefined),
+          status: isDamagedItem ? 'Damaged' : (newStock > 0 && currentItem?.status === 'Borrowed' ? 'Good Condition' : undefined),
+          statusDetails: isDamagedItem
+            ? `Damaged upon return: ${returnNotes || 'Flagged for maintenance inspection'}`
+            : undefined,
         },
       });
 
@@ -62,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           type: 'Return',
           quantity: returnedQty,
           balance: newStock,
-          notes: `Returned by ${borrowerName}. Condition: ${returnCondition || 'N/A'}${damaged ? ' — DAMAGED' : ''}`,
+          notes: `Returned by ${borrowerName}. Condition: ${returnCondition || 'N/A'}${isDamagedItem ? ' — DAMAGED (Requires Maintenance Inspection)' : ''}${processedPhotos.length > 0 ? ` [${processedPhotos.length} Damage Photo(s) Saved in Database]` : ''}`,
         },
       });
 

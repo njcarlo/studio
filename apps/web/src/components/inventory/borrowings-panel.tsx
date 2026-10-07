@@ -29,6 +29,7 @@ import {
   Tag,
   AlertCircle,
   MoreHorizontal,
+  Camera,
 } from 'lucide-react';
 import {
   Table,
@@ -68,7 +69,7 @@ import { useWorkers } from '@/hooks/use-workers';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel } from '@/lib/export-excel';
 import { ExportConfirmDialog } from '@/components/common/export-confirm-dialog';
-import { QRModal } from './qr-modal';
+import { BorrowingQRModal } from './borrowing-qr-modal';
 import { cn } from '@/lib/utils';
 import Papa from 'papaparse';
 
@@ -97,9 +98,74 @@ export function BorrowingsPanel() {
   const [selectedBorrowing, setSelectedBorrowing] = useState<InventoryBorrowing | null>(null);
   const [returnCondition, setReturnCondition] = useState('Good Condition');
   const [returnNotes, setReturnNotes] = useState('');
-  const [isDamaged, setIsDamaged] = useState(false);
   const [returnChecklist, setReturnChecklist] = useState<Record<string, boolean>>({});
   const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [returnDamagePhoto, setReturnDamagePhoto] = useState<string | null>(null);
+  const [isUploadingReturnPhoto, setIsUploadingReturnPhoto] = useState(false);
+  const returnPhotoInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleReturnPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid File',
+        description: 'Please select a valid image file (PNG, JPG, WEBP).',
+      });
+      return;
+    }
+
+    setIsUploadingReturnPhoto(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1200;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.82);
+            setReturnDamagePhoto(compressed);
+          } else {
+            setReturnDamagePhoto(reader.result as string);
+          }
+          setIsUploadingReturnPhoto(false);
+        };
+        img.onerror = () => {
+          setReturnDamagePhoto(reader.result as string);
+          setIsUploadingReturnPhoto(false);
+        };
+        img.src = reader.result;
+      }
+    };
+    reader.onerror = () => {
+      toast({
+        variant: 'destructive',
+        title: 'Read Failed',
+        description: 'Failed to read image file.',
+      });
+      setIsUploadingReturnPhoto(false);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   // Details Modal State
   const [detailsBorrowing, setDetailsBorrowing] = useState<InventoryBorrowing | null>(null);
@@ -107,8 +173,8 @@ export function BorrowingsPanel() {
   // Checklist Templates
   const [checklistTemplates, setChecklistTemplates] = useState<any[]>([]);
 
-  // QR Modal
-  const [qrItem, setQrItem] = useState<{ id: string; name: string; inventoryCode?: string } | null>(null);
+  // Borrowing Transaction QR Modal
+  const [qrBorrowing, setQrBorrowing] = useState<any | null>(null);
 
   const loadData = useCallback(() => {
     fetchBorrowings({
@@ -121,6 +187,12 @@ export function BorrowingsPanel() {
   useEffect(() => {
     loadData();
     fetchItems({ take: 200 });
+
+    const handleRefreshEvent = () => {
+      loadData();
+    };
+    window.addEventListener('inventory-refresh', handleRefreshEvent);
+    return () => window.removeEventListener('inventory-refresh', handleRefreshEvent);
   }, [loadData, fetchItems]);
 
   useEffect(() => {
@@ -227,6 +299,16 @@ export function BorrowingsPanel() {
     e.preventDefault();
     if (!selectedBorrowing) return;
 
+    const isDamagedItem = returnCondition === 'Damaged';
+    if (isDamagedItem && !returnDamagePhoto) {
+      toast({
+        variant: 'destructive',
+        title: 'Photo Evidence Required',
+        description: 'Please upload or capture a damage evidence photo before submitting a damaged return.',
+      });
+      return;
+    }
+
     setSubmittingReturn(true);
     try {
       const res = await fetch(`/api/borrowings/${selectedBorrowing.id}/return`, {
@@ -236,7 +318,8 @@ export function BorrowingsPanel() {
           returnNotes,
           returnCondition,
           returnChecklist,
-          damaged: isDamaged,
+          damaged: isDamagedItem,
+          returnPhotos: returnDamagePhoto ? [returnDamagePhoto] : [],
         }),
       });
 
@@ -246,14 +329,16 @@ export function BorrowingsPanel() {
       }
 
       toast({
-        title: 'Return Completed',
-        description: `${selectedBorrowing.item?.name || 'Item'} returned successfully.`,
+        title: isDamagedItem ? '⚠️ Return Completed (Flagged Damaged)' : 'Return Completed',
+        description: isDamagedItem
+          ? `${selectedBorrowing.item?.name || 'Item'} returned with damage reported. Photo evidence recorded.`
+          : `${selectedBorrowing.item?.name || 'Item'} returned successfully.`,
       });
 
       setIsReturnOpen(false);
       setSelectedBorrowing(null);
       setReturnNotes('');
-      setIsDamaged(false);
+      setReturnDamagePhoto(null);
       setReturnChecklist({});
       loadData();
     } catch (err: any) {
@@ -271,7 +356,7 @@ export function BorrowingsPanel() {
     setSelectedBorrowing(b);
     setReturnCondition('Good Condition');
     setReturnNotes('');
-    setIsDamaged(false);
+    setReturnDamagePhoto(null);
     setReturnChecklist({});
     setIsReturnOpen(true);
   };
@@ -596,6 +681,17 @@ export function BorrowingsPanel() {
                         </p>
                       )}
 
+                      {b.returnPhotos && b.returnPhotos.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setDetailsBorrowing(b)}
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer w-fit"
+                        >
+                          <Camera className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <span>{b.returnPhotos.length} Damage Photo Evidence in DB (View)</span>
+                        </button>
+                      )}
+
                       {/* Actions */}
                       <div className="flex items-center justify-end gap-1.5 pt-1">
                         <Button
@@ -612,16 +708,10 @@ export function BorrowingsPanel() {
                           size="sm"
                           variant="outline"
                           className="h-7 w-7 p-0 rounded-lg border-border/70 cursor-pointer"
-                          title="Print item QR"
-                          onClick={() =>
-                            setQrItem({
-                              id: b.itemId,
-                              name: b.item?.name || 'Item',
-                              inventoryCode: b.item?.inventoryCode,
-                            })
-                          }
+                          title="Print Borrowing Transaction QR"
+                          onClick={() => setQrBorrowing(b)}
                         >
-                          <QrCode className="h-3.5 w-3.5 text-muted-foreground" />
+                          <QrCode className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                         </Button>
 
                         {b.status === 'BORROWED' && (
@@ -817,6 +907,16 @@ export function BorrowingsPanel() {
                                 ? b.returnNotes || 'Returned in good order'
                                 : b.checkoutNotes || 'Standard checkout'}
                             </div>
+                            {b.returnPhotos && b.returnPhotos.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setDetailsBorrowing(b)}
+                                className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                              >
+                                <Camera className="h-3 w-3 shrink-0" />
+                                <span>{b.returnPhotos.length} Photo{b.returnPhotos.length > 1 ? 's' : ''} Saved</span>
+                              </button>
+                            )}
                           </TableCell>
 
                           {/* 7. Actions */}
@@ -840,17 +940,11 @@ export function BorrowingsPanel() {
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem
-                                  onClick={() =>
-                                    setQrItem({
-                                      id: b.itemId,
-                                      name: b.item?.name || 'Item',
-                                      inventoryCode: b.item?.inventoryCode,
-                                    })
-                                  }
+                                  onClick={() => setQrBorrowing(b)}
                                   className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
                                 >
-                                  <QrCode className="h-3.5 w-3.5 text-muted-foreground" />
-                                  Print QR Code
+                                  <QrCode className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                                  Print Borrowing QR
                                 </DropdownMenuItem>
 
                                 {b.status === 'BORROWED' && (
@@ -1155,6 +1249,132 @@ export function BorrowingsPanel() {
                   </select>
                 </div>
 
+                {/* Photo Upload Section: Damaged (Required), Minor Wear (Optional), Good Condition (Hidden) */}
+                {(returnCondition === 'Damaged' || returnCondition === 'Minor Wear') && (
+                  <div
+                    className={cn(
+                      "space-y-2 p-3 rounded-2xl border-2 border-dashed animate-in fade-in zoom-in-95 duration-200",
+                      returnCondition === 'Damaged'
+                        ? "bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/40"
+                        : "bg-muted/40 dark:bg-muted/20 border-border/80"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Camera
+                          className={cn(
+                            "h-4 w-4",
+                            returnCondition === 'Damaged'
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-muted-foreground"
+                          )}
+                        />
+                        <label
+                          className={cn(
+                            "text-xs font-bold",
+                            returnCondition === 'Damaged'
+                              ? "text-amber-900 dark:text-amber-200"
+                              : "text-foreground"
+                          )}
+                        >
+                          {returnCondition === 'Damaged'
+                            ? 'Damage Evidence Photo'
+                            : 'Condition Photo (Minor Wear)'}
+                        </label>
+                      </div>
+                      {returnCondition === 'Damaged' ? (
+                        <Badge className="bg-destructive hover:bg-destructive text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 text-destructive-foreground">
+                          Required *
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 text-muted-foreground border-border/70"
+                        >
+                          Optional
+                        </Badge>
+                      )}
+                    </div>
+
+                    <p
+                      className={cn(
+                        "text-[11px] leading-snug",
+                        returnCondition === 'Damaged'
+                          ? "text-amber-900/80 dark:text-amber-200/80"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {returnCondition === 'Damaged'
+                        ? 'Kailangang kunan o i-upload ang litrato ng sira upang ma-verify bago tanggapin ang pagbalik.'
+                        : 'Maaaring mag-upload ng litrato ng minor wear o gasgas (opsyonal para sa inspection records).'}
+                    </p>
+
+                    <input
+                      ref={returnPhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleReturnPhotoSelect}
+                      disabled={submittingReturn || isUploadingReturnPhoto}
+                    />
+
+                    {returnDamagePhoto ? (
+                      <div className="relative rounded-xl overflow-hidden border border-border/80 bg-background/90 shadow-xs">
+                        <div className="relative aspect-video w-full max-h-48 bg-black/5 dark:bg-white/5 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={returnDamagePhoto}
+                            alt="Return condition evidence"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="p-2 bg-background/95 border-t border-border/60 flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Photo Attached
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => returnPhotoInputRef.current?.click()}
+                              disabled={submittingReturn}
+                              className="h-7 px-2 text-[11px] rounded-lg cursor-pointer"
+                            >
+                              Change
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setReturnDamagePhoto(null)}
+                              disabled={submittingReturn}
+                              className="h-7 px-2 text-[11px] text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
+                            >
+                              <X className="h-3.5 w-3.5 mr-1" /> Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => !isUploadingReturnPhoto && returnPhotoInputRef.current?.click()}
+                        className="cursor-pointer flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-border/80 bg-background/60 hover:bg-muted/30 transition-colors text-center group"
+                      >
+                        <div className="h-10 w-10 rounded-full bg-muted text-muted-foreground flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                          <Camera className="h-5 w-5" />
+                        </div>
+                        <p className="text-xs font-bold text-foreground">
+                          {isUploadingReturnPhoto ? 'Processing photo...' : 'Take Photo or Upload Image'}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Tap to open camera or browse files (JPG, PNG)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Return Checklist */}
                 {returnTemplate?.items && returnTemplate.items.length > 0 && (
                   <div className="space-y-2 p-3 bg-muted/30 border border-border/70 rounded-xl">
@@ -1189,38 +1409,34 @@ export function BorrowingsPanel() {
                   />
                 </div>
 
-                {/* Damaged flag */}
-                <div className="p-3 rounded-xl bg-destructive/5 border border-destructive/20">
-                  <label className="flex items-start gap-2.5 cursor-pointer text-xs">
-                    <Checkbox
-                      checked={isDamaged}
-                      onCheckedChange={(c) => setIsDamaged(Boolean(c))}
-                      className="mt-0.5"
-                    />
-                    <div>
-                      <span className="text-destructive font-bold block">Flag Equipment as Damaged</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        Updates item status to "Damaged" and flags for maintenance.
-                      </span>
-                    </div>
-                  </label>
-                </div>
-
                 <DialogFooter className="pt-3 border-t border-border/60 gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setIsReturnOpen(false)}
-                    className="rounded-xl h-9 text-xs font-semibold"
+                    className="rounded-xl h-9 text-xs font-semibold cursor-pointer"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    disabled={submittingReturn}
-                    className="rounded-xl h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                    disabled={submittingReturn || (returnCondition === 'Damaged' && !returnDamagePhoto)}
+                    className={cn(
+                      "rounded-xl h-9 text-xs font-bold shadow-xs cursor-pointer",
+                      returnCondition === 'Damaged'
+                        ? (!returnDamagePhoto
+                            ? "bg-amber-600/60 hover:bg-amber-600/60 text-white cursor-not-allowed opacity-80"
+                            : "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20")
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    )}
                   >
-                    {submittingReturn ? 'Processing Return...' : 'Complete Return'}
+                    {submittingReturn
+                      ? 'Processing Return...'
+                      : returnCondition === 'Damaged'
+                      ? (!returnDamagePhoto
+                          ? 'Photo Required to Complete Return'
+                          : 'Complete Return & Flag as Damaged')
+                      : 'Complete Return'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -1346,6 +1562,34 @@ export function BorrowingsPanel() {
                         )}
                       </>
                     )}
+
+                    {detailsBorrowing.returnPhotos && detailsBorrowing.returnPhotos.length > 0 && (
+                      <div className="pt-2 border-t border-border/50">
+                        <span className="text-[11px] font-bold text-destructive flex items-center gap-1 mb-1.5">
+                          <AlertTriangle className="h-3.5 w-3.5" /> Damage Photo Evidence:
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          {detailsBorrowing.returnPhotos.map((photo: string, idx: number) => (
+                            <a
+                              key={idx}
+                              href={photo}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="relative aspect-video rounded-lg overflow-hidden border border-border/70 bg-black/5 hover:opacity-90 transition-opacity block group"
+                            >
+                              <img
+                                src={photo}
+                                alt={`Damage evidence ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-semibold transition-opacity">
+                                View Full
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1364,12 +1608,12 @@ export function BorrowingsPanel() {
           </DialogContent>
         </Dialog>
 
-        {/* ── QR CODE MODAL ── */}
-        {qrItem && (
-          <QRModal
-            isOpen={Boolean(qrItem)}
-            onClose={() => setQrItem(null)}
-            item={qrItem}
+        {/* ── BORROWING TRANSACTION QR MODAL ── */}
+        {qrBorrowing && (
+          <BorrowingQRModal
+            isOpen={Boolean(qrBorrowing)}
+            onClose={() => setQrBorrowing(null)}
+            borrowing={qrBorrowing}
           />
         )}
 

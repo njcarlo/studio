@@ -72,6 +72,7 @@ import { ExportConfirmDialog } from '@/components/common/export-confirm-dialog';
 import { QRModal } from './qr-modal';
 import { ItemModal } from './item-modal';
 import { StockScanModal } from './stock-scan-modal';
+import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 
 // Category badge color mapping for instant visual recognition
@@ -128,6 +129,7 @@ export function InventoryTable({
   } = useInventory();
 
   const { toast } = useToast();
+  const router = useRouter();
 
   // Filters & Pagination
   const [search, setSearch] = useState('');
@@ -1451,6 +1453,8 @@ export function InventoryTable({
         {isFastScanOpen && (
           <StockScanModal
             isOpen={isFastScanOpen}
+            activeTab="items"
+            onSwitchTab={(tab) => router.push(`/inventory?tab=${tab}`)}
             onClose={() => setIsFastScanOpen(false)}
             onStockUpdated={loadData}
           />

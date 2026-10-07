@@ -199,26 +199,14 @@ function InventoryPageContent() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
-              variant="outline"
               size="sm"
               onClick={() => setIsCameraScannerOpen(true)}
-              className="gap-2 rounded-xl border-border/80 shadow-2xs text-xs font-semibold hover:border-sidebar/40 hover:text-sidebar flex-1 sm:flex-initial cursor-pointer h-9 px-3.5"
-            >
-              <ScanBarcode className="h-4 w-4 text-sidebar dark:text-blue-400" />
-              <span>Quick Scan (Camera)</span>
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setScannedCode('');
-                setIsScanModalOpen(true);
-              }}
-              className="gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs text-xs font-semibold flex-1 sm:flex-initial cursor-pointer h-9 px-3.5"
+              className="gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs text-xs font-semibold flex-1 sm:flex-initial cursor-pointer h-9 px-4"
             >
               <ScanBarcode className="h-4 w-4 text-white" />
-              <span>Scan Barcode (Handheld)</span>
+              <span>Quick Scan</span>
             </Button>
           </div>
         </div>
@@ -581,11 +569,16 @@ function InventoryPageContent() {
           <StockScanModal
             isOpen={isScanModalOpen}
             initialCode={scannedCode}
+            activeTab={activeTab}
+            onSwitchTab={handleTabChange}
             onClose={() => {
               setIsScanModalOpen(false);
               setScannedCode('');
             }}
-            onStockUpdated={fetchStats}
+            onStockUpdated={() => {
+              fetchStats();
+              window.dispatchEvent(new CustomEvent('inventory-refresh'));
+            }}
           />
         )}
 
