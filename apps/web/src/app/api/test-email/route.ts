@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+ï»¿import { NextResponse } from 'next/server';
 import { EmailService } from '@/services/email-service';
 
 export async function GET(request: Request) {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
             subject: 'COG App - Test Email Verification',
             html: `
                 <div style="font-family: sans-serif; padding: 24px; color: #1e293b; max-width: 500px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                    <h2 style="color: #2563eb; margin-top: 0;">Church of God Dasmariñas</h2>
+                    <h2 style="color: #2563eb; margin-top: 0;">Church of God Dasmarinas</h2>
                     <p style="font-size: 15px; line-height: 1.5;">
                         Hello! If you are reading this email, the <strong>Gmail SMTP email service is 100% active and working</strong>!
                     </p>
