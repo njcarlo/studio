@@ -6,6 +6,8 @@ import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { NotificationService } from '@/services/notification-service';
 import { validateLoginIdentifier } from '@/actions/legacy-auth';
 
+const DEFAULT_PRODUCTION_URL = 'https://cogapp.vercel.app';
+
 /**
  * Resolves the absolute application base URL.
  * Handles production Vercel domains, request headers, and fallback origins.
@@ -41,12 +43,17 @@ async function resolveAppUrl(providedOrigin?: string): Promise<string> {
     return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
   }
 
+  // If in production or on Vercel, always default to the live production URL
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+    return DEFAULT_PRODUCTION_URL;
+  }
+
   // Fallback to provided origin (e.g. localhost during local development)
   if (providedOrigin) {
     return providedOrigin.replace(/\/$/, '');
   }
 
-  return (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002').replace(/\/$/, '');
+  return DEFAULT_PRODUCTION_URL;
 }
 
 /**

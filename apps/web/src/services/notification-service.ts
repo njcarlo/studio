@@ -10,7 +10,7 @@ import fs from 'fs';
  * Orchestrates notifications for various workflows.
  */
 export class NotificationService {
-    private static APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    private static APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://cogapp.vercel.app';
 
     /**
      * Notifies relevant approvers about a new approval request.

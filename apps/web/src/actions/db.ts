@@ -3125,8 +3125,7 @@ export async function adminSendPasswordResetEmail(workerId: string, appUrl: stri
         (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null) ||
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
         (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost') ? process.env.NEXT_PUBLIC_APP_URL : null) ||
-        appUrl ||
-        'http://localhost:9002'
+        'https://cogapp.vercel.app'
     ).replace(/\/$/, '');
 
     // Generate the recovery link
