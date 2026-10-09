@@ -1,9 +1,53 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { prisma } from '@studio/database/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { NotificationService } from '@/services/notification-service';
 import { validateLoginIdentifier } from '@/actions/legacy-auth';
+
+/**
+ * Resolves the absolute application base URL.
+ * Handles production Vercel domains, request headers, and fallback origins.
+ */
+async function resolveAppUrl(providedOrigin?: string): Promise<string> {
+  // If providedOrigin is already an external/production URL (not localhost), prioritize it
+  if (providedOrigin && !providedOrigin.includes('localhost') && !providedOrigin.includes('127.0.0.1')) {
+    return providedOrigin.replace(/\/$/, '');
+  }
+
+  // Check request headers (e.g. from Vercel deployment)
+  try {
+    const headerList = await headers();
+    const host = headerList.get('x-forwarded-host') || headerList.get('host');
+    const proto = headerList.get('x-forwarded-proto') || 'https';
+    if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+      return `${proto}://${host}`.replace(/\/$/, '');
+    }
+  } catch {
+    // Ignore header resolution errors
+  }
+
+  // Check VERCEL_PROJECT_PRODUCTION_URL or VERCEL_URL
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, '');
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '');
+  }
+
+  // Check NEXT_PUBLIC_APP_URL
+  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  }
+
+  // Fallback to provided origin (e.g. localhost during local development)
+  if (providedOrigin) {
+    return providedOrigin.replace(/\/$/, '');
+  }
+
+  return (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002').replace(/\/$/, '');
+}
 
 /**
  * Requests a password reset link and sends it directly via Church of God Gmail SMTP
@@ -46,7 +90,7 @@ export async function requestPasswordReset(identifier: string, origin?: string) 
 
     // 3. Generate secure recovery link using Supabase Admin
     const supabaseAdmin = getSupabaseAdminClient();
-    const appUrl = origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    const appUrl = await resolveAppUrl(origin);
     const redirectTo = `${appUrl}/auth/update-password`;
 
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -57,7 +101,7 @@ export async function requestPasswordReset(identifier: string, origin?: string) 
       },
     });
 
-    if (linkError || !linkData?.properties?.action_link) {
+    if (linkError || !linkData?.properties) {
       console.error('generateLink error:', linkError);
       return {
         success: false,
@@ -65,7 +109,10 @@ export async function requestPasswordReset(identifier: string, origin?: string) 
       };
     }
 
-    const resetLink = linkData.properties.action_link;
+    // Prefer direct link with token_hash so it bypasses Supabase redirect stripping (which resets to localhost:3000)
+    const resetLink = linkData.properties.hashed_token
+      ? `${appUrl}/auth/update-password?token_hash=${linkData.properties.hashed_token}&type=recovery`
+      : linkData.properties.action_link;
 
     // 4. Send via Church of God Gmail SMTP
     await NotificationService.sendPasswordResetEmail(email, resetLink, workerName);

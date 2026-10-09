@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@studio/database";
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
-import { Lock } from "lucide-react";
+import { Lock, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { LandingNav } from "@/components/landing/landing-nav";
 
 export default function UpdatePasswordPage() {
@@ -15,24 +16,91 @@ export default function UpdatePasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(true);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Manually capture the recovery access_token from the URL hash
-    // just in case the browser client does not automatically hydrate it.
-    if (typeof window !== "undefined" && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
 
-      if (accessToken && refreshToken) {
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        }).catch(err => console.error("Session Set Error:", err));
+    const initRecovery = async () => {
+      if (typeof window === "undefined") return;
+
+      try {
+        // 1. Check URL Search Parameters (direct recovery link with token_hash)
+        const searchParams = new URLSearchParams(window.location.search);
+        const tokenHash = searchParams.get("token_hash") || searchParams.get("token");
+        const type = searchParams.get("type") || "recovery";
+        const queryError = searchParams.get("error_description") || searchParams.get("error");
+
+        if (queryError) {
+          setErrorMessage(decodeURIComponent(queryError.replace(/\+/g, " ")));
+          setVerifying(false);
+          return;
+        }
+
+        if (tokenHash) {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: (type as any) || "recovery",
+          });
+
+          if (error) {
+            console.error("verifyOtp error:", error);
+            setErrorMessage(error.message || "This password reset link is invalid or has expired.");
+          } else if (data?.session || data?.user) {
+            setSessionReady(true);
+          }
+          setVerifying(false);
+          return;
+        }
+
+        // 2. Check URL Hash parameters (redirected from Supabase verify action_link)
+        if (window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const hashError = hashParams.get("error_description") || hashParams.get("error");
+          if (hashError) {
+            setErrorMessage(decodeURIComponent(hashError.replace(/\+/g, " ")));
+            setVerifying(false);
+            return;
+          }
+
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+
+          if (accessToken && refreshToken) {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (error) {
+              setErrorMessage(error.message || "Failed to establish security session.");
+            } else if (data?.session) {
+              setSessionReady(true);
+            }
+            setVerifying(false);
+            return;
+          }
+        }
+
+        // 3. Fallback: check if active user session already exists
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session) {
+          setSessionReady(true);
+        } else {
+          setErrorMessage("No active password reset session found. Please request a new reset link.");
+        }
+      } catch (err: any) {
+        console.error("Recovery init error:", err);
+        setErrorMessage(err?.message || "Failed to verify password reset link.");
+      } finally {
+        setVerifying(false);
       }
-    }
+    };
+
+    initRecovery();
   }, []);
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -42,14 +110,25 @@ export default function UpdatePasswordPage() {
       return;
     }
 
+    if (password.length < 6) {
+      toast({ variant: "destructive", title: "Error", description: "Password must be at least 6 characters." });
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ password });
 
       if (error) throw error;
 
-      toast({ title: "Success", description: "Your password has been successfully updated." });
-      router.push("/dashboard");
+      toast({ 
+        title: "Success", 
+        description: "Your password has been successfully updated! You can now log in." 
+      });
+
+      // Sign out to ensure clean state and prompt login with new credentials
+      await supabase.auth.signOut().catch(() => {});
+      router.push("/login?reset=success");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -96,37 +175,57 @@ export default function UpdatePasswordPage() {
         </CardHeader>
 
         <CardContent className="px-8 pb-7">
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="space-y-2 text-left">
-              <Label htmlFor="password" className="text-white">New Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter new password"
-                minLength={6}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30"
-              />
+          {verifying ? (
+            <div className="py-8 flex flex-col items-center justify-center gap-3 text-white">
+              <Loader2 className="h-8 w-8 animate-spin text-white/80" />
+              <p className="text-sm text-white/80">Verifying security link...</p>
             </div>
-            <div className="space-y-2 text-left">
-              <Label htmlFor="confirmPassword" className="text-white">Confirm New Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
-                minLength={6}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30"
-              />
+          ) : errorMessage && !sessionReady ? (
+            <div className="space-y-4 text-center">
+              <div className="p-4 rounded-lg bg-red-500/20 border border-red-500/30 text-red-200 text-sm flex items-start gap-3 text-left">
+                <AlertCircle className="h-5 w-5 shrink-0 text-red-400 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-white">Link Invalid or Expired</p>
+                  <p className="text-xs text-red-200 mt-1">{errorMessage}</p>
+                </div>
+              </div>
+              <Button asChild className="w-full bg-white text-black hover:bg-gray-200 font-semibold h-11">
+                <Link href="/login">Back to Login</Link>
+              </Button>
             </div>
-            <Button type="submit" className="w-full bg-white text-black hover:bg-gray-200 mt-2 font-semibold h-11" disabled={loading}>
-              {loading ? "Updating..." : "Update Password"}
-            </Button>
-          </form>
+          ) : (
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div className="space-y-2 text-left">
+                <Label htmlFor="password" className="text-white">New Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter new password (min. 6 chars)"
+                  minLength={6}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30"
+                />
+              </div>
+              <div className="space-y-2 text-left">
+                <Label htmlFor="confirmPassword" className="text-white">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  minLength={6}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30"
+                />
+              </div>
+              <Button type="submit" className="w-full bg-white text-black hover:bg-gray-200 mt-2 font-semibold h-11" disabled={loading}>
+                {loading ? "Updating..." : "Update Password"}
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

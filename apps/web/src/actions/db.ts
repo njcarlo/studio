@@ -3120,37 +3120,34 @@ export async function adminSendPasswordResetEmail(workerId: string, appUrl: stri
         throw new Error("Worker does not have an email address set");
     }
 
+    const cleanAppUrl = (
+        (appUrl && !appUrl.includes('localhost') ? appUrl : null) ||
+        (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null) ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+        (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost') ? process.env.NEXT_PUBLIC_APP_URL : null) ||
+        appUrl ||
+        'http://localhost:9002'
+    ).replace(/\/$/, '');
+
     // Generate the recovery link
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
         email: worker.email,
         options: {
-            redirectTo: `${appUrl}/auth/update-password`
+            redirectTo: `${cleanAppUrl}/auth/update-password`
         }
     });
 
-    if (linkError) {
-        throw new Error(`Failed to generate reset link: ${linkError.message}`);
+    if (linkError || !linkData?.properties) {
+        throw new Error(`Failed to generate reset link: ${linkError?.message || 'Unknown error'}`);
     }
 
-    // Send email using Resend
-    const link = linkData.properties.action_link;
-    await EmailService.sendEmail({
-        to: worker.email,
-        subject: 'Password Reset Request',
-        html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-                <h2 style="font-size: 24px; margin-bottom: 24px;">Reset your password</h2>
-                <p>Hello ${worker.firstName},</p>
-                <p>We received a request to reset your password. You can reset it by clicking the button below:</p>
-                <div style="margin: 32px 0;">
-                    <a href="${link}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block;">Reset Password</a>
-                </div>
-                <p style="color: #666; font-size: 14px;">If you didn't request a password reset, you can safely ignore this email.</p>
-            </div>
-        `,
-        text: `You have requested to reset your password. Reset it here: ${link}`
-    });
+    const resetLink = linkData.properties.hashed_token
+        ? `${cleanAppUrl}/auth/update-password?token_hash=${linkData.properties.hashed_token}&type=recovery`
+        : linkData.properties.action_link;
+
+    const workerName = `${worker.firstName} ${worker.lastName}`.trim();
+    await NotificationService.sendPasswordResetEmail(worker.email, resetLink, workerName);
 
     return true;
 }

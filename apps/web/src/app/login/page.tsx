@@ -45,6 +45,20 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("reset") === "success") {
+        toast({
+          title: "Password Updated",
+          description: "Your password was changed successfully! Please log in with your Worker ID and new password.",
+        });
+        // Clean up URL parameter cleanly
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [toast]);
+
+  useEffect(() => {
     if (!isUserLoading && user) {
       router.push("/dashboard");
     }
