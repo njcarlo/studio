@@ -389,12 +389,23 @@ export async function completeFirstLoginPasswordChange(
 export async function getWorkerEmail(workerId: string): Promise<{ success: boolean; email?: string; error?: string; isDeactivated?: boolean }> {
   try {
     const cleanId = workerId.trim();
+    if (!cleanId) {
+      return { success: false, error: "Please enter your Worker ID." };
+    }
+
+    const stripped = cleanId.replace(/^COG-?/i, '').trim();
+    const noLeadingZeros = stripped.replace(/^0+/, '');
+    const padded6 = stripped.padStart(6, '0');
+
     const worker = await prisma.worker.findFirst({
       where: {
         OR: [
           { workerId: cleanId },
-          { workerId: cleanId.replace(/^COG-/i, '') },
-          { workerId: `COG-${cleanId}` },
+          { workerId: stripped },
+          { workerId: `COG-${stripped}` },
+          { workerId: `COG-${padded6}` },
+          ...(noLeadingZeros ? [{ workerId: noLeadingZeros }] : []),
+          { workerId: padded6 },
         ]
       },
       select: { email: true, status: true },
