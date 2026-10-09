@@ -150,7 +150,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 shadow-[inset_0_0_120px_60px_rgba(0,0,0,0.5)]" />
       </div>
 
-      <Card className="relative z-10 mx-auto max-w-[430px] w-full shadow-[0_8px_32px_0_rgba(0,0,0,0.9),0_0_80px_rgba(0,0,0,0.9)] backdrop-blur-xl bg-black/15 border border-black/20 dark:bg-black/10 dark:border-black/10 animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out">
+      <Card className="relative z-10 mx-auto max-w-[470px] w-full shadow-[0_8px_32px_0_rgba(0,0,0,0.9),0_0_80px_rgba(0, 0, 0, 0.9)] backdrop-blur-xl bg-black/15 border border-black/20 dark:bg-black/10 dark:border-black/10 animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out">
         <CardHeader className="space-y-2.5 text-center pt-7 pb-3 px-8">
           <div className="flex justify-center items-center">
             <Image
@@ -158,7 +158,7 @@ export default function LoginPage() {
               alt="COG Logo"
               width={78}
               height={78}
-              className="rounded-sm drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)]"
+              className="rounded-sm drop-shadow-[0_4px_8px_rgba(0, 0, 0, 0.9)]"
             />
           </div>
           <CardTitle className="font-headline text-2xl text-white">COG App</CardTitle>
@@ -167,7 +167,16 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-7">
-          <div className="grid gap-4">
+          <div className="grid gap-3.5">
+            {/* Worker ID Login Button */}
+            <Button
+              type="button"
+              variant="default"
+              className="w-full h-10 font-semibold cursor-default"
+            >
+              Worker ID Login
+            </Button>
+
             {/* Worker ID */}
             <div className="grid gap-2">
               <Label htmlFor="identifier" className="text-white text-sm font-medium">
@@ -176,7 +185,7 @@ export default function LoginPage() {
               <Input
                 id="identifier"
                 type="text"
-                placeholder="e.g. 023316 or 10001"
+                placeholder="e.g. 01042"
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -222,7 +231,7 @@ export default function LoginPage() {
                       </Label>
                       <Input
                         id="reset-identifier"
-                        placeholder="e.g. 023316 or m@example.com"
+                        placeholder="e.g. 01042 or m@example.com"
                         value={resetIdentifier}
                         onChange={(e) => setResetIdentifier(e.target.value)}
                         disabled={isResetting}
@@ -268,14 +277,14 @@ export default function LoginPage() {
 
             <Button
               onClick={handleSignIn}
-              className="w-full h-10 mt-1 font-medium text-sm cursor-pointer"
+              className="w-full h-10 mt-2 font-medium text-sm cursor-pointer"
               disabled={isSigningIn}
             >
               {isSigningIn ? <LoaderCircle className="animate-spin" /> : "Login"}
             </Button>
 
             {/* Terms & Privacy Notice */}
-            <p className="text-xs text-center text-white/80 mt-2 leading-relaxed">
+            <p className="text-xs text-center text-white/80 mt-3 leading-relaxed">
               By signing in, you agree to our{" "}
               <Link
                 href="/terms"
