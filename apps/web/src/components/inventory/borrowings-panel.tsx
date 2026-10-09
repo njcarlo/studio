@@ -204,6 +204,12 @@ export function BorrowingsPanel() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const handleExportEvent = () => setShowExportConfirm(true);
+    window.addEventListener('trigger-inventory-export', handleExportEvent);
+    return () => window.removeEventListener('trigger-inventory-export', handleExportEvent);
+  }, []);
+
   const filteredBorrowings = useMemo(() => {
     return borrowings.filter((b) => {
       if (!search.trim()) return true;
@@ -553,26 +559,7 @@ export function BorrowingsPanel() {
                 </Button>
               )}
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadData}
-                className="h-10 px-3.5 gap-1.5 rounded-2xl border-slate-200/90 dark:border-border shadow-2xs text-xs font-semibold text-foreground hover:bg-muted/60 cursor-pointer bg-white dark:bg-muted/30"
-                title="Refresh borrowings"
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5 text-muted-foreground", loading && "animate-spin text-primary")} />
-                <span>Refresh</span>
-              </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 px-3.5 text-xs font-semibold rounded-2xl gap-1.5 border-slate-200/90 dark:border-border shadow-2xs cursor-pointer hover:bg-muted/60 bg-white dark:bg-muted/30 text-foreground"
-                onClick={() => setShowExportConfirm(true)}
-              >
-                <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>Export Excel</span>
-              </Button>
 
               <Button
                 size="sm"
@@ -606,11 +593,11 @@ export function BorrowingsPanel() {
                   const dueInfo = getRelativeDueInfo(b.dueDate, b.status);
 
                   return (
-                    <div key={b.id} className="p-4 space-y-3 hover:bg-muted/10 transition-colors">
+                    <div key={b.id} className="p-4 space-y-3.5 hover:bg-muted/[0.12] transition-colors border-b border-border/40 last:border-b-0">
                       {/* Item + Status */}
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-muted/60 border border-border/70 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="w-11 h-11 rounded-xl bg-muted/60 border border-border/70 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
                             {b.item?.imageUrl ? (
                               <img src={b.item.imageUrl} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -618,20 +605,20 @@ export function BorrowingsPanel() {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-xs text-foreground truncate">{b.item?.name}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="font-mono font-bold text-[10px] text-foreground">
+                            <p className="font-bold text-sm text-foreground leading-snug">{b.item?.name}</p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              <span className="font-mono font-bold text-[11px] text-foreground bg-muted/80 px-2 py-0.5 rounded-md border border-border/60">
                                 {b.item?.inventoryCode || b.itemId.slice(0, 8)}
                               </span>
                               {b.item?.status && (
-                                <span className="text-[9px] text-muted-foreground">· {b.item.status}</span>
+                                <span className="text-[10px] text-muted-foreground font-medium">· {b.item.status}</span>
                               )}
                             </div>
                           </div>
                         </div>
 
                         <span
-                          className={`inline-flex items-center gap-1.5 text-[10px] shrink-0 font-semibold px-2.5 py-0.5 rounded-full border ${
+                          className={`inline-flex items-center gap-1.5 text-[10px] shrink-0 font-semibold px-2.5 py-1 rounded-full border ${
                             b.status === 'RETURNED'
                               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                               : isOverdue
@@ -645,27 +632,29 @@ export function BorrowingsPanel() {
                       </div>
 
                       {/* Borrower */}
-                      <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/40 text-xs">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[11px] shrink-0">
+                      <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-muted/[0.25] border border-border/50 text-xs">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 border border-primary/20">
                           {b.borrowerName.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="font-bold text-foreground text-xs truncate block">{b.borrowerName}</span>
-                          {b.borrowerEmail && (
-                            <span className="text-[10px] text-muted-foreground truncate block">{b.borrowerEmail}</span>
+                          {b.borrowerEmail ? (
+                            <span className="text-[11px] text-muted-foreground truncate block">{b.borrowerEmail}</span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground truncate block">Church Worker</span>
                           )}
                         </div>
                       </div>
 
                       {/* Dates & Status Note */}
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
-                          <Calendar className="h-3 w-3 text-muted-foreground shrink-0" />
-                          <span>Borrowed: {b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString() : '—'}</span>
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                          <span className="truncate">Borrowed: {b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString() : '—'}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Clock className={`h-3 w-3 shrink-0 ${isOverdue ? 'text-destructive' : 'text-muted-foreground'}`} />
-                          <span className={isOverdue ? 'text-destructive font-bold' : ''}>
+                          <Clock className={`h-3.5 w-3.5 shrink-0 ${isOverdue ? 'text-destructive' : 'text-muted-foreground/70'}`} />
+                          <span className={`truncate ${isOverdue ? 'text-destructive font-bold' : ''}`}>
                             {dueInfo?.text || 'No due date'}
                           </span>
                         </div>
@@ -673,51 +662,53 @@ export function BorrowingsPanel() {
 
                       {/* Condition & Notes */}
                       {(b.checkoutNotes || b.returnNotes || b.checkoutCondition || b.returnCondition) && (
-                        <p className="text-[11px] text-muted-foreground bg-muted/20 p-2 rounded-lg truncate">
+                        <div className="text-xs text-muted-foreground bg-muted/[0.2] p-2.5 rounded-xl border border-border/40 leading-relaxed">
                           <span className="font-semibold text-foreground">
                             {b.status === 'RETURNED' ? b.returnCondition || 'Returned' : b.checkoutCondition || 'Checked out'}:
                           </span>{' '}
-                          {b.status === 'RETURNED' ? b.returnNotes || 'No notes' : b.checkoutNotes || 'Standard checkout'}
-                        </p>
+                          <span className="text-muted-foreground">
+                            {b.status === 'RETURNED' ? b.returnNotes || 'No notes' : b.checkoutNotes || 'Standard checkout'}
+                          </span>
+                        </div>
                       )}
 
                       {b.returnPhotos && b.returnPhotos.length > 0 && (
                         <button
                           type="button"
                           onClick={() => setDetailsBorrowing(b)}
-                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer w-fit"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer w-fit"
                         >
-                          <Camera className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <Camera className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                           <span>{b.returnPhotos.length} Damage Photo Evidence in DB (View)</span>
                         </button>
                       )}
 
                       {/* Actions */}
-                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                      <div className="flex items-center justify-end gap-2 pt-1">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-xs gap-1 rounded-lg border-border/70 cursor-pointer"
+                          className="h-8 text-xs gap-1.5 rounded-xl border-border/70 cursor-pointer px-3 shadow-2xs font-semibold"
                           onClick={() => setDetailsBorrowing(b)}
                         >
-                          <Eye className="h-3 w-3" />
+                          <Eye className="h-3.5 w-3.5" />
                           <span>Details</span>
                         </Button>
 
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 w-7 p-0 rounded-lg border-border/70 cursor-pointer"
+                          className="h-8 w-8 p-0 rounded-xl border-border/70 cursor-pointer shadow-2xs"
                           title="Print Borrowing Transaction QR"
                           onClick={() => setQrBorrowing(b)}
                         >
-                          <QrCode className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                          <QrCode className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                         </Button>
 
                         {b.status === 'BORROWED' && (
                           <Button
                             size="sm"
-                            className="h-7 text-xs gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+                            className="h-8 text-xs gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer px-3.5 shadow-xs"
                             onClick={() => openReturnModal(b)}
                           >
                             <CheckCircle2 className="h-3.5 w-3.5" />
@@ -751,7 +742,7 @@ export function BorrowingsPanel() {
                     <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[85px]">
                       Status
                     </TableHead>
-                    <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[130px] max-w-[180px]">
+                    <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[200px]">
                       Condition / Notes
                     </TableHead>
                     <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider text-right pr-8 bg-sidebar whitespace-nowrap w-24 sticky right-0 z-20 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]">
@@ -896,22 +887,24 @@ export function BorrowingsPanel() {
                           </TableCell>
 
                           {/* 6. Condition / Notes */}
-                          <TableCell className="py-3 text-xs text-muted-foreground max-w-[200px]">
-                            <div className="truncate">
+                          <TableCell className="py-3 text-xs text-muted-foreground min-w-[200px] max-w-[320px]">
+                            <div className="line-clamp-2 leading-relaxed" title={`${b.status === 'RETURNED' ? b.returnCondition || 'Good' : b.checkoutCondition || 'Good'}: ${b.status === 'RETURNED' ? b.returnNotes || 'Returned in good order' : b.checkoutNotes || 'Standard checkout'}`}>
                               <span className="font-semibold text-foreground">
                                 {b.status === 'RETURNED'
                                   ? b.returnCondition || 'Good'
                                   : b.checkoutCondition || 'Good'}:
                               </span>{' '}
-                              {b.status === 'RETURNED'
-                                ? b.returnNotes || 'Returned in good order'
-                                : b.checkoutNotes || 'Standard checkout'}
+                              <span className="text-muted-foreground">
+                                {b.status === 'RETURNED'
+                                  ? b.returnNotes || 'Returned in good order'
+                                  : b.checkoutNotes || 'Standard checkout'}
+                              </span>
                             </div>
                             {b.returnPhotos && b.returnPhotos.length > 0 && (
                               <button
                                 type="button"
                                 onClick={() => setDetailsBorrowing(b)}
-                                className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer"
                               >
                                 <Camera className="h-3 w-3 shrink-0" />
                                 <span>{b.returnPhotos.length} Photo{b.returnPhotos.length > 1 ? 's' : ''} Saved</span>
@@ -968,9 +961,9 @@ export function BorrowingsPanel() {
             </div>
 
             {/* ── PAGINATION FOOTER (Matching other tabs) ── */}
-            <div className="p-4 border-t border-border/70 bg-muted/[0.15] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+            <div className="p-4 border-t border-border/60 bg-muted/[0.15] flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
               <div>
-                Showing <strong className="text-foreground">{totalBorrowings === 0 ? 0 : skip + 1}</strong> to{' '}
+                Showing <strong className="text-foreground">{totalBorrowings === 0 ? 0 : skip + 1}</strong> –{' '}
                 <strong className="text-foreground">{Math.min(skip + take, totalBorrowings)}</strong> of{' '}
                 <strong className="text-foreground">{totalBorrowings}</strong> records
               </div>
@@ -979,26 +972,24 @@ export function BorrowingsPanel() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 px-3 rounded-xl border-border/70 text-xs font-semibold gap-1 cursor-pointer"
+                  className="h-8 px-2.5 rounded-xl border-border/80 shadow-2xs"
                   disabled={skip === 0}
                   onClick={() => setSkip((s) => Math.max(0, s - take))}
+                  title="Previous Page"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
-                  <span>Previous</span>
                 </Button>
-
-                <div className="px-2 text-xs font-medium">
+                <span className="px-2 font-medium text-foreground">
                   Page {Math.floor(skip / take) + 1} of {Math.max(1, Math.ceil(totalBorrowings / take))}
-                </div>
-
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 px-3 rounded-xl border-border/70 text-xs font-semibold gap-1 cursor-pointer"
+                  className="h-8 px-2.5 rounded-xl border-border/80 shadow-2xs"
                   disabled={skip + take >= totalBorrowings}
                   onClick={() => setSkip((s) => s + take)}
+                  title="Next Page"
                 >
-                  <span>Next</span>
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -1008,24 +999,40 @@ export function BorrowingsPanel() {
 
         {/* ── CHECKOUT MODAL (ENHANCED PREMIUM DESIGN) ── */}
         <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6">
-            <DialogHeader className="space-y-1.5 pb-2 border-b border-border/60">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                  <ArrowUpCircle className="h-5 w-5" />
+          <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl md:rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
+            {/* ── STICKY MODAL HEADER ── */}
+            <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
+              <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
+                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 shadow-2xs mt-0.5">
+                    <ArrowUpCircle className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <DialogTitle className="text-base font-bold font-headline text-foreground">
+                      Equipment Checkout Form
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground">
+                      Assign inventory equipment or kit bundles to a church worker or volunteer.
+                    </DialogDescription>
+                  </div>
                 </div>
-                <div>
-                  <DialogTitle className="text-base font-bold text-foreground">
-                    Equipment Checkout Form
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground">
-                    Assign inventory equipment or kit bundles to a church worker or volunteer.
-                  </DialogDescription>
-                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsCheckoutOpen(false)}
+                  className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer shrink-0 -mt-1 -mr-1"
+                  title="Close modal"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </Button>
               </div>
             </DialogHeader>
 
-            <form onSubmit={handleCheckoutSubmit} className="space-y-4 pt-2">
+            <form onSubmit={handleCheckoutSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden w-full">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 w-full min-w-0">
               {/* Equipment Item Selection */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-foreground flex items-center justify-between">
@@ -1166,19 +1173,22 @@ export function BorrowingsPanel() {
                 />
               </div>
 
-              <DialogFooter className="pt-3 border-t border-border/60 gap-2">
+              </div>
+
+              {/* ── STICKY MODAL FOOTER ── */}
+              <DialogFooter className="p-3.5 sm:p-4 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex flex-row items-center justify-end gap-2 sm:gap-2.5 w-full min-w-0">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setIsCheckoutOpen(false)}
-                  className="rounded-xl h-9 text-xs font-semibold"
+                  className="min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-3.5 sm:px-4 text-xs sm:text-sm font-semibold rounded-xl border-border/80 hover:bg-muted/50 cursor-pointer flex-1 sm:flex-initial"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={submittingCheckout}
-                  className="rounded-xl h-9 text-xs font-bold bg-sidebar hover:bg-sidebar/90 text-white shadow-xs"
+                  className="min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-4 sm:px-5 text-xs sm:text-sm font-bold rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer flex-1 sm:flex-initial"
                 >
                   {submittingCheckout ? 'Processing Checkout...' : 'Confirm Checkout'}
                 </Button>
@@ -1189,25 +1199,41 @@ export function BorrowingsPanel() {
 
         {/* ── RETURN MODAL (ENHANCED PREMIUM DESIGN) ── */}
         <Dialog open={isReturnOpen} onOpenChange={setIsReturnOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6">
-            <DialogHeader className="space-y-1.5 pb-2 border-b border-border/60">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                  <ArrowDownCircle className="h-5 w-5" />
+          <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl md:rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
+            {/* ── STICKY MODAL HEADER ── */}
+            <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
+              <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
+                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-2xs mt-0.5">
+                    <ArrowDownCircle className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <DialogTitle className="text-base font-bold font-headline text-foreground">
+                      Equipment Check-in &amp; Return
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground">
+                      Verify item condition and restore item back into available stock.
+                    </DialogDescription>
+                  </div>
                 </div>
-                <div>
-                  <DialogTitle className="text-base font-bold text-foreground">
-                    Equipment Check-in &amp; Return
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground">
-                    Verify item condition and restore item back into available stock.
-                  </DialogDescription>
-                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsReturnOpen(false)}
+                  className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer shrink-0 -mt-1 -mr-1"
+                  title="Close modal"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </Button>
               </div>
             </DialogHeader>
 
             {selectedBorrowing && (
-              <form onSubmit={handleReturnSubmit} className="space-y-4 pt-2">
+              <form onSubmit={handleReturnSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden w-full">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 w-full min-w-0">
                 {/* Item & Borrower Card Banner */}
                 <div className="p-3.5 bg-muted/30 border border-border/70 rounded-xl space-y-2">
                   <div className="flex items-center gap-3">
@@ -1409,12 +1435,15 @@ export function BorrowingsPanel() {
                   />
                 </div>
 
-                <DialogFooter className="pt-3 border-t border-border/60 gap-2">
+                </div>
+
+                {/* ── STICKY MODAL FOOTER ── */}
+                <DialogFooter className="p-3.5 sm:p-4 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex flex-row items-center justify-end gap-2 sm:gap-2.5 w-full min-w-0">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setIsReturnOpen(false)}
-                    className="rounded-xl h-9 text-xs font-semibold cursor-pointer"
+                    className="min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-3.5 sm:px-4 text-xs sm:text-sm font-semibold rounded-xl border-border/80 hover:bg-muted/50 cursor-pointer flex-1 sm:flex-initial"
                   >
                     Cancel
                   </Button>
@@ -1422,7 +1451,7 @@ export function BorrowingsPanel() {
                     type="submit"
                     disabled={submittingReturn || (returnCondition === 'Damaged' && !returnDamagePhoto)}
                     className={cn(
-                      "rounded-xl h-9 text-xs font-bold shadow-xs cursor-pointer",
+                      "min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-4 sm:px-5 text-xs sm:text-sm font-bold rounded-xl shadow-xs cursor-pointer flex-1 sm:flex-initial",
                       returnCondition === 'Damaged'
                         ? (!returnDamagePhoto
                             ? "bg-amber-600/60 hover:bg-amber-600/60 text-white cursor-not-allowed opacity-80"
@@ -1434,8 +1463,8 @@ export function BorrowingsPanel() {
                       ? 'Processing Return...'
                       : returnCondition === 'Damaged'
                       ? (!returnDamagePhoto
-                          ? 'Photo Required to Complete Return'
-                          : 'Complete Return & Flag as Damaged')
+                          ? 'Photo Required'
+                          : 'Flag as Damaged')
                       : 'Complete Return'}
                   </Button>
                 </DialogFooter>
@@ -1446,25 +1475,41 @@ export function BorrowingsPanel() {
 
         {/* ── RECORD DETAILS MODAL ── */}
         <Dialog open={Boolean(detailsBorrowing)} onOpenChange={(open) => !open && setDetailsBorrowing(null)}>
-          <DialogContent className="max-w-md rounded-2xl p-6">
-            <DialogHeader className="space-y-1.5 pb-2 border-b border-border/60">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                  <Info className="h-5 w-5" />
+          <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-md max-h-[92dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl md:rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
+            {/* ── STICKY MODAL HEADER ── */}
+            <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
+              <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
+                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 shadow-2xs mt-0.5">
+                    <Info className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <DialogTitle className="text-base font-bold font-headline text-foreground">
+                      Borrowing Record Details
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground">
+                      Complete information for this equipment assignment.
+                    </DialogDescription>
+                  </div>
                 </div>
-                <div>
-                  <DialogTitle className="text-base font-bold text-foreground">
-                    Borrowing Record Details
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground">
-                    Complete information for this equipment assignment.
-                  </DialogDescription>
-                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDetailsBorrowing(null)}
+                  className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer shrink-0 -mt-1 -mr-1"
+                  title="Close modal"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </Button>
               </div>
             </DialogHeader>
 
             {detailsBorrowing && (
-              <div className="space-y-4 pt-2 text-xs">
+              <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 w-full min-w-0 text-xs">
                 {/* Item Banner */}
                 <div className="p-3 bg-muted/30 border border-border/70 rounded-xl flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-muted border overflow-hidden flex items-center justify-center shrink-0">
@@ -1593,11 +1638,13 @@ export function BorrowingsPanel() {
                   </div>
                 </div>
 
-                <DialogFooter className="pt-2 border-t border-border/60">
+                </div>
+
+                {/* ── STICKY MODAL FOOTER ── */}
+                <DialogFooter className="p-3.5 sm:p-4 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex flex-row items-center justify-end w-full min-w-0">
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="w-full rounded-xl"
+                    className="w-full min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 rounded-xl text-xs sm:text-sm font-semibold border-border/80 hover:bg-muted/50 cursor-pointer"
                     onClick={() => setDetailsBorrowing(null)}
                   >
                     Close

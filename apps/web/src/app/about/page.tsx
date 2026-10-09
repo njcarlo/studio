@@ -20,6 +20,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { LandingNav } from "@/components/landing/landing-nav";
+import { LandingFooter } from "@/components/landing/landing-footer";
 
 export default function AboutPage() {
   const [activeTab, setActiveTab] = useState<"history" | "beliefs" | "services">("history");
@@ -41,6 +42,13 @@ export default function AboutPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const handleTabChange = (newTab: "history" | "beliefs" | "services") => {
+    setActiveTab(newTab);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col selection:bg-primary selection:text-white">
       {/* Floating Pill Navigation Header */}
@@ -53,7 +61,7 @@ export default function AboutPage() {
             { id: "services", label: "Services" },
           ],
           activeId: activeTab,
-          onSelect: (id) => setActiveTab(id as "history" | "beliefs" | "services"),
+          onSelect: (id) => handleTabChange(id as "history" | "beliefs" | "services"),
           isDocked,
         }}
       />
@@ -84,20 +92,20 @@ export default function AboutPage() {
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-xl text-slate-200/90 max-w-3xl mx-auto leading-relaxed mb-10 sm:mb-12 drop-shadow">
+          <p className="text-base sm:text-xl text-slate-200/90 max-w-3xl mx-auto leading-relaxed mb-8 sm:mb-12 drop-shadow">
             We are a vibrant, Christ-centered family committed to making disciples, raising godly leaders, and shining God&apos;s love in Cavite and beyond.
           </p>
 
-          {/* Glass Type Navigation Buttons Bar */}
+          {/* Glass Type Navigation Buttons Bar - Single row on mobile */}
           <div
             id="about-subtabs-hero"
-            className={`inline-flex transition-all duration-300 ${isDocked ? "opacity-0 pointer-events-none scale-95" : "opacity-100 scale-100"
+            className={`inline-flex transition-all duration-300 max-w-full justify-center px-1 sm:px-2 ${isDocked ? "opacity-0 pointer-events-none scale-95" : "opacity-100 scale-100"
               }`}
           >
-            <div className="inline-flex flex-wrap items-center justify-center gap-2 sm:gap-3 p-1.5 rounded-2xl sm:rounded-full bg-white/10 backdrop-blur-xl backdrop-saturate-150 border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+            <div className="inline-flex flex-nowrap items-center justify-between sm:justify-center gap-1.5 sm:gap-3 p-1.5 sm:p-2 rounded-full bg-white/10 backdrop-blur-xl backdrop-saturate-150 border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.3)] max-w-full overflow-x-auto no-scrollbar">
               <button
-                onClick={() => setActiveTab("history")}
-                className={`px-5 sm:px-7 py-2 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-bold tracking-wide transition-all duration-300 cursor-pointer ${activeTab === "history"
+                onClick={() => handleTabChange("history")}
+                className={`px-4 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-base md:text-lg font-bold tracking-tight sm:tracking-wide transition-all duration-300 cursor-pointer whitespace-nowrap shrink-0 ${activeTab === "history"
                     ? "bg-white text-slate-950 shadow-md scale-102"
                     : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
@@ -106,8 +114,8 @@ export default function AboutPage() {
               </button>
 
               <button
-                onClick={() => setActiveTab("beliefs")}
-                className={`px-5 sm:px-7 py-2 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-bold tracking-wide transition-all duration-300 cursor-pointer ${activeTab === "beliefs"
+                onClick={() => handleTabChange("beliefs")}
+                className={`px-4 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-base md:text-lg font-bold tracking-tight sm:tracking-wide transition-all duration-300 cursor-pointer whitespace-nowrap shrink-0 ${activeTab === "beliefs"
                     ? "bg-white text-slate-950 shadow-md scale-102"
                     : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
@@ -116,8 +124,8 @@ export default function AboutPage() {
               </button>
 
               <button
-                onClick={() => setActiveTab("services")}
-                className={`px-5 sm:px-7 py-2 sm:py-2.5 rounded-xl sm:rounded-full text-xs sm:text-sm font-bold tracking-wide transition-all duration-300 cursor-pointer ${activeTab === "services"
+                onClick={() => handleTabChange("services")}
+                className={`px-4 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-base md:text-lg font-bold tracking-tight sm:tracking-wide transition-all duration-300 cursor-pointer whitespace-nowrap shrink-0 ${activeTab === "services"
                     ? "bg-white text-slate-950 shadow-md scale-102"
                     : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
@@ -623,9 +631,7 @@ export default function AboutPage() {
       )}
 
       {/* Footer */}
-      <footer className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800">
-        <p>© {new Date().getFullYear()} Church of God Dasmariñas. All rights reserved.</p>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }

@@ -33,6 +33,8 @@ export function useMealStubs(filters: {
         queryKey: ['meal-stubs', { ...queryFilters, actorId, ministryIds: effectiveMinistryIds }],
         queryFn: () => getMealStubs({ ...queryFilters, actorId, ministryIds: effectiveMinistryIds }),
         enabled: enabled,
+        staleTime: 30_000,
+        placeholderData: (prev) => prev,
     });
 
     // When enabled=false, isPending is true but we shouldn't show a loader

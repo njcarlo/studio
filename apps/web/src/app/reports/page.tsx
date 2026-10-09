@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, Suspense } from "react";
+import React, { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { useSearchParams } from "next/navigation";
 import {
@@ -82,6 +82,40 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
       <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+      <span className="capitalize">{status}</span>
+    </span>
+  );
+}
+
+function HeaderStatusBadge({ status }: { status: string }) {
+  const s = status.toLowerCase();
+  if (s === "present" || s === "approved" || s === "claimed") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+        <span className="capitalize">{status}</span>
+      </span>
+    );
+  }
+  if (s === "late" || s.startsWith("pending") || s === "issued" || s === "unclaimed") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/20 text-amber-200 border border-amber-400/30 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+        <span className="capitalize">{status === "issued" ? "Unclaimed" : status}</span>
+      </span>
+    );
+  }
+  if (s === "absent" || s === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-400/20 text-rose-200 border border-rose-400/30 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+        <span className="capitalize">{status}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-400/20 text-blue-200 border border-blue-400/30 whitespace-nowrap">
+      <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
       <span className="capitalize">{status}</span>
     </span>
   );
@@ -333,6 +367,12 @@ function AttendanceTab() {
   const { toast } = useToast();
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
+  useEffect(() => {
+    const onExport = () => setShowExportConfirm(true);
+    window.addEventListener("reports:trigger-export", onExport);
+    return () => window.removeEventListener("reports:trigger-export", onExport);
+  }, []);
+
   const handleExport = () => {
     const recordsHeaders = ["Worker", "Worker ID", "Ministry", "Date", "Time In", "Time Out", "Hours", "Status"];
     const recordsRows = filteredRows.map(r => [
@@ -454,7 +494,21 @@ function AttendanceTab() {
 
       {/* Main Table & Unified Controls Container */}
       <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
-        {/* Top Controls Row: Search + Ministry + Worker Type + Range + Export */}
+        {/* Section Header with Export Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 className="text-base font-bold font-headline text-foreground">Attendance Records</h3>
+            <p className="text-xs text-muted-foreground">Detailed logs and time tracking records this month.</p>
+          </div>
+          <button
+            onClick={() => setShowExportConfirm(true)}
+            className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+          >
+            <Download className="h-4 w-4" /> Export
+          </button>
+        </div>
+
+        {/* Top Controls Row: Search + Ministry + Worker Type + Range */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px] sm:min-w-[260px]">
@@ -530,50 +584,51 @@ function AttendanceTab() {
               <SelectItem value="all-time" className="text-xs font-medium cursor-pointer">All Time</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* Export */}
-          <button
-            onClick={() => setShowExportConfirm(true)}
-            className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
-          >
-            <Download className="h-4 w-4" /> Export Excel
-          </button>
         </div>
 
         {/* Table Container */}
         <div className="border border-gray-200/80 dark:border-border rounded-2xl mt-5 overflow-hidden">
-          {/* Mobile list view */}
-          <div className="md:hidden divide-y divide-border/30">
+          {/* Mobile card view */}
+          <div className="md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50 dark:bg-muted/10">
             {paginatedRows.length === 0 ? (
-              <div className="py-14 text-center text-xs font-medium text-muted-foreground">No attendance records found.</div>
+              <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/40">No attendance records found.</div>
             ) : paginatedRows.map((row, i) => {
               const ministry = (ministries as any[] || []).find(m => m.id === row.worker.majorMinistryId);
               return (
-                <div key={i} className="p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                <div key={i} className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xs transition-colors">
+                  {/* Navy blue header: Date + Status Badge */}
+                  <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                    <span className="text-xs font-medium text-white/90 font-mono">
+                      {format(row.date, "EEE, MMM d, yyyy")}
+                    </span>
+                    <HeaderStatusBadge status={row.status} />
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center gap-2.5">
                       <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">{row.worker.firstName} {row.worker.lastName}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{row.worker.firstName} {row.worker.lastName}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {ministry?.name || "—"}{row.worker.workerId ? ` · ${fmtId(row.worker.workerId)}` : ""}
+                        </p>
                       </div>
                     </div>
-                    <StatusBadge status={row.status} />
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    <p className="mb-1 font-mono text-[11px]">{format(row.date, "MMM d, yyyy")}</p>
-                    <div className="grid grid-cols-3 gap-2">
+
+                    {/* Details Metrics Grid */}
+                    <div className="grid grid-cols-3 gap-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
                       <div>
-                        <p className="font-semibold uppercase tracking-wider text-[10px] mb-0.5">Time In</p>
-                        <p className="text-foreground font-mono">{row.timeIn ? format(row.timeIn, "H:mm") : "——"}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Time In</p>
+                        <p className="font-semibold font-mono text-foreground">{row.timeIn ? format(row.timeIn, "H:mm") : "——"}</p>
                       </div>
                       <div>
-                        <p className="font-semibold uppercase tracking-wider text-[10px] mb-0.5">Time Out</p>
-                        <p className="text-foreground font-mono">{row.timeOut ? format(row.timeOut, "H:mm") : "——"}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Time Out</p>
+                        <p className="font-semibold font-mono text-foreground">{row.timeOut ? format(row.timeOut, "H:mm") : "——"}</p>
                       </div>
                       <div>
-                        <p className="font-semibold uppercase tracking-wider text-[10px] mb-0.5">Hours</p>
-                        <p className="text-foreground font-mono">{row.hours != null ? `${(row.hours / 60).toFixed(1)}h` : "——"}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Hours</p>
+                        <p className="font-semibold font-mono text-foreground">{row.hours != null ? `${(row.hours / 60).toFixed(1)}h` : "——"}</p>
                       </div>
                     </div>
                   </div>
@@ -780,6 +835,12 @@ function MealStubClaimsTab() {
   const { toast } = useToast();
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
+  useEffect(() => {
+    const onExport = () => setShowExportConfirm(true);
+    window.addEventListener("reports:trigger-export", onExport);
+    return () => window.removeEventListener("reports:trigger-export", onExport);
+  }, []);
+
   const handleExport = () => {
     const claimsHeaders = ["Worker", "Ministry", "Date Issued", "Date Claimed", "Status", "Claim Type"];
     const claimsRows = filtered.map(s => [
@@ -867,7 +928,21 @@ function MealStubClaimsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
         {/* Table Card */}
         <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
-          {/* Top Controls Row: Search + Ministry + Worker Type + Export */}
+          {/* Section Header with Export Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-base font-bold font-headline text-foreground">Meal Stub Claims</h3>
+              <p className="text-xs text-muted-foreground">Track claimed and unclaimed meal vouchers across ministries.</p>
+            </div>
+            <button
+              onClick={() => setShowExportConfirm(true)}
+              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+            >
+              <Download className="h-4 w-4" /> Export
+            </button>
+          </div>
+
+          {/* Top Controls Row: Search + Ministry + Worker Type */}
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Search */}
             <div className="relative flex-1 min-w-[180px] sm:min-w-[220px]">
@@ -928,37 +1003,55 @@ function MealStubClaimsTab() {
                 <SelectItem value="Issued" className="text-xs font-medium cursor-pointer">Unclaimed ({tabCounts.unclaimed})</SelectItem>
               </SelectContent>
             </Select>
-
-            {/* Export */}
-            <button
-              onClick={() => setShowExportConfirm(true)}
-              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
-            >
-              <Download className="h-4 w-4" /> Export Excel
-            </button>
           </div>
 
           {/* Table */}
           <div className="border border-gray-200/80 dark:border-border rounded-2xl mt-5 overflow-hidden">
 
             {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-border/30">
+            <div className="md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50 dark:bg-muted/10">
               {paginated.length === 0 ? (
-                <div className="py-14 text-center text-xs font-medium text-muted-foreground">No records found.</div>
+                <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/40">No records found.</div>
               ) : paginated.map((s, i) => (
-                <div key={i} className="p-4 flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2.5 mb-1">
+                <div key={i} className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xs transition-colors">
+                  {/* Navy blue header: Date Issued + Status Badge */}
+                  <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                    <span className="text-xs font-medium text-white/90 font-mono">
+                      {format(toJsDate(s.date), "MMM d, yyyy")}
+                    </span>
+                    <HeaderStatusBadge status={s.status} />
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center gap-2.5">
                       <WorkerInitials name={s.workerName} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-foreground truncate">{s.workerName}</p>
-                        <p className="text-[11px] text-muted-foreground">{s.ministry?.name || "—"}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{s.workerName}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{s.ministry?.name || "—"}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
-                      <span>Issued: <strong className="text-foreground">{format(toJsDate(s.date), "MMM d, yyyy")}</strong></span>
-                      {(s as any).claimedAt && <span>Claimed: <strong className="text-foreground">{format(toJsDate((s as any).claimedAt), "MMM d, yyyy")}</strong></span>}
-                      <StatusBadge status={s.status} />
+
+                    {/* Details grid */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Date Issued</p>
+                        <p className="font-semibold text-foreground">{format(toJsDate(s.date), "MMM d, yyyy")}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Date Claimed</p>
+                        <p className="font-semibold text-foreground">
+                          {(s as any).claimedAt ? format(toJsDate((s as any).claimedAt), "MMM d, yyyy") : "——"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Claim Type</p>
+                        <p className="font-semibold text-foreground">{(s as any).stubType ? (((s as any).stubType.charAt(0).toUpperCase() + (s as any).stubType.slice(1))) : "Daily"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Ministry</p>
+                        <p className="font-semibold text-foreground truncate">{s.ministry?.name || "—"}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1171,6 +1264,12 @@ function AllocationsTab() {
   const { toast } = useToast();
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
+  useEffect(() => {
+    const onExport = () => setShowExportConfirm(true);
+    window.addEventListener("reports:trigger-export", onExport);
+    return () => window.removeEventListener("reports:trigger-export", onExport);
+  }, []);
+
   const handleExport = () => {
     const headers = ["Worker", "Ministry", "Worker Type", "Weekday Used", "Sunday Used", "Remaining"];
     const rows = filtered.map(w => {
@@ -1220,7 +1319,21 @@ function AllocationsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
         {/* Table Card */}
         <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
-          {/* Top Controls Row: Search + Ministry + Export */}
+          {/* Section Header with Export Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-base font-bold font-headline text-foreground">Worker Allocations</h3>
+              <p className="text-xs text-muted-foreground">Monthly allocation limits and usage breakdown per worker.</p>
+            </div>
+            <button
+              onClick={() => setShowExportConfirm(true)}
+              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+            >
+              <Download className="h-4 w-4" /> Export
+            </button>
+          </div>
+
+          {/* Top Controls Row: Search + Ministry + Worker Type */}
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Search */}
             <div className="relative flex-1 min-w-[180px] sm:min-w-[220px]">
@@ -1269,40 +1382,62 @@ function AllocationsTab() {
                 <SelectItem value="On-Call" className="text-xs font-medium cursor-pointer">On-Call ({tabCounts["On-Call"]})</SelectItem>
               </SelectContent>
             </Select>
-
-            {/* Export */}
-            <button
-              onClick={() => setShowExportConfirm(true)}
-              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
-            >
-              <Download className="h-4 w-4" /> Export Excel
-            </button>
           </div>
 
           {/* Table */}
           <div className="border border-gray-200/80 dark:border-border rounded-2xl mt-5 overflow-hidden">
 
             {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-border/30">
+            <div className="md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50 dark:bg-muted/10">
               {paginated.length === 0 ? (
-                <div className="py-14 text-center text-xs font-medium text-muted-foreground">No workers found.</div>
+                <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/40">No workers found.</div>
               ) : paginated.map((worker, i) => {
                 const s = getStats(worker.id);
                 const min = getMinistry(worker.majorMinistryId);
                 return (
-                  <div key={i} className="p-4 flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5 mb-1.5">
+                  <div key={i} className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xs transition-colors">
+                    {/* Navy blue header: Type/Title + Remaining Badge */}
+                    <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                      <span className="text-xs font-medium text-white/90">
+                        {worker.employmentType || "Worker"} Allocation
+                      </span>
+                      <span className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border",
+                        s.remaining > 0
+                          ? "bg-emerald-400/20 text-emerald-200 border-emerald-400/30"
+                          : "bg-rose-400/20 text-rose-200 border-rose-400/30"
+                      )}>
+                        <span className={cn("w-1.5 h-1.5 rounded-full", s.remaining > 0 ? "bg-emerald-400" : "bg-rose-400")} />
+                        {s.remaining} Remaining
+                      </span>
+                    </div>
+
+                    {/* Body */}
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center gap-2.5">
                         <WorkerInitials name={`${worker.firstName} ${worker.lastName}`} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-foreground truncate">{worker.firstName} {worker.lastName}</p>
-                          <p className="text-[11px] text-muted-foreground">{min?.name || "—"} · {worker.employmentType || "—"}</p>
+                          <p className="text-xs font-bold text-foreground truncate">{worker.firstName} {worker.lastName}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {min?.name || "—"}{worker.workerId ? ` · ${fmtId(worker.workerId)}` : ""}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span>Weekday: <strong className="font-mono text-foreground">{s.weekday}/{s.weekdayLimit}</strong></span>
-                        <span>Sunday: <strong className="font-mono text-foreground">{s.sunday}/{s.sundayLimit}</strong></span>
-                        <span>Left: <strong className="font-mono text-foreground">{s.remaining}</strong></span>
+
+                      {/* Details metrics */}
+                      <div className="grid grid-cols-3 gap-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Weekday</p>
+                          <p className="font-semibold font-mono text-foreground">{s.weekday}/{s.weekdayLimit}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Sunday</p>
+                          <p className="font-semibold font-mono text-foreground">{s.sunday}/{s.sundayLimit}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Used</p>
+                          <p className="font-semibold font-mono text-foreground">{s.weekday + s.sunday}/{s.weekdayLimit + s.sundayLimit}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1510,6 +1645,12 @@ function ReservationsTab() {
   const { toast } = useToast();
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
+  useEffect(() => {
+    const onExport = () => setShowExportConfirm(true);
+    window.addEventListener("reports:trigger-export", onExport);
+    return () => window.removeEventListener("reports:trigger-export", onExport);
+  }, []);
+
   const handleExport = () => {
     const headers = ["Worker", "Ministry", "Facility", "Date", "Time", "Purpose", "Status"];
     const rows = filtered.map(r => {
@@ -1575,7 +1716,21 @@ function ReservationsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
         {/* Table Card */}
         <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
-          {/* Top Controls Row: Search + Ministry + Export */}
+          {/* Section Header with Export Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-base font-bold font-headline text-foreground">Facility Reservations</h3>
+              <p className="text-xs text-muted-foreground">Monitor venue bookings and approvals across facilities.</p>
+            </div>
+            <button
+              onClick={() => setShowExportConfirm(true)}
+              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+            >
+              <Download className="h-4 w-4" /> Export
+            </button>
+          </div>
+
+          {/* Top Controls Row: Search + Ministry + Status */}
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Search */}
             <div className="relative flex-1 min-w-[180px] sm:min-w-[220px]">
@@ -1623,42 +1778,73 @@ function ReservationsTab() {
                 <SelectItem value="rejected" className="text-xs font-medium cursor-pointer">Rejected ({tabCounts.rejected})</SelectItem>
               </SelectContent>
             </Select>
-
-            {/* Export */}
-            <button
-              onClick={() => setShowExportConfirm(true)}
-              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
-            >
-              <Download className="h-4 w-4" /> Export Excel
-            </button>
           </div>
 
           {/* Table */}
           <div className="border border-gray-200/80 dark:border-border rounded-2xl mt-5 overflow-hidden">
 
             {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-border/30">
+            <div className="md:hidden p-3 sm:p-4 space-y-3 bg-slate-50/50 dark:bg-muted/10">
               {paginated.length === 0 ? (
-                <div className="py-14 text-center text-xs font-medium text-muted-foreground">No records found.</div>
+                <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/40">No records found.</div>
               ) : paginated.map((r, i) => {
                 const start = toJsDate(r.start);
                 const end = toJsDate(r.end);
                 const name = getWorkerName(r.workerProfileId);
                 const min = r.workerProfileId ? getWorkerMinistry(r.workerProfileId) : null;
+                const reqId = r.id ? `REQ-${r.id.slice(-4).toUpperCase()}` : "REQ-——";
                 return (
-                  <div key={i} className="p-4 flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5 mb-1.5">
+                  <div key={i} className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xs transition-colors">
+                    {/* Navy blue header: Req ID + Status Badge */}
+                    <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                      <span className="text-xs font-mono font-bold text-white">
+                        {reqId}
+                      </span>
+                      <HeaderStatusBadge status={r.status} />
+                    </div>
+
+                    {/* Body */}
+                    <div className="p-4 space-y-3">
+                      {(r.title || r.purpose) && (
+                        <div>
+                          <p className="text-xs font-bold text-foreground">
+                            {r.title || r.purpose}
+                          </p>
+                          {r.title && r.purpose && (
+                            <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                              {r.purpose}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2.5">
                         <WorkerInitials name={name} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-foreground truncate">{name}</p>
-                          <p className="text-[11px] text-muted-foreground">{min?.name || "—"} · {getRoomName(r.roomId)}</p>
+                          <p className="text-xs font-bold text-foreground truncate">{name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{min?.name || "—"}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
-                        <span>{format(start, "MMM d, yyyy")}</span>
-                        <span className="font-mono">{format(start, "H:mm")}–{format(end, "H:mm")}</span>
-                        <StatusBadge status={r.status} />
+
+                      {/* Details grid */}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Room</p>
+                          <p className="font-semibold text-foreground truncate">{getRoomName(r.roomId)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Date & Time</p>
+                          <p className="font-semibold text-foreground">{format(start, "MMM d, yyyy")}</p>
+                          <p className="text-muted-foreground text-[11px] font-mono">{format(start, "H:mm")}–{format(end, "H:mm")}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Ministry</p>
+                          <p className="font-semibold text-foreground truncate">{min?.name || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Status</p>
+                          <p className="font-semibold capitalize text-foreground">{r.status}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1816,13 +2002,21 @@ function ReportsContent() {
     <AppLayout>
       <div className="space-y-7 pb-12 w-full">
         {/* Header */}
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
-            Reports &amp; Analytics
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Monitor attendance, meal stub usage, allocations, and room reservations across the organization.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+              Reports &amp; Analytics
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Monitor attendance, meal stub usage, allocations, and room reservations across the organization.
+            </p>
+          </div>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("reports:trigger-export"))}
+            className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+          >
+            <Download className="h-4 w-4" /> Export
+          </button>
         </div>
 
         {/* Tab content */}

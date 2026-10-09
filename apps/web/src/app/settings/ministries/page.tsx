@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@stud
 import {
   Building2, HeartHandshake, User as UserIcon, Users, LoaderCircle,
   PlusCircle, MoreHorizontal, Edit, Trash2, UserCog, Utensils,
-  Eye, ArrowLeft, Search, Copy, ClipboardCheck,
+  Eye, ArrowLeft, Search, Copy, ClipboardCheck, X,
 } from "lucide-react";
 import type { Ministry, Worker, Department } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -49,122 +49,147 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
   onSave: (data: Partial<Ministry>) => void; onClose: () => void;
 }) {
   const [formData, setFormData] = useState<Partial<Ministry>>({ name: "", description: "", department: "Worship", leaderId: "", headId: "" });
-  useEffect(() => { if (ministry) setFormData(ministry); else setFormData({ name: "", description: "", department: "Worship", leaderId: "", headId: "", weight: 0 }); }, [ministry]);
+  useEffect(() => {
+    if (ministry) setFormData(ministry);
+    else setFormData({ name: "", description: "", department: "Worship", leaderId: "", headId: "", weight: 0 });
+  }, [ministry]);
+
   const set = (field: keyof Ministry, value: string | number) => setFormData(p => ({ ...p, [field]: value }));
   const sorted = [...workers].sort((a, b) => a.firstName.localeCompare(b.firstName));
 
   return (
-    <div className="space-y-6">
-      <DialogHeader className="space-y-2 pb-1 border-b border-border/40 pr-8">
-        <div className="flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20 shrink-0 mt-0.5">
-            <Building2 className="h-5 w-5" />
+    <div className="flex flex-col h-full max-h-[90vh] overflow-hidden">
+      {/* ── MODAL HEADER ── */}
+      <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+            <div className="w-11 h-11 rounded-2xl bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center font-bold shrink-0 border border-sidebar/20 shadow-xs mt-0.5">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
+                {ministry?.id ? "Edit Ministry" : "Add New Ministry"}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground truncate">
+                Fill in the ministry details, assigned leadership, and parent department.
+              </DialogDescription>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <DialogTitle className="text-xl font-bold font-headline text-foreground">
-              {ministry?.id ? "Edit Ministry" : "Add New Ministry"}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-              Fill in the ministry details, assigned leadership, and parent department.
-            </DialogDescription>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer shrink-0 -mt-1 -mr-1"
+            title="Close modal"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* ── SCROLLABLE BODY ── */}
+      <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
+        {/* Card 1: Ministry Information */}
+        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-4 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sidebar dark:text-sky-400">
+            <Building2 className="h-4 w-4" />
+            <span>Ministry Details</span>
           </div>
-        </div>
-      </DialogHeader>
 
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto px-0.5">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-foreground">Ministry Name</Label>
-          <Input
-            value={formData.name}
-            onChange={e => set("name", e.target.value)}
-            placeholder="e.g. Media & Tech Ministry"
-            className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-foreground">Description</Label>
-          <Textarea
-            value={formData.description}
-            onChange={e => set("description", e.target.value)}
-            placeholder="Brief overview of the ministry's role..."
-            className="rounded-xl border-slate-200/90 dark:border-border text-xs min-h-[75px] focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar bg-background dark:bg-muted/20 resize-none transition-all"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-foreground">Department</Label>
+            <Label className="text-xs font-bold text-foreground">
+              Ministry Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={formData.name}
+              onChange={e => set("name", e.target.value)}
+              placeholder="e.g. Media & Tech Ministry"
+              className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-foreground">Description</Label>
+            <Textarea
+              value={formData.description}
+              onChange={e => set("description", e.target.value)}
+              placeholder="Brief overview of the ministry's role..."
+              className="rounded-xl border-slate-200/90 dark:border-border text-xs min-h-[85px] focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar bg-background resize-none transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-foreground">
+              Department <span className="text-destructive">*</span>
+            </Label>
             <Select value={formData.department} onValueChange={v => set("department", v)}>
-              <SelectTrigger className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
-                <SelectValue />
+              <SelectTrigger className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
+                <SelectValue placeholder="Select parent department" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border border-border shadow-xl">
-                {departments.map(d => <SelectItem key={d} value={d} className="text-xs font-medium cursor-pointer">{d}</SelectItem>)}
+                {departments.map(d => (
+                  <SelectItem key={d} value={d} className="text-xs font-medium cursor-pointer">
+                    {d}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-foreground">Display Order (Weight)</Label>
-            <Input
-              type="number"
-              value={formData.weight ?? 0}
-              onChange={e => set("weight", parseInt(e.target.value, 10) || 0)}
-              className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs font-semibold bg-white dark:bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
-            />
-          </div>
         </div>
 
-        {/* Leadership Card */}
-        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 space-y-3.5">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-              <UserCog className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-foreground">Ministry Leadership</p>
-              <p className="text-[11px] text-muted-foreground">Assign designated head for this ministry.</p>
-            </div>
+        {/* Card 2: Ministry Leadership */}
+        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3.5 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sidebar dark:text-sky-400">
+            <UserCog className="h-4 w-4" />
+            <span>Ministry Leadership</span>
           </div>
 
-          <div className="pt-1">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Ministry Head</Label>
-              <Select value={formData.headId || "none"} onValueChange={v => set("headId", v === "none" ? "" : v)}>
-                <SelectTrigger className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
-                  <SelectValue placeholder="Select a ministry head" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border border-border shadow-xl max-h-56">
-                  <SelectItem value="none" className="text-xs font-medium cursor-pointer text-muted-foreground">None</SelectItem>
-                  {sorted.map(w => (
-                    <SelectItem key={w.id} value={w.id} className="text-xs font-medium cursor-pointer">
-                      {w.firstName} {w.lastName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-muted-foreground">Ministry Head</Label>
+            <Select value={formData.headId || "none"} onValueChange={v => set("headId", v === "none" ? "" : v)}>
+              <SelectTrigger className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
+                <SelectValue placeholder="Select a ministry head" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-border shadow-xl max-h-56">
+                <SelectItem value="none" className="text-xs font-medium cursor-pointer text-muted-foreground">
+                  None
+                </SelectItem>
+                {sorted.map(w => (
+                  <SelectItem key={w.id} value={w.id} className="text-xs font-medium cursor-pointer">
+                    <div className="flex items-center gap-2 py-0.5">
+                      <span className="w-5 h-5 rounded-full bg-sidebar/10 text-sidebar dark:text-sky-400 text-[9px] font-black flex items-center justify-center shrink-0">
+                        {w.firstName?.[0]}{w.lastName?.[0]}
+                      </span>
+                      <span>{w.firstName} {w.lastName}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
 
-      <DialogFooter className="pt-2 border-t border-border/40 flex items-center justify-end gap-2.5">
+      {/* ── MODAL FOOTER ── */}
+      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 shrink-0">
         <Button
           type="button"
           variant="outline"
           onClick={onClose}
-          className="h-10 px-4 rounded-xl border-border/70 text-xs font-semibold hover:bg-muted/50 transition-colors cursor-pointer"
+          className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer w-full sm:w-auto"
         >
           Cancel
         </Button>
         <Button
           onClick={() => onSave(formData)}
-          className="h-10 px-5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+          disabled={!formData.name?.trim()}
+          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto disabled:opacity-50"
         >
-          Save Changes
+          {ministry?.id ? "Save Changes" : "Create Ministry"}
         </Button>
-      </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -181,63 +206,81 @@ function AppointDialog({ ministry, workers, onSave, onClose, type = "approver" }
   const label = type === "approver" ? "Approver" : "Ministry Head";
 
   return (
-    <div className="space-y-6">
-      <DialogHeader className="space-y-2 pb-1 border-b border-border/40 pr-8">
-        <div className="flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20 shrink-0 mt-0.5">
-            <UserCog className="h-5 w-5" />
+    <div className="flex flex-col h-full max-h-[90vh] overflow-hidden">
+      {/* ── MODAL HEADER ── */}
+      <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+            <div className="w-11 h-11 rounded-2xl bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center font-bold shrink-0 border border-sidebar/20 shadow-xs mt-0.5">
+              <UserCog className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
+                Appoint {label}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground truncate">
+                Select an authorized worker for <span className="font-semibold text-foreground">{ministry.name}</span>.
+              </DialogDescription>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <DialogTitle className="text-xl font-bold font-headline text-foreground">
-              Appoint {label}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-              Select an authorized worker for <span className="font-semibold text-foreground">{ministry.name}</span>.
-            </DialogDescription>
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer shrink-0 -mt-1 -mr-1"
+            title="Close modal"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
         </div>
-      </DialogHeader>
-
-      <div className="space-y-3 py-2">
-        <Label className="text-xs font-bold text-foreground">{label}</Label>
-        <Select value={sel} onValueChange={setSel}>
-          <SelectTrigger className="h-11 rounded-xl border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
-            <SelectValue placeholder={`Select a ${label.toLowerCase()}`} />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl border border-border shadow-xl max-h-64">
-            <SelectItem value="none" className="text-xs font-medium cursor-pointer text-muted-foreground">
-              None (Remove {label})
-            </SelectItem>
-            {sorted.map(w => (
-              <SelectItem key={w.id} value={w.id} className="text-xs font-medium cursor-pointer">
-                <div className="flex items-center gap-2 py-0.5">
-                  <span className="w-5 h-5 rounded-full bg-sidebar/10 text-sidebar dark:text-sky-400 text-[9px] font-black flex items-center justify-center shrink-0">
-                    {w.firstName?.[0]}{w.lastName?.[0]}
-                  </span>
-                  <span>{w.firstName} {w.lastName}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      <DialogFooter className="pt-2 border-t border-border/40 flex items-center justify-end gap-2.5">
+      {/* ── SCROLLABLE BODY ── */}
+      <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3.5 shadow-2xs">
+          <Label className="text-xs font-bold text-foreground">{label}</Label>
+          <Select value={sel} onValueChange={setSel}>
+            <SelectTrigger className="h-11 rounded-xl border-slate-200/90 dark:border-border text-xs bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
+              <SelectValue placeholder={`Select a ${label.toLowerCase()}`} />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-border shadow-xl max-h-64">
+              <SelectItem value="none" className="text-xs font-medium cursor-pointer text-muted-foreground">
+                None (Remove {label})
+              </SelectItem>
+              {sorted.map(w => (
+                <SelectItem key={w.id} value={w.id} className="text-xs font-medium cursor-pointer">
+                  <div className="flex items-center gap-2 py-0.5">
+                    <span className="w-5 h-5 rounded-full bg-sidebar/10 text-sidebar dark:text-sky-400 text-[9px] font-black flex items-center justify-center shrink-0">
+                      {w.firstName?.[0]}{w.lastName?.[0]}
+                    </span>
+                    <span>{w.firstName} {w.lastName}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* ── MODAL FOOTER ── */}
+      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 shrink-0">
         <Button
           type="button"
           variant="outline"
           onClick={onClose}
-          className="h-10 px-4 rounded-xl border-border/70 text-xs font-semibold hover:bg-muted/50 transition-colors cursor-pointer"
+          className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer w-full sm:w-auto"
         >
           Cancel
         </Button>
         <Button
           onClick={() => onSave(ministry.id, sel === "none" ? null : sel, type)}
-          className="h-10 px-5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto"
         >
           Save Changes
         </Button>
-      </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -301,17 +344,6 @@ export default function MinistryManagementPage() {
     } catch { toast({ variant: "destructive", title: "Delete Failed" }); }
   };
 
-  const deptCounts = useMemo(() => {
-    const list = (ministries as Ministry[] || []);
-    const counts: Record<string, number> = {
-      all: list.length,
-    };
-    for (const d of departments) {
-      counts[d] = list.filter(m => m.department === d || m.departmentCode === d.toUpperCase()).length;
-    }
-    return counts;
-  }, [ministries, departments]);
-
   const filteredMinistries = (ministries as Ministry[] || []).filter(m => {
     const q = search.trim().toLowerCase();
     if (q && !m.name.toLowerCase().includes(q)) return false;
@@ -327,18 +359,18 @@ export default function MinistryManagementPage() {
       <div className="space-y-6 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
               Ministry Management
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
               Manage ministries, leaders and weekly allocations.
             </p>
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
@@ -369,7 +401,7 @@ export default function MinistryManagementPage() {
               <SelectContent className="rounded-xl">
                 {(["all", ...departments] as const).map(d => (
                   <SelectItem key={d} value={d} className="text-xs font-medium cursor-pointer">
-                    {d === "all" ? "All Departments" : d} ({deptCounts[d] ?? 0})
+                    {d === "all" ? "All Departments" : d}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -472,14 +504,14 @@ export default function MinistryManagementPage() {
 
       {/* Ministry Form Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="sm:max-w-xl rounded-2xl p-6 sm:p-7 border-border/80 shadow-2xl">
+        <DialogContent className="sm:max-w-xl max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border border-border/80 shadow-2xl bg-card [&>button:last-child]:hidden">
           <MinistryForm ministry={selectedMinistry} workers={workers || []} departments={departments} onSave={handleSaveMinistry} onClose={() => setFormOpen(false)} />
         </DialogContent>
       </Dialog>
 
       {/* Appoint Dialog */}
       <Dialog open={appointOpen} onOpenChange={setAppointOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl p-6 sm:p-7 border-border/80 shadow-2xl">
+        <DialogContent className="sm:max-w-md max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border border-border/80 shadow-2xl bg-card [&>button:last-child]:hidden">
           {appointTarget && <AppointDialog ministry={appointTarget} workers={workers || []} onSave={handleSaveAppointed} onClose={() => setAppointOpen(false)} type={appointType} />}
         </DialogContent>
       </Dialog>

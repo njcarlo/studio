@@ -1,13 +1,33 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Settings, ArrowLeft, Save, LoaderCircle, Building2, SlidersHorizontal, Ticket, SunMoon } from "lucide-react";
+import {
+  Settings,
+  ArrowLeft,
+  Save,
+  LoaderCircle,
+  Building2,
+  SlidersHorizontal,
+  Ticket,
+  AlertCircle,
+  RotateCcw,
+} from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
+import { isValidEmail } from "@/lib/validation";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@studio/ui";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/settings/theme-toggle";
 
 // ── Toggle switch ──────────────────────────────────────────────────────────────
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
@@ -83,29 +103,73 @@ const defaults: GeneralSettings = {
 };
 
 export default function GeneralSettingsPage() {
+  const router = useRouter();
   const { canManageRoles, isLoading: roleLoading } = useUserRole();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<GeneralSettings>(defaults);
+  const [initialSettings, setInitialSettings] = useState<GeneralSettings>(defaults);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
   // Load from localStorage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(SETTINGS_KEY);
-      if (stored) setSettings({ ...defaults, ...JSON.parse(stored) });
+      if (stored) {
+        const loaded = { ...defaults, ...JSON.parse(stored) };
+        setSettings(loaded);
+        setInitialSettings(loaded);
+      }
     } catch {}
   }, []);
+
+  // Track if there are unsaved changes
+  const isDirty = useMemo(() => {
+    return JSON.stringify(settings) !== JSON.stringify(initialSettings);
+  }, [settings, initialSettings]);
 
   const set = <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
+    // 1. Validation: Application Name required
+    if (!settings.appName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Required Field",
+        description: "Application Name cannot be empty.",
+      });
+      return;
+    }
+
+    // 2. Validation: Valid Support Email if provided
+    if (settings.supportEmail.trim() && !isValidEmail(settings.supportEmail.trim())) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email Address",
+        description: "Please enter a valid Support Email address (e.g. support@church.org).",
+      });
+      return;
+    }
+
+    // 3. Validation: Weekly Pool Size non-negative number
+    const poolNum = Number(settings.weeklyPoolSize);
+    if (isNaN(poolNum) || poolNum < 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Pool Size",
+        description: "Weekly Pool Size must be a valid positive number or 0.",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-      await new Promise(r => setTimeout(r, 400)); // simulate async
-      toast({ title: "Settings saved", description: "Your changes have been applied." });
+      setInitialSettings(settings);
+      await new Promise(r => setTimeout(r, 200));
+      toast({ title: "Settings saved", description: "Your changes have been applied successfully." });
     } catch {
       toast({ variant: "destructive", title: "Failed to save settings" });
     } finally {
@@ -113,42 +177,61 @@ export default function GeneralSettingsPage() {
     }
   };
 
+  // Cancel button validation & action
   const handleCancel = () => {
-    try {
-      const stored = localStorage.getItem(SETTINGS_KEY);
-      setSettings(stored ? { ...defaults, ...JSON.parse(stored) } : defaults);
-    } catch {
-      setSettings(defaults);
+    if (isDirty) {
+      setShowDiscardDialog(true);
+    } else {
+      toast({
+        title: "No changes made",
+        description: "Returning to settings menu.",
+      });
+      router.push("/settings");
     }
   };
 
-  if (roleLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
+  const handleBack = () => {
+    if (isDirty) {
+      setShowDiscardDialog(true);
+    } else {
+      router.push("/settings");
+    }
+  };
+
+  if (roleLoading) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center py-10">
+          <LoaderCircle className="h-8 w-8 animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
       <div className="space-y-6 pb-12 w-full">
-
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
               General
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
               Application name, system preferences and global defaults.
             </p>
           </div>
-          <Link
-            href="/settings"
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto"
+          <button
+            type="button"
+            onClick={handleBack}
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto cursor-pointer"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
-          </Link>
+          </button>
         </div>
 
         {/* Main layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
           {/* Application Settings */}
           <div className="bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden flex flex-col justify-between h-full">
             <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/[0.12] flex items-center gap-2.5">
@@ -165,6 +248,7 @@ export default function GeneralSettingsPage() {
                 <input
                   value={settings.appName}
                   onChange={e => set("appName", e.target.value)}
+                  placeholder="e.g. Church of God Dasmariñas"
                   className="h-9 text-xs sm:text-sm rounded-xl border border-border/70 bg-muted/[0.15] focus:bg-background px-3 focus:border-sidebar/60 focus:ring-2 focus:ring-sidebar/20 transition-all text-foreground w-full"
                 />
               </Field>
@@ -212,25 +296,6 @@ export default function GeneralSettingsPage() {
             </div>
           </div>
 
-          {/* Theme & Display */}
-          <div id="appearance" className="lg:col-span-2 bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden flex flex-col justify-between">
-            <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/[0.12] flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center shrink-0 border border-sidebar/20">
-                <SunMoon className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold font-headline text-foreground">Theme & Display</h2>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Global appearance and dark mode toggle.</p>
-              </div>
-            </div>
-            <div className="p-5 sm:p-7 space-y-4">
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Color Theme</h3>
-                <ThemeToggle />
-              </div>
-            </div>
-          </div>
-
           {/* Meal Stub Allocation — full width */}
           <div className="lg:col-span-2 bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark overflow-hidden flex flex-col justify-between">
             <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/[0.12] flex items-center gap-2.5">
@@ -265,27 +330,97 @@ export default function GeneralSettingsPage() {
             </div>
 
             {/* Footer actions */}
-            <div className="p-4 sm:p-5 flex items-center justify-end gap-3 border-t border-border/60 bg-muted/[0.08]">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="h-9 px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shadow-2xs cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="h-9 px-4 flex items-center gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer disabled:opacity-60"
-              >
-                {saving ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                <span>Save Changes</span>
-              </button>
+            <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border/60 bg-muted/[0.08]">
+              <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                {isDirty ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    May mga unsaved changes
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground/80">Lahat ng settings ay saved</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="h-9 px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shadow-2xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !isDirty}
+                  className={cn(
+                    "h-9 px-4 flex items-center gap-2 rounded-xl text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer",
+                    isDirty
+                      ? "bg-sidebar hover:bg-sidebar/90"
+                      : "bg-sidebar/60 opacity-60 cursor-not-allowed"
+                  )}
+                >
+                  {saving ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  <span>Save Changes</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Discard Confirmation Dialog */}
+      <AlertDialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <AlertDialogContent className="rounded-2xl max-w-md">
+          <AlertDialogHeader>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <AlertDialogTitle className="text-base font-bold font-headline">
+              Discard Unsaved Changes?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Mayroon kang mga binagong settings na hindi pa nai-save. Sigurado ka bang nais mong kanselahin o i-discard ang mga binago mo?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-2">
+            <AlertDialogCancel
+              onClick={() => setShowDiscardDialog(false)}
+              className="rounded-xl text-xs h-9 cursor-pointer"
+            >
+              Keep Editing
+            </AlertDialogCancel>
+            <button
+              type="button"
+              onClick={() => {
+                setSettings(initialSettings);
+                setShowDiscardDialog(false);
+                toast({
+                  title: "Settings Reverted",
+                  description: "Ibinalik ang lahat ng fields sa dating saved values.",
+                });
+              }}
+              className="h-9 px-3.5 rounded-xl border border-border/70 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
+            >
+              Reset to Saved
+            </button>
+            <AlertDialogAction
+              onClick={() => {
+                setSettings(initialSettings);
+                setShowDiscardDialog(false);
+                toast({
+                  title: "Changes Discarded",
+                  description: "Na-discard ang mga binago at bumalik sa settings menu.",
+                });
+                router.push("/settings");
+              }}
+              className="rounded-xl text-xs h-9 bg-destructive hover:bg-destructive/90 text-white font-semibold cursor-pointer"
+            >
+              Discard & Exit
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

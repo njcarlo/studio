@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@studio/ui";
@@ -26,8 +26,11 @@ import {
   QrCode,
   ArrowUpRight,
   TrendingUp,
+  AlertTriangle,
+  Package,
 } from "lucide-react";
-import { useWorkers } from "@/hooks/use-workers";
+import { useWorkerStats } from "@/hooks/use-workers";
+import { useQuery } from "@tanstack/react-query";
 import { useAttendance } from "@/hooks/use-attendance";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { useApprovals } from "@/hooks/use-approvals";
@@ -138,19 +141,29 @@ export default function DashboardPage() {
 // ── Admin / Ministry Head view ─────────────────────────────────────────────────
 function AdminDashboard() {
   const [timeRange, setTimeRange] = useState<"7" | "14" | "30">("7");
+  const [activityFilter, setActivityFilter] = useState<"all" | "low-stock">("all");
 
-  const { workers, isLoading: workersLoading } = useWorkers();
-  const { attendanceRecords, isLoading: attendanceLoading } = useAttendance({});
-  const { mealStubs, isLoading: mealStubsLoading } = useMealStubs({});
+  const { data: workerStats, isLoading: workerStatsLoading } = useWorkerStats();
+  const { attendanceRecords, isLoading: attendanceLoading } = useAttendance({
+    dateFrom: subDays(new Date(), 31),
+  });
+  const { mealStubs, isLoading: mealStubsLoading } = useMealStubs({
+    dateFrom: subDays(new Date(), 31),
+  });
   const { approvals, isLoading: approvalsLoading } = useApprovals();
   const { bookings, isLoading: bookingsLoading } = useBookings({});
 
-  const isLoading =
-    workersLoading ||
-    attendanceLoading ||
-    mealStubsLoading ||
-    approvalsLoading ||
-    bookingsLoading;
+  const { data: lowStockData } = useQuery({
+    queryKey: ["inventory", "low-stock-dashboard"],
+    queryFn: async () => {
+      const res = await fetch("/api/inventory/items?status=Low Stock&take=20");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.items || [];
+    },
+    staleTime: 60_000,
+  });
+  const lowStockItems = lowStockData || [];
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
@@ -196,13 +209,10 @@ function AdminDashboard() {
   }, [approvals]);
 
   // Demographics / Worker Status
-  const totalWorkers = workers?.length ?? 0;
-  const activeWorkers =
-    (workers as any[])?.filter((w) => w.status === "Active" || !w.status).length ?? 0;
-  const inactiveWorkers =
-    (workers as any[])?.filter((w) => w.status === "Inactive").length ?? 0;
-  const pendingWorkers =
-    (workers as any[])?.filter((w) => w.status === "Pending Approval" || w.status === "Pending").length ?? 0;
+  const totalWorkers = workerStats?.total ?? 0;
+  const activeWorkers = workerStats?.active ?? 0;
+  const inactiveWorkers = workerStats?.inactive ?? 0;
+  const pendingWorkers = Math.max(0, totalWorkers - activeWorkers - inactiveWorkers);
 
   const activePct = totalWorkers > 0 ? Math.round((activeWorkers / totalWorkers) * 100) : 100;
   const inactivePct = totalWorkers > 0 ? Math.round((inactiveWorkers / totalWorkers) * 100) : 0;
@@ -297,11 +307,12 @@ function AdminDashboard() {
   const recentActivities = useMemo(() => {
     const list: Array<{
       id: string;
-      type: "clock-in" | "meal" | "reservation";
+      type: "clock-in" | "meal" | "reservation" | "low-stock";
       title: string;
       subtitle: string;
       timeStr: string;
       timestamp: number;
+      actionUrl?: string;
     }> = [];
 
     // 1. Clock-ins
@@ -376,16 +387,48 @@ function AdminDashboard() {
       });
     }
 
-    return list.sort((a, b) => b.timestamp - a.timestamp).slice(0, 6);
-  }, [attendanceRecords, mealStubs, bookings]);
+    // 4. Low Stock Alerts (Prioritized so admin immediately sees items needing restock)
+    if (lowStockItems && lowStockItems.length > 0) {
+      lowStockItems.slice(0, 3).forEach((item: any) => {
+        const currentQty = item.stock ?? item.quantity ?? 0;
+        const minQty = item.minQuantity > 0 ? item.minQuantity : 5;
+        const catName = item.category?.name || "Equipment";
+        list.push({
+          id: `low-stock-${item.id}`,
+          type: "low-stock",
+          title: `Low stock: ${item.name}`,
+          subtitle: `${currentQty} in stock (safety min: ${minQty}) • ${catName}`,
+          timeStr: "Needs Restock",
+          // High timestamp so critical low-stock alerts sit directly at top for admin
+          timestamp: Date.now() + 100000,
+          actionUrl: `/inventory?tab=items&search=${encodeURIComponent(item.name)}`,
+        });
+      });
+    }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+    return list.sort((a, b) => b.timestamp - a.timestamp).slice(0, 6);
+  }, [attendanceRecords, mealStubs, bookings, lowStockItems]);
+
+  const displayedActivities = useMemo(() => {
+    if (activityFilter === "low-stock") {
+      return (lowStockItems || []).map((item: any) => {
+        const currentQty = item.stock ?? item.quantity ?? 0;
+        const minQty = item.minQuantity > 0 ? item.minQuantity : 5;
+        const catName = item.category?.name || "Equipment";
+        const d = parseActivityDate(item.updatedAt);
+        return {
+          id: `low-stock-tab-${item.id}`,
+          type: "low-stock" as const,
+          title: item.name,
+          subtitle: `${catName} • ${item.location || "General Storage"} (Safety min: ${minQty})`,
+          timeStr: `${currentQty} / ${minQty} pcs`,
+          timestamp: d.getTime(),
+          actionUrl: `/inventory?tab=items&search=${encodeURIComponent(item.name)}`,
+        };
+      });
+    }
+    return recentActivities;
+  }, [activityFilter, lowStockItems, recentActivities]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -399,6 +442,7 @@ function AdminDashboard() {
           iconClass="text-blue-600"
           iconBgClass="bg-blue-50 dark:bg-blue-950/40"
           accentColor="bg-blue-500"
+          loading={bookingsLoading}
         />
         <StatCard
           icon={Clock}
@@ -408,6 +452,7 @@ function AdminDashboard() {
           iconClass="text-emerald-600"
           iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
           accentColor="bg-emerald-500"
+          loading={attendanceLoading}
         />
         <StatCard
           icon={Utensils}
@@ -416,6 +461,7 @@ function AdminDashboard() {
           subtitle={`of ${totalMealsIssued} issued (${mealClaimPct}%)`}
           iconClass="text-orange-600"
           iconBgClass="bg-orange-50 dark:bg-orange-950/40"
+          loading={mealStubsLoading}
         />
         <StatCard
           icon={AlertCircle}
@@ -426,6 +472,7 @@ function AdminDashboard() {
           iconClass="text-amber-600"
           iconBgClass="bg-amber-50 dark:bg-amber-950/40"
           accentColor={pendingApprovals > 0 ? "bg-rose-500" : "bg-amber-500"}
+          loading={approvalsLoading}
         />
       </div>
 
@@ -460,52 +507,59 @@ function AdminDashboard() {
 
           <CardContent className="pt-4 flex flex-col flex-1 justify-between gap-3">
             <div className="h-[280px] flex-1 min-h-[240px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.95} />
-                      <stop offset="100%" stopColor="#a5b4fc" stopOpacity={0.7} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.8} />
-                  <XAxis
-                    dataKey="day"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={{ stroke: "#cbd5e1", opacity: 0.8 }}
-                    tick={{ fill: "#64748b" }}
-                  />
-                  <YAxis
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                    domain={[0, 6]}
-                    ticks={[0, 1, 2, 3, 4, 5, 6]}
-                    tick={{ fill: "#64748b" }}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(99, 102, 241, 0.06)" }}
-                    contentStyle={{
-                      borderRadius: "12px",
-                      border: "1px solid #e2e8f0",
-                      boxShadow: "0 10px 25px -3px rgba(0,0,0,0.12)",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Bar
-                    dataKey="count"
-                    name="Clock Ins"
-                    fill="url(#barGradient)"
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={32}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {attendanceLoading ? (
+                <div className="h-full w-full flex flex-col items-center justify-center gap-2 rounded-xl bg-muted/20 animate-pulse">
+                  <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground font-medium">Loading check-in trends...</span>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="#a5b4fc" stopOpacity={0.7} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.8} />
+                    <XAxis
+                      dataKey="day"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={{ stroke: "#cbd5e1", opacity: 0.8 }}
+                      tick={{ fill: "#64748b" }}
+                    />
+                    <YAxis
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                      domain={[0, 6]}
+                      ticks={[0, 1, 2, 3, 4, 5, 6]}
+                      tick={{ fill: "#64748b" }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(99, 102, 241, 0.06)" }}
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 10px 25px -3px rgba(0,0,0,0.12)",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Bar
+                      dataKey="count"
+                      name="Clock Ins"
+                      fill="url(#barGradient)"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={32}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             {/* Weekly Total Footer Pill */}
@@ -547,39 +601,48 @@ function AdminDashboard() {
 
           <CardContent className="pt-4 flex flex-col justify-between flex-1">
             <div className="relative flex items-center justify-center h-[190px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={demographicsData}
-                    innerRadius={55}
-                    outerRadius={75}
-                    paddingAngle={demographicsData.length > 1 ? 3 : 0}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {demographicsData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val: any, name: any) => [`${val} workers`, name]}
-                    contentStyle={{
-                      borderRadius: "12px",
-                      border: "1px solid #e2e8f0",
-                      boxShadow: "0 10px 25px -3px rgba(0,0,0,0.12)",
-                      fontSize: "12px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-black tracking-tight text-foreground font-headline">
-                  {totalWorkers > 0 ? totalWorkers : 18}
-                </span>
-                <span className="text-xs text-muted-foreground font-semibold">
-                  Total Workers
-                </span>
-              </div>
+              {workerStatsLoading ? (
+                <div className="h-full w-full flex flex-col items-center justify-center gap-2 rounded-xl bg-muted/20 animate-pulse">
+                  <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground font-medium">Loading worker status...</span>
+                </div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={demographicsData}
+                        innerRadius={55}
+                        outerRadius={75}
+                        paddingAngle={demographicsData.length > 1 ? 3 : 0}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {demographicsData.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(val: any, name: any) => [`${val} workers`, name]}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "1px solid #e2e8f0",
+                          boxShadow: "0 10px 25px -3px rgba(0,0,0,0.12)",
+                          fontSize: "12px",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-3xl font-black tracking-tight text-foreground font-headline">
+                      {totalWorkers > 0 ? totalWorkers : 18}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-semibold">
+                      Total Workers
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Status Breakdown Legend with mini progress bars */}
@@ -632,27 +695,109 @@ function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Widget 3: Recent Activities */}
+        {/* Widget 3: Recent Activities & Low Stock Restock Alerts */}
         <Card className="border-0 border-none shadow-card-dark bg-card flex flex-col justify-between rounded-2xl overflow-hidden">
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-border/60">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold text-foreground">
-                Recent Activities
-              </CardTitle>
-              <Link
-                href="/reports"
-                className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-              >
-                <span>View All</span>
-                <ArrowUpRight className="h-3 w-3" />
-              </Link>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base font-bold text-foreground">
+                  Recent Activities
+                </CardTitle>
+                {lowStockItems.length > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    {lowStockItems.length} Low Stock
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex bg-muted/60 p-0.5 rounded-lg border border-border/50 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setActivityFilter("all")}
+                    className={cn(
+                      "px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer",
+                      activityFilter === "all"
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActivityFilter("low-stock")}
+                    className={cn(
+                      "px-2.5 py-0.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer",
+                      activityFilter === "low-stock"
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground",
+                      lowStockItems.length > 0 && activityFilter !== "low-stock" && "text-rose-600 dark:text-rose-400 font-bold"
+                    )}
+                  >
+                    <span>Low Stock</span>
+                    {lowStockItems.length > 0 && (
+                      <span className="h-4 min-w-4 px-1 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center font-bold">
+                        {lowStockItems.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+                <Link
+                  href={activityFilter === "low-stock" ? "/inventory?tab=items&status=Low Stock" : "/reports"}
+                  className="text-xs font-bold text-primary hover:underline items-center gap-1 hidden sm:flex"
+                >
+                  <span>View All</span>
+                  <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </div>
             </div>
           </CardHeader>
 
           <CardContent className="pt-3 flex flex-col justify-between flex-1">
+            {/* Urgent Notice Banner if Low Stock items exist */}
+            {activityFilter === "all" && lowStockItems.length > 0 && (
+              <div className="mb-2.5 p-2.5 rounded-xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-7 w-7 rounded-lg bg-rose-100 dark:bg-rose-900/60 text-rose-600 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-rose-900 dark:text-rose-200 truncate">
+                      {lowStockItems.length} {lowStockItems.length === 1 ? "item needs" : "items need"} restock
+                    </p>
+                    <p className="text-[11px] text-rose-700/90 dark:text-rose-300/80 truncate">
+                      {lowStockItems.map((i: any) => `${i.name} (${i.stock ?? i.quantity ?? 0}/${i.minQuantity > 0 ? i.minQuantity : 5})`).slice(0, 2).join(", ")}
+                      {lowStockItems.length > 2 ? ` +${lowStockItems.length - 2} more` : ""}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/inventory?tab=items&status=Low Stock"
+                  className="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors flex items-center gap-1 shadow-xs"
+                >
+                  <span>Restock</span>
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            )}
+
             <div className="divide-y divide-slate-100 dark:divide-border/60">
-              {recentActivities.length > 0 ? (
-                recentActivities.map((act) => (
+              {attendanceLoading && mealStubsLoading && bookingsLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 text-xs py-2.5 px-1 animate-pulse">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-8 w-8 rounded-xl bg-muted/60 shrink-0" />
+                      <div className="space-y-1.5 min-w-0">
+                        <div className="h-3 w-32 bg-muted/60 rounded" />
+                        <div className="h-2.5 w-20 bg-muted/40 rounded" />
+                      </div>
+                    </div>
+                    <div className="h-3 w-14 bg-muted/40 rounded" />
+                  </div>
+                ))
+              ) : displayedActivities.length > 0 ? (
+                displayedActivities.map((act: any) => (
                   <div
                     key={act.id}
                     className="flex items-center justify-between gap-3 text-xs py-2.5 first:pt-1 last:pb-1 group hover:bg-muted/30 px-1 rounded-lg transition-colors"
@@ -666,12 +811,15 @@ function AdminDashboard() {
                           act.type === "meal" &&
                             "bg-orange-50 dark:bg-orange-950/50 text-orange-600",
                           act.type === "reservation" &&
-                            "bg-blue-50 dark:bg-blue-950/50 text-blue-600"
+                            "bg-blue-50 dark:bg-blue-950/50 text-blue-600",
+                          act.type === "low-stock" &&
+                            "bg-rose-50 dark:bg-rose-950/50 text-rose-600"
                         )}
                       >
                         {act.type === "clock-in" && <Clock className="h-3.5 w-3.5" />}
                         {act.type === "meal" && <Utensils className="h-3.5 w-3.5" />}
                         {act.type === "reservation" && <Box className="h-3.5 w-3.5" />}
+                        {act.type === "low-stock" && <AlertTriangle className="h-3.5 w-3.5" />}
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-foreground truncate">
@@ -682,26 +830,67 @@ function AdminDashboard() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-[11px] font-semibold text-muted-foreground shrink-0 bg-muted/40 px-2 py-0.5 rounded-md">
-                      {act.timeStr}
-                    </span>
+                    {act.type === "low-stock" ? (
+                      <Link
+                        href={act.actionUrl || "/inventory?tab=items&status=Low Stock"}
+                        className="text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 px-2 py-0.5 rounded-md border border-rose-200/60 dark:border-rose-800/40 shrink-0 transition-colors flex items-center gap-1"
+                      >
+                        <span>Restock</span>
+                        <ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                    ) : (
+                      <span className="text-[11px] font-semibold text-muted-foreground shrink-0 bg-muted/40 px-2 py-0.5 rounded-md">
+                        {act.timeStr}
+                      </span>
+                    )}
                   </div>
                 ))
               ) : (
-                <div className="py-12 text-center text-xs text-muted-foreground">
-                  No recent activities recorded.
+                <div className="py-10 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
+                  {activityFilter === "low-stock" ? (
+                    <>
+                      <div className="h-8 w-8 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                      <p className="font-semibold text-foreground">Stock levels healthy</p>
+                      <p className="text-[11px]">All items are currently above safety reorder points.</p>
+                    </>
+                  ) : (
+                    <p>No recent activities recorded.</p>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="pt-3 mt-2 border-t border-slate-200 dark:border-border/80">
-              <Link
-                href="/reports"
-                className="text-xs font-bold text-primary hover:underline flex items-center justify-between group"
-              >
-                <span>View all activity audit logs</span>
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-              </Link>
+            <div className="pt-3 mt-2 border-t border-slate-200 dark:border-border/80 flex items-center justify-between">
+              {activityFilter === "low-stock" ? (
+                <Link
+                  href="/inventory?tab=items&status=Low Stock"
+                  className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 group"
+                >
+                  <span>Manage all stock in Stock Monitoring</span>
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/reports"
+                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1 group"
+                  >
+                    <span>View all activity audit logs</span>
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                  {lowStockItems.length > 0 && (
+                    <Link
+                      href="/inventory?tab=items&status=Low Stock"
+                      className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1"
+                    >
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>Restock ({lowStockItems.length})</span>
+                    </Link>
+                  )}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -717,13 +906,11 @@ function WorkerDashboard() {
   const activeUserId = workerProfile?.id || (user as any)?.uid;
 
   const { attendanceRecords, isLoading: attendanceLoading } = useAttendance(
-    activeUserId ? { workerProfileId: activeUserId } : {}
+    activeUserId ? { workerProfileId: activeUserId, dateFrom: subDays(new Date(), 14) } : {}
   );
   const { mealStubs, isLoading: mealStubsLoading } = useMealStubs(
-    activeUserId ? { workerId: activeUserId } : {}
+    activeUserId ? { workerId: activeUserId, dateFrom: subDays(new Date(), 30) } : {}
   );
-
-  const isLoading = attendanceLoading || mealStubsLoading;
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
@@ -748,14 +935,6 @@ function WorkerDashboard() {
     return { date: format(date, "d"), month: format(date, "MMM"), count };
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-10">
-        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-6">
       {/* Personal Stat Cards */}
@@ -768,6 +947,7 @@ function WorkerDashboard() {
           iconClass="text-emerald-600"
           iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
           accentColor="bg-emerald-500"
+          loading={attendanceLoading}
         />
         <StatCard
           icon={Utensils}
@@ -777,15 +957,17 @@ function WorkerDashboard() {
           iconClass="text-orange-600"
           iconBgClass="bg-orange-50 dark:bg-orange-950/40"
           accentColor="bg-orange-500"
+          loading={mealStubsLoading}
         />
         <StatCard
           icon={Calendar}
           label="TOTAL ATTENDANCE"
           value={(attendanceRecords as any[])?.length ?? 0}
-          subtitle="all time records"
+          subtitle="recent records"
           iconClass="text-blue-600"
           iconBgClass="bg-blue-50 dark:bg-blue-950/40"
           accentColor="bg-blue-500"
+          loading={attendanceLoading}
         />
       </div>
 
@@ -796,8 +978,14 @@ function WorkerDashboard() {
             <CardDescription>Your attendance over the last 14 days</CardDescription>
           </CardHeader>
           <CardContent className="h-[260px] pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={last14Days} margin={{ top: 4, right: 4, left: -20, bottom: 20 }}>
+            {attendanceLoading ? (
+              <div className="h-full w-full flex flex-col items-center justify-center gap-2 rounded-xl bg-muted/20 animate-pulse">
+                <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground font-medium">Loading attendance history...</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={last14Days} margin={{ top: 4, right: 4, left: -20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} opacity={0.8} />
                 <XAxis
                   dataKey="date"
@@ -832,6 +1020,7 @@ function WorkerDashboard() {
                 <Bar dataKey="count" name="Clock Ins" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          )}
           </CardContent>
         </Card>
       </div>
@@ -850,6 +1039,7 @@ function StatCard({
   iconBgClass,
   accentColor,
   progress,
+  loading = false,
 }: {
   icon: React.ElementType;
   label: string;
@@ -860,6 +1050,7 @@ function StatCard({
   iconBgClass: string;
   accentColor?: string;
   progress?: number;
+  loading?: boolean;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border-0 border-none shadow-card-dark bg-card block h-full">
@@ -877,9 +1068,13 @@ function StatCard({
               {label}
             </p>
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-4xl sm:text-5xl font-black tracking-tight font-headline text-foreground leading-none">
-                {value}
-              </span>
+              {loading ? (
+                <div className="h-9 w-20 rounded-md bg-muted/70 animate-pulse my-1" />
+              ) : (
+                <span className="text-4xl sm:text-5xl font-black tracking-tight font-headline text-foreground leading-none">
+                  {value}
+                </span>
+              )}
             </div>
           </div>
           <div

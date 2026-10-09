@@ -22,6 +22,7 @@ import {
   FileCheck,
   ShieldCheck,
   ClipboardCheck,
+  Download,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/app-layout';
 import {
@@ -121,7 +122,7 @@ function InventoryPageContent() {
           setChecklistCounts({ checkout: chk, return: ret, total: chk + ret });
         }
       }
-    } catch {}
+    } catch { }
   };
 
   const handleRefresh = async () => {
@@ -145,7 +146,7 @@ function InventoryPageContent() {
               setOverdueAlerts(data);
             }
           })
-          .catch(() => {}),
+          .catch(() => { }),
       ]);
     } finally {
       setRefreshing(false);
@@ -169,13 +170,17 @@ function InventoryPageContent() {
           setOverdueAlerts(data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [fetchStats, fetchCategories]);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab && ['items', 'borrowings', 'logs', 'categories', 'reports', 'settings'].includes(tab)) {
       setActiveTab(tab);
+    }
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setQuickStatusFilter(statusParam);
     }
   }, [searchParams]);
 
@@ -189,410 +194,426 @@ function InventoryPageContent() {
     <AppLayout>
       <div className="space-y-6">
         {/* ── TOP HEADER ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white">
+        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white truncate">
               Stock Monitoring &amp; Assets
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
               Centralized equipment tracking, barcode checkout system, and preventive maintenance.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              size="sm"
-              onClick={() => setIsCameraScannerOpen(true)}
-              className="gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs text-xs font-semibold flex-1 sm:flex-initial cursor-pointer h-9 px-4"
-            >
-              <ScanBarcode className="h-4 w-4 text-white" />
-              <span>Quick Scan</span>
-            </Button>
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {['items', 'borrowings', 'logs', 'reports'].includes(activeTab) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.dispatchEvent(new CustomEvent('trigger-inventory-export'))}
+                className="gap-1.5 sm:gap-2 rounded-xl border border-border/80 bg-white dark:bg-card hover:bg-muted/60 text-foreground shadow-2xs text-xs font-semibold cursor-pointer h-9 px-3 sm:px-3.5 shrink-0"
+                title={activeTab === 'reports' ? 'Export / Print PDF' : 'Export Excel (.xlsx)'}
+              >
+                <Download className="h-4 w-4 text-muted-foreground" />
+                <span className="hidden sm:inline">{activeTab === 'reports' ? 'Export PDF' : 'Export Excel'}</span>
+                <span className="sm:hidden">Export</span>
+              </Button>
+            )}
+
+            {!['reports', 'settings'].includes(activeTab) && (
+              <Button
+                size="sm"
+                onClick={() => setIsCameraScannerOpen(true)}
+                className="gap-1.5 sm:gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs text-xs font-semibold cursor-pointer h-9 px-3.5 sm:px-4 shrink-0"
+              >
+                <ScanBarcode className="h-4 w-4 text-white" />
+                <span>Scanner</span>
+              </Button>
+            )}
           </div>
         </div>
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* ── OVERDUE BANNER ALERT ── */}
-        {overdueAlerts.length > 0 && (
-          <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive flex items-center justify-between flex-wrap gap-3 animate-in fade-in">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
+          {overdueAlerts.length > 0 && (
+            <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive flex items-center justify-between flex-wrap gap-3 animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold">
+                    {overdueAlerts.length} Overdue Borrowing Item(s) Detected!
+                  </p>
+                  <p className="text-[11px] opacity-90 mt-0.5">
+                    Some borrowed equipment has exceeded its return schedule. Please verify returns or send reminders to workers.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold">
-                  {overdueAlerts.length} Overdue Borrowing Item(s) Detected!
-                </p>
-                <p className="text-[11px] opacity-90 mt-0.5">
-                  Some borrowed equipment has exceeded its return schedule. Please verify returns or send reminders to workers.
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="text-xs rounded-xl h-8 px-3 shadow-xs"
-              onClick={() => handleTabChange('borrowings')}
-            >
-              View Overdue
-            </Button>
-          </div>
-        )}
-
-        {/* ── TOP KPI SUMMARY CARDS (DYNAMIC PER TAB) ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* TAB: ITEMS & CATALOG */}
-          {activeTab === 'items' && (
-            <>
-              <StatCard
-                label="TOTAL CATALOG"
-                value={stats?.totalItems ?? 0}
-                sub="All registered SKUs"
-                icon={Boxes}
-                accentColor="bg-sidebar"
-                iconClass="text-sidebar dark:text-blue-400"
-                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
-                onClick={() => setQuickStatusFilter('')}
-              />
-              <StatCard
-                label="ACTIVE BORROWED"
-                value={stats?.borrowedCount ?? 0}
-                sub="In worker possession"
-                icon={ArrowLeftRight}
-                accentColor="bg-sky-500"
-                iconClass="text-sky-600 dark:text-sky-400"
-                iconBgClass="bg-sky-50 dark:bg-sky-950/40"
-                badge={
-                  stats?.overdueCount ? (
-                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-bold rounded-full animate-pulse">
-                      {stats.overdueCount} overdue
-                    </Badge>
-                  ) : null
-                }
+              <Button
+                variant="destructive"
+                size="sm"
+                className="text-xs rounded-xl h-8 px-3 shadow-xs"
                 onClick={() => handleTabChange('borrowings')}
-              />
-              <StatCard
-                label="LOW STOCK"
-                value={stats?.lowStockAlerts ?? 0}
-                sub="Below safety reorder point"
-                icon={AlertTriangle}
-                accentColor="bg-amber-500"
-                iconClass="text-amber-600 dark:text-amber-400"
-                iconBgClass="bg-amber-50 dark:bg-amber-950/40"
-                badge={
-                  (stats?.lowStockAlerts ?? 0) > 0 ? (
-                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-transparent text-[10px] px-1.5 py-0 font-bold rounded-full">
-                      Needs restock
-                    </Badge>
-                  ) : null
-                }
-                onClick={() => setQuickStatusFilter('Low Stock')}
-              />
-              <StatCard
-                label="PMS ALERTS"
-                value={stats?.pmsAlerts ?? 0}
-                sub="Due maintenance within 30d"
-                icon={ShieldAlert}
-                accentColor="bg-indigo-500"
-                iconClass="text-indigo-600 dark:text-indigo-400"
-                iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
-                onClick={() => handleTabChange('settings')}
-              />
-            </>
-          )}
-
-          {/* TAB: BORROWINGS */}
-          {activeTab === 'borrowings' && (
-            <>
-              <StatCard
-                label="ACTIVE BORROWED"
-                value={stats?.borrowedCount ?? 0}
-                sub="In worker possession"
-                icon={ArrowLeftRight}
-                accentColor="bg-sidebar"
-                iconClass="text-sidebar dark:text-blue-400"
-                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
-              />
-              <StatCard
-                label="OVERDUE RETURNS"
-                value={stats?.overdueCount ?? overdueAlerts.length ?? 0}
-                sub="Exceeded due schedule"
-                icon={AlertTriangle}
-                accentColor="bg-rose-500"
-                iconClass="text-rose-600 dark:text-rose-400"
-                iconBgClass="bg-rose-50 dark:bg-rose-950/40"
-                badge={
-                  (stats?.overdueCount ?? overdueAlerts.length ?? 0) > 0 ? (
-                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-bold rounded-full animate-pulse">
-                      Urgent
-                    </Badge>
-                  ) : null
-                }
-              />
-              <StatCard
-                label="TOTAL RETURNED"
-                value={stats?.returnedCount ?? 0}
-                sub="Completed return intake"
-                icon={CheckCircle2}
-                accentColor="bg-emerald-500"
-                iconClass="text-emerald-600 dark:text-emerald-400"
-                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
-              />
-              <StatCard
-                label="VERIFICATION REQUIRED"
-                value={stats?.borrowedCount ?? 0}
-                sub="Inspection on return"
-                icon={ClipboardCheck}
-                accentColor="bg-sky-500"
-                iconClass="text-sky-600 dark:text-sky-400"
-                iconBgClass="bg-sky-50 dark:bg-sky-950/40"
-              />
-            </>
-          )}
-
-          {/* TAB: STOCK LOGS */}
-          {activeTab === 'logs' && (
-            <>
-              <StatCard
-                label="TOTAL AUDIT LOGS"
-                value={stats?.totalLogs ?? 0}
-                sub="Logged inventory transactions"
-                icon={History}
-                accentColor="bg-sidebar"
-                iconClass="text-sidebar dark:text-blue-400"
-                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
-              />
-              <StatCard
-                label="STOCK IN (RESTOCKED)"
-                value={stats?.stockInCount ?? 0}
-                sub="Inbound inventory additions"
-                icon={ArrowDownLeft}
-                accentColor="bg-emerald-500"
-                iconClass="text-emerald-600 dark:text-emerald-400"
-                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
-              />
-              <StatCard
-                label="STOCK OUT (DISPATCHED)"
-                value={stats?.stockOutCount ?? 0}
-                sub="Dispatched & consumed items"
-                icon={ArrowUpRight}
-                accentColor="bg-amber-500"
-                iconClass="text-amber-600 dark:text-amber-400"
-                iconBgClass="bg-amber-50 dark:bg-amber-950/40"
-              />
-              <StatCard
-                label="MANUAL ADJUSTMENTS"
-                value={stats?.adjustmentsCount ?? 0}
-                sub="Audit corrections & syncs"
-                icon={SlidersHorizontal}
-                accentColor="bg-indigo-500"
-                iconClass="text-indigo-600 dark:text-indigo-400"
-                iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
-              />
-            </>
-          )}
-
-          {/* TAB: CATEGORIES */}
-          {activeTab === 'categories' && (
-            <>
-              <StatCard
-                label="TOTAL CATEGORIES"
-                value={categories.length || stats?.totalCategories || 0}
-                sub="Active classification groups"
-                icon={FolderTree}
-                accentColor="bg-sidebar"
-                iconClass="text-sidebar dark:text-blue-400"
-                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
-              />
-              <StatCard
-                label="CATEGORIZED SKUS"
-                value={stats?.categorizedItemsCount ?? stats?.totalItems ?? 0}
-                sub="Assigned to classifications"
-                icon={Package}
-                accentColor="bg-sky-500"
-                iconClass="text-sky-600 dark:text-sky-400"
-                iconBgClass="bg-sky-50 dark:bg-sky-950/40"
-              />
-              <StatCard
-                label="EQUIPMENT CLASSES"
-                value={stats?.equipmentCount ?? 0}
-                sub="Gear & returnable assets"
-                icon={Boxes}
-                accentColor="bg-indigo-500"
-                iconClass="text-indigo-600 dark:text-indigo-400"
-                iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
-              />
-              <StatCard
-                label="CONSUMABLES CLASSES"
-                value={stats?.consumableCount ?? 0}
-                sub="Supplies & expendables"
-                icon={Tag}
-                accentColor="bg-emerald-500"
-                iconClass="text-emerald-600 dark:text-emerald-400"
-                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
-              />
-            </>
-          )}
-
-          {/* TAB: REPORTS & ANALYTICS */}
-          {activeTab === 'reports' && (
-            <>
-              <StatCard
-                label="HEALTHY STOCKS"
-                value={Math.max(0, (stats?.totalItems ?? 0) - (stats?.lowStockAlerts ?? 0))}
-                sub="Above safety reorder level"
-                icon={CheckCircle2}
-                accentColor="bg-emerald-500"
-                iconClass="text-emerald-600 dark:text-emerald-400"
-                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
-              />
-              <StatCard
-                label="ACTIVE DEPLOYMENTS"
-                value={stats?.borrowedCount ?? 0}
-                sub="Currently borrowed in field"
-                icon={TrendingUp}
-                accentColor="bg-sky-500"
-                iconClass="text-sky-600 dark:text-sky-400"
-                iconBgClass="bg-sky-50 dark:bg-sky-950/40"
-              />
-              <StatCard
-                label="CRITICAL REORDERS"
-                value={stats?.lowStockAlerts ?? 0}
-                sub="Below safety threshold"
-                icon={AlertTriangle}
-                accentColor="bg-amber-500"
-                iconClass="text-amber-600 dark:text-amber-400"
-                iconBgClass="bg-amber-50 dark:bg-amber-950/40"
-              />
-              <StatCard
-                label="MAINTAINED ASSETS"
-                value={Math.max(0, (stats?.totalItems ?? 0) - (stats?.pmsAlerts ?? 0))}
-                sub="PMS schedule up-to-date"
-                icon={ShieldAlert}
-                accentColor="bg-indigo-500"
-                iconClass="text-indigo-600 dark:text-indigo-400"
-                iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
-              />
-            </>
-          )}
-
-          {/* TAB: SETTINGS & CHECKLISTS */}
-          {activeTab === 'settings' && (
-            <>
-              <StatCard
-                label="CHECKOUT RULES"
-                value={checklistCounts.checkout}
-                sub="Handover inspection steps"
-                icon={FileCheck}
-                accentColor="bg-sidebar"
-                iconClass="text-sidebar dark:text-blue-400"
-                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
-              />
-              <StatCard
-                label="RETURN RULES"
-                value={checklistCounts.return}
-                sub="Intake damage criteria"
-                icon={ShieldCheck}
-                accentColor="bg-emerald-500"
-                iconClass="text-emerald-600 dark:text-emerald-400"
-                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
-              />
-              <StatCard
-                label="TOTAL VERIFICATIONS"
-                value={checklistCounts.total}
-                sub="Active quality controls"
-                icon={CheckCircle2}
-                accentColor="bg-sky-500"
-                iconClass="text-sky-600 dark:text-sky-400"
-                iconBgClass="bg-sky-50 dark:bg-sky-950/40"
-              />
-              <StatCard
-                label="PMS CYCLE (DAYS)"
-                value={30}
-                sub="Maintenance advance window"
-                icon={ShieldAlert}
-                accentColor="bg-indigo-500"
-                iconClass="text-indigo-600 dark:text-indigo-400"
-                iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
-              />
-            </>
-          )}
-        </div>
-
-        {/* ── TAB PANELS CONTENT ── */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-6">
-          <TabsContent value="items" className="space-y-6 mt-0">
-            <div className="w-full">
-              <InventoryTable
-                onScanClick={() => setIsScanModalOpen(true)}
-                statusFilterOverride={quickStatusFilter}
-                onClearStatusFilterOverride={() => setQuickStatusFilter('')}
-                onActivityFeedClick={() => setIsActivityFeedOpen(true)}
-              />
+              >
+                View Overdue
+              </Button>
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="borrowings" className="space-y-6 mt-0">
-            <BorrowingsPanel />
-          </TabsContent>
+          {/* ── TOP KPI SUMMARY CARDS (DYNAMIC PER TAB) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* TAB: ITEMS & CATALOG */}
+            {activeTab === 'items' && (
+              <>
+                <StatCard
+                  label="TOTAL CATALOG"
+                  value={stats?.totalItems ?? 0}
+                  sub="All registered SKUs"
+                  icon={Boxes}
+                  accentColor="bg-sidebar"
+                  iconClass="text-sidebar dark:text-blue-400"
+                  iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+                  onClick={() => setQuickStatusFilter('')}
+                />
+                <StatCard
+                  label="ACTIVE BORROWED"
+                  value={stats?.borrowedCount ?? 0}
+                  sub="In worker possession"
+                  icon={ArrowLeftRight}
+                  accentColor="bg-sky-500"
+                  iconClass="text-sky-600 dark:text-sky-400"
+                  iconBgClass="bg-sky-50 dark:bg-sky-950/40"
+                  badge={
+                    stats?.overdueCount ? (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-bold rounded-full animate-pulse">
+                        {stats.overdueCount} overdue
+                      </Badge>
+                    ) : null
+                  }
+                  onClick={() => handleTabChange('borrowings')}
+                />
+                <StatCard
+                  label="LOW STOCK"
+                  value={stats?.lowStockAlerts ?? 0}
+                  sub="Below safety reorder point"
+                  icon={AlertTriangle}
+                  accentColor="bg-amber-500"
+                  iconClass="text-amber-600 dark:text-amber-400"
+                  iconBgClass="bg-amber-50 dark:bg-amber-950/40"
+                  badge={
+                    (stats?.lowStockAlerts ?? 0) > 0 ? (
+                      <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-transparent text-[10px] px-1.5 py-0 font-bold rounded-full">
+                        Needs restock
+                      </Badge>
+                    ) : null
+                  }
+                  onClick={() => setQuickStatusFilter('Low Stock')}
+                />
+                <StatCard
+                  label="PMS ALERTS"
+                  value={stats?.pmsAlerts ?? 0}
+                  sub="Due maintenance within 30d"
+                  icon={ShieldAlert}
+                  accentColor="bg-indigo-500"
+                  iconClass="text-indigo-600 dark:text-indigo-400"
+                  iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
+                  onClick={() => handleTabChange('settings')}
+                />
+              </>
+            )}
 
-          {/* Tab 3: Stock Logs */}
-          <TabsContent value="logs" className="space-y-6 mt-0">
-            <StockLogsPanel />
-          </TabsContent>
+            {/* TAB: BORROWINGS */}
+            {activeTab === 'borrowings' && (
+              <>
+                <StatCard
+                  label="ACTIVE BORROWED"
+                  value={stats?.borrowedCount ?? 0}
+                  sub="In worker possession"
+                  icon={ArrowLeftRight}
+                  accentColor="bg-sidebar"
+                  iconClass="text-sidebar dark:text-blue-400"
+                  iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+                />
+                <StatCard
+                  label="OVERDUE RETURNS"
+                  value={stats?.overdueCount ?? overdueAlerts.length ?? 0}
+                  sub="Exceeded due schedule"
+                  icon={AlertTriangle}
+                  accentColor="bg-rose-500"
+                  iconClass="text-rose-600 dark:text-rose-400"
+                  iconBgClass="bg-rose-50 dark:bg-rose-950/40"
+                  badge={
+                    (stats?.overdueCount ?? overdueAlerts.length ?? 0) > 0 ? (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-bold rounded-full animate-pulse">
+                        Urgent
+                      </Badge>
+                    ) : null
+                  }
+                />
+                <StatCard
+                  label="TOTAL RETURNED"
+                  value={stats?.returnedCount ?? 0}
+                  sub="Completed return intake"
+                  icon={CheckCircle2}
+                  accentColor="bg-emerald-500"
+                  iconClass="text-emerald-600 dark:text-emerald-400"
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+                />
+                <StatCard
+                  label="VERIFICATION REQUIRED"
+                  value={stats?.borrowedCount ?? 0}
+                  sub="Inspection on return"
+                  icon={ClipboardCheck}
+                  accentColor="bg-sky-500"
+                  iconClass="text-sky-600 dark:text-sky-400"
+                  iconBgClass="bg-sky-50 dark:bg-sky-950/40"
+                />
+              </>
+            )}
 
-          {/* Tab 4: Categories */}
-          <TabsContent value="categories" className="space-y-6 mt-0">
-            <CategoriesPanel />
-          </TabsContent>
+            {/* TAB: STOCK LOGS */}
+            {activeTab === 'logs' && (
+              <>
+                <StatCard
+                  label="TOTAL AUDIT LOGS"
+                  value={stats?.totalLogs ?? 0}
+                  sub="Logged inventory transactions"
+                  icon={History}
+                  accentColor="bg-sidebar"
+                  iconClass="text-sidebar dark:text-blue-400"
+                  iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+                />
+                <StatCard
+                  label="STOCK IN (RESTOCKED)"
+                  value={stats?.stockInCount ?? 0}
+                  sub="Inbound inventory additions"
+                  icon={ArrowDownLeft}
+                  accentColor="bg-emerald-500"
+                  iconClass="text-emerald-600 dark:text-emerald-400"
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+                />
+                <StatCard
+                  label="STOCK OUT (DISPATCHED)"
+                  value={stats?.stockOutCount ?? 0}
+                  sub="Dispatched & consumed items"
+                  icon={ArrowUpRight}
+                  accentColor="bg-amber-500"
+                  iconClass="text-amber-600 dark:text-amber-400"
+                  iconBgClass="bg-amber-50 dark:bg-amber-950/40"
+                />
+                <StatCard
+                  label="MANUAL ADJUSTMENTS"
+                  value={stats?.adjustmentsCount ?? 0}
+                  sub="Audit corrections & syncs"
+                  icon={SlidersHorizontal}
+                  accentColor="bg-indigo-500"
+                  iconClass="text-indigo-600 dark:text-indigo-400"
+                  iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
+                />
+              </>
+            )}
 
-          {/* Tab 5: Reports & Analytics */}
-          <TabsContent value="reports" className="space-y-6 mt-0">
-            <ReportsPanel />
-          </TabsContent>
+            {/* TAB: CATEGORIES */}
+            {activeTab === 'categories' && (
+              <>
+                <StatCard
+                  label="TOTAL CATEGORIES"
+                  value={categories.length || stats?.totalCategories || 0}
+                  sub="Active classification groups"
+                  icon={FolderTree}
+                  accentColor="bg-sidebar"
+                  iconClass="text-sidebar dark:text-blue-400"
+                  iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+                />
+                <StatCard
+                  label="CATEGORIZED SKUS"
+                  value={stats?.categorizedItemsCount ?? stats?.totalItems ?? 0}
+                  sub="Assigned to classifications"
+                  icon={Package}
+                  accentColor="bg-sky-500"
+                  iconClass="text-sky-600 dark:text-sky-400"
+                  iconBgClass="bg-sky-50 dark:bg-sky-950/40"
+                />
+                <StatCard
+                  label="EQUIPMENT CLASSES"
+                  value={stats?.equipmentCount ?? 0}
+                  sub="Gear & returnable assets"
+                  icon={Boxes}
+                  accentColor="bg-indigo-500"
+                  iconClass="text-indigo-600 dark:text-indigo-400"
+                  iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
+                />
+                <StatCard
+                  label="CONSUMABLES CLASSES"
+                  value={stats?.consumableCount ?? 0}
+                  sub="Supplies & expendables"
+                  icon={Tag}
+                  accentColor="bg-emerald-500"
+                  iconClass="text-emerald-600 dark:text-emerald-400"
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+                />
+              </>
+            )}
 
-          {/* Tab 6: Settings */}
-          <TabsContent value="settings" className="space-y-6 mt-0">
-            <SettingsPanel />
-          </TabsContent>
-        </Tabs>
+            {/* TAB: REPORTS & ANALYTICS */}
+            {activeTab === 'reports' && (
+              <>
+                <StatCard
+                  label="HEALTHY STOCKS"
+                  value={Math.max(0, (stats?.totalItems ?? 0) - (stats?.lowStockAlerts ?? 0))}
+                  sub="Above safety reorder level"
+                  icon={CheckCircle2}
+                  accentColor="bg-emerald-500"
+                  iconClass="text-emerald-600 dark:text-emerald-400"
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+                />
+                <StatCard
+                  label="ACTIVE DEPLOYMENTS"
+                  value={stats?.borrowedCount ?? 0}
+                  sub="Currently borrowed in field"
+                  icon={TrendingUp}
+                  accentColor="bg-sky-500"
+                  iconClass="text-sky-600 dark:text-sky-400"
+                  iconBgClass="bg-sky-50 dark:bg-sky-950/40"
+                />
+                <StatCard
+                  label="CRITICAL REORDERS"
+                  value={stats?.lowStockAlerts ?? 0}
+                  sub="Below safety threshold"
+                  icon={AlertTriangle}
+                  accentColor="bg-amber-500"
+                  iconClass="text-amber-600 dark:text-amber-400"
+                  iconBgClass="bg-amber-50 dark:bg-amber-950/40"
+                />
+                <StatCard
+                  label="MAINTAINED ASSETS"
+                  value={Math.max(0, (stats?.totalItems ?? 0) - (stats?.pmsAlerts ?? 0))}
+                  sub="PMS schedule up-to-date"
+                  icon={ShieldAlert}
+                  accentColor="bg-indigo-500"
+                  iconClass="text-indigo-600 dark:text-indigo-400"
+                  iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
+                />
+              </>
+            )}
 
-        {/* ── ACTIVITY FEED SIDE SHEET (Unclutters the Table) ── */}
-        <Sheet open={isActivityFeedOpen} onOpenChange={setIsActivityFeedOpen}>
-          <SheetContent className="sm:max-w-xl w-full p-0 flex flex-col bg-background border border-border/80 shadow-2xl overflow-hidden rounded-2xl">
-            <ActivityFeed onClose={() => setIsActivityFeedOpen(false)} />
-          </SheetContent>
-        </Sheet>
+            {/* TAB: SETTINGS & CHECKLISTS */}
+            {activeTab === 'settings' && (
+              <>
+                <StatCard
+                  label="CHECKOUT RULES"
+                  value={checklistCounts.checkout}
+                  sub="Handover inspection steps"
+                  icon={FileCheck}
+                  accentColor="bg-sidebar"
+                  iconClass="text-sidebar dark:text-blue-400"
+                  iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+                />
+                <StatCard
+                  label="RETURN RULES"
+                  value={checklistCounts.return}
+                  sub="Intake damage criteria"
+                  icon={ShieldCheck}
+                  accentColor="bg-emerald-500"
+                  iconClass="text-emerald-600 dark:text-emerald-400"
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+                />
+                <StatCard
+                  label="TOTAL VERIFICATIONS"
+                  value={checklistCounts.total}
+                  sub="Active quality controls"
+                  icon={CheckCircle2}
+                  accentColor="bg-sky-500"
+                  iconClass="text-sky-600 dark:text-sky-400"
+                  iconBgClass="bg-sky-50 dark:bg-sky-950/40"
+                />
+                <StatCard
+                  label="PMS CYCLE (DAYS)"
+                  value={30}
+                  sub="Maintenance advance window"
+                  icon={ShieldAlert}
+                  accentColor="bg-indigo-500"
+                  iconClass="text-indigo-600 dark:text-indigo-400"
+                  iconBgClass="bg-indigo-50 dark:bg-indigo-950/40"
+                />
+              </>
+            )}
+          </div>
 
-        {/* ── SCAN MODALS ── */}
-        {isScanModalOpen && (
-          <StockScanModal
-            isOpen={isScanModalOpen}
-            initialCode={scannedCode}
-            activeTab={activeTab}
-            onSwitchTab={handleTabChange}
-            onClose={() => {
-              setIsScanModalOpen(false);
-              setScannedCode('');
-            }}
-            onStockUpdated={() => {
-              fetchStats();
-              window.dispatchEvent(new CustomEvent('inventory-refresh'));
-            }}
-          />
-        )}
+          {/* ── TAB PANELS CONTENT ── */}
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-6">
+            <TabsContent value="items" className="space-y-6 mt-0">
+              <div className="w-full">
+                <InventoryTable
+                  onScanClick={() => setIsScanModalOpen(true)}
+                  statusFilterOverride={quickStatusFilter}
+                  onClearStatusFilterOverride={() => setQuickStatusFilter('')}
+                  onActivityFeedClick={() => setIsActivityFeedOpen(true)}
+                />
+              </div>
+            </TabsContent>
 
-        {isCameraScannerOpen && (
-          <ScannerModal
-            isOpen={isCameraScannerOpen}
-            onClose={() => setIsCameraScannerOpen(false)}
-            onScan={(code) => {
-              setIsCameraScannerOpen(false);
-              setScannedCode(code);
-              setIsScanModalOpen(true);
-            }}
-          />
-        )}
+            <TabsContent value="borrowings" className="space-y-6 mt-0">
+              <BorrowingsPanel />
+            </TabsContent>
+
+            {/* Tab 3: Stock Logs */}
+            <TabsContent value="logs" className="space-y-6 mt-0">
+              <StockLogsPanel />
+            </TabsContent>
+
+            {/* Tab 4: Categories */}
+            <TabsContent value="categories" className="space-y-6 mt-0">
+              <CategoriesPanel />
+            </TabsContent>
+
+            {/* Tab 5: Reports & Analytics */}
+            <TabsContent value="reports" className="space-y-6 mt-0">
+              <ReportsPanel />
+            </TabsContent>
+
+            {/* Tab 6: Settings */}
+            <TabsContent value="settings" className="space-y-6 mt-0">
+              <SettingsPanel />
+            </TabsContent>
+          </Tabs>
+
+          {/* ── ACTIVITY FEED SIDE SHEET (Unclutters the Table) ── */}
+          <Sheet open={isActivityFeedOpen} onOpenChange={setIsActivityFeedOpen}>
+            <SheetContent className="sm:max-w-xl w-full p-0 flex flex-col bg-background border border-border/80 shadow-2xl overflow-hidden rounded-2xl">
+              <ActivityFeed onClose={() => setIsActivityFeedOpen(false)} />
+            </SheetContent>
+          </Sheet>
+
+          {/* ── SCAN MODALS ── */}
+          {isScanModalOpen && (
+            <StockScanModal
+              isOpen={isScanModalOpen}
+              initialCode={scannedCode}
+              activeTab={activeTab}
+              onSwitchTab={handleTabChange}
+              onClose={() => {
+                setIsScanModalOpen(false);
+                setScannedCode('');
+              }}
+              onStockUpdated={() => {
+                fetchStats();
+                window.dispatchEvent(new CustomEvent('inventory-refresh'));
+              }}
+            />
+          )}
+
+          {isCameraScannerOpen && (
+            <ScannerModal
+              isOpen={isCameraScannerOpen}
+              onClose={() => setIsCameraScannerOpen(false)}
+              onScan={(code) => {
+                setIsCameraScannerOpen(false);
+                setScannedCode(code);
+                setIsScanModalOpen(true);
+              }}
+            />
+          )}
         </div>
       </div>
     </AppLayout>

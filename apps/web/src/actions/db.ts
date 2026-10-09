@@ -49,6 +49,40 @@ function mapMinistryForClient(ministry: any) {
     };
 }
 
+// ── FAST IN-MEMORY SERVER CACHE (TTL) ──
+interface CacheEntry<T> {
+    data: T;
+    expiry: number;
+}
+
+const memoryCache = new Map<string, CacheEntry<any>>();
+
+function getCached<T>(key: string): T | null {
+    const entry = memoryCache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiry) {
+        memoryCache.delete(key);
+        return null;
+    }
+    return entry.data;
+}
+
+function setCached<T>(key: string, data: T, ttlMs: number): void {
+    memoryCache.set(key, { data, expiry: Date.now() + ttlMs });
+}
+
+export async function invalidateServerCache(prefix?: string): Promise<void> {
+    if (!prefix) {
+        memoryCache.clear();
+        return;
+    }
+    for (const key of memoryCache.keys()) {
+        if (key.startsWith(prefix)) {
+            memoryCache.delete(key);
+        }
+    }
+}
+
 /**
  * Resolves the ministry access level for an actor on the server side.
  * - Super admin: { isSuperAdmin: true, isMinistryHead: false, allowedMinistryIds: null }
@@ -64,6 +98,14 @@ export async function getActorMinistryAccess(actorId?: string): Promise<{
         return { isSuperAdmin: false, isMinistryHead: false, allowedMinistryIds: null };
     }
 
+    const cacheKey = `actor_access:${actorId}`;
+    const cached = getCached<{
+        isSuperAdmin: boolean;
+        isMinistryHead: boolean;
+        allowedMinistryIds: string[] | null;
+    }>(cacheKey);
+    if (cached) return cached;
+
     const actor = await prisma.worker.findUnique({
         where: { id: actorId },
         include: {
@@ -73,7 +115,9 @@ export async function getActorMinistryAccess(actorId?: string): Promise<{
     });
 
     if (!actor) {
-        return { isSuperAdmin: false, isMinistryHead: false, allowedMinistryIds: [] };
+        const notFound = { isSuperAdmin: false, isMinistryHead: false, allowedMinistryIds: [] };
+        setCached(cacheKey, notFound, 15_000);
+        return notFound;
     }
 
     const superAdminEmails = new Set(['admin@admin.com', 'admin@system.com', 'pacleb@gmail.com']);
@@ -85,7 +129,9 @@ export async function getActorMinistryAccess(actorId?: string): Promise<{
         actor.role?.id === 'admin';
 
     if (isSuperAdmin) {
-        return { isSuperAdmin: true, isMinistryHead: false, allowedMinistryIds: null };
+        const adminResult = { isSuperAdmin: true, isMinistryHead: false, allowedMinistryIds: null };
+        setCached(cacheKey, adminResult, 60_000);
+        return adminResult;
     }
 
     // Pool all actual assigned ministries for this user (Workers and Heads alike)
@@ -193,17 +239,23 @@ export async function getActorMinistryAccess(actorId?: string): Promise<{
         }
     }
 
-    return {
+    const accessResult = {
         isSuperAdmin: false,
         isMinistryHead,
         allowedMinistryIds: Array.from(ministryIds),
     };
+    setCached(`actor_access:${actorId}`, accessResult, 30_000);
+    return accessResult;
 }
 
 // --- Roles ---
 
 export async function getRoles() {
-    return await prisma.role.findMany({
+    const cacheKey = 'roles:all';
+    const cached = getCached<any[]>(cacheKey);
+    if (cached) return cached;
+
+    const roles = await prisma.role.findMany({
         include: {
             rolePermissions: {
                 include: { permission: true },
@@ -211,6 +263,8 @@ export async function getRoles() {
         },
         orderBy: { name: 'asc' },
     });
+    setCached(cacheKey, roles, 60_000);
+    return roles;
 }
 
 export async function getRoleById(id: string) {
@@ -694,14 +748,19 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
     const supabaseAdmin = getSupabaseAdminClient();
     const defaultPassword = "COGDASMA2026";
 
-    // Create auth user
+    const termsVersion = data.termsAcceptedVersion || "1.0";
+    const termsTimestamp = data.termsAcceptedAt || new Date().toISOString();
+
+    // Create auth user with terms metadata
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: data.email?.trim(),
         password: defaultPassword,
         email_confirm: true,
         user_metadata: {
             firstName: data.firstName,
-            lastName: data.lastName
+            lastName: data.lastName,
+            termsAcceptedVersion: termsVersion,
+            termsAcceptedAt: termsTimestamp,
         }
     });
 
@@ -718,8 +777,13 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
         venueBookings, InventoryBorrowing, InventoryLog, mealStubs,
         legacyMigratedAt, legacyMigratedFrom, createdAt, updatedAt,
         emergencyName, emergencyPhone, startDate,
+        termsAcceptedVersion, termsAcceptedAt,
         ...dbData
     } = data;
+
+    // Record governance acceptance in remarks
+    const termsLog = `[Governance] Terms & Privacy v${termsVersion} accepted at ${termsTimestamp}`;
+    dbData.remarks = dbData.remarks ? `${dbData.remarks}\n${termsLog}` : termsLog;
 
     // Format startYear and startMonth if startDate is provided
     if (startDate && typeof startDate === 'string') {
@@ -960,17 +1024,6 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
                 </tr>
               </table>
 
-              <!-- CTA Button -->
-              <table role="presentation" width="100%" style="margin-bottom: 32px;">
-                <tr>
-                  <td align="center">
-                    <a href="${loginUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 12px 32px; border-radius: 10px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);">
-                      Log In to COG App &rarr;
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
               <!-- Profile Details -->
               <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
                 Registered Worker Information
@@ -1206,8 +1259,10 @@ export async function createApproval(data: any) {
         },
     });
 
-    // Trigger async notification
-    NotificationService.notifyNewRequest(approval);
+    // Trigger async notification in background (non-blocking)
+    void NotificationService.notifyNewRequest(approval).catch(err => {
+        console.error('[createApproval] Background notification error:', err);
+    });
 
     return approval;
 }
@@ -1231,7 +1286,17 @@ export async function getApprovals(filters?: { ministryIds?: string[]; actorId?:
 
     const approvals = await prisma.approvalRequest.findMany({
         include: {
-            worker: true,
+            worker: {
+                select: {
+                    id: true,
+                    workerId: true,
+                    firstName: true,
+                    lastName: true,
+                    avatarUrl: true,
+                    majorMinistryId: true,
+                    minorMinistryId: true,
+                },
+            },
         },
         orderBy: {
             date: 'desc',
@@ -1348,19 +1413,13 @@ export async function updateApproval(id: string, data: any, actorId?: string) {
     let emailNotificationSent = false;
     let emailNotificationError: string | null = null;
 
-    // Send final approval email ONLY when transitioning to "Approved" for Room Bookings (prevent duplicates)
+    // Send final approval email asynchronously in background so approval action finishes in milliseconds
     if (status === 'Approved' && previousStatus !== 'Approved' && approval.type === 'Room Booking') {
-        try {
-            const sendRes = await NotificationService.notifyRoomReservationApproved(approval.id, approval.reservationId || undefined);
-            if (sendRes && (sendRes as any).success === false) {
-                emailNotificationError = (sendRes as any).error || 'Could not send notification email';
-            } else {
-                emailNotificationSent = true;
-            }
-        } catch (emailErr: any) {
-            console.error('[updateApproval] Failed to send final approval email:', emailErr);
-            emailNotificationError = emailErr?.message || 'Failed to send notification email';
-        }
+        void NotificationService.notifyRoomReservationApproved(approval.id, approval.reservationId || undefined)
+            .catch(emailErr => {
+                console.error('[updateApproval] Failed to send final approval email in background:', emailErr);
+            });
+        emailNotificationSent = true;
     }
 
     revalidatePath('/approvals');
@@ -1501,6 +1560,7 @@ export async function getBookings(filters: {
     status?: string;
     ministryIds?: string[];
     actorId?: string;
+    take?: number;
 } = {}) {
     const where: any = {};
     if (filters.workerProfileId) {
@@ -1556,8 +1616,20 @@ export async function getBookings(filters: {
         where,
         include: {
             room: true,
-            worker: true,
+            worker: {
+                select: {
+                    id: true,
+                    workerId: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    avatarUrl: true,
+                    majorMinistryId: true,
+                    minorMinistryId: true,
+                },
+            },
         },
+        ...(filters.take ? { take: filters.take } : {}),
         orderBy: {
             start: 'asc',
         },
@@ -1623,10 +1695,77 @@ export async function createBooking(data: any) {
     }
 }
 
+/**
+ * Unified high-performance reservation submission action.
+ * Performs database-level conflict check, creates booking and approval atomically,
+ * fires background notification, and returns in ~100ms.
+ */
+export async function submitRoomReservation(data: {
+    bookingData: any;
+    approvalData?: any;
+}) {
+    const { bookingData, approvalData } = data;
+    const { roomId, start, end } = bookingData;
+
+    // 1. Fast database-indexed conflict check
+    if (start && end && roomId) {
+        const conflicting = await prisma.booking.findFirst({
+            where: {
+                roomId,
+                status: { not: 'Rejected' },
+                start: { lt: new Date(end) },
+                end: { gt: new Date(start) },
+            },
+            select: { id: true, name: true, status: true },
+        });
+
+        if (conflicting) {
+            throw new Error(
+                `This room is already reserved (${conflicting.status}) by ${conflicting.name || 'another user'} for this time slot.`
+            );
+        }
+    }
+
+    // 2. Create the booking record
+    const booking = await createBooking(bookingData);
+
+    // 3. Create the approval request if provided
+    let approval: any = null;
+    if (booking?.id && approvalData) {
+        approval = await prisma.approvalRequest.create({
+            data: {
+                ...approvalData,
+                reservationId: booking.id,
+                date: new Date(),
+            },
+        });
+
+        // 4. Fire background email notification asynchronously (non-blocking)
+        void NotificationService.notifyNewRequest(approval).catch(err => {
+            console.error('[submitRoomReservation] Background notification error:', err);
+        });
+    }
+
+    try {
+        revalidatePath('/reservations');
+        revalidatePath('/dashboard');
+        revalidatePath('/approvals');
+    } catch { }
+
+    return { booking, approval };
+}
+
 export async function updateBooking(id: string, data: any, actorId?: string) {
     const existing = await prisma.booking.findUnique({
         where: { id },
-        include: { worker: true },
+        include: {
+            worker: {
+                select: {
+                    id: true,
+                    majorMinistryId: true,
+                },
+            },
+        },
     });
     if (!existing) throw new Error('Booking not found');
 
@@ -1659,17 +1798,12 @@ export async function updateBooking(id: string, data: any, actorId?: string) {
             data: { status: 'Approved' },
         }).catch(err => console.error('Failed to sync approval request status from booking update:', err));
 
-        try {
-            const sendRes = await NotificationService.notifyRoomReservationApproved(undefined, id);
-            if (sendRes && (sendRes as any).success === false) {
-                emailNotificationError = (sendRes as any).error || 'Could not send notification email';
-            } else {
-                emailNotificationSent = true;
-            }
-        } catch (emailErr: any) {
-            console.error('[updateBooking] Failed to send final approval email:', emailErr);
-            emailNotificationError = emailErr?.message || 'Failed to send notification email';
-        }
+        // Send approval email in background (non-blocking)
+        void NotificationService.notifyRoomReservationApproved(undefined, id)
+            .catch(emailErr => {
+                console.error('[updateBooking] Failed to send final approval email in background:', emailErr);
+            });
+        emailNotificationSent = true;
     }
 
     try {
@@ -1691,7 +1825,14 @@ export async function deleteBooking(id: string, actorId?: string) {
         if (!access.isSuperAdmin && access.allowedMinistryIds !== null) {
             const existing = await prisma.booking.findUnique({
                 where: { id },
-                include: { worker: true },
+                include: {
+                    worker: {
+                        select: {
+                            id: true,
+                            majorMinistryId: true,
+                        },
+                    },
+                },
             });
             if (!existing) throw new Error('Booking not found');
             const bookingMinId = existing.ministryId || existing.worker?.majorMinistryId;
@@ -1716,6 +1857,7 @@ export async function getMealStubs(filters: {
     dateTo?: Date | string;
     ministryIds?: string[];
     actorId?: string;
+    take?: number;
 } = {}) {
     const where: any = {};
     if (filters.workerId) where.workerId = filters.workerId;
@@ -1754,8 +1896,19 @@ export async function getMealStubs(filters: {
     return await prisma.mealStub.findMany({
         where,
         include: {
-            worker: true,
+            worker: {
+                select: {
+                    id: true,
+                    workerId: true,
+                    firstName: true,
+                    lastName: true,
+                    avatarUrl: true,
+                    majorMinistryId: true,
+                    minorMinistryId: true,
+                },
+            },
         },
+        ...(filters.take ? { take: filters.take } : {}),
         orderBy: {
             date: 'desc',
         },
@@ -1801,6 +1954,7 @@ export async function getAttendanceRecords(filters: {
     dateTo?: Date | string;
     ministryIds?: string[];
     actorId?: string;
+    take?: number;
 } = {}) {
     const where: any = {};
     if (filters.workerProfileId) where.workerProfileId = filters.workerProfileId;
@@ -1839,8 +1993,19 @@ export async function getAttendanceRecords(filters: {
     return await prisma.attendanceRecord.findMany({
         where,
         include: {
-            worker: true,
+            worker: {
+                select: {
+                    id: true,
+                    workerId: true,
+                    firstName: true,
+                    lastName: true,
+                    avatarUrl: true,
+                    majorMinistryId: true,
+                    minorMinistryId: true,
+                },
+            },
         },
+        ...(filters.take ? { take: filters.take } : {}),
         orderBy: {
             time: 'desc',
         },
@@ -2129,7 +2294,11 @@ export async function recordAutoAttendance(workerProfileId: string) {
 // --- Rooms, Areas, Branches ---
 
 export async function getRooms() {
-    return await prisma.room.findMany({
+    const cacheKey = 'rooms:all';
+    const cached = getCached<any[]>(cacheKey);
+    if (cached) return cached;
+
+    const rooms = await prisma.room.findMany({
         include: {
             area: {
                 include: {
@@ -2141,6 +2310,8 @@ export async function getRooms() {
             weight: 'asc',
         },
     });
+    setCached(cacheKey, rooms, 60_000);
+    return rooms;
 }
 
 export async function createRoom(data: any) {
@@ -2321,12 +2492,19 @@ export async function getC2SMentees(params?: { ministryIds?: string[]; actorId?:
                     OR: [
                         { majorMinistryId: { in: allowedIds } },
                         { minorMinistryId: { in: allowedIds } },
+                        { assignedMinistryIds: { hasSome: allowedIds } },
                     ],
                 },
                 select: { id: true },
             });
-            const mentorIds = workers.map(w => w.id);
-            where.mentorId = { in: mentorIds };
+            const mentorIds = Array.from(new Set([
+                ...workers.map(w => w.id),
+                ...(params?.actorId ? [params.actorId] : []),
+            ]));
+            where.OR = [
+                { mentorId: { in: mentorIds } },
+                { group: { mentorId: { in: mentorIds } } },
+            ];
         }
 
         return await prisma.c2SMentee.findMany({

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, ArrowLeft, ArrowRight, User, Building2, FileText, ClipboardCheck, CheckCircle2, Briefcase } from "lucide-react";
 import { createWorkerWithAuth } from "@/actions/db";
 import { useAuditLog } from "@/hooks/use-audit-log";
+import Link from "next/link";
 import {
   Input,
   Select,
@@ -19,6 +20,7 @@ import {
   SelectValue,
   SelectGroup,
   SelectLabel,
+  Checkbox,
 } from "@studio/ui";
 import { cn } from "@/lib/utils";
 import { isValidPhilippineNumber, cleanPhoneNumber, isValidEmail, isValidName, cleanName } from "@/lib/validation";
@@ -258,6 +260,7 @@ export default function NewWorkerPage() {
   const [emergencyPhone, setEmergencyPhone] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const validateStep1 = () => {
     if (!firstName.trim()) { toast({ variant: "destructive", title: "First name is required" }); return false; }
@@ -354,9 +357,19 @@ export default function NewWorkerPage() {
     if (!validateStep1()) { setStep(1); return; }
     if (!validateStep2()) { setStep(2); return; }
     if (!validateStep3()) { setStep(3); return; }
+    if (!agreedToTerms) {
+      toast({
+        variant: "destructive",
+        title: "Terms & Privacy Acceptance Required",
+        description: "Please confirm that the worker has reviewed and accepted the Terms of Service and Privacy Policy.",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const workerId = String(20000 + Math.floor(Math.random() * 10000)).padStart(6, "0");
+      const termsAcceptedAt = new Date().toISOString();
+      const termsAcceptedVersion = "1.0";
       const data = { 
         firstName, 
         lastName, 
@@ -377,9 +390,11 @@ export default function NewWorkerPage() {
         startDate,
         emergencyName,
         emergencyPhone,
+        termsAcceptedVersion,
+        termsAcceptedAt,
       };
       const newWorker: any = await createWorkerWithAuth(data, roleId ? [roleId] : [], workerProfile?.id);
-      await logAction("Created Worker", "Workers", `Created worker: ${firstName} ${lastName}`, newWorker.id, `${firstName} ${lastName}`);
+      await logAction("Created Worker", "Workers", `Created worker: ${firstName} ${lastName} (Terms v${termsAcceptedVersion} accepted)`, newWorker.id, `${firstName} ${lastName}`);
       if (newWorker.emailSent) {
         toast({ 
           title: "Worker Registered & Email Sent", 
@@ -723,9 +738,38 @@ export default function NewWorkerPage() {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
+
+                  {/* Explicit Terms & Privacy Agreement for Registration */}
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-2">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          id="register-terms-checkbox"
+                          checked={agreedToTerms}
+                          onCheckedChange={(checked) => setAgreedToTerms(Boolean(checked))}
+                          className="mt-0.5 shrink-0"
+                        />
+                        <label
+                          htmlFor="register-terms-checkbox"
+                          className="text-xs text-foreground leading-relaxed cursor-pointer select-none"
+                        >
+                          I confirm that this worker has been oriented on and explicitly agrees to the Church of God Dasmariñas{" "}
+                          <Link href="/terms" target="_blank" className="font-semibold text-primary underline underline-offset-2 hover:opacity-80">
+                            Terms of Service
+                          </Link>{" "}
+                          and{" "}
+                          <Link href="/privacy" target="_blank" className="font-semibold text-primary underline underline-offset-2 hover:opacity-80">
+                            Privacy Policy
+                          </Link>{" "}
+                          (Version 1.0).
+                        </label>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground pl-7">
+                        This explicit consent is timestamped and permanently archived with the worker's official governance record.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
             {/* Footer navigation */}
             <div className="px-7 py-5 border-t border-border/40 flex items-center justify-between">

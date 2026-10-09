@@ -530,7 +530,7 @@ function AttendanceContent() {
             <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Attendance</h1>
             <p className="text-sm text-muted-foreground">Scan, monitor, and manage attendance across every ministry — in one workforce command center.</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0 sm:self-end">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             <Link href="/attendance/scanner">
               <button className="h-10 px-4 flex items-center gap-2 rounded-2xl border border-border/80 bg-white dark:bg-card hover:bg-muted/40 text-foreground text-xs font-bold shadow-xs transition-colors cursor-pointer">
                 <ScanLine className="h-4 w-4 text-primary" /> Scanner
@@ -719,7 +719,7 @@ function AttendanceContent() {
             <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card">
 
               {/* ── Mobile card view ── */}
-              <div className="md:hidden divide-y divide-border/30">
+              <div className="md:hidden divide-y divide-border/60 flex-grow">
                 {filteredWorkers.length === 0 ? (
                   <div className="py-14 text-center text-xs font-medium text-muted-foreground">No workers found.</div>
                 ) : filteredWorkers.map(w => {
@@ -730,26 +730,40 @@ function AttendanceContent() {
                   const ministry = (ministries as any[]).find(m => m.id === w.majorMinistryId);
                   const roleName = getRoleName(w);
                   return (
-                    <div key={w.id} className="p-4 flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2.5 mb-1.5">
+                    <div key={w.id} className="p-4 space-y-3 bg-card hover:bg-muted/10 transition-colors">
+                      {/* Top: Avatar, Name, Ministry & Status Badge */}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <WorkerInitials name={`${w.firstName} ${w.lastName}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-foreground leading-tight truncate">{w.firstName} {w.lastName}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-foreground leading-tight truncate">
+                              {w.firstName} {w.lastName}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                              {ministry?.name || "—"}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <RoleBadge role={roleName} />
-                          <AttendanceStatusBadge status={currentStatus} />
-                          {lastTime && (
-                            <span className="text-[10px] text-muted-foreground font-medium">
-                              {lastType === "Clock In" ? "In" : "Out"} · {lastTime}
-                            </span>
-                          )}
-                        </div>
+                        <AttendanceStatusBadge status={currentStatus} />
                       </div>
-                      <div className="flex flex-col gap-1.5 shrink-0">
+
+                      {/* Middle: Role & Last Activity */}
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <RoleBadge role={roleName} />
+                        {lastTime ? (
+                          <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            {lastType === "Clock In" ? "In" : "Out"} · {lastTime}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground/60 italic">
+                            No logs today
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Bottom Actions: Two Full-Width Styled Action Buttons */}
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40">
                         <button
                           type="button"
                           onClick={async () => {
@@ -758,9 +772,9 @@ function AttendanceContent() {
                             if (!hasStub) { try { await createMealStub({ workerId: w.id, workerName: `${w.firstName} ${w.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch {} }
                             toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-700 transition-colors"
+                          className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                         >
-                          <LogIn className="h-3 w-3" /> In
+                          <LogIn className="h-3.5 w-3.5" /> Time In
                         </button>
                         <button
                           type="button"
@@ -768,9 +782,9 @@ function AttendanceContent() {
                             await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
                             toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-blue-700 transition-colors"
+                          className="h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                         >
-                          <LogOut className="h-3 w-3" /> Out
+                          <LogOut className="h-3.5 w-3.5" /> Time Out
                         </button>
                       </div>
                     </div>

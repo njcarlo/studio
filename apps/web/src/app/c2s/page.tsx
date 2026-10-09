@@ -98,6 +98,7 @@ import {
   ExternalLink,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Pencil,
   Building2,
   UserCheck,
@@ -958,20 +959,22 @@ const DevotionDetailsModal = ({
         className="rounded-3xl bg-white dark:bg-card border border-border/80 shadow-2xl p-0 overflow-hidden flex flex-col gap-0 [&>button:last-child]:hidden"
         style={{ width: "min(calc(100vw - 2rem), 48rem)", maxHeight: "min(calc(100svh - 4rem), 90vh)" }}
       >
-        {/* ── MODAL HEADER (Matches Admin Style) ── */}
+        {/* ── MODAL HEADER (Matches Image 2 Style) ── */}
         <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3.5 min-w-0 flex-1">
-              <div className="w-11 h-11 rounded-2xl bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center font-bold shrink-0 border border-sidebar/20 shadow-xs">
+            <div className="flex items-start gap-3.5 min-w-0 flex-1">
+              <div className="w-11 h-11 rounded-2xl bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center font-bold shrink-0 border border-sidebar/20 shadow-xs mt-0.5">
                 <BookOpen className="h-5 w-5" />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <DialogTitle className="text-base sm:text-lg font-bold font-headline text-foreground tracking-tight leading-snug">
+                  {devotion.lessonName || devotion.topic}
+                </DialogTitle>
+
+                {/* Date & Group Pills */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <DialogTitle className="text-base sm:text-lg font-bold font-headline text-foreground tracking-tight">
-                    {devotion.lessonName || devotion.topic}
-                  </DialogTitle>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20">
-                    <Calendar className="h-3 w-3" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    <Calendar className="h-3 w-3 text-blue-500" />
                     <span>{formattedDate}</span>
                     {formattedTime && (
                       <>
@@ -987,7 +990,8 @@ const DevotionDetailsModal = ({
                     </div>
                   )}
                 </div>
-                <DialogDescription className="text-xs text-muted-foreground truncate mt-0.5">
+
+                <DialogDescription className="text-xs text-muted-foreground truncate pt-0.5">
                   Mentor: <strong className="text-foreground font-semibold">{devotion.mentorName || "Mentor"}</strong>
                   {devotion.mentorRole && (
                     <span className="ml-1 text-[10px] bg-sidebar/10 text-sidebar px-2 py-0.5 rounded-full font-bold">
@@ -1017,7 +1021,7 @@ const DevotionDetailsModal = ({
         {/* ── MODAL SCROLLABLE BODY ── */}
         <div className="p-6 overflow-y-auto space-y-5">
           {/* Curriculum Hierarchy Breadcrumb Tag */}
-          <div className="flex items-center gap-2 text-xs font-semibold text-sidebar dark:text-sky-400 flex-wrap bg-sidebar/5 dark:bg-sidebar/10 p-3 rounded-xl border border-sidebar/15">
+          <div className="flex items-center gap-2 text-xs font-semibold text-sidebar dark:text-sky-400 flex-wrap bg-sidebar/5 dark:bg-sidebar/10 p-3.5 rounded-2xl border border-sidebar/15">
             <BookOpen className="h-4 w-4 text-sidebar shrink-0" />
             {devotion.manualType && <span>{devotion.manualType}</span>}
             {devotion.moduleName && (
@@ -1036,12 +1040,12 @@ const DevotionDetailsModal = ({
               <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold px-0.5">
                 <span className="flex items-center gap-1.5"><Camera className="h-3.5 w-3.5 text-sidebar" /> Session Photo Proof</span>
               </div>
-              <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black/5 dark:bg-muted/40 border border-border/80 shadow-xs flex items-center justify-center">
+              <div className="relative aspect-video max-h-[380px] w-full rounded-2xl overflow-hidden bg-slate-50 dark:bg-muted/30 border border-border/80 shadow-xs flex items-center justify-center p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={mainPhoto}
                   alt={devotion.topic}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain rounded-xl"
                 />
               </div>
             </div>
@@ -1054,7 +1058,7 @@ const DevotionDetailsModal = ({
                 <Label className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 text-sidebar" /> Reflection Notes & Key Takeaways
                 </Label>
-                <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-muted/20 border border-slate-200/80 dark:border-border text-foreground text-xs leading-relaxed whitespace-pre-wrap">
+                <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-muted/20 border border-slate-200/80 dark:border-border text-foreground text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-normal">
                   {devotion.reflectionNotes}
                 </div>
               </div>
@@ -1065,7 +1069,7 @@ const DevotionDetailsModal = ({
                 <Label className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                   <Heart className="h-3.5 w-3.5 text-rose-500" /> Prayer Requests
                 </Label>
-                <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-muted/20 border border-slate-200/80 dark:border-border text-foreground text-xs leading-relaxed whitespace-pre-wrap">
+                <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-muted/20 border border-slate-200/80 dark:border-border text-foreground text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-normal">
                   {devotion.prayerRequests}
                 </div>
               </div>
@@ -1073,10 +1077,10 @@ const DevotionDetailsModal = ({
           </div>
         </div>
 
-        <DialogFooter className="p-4 sm:p-5 pt-3 border-t border-border/40 flex items-center justify-end bg-muted/10">
+        <DialogFooter className="p-4 sm:p-5 pt-3 border-t border-border/40 flex items-center justify-center bg-muted/10">
           <Button
             onClick={onClose}
-            className="h-10 px-5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+            className="h-10 px-8 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer"
           >
             Close Record
           </Button>
@@ -2310,8 +2314,8 @@ const AdminOverview = ({
         }}
       >
         <DialogContent
-          className="rounded-3xl p-4 sm:p-6"
-          style={{ width: "min(calc(100vw - 2rem), 56rem)", maxHeight: "min(calc(100svh - 8rem), 88vh)" }}
+          className="rounded-3xl p-4 sm:p-6 sm:max-w-4xl lg:max-w-5xl w-full"
+          style={{ width: "min(calc(100vw - 2rem), 64rem)", maxHeight: "min(calc(100svh - 4rem), 90vh)" }}
         >
           <DialogHeader>
             <div className="flex items-start gap-3">
@@ -2343,18 +2347,12 @@ const AdminOverview = ({
             </div>
           </DialogHeader>
 
-          {/* 4-Card Mini Stats Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-2">
+          {/* 3-Card Mini Stats Grid */}
+          <div className="grid grid-cols-3 gap-3 my-2">
             <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
               <p className="text-[10px] uppercase font-bold text-muted-foreground">Ministries</p>
               <p className="text-xl font-black text-foreground font-headline mt-0.5">
                 {viewingDept?.clusters?.length || 0}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground">Groups</p>
-              <p className="text-xl font-black text-sidebar dark:text-blue-400 font-headline mt-0.5">
-                {viewingDept?.groupsCount || 0}
               </p>
             </div>
             <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 text-center">
@@ -2501,16 +2499,6 @@ const AdminOverview = ({
                         <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDetailMinistryFilter(cluster.name);
-                            setActiveDetailTab("mentors");
-                          }}
-                          className="h-7 px-3 rounded-lg bg-sidebar hover:bg-sidebar/90 text-white font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                        >
-                          View Mentors ({cluster.mentorsCount}) →
-                        </button>
                       </div>
                     </div>
                   ))}
@@ -3114,11 +3102,11 @@ const C2SAnalytics = ({
               onValueChange={(val) => setSelectedCluster(val)}
             >
               <SelectTrigger className="w-full sm:w-[240px] bg-background dark:bg-muted/30 text-xs font-semibold text-foreground border border-slate-200/90 dark:border-border rounded-2xl h-10 shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                <SelectValue placeholder={isSuperAdmin ? "All Departments & Ministries" : `All ${formattedDeptName} Ministries`} />
+                <SelectValue placeholder={isSuperAdmin ? "All Ministries" : `All ${formattedDeptName} Ministries`} />
               </SelectTrigger>
               <SelectContent className="max-h-96 overflow-y-auto">
                 <SelectItem value="all" className="text-xs font-bold text-primary">
-                  {isSuperAdmin ? "All Departments & Ministries" : `All ${formattedDeptName} Ministries`}
+                  {isSuperAdmin ? "All Ministries" : `All ${formattedDeptName} Ministries`}
                 </SelectItem>
                 {isSuperAdmin ? (
                   WORDA_ORDER.map((dept) => {
@@ -4363,6 +4351,7 @@ function C2SPageContent() {
 
   const [menteeStatusFilter, setMenteeStatusFilter] = useState("all");
   const [selectedMinistryFilter, setSelectedMinistryFilter] = useState("all");
+  const [menteeAssignmentFilter, setMenteeAssignmentFilter] = useState<"all" | "my" | "workers">("all");
 
   const adminDepartments = useMemo(() => [
     { value: "WORSHIP", label: "Worship Department" },
@@ -4503,6 +4492,18 @@ function C2SPageContent() {
   const filteredHeadMentees = useMemo(() => {
     let list = headDepartmentMentees;
 
+    if (menteeAssignmentFilter !== "all") {
+      list = list.filter((m) => {
+        const isMyMentee = Boolean(
+          workerProfile?.id && (
+            m.mentorId === workerProfile.id ||
+            (m.groupId && groups?.find((g) => g.id === m.groupId)?.mentorId === workerProfile.id)
+          )
+        );
+        return menteeAssignmentFilter === "my" ? isMyMentee : !isMyMentee;
+      });
+    }
+
     if (selectedMinistryFilter !== "all") {
       const target = selectedMinistryFilter;
       list = list.filter((m) => {
@@ -4575,7 +4576,27 @@ function C2SPageContent() {
     }
 
     return list;
-  }, [headDepartmentMentees, selectedMinistryFilter, menteeDeptFilter, menteeStatusFilter, groupSearchQuery, groups, workers, allMinistries, activeClusterOptions, isAdminUser, departmentClusters]);
+  }, [headDepartmentMentees, menteeAssignmentFilter, workerProfile, selectedMinistryFilter, menteeDeptFilter, menteeStatusFilter, groupSearchQuery, groups, workers, allMinistries, activeClusterOptions, isAdminUser, departmentClusters]);
+
+  const headMenteeCounts = useMemo(() => {
+    let myCount = 0;
+    let workersCount = 0;
+    (headDepartmentMentees || []).forEach((m) => {
+      const isMy = Boolean(
+        workerProfile?.id && (
+          m.mentorId === workerProfile.id ||
+          (m.groupId && groups?.find((g) => g.id === m.groupId)?.mentorId === workerProfile.id)
+        )
+      );
+      if (isMy) myCount++;
+      else workersCount++;
+    });
+    return {
+      all: headDepartmentMentees?.length || 0,
+      my: myCount,
+      workers: workersCount,
+    };
+  }, [headDepartmentMentees, workerProfile, groups]);
 
   const devotionStats = useMemo(() => {
     const list = filteredDevotions || [];
@@ -4719,101 +4740,107 @@ function C2SPageContent() {
             </div>
 
             {/* Filter and Keyword Search Toolbar */}
-            <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-white dark:bg-card p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-border shadow-xs">
-              {/* Left: Search Bar */}
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
-                <Input
-                  placeholder="Search keyword (lesson, mentee, mentor, prayer)..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-8 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-white dark:bg-card p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-border shadow-xs">
+              {/* Left: Search Bar & Submit Devotion Record Below It */}
+              <div className="flex flex-col gap-2.5 w-full md:w-auto md:min-w-[340px] lg:min-w-[420px]">
+                <div className="relative w-full">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+                  <Input
+                    placeholder="Search keyword (lesson, mentee, mentor, prayer)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-8 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center">
+                  <Button
+                    onClick={() => {
+                      setEditingDevotion(null);
+                      setIsDevotionSheetOpen(true);
+                    }}
+                    className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-bold text-xs h-10 px-4 gap-1.5 rounded-2xl transition-all cursor-pointer w-full sm:w-auto shrink-0"
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                    <PlusCircle className="h-4 w-4" />
+                    Submit Devotion Record
+                  </Button>
+                </div>
               </div>
 
-              {/* Right: Filter controls and Action Button */}
-              <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
-                {isAdminUser ? (
-                  <Select
-                    value={selectedDeptFilter}
-                    onValueChange={(val) => {
-                      setSelectedDeptFilter(val);
-                      setSelectedClusterFilter(val);
-                    }}
-                  >
-                    <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                      <SelectValue placeholder="All Departments & Ministries" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-96 overflow-y-auto">
-                      <SelectItem value="all" className="text-xs font-bold text-primary">
-                        All Departments & Ministries
-                      </SelectItem>
-                      {WORDA_ORDER.map((dept) => {
-                        const items = departmentClusters[dept] || [];
-                        if (!items || items.length === 0) return null;
-                        const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
-                        return (
-                          <SelectGroup key={dept}>
-                            <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                              {titleLabel}
-                            </SelectLabel>
-                            {items.map((item, idx) => (
-                              <SelectItem key={`admin-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
-                                {item.label}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                ) : isMinistryHeadUser ? (
-                  <Select
-                    value={selectedClusterFilter}
-                    onValueChange={(val) => {
-                      setSelectedClusterFilter(val);
-                    }}
-                  >
-                    <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                      <SelectValue placeholder="All Ministries" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-96 overflow-y-auto">
-                      <SelectItem value="all" className="text-xs font-bold text-primary">
-                        All Ministries
-                      </SelectItem>
-                      <SelectGroup>
-                        <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                          {headDepartment.toUpperCase()} MINISTRIES
-                        </SelectLabel>
-                        {activeClusterOptions.map((item, idx) => (
-                          <SelectItem key={`head-cluster-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                ) : null}
-
-                <Button
-                  onClick={() => {
-                    setEditingDevotion(null);
-                    setIsDevotionSheetOpen(true);
-                  }}
-                  className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-bold text-xs h-10 px-4 gap-1.5 rounded-2xl transition-colors cursor-pointer shrink-0"
-                >
-                  <PlusCircle className="h-4 w-4" />
-                  Submit Devotion Record
-                </Button>
-              </div>
+              {/* Right: Department & Ministry Filters */}
+              {(isAdminUser || isMinistryHeadUser) && (
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end">
+                  {isAdminUser ? (
+                    <Select
+                      value={selectedDeptFilter}
+                      onValueChange={(val) => {
+                        setSelectedDeptFilter(val);
+                        setSelectedClusterFilter(val);
+                      }}
+                    >
+                      <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                        <SelectValue placeholder="All Ministries" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-96 overflow-y-auto">
+                        <SelectItem value="all" className="text-xs font-bold text-primary">
+                          All Ministries
+                        </SelectItem>
+                        {WORDA_ORDER.map((dept) => {
+                          const items = departmentClusters[dept] || [];
+                          if (!items || items.length === 0) return null;
+                          const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
+                          return (
+                            <SelectGroup key={dept}>
+                              <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                                {titleLabel}
+                              </SelectLabel>
+                              {items.map((item, idx) => (
+                                <SelectItem key={`admin-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
+                                  {item.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  ) : isMinistryHeadUser ? (
+                    <Select
+                      value={selectedClusterFilter}
+                      onValueChange={(val) => {
+                        setSelectedClusterFilter(val);
+                      }}
+                    >
+                      <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                        <SelectValue placeholder="All Ministries" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-96 overflow-y-auto">
+                        <SelectItem value="all" className="text-xs font-bold text-primary">
+                          All Ministries
+                        </SelectItem>
+                        <SelectGroup>
+                          <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                            {headDepartment.toUpperCase()} MINISTRIES
+                          </SelectLabel>
+                          {activeClusterOptions.map((item, idx) => (
+                            <SelectItem key={`head-cluster-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             {/* Devotions Grid / Feed */}
@@ -4863,7 +4890,7 @@ function C2SPageContent() {
                   return (
                     <div
                       key={record.id}
-                      className="rounded-2xl border border-slate-200/90 dark:border-border/80 bg-white dark:bg-card p-5 sm:p-6 flex flex-col hover:border-sidebar/40 hover:shadow-md transition-all shadow-2xs"
+                      className="rounded-2xl border border-slate-200/90 dark:border-border/80 bg-white dark:bg-card p-5 sm:p-6 flex flex-col hover:border-sidebar/40 hover:shadow-md transition-all shadow-2xs group"
                     >
                       {/* ── TOP HEADER BAR: DATE PILL, TIME, VIEW PHOTO BUTTON & MENU ── */}
                       <div className="flex items-center justify-between gap-2">
@@ -4944,7 +4971,7 @@ function C2SPageContent() {
                         </div>
                       </div>
 
-                      {/* ── REFLECTION BOX ── */}
+                      {/* ── REFLECTION BOX (Matches Image 2 Style) ── */}
                       {record.reflectionNotes && (
                         <div className="mt-3.5 bg-slate-50/90 dark:bg-muted/25 p-4 rounded-2xl border border-slate-200/70 dark:border-border/60 space-y-1.5">
                           <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-sidebar dark:text-blue-400">
@@ -5093,20 +5120,11 @@ function C2SPageContent() {
                           ? "Try adjusting your search or filter criteria."
                           : "No mentees are assigned under your mentorship yet."}
                       </p>
-                      <Button
-                        onClick={() => {
-                          setSelectedMentee(myAssignedGroup ? { groupId: myAssignedGroup.id, mentorId: myAssignedGroup.mentorId } : null);
-                          setIsMenteeSheetOpen(true);
-                        }}
-                        className="shadow-sm font-semibold text-xs h-9 px-4 gap-1.5 mt-4"
-                      >
-                        <PlusCircle className="h-4 w-4" /> Add Mentee
-                      </Button>
                     </div>
                   ) : (
                     <div className="flex-grow flex flex-col">
                       {/* ── Mobile card view ── */}
-                      <div className="md:hidden divide-y divide-border/30">
+                      <div className="md:hidden p-3 space-y-3 bg-muted/15 dark:bg-muted/10">
                         {filteredMyMentees.map((m) => {
                           const fullName = `${m.firstName} ${m.lastName}`.trim();
                           const initials = `${m.firstName ? m.firstName[0] : ""}${m.lastName ? m.lastName[0] : ""}`.toUpperCase();
@@ -5124,56 +5142,86 @@ function C2SPageContent() {
                           const isMenteeActive = (m.status || "Active").toLowerCase() === "active";
                           const displayStatus = isMenteeActive ? "Active" : "Inactive";
                           const statusColorClass = isMenteeActive
-                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                            : "bg-slate-500/15 text-slate-700 dark:text-slate-300";
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25"
+                            : "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/25";
+                          const menteeMinistry = getMenteeMinistry(m);
                           return (
-                            <div key={m.id} className="p-4 flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2.5 mb-1.5">
-                                  <div className="w-8 h-8 rounded-full bg-sidebar/10 text-sidebar text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
+                            <div
+                              key={m.id}
+                              className="bg-card rounded-2xl border border-border/70 p-3.5 shadow-2xs space-y-2.5 transition-all hover:border-sidebar/40 active:scale-[0.995]"
+                            >
+                              {/* Top: Avatar, Name, Badge & Menu */}
+                              <div className="flex items-start justify-between gap-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                  <div className="w-9 h-9 rounded-xl bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
                                     {initials}
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-bold text-foreground truncate">{fullName}</p>
-                                    <p className="text-[11px] text-muted-foreground truncate">{m.email || m.phone || "No contact info"}</p>
+                                    <h4 className="text-sm font-bold text-foreground leading-snug truncate">
+                                      {fullName}
+                                    </h4>
+                                    <p className="text-[11px] text-muted-foreground truncate">
+                                      {m.phone || m.email || "No contact info"}
+                                    </p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="secondary" className={`${statusColorClass} font-semibold px-2.5 py-0.5 rounded-full text-[10px] border-transparent`}>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Badge className="bg-primary/15 text-primary border-primary/30 font-semibold text-[10px] px-2 py-0.5 rounded-full">
+                                    My Mentee
+                                  </Badge>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
+                                      <DropdownMenuItem onClick={() => { setSelectedMentee(m); setIsMenteeSheetOpen(true); }} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2">
+                                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Mentee
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setItemToDelete({ id: m.id, type: "mentee", name: fullName })} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Mentee
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
+
+                              {/* Middle: Ministry info */}
+                              <div className="bg-muted/40 dark:bg-muted/20 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs border border-border/40">
+                                <span className="text-[11px] text-muted-foreground">Ministry:</span>
+                                <span className="text-[10px] font-medium text-foreground bg-background dark:bg-card border border-border/60 px-2 py-0.5 rounded-md truncate max-w-[150px]">
+                                  {menteeMinistry}
+                                </span>
+                              </div>
+
+                              {/* Bottom: Status, Progress & Details button */}
+                              <div className="flex items-center justify-between gap-2 pt-0.5">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className={`${statusColorClass} font-semibold px-2 py-0.5 rounded-full text-[10px]`}>
+                                    <span className={cn("w-1.5 h-1.5 rounded-full mr-1", isMenteeActive ? "bg-emerald-500" : "bg-slate-400")} />
                                     {displayStatus}
                                   </Badge>
                                   <div className="flex items-center gap-1.5">
                                     <div className="w-12 bg-muted h-1.5 rounded-full overflow-hidden">
-                                      <div className="bg-primary h-full rounded-full" style={{ width: `${progressPct}%` }} />
+                                      <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${progressPct}%` }} />
                                     </div>
                                     <span className="text-[10px] font-semibold text-muted-foreground">{progressPct}%</span>
                                   </div>
-                                  <span className="text-[10px] text-muted-foreground font-mono">{lastSessionDate}</span>
                                 </div>
-                              </div>
-                              <div className="flex flex-col items-end gap-1.5 shrink-0">
+
                                 <button
                                   type="button"
-                                  onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry: (m as any).majorMinistryId, mentorName: "—", progressPct, lastSessionDate, displayStatus, statusColorClass })}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
+                                  onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry, mentorName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : "You", isMyMentee: true, progressPct, lastSessionDate, displayStatus, statusColorClass })}
+                                  className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-0.5 py-1 px-2 rounded-lg hover:bg-primary/5 transition-colors cursor-pointer"
                                 >
-                                  View Details
+                                  <span>Details</span>
+                                  <ChevronRight className="h-3.5 w-3.5" />
                                 </button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button type="button" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
-                                  <DropdownMenuItem onClick={() => { setSelectedMentee(m); setIsMenteeSheetOpen(true); }} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2">
-                                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Mentee
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setItemToDelete({ id: m.id, type: "mentee", name: fullName })} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-destructive focus:text-destructive focus:bg-destructive/10">
-                                    <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Mentee
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
                               </div>
                             </div>
                           );
@@ -5335,30 +5383,93 @@ function C2SPageContent() {
               /* ── MINISTRY HEAD / ADMIN VIEW: INDIVIDUAL MENTEES TABLE (Room Reservations Admin Table Style) ── */
               <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden flex flex-col min-h-[480px]">
                 {/* Controls Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-                  {/* Left: Search input */}
-                  <div className="relative w-full sm:w-72 shrink-0">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
-                    <Input
-                      type="text"
-                      placeholder="Search mentee or mentor..."
-                      value={groupSearchQuery}
-                      onChange={(e) => setGroupSearchQuery(e.target.value)}
-                      className="pl-9 pr-8 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
-                    />
-                    {groupSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setGroupSearchQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                <div className="flex flex-col gap-3 pb-1">
+                  {/* Top Bar: Search input + Add Mentee */}
+                  <div className="flex items-center justify-between gap-2.5">
+                    <div className="relative flex-1 sm:w-72 sm:flex-initial">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+                      <Input
+                        type="text"
+                        placeholder="Search mentee or mentor..."
+                        value={groupSearchQuery}
+                        onChange={(e) => setGroupSearchQuery(e.target.value)}
+                        className="pl-9 pr-8 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
+                      />
+                      {groupSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setGroupSearchQuery("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <Button
+                      onClick={() => {
+                        setSelectedMentee(null);
+                        setIsMenteeSheetOpen(true);
+                      }}
+                      className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-semibold text-xs h-10 px-3.5 sm:px-4 gap-1.5 rounded-2xl shrink-0 transition-colors cursor-pointer"
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                      <span className="hidden xs:inline">Add Mentee</span>
+                      <span className="xs:hidden">Add</span>
+                    </Button>
                   </div>
 
-                  {/* Right: Department Filter (Admin), Ministry Filter, Status Filter & Add Mentee */}
-                  <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+                  {/* Segmented Assignment Pills (Thumb-friendly & 1-click on all screen sizes) */}
+                  <div className="grid grid-cols-3 sm:inline-flex p-1 bg-muted/60 dark:bg-muted/30 rounded-2xl border border-border/50 text-center gap-1 sm:w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setMenteeAssignmentFilter("all")}
+                      className={cn(
+                        "py-2 px-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 cursor-pointer",
+                        menteeAssignmentFilter === "all"
+                          ? "bg-primary/10 text-primary border border-primary/20 shadow-2xs font-bold"
+                          : "text-muted-foreground hover:text-foreground border border-transparent"
+                      )}
+                    >
+                      <span className="leading-tight">All Mentees</span>
+                      <span className={cn("text-[10px] sm:text-xs font-bold mt-0.5 sm:mt-0", menteeAssignmentFilter === "all" ? "text-primary" : "text-muted-foreground/80")}>
+                        ({headMenteeCounts.all})
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMenteeAssignmentFilter("my")}
+                      className={cn(
+                        "py-2 px-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 cursor-pointer",
+                        menteeAssignmentFilter === "my"
+                          ? "bg-primary/10 text-primary border border-primary/20 shadow-2xs font-bold"
+                          : "text-muted-foreground hover:text-foreground border border-transparent"
+                      )}
+                    >
+                      <span className="leading-tight">My Mentees</span>
+                      <span className={cn("text-[10px] sm:text-xs font-bold mt-0.5 sm:mt-0", menteeAssignmentFilter === "my" ? "text-primary" : "text-muted-foreground/80")}>
+                        ({headMenteeCounts.my})
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMenteeAssignmentFilter("workers")}
+                      className={cn(
+                        "py-2 px-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 cursor-pointer",
+                        menteeAssignmentFilter === "workers"
+                          ? "bg-primary/10 text-primary border border-primary/20 shadow-2xs font-bold"
+                          : "text-muted-foreground hover:text-foreground border border-transparent"
+                      )}
+                    >
+                      <span className="leading-tight">Worker&apos;s Mentees</span>
+                      <span className={cn("text-[10px] sm:text-xs font-bold mt-0.5 sm:mt-0", menteeAssignmentFilter === "workers" ? "text-primary" : "text-muted-foreground/80")}>
+                        ({headMenteeCounts.workers})
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Secondary Filters Row: On mobile in a clean 2-column grid; on desktop inline */}
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5">
                     {/* Admin Department Filter */}
                     {isAdminUser && (
                       <Select
@@ -5368,13 +5479,8 @@ function C2SPageContent() {
                           setSelectedMinistryFilter("all");
                         }}
                       >
-                        <SelectTrigger className="h-10 w-[160px] sm:w-44 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
-                          <SelectValue placeholder="All Departments">
-                            {menteeDeptFilter === "all"
-                              ? "All Departments"
-                              : adminDepartments.find((d) => d.value === menteeDeptFilter)?.label ||
-                                menteeDeptFilter}
-                          </SelectValue>
+                        <SelectTrigger className="h-9 sm:h-10 w-full sm:w-44 text-xs rounded-xl sm:rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                          <SelectValue placeholder="Department" />
                         </SelectTrigger>
                         <SelectContent className="max-h-72 overflow-y-auto">
                           <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
@@ -5395,13 +5501,8 @@ function C2SPageContent() {
 
                     {/* Ministries Filter */}
                     <Select value={selectedMinistryFilter} onValueChange={setSelectedMinistryFilter}>
-                      <SelectTrigger className="h-10 w-[160px] sm:w-48 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
-                        <SelectValue placeholder="All Ministries">
-                          {selectedMinistryFilter === "all"
-                            ? "All Ministries"
-                            : availableMinistriesForMenteeFilter.find((c) => c.value === selectedMinistryFilter)?.label ||
-                              selectedMinistryFilter}
-                        </SelectValue>
+                      <SelectTrigger className="h-9 sm:h-10 w-full sm:w-48 text-xs rounded-xl sm:rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                        <SelectValue placeholder="Ministry" />
                       </SelectTrigger>
                       <SelectContent className="max-h-72 overflow-y-auto">
                         <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
@@ -5421,8 +5522,8 @@ function C2SPageContent() {
 
                     {/* Status Filter */}
                     <Select value={menteeStatusFilter} onValueChange={setMenteeStatusFilter}>
-                      <SelectTrigger className="h-10 w-[130px] sm:w-36 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
-                        <SelectValue placeholder="All Statuses" />
+                      <SelectTrigger className="h-9 sm:h-10 w-full sm:w-36 text-xs rounded-xl sm:rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                        <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all" className="text-xs cursor-pointer">
@@ -5436,17 +5537,6 @@ function C2SPageContent() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-
-                    <Button
-                      onClick={() => {
-                        setSelectedMentee(null);
-                        setIsMenteeSheetOpen(true);
-                      }}
-                      className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-semibold text-xs h-10 px-4 gap-1.5 rounded-2xl shrink-0 transition-colors cursor-pointer"
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                      Add Mentee
-                    </Button>
                   </div>
                 </div>
 
@@ -5464,32 +5554,37 @@ function C2SPageContent() {
                       </div>
                       <p className="text-sm font-semibold text-foreground">No mentees found</p>
                       <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                        {groupSearchQuery || menteeStatusFilter !== "all" || selectedMinistryFilter !== "all"
+                        {groupSearchQuery || menteeStatusFilter !== "all" || selectedMinistryFilter !== "all" || menteeAssignmentFilter !== "all"
                           ? "Try adjusting your search or filter criteria."
                           : "No mentees are registered in this ministry yet."}
                       </p>
-                      <Button
-                        onClick={() => {
-                          setSelectedMentee(null);
-                          setIsMenteeSheetOpen(true);
-                        }}
-                        variant="outline"
-                        className="mt-4 text-xs font-semibold rounded-2xl gap-1.5 h-9"
-                      >
-                        <PlusCircle className="h-3.5 w-3.5 text-primary" />
-                        Add First Mentee
-                      </Button>
                     </div>
                   ) : (
                     <div className="flex-grow flex flex-col">
                       {/* ── Mobile card view ── */}
-                      <div className="md:hidden divide-y divide-border/30">
+                      <div className="md:hidden p-3 space-y-3 bg-muted/15 dark:bg-muted/10">
                         {filteredHeadMentees.map((m) => {
                           const fullName = `${m.firstName} ${m.lastName}`.trim();
                           const initials = `${m.firstName ? m.firstName[0] : ""}${m.lastName ? m.lastName[0] : ""}`.toUpperCase();
+                          const isMyMentee = Boolean(
+                            workerProfile?.id && (
+                              m.mentorId === workerProfile.id ||
+                              (m.groupId && groups?.find((g) => g.id === m.groupId)?.mentorId === workerProfile.id)
+                            )
+                          );
                           const mentor = workers?.find(w => w.id === m.mentorId || (m.groupId && groups?.find(g => g.id === m.groupId)?.mentorId === w.id));
-                          const mentorName = mentor ? `${mentor.firstName} ${mentor.lastName}`.trim() : "Unassigned";
+                          const mentorName = mentor
+                            ? `${mentor.firstName} ${mentor.lastName}`.trim()
+                            : isMyMentee && workerProfile
+                            ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
+                            : "Unassigned";
+                          const mentorInitials = mentor
+                            ? `${mentor.firstName?.[0] || ""}${mentor.lastName?.[0] || ""}`.toUpperCase()
+                            : isMyMentee && workerProfile
+                            ? `${workerProfile.firstName?.[0] || ""}${workerProfile.lastName?.[0] || ""}`.toUpperCase()
+                            : "UA";
                           const menteeMinistry = getMenteeMinistry(m);
+                          const menteeDepartment = getMenteeDepartment(m);
                           const menteeDevotions = (allDevotions || [])
                             .filter((d: any) => d.attendeeNames?.some((name: string) => name.toLowerCase().includes(fullName.toLowerCase())))
                             .sort((a: any, b: any) => new Date(b.devotionDate).getTime() - new Date(a.devotionDate).getTime());
@@ -5497,51 +5592,105 @@ function C2SPageContent() {
                           const lastSessionDate = menteeDevotions[0]?.devotionDate ? format(toJsDate(menteeDevotions[0].devotionDate), "yyyy-MM-dd") : "—";
                           const isMenteeActive = (m.status || "Active").toLowerCase() === "active";
                           const displayStatus = isMenteeActive ? "Active" : "Inactive";
-                          const statusColorClass = isMenteeActive ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-slate-500/15 text-slate-700 dark:text-slate-300";
+                          const statusColorClass = isMenteeActive
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25"
+                            : "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/25";
                           return (
-                            <div key={m.id} className="p-4 flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2.5 mb-1.5">
-                                  <div className="w-8 h-8 rounded-full bg-sidebar/10 text-sidebar text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">{initials}</div>
+                            <div
+                              key={m.id}
+                              className="bg-card rounded-2xl border border-border/70 p-3.5 shadow-2xs space-y-2.5 transition-all hover:border-sidebar/40 active:scale-[0.995]"
+                            >
+                              {/* Top: Avatar, Name, Assignment & Menu */}
+                              <div className="flex items-start justify-between gap-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                  <div className="w-9 h-9 rounded-xl bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
+                                    {initials}
+                                  </div>
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-bold text-foreground truncate">{fullName}</p>
-                                    <p className="text-[11px] text-muted-foreground truncate">{menteeMinistry} · {mentorName}</p>
+                                    <h4 className="text-sm font-bold text-foreground leading-snug truncate">
+                                      {fullName}
+                                    </h4>
+                                    <p className="text-[11px] text-muted-foreground truncate">
+                                      {m.phone || m.email || "No contact info"}
+                                    </p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="secondary" className={`${statusColorClass} font-semibold px-2.5 py-0.5 rounded-full text-[10px] border-transparent`}>{displayStatus}</Badge>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isMyMentee ? (
+                                    <Badge className="bg-primary/15 text-primary border-primary/30 font-semibold text-[10px] px-2 py-0.5 rounded-full">
+                                      My Mentee
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="bg-slate-100 dark:bg-muted/40 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-border font-medium text-[10px] px-2 py-0.5 rounded-full">
+                                      Worker&apos;s
+                                    </Badge>
+                                  )}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
+                                      <DropdownMenuItem onClick={() => { setSelectedMentee(m); setIsMenteeSheetOpen(true); }} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2">
+                                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Mentee
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setItemToDelete({ id: m.id, type: "mentee", name: fullName })} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Mentee
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
+
+                              {/* Middle: Assigned Worker & Ministry Box */}
+                              <div className="bg-muted/40 dark:bg-muted/20 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs border border-border/40">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                  <div className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center shrink-0 border border-primary/20">
+                                    {mentorInitials}
+                                  </div>
+                                  <span className="text-[11px] text-muted-foreground shrink-0">Worker:</span>
+                                  <span className="text-xs font-semibold text-foreground truncate">
+                                    {mentorName}
+                                  </span>
+                                  {isMyMentee && (
+                                    <span className="text-[9px] font-bold text-primary bg-primary/15 rounded px-1 py-0.2 shrink-0">
+                                      You
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] font-medium text-muted-foreground bg-background dark:bg-card border border-border/60 px-2 py-0.5 rounded-md truncate shrink-0 max-w-[130px]">
+                                  {menteeMinistry}
+                                </span>
+                              </div>
+
+                              {/* Bottom: Status, Progress & Details button */}
+                              <div className="flex items-center justify-between gap-2 pt-0.5">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className={`${statusColorClass} font-semibold px-2 py-0.5 rounded-full text-[10px]`}>
+                                    <span className={cn("w-1.5 h-1.5 rounded-full mr-1", isMenteeActive ? "bg-emerald-500" : "bg-slate-400")} />
+                                    {displayStatus}
+                                  </Badge>
                                   <div className="flex items-center gap-1.5">
                                     <div className="w-12 bg-muted h-1.5 rounded-full overflow-hidden">
-                                      <div className="bg-primary h-full rounded-full" style={{ width: `${progressPct}%` }} />
+                                      <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${progressPct}%` }} />
                                     </div>
                                     <span className="text-[10px] font-semibold text-muted-foreground">{progressPct}%</span>
                                   </div>
-                                  <span className="text-[10px] text-muted-foreground font-mono">{lastSessionDate}</span>
                                 </div>
-                              </div>
-                              <div className="flex flex-col items-end gap-1.5 shrink-0">
+
                                 <button
                                   type="button"
-                                  onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry, mentorName, progressPct, lastSessionDate, displayStatus, statusColorClass })}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
+                                  onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry, menteeDepartment, mentorName, mentorInitials, isMyMentee, progressPct, lastSessionDate, displayStatus, statusColorClass })}
+                                  className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-0.5 py-1 px-2 rounded-lg hover:bg-primary/5 transition-colors cursor-pointer"
                                 >
-                                  View Details
+                                  <span>Details</span>
+                                  <ChevronRight className="h-3.5 w-3.5" />
                                 </button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button type="button" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
-                                    <DropdownMenuItem onClick={() => { setSelectedMentee(m); setIsMenteeSheetOpen(true); }} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2">
-                                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Mentee
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setItemToDelete({ id: m.id, type: "mentee", name: fullName })} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-destructive focus:text-destructive focus:bg-destructive/10">
-                                      <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Mentee
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
                               </div>
                             </div>
                           );
@@ -5553,23 +5702,38 @@ function C2SPageContent() {
                     <Table className="w-full">
                       <TableHeader>
                         <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left whitespace-nowrap", isAdminUser ? "w-[22%]" : "w-[26%]")}>Mentee</TableHead>
-                          {isAdminUser && (<TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap w-[14%]">Department</TableHead>)}
-                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[18%]" : "w-[20%]")}>Assigned Mentor</TableHead>
-                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[16%]" : "w-[18%]")}>Ministry</TableHead>
-                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-2.5 text-center whitespace-nowrap", isAdminUser ? "w-[8%]" : "w-[9%]")}>Status</TableHead>
-                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-2.5 text-center whitespace-nowrap", isAdminUser ? "w-[10%]" : "w-[10%]")}>Progress</TableHead>
-                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-center whitespace-nowrap", isAdminUser ? "w-[10%]" : "w-[10%]")}>Last Session</TableHead>
-                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3.5 sm:px-4 text-center whitespace-nowrap w-[8%]"><span className="relative -left-2">Actions</span></TableHead>
+                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left whitespace-nowrap", isAdminUser ? "w-[18%]" : "w-[22%]")}>Mentee</TableHead>
+                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[11%]" : "w-[13%]")}>Assignment</TableHead>
+                          {isAdminUser && (<TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap w-[12%]">Department</TableHead>)}
+                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[16%]" : "w-[19%]")}>Assigned Worker</TableHead>
+                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[14%]" : "w-[16%]")}>Ministry</TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-2.5 text-center whitespace-nowrap w-[8%]">Status</TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-2.5 text-center whitespace-nowrap w-[8%]">Progress</TableHead>
+                          <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-center whitespace-nowrap w-[8%]">Last Session</TableHead>
+                          <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3.5 sm:px-4 text-center whitespace-nowrap", isAdminUser ? "w-[5%]" : "w-[6%]")}><span className="relative -left-2">Actions</span></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredHeadMentees.map((m) => {
                           const fullName = `${m.firstName} ${m.lastName}`.trim();
                           const initials = `${m.firstName ? m.firstName[0] : ""}${m.lastName ? m.lastName[0] : ""}`.toUpperCase();
+                          const isMyMentee = Boolean(
+                            workerProfile?.id && (
+                              m.mentorId === workerProfile.id ||
+                              (m.groupId && groups?.find((g) => g.id === m.groupId)?.mentorId === workerProfile.id)
+                            )
+                          );
                           const mentor = workers?.find(w => w.id === m.mentorId || (m.groupId && groups?.find(g => g.id === m.groupId)?.mentorId === w.id));
-                          const mentorName = mentor ? `${mentor.firstName} ${mentor.lastName}`.trim() : "Unassigned";
-                          const mentorInitials = mentor ? `${mentor.firstName?.[0] || ""}${mentor.lastName?.[0] || ""}`.toUpperCase() : "UA";
+                          const mentorName = mentor
+                            ? `${mentor.firstName} ${mentor.lastName}`.trim()
+                            : isMyMentee && workerProfile
+                            ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
+                            : "Unassigned";
+                          const mentorInitials = mentor
+                            ? `${mentor.firstName?.[0] || ""}${mentor.lastName?.[0] || ""}`.toUpperCase()
+                            : isMyMentee && workerProfile
+                            ? `${workerProfile.firstName?.[0] || ""}${workerProfile.lastName?.[0] || ""}`.toUpperCase()
+                            : "UA";
                           const menteeMinistry = getMenteeMinistry(m);
                           const menteeDepartment = getMenteeDepartment(m);
                           const menteeDevotions = (allDevotions || [])
@@ -5588,8 +5752,38 @@ function C2SPageContent() {
                                   <div className="overflow-hidden"><p className="font-bold text-foreground text-xs leading-none truncate">{fullName}</p><p className="text-[10px] text-muted-foreground mt-0.5 truncate">{m.email || m.phone || "No contact info"}</p></div>
                                 </div>
                               </TableCell>
+                              <TableCell className="px-3 py-3 align-middle whitespace-nowrap">
+                                {isMyMentee ? (
+                                  <Badge className="bg-primary/15 text-primary border-primary/30 font-semibold text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap hover:bg-primary/20">
+                                    My Mentee
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-slate-100 dark:bg-muted/40 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-border font-medium text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap">
+                                    Worker&apos;s Mentee
+                                  </Badge>
+                                )}
+                              </TableCell>
                               {isAdminUser && (<TableCell className="px-3 py-3 text-xs align-middle whitespace-nowrap"><Badge variant="outline" className="text-[10px] font-semibold bg-slate-100 dark:bg-muted/40 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-border">{menteeDepartment}</Badge></TableCell>)}
-                              <TableCell className="px-3 py-3 align-middle whitespace-nowrap"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center shrink-0 border border-primary/20">{mentorInitials}</div><span className="text-xs font-medium text-foreground truncate">{mentorName}</span></div></TableCell>
+                              <TableCell className="px-3 py-3 align-middle whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <div className={cn(
+                                    "w-6 h-6 rounded-full text-[9px] font-bold flex items-center justify-center shrink-0 border",
+                                    isMyMentee
+                                      ? "bg-primary/15 text-primary border-primary/30"
+                                      : "bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground border-sidebar/20"
+                                  )}>
+                                    {mentorInitials}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-xs font-medium text-foreground truncate">{mentorName}</span>
+                                    {isMyMentee && (
+                                      <span className="text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 rounded px-1 py-0.2 shrink-0">
+                                        You
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
                               <TableCell className="px-3 py-3 align-middle whitespace-nowrap"><Badge variant="outline" className="text-[10px] font-medium bg-muted/40 text-foreground border-border/80 rounded-lg px-2 py-0.5">{menteeMinistry}</Badge></TableCell>
                               <TableCell className="px-2.5 py-3 text-center align-middle whitespace-nowrap"><Badge variant="secondary" className={`${statusColorClass} font-semibold px-2.5 py-0.5 rounded-full text-[10px] border-transparent`}>{displayStatus}</Badge></TableCell>
                               <TableCell className="px-2.5 py-3 align-middle text-center whitespace-nowrap"><div className="flex items-center justify-center gap-1.5"><div className="w-12 bg-muted h-1.5 rounded-full overflow-hidden"><div className="bg-primary h-full rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} /></div><span className="font-semibold text-muted-foreground text-[11px]">{progressPct}%</span></div></TableCell>
@@ -5704,9 +5898,25 @@ function C2SPageContent() {
         <SheetContent className="p-0 overflow-y-auto rounded-2xl gap-0 border-border/80 shadow-2xl [&>button]:hidden">
           {viewingMenteeDetail && (() => {
             const md = viewingMenteeDetail;
+            const isMyMentee = md.isMyMentee !== undefined
+              ? Boolean(md.isMyMentee)
+              : Boolean(
+                  workerProfile?.id && (
+                    md.mentorId === workerProfile.id ||
+                    (md.groupId && groups?.find((g: any) => g.id === md.groupId)?.mentorId === workerProfile.id)
+                  )
+                );
             const mentor = workers?.find((w: any) => w.id === md.mentorId || (md.groupId && groups?.find((g: any) => g.id === md.groupId)?.mentorId === w.id));
-            const mentorName = mentor ? `${mentor.firstName} ${mentor.lastName}`.trim() : (md.mentorName || "Unassigned");
-            const mentorInitials = mentor ? `${mentor.firstName?.[0] || ""}${mentor.lastName?.[0] || ""}`.toUpperCase() : "UA";
+            const mentorName = mentor
+              ? `${mentor.firstName} ${mentor.lastName}`.trim()
+              : isMyMentee && workerProfile
+              ? `${workerProfile.firstName} ${workerProfile.lastName}`.trim()
+              : (md.mentorName || "Unassigned");
+            const mentorInitials = mentor
+              ? `${mentor.firstName?.[0] || ""}${mentor.lastName?.[0] || ""}`.toUpperCase()
+              : isMyMentee && workerProfile
+              ? `${workerProfile.firstName?.[0] || ""}${workerProfile.lastName?.[0] || ""}`.toUpperCase()
+              : "UA";
             const menteeMinistry = md.menteeMinistry || getMenteeMinistry(md);
             const menteeDepartment = getMenteeDepartment ? getMenteeDepartment(md) : "—";
             const menteeDevotions = (allDevotions || [])
@@ -5778,12 +5988,33 @@ function C2SPageContent() {
                     </div>
                   ))}
 
-                  {/* Assigned Mentor */}
+                  {/* Assignment Status */}
                   <div className="p-3.5 rounded-xl border border-border/60 bg-card/60">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Assigned Mentor</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Assignment</p>
+                    {isMyMentee ? (
+                      <Badge className="bg-primary/15 text-primary border-primary/30 font-semibold text-xs px-2.5 py-0.5 rounded-full">
+                        My Mentee (Directly Assigned to You)
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-slate-100 dark:bg-muted/40 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-border font-medium text-xs px-2.5 py-0.5 rounded-full">
+                        Worker&apos;s Mentee
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Assigned Worker */}
+                  <div className="p-3.5 rounded-xl border border-border/60 bg-card/60">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Assigned Worker</p>
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 border border-primary/20">{mentorInitials}</div>
-                      <span className="text-sm font-semibold text-foreground">{mentorName}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm font-semibold text-foreground">{mentorName}</span>
+                        {isMyMentee && (
+                          <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
+                            You
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

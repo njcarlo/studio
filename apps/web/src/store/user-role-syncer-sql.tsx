@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   useAuthStore,
@@ -71,6 +71,7 @@ export function UserRoleSyncerSQL() {
       return worker;
     },
     enabled: !!user,
+    staleTime: 2 * 60_000,
   });
 
   // ── 2. Super-admin determination ──────────────────────────────────────────
@@ -91,6 +92,7 @@ export function UserRoleSyncerSQL() {
       return await getWorkerById(idToFetch);
     },
     enabled: !!idToFetch,
+    staleTime: 2 * 60_000,
   });
 
   // ── 4. Roles (for allRoles in store) ──────────────────────────────────────
@@ -98,6 +100,7 @@ export function UserRoleSyncerSQL() {
     queryKey: ["roles"],
     queryFn: getRoles,
     enabled: !!user,
+    staleTime: 5 * 60_000,
   });
 
   const needsSeeding =
@@ -108,6 +111,7 @@ export function UserRoleSyncerSQL() {
     queryKey: ["ministries"],
     queryFn: () => getMinistries(),
     enabled: !!user,
+    staleTime: 5 * 60_000,
   });
 
   // ── 6. Effective profile (impersonated or real) ───────────────────────────
@@ -142,7 +146,7 @@ export function UserRoleSyncerSQL() {
     return allMinistries.some((m: any) => m.approverId === effectiveProfile.id);
   }, [user, allMinistries, effectiveProfile]);
 
-  const myMinistryIds = useMemo(() => {
+  const myMinistryIdsRaw = useMemo(() => {
     if (!user || !effectiveProfile) return [];
     const ids = new Set<string>();
 
@@ -231,8 +235,18 @@ export function UserRoleSyncerSQL() {
       }
     }
 
-    return Array.from(ids);
+    return Array.from(ids).sort();
   }, [user, allMinistries, effectiveProfile]);
+
+  const stableMinistryIdsRef = useRef<string[]>([]);
+  const myMinistryIds = useMemo(() => {
+    const prev = stableMinistryIdsRef.current;
+    if (prev.length === myMinistryIdsRaw.length && prev.every((id, idx) => id === myMinistryIdsRaw[idx])) {
+      return prev;
+    }
+    stableMinistryIdsRef.current = myMinistryIdsRaw;
+    return myMinistryIdsRaw;
+  }, [myMinistryIdsRaw]);
 
   const isLoading =
     isUserLoading ||

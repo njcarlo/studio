@@ -133,12 +133,22 @@ export function InventoryTable({
 
   // Filters & Pagination
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [skip, setSkip] = useState(0);
   const take = 12;
+
+  // Debounce search input to avoid hitting API on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setSkip(0);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Sync external status filter override (e.g. clicking Low Stock KPI card)
   useEffect(() => {
@@ -173,14 +183,14 @@ export function InventoryTable({
       skip: String(skip),
       take: String(take),
     };
-    if (search.trim()) params.search = search.trim();
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
     if (selectedCategory) params.categoryId = selectedCategory;
     if (selectedStatus) params.status = selectedStatus;
     if (selectedType) params.type = selectedType;
     if (selectedLocation) params.location = selectedLocation;
 
     fetchItems(params);
-  }, [skip, take, search, selectedCategory, selectedStatus, selectedType, selectedLocation, fetchItems]);
+  }, [skip, take, debouncedSearch, selectedCategory, selectedStatus, selectedType, selectedLocation, fetchItems]);
 
   useEffect(() => {
     loadData();
@@ -192,10 +202,19 @@ export function InventoryTable({
     fetchStats();
   }, [fetchCategories, fetchLocations, fetchStats]);
 
-  const lowCount = stats?.lowStockAlerts ?? items.filter((i) => (i.quantity ?? i.stock ?? 0) <= (i.minQuantity ?? i.minStock ?? 5)).length;
+  const localLowCount = items.filter((i) => (i.quantity ?? i.stock ?? 0) <= (i.minQuantity ?? i.minStock ?? 5)).length;
+  const lowCount = (stats?.lowStockAlerts !== undefined && stats.lowStockAlerts > 0) ? stats.lowStockAlerts : localLowCount;
   const equipmentCount = stats?.equipmentCount ?? items.filter((i) => i.type === 'EQUIPMENT').length;
   const consumableCount = stats?.consumableCount ?? items.filter((i) => i.type === 'CONSUMABLE').length;
   const totalCount = totalItems || stats?.totalItems || items.length;
+
+  const isLowFilterActive = selectedStatus === 'Low Stock';
+  const displayedItems = useMemo(() => {
+    if (isLowFilterActive) {
+      return items.filter((i) => (i.quantity ?? i.stock ?? 0) <= (i.minQuantity ?? i.minStock ?? 5));
+    }
+    return items;
+  }, [items, isLowFilterActive]);
 
   // Debounced search reset page
   const handleSearchChange = (val: string) => {
@@ -224,9 +243,18 @@ export function InventoryTable({
     try {
       await updateStock(item.id, action, 1);
       const newStock = action === 'Stock In' ? item.stock + 1 : Math.max(0, item.stock - 1);
+      const min = item.minStock || 5;
+      const isNowLow = newStock <= min;
+
       toast({
         title: action === 'Stock In' ? 'Stock In (+1)' : 'Stock Out (-1)',
-        description: `${item.name} is now at ${newStock} ${item.unit || 'pcs'}.`,
+        description: action === 'Stock In'
+          ? (isNowLow
+              ? `${item.name} is now at ${newStock} ${item.unit || 'pcs'} (Safety threshold: ${min}).`
+              : `${item.name} is now safely stocked at ${newStock} ${item.unit || 'pcs'}!`)
+          : (isNowLow
+              ? `⚠️ ${item.name} is now at ${newStock} ${item.unit || 'pcs'} (at or below minimum of ${min}).`
+              : `${item.name} is now at ${newStock} ${item.unit || 'pcs'}.`),
       });
       loadData();
     } catch (err: any) {
@@ -349,6 +377,12 @@ export function InventoryTable({
   };
 
   const [showExportConfirm, setShowExportConfirm] = useState(false);
+
+  useEffect(() => {
+    const handleExportEvent = () => setShowExportConfirm(true);
+    window.addEventListener('trigger-inventory-export', handleExportEvent);
+    return () => window.removeEventListener('trigger-inventory-export', handleExportEvent);
+  }, []);
 
   // Export Excel
   const handleExportExcel = () => {
@@ -625,43 +659,65 @@ export function InventoryTable({
             </div>
           </div>
 
-          {/* Action Buttons Row */}
-          <div className="flex items-center justify-end gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-            {onActivityFeedClick && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onActivityFeedClick}
-                className="h-9 px-3 sm:px-3.5 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs cursor-pointer hover:bg-muted/40 flex-1 sm:flex-initial justify-center"
+          {/* Action Buttons Row with Low Stock Summary / Filter */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+            {/* Summary / Filter: ⚠ Low Stock · X items */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedStatus === 'Low Stock') {
+                    setSelectedStatus('');
+                    onClearStatusFilterOverride?.();
+                  } else {
+                    setSelectedStatus('Low Stock');
+                  }
+                  setSkip(0);
+                }}
+                className={cn(
+                  "h-9 px-3.5 text-xs font-semibold rounded-xl border transition-colors flex items-center gap-2 cursor-pointer shadow-2xs select-none",
+                  selectedStatus === 'Low Stock'
+                    ? "bg-red-600 text-white border-red-600 shadow-xs"
+                    : "bg-red-50 text-red-700 border-red-200/90 hover:bg-red-100/90 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60"
+                )}
+                title={selectedStatus === 'Low Stock' ? 'Click to show all items' : 'Click to filter only low-stock items'}
               >
-                <Activity className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="whitespace-nowrap">Activity Feed</span>
+                <AlertTriangle className={cn("h-3.5 w-3.5 shrink-0", selectedStatus === 'Low Stock' ? "text-white" : "text-red-600 dark:text-red-400")} />
+                <span>Low Stock &middot; {lowCount} {lowCount === 1 ? 'item' : 'items'}</span>
+                {selectedStatus === 'Low Stock' && (
+                  <span className="text-[10px] bg-red-700 text-white px-1.5 py-0.2 rounded-md font-bold">
+                    Active
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+              {onActivityFeedClick && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onActivityFeedClick}
+                  className="h-9 px-3 sm:px-3.5 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs cursor-pointer hover:bg-muted/40 flex-1 sm:flex-initial justify-center"
+                >
+                  <Activity className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="whitespace-nowrap">Activity Feed</span>
+                </Button>
+              )}
+
+              {/* Primary + Add Item Button */}
+              <Button
+                size="sm"
+                className="h-9 px-3.5 sm:px-4 text-xs font-bold rounded-xl gap-1.5 bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer flex-1 sm:flex-initial justify-center"
+                onClick={() => {
+                  setModalItem(null);
+                  setIsItemModalOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">Add Item</span>
               </Button>
-            )}
-
-            {/* Export Excel Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-3 sm:px-3.5 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs cursor-pointer hover:bg-muted/40 flex-1 sm:flex-initial justify-center"
-              onClick={() => setShowExportConfirm(true)}
-            >
-              <Download className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="whitespace-nowrap">Export Excel</span>
-            </Button>
-
-            {/* Primary + Add Item Button */}
-            <Button
-              size="sm"
-              className="h-9 px-3.5 sm:px-4 text-xs font-bold rounded-xl gap-1.5 bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer flex-1 sm:flex-initial justify-center"
-              onClick={() => {
-                setModalItem(null);
-                setIsItemModalOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 shrink-0" />
-              <span className="whitespace-nowrap">Add Item</span>
-            </Button>
+            </div>
           </div>
 
           {/* ── MASTER TABLE CONTAINER (Rounded Card inside White Container) ── */}
@@ -734,7 +790,7 @@ export function InventoryTable({
                   </p>
                 </div>
               ) : (
-                items.map((item) => {
+                displayedItems.map((item) => {
                   const isSelected = selectedIds.has(item.id);
                   const categoryClass = getCategoryBadgeStyle(item.category?.name);
                   const isLow = item.stock <= (item.minStock > 0 ? item.minStock : 5) && item.stock > 0;
@@ -743,22 +799,102 @@ export function InventoryTable({
                   return (
                     <div
                       key={`mob-${item.id}`}
-                      className={`p-3.5 space-y-2.5 transition-colors ${isSelected ? 'bg-primary/5' : 'bg-card'
-                        }`}
+                      className={cn(
+                        "overflow-hidden rounded-none border-b border-border/60 transition-colors bg-card",
+                        isSelected ? "bg-sidebar/5 dark:bg-sidebar/10" : "bg-card"
+                      )}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-2.5 min-w-0">
+                      {/* Top Header: Solid Blue Bar with Checkbox, Code, Status & Dropdown */}
+                      <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                        <div className="flex items-center gap-2.5">
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => toggleSelect(item.id)}
-                            className="mt-1"
+                            className="h-[17px] w-[17px] rounded-[4px] border-[1.5px] border-white/90 bg-transparent data-[state=checked]:bg-white data-[state=checked]:border-white [&_svg]:text-sidebar focus-visible:ring-0 cursor-pointer shadow-xs transition-colors"
                           />
+                          <span className="text-xs font-mono font-bold text-white tracking-wide">
+                            {item.inventoryCode || item.id.slice(0, 8).toUpperCase()}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {isOut ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-400/20 text-rose-200 border border-rose-400/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                              Out of Stock
+                            </span>
+                          ) : isLow ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-400/20 text-amber-200 border border-amber-400/30 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                              Low Stock
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              {item.status || "Good Condition"}
+                            </span>
+                          )}
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-card-dark">
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer"
+                                onClick={() => {
+                                  setModalItem(item);
+                                  setIsItemModalOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span>Edit Item</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer"
+                                onClick={() => {
+                                  setStockAdjustItem(item);
+                                  setAdjustAction('Stock In');
+                                  setAdjustQuantity(1);
+                                  setAdjustNote('');
+                                }}
+                              >
+                                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span>Adjust Stock</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer"
+                                onClick={() => handleSingleQR(item)}
+                              >
+                                <QrCode className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span>Print QR Label</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+                                onClick={() => {
+                                  setDeleteConfirmId(item.id);
+                                  setDeleteConfirmName(item.name);
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Delete Item</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-start gap-3">
                           <div
-                            onClick={() => {
-                              setModalItem(item);
-                              setIsItemModalOpen(true);
-                            }}
-                            className="w-12 h-12 rounded-xl bg-muted/40 border border-border/70 overflow-hidden flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                            className="w-11 h-11 rounded-xl bg-muted/40 border border-border/70 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs pointer-events-none select-none"
                           >
                             {item.imageUrl ? (
                               <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -766,109 +902,94 @@ export function InventoryTable({
                               <Package className="h-5 w-5 text-muted-foreground/60" />
                             )}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <h4
                               onClick={() => {
                                 setModalItem(item);
                                 setIsItemModalOpen(true);
                               }}
-                              className="text-xs font-bold text-foreground hover:text-primary cursor-pointer line-clamp-1"
+                              className="text-sm font-bold text-foreground hover:text-primary cursor-pointer line-clamp-1"
                             >
                               {item.name}
                             </h4>
-                            <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                              {item.inventoryCode || item.id.slice(0, 8).toUpperCase()}
-                            </p>
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${categoryClass}`}>
                                 {item.category?.name || 'Unassigned'}
                               </span>
+                              {item.isKit && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                                  Kit / Bundle
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Dropdown menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0">
-                              <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 rounded-xl">
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer"
-                              onClick={() => {
-                                setModalItem(item);
-                                setIsItemModalOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>Edit Item</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer"
-                              onClick={() => {
-                                setStockAdjustItem(item);
-                                setAdjustAction('Stock In');
-                                setAdjustQuantity(1);
-                                setAdjustNote('');
-                              }}
-                            >
-                              <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>Adjust Stock</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer"
-                              onClick={() => handleSingleQR(item)}
-                            >
-                              <QrCode className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>Print QR Label</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="gap-2 text-destructive focus:text-destructive cursor-pointer"
-                              onClick={() => {
-                                setDeleteConfirmId(item.id);
-                                setDeleteConfirmName(item.name);
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              <span>Delete Item</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                        {/* Details 2-Column Grid */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                              Location
+                            </p>
+                            <p className="font-semibold text-foreground truncate">
+                              {item.location || '—'}
+                            </p>
+                            <p className="text-muted-foreground text-[11px] truncate">
+                              {[item.aisle ? `Aisle ${item.aisle}` : '', item.shelf ? `Shelf ${item.shelf}` : '', item.bin ? `Bin ${item.bin}` : ''].filter(Boolean).join(' · ') || 'Storage Floor'}
+                            </p>
+                          </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-1.5 text-xs border-t border-border/40">
-                        <div className="flex items-center gap-1.5 text-muted-foreground min-w-0 flex-1">
-                          <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate text-xs">{item.location || 'No location'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[11px] text-muted-foreground">Stock:</span>
-                          <span className={`font-mono font-bold ${isOut ? 'text-rose-600' : isLow ? 'text-amber-600' : 'text-foreground'}`}>
-                            {item.stock} {item.unit || 'pcs'}
-                          </span>
-                          <div className="flex items-center gap-0.5 ml-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 w-6 p-0 rounded-md"
-                              disabled={item.stock <= 0}
-                              onClick={() => handleQuickStock(item, 'Stock Out')}
-                              title="Quick -1"
-                            >
-                              <ArrowDown className="h-3 w-3 text-amber-600" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 w-6 p-0 rounded-md"
-                              onClick={() => handleQuickStock(item, 'Stock In')}
-                              title="Quick +1"
-                            >
-                              <ArrowUp className="h-3 w-3 text-emerald-600" />
-                            </Button>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                              Current Stock
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className={cn(
+                                "font-bold text-xs",
+                                isOut || isLow ? "text-red-600 dark:text-red-400 font-mono" : "text-foreground font-mono"
+                              )}>
+                                {item.stock} {item.unit || 'pcs'}
+                              </span>
+                              <div className="flex items-center gap-0.5 ml-auto">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 w-6 p-0 rounded-md cursor-pointer hover:bg-muted"
+                                  disabled={item.stock <= 0}
+                                  onClick={() => handleQuickStock(item, 'Stock Out')}
+                                  title="Quick -1"
+                                >
+                                  <ArrowDown className="h-3 w-3 text-amber-600" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 w-6 p-0 rounded-md cursor-pointer hover:bg-muted"
+                                  onClick={() => handleQuickStock(item, 'Stock In')}
+                                  title="Quick +1"
+                                >
+                                  <ArrowUp className="h-3 w-3 text-emerald-600" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                              Safety Min
+                            </p>
+                            <p className="font-mono text-xs font-semibold text-foreground">
+                              {item.minStock || 1} {item.unit || 'pcs'}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                              Type / Class
+                            </p>
+                            <p className="font-semibold text-foreground truncate capitalize">
+                              {item.type?.toLowerCase() || 'Equipment'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -951,7 +1072,7 @@ export function InventoryTable({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    items.map((item) => {
+                    displayedItems.map((item) => {
                       const isSelected = selectedIds.has(item.id);
                       const isLow = item.stock <= (item.minStock > 0 ? item.minStock : 5) && item.stock > 0;
                       const isOut = item.stock === 0;
@@ -975,11 +1096,7 @@ export function InventoryTable({
                           {/* 2. Visual Thumbnail / Category Avatar */}
                           <TableCell className="py-3">
                             <div
-                              onClick={() => {
-                                setModalItem(item);
-                                setIsItemModalOpen(true);
-                              }}
-                              className="w-10 h-10 rounded-xl bg-muted/40 border border-border/70 overflow-hidden flex items-center justify-center shrink-0 cursor-pointer group-hover:border-primary/40 transition-colors shadow-2xs"
+                              className="w-10 h-10 rounded-xl bg-muted/40 border border-border/70 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs pointer-events-none select-none"
                             >
                               {item.imageUrl ? (
                                 <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -1043,33 +1160,75 @@ export function InventoryTable({
                             </span>
                           </TableCell>
 
-                          {/* 6. Stock Level & Health Indicator */}
+                          {/* 6. Stock Level & Health Indicator (Static Red Alert, Red Dot + Compact Badge) */}
                           <TableCell className="text-center py-3">
-                            <div className="inline-flex flex-col items-center gap-0.5">
+                            <div className="inline-flex flex-col items-center gap-1">
                               <div className="flex items-baseline gap-1">
                                 <span
-                                  className={`font-black text-sm ${isOut ? 'text-destructive' : isLow ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
-                                    }`}
+                                  className={`text-sm font-semibold ${
+                                    isOut || isLow ? 'text-red-600 dark:text-red-400' : 'text-foreground'
+                                  }`}
                                 >
                                   {item.stock}
                                 </span>
-                                <span className="text-[10px] font-medium text-muted-foreground">
+                                <span
+                                  className={`text-[10px] ${
+                                    isOut || isLow ? 'text-red-600/80 dark:text-red-400/80 font-medium' : 'text-muted-foreground'
+                                  }`}
+                                >
                                   {item.unit || 'pcs'}
                                 </span>
                               </div>
 
-                              {/* Health Pill */}
+                              {/* Small Status Dot + Badge with helpful Tooltip */}
                               {isOut ? (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                                  Out of stock
-                                </span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setStockAdjustItem(item);
+                                        setAdjustAction('Stock In');
+                                      }}
+                                    >
+                                      <span className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-400 shrink-0" />
+                                      <span>Out of Stock</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs p-2.5 max-w-xs">
+                                    <p className="font-bold text-red-600">Out of Stock Alert</p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                      0 {item.unit || 'pcs'} remaining. Click badge to stock in.
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
                               ) : isLow ? (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/25">
-                                  Low (Min: {item.minStock})
-                                </span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setStockAdjustItem(item);
+                                        setAdjustAction('Stock In');
+                                      }}
+                                    >
+                                      <span className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-400 shrink-0" />
+                                      <span>Low Stock</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs p-2.5 max-w-xs">
+                                    <p className="font-bold text-red-600">Low Stock Alert</p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                      {item.stock} {item.unit || 'pcs'} remaining (Safety min: {item.minStock || 5}). Click to restock.
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
                               ) : (
-                                <span className="text-[9px] font-medium text-muted-foreground/80">
-                                  Min: {item.minStock || 1}
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium text-muted-foreground">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                  <span>Min: {item.minStock || 1}</span>
                                 </span>
                               )}
                             </div>

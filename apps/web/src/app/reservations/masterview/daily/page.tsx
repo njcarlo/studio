@@ -98,6 +98,7 @@ export default function ScheduleCalendarPage() {
   const router = useRouter();
 
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const [selectedAreaId, setSelectedAreaId] = useState<string>("all");
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
@@ -134,9 +135,10 @@ export default function ScheduleCalendarPage() {
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ["bookings", "calendar"],
     queryFn: () => getBookings(),
-    staleTime: 0,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
   });
 
   const { data: workers, isLoading: workersLoading } = useQuery({
@@ -217,6 +219,13 @@ export default function ScheduleCalendarPage() {
     if (!bookings) return [];
     return bookings.filter((b) => b.status === "Approved");
   }, [bookings]);
+
+  // Bookings for selected date on mobile
+  const selectedDayBookings = useMemo(() => {
+    return approvedBookings
+      .filter((b) => isSameDay(toJsDate(b.start), selectedDate))
+      .sort((a, b) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime());
+  }, [approvedBookings, selectedDate]);
 
   // Days for Month View Grid (Sun-Sat)
   const monthDays = useMemo(() => {
@@ -390,11 +399,12 @@ export default function ScheduleCalendarPage() {
               </div>
 
               {/* 7-column Days Grid */}
-              <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2.5">
                 {monthDays.map((day, idx) => {
                   const isCurrentMonth = isSameMonth(day, currentDate);
                   const isDayToday = isToday(day);
                   const isWeekend = idx % 7 === 0 || idx % 7 === 6;
+                  const isSelected = isSameDay(day, selectedDate);
 
                   // Find bookings for this day
                   const dayEvents = approvedBookings.filter((b) =>
@@ -405,24 +415,24 @@ export default function ScheduleCalendarPage() {
                     <div
                       key={idx}
                       onClick={() => {
-                        if (dayEvents.length > 0) {
-                          handleDayClickMobile(day, dayEvents);
-                        }
+                        setSelectedDate(day);
                       }}
                       className={cn(
-                        "min-h-[72px] sm:min-h-[135px] p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all duration-200 flex flex-col justify-between group relative",
+                        "p-1 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all duration-200 flex flex-col justify-start group relative cursor-pointer",
+                        "min-h-[58px] sm:min-h-[135px]",
                         isCurrentMonth
-                          ? isDayToday
-                            ? "bg-white dark:bg-card border-sidebar/50 dark:border-blue-500/60 ring-2 ring-sidebar/15 shadow-sm"
+                          ? isSelected
+                            ? "bg-sidebar/10 dark:bg-sky-950/40 border-sidebar dark:border-sky-500 ring-2 ring-sidebar/30 shadow-sm"
+                            : isDayToday
+                            ? "bg-white dark:bg-card border-sidebar/50 dark:border-blue-500/60 ring-1 ring-sidebar/20 shadow-xs"
                             : isWeekend
-                            ? "bg-slate-50/60 dark:bg-muted/20 border-slate-200/80 dark:border-border/70 shadow-2xs hover:border-sidebar/40 hover:shadow-md hover:-translate-y-0.5"
-                            : "bg-white dark:bg-card border-slate-200/80 dark:border-border/70 shadow-2xs hover:border-sidebar/40 hover:shadow-md hover:-translate-y-0.5"
-                          : "bg-slate-50/30 dark:bg-muted/10 border-slate-100 dark:border-border/30 text-slate-400 dark:text-slate-600 opacity-60",
-                        dayEvents.length > 0 && "cursor-pointer"
+                            ? "bg-slate-50/60 dark:bg-muted/20 border-slate-200/80 dark:border-border/70 shadow-2xs hover:border-sidebar/40"
+                            : "bg-white dark:bg-card border-slate-200/80 dark:border-border/70 shadow-2xs hover:border-sidebar/40"
+                          : "bg-slate-50/30 dark:bg-muted/10 border-slate-100 dark:border-border/30 text-slate-400 dark:text-slate-600 opacity-60"
                       )}
                     >
                       {/* Top Header: Day Number + Event Badge count */}
-                      <div className="flex items-center justify-between mb-0.5 sm:mb-1">
+                      <div className="flex items-center justify-between mb-0.5 sm:mb-1 w-full">
                         {isDayToday ? (
                           <div className="flex items-center gap-1">
                             <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-sidebar text-white flex items-center justify-center text-[10px] sm:text-xs font-black shadow-xs shrink-0">
@@ -436,7 +446,9 @@ export default function ScheduleCalendarPage() {
                           <span
                             className={cn(
                               "text-[11px] sm:text-xs font-bold px-0.5 transition-colors",
-                              isCurrentMonth
+                              isSelected
+                                ? "text-sidebar dark:text-sky-400 font-extrabold"
+                                : isCurrentMonth
                                 ? "text-slate-700 dark:text-slate-200 group-hover:text-sidebar"
                                 : "text-slate-400 dark:text-slate-600"
                             )}
@@ -446,38 +458,38 @@ export default function ScheduleCalendarPage() {
                         )}
 
                         {dayEvents.length > 0 && (
-                          <span className="text-[9px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.2 rounded-full bg-sidebar/10 text-sidebar dark:bg-blue-950/60 dark:text-blue-300">
+                          <span className={cn(
+                            "text-[9px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.2 rounded-full",
+                            isSelected
+                              ? "bg-sidebar text-white"
+                              : "bg-sidebar/10 text-sidebar dark:bg-blue-950/60 dark:text-blue-300"
+                          )}>
                             {dayEvents.length}
                           </span>
                         )}
                       </div>
 
-                      {/* ── Mobile View: Action button without cramped time pills ── */}
-                      <div className="md:hidden mt-auto pt-1 w-full">
-                        {dayEvents.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDayClickMobile(day, dayEvents);
-                            }}
-                            className="w-full py-1 px-0.5 rounded-lg text-[10px] font-bold bg-sidebar text-white hover:bg-sidebar/90 flex items-center justify-center shadow-2xs active:scale-95 transition-all cursor-pointer"
-                          >
-                            <span>View</span>
-                          </button>
-                        ) : (
-                          <div className="h-3.5" />
+                      {/* ── MOBILE: Event dots indicator (clean & compact, no cramped text) ── */}
+                      <div className="md:hidden flex items-center justify-center gap-1 mt-auto pt-1 pb-0.5">
+                        {dayEvents.slice(0, 3).map((booking, bIdx) => {
+                          const color = EVENT_COLORS[bIdx % EVENT_COLORS.length];
+                          return (
+                            <span
+                              key={booking.id}
+                              className={cn("w-1.5 h-1.5 rounded-full shadow-2xs", color.border.replace("border-l-", "bg-"))}
+                            />
+                          );
+                        })}
+                        {dayEvents.length > 3 && (
+                          <span className="text-[8px] font-bold text-slate-500 leading-none">+</span>
                         )}
                       </div>
 
-                      {/* ── Desktop View: Full Time & Room event pills ── */}
-                      <div className="hidden md:block space-y-1 overflow-y-auto max-h-[85px] pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {/* ── DESKTOP: Full Time & Room event pills ── */}
+                      <div className="hidden md:block w-full space-y-1 overflow-y-auto max-h-[100px] pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mt-1">
                         {dayEvents.slice(0, 3).map((booking, bIdx) => {
-                          const room = rooms?.find(
-                            (r) => r.id === booking.roomId
-                          );
-                          const color =
-                            EVENT_COLORS[bIdx % EVENT_COLORS.length];
+                          const room = rooms?.find((r) => r.id === booking.roomId);
+                          const color = EVENT_COLORS[bIdx % EVENT_COLORS.length];
                           const startTime = toJsDate(booking.start);
 
                           return (
@@ -495,7 +507,7 @@ export default function ScheduleCalendarPage() {
                               )}
                               title={`${booking.title} - ${room?.name || "Room"} (${format(startTime, "h:mm a")})`}
                             >
-                              <span className="font-bold text-[9px] opacity-80 shrink-0">
+                              <span className="font-bold shrink-0">
                                 {format(startTime, "h:mm a")}
                               </span>
                               <span className="truncate">
@@ -513,6 +525,73 @@ export default function ScheduleCalendarPage() {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* ── MOBILE: Selected Day Agenda Section (Apple/Google Calendar Style) ── */}
+              <div className="md:hidden bg-card rounded-2xl border border-border/60 p-4 shadow-card-dark space-y-3 animate-in fade-in duration-300 mt-2">
+                <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center font-black text-sm border border-sidebar/20">
+                      {format(selectedDate, "d")}
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-foreground">
+                        {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedDayBookings.length} {selectedDayBookings.length === 1 ? "reservation" : "reservations"}
+                      </p>
+                    </div>
+                  </div>
+                  {isToday(selectedDate) && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sidebar/10 text-sidebar dark:text-sky-300 border border-sidebar/20">
+                      Today
+                    </span>
+                  )}
+                </div>
+
+                {selectedDayBookings.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-muted-foreground italic flex flex-col items-center gap-1.5">
+                    <Calendar className="w-6 h-6 opacity-40 text-muted-foreground" />
+                    <span>No reservations scheduled for this date.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedDayBookings.map((booking, bIdx) => {
+                      const room = rooms?.find((r) => r.id === booking.roomId);
+                      const color = EVENT_COLORS[bIdx % EVENT_COLORS.length];
+                      const startTime = toJsDate(booking.start);
+                      const endTime = toJsDate(booking.end);
+                      const requesterName = booking.name || (booking as any)?.worker?.firstName || (booking as any)?.workerName || "User";
+
+                      return (
+                        <div
+                          key={booking.id}
+                          onClick={() => handleBookingClick(booking)}
+                          className={cn(
+                            "p-3 rounded-xl border-l-[4px] cursor-pointer hover:opacity-90 active:scale-98 transition-all flex flex-col gap-1.5 shadow-2xs",
+                            color.bg,
+                            color.text,
+                            color.border
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-bold leading-snug">{booking.title}</p>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/80 dark:bg-black/40 whitespace-nowrap shadow-2xs">
+                              {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] opacity-85">
+                            <span className="font-semibold flex items-center gap-1">
+                              📍 {room?.name || "Room"}
+                            </span>
+                            <span className="text-[10px]">{requesterName}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           ) : viewMode === "week" ? (
@@ -571,9 +650,8 @@ export default function ScheduleCalendarPage() {
                                   <p className="text-xs font-bold leading-snug">{booking.title}</p>
                                   <p className="text-[11px] opacity-75 mt-0.5">{room?.name || "Room"}</p>
                                 </div>
-                                <div className="text-right shrink-0 text-[11px] font-semibold opacity-80">
-                                  <p>{format(startTime, "h:mm a")}</p>
-                                  <p>– {format(endTime, "h:mm a")}</p>
+                                <div className="text-right shrink-0 text-[11px] font-semibold opacity-80 whitespace-nowrap">
+                                  <p>{format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}</p>
                                 </div>
                               </div>
                             );
@@ -767,9 +845,10 @@ export default function ScheduleCalendarPage() {
                                     <p className="text-xs font-bold text-gray-800 dark:text-gray-100 leading-snug">{booking.title}</p>
                                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{requesterName}</p>
                                   </div>
-                                  <div className="text-right shrink-0">
-                                    <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">{format(startTime, "h:mm a")}</p>
-                                    <p className="text-[10px] text-gray-400">– {format(endTime, "h:mm a")}</p>
+                                  <div className="text-right shrink-0 whitespace-nowrap">
+                                    <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+                                      {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                                    </p>
                                   </div>
                                 </div>
                               );

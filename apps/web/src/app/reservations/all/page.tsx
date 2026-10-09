@@ -59,7 +59,6 @@ import {
   ChevronLeft,
   ChevronRight,
   PlusCircle,
-  RotateCcw,
   CalendarDays,
   User,
   MapPin,
@@ -179,9 +178,10 @@ export default function AllReservationsPage() {
   const { data: allBookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ["bookings", { actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }],
     queryFn: () => getBookings({ actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }),
-    staleTime: 0,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
   });
 
   const { data: rooms } = useQuery({
@@ -515,102 +515,90 @@ export default function AllReservationsPage() {
               )}
             </div>
 
-            {/* Right: Filter Controls (Single Horizontal Row) */}
-            <div className="flex items-center gap-2 sm:gap-2.5 flex-nowrap overflow-x-auto pb-1 lg:pb-0 shrink-0">
-              <Filter className="h-4 w-4 text-slate-400 hidden xl:block shrink-0 mr-0.5" />
+            {/* Right: Filter Controls (Responsive wrap on mobile, single row on sm+) */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full lg:w-auto shrink-0">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="h-4 w-4 text-slate-400 hidden xl:block shrink-0 mr-0.5" />
 
-              {/* Status Select */}
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v);
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="h-10 w-[130px] sm:w-36 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">
-                    All Statuses
-                  </SelectItem>
-                  <SelectItem value="Approved" className="text-xs">
-                    Approved
-                  </SelectItem>
-                  <SelectItem value="Pending" className="text-xs">
-                    Pending
-                  </SelectItem>
-                  <SelectItem value="Rejected" className="text-xs">
-                    Rejected
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                {/* Status Select */}
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => {
+                    setStatusFilter(v);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-10 flex-1 sm:w-36 text-xs text-slate-700 dark:text-slate-200 font-medium rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 shadow-2xs px-3">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">
+                      All Statuses
+                    </SelectItem>
+                    <SelectItem value="Approved" className="text-xs">
+                      Approved
+                    </SelectItem>
+                    <SelectItem value="Pending" className="text-xs">
+                      Pending
+                    </SelectItem>
+                    <SelectItem value="Rejected" className="text-xs">
+                      Rejected
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
 
-              {/* Floor / Room Select */}
-              <Select
-                value={roomFilter}
-                onValueChange={(v) => {
-                  setRoomFilter(v);
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="h-10 w-[135px] sm:w-40 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
-                  <SelectValue placeholder="All Floor/Room" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="all" className="text-xs font-semibold">
-                    All Floor/Room
-                  </SelectItem>
-                  {areas?.map((area) => {
-                    const areaRooms = (rooms || []).filter(
-                      (r) => r.areaId === area.id || r.areaId === area.areaId
-                    );
-                    return (
-                      <SelectGroup key={area.id}>
-                        <SelectLabel className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider py-1.5 px-2 bg-slate-50 dark:bg-muted/40">
-                          {area.name}
-                        </SelectLabel>
-                        {areaRooms.map((room) => (
-                          <SelectItem
-                            key={room.id}
-                            value={room.id}
-                            className="text-xs pl-4"
-                          >
-                            {room.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                {/* Floor / Room Select */}
+                <Select
+                  value={roomFilter}
+                  onValueChange={(v) => {
+                    setRoomFilter(v);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-10 flex-1 sm:w-40 text-xs text-slate-700 dark:text-slate-200 font-medium rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 shadow-2xs px-3">
+                    <SelectValue placeholder="All Floor/Room" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value="all" className="text-xs font-semibold">
+                      All Floor/Room
+                    </SelectItem>
+                    {areas?.map((area) => {
+                      const areaRooms = (rooms || []).filter(
+                        (r) => r.areaId === area.id || r.areaId === area.areaId
+                      );
+                      return (
+                        <SelectGroup key={area.id}>
+                          <SelectLabel className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider py-1.5 px-2 bg-slate-50 dark:bg-muted/40">
+                            {area.name}
+                          </SelectLabel>
+                          {areaRooms.map((room) => (
+                            <SelectItem
+                              key={room.id}
+                              value={room.id}
+                              className="text-xs pl-4"
+                            >
+                              {room.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
 
-              {/* Date Filter */}
-              <div className="w-36 shrink-0">
+              {/* Date Filter — drops below on mobile, inline on desktop */}
+              <div className="w-full sm:w-36 shrink-0">
                 <DatePicker
                   value={dateFilter}
                   onChange={(d) => {
                     setDateFilter(d);
                     setCurrentPage(1);
                   }}
+                  className="w-full text-slate-700 dark:text-slate-200 font-medium"
                   align="end"
                 />
               </div>
-
-              {/* Refresh Button — always visible */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  await queryClient.invalidateQueries({ queryKey: ["bookings"] });
-                  await queryClient.invalidateQueries({ queryKey: ["rooms"] });
-                  await queryClient.invalidateQueries({ queryKey: ["areas"] });
-                }}
-                className="h-10 w-10 p-0 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted/40 shrink-0"
-                title="Refresh reservations"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 

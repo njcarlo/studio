@@ -40,7 +40,7 @@ export async function GET() {
     ]);
 
     const totalQuantity = allItems.reduce((acc, i) => acc + (i.quantity || 0), 0);
-    const lowStockAlerts = allItems.filter((i) => i.quantity > 0 && i.quantity <= (i.minQuantity > 0 ? i.minQuantity : 5)).length;
+    const lowStockAlerts = allItems.filter((i) => (i.quantity ?? 0) <= (i.minQuantity > 0 ? i.minQuantity : 5)).length;
     const pmsAlerts = allItems.filter((i) => i.nextMaintenanceDate && new Date(i.nextMaintenanceDate) <= thirtyDaysFromNow).length;
     const equipmentCount = allItems.filter((i) => i.type === 'EQUIPMENT').length;
     const consumableCount = allItems.filter((i) => i.type === 'CONSUMABLE').length;

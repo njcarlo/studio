@@ -73,6 +73,12 @@ export function StockLogsPanel() {
     fetchAuditLogs();
   }, []);
 
+  useEffect(() => {
+    const handleExportEvent = () => setShowExportConfirm(true);
+    window.addEventListener('trigger-inventory-export', handleExportEvent);
+    return () => window.removeEventListener('trigger-inventory-export', handleExportEvent);
+  }, []);
+
   const toggleExpand = (idx: number) => {
     const next = new Set(expandedIds);
     if (next.has(idx)) next.delete(idx);

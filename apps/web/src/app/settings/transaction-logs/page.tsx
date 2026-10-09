@@ -157,18 +157,18 @@ export default function TransactionLogsPage() {
       <div className="space-y-6 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
               Transaction Logs
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
               Full audit trail of activity across every module.
             </p>
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>

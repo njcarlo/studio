@@ -19,6 +19,7 @@ import {
   Tv,
 } from "lucide-react";
 import { LandingNav } from "@/components/landing/landing-nav";
+import { LandingFooter } from "@/components/landing/landing-footer";
 
 export default function LandingPage() {
   // Background Media Slider State (0: Image Slideshow, 1: Video)
@@ -237,7 +238,7 @@ export default function LandingPage() {
         {/* Slide 1: Pristine Full-Screen Church Video (Direct MP4) */}
         <div
           onClick={togglePlay}
-          className={`absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out bg-black overflow-hidden cursor-pointer ${currentSlide === 1 ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          className={`absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out bg-black overflow-hidden cursor-pointer flex items-center justify-center ${currentSlide === 1 ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
         >
           <video
@@ -248,7 +249,7 @@ export default function LandingPage() {
             playsInline
             muted={isMuted}
             preload="auto"
-            className="w-full h-full object-cover object-center min-w-[100vw] min-h-[100vh]"
+            className="w-full h-full object-contain sm:object-cover object-center max-w-full"
           />
           {/* Subtle soft gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950/60 pointer-events-none" />
@@ -370,7 +371,7 @@ export default function LandingPage() {
           </div>
 
           {/* Heading Title - Single Row on Desktop */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[4.15rem] font-black text-white tracking-tight leading-none mb-4 drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] md:whitespace-nowrap">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[4.75rem] xl:text-[5.25rem] font-black text-white tracking-tight leading-none mb-4 drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] md:whitespace-nowrap">
             Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-sky-200 to-indigo-200">COG Dasmariñas</span>
           </h1>
 
@@ -538,9 +539,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800">
-        <p>© {new Date().getFullYear()} Church of God Dasmariñas. All rights reserved.</p>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }

@@ -341,7 +341,7 @@ export default function MyQRCodePage() {
                   <span>How to use your QR code</span>
                 </div>
                 <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-300/90">
-                  Present this QR code on your mobile screen or printed pass when checking into events, claiming meal stubs, or verifying your identity at church service desks.
+                  Present this QR code on your mobile screen or printed pass when logging your attendance or claiming meal stubs.
                 </p>
               </div>
             </div>

@@ -8,7 +8,8 @@ export function useScanLogs(limitCount?: number) {
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['scan-logs', limitCount],
-        queryFn: () => getScanLogs(), // Actually should probably pass limit to getScanLogs if needed
+        queryFn: () => getScanLogs(limitCount),
+        staleTime: 30_000,
     });
 
     const createMutation = useMutation({

@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   LoaderCircle, PlusCircle, Trash2, Save, ShieldCheck,
   Shield, ArrowLeft, Search, MoreHorizontal, RefreshCw, Pencil, KeyRound,
+  X, CheckCheck, XCircle, ChevronsUpDown, Sparkles,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -63,15 +64,24 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
 }) {
   const [name, setName] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [searchPerm, setSearchPerm] = useState("");
+  const [accordionValue, setAccordionValue] = useState<string[]>(PERMISSION_CATEGORIES.map(c => c.module));
 
   useEffect(() => {
     if (isOpen) {
       setName(role?.name || "New Role");
-      setSelectedKeys((role?.rolePermissions || []).map((rp: any) => `${rp.permission.module}:${rp.permission.action}`));
+      const legacyPerms = Array.isArray(role?.permissions) ? role.permissions : [];
+      const relPerms = (role?.rolePermissions || []).map((rp: any) =>
+        rp.permission ? `${rp.permission.module}:${rp.permission.action}` : null
+      ).filter(Boolean);
+      const combined = Array.from(new Set([...legacyPerms, ...relPerms]));
+      setSelectedKeys(combined);
+      setSearchPerm("");
+      setAccordionValue(PERMISSION_CATEGORIES.map(c => c.module));
     }
   }, [role, isOpen]);
 
-  const isAdminRole = role?.isSuperAdmin || role?.id === "admin";
+  const isAdminRole = role?.isSuperAdmin || role?.id === "admin" || role?.name?.toLowerCase() === "super admin";
 
   const toggle = (key: string, checked: boolean) =>
     setSelectedKeys(curr => checked ? [...curr, key] : curr.filter(k => k !== key));
@@ -82,55 +92,193 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
       return curr.filter(k => !moduleKeys.includes(k));
     });
 
+  const selectAll = () => {
+    const all = ALL_PERMISSIONS.map(p => `${p.module}:${p.action}`);
+    setSelectedKeys(all);
+  };
+
+  const clearAll = () => {
+    setSelectedKeys([]);
+  };
+
+  const toggleExpandCollapse = () => {
+    if (accordionValue.length > 0) {
+      setAccordionValue([]);
+    } else {
+      setAccordionValue(PERMISSION_CATEGORIES.map(c => c.module));
+    }
+  };
+
+  const totalPermsCount = ALL_PERMISSIONS.length;
+
+  // Filter categories based on search
+  const filteredCategories = PERMISSION_CATEGORIES.map(cat => {
+    const q = searchPerm.trim().toLowerCase();
+    if (!q) return cat;
+    const filteredPerms = cat.permissions.filter(p =>
+      p.label.toLowerCase().includes(q) ||
+      p.description.toLowerCase().includes(q) ||
+      cat.category.toLowerCase().includes(q)
+    );
+    return { ...cat, permissions: filteredPerms };
+  }).filter(cat => cat.permissions.length > 0);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-6 sm:p-7 rounded-2xl border-border/80 shadow-2xl">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sidebar/10 text-sidebar dark:bg-sidebar/25 flex items-center justify-center shrink-0">
-              <Shield className="h-5 w-5" />
+      <DialogContent className="sm:max-w-2xl max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border border-border/80 shadow-2xl bg-card [&>button:last-child]:hidden">
+        {/* ── MODAL HEADER ── */}
+        <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3.5 min-w-0 flex-1">
+              <div className="w-11 h-11 rounded-2xl bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center font-bold shrink-0 border border-sidebar/20 shadow-xs mt-0.5">
+                <Shield className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
+                  {role?.id ? "Edit Role" : "Add New Role"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground truncate">
+                  {isAdminRole ? "Super Admin roles have all permissions enabled by default." : "Configure granular permissions and access levels for this role."}
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-xl font-bold tracking-tight text-foreground font-headline">
-                {role?.id ? "Edit Role" : "Add New Role"}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                {isAdminRole ? "Super Admin roles have all permissions enabled by default." : "Configure granular permissions and access levels for this role."}
-              </DialogDescription>
-            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer shrink-0 -mt-1 -mr-1"
+              title="Close modal"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </Button>
           </div>
-        </DialogHeader>
+        </div>
 
-        <div className="flex-1 overflow-y-auto py-2 space-y-4 pr-1">
+        {/* ── SCROLLABLE BODY ── */}
+        <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
           {/* Role Name Card */}
-          <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3">
-            <Label htmlFor="role-name" className="text-xs font-bold text-foreground">
-              Role Name <span className="text-destructive">*</span>
-            </Label>
+          <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3.5 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="role-name" className="text-xs font-bold text-foreground">
+                Role Name <span className="text-destructive">*</span>
+              </Label>
+              {isAdminRole && (
+                <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold">
+                  System Super Admin
+                </Badge>
+              )}
+            </div>
             <Input
               id="role-name"
               value={name}
               onChange={e => setName(e.target.value)}
               disabled={isAdminRole}
               placeholder="e.g., Ministry Coordinator, Venue Supervisor"
-              className="h-10 text-xs rounded-xl border-slate-200/90 dark:border-border bg-background shadow-2xs"
+              className="h-10 text-xs rounded-xl border-slate-200/90 dark:border-border bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
             />
           </div>
 
-          {!isAdminRole && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <KeyRound className="h-3.5 w-3.5 text-primary" />
-                  <span>Module Permissions</span>
-                </Label>
-                <Badge variant="outline" className="text-[10px] font-semibold">
-                  {selectedKeys.length} total granted
-                </Badge>
+          {/* Super Admin Notice Card */}
+          {isAdminRole ? (
+            <div className="rounded-2xl border border-primary/30 bg-primary/[0.04] p-5 sm:p-6 space-y-4 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-foreground font-headline">
+                    Full Administrative Access
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    Super Admin roles automatically hold unconditional master access across all system modules, features, and operations by default. Permissions cannot be restricted for master administrators.
+                  </p>
+                </div>
               </div>
 
-              <Accordion type="multiple" className="w-full border border-border/70 rounded-2xl overflow-hidden bg-background divide-y divide-border/40" defaultValue={PERMISSION_CATEGORIES.map(c => c.module)}>
-                {PERMISSION_CATEGORIES.map(({ module, category, permissions }) => {
+              <div className="pt-2 border-t border-primary/20">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">
+                  Included System Modules (100% Granted)
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {PERMISSION_CATEGORIES.map(c => (
+                    <div key={c.module} className="flex items-center gap-2 p-2 rounded-xl bg-background border border-border/60 text-xs font-medium text-foreground">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="truncate">{c.category}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {/* Permission Controls Bar */}
+              <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-3.5 sm:p-4 space-y-3 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                      <KeyRound className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Module Permissions</p>
+                      <p className="text-[11px] text-muted-foreground">Select granted privileges per module</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 bg-sidebar/10 text-sidebar dark:text-sky-400 border-sidebar/20 rounded-full w-fit">
+                    {selectedKeys.length} of {totalPermsCount} granted
+                  </Badge>
+                </div>
+
+                {/* Search & Bulk Function Buttons */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 border-t border-border/50">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Search permissions..."
+                      value={searchPerm}
+                      onChange={e => setSearchPerm(e.target.value)}
+                      className="w-full pl-8 pr-3 h-8 text-xs rounded-xl border border-border/60 bg-background focus:outline-none focus:ring-1 focus:ring-sidebar/40"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 justify-end flex-wrap">
+                    <button
+                      type="button"
+                      onClick={selectAll}
+                      className="h-8 px-2.5 rounded-xl border border-border/60 bg-background hover:bg-muted/60 text-[11px] font-semibold text-foreground flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <CheckCheck className="h-3 w-3 text-emerald-600" />
+                      <span>Select All</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAll}
+                      className="h-8 px-2.5 rounded-xl border border-border/60 bg-background hover:bg-muted/60 text-[11px] font-semibold text-foreground flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <XCircle className="h-3 w-3 text-muted-foreground" />
+                      <span>Clear All</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleExpandCollapse}
+                      className="h-8 px-2.5 rounded-xl border border-border/60 bg-background hover:bg-muted/60 text-[11px] font-semibold text-foreground flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <ChevronsUpDown className="h-3 w-3 text-muted-foreground" />
+                      <span>{accordionValue.length > 0 ? "Collapse" : "Expand"}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accordion */}
+              <Accordion
+                type="multiple"
+                value={accordionValue}
+                onValueChange={setAccordionValue}
+                className="w-full border border-border/70 rounded-2xl overflow-hidden bg-background divide-y divide-border/40 shadow-2xs"
+              >
+                {filteredCategories.map(({ module, category, permissions }) => {
                   const moduleKeys = permissions.map(p => p.key);
                   const selectedCount = moduleKeys.filter(k => selectedKeys.includes(k)).length;
                   const allSelected = selectedCount === moduleKeys.length;
@@ -161,8 +309,8 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
                           </span>
                         </AccordionTrigger>
                       </div>
-                      <AccordionContent className="pt-1 pb-3 pl-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+                      <AccordionContent className="pt-1 pb-3 pl-2 sm:pl-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                           {permissions.map(permission => {
                             const isChecked = selectedKeys.includes(permission.key);
                             return (
@@ -170,9 +318,9 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
                                 key={permission.key}
                                 htmlFor={`${role?.id || "new"}-${permission.key}`}
                                 className={cn(
-                                  "flex items-start gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer",
+                                  "flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer min-h-[48px]",
                                   isChecked
-                                    ? "bg-primary/5 border-primary/30 text-foreground"
+                                    ? "bg-primary/5 border-primary/40 text-foreground shadow-2xs"
                                     : "bg-slate-50/50 dark:bg-muted/10 border-slate-200/70 dark:border-border/60 text-muted-foreground hover:border-slate-300"
                                 )}
                               >
@@ -180,7 +328,7 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
                                   id={`${role?.id || "new"}-${permission.key}`}
                                   checked={isChecked}
                                   onCheckedChange={checked => toggle(permission.key, !!checked)}
-                                  className="mt-0.5 rounded-md"
+                                  className="mt-0.5 rounded-md shrink-0"
                                 />
                                 <div className="grid gap-0.5 leading-none">
                                   <span className="font-semibold text-xs text-foreground">{permission.label}</span>
@@ -201,38 +349,50 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
           )}
         </div>
 
-        {!isAdminRole && (
-          <DialogFooter className="pt-4 border-t border-border/60 flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-2 shrink-0">
-            {role?.id && !role?.isSystemRole ? (
+        {/* ── MODAL FOOTER ── */}
+        <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-2.5 shrink-0">
+          {role?.id && !role?.isSystemRole && !isAdminRole ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl h-10 px-4 text-xs font-semibold w-full sm:w-auto"
+              onClick={() => onDelete(role.id)}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" /> Delete Role
+            </Button>
+          ) : <div />}
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-col-reverse sm:flex-row">
+            {isAdminRole ? (
               <Button
                 type="button"
-                variant="ghost"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl h-10 px-4 text-xs font-semibold mr-auto"
-                onClick={() => onDelete(role.id)}
-              >
-                <Trash2 className="h-4 w-4 mr-1.5" /> Delete Role
-              </Button>
-            ) : <div />}
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <Button
-                type="button"
-                variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="rounded-xl h-10 px-5 text-xs font-semibold"
+                className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs w-full sm:w-auto cursor-pointer"
               >
-                Cancel
+                Close
               </Button>
-              <Button
-                type="button"
-                disabled={isSaving || !name.trim()}
-                onClick={() => onSave(name, selectedKeys)}
-                className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-5 text-xs font-bold shadow-xs"
-              >
-                {isSaving ? <><LoaderCircle className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <><Save className="h-4 w-4 mr-2" /> Save Role</>}
-              </Button>
-            </div>
-          </DialogFooter>
-        )}
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors w-full sm:w-auto cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={isSaving || !name.trim()}
+                  onClick={() => onSave(name, selectedKeys)}
+                  className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] w-full sm:w-auto cursor-pointer"
+                >
+                  {isSaving ? <><LoaderCircle className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <><Save className="h-4 w-4 mr-2" /> {role?.id ? "Save Changes" : "Create Role"}</>}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -348,18 +508,18 @@ export default function RoleManagementPage() {
       <div className="space-y-6 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
               Role Management
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
               Define roles and fine-grained permissions across the app.
             </p>
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>

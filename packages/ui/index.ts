@@ -33,5 +33,7 @@ export * from './src/tabs';
 export * from './src/textarea';
 export * from './src/toast';
 export * from './src/toaster';
+export * from './src/use-toast';
+export * from './src/use-mobile';
 export * from './src/tooltip';
 export * from './src/utils';

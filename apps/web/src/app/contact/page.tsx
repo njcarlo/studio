@@ -17,6 +17,7 @@ import {
 import { Button, Input, Textarea, Label } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import { LandingNav } from "@/components/landing/landing-nav";
+import { LandingFooter } from "@/components/landing/landing-footer";
 import { isValidPhilippineNumber, cleanPhoneNumber, isValidEmail } from "@/lib/validation";
 import { createInquiry } from "@/actions/db";
 
@@ -139,7 +140,7 @@ export default function ContactPage() {
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
                 Church Information
               </h2>
-              
+
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
@@ -159,9 +160,12 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-0.5">Contact Number</div>
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                      +63 (046) 000-0000 / +63 900 000 0000
-                    </p>
+                    <a
+                      href="tel:09952491933"
+                      className="text-sm font-medium text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                      09952491933
+                    </a>
                   </div>
                 </div>
 
@@ -171,9 +175,12 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-0.5">Email</div>
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                      info@cogdasmarinas.org
-                    </p>
+                    <a
+                      href="mailto:churchofgoddasmamain@gmail.com"
+                      className="text-sm font-medium text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors break-all"
+                    >
+                      churchofgoddasmamain@gmail.com
+                    </a>
                   </div>
                 </div>
               </div>
@@ -368,9 +375,7 @@ export default function ContactPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800">
-        <p>© {new Date().getFullYear()} Church of God Dasmariñas. All rights reserved.</p>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }

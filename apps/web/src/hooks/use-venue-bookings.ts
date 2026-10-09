@@ -42,6 +42,7 @@ export function useVenueBookings(filters?: { ministryIds?: string[]; actorId?: s
     const { data, isLoading, error } = useQuery({
         queryKey: [...venueBookingKeys.all, actorId, effectiveMinistryIds],
         queryFn: () => getVenueBookings({ ministryIds: effectiveMinistryIds, actorId }),
+        staleTime: 30_000,
     });
 
     return {
@@ -57,6 +58,7 @@ export function useMyVenueBookings(workerProfileId: string) {
         queryKey: venueBookingKeys.mine(workerProfileId),
         queryFn: () => getMyVenueBookings(workerProfileId),
         enabled: !!workerProfileId,
+        staleTime: 30_000,
     });
 
     return {
@@ -72,6 +74,7 @@ export function useVenueBooking(bookingId: string) {
         queryKey: venueBookingKeys.detail(bookingId),
         queryFn: () => getVenueBooking(bookingId),
         enabled: !!bookingId,
+        staleTime: 30_000,
     });
 
     return {

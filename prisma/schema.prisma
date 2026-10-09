@@ -124,6 +124,10 @@ model AttendanceRecord {
   type            String
   time            DateTime @default(now())
   worker          Worker   @relation(fields: [workerProfileId], references: [id])
+
+  @@index([time])
+  @@index([workerProfileId])
+  @@index([workerProfileId, time])
 }
 
 model Booking {
@@ -152,6 +156,12 @@ model Booking {
   checkedInAt        DateTime?
   room               Room      @relation(fields: [roomId], references: [id])
   worker             Worker    @relation(fields: [workerProfileId], references: [id])
+
+  @@index([start])
+  @@index([status])
+  @@index([roomId])
+  @@index([workerProfileId])
+  @@index([ministryId])
 }
 
 model Room {
@@ -193,6 +203,11 @@ model MealStub {
   assignedByName String?
   claimedAt      DateTime?
   worker         Worker    @relation(fields: [workerId], references: [id])
+
+  @@index([workerId])
+  @@index([date])
+  @@index([status])
+  @@index([workerId, date])
 }
 
 model VenueElement {
@@ -220,6 +235,11 @@ model ApprovalRequest {
   outgoingApproved Boolean?
   incomingApproved Boolean?
   worker           Worker?  @relation(fields: [workerId], references: [id])
+
+  @@index([status])
+  @@index([type])
+  @@index([date])
+  @@index([workerId])
 }
 
 model ScanLog {
@@ -233,6 +253,10 @@ model ScanLog {
   targetUserName String?
   mealStubId     String?
   reservationId  String?
+
+  @@index([timestamp])
+  @@index([scanType])
+  @@index([targetUserId])
 }
 
 model C2SMentee {
@@ -361,6 +385,11 @@ model InventoryItem {
   parent              InventoryItem?       @relation("ItemBundles", fields: [parentId], references: [id])
   children            InventoryItem[]      @relation("ItemBundles")
   logs                InventoryLog[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([type])
+  @@index([name])
 }
 
 model InventoryBorrowing {
@@ -380,6 +409,11 @@ model InventoryBorrowing {
   returnPhotos      String[]
   borrower          Worker        @relation("WorkerBorrowings", fields: [borrowerId], references: [id])
   item              InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([status])
+  @@index([borrowerId])
+  @@index([itemId])
+  @@index([dueDate])
 }
 
 model InventoryLog {
@@ -393,6 +427,10 @@ model InventoryLog {
   timestamp DateTime      @default(now())
   item      InventoryItem @relation(fields: [itemId], references: [id])
   worker    Worker?       @relation("WorkerLogs", fields: [workerId], references: [id])
+
+  @@index([itemId])
+  @@index([timestamp])
+  @@index([type])
 }
 
 enum InventoryType {
@@ -421,6 +459,11 @@ model VenueBooking {
   assistanceRequests AssistanceRequest[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+
+  @@index([start])
+  @@index([status])
+  @@index([roomId])
+  @@index([workerProfileId])
 }
 
 model RecurringBooking {
@@ -477,6 +520,10 @@ model AssistanceRequest {
   auditLogs      VenueAuditLog[]
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
+
+  @@index([bookingId])
+  @@index([ministryId])
+  @@index([status])
 }
 
 model AssistanceRequestItem {

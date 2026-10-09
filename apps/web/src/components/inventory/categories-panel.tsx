@@ -224,8 +224,8 @@ export function CategoriesPanel() {
             )}
           </div>
 
-          {/* Add Category Button on the right */}
-          <div className="flex items-center gap-2 justify-end shrink-0">
+          {/* Add Category Button (Left side on mobile, right side on desktop) */}
+          <div className="flex items-center gap-2 justify-start sm:justify-end shrink-0">
             <Button
               size="sm"
               className="gap-1.5 h-9 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs cursor-pointer px-4"
@@ -355,44 +355,60 @@ export function CategoriesPanel() {
 
       {/* ── CREATE / EDIT CATEGORY MODAL ── */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto p-0 rounded-2xl gap-0 border-border/80 shadow-2xl">
-          <DialogHeader className="p-5 pb-4 pr-12 border-b border-border/70 bg-card/90 backdrop-blur-md sticky top-0 z-10 text-left">
-            <div className="flex items-start gap-3 min-w-0">
-              <div
-                className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-300"
-                style={{
-                  backgroundColor: `${color}15`,
-                  color: color,
-                  borderColor: `${color}40`,
-                  boxShadow: `0 0 20px -2px ${color}35`,
-                }}
-              >
-                {renderIcon(icon)}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <DialogTitle className="text-base font-bold font-headline tracking-tight text-foreground">
-                    {editingCategory ? 'Edit Category' : 'Create Category'}
-                  </DialogTitle>
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border transition-colors"
-                    style={{
-                      backgroundColor: `${color}10`,
-                      color: color,
-                      borderColor: `${color}30`,
-                    }}
-                  >
-                    {editingCategory ? 'Editing' : 'New'}
-                  </span>
+        <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl md:rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
+          {/* ── STICKY MODAL HEADER ── */}
+          <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
+            <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div
+                  className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-300 shadow-2xs mt-0.5"
+                  style={{
+                    backgroundColor: `${color}15`,
+                    color: color,
+                    borderColor: `${color}40`,
+                    boxShadow: `0 0 20px -2px ${color}35`,
+                  }}
+                >
+                  {renderIcon(icon)}
                 </div>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Define category name, description, icon and theme color.
-                </DialogDescription>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <DialogTitle className="text-base font-bold font-headline tracking-tight text-foreground">
+                      {editingCategory ? 'Edit Category' : 'Create Category'}
+                    </DialogTitle>
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border transition-colors shrink-0"
+                      style={{
+                        backgroundColor: `${color}10`,
+                        color: color,
+                        borderColor: `${color}30`,
+                      }}
+                    >
+                      {editingCategory ? 'Editing' : 'New'}
+                    </span>
+                  </div>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    Define category name, description, icon and theme color.
+                  </DialogDescription>
+                </div>
               </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsModalOpen(false)}
+                className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer shrink-0 -mt-1 -mr-1"
+                title="Close modal"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSave} className="p-5 space-y-4">
+          <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0 overflow-hidden w-full">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 w-full min-w-0">
             {error && (
               <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-xl flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -525,19 +541,22 @@ export function CategoriesPanel() {
               </div>
             </div>
 
-            <DialogFooter className="pt-3 border-t border-border/70 flex items-center justify-end gap-2.5 bg-card">
+            </div>
+
+            {/* ── STICKY MODAL FOOTER ── */}
+            <DialogFooter className="p-3.5 sm:p-4 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex flex-row items-center justify-end gap-2 sm:gap-2.5 w-full min-w-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsModalOpen(false)}
-                className="h-9 px-4 text-xs font-semibold rounded-xl border-border/80 hover:bg-muted/60 cursor-pointer"
+                className="min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-3.5 sm:px-4 text-xs sm:text-sm font-semibold rounded-xl border-border/80 hover:bg-muted/50 cursor-pointer flex-1 sm:flex-initial"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={saving}
-                className="h-9 px-5 text-xs font-bold rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs hover:shadow transition-all cursor-pointer"
+                className="min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-4 sm:px-5 text-xs sm:text-sm font-bold rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs hover:shadow transition-all cursor-pointer flex-1 sm:flex-initial"
               >
                 {saving ? (
                   <>

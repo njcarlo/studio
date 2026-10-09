@@ -20,6 +20,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useApprovalMutations } from "@/hooks/use-approval-mutations";
 import { ApprovalDetailsDialog } from "@/components/approvals/approval-details-dialog";
 import { KanbanColumn } from "@/components/approvals/kanban-column";
+import { useRooms } from "@/hooks/use-rooms";
 import { format } from "date-fns";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -197,6 +198,7 @@ export default function ApprovalsPage() {
   const { bookings, isLoading: bookingsLoading } = useBookings();
   const { workers, isLoading: workersLoading } = useWorkers();
   const { ministries, allMinistries, isLoading: ministriesLoading } = useMinistries();
+  const { rooms, areas } = useRooms();
   const { updateStatus, isUpdating } = useApprovalMutations();
 
   const isLoading = isRoleLoading || approvalsLoading || bookingsLoading || workersLoading || ministriesLoading;
@@ -474,8 +476,8 @@ export default function ApprovalsPage() {
             {/* Table View */}
             {viewMode === "table" && (
             <>
-              {/* Mobile list view */}
-              <div className="md:hidden divide-y divide-border/30">
+              {/* Mobile card list (matches reservations mobile card style) */}
+              <div className="md:hidden divide-y divide-border/60 flex-grow">
                 {filteredRequests.length === 0 ? (
                   <div className="py-20 text-center text-sm text-muted-foreground">
                     No requests found.
@@ -488,46 +490,184 @@ export default function ApprovalsPage() {
                     const ministry = targetMinistryId
                       ? (allMinistries || ministries)?.find(m => m.id === targetMinistryId)
                       : null;
+                    const room = rooms?.find((r) => r.id === booking?.roomId);
+                    const area = areas?.find((a) => a.id === room?.areaId);
                     const reqId = req.id || "";
                     const reqDate = booking?.dateRequested
                       ? new Date(booking.dateRequested)
                       : req.date
                       ? new Date(req.date as any)
                       : null;
+                    const isChecked = selectedIds.has(reqId);
+                    const canManage = checkCanManage(req);
+                    const isPending = req.status.startsWith("Pending");
 
                     return (
                       <div
                         key={reqId || Math.random().toString()}
-                        className="p-4 flex items-center justify-between gap-3"
+                        className={cn(
+                          "overflow-hidden rounded-none border-b border-border/60 transition-colors",
+                          isChecked ? "bg-sidebar/5 dark:bg-sidebar/10" : "bg-card"
+                        )}
                       >
-                        {/* Left: Basic info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2.5 mb-1.5">
-                            <Initials name={req.requester} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-foreground leading-tight truncate">{req.requester}</p>
-                              <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"}</p>
-                            </div>
+                        {/* Blue header: Checkbox + ID + Actions */}
+                        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar">
+                          <div className="flex items-center gap-2.5">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => toggleSelect(reqId)}
+                              className="h-[17px] w-[17px] rounded-[4px] border-[1.5px] border-white/90 bg-transparent data-[state=checked]:bg-white data-[state=checked]:border-white [&_svg]:text-sidebar focus-visible:ring-0 cursor-pointer shadow-xs transition-colors"
+                            />
+                            <span className="text-xs font-mono font-bold text-white">
+                              REQ-{reqId.slice(-4).toUpperCase()}
+                            </span>
                           </div>
-                          <p className="text-[10px] font-mono text-muted-foreground mb-1">REQ-{reqId.slice(-4).toUpperCase()}</p>
-                          <p className="text-xs text-muted-foreground truncate">{req.details}</p>
-                          {booking?.start && (
-                            <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1 mt-1.5 bg-slate-100 dark:bg-muted/50 px-2 py-0.5 rounded-md w-fit">
-                              <Clock className="h-3 w-3 text-slate-500 shrink-0" />
-                              <span>{format(new Date(booking.start), "MMM d, yyyy")} • {format(new Date(booking.start), "h:mm a")} – {booking.end ? format(new Date(booking.end), "h:mm a") : ""}</span>
-                            </p>
-                          )}
+
+                          <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-card-dark">
+                                <DropdownMenuItem
+                                  onClick={() => setSelectedRequest(req)}
+                                  className="text-xs cursor-pointer font-medium gap-2"
+                                >
+                                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                  View Details
+                                </DropdownMenuItem>
+                                {canManage && isPending && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
+                                      className="text-xs cursor-pointer font-medium text-emerald-600 dark:text-emerald-400 gap-2"
+                                    >
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                      Approve
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => setConfirmAction({ action: "Rejected", ids: [req.id!] })}
+                                      className="text-xs cursor-pointer font-medium text-red-600 dark:text-red-400 gap-2"
+                                    >
+                                      <XCircle className="h-3.5 w-3.5" />
+                                      Reject
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
 
-                        {/* Right: Status + Details button */}
-                        <div className="flex flex-col items-end gap-2 shrink-0">
-                          <StatusBadge status={req.status} />
-                          <button
-                            onClick={() => setSelectedRequest(req)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
-                          >
-                            Details
-                          </button>
+                        {/* Card body */}
+                        <div className="p-4 space-y-3">
+                          {/* Request title / details */}
+                          <div>
+                            <p className="text-sm font-bold text-foreground leading-snug line-clamp-2">
+                              {req.details}
+                            </p>
+                          </div>
+
+                          {/* Requester row: Status is beside requester name + Details button */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <Initials name={req.requester} />
+                              <div className="min-w-0">
+                                <span className="text-xs font-semibold text-foreground block truncate">
+                                  {req.requester}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground block truncate">
+                                  {ministry?.name || "—"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <StatusBadge status={req.status} />
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRequest(req)}
+                                className="text-xs font-semibold text-primary hover:underline px-1 py-0.5 cursor-pointer"
+                              >
+                                Details
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 2x2 Details Box */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Room
+                              </p>
+                              <p className="font-semibold text-foreground truncate">
+                                {room?.name || "—"}
+                              </p>
+                              <p className="text-muted-foreground text-[11px] truncate">
+                                {area?.name || "First Floor"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Date & Time
+                              </p>
+                              {booking?.start ? (
+                                <>
+                                  <p className="font-semibold text-foreground">
+                                    {format(new Date(booking.start), "MMM d, yyyy")}
+                                  </p>
+                                  <p className="text-muted-foreground text-[11px]">
+                                    {format(new Date(booking.start), "h:mm a")} – {booking.end ? format(new Date(booking.end), "h:mm a") : ""}
+                                  </p>
+                                </>
+                              ) : reqDate ? (
+                                <p className="font-semibold text-foreground">
+                                  {format(reqDate, "MMM d, yyyy")}
+                                </p>
+                              ) : (
+                                <p className="text-muted-foreground">—</p>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Ministry
+                              </p>
+                              <p className="font-semibold text-foreground truncate">
+                                {ministry?.name || "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Created
+                              </p>
+                              <p className="font-semibold text-foreground truncate">
+                                {reqDate ? format(reqDate, "MMM d, yyyy") : "—"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons if manageable & pending */}
+                          {canManage && isPending && (
+                            <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
+                                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                              </button>
+                              <button
+                                onClick={() => setConfirmAction({ action: "Rejected", ids: [req.id!] })}
+                                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer"
+                              >
+                                <XCircle className="h-3.5 w-3.5" /> Reject
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

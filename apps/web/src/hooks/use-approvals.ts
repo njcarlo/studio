@@ -23,9 +23,10 @@ export function useApprovals(filters?: { ministryIds?: string[]; actorId?: strin
     const { data, isLoading, error } = useQuery({
         queryKey: ['approvals', actorId, effectiveMinistryIds],
         queryFn: () => getApprovals({ ministryIds: effectiveMinistryIds, actorId }),
-        refetchInterval: 3000, // Auto-refresh every 3 seconds for real-time updates
-        refetchOnWindowFocus: true, // Refresh when user returns to tab
-        staleTime: 0, // Always consider data stale to ensure fresh data
+        refetchInterval: 30_000,
+        refetchOnWindowFocus: false,
+        staleTime: 60_000,
+        placeholderData: (prev) => prev,
     });
 
     const createMutation = useMutation({

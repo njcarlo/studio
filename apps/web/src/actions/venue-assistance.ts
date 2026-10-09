@@ -552,7 +552,19 @@ export async function respondToAssistanceRequest(
         where: { id: requestId },
         include: {
             items: true,
-            booking: { include: { room: true, worker: true } },
+            booking: {
+                include: {
+                    room: true,
+                    worker: {
+                        select: {
+                            id: true,
+                            email: true,
+                            firstName: true,
+                            lastName: true,
+                        },
+                    },
+                },
+            },
         },
     });
 
@@ -942,7 +954,18 @@ export async function getVenueBookings(filters?: { ministryIds?: string[]; actor
         where,
         include: {
             room: true,
-            worker: true,
+            worker: {
+                select: {
+                    id: true,
+                    workerId: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    avatarUrl: true,
+                    majorMinistryId: true,
+                    minorMinistryId: true,
+                },
+            },
             assistanceRequests: { include: { items: true } },
         },
         orderBy: { start: 'desc' },
@@ -971,7 +994,18 @@ export async function getVenueBooking(bookingId: string, actorId?: string) {
                 where: { id: bookingId },
                 include: {
                     room: true,
-                    worker: true,
+                    worker: {
+                        select: {
+                            id: true,
+                            workerId: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            avatarUrl: true,
+                            majorMinistryId: true,
+                            minorMinistryId: true,
+                        },
+                    },
                     assistanceRequests: {
                         include: {
                             items: true,

@@ -369,34 +369,36 @@ function MySettingsContent() {
               </div>
 
               {/* Active Device Session Card */}
-              <div className="bg-slate-50/80 dark:bg-muted/30 rounded-2xl border border-border/60 p-6 sm:p-7 shadow-2xs space-y-5">
-                <div className="flex items-center justify-between">
+              <div className="bg-slate-50/80 dark:bg-muted/30 rounded-2xl border border-border/60 p-4 sm:p-7 shadow-2xs space-y-4 sm:space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="text-sm font-bold flex items-center gap-2.5 text-foreground">
-                    <div className="p-2 rounded-xl bg-sidebar/10 dark:bg-sidebar/20 text-sidebar dark:text-blue-400">
+                    <div className="p-2 rounded-xl bg-sidebar/10 dark:bg-sidebar/20 text-sidebar dark:text-blue-400 shrink-0">
                       <Laptop className="h-4 w-4" />
                     </div>
                     <span>Current Connected Device</span>
                   </h4>
-                  <span className="text-xs font-bold text-muted-foreground">Web Application</span>
+                  <span className="text-xs font-bold text-muted-foreground bg-muted/60 dark:bg-muted/40 px-2.5 py-0.5 rounded-md shrink-0">
+                    Web Application
+                  </span>
                 </div>
 
-                <div className="bg-emerald-50/80 dark:bg-emerald-950/25 rounded-xl p-5 border border-emerald-200/80 dark:border-emerald-900/50">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                <div className="bg-emerald-50/80 dark:bg-emerald-950/25 rounded-2xl p-4 sm:p-5 border border-emerald-200/80 dark:border-emerald-900/50">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-bold text-emerald-950 dark:text-emerald-300">
                           Active Browser Session
                         </p>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/80 dark:bg-emerald-900/70 text-emerald-900 dark:text-emerald-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/80 dark:bg-emerald-900/70 text-emerald-900 dark:text-emerald-200 shrink-0">
                           This Computer
                         </span>
                       </div>
-                      <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed break-words">
                         Authenticated via Supabase Auth • Secure Token Active
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-center px-2.5 py-1 rounded-full bg-emerald-100/90 dark:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                       <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Online</span>
                     </div>
                   </div>

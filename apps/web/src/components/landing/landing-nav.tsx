@@ -123,14 +123,14 @@ export function LandingNav({ currentPath, subTabs }: LandingNavProps) {
       >
         {showSubTabs && subTabs ? (
           /* Standalone Dark Glass Sub-Tabs Pill */
-          <div className="inline-flex max-w-[calc(100vw-2rem)] overflow-x-auto no-scrollbar items-center justify-start sm:justify-center gap-1.5 sm:gap-2 p-1.5 rounded-full bg-slate-950/85 backdrop-blur-xl backdrop-saturate-150 border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)] animate-in fade-in zoom-in-95 duration-300">
+          <div className="inline-flex max-w-[calc(100vw-2rem)] overflow-x-auto no-scrollbar items-center justify-start sm:justify-center gap-1.5 sm:gap-3 p-1.5 sm:p-2 rounded-full bg-slate-950/85 backdrop-blur-xl backdrop-saturate-150 border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)] animate-in fade-in zoom-in-95 duration-300">
             {subTabs.items.map((tab) => {
               const isTabActive = subTabs.activeId === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => subTabs.onSelect(tab.id)}
-                  className={`px-4 sm:px-7 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-all duration-300 whitespace-nowrap cursor-pointer ${isTabActive
+                  className={`px-4 sm:px-8 py-2 sm:py-2.5 rounded-full text-xs sm:text-base font-bold tracking-wide transition-all duration-300 whitespace-nowrap cursor-pointer ${isTabActive
                     ? "bg-white text-slate-950 shadow-md scale-102"
                     : "text-white/90 hover:text-white hover:bg-white/15"
                     }`}

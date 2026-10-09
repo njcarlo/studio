@@ -530,18 +530,20 @@ function MealsPageContent() {
               Issue, claim and audit daily meal allocations across every worker type — all from one place.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/mealstub/scanner">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 px-3.5 text-xs font-semibold rounded-xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <ScanLine className="h-3.5 w-3.5 text-primary" />
-                <span>Scanner</span>
-              </Button>
-            </Link>
-          </div>
+          {activeTab !== "reports" && (
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Link href="/mealstub/scanner">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3.5 text-xs font-semibold rounded-xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ScanLine className="h-3.5 w-3.5 text-primary" />
+                  <span>Scanner</span>
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

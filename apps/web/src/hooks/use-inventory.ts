@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export interface InventoryItem {
   id: string;
@@ -78,53 +79,116 @@ export interface InventoryBorrowing {
   borrower?: { id: string; firstName: string; lastName: string; email?: string; phone?: string; avatarUrl?: string };
 }
 
+const EMPTY_ARRAY: any[] = [];
+
 export function useInventory() {
-  const [stats, setStats] = useState<any>(null);
-  const [logs, setLogs] = useState<InventoryLog[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<InventoryCategory[]>([]);
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
-  const [borrowings, setBorrowings] = useState<InventoryBorrowing[]>([]);
-  const [totalBorrowings, setTotalBorrowings] = useState(0);
+  const queryClient = useQueryClient();
+  const [itemParams, setItemParams] = useState<any>({ skip: '0', take: '12' });
+  const [borrowingParams, setBorrowingParams] = useState<any>({ skip: '0', take: '10' });
+  const [logsTake, setLogsTake] = useState<number>(30);
+  const [mutationLoading, setMutationLoading] = useState(false);
 
-  // Fetch Dashboard Stats
-  const fetchStats = useCallback(async () => {
-    try {
+  // 1. Dashboard Stats Query (Cached & Deduplicated across components)
+  const statsQuery = useQuery({
+    queryKey: ['inventory', 'stats'],
+    queryFn: async () => {
       const res = await fetch('/api/dashboard/stats');
-      const data = await res.json();
-      setStats(data);
-    } catch (error) {
-      console.error('Failed to fetch stats', error);
-    }
-  }, []);
+      if (!res.ok) throw new Error('Failed to fetch stats');
+      return await res.json();
+    },
+    staleTime: 30_000,
+  });
 
-  // Fetch Activity Logs
-  const fetchLogs = useCallback(async (take: number = 30) => {
-    try {
-      const res = await fetch(`/api/inventory/logs?take=${take}`);
+  // 2. Categories Query (5 min cache)
+  const categoriesQuery = useQuery<InventoryCategory[]>({
+    queryKey: ['inventory', 'categories'],
+    queryFn: async () => {
+      const res = await fetch('/api/categories');
+      if (!res.ok) return [];
       const data = await res.json();
-      setLogs(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to fetch logs', error);
-    }
-  }, []);
+      return Array.isArray(data) ? data : [];
+    },
+    staleTime: 5 * 60_000,
+  });
 
-  // Fetch Inventory Items
-  const fetchItems = useCallback(async (params: any = {}) => {
-    setLoading(true);
-    try {
-      const query = new URLSearchParams(params).toString();
+  // 3. Locations Query (5 min cache)
+  const locationsQuery = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['inventory', 'locations'],
+    queryFn: async () => {
+      const res = await fetch('/api/locations');
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  // 4. Activity Logs Query
+  const logsQuery = useQuery<InventoryLog[]>({
+    queryKey: ['inventory', 'logs', logsTake],
+    queryFn: async () => {
+      const res = await fetch(`/api/inventory/logs?take=${logsTake}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
+    staleTime: 30_000,
+  });
+
+  // 5. Items Query (Param-based caching with placeholderData for smooth paging)
+  const itemsQuery = useQuery({
+    queryKey: ['inventory', 'items', itemParams],
+    queryFn: async () => {
+      const query = new URLSearchParams(itemParams).toString();
       const res = await fetch(`/api/inventory/items?${query}`);
-      const data = await res.json();
-      setItems(data.items || []);
-      setTotalItems(data.total || 0);
-    } catch (error) {
-      console.error('Failed to fetch items', error);
-    } finally {
-      setLoading(false);
-    }
+      if (!res.ok) throw new Error('Failed to fetch items');
+      return await res.json();
+    },
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
+
+  // 6. Borrowings Query
+  const borrowingsQuery = useQuery({
+    queryKey: ['inventory', 'borrowings', borrowingParams],
+    queryFn: async () => {
+      const query = new URLSearchParams(borrowingParams).toString();
+      const res = await fetch(`/api/borrowings?${query}`);
+      if (!res.ok) throw new Error('Failed to fetch borrowings');
+      return await res.json();
+    },
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
+
+  // Cache Invalidation Helper
+  const invalidateInventory = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['inventory'] });
+  }, [queryClient]);
+
+  // Backward-compatible trigger functions
+  const fetchStats = useCallback(async () => {
+    return await queryClient.invalidateQueries({ queryKey: ['inventory', 'stats'] });
+  }, [queryClient]);
+
+  const fetchLogs = useCallback(async (take: number = 30) => {
+    setLogsTake(take);
+  }, []);
+
+  const fetchItems = useCallback(async (params: any = {}) => {
+    setItemParams(params);
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    return await queryClient.invalidateQueries({ queryKey: ['inventory', 'categories'] });
+  }, [queryClient]);
+
+  const fetchLocations = useCallback(async () => {
+    return await queryClient.invalidateQueries({ queryKey: ['inventory', 'locations'] });
+  }, [queryClient]);
+
+  const fetchBorrowings = useCallback(async (params: any = {}) => {
+    setBorrowingParams(params);
   }, []);
 
   // Quick Action
@@ -139,48 +203,13 @@ export function useInventory() {
         const err = await res.json();
         throw new Error(err.error || 'Failed to update stock');
       }
-      // Refresh data
-      fetchStats();
-      fetchLogs();
-      fetchItems();
+      invalidateInventory();
       return await res.json();
     } catch (error) {
       console.error('Failed to update stock', error);
       throw error;
     }
   };
-
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await fetch('/api/categories');
-      const data = await res.json();
-      setCategories(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to fetch categories', error);
-    }
-  }, []);
-
-  const fetchLocations = useCallback(async () => {
-    try {
-      const res = await fetch('/api/locations');
-      const data = await res.json();
-      setLocations(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to fetch locations', error);
-    }
-  }, []);
-
-  const fetchBorrowings = useCallback(async (params: any = {}) => {
-    try {
-      const query = new URLSearchParams(params).toString();
-      const res = await fetch(`/api/borrowings?${query}`);
-      const data = await res.json();
-      setBorrowings(data.borrowings || []);
-      setTotalBorrowings(data.total || 0);
-    } catch (error) {
-      console.error('Failed to fetch borrowings', error);
-    }
-  }, []);
 
   const createItem = async (data: any) => {
     try {
@@ -193,9 +222,7 @@ export function useInventory() {
         const err = await res.json();
         throw new Error(err.error || 'Failed to create item');
       }
-      fetchItems();
-      fetchStats();
-      fetchLocations();
+      invalidateInventory();
       return await res.json();
     } catch (error) {
       console.error('Failed to create item', error);
@@ -214,8 +241,7 @@ export function useInventory() {
         const err = await res.json();
         throw new Error(err.error || 'Failed to update item');
       }
-      fetchItems();
-      fetchStats();
+      invalidateInventory();
       return await res.json();
     } catch (error) {
       console.error('Failed to update item', error);
@@ -232,8 +258,7 @@ export function useInventory() {
         const err = await res.json();
         throw new Error(err.error || 'Failed to delete item');
       }
-      fetchItems();
-      fetchStats();
+      invalidateInventory();
     } catch (error) {
       console.error('Failed to delete item', error);
       throw error;
@@ -248,8 +273,7 @@ export function useInventory() {
         body: JSON.stringify({ itemIds, data }),
       });
       if (!res.ok) throw new Error('Failed to bulk update');
-      fetchItems();
-      fetchStats();
+      invalidateInventory();
     } catch (error) {
       console.error('Failed to bulk update items', error);
       throw error;
@@ -264,46 +288,42 @@ export function useInventory() {
         body: JSON.stringify({ itemIds }),
       });
       if (!res.ok) throw new Error('Failed to bulk delete');
-      fetchItems();
-      fetchStats();
+      invalidateInventory();
     } catch (error) {
       console.error('Failed to bulk delete items', error);
       throw error;
     }
   };
 
-  const bulkImportItems = async (items: any[]) => {
+  const bulkImportItems = async (itemsList: any[]) => {
     try {
-      setLoading(true);
+      setMutationLoading(true);
       const res = await fetch('/api/inventory/items/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items: itemsList }),
       });
       if (!res.ok) throw new Error('Failed to import items');
-      fetchItems();
-      fetchStats();
-      fetchCategories();
-      fetchLocations();
+      invalidateInventory();
       return await res.json();
     } catch (error) {
       console.error('Failed to bulk import', error);
       throw error;
     } finally {
-      setLoading(false);
+      setMutationLoading(false);
     }
   };
 
   return {
-    stats,
-    logs,
-    items,
-    totalItems,
-    loading,
-    categories,
-    locations,
-    borrowings,
-    totalBorrowings,
+    stats: statsQuery.data ?? null,
+    logs: logsQuery.data ?? EMPTY_ARRAY,
+    items: (itemsQuery.data?.items as InventoryItem[]) ?? EMPTY_ARRAY,
+    totalItems: itemsQuery.data?.total ?? 0,
+    loading: itemsQuery.isLoading || mutationLoading,
+    categories: categoriesQuery.data ?? EMPTY_ARRAY,
+    locations: locationsQuery.data ?? EMPTY_ARRAY,
+    borrowings: (borrowingsQuery.data?.borrowings as InventoryBorrowing[]) ?? EMPTY_ARRAY,
+    totalBorrowings: borrowingsQuery.data?.total ?? 0,
     fetchStats,
     fetchLogs,
     fetchItems,

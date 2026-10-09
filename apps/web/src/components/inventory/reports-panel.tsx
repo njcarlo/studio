@@ -49,6 +49,12 @@ export function ReportsPanel() {
     window.print();
   };
 
+  useEffect(() => {
+    const handleExportEvent = () => handleExportPDF();
+    window.addEventListener('trigger-inventory-export', handleExportEvent);
+    return () => window.removeEventListener('trigger-inventory-export', handleExportEvent);
+  }, []);
+
   if (loading || !data) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
@@ -294,7 +300,7 @@ export function ReportsPanel() {
           </div>
         </CardHeader>
 
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0">
           {data.lowStockItems?.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted-foreground space-y-2">
               <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-500/20">
@@ -304,57 +310,116 @@ export function ReportsPanel() {
               <p className="text-[11px] text-muted-foreground">No equipment or supplies require immediate reordering.</p>
             </div>
           ) : (
-            <table className="w-full text-xs">
-              <thead className="bg-sidebar text-white font-bold tracking-wider text-[11px] uppercase select-none">
-                <tr>
-                  <th className="py-3 px-4 text-left font-bold">Item Name</th>
-                  <th className="py-3 px-4 text-left font-bold">Code</th>
-                  <th className="py-3 px-4 text-left font-bold">Category</th>
-                  <th className="py-3 px-4 text-center font-bold">Current Stock</th>
-                  <th className="py-3 px-4 text-center font-bold">Min Threshold</th>
-                  <th className="py-3 px-4 text-right font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
+            <>
+              {/* Mobile View: Clean Card List */}
+              <div className="md:hidden divide-y divide-border/60">
                 {data.lowStockItems.map((item: any) => (
-                  <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-4 font-semibold text-foreground">{item.name}</td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground">
-                      <span className="bg-muted/70 px-2 py-0.5 rounded-md border border-border/50">
-                        {item.inventoryCode || '—'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-muted-foreground font-medium">{item.category}</td>
-                    <td className="py-3 px-4 text-center font-mono font-bold">
-                      <span className={cn(
-                        "px-2 py-0.5 rounded-md",
-                        item.stock === 0
-                          ? "bg-destructive/15 text-destructive border border-destructive/30"
-                          : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
-                      )}>
-                        {item.stock}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono text-muted-foreground">
-                      {item.minStock}
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                  <div key={item.id} className="p-4 space-y-2.5 hover:bg-muted/20 transition-colors">
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-sm text-foreground leading-snug">
+                          {item.name}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          <span className="font-mono text-[11px] text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md border border-border/50">
+                            {item.inventoryCode || '—'}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground font-medium bg-muted/40 px-2 py-0.5 rounded-md">
+                            {item.category}
+                          </span>
+                        </div>
+                      </div>
                       <Badge
                         variant={item.stock === 0 ? 'destructive' : 'secondary'}
                         className={cn(
-                          "text-[10px] font-bold rounded-lg px-2 py-0.5",
+                          "text-[10px] font-bold rounded-lg px-2 py-0.5 shrink-0",
                           item.stock === 0
                             ? "bg-destructive text-destructive-foreground"
-                            : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                            : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
                         )}
                       >
                         {item.stock === 0 ? 'Out of Stock' : 'Low Stock'}
                       </Badge>
-                    </td>
-                  </tr>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1.5 border-t border-border/40">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground text-[11px]">Current Stock:</span>
+                        <span className={cn(
+                          "font-mono font-bold px-2 py-0.5 rounded-md text-xs",
+                          item.stock === 0
+                            ? "bg-destructive/15 text-destructive border border-destructive/30"
+                            : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+                        )}>
+                          {item.stock}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                        <span>Min Threshold:</span>
+                        <span className="font-mono font-semibold text-foreground bg-muted/70 px-2 py-0.5 rounded-md border border-border/50">
+                          {item.minStock}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Desktop View: Full Table with Horizontal Scroll Safety */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-xs min-w-[650px]">
+                  <thead className="bg-sidebar text-white font-bold tracking-wider text-[11px] uppercase select-none">
+                    <tr>
+                      <th className="py-3 px-4 text-left font-bold">Item Name</th>
+                      <th className="py-3 px-4 text-left font-bold">Code</th>
+                      <th className="py-3 px-4 text-left font-bold">Category</th>
+                      <th className="py-3 px-4 text-center font-bold">Current Stock</th>
+                      <th className="py-3 px-4 text-center font-bold">Min Threshold</th>
+                      <th className="py-3 px-4 text-right font-bold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {data.lowStockItems.map((item: any) => (
+                      <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-3 px-4 font-semibold text-foreground">{item.name}</td>
+                        <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground">
+                          <span className="bg-muted/70 px-2 py-0.5 rounded-md border border-border/50">
+                            {item.inventoryCode || '—'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground font-medium">{item.category}</td>
+                        <td className="py-3 px-4 text-center font-mono font-bold">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-md",
+                            item.stock === 0
+                              ? "bg-destructive/15 text-destructive border border-destructive/30"
+                              : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+                          )}>
+                            {item.stock}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono text-muted-foreground">
+                          {item.minStock}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <Badge
+                            variant={item.stock === 0 ? 'destructive' : 'secondary'}
+                            className={cn(
+                              "text-[10px] font-bold rounded-lg px-2 py-0.5",
+                              item.stock === 0
+                                ? "bg-destructive text-destructive-foreground"
+                                : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                            )}
+                          >
+                            {item.stock === 0 ? 'Out of Stock' : 'Low Stock'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@studio/ui";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Dialog, DialogContent, DialogTitle } from "@studio/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +17,7 @@ import {
   MoreHorizontal, PlusCircle, LoaderCircle, Upload, Download,
   LogIn, Users, UserCheck, UserX, Users2, Building2, Mail,
   Trash2, ArrowRightLeft, X, Ticket, Search, SlidersHorizontal,
-  ShieldCheck, UserCog, GraduationCap,
+  ShieldCheck, UserCog, GraduationCap, Eye,
 } from "lucide-react";
 import { subDays, formatDistanceToNow, format } from "date-fns";
 import { getWeeklyWeekdayCount, getSundayCount } from "@studio/ui";
@@ -879,8 +879,8 @@ export default function WorkersPage() {
             {/* Main Table Container */}
             <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card">
 
-              {/* Mobile list view */}
-              <div className="md:hidden divide-y divide-border/30">
+              {/* Mobile card list (matches reservations mobile card style) */}
+              <div className="md:hidden divide-y divide-border/60 flex-grow">
                 {workersLoading ? (
                   <div className="py-16 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-primary" /></div>
                 ) : displayedWorkers.length === 0 ? (
@@ -889,31 +889,154 @@ export default function WorkersPage() {
                   displayedWorkers.map(worker => {
                     const ministry = ministries.find(m => m.id === worker.majorMinistryId);
                     const roleLabel = getWorkerRoleLabel(worker);
+                    const registeredDate = worker.createdAt ? new Date(worker.createdAt as any) : null;
+                    const isChecked = selectedWorkerIds.includes(worker.id);
+                    const workerIdFormatted = formatWorkerId(worker.workerId);
+
                     return (
-                      <div key={worker.id} className="p-4 flex items-center justify-between gap-3">
-                        {/* Left: Basic info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2.5 mb-1.5">
-                            <WorkerInitials name={`${worker.firstName} ${worker.lastName}`} avatarUrl={worker.avatarUrl} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-foreground leading-tight truncate">{worker.firstName} {worker.lastName}</p>
-                              <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"}</p>
-                            </div>
+                      <div
+                        key={worker.id}
+                        className={cn(
+                          "overflow-hidden rounded-none border-b border-border/60 transition-colors",
+                          isChecked ? "bg-sidebar/5 dark:bg-sidebar/10" : "bg-card"
+                        )}
+                      >
+                        {/* Blue header: Checkbox + Worker ID + Status + Actions Menu */}
+                        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar">
+                          <div className="flex items-center gap-2.5">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => toggleSelectWorker(worker.id)}
+                              className="h-[17px] w-[17px] rounded-[4px] border-[1.5px] border-white/90 bg-transparent data-[state=checked]:bg-white data-[state=checked]:border-white [&_svg]:text-sidebar focus-visible:ring-0 cursor-pointer shadow-xs transition-colors"
+                            />
+                            <span className="text-xs font-mono font-bold text-white">
+                              {workerIdFormatted}
+                            </span>
                           </div>
-                          <p className="text-[10px] font-mono text-muted-foreground mb-1">{formatWorkerId(worker.workerId)}</p>
+
                           <div className="flex items-center gap-2">
-                            <RoleBadge role={roleLabel} />
                             <StatusBadge status={worker.status} />
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-52 p-1 rounded-xl shadow-lg border-border/80">
+                                <DropdownMenuItem
+                                  onClick={() => setSelectedWorkerForDetails(worker)}
+                                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
+                                >
+                                  <Eye className="h-4 w-4 text-muted-foreground" /> View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => setTimeout(() => handleEdit(worker), 100)}
+                                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
+                                >
+                                  <UserCog className="h-4 w-4 text-muted-foreground" /> Edit Profile
+                                </DropdownMenuItem>
+                                {worker.status === "Active" ? (
+                                  <DropdownMenuItem
+                                    onSelect={() => setTimeout(() => handleToggleStatus(worker), 100)}
+                                    className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-50 dark:focus:bg-amber-950/30"
+                                  >
+                                    <UserX className="h-4 w-4" /> Deactivate Account
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onSelect={() => setTimeout(() => handleToggleStatus(worker), 100)}
+                                    className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-emerald-600 dark:text-emerald-400 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30"
+                                  >
+                                    <UserCheck className="h-4 w-4" /> Activate Account
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                  onSelect={() => setTimeout(() => handlePasswordReset(worker), 100)}
+                                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
+                                >
+                                  <Mail className="h-4 w-4 text-muted-foreground" /> Send Reset Link
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => setTimeout(() => handleDelete(worker), 100)}
+                                  className="text-destructive cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 focus:text-destructive focus:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
 
-                        {/* Right: Details button */}
-                        <button
-                          onClick={() => setSelectedWorkerForDetails(worker)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 transition-colors whitespace-nowrap shrink-0"
-                        >
-                          Details
-                        </button>
+                        {/* Card body */}
+                        <div className="p-4 space-y-3">
+                          {/* Name & Email */}
+                          <div>
+                            <p className="text-sm font-bold text-foreground leading-snug">
+                              {worker.firstName} {worker.lastName}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {worker.email}
+                            </p>
+                          </div>
+
+                          {/* Worker Initials & Role / Details Button */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <WorkerInitials
+                                name={`${worker.firstName} ${worker.lastName}`}
+                                avatarUrl={worker.avatarUrl}
+                              />
+                              <RoleBadge role={roleLabel} />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedWorkerForDetails(worker)}
+                              className="text-xs font-semibold text-primary hover:underline px-2 py-1 cursor-pointer"
+                            >
+                              Details
+                            </button>
+                          </div>
+
+                          {/* 2x2 Details Box */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Ministry
+                              </p>
+                              <p className="font-semibold text-foreground truncate">
+                                {ministry?.name || "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Type
+                              </p>
+                              <p className="font-semibold text-foreground truncate">
+                                {worker.employmentType || "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Contact
+                              </p>
+                              <p className="font-semibold text-foreground truncate">
+                                {worker.phone || "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Registered
+                              </p>
+                              <p className="font-semibold text-foreground truncate">
+                                {registeredDate ? format(registeredDate, "MMM d, yyyy") : "—"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     );
                   })
@@ -948,7 +1071,7 @@ export default function WorkersPage() {
                         Status {sortField === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                       </th>
                       <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Registered</th>
-                      <th className="px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Actions</th>
+                      <th className="px-6 pr-8 sm:pr-10 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1009,7 +1132,7 @@ export default function WorkersPage() {
                           <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap font-medium">
                             {registeredDate ? format(registeredDate, "MMM d, yyyy") : "—"}
                           </td>
-                          <td className="px-5 py-3.5 text-center" onClick={e => e.stopPropagation()}>
+                          <td className="px-6 pr-8 sm:pr-10 py-3.5 text-center" onClick={e => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
@@ -1096,91 +1219,148 @@ export default function WorkersPage() {
         </SheetContent>
       </Sheet>
 
-      {/* Worker Details Sheet */}
-      <Sheet open={!!selectedWorkerForDetails} onOpenChange={(open) => !open && setSelectedWorkerForDetails(null)}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
+      {/* Worker Details Dialog (enhanced to match Approval Details Dialog design) */}
+      <Dialog open={!!selectedWorkerForDetails} onOpenChange={(open) => !open && setSelectedWorkerForDetails(null)}>
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border-border/80 shadow-2xl gap-0">
+          <DialogTitle className="sr-only">Worker Details</DialogTitle>
           {selectedWorkerForDetails && (
-            <div className="space-y-6">
-              {/* Header */}
-              <SheetHeader>
-                <SheetTitle>Worker Details</SheetTitle>
-                <p className="text-sm text-muted-foreground">View worker information</p>
-              </SheetHeader>
-
-              {/* Worker Info */}
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
-                <WorkerInitials name={`${selectedWorkerForDetails.firstName} ${selectedWorkerForDetails.lastName}`} avatarUrl={selectedWorkerForDetails.avatarUrl} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-lg font-bold text-foreground leading-tight">{selectedWorkerForDetails.firstName} {selectedWorkerForDetails.lastName}</p>
-                  <p className="text-sm text-muted-foreground truncate">{selectedWorkerForDetails.email}</p>
-                </div>
-                <StatusBadge status={selectedWorkerForDetails.status} />
-              </div>
-
-              {/* Details Grid */}
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Worker ID</p>
-                  <p className="text-sm font-mono text-foreground">{formatWorkerId(selectedWorkerForDetails.workerId)}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</p>
-                  <div><RoleBadge role={getWorkerRoleLabel(selectedWorkerForDetails)} /></div>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ministry</p>
-                  <p className="text-sm text-foreground">{ministries.find(m => m.id === selectedWorkerForDetails.majorMinistryId)?.name || "—"}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Worker Type</p>
-                  <p className="text-sm text-foreground">{selectedWorkerForDetails.employmentType || "—"}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phone</p>
-                  <p className="text-sm text-foreground">{selectedWorkerForDetails.phone || "—"}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</p>
-                  <p className="text-sm text-foreground break-all">{selectedWorkerForDetails.email || "—"}</p>
-                </div>
-
-                {selectedWorkerForDetails.createdAt && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Registered</p>
-                    <p className="text-sm text-foreground whitespace-nowrap">
-                      {new Date(selectedWorkerForDetails.createdAt as any).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                    </p>
+            <div>
+              {/* Modal Header */}
+              <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="h-11 w-11 rounded-2xl border flex items-center justify-center shrink-0 shadow-xs bg-sidebar/10 border-sidebar/20 text-sidebar dark:bg-sidebar/30 dark:border-sidebar/40 dark:text-blue-300">
+                      <UserCheck className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-base font-bold font-headline tracking-tight text-foreground">
+                          Worker Details
+                        </h2>
+                        <StatusBadge status={selectedWorkerForDetails.status} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        View worker profile and account overview
+                      </p>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-4 border-t border-border/40">
+              {/* Content Body */}
+              <div className="p-5 space-y-3.5 max-h-[75vh] overflow-y-auto">
+                {/* 1. Worker Profile Card */}
+                <div className="p-4 rounded-2xl border border-border/70 bg-card/60 shadow-2xs">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    Worker Profile
+                  </p>
+                  <div className="flex items-center gap-3.5">
+                    <WorkerInitials
+                      name={`${selectedWorkerForDetails.firstName} ${selectedWorkerForDetails.lastName}`}
+                      avatarUrl={selectedWorkerForDetails.avatarUrl}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold text-foreground leading-tight truncate">
+                        {selectedWorkerForDetails.firstName} {selectedWorkerForDetails.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {selectedWorkerForDetails.email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Worker Information Grid Card */}
+                <div className="p-4 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Worker Information
+                  </p>
+                  <div className="grid grid-cols-2 gap-3.5 text-xs">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Worker ID
+                      </p>
+                      <p className="font-mono font-semibold text-foreground mt-0.5">
+                        {formatWorkerId(selectedWorkerForDetails.workerId)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Role
+                      </p>
+                      <div className="mt-0.5">
+                        <RoleBadge role={getWorkerRoleLabel(selectedWorkerForDetails)} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Ministry
+                      </p>
+                      <p className="font-semibold text-foreground truncate mt-0.5">
+                        {ministries.find(m => m.id === selectedWorkerForDetails.majorMinistryId)?.name || "—"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Worker Type
+                      </p>
+                      <p className="font-semibold text-foreground truncate mt-0.5">
+                        {selectedWorkerForDetails.employmentType || "—"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Phone
+                      </p>
+                      <p className="font-semibold text-foreground truncate mt-0.5">
+                        {selectedWorkerForDetails.phone || "—"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Registered
+                      </p>
+                      <p className="font-semibold text-foreground truncate mt-0.5">
+                        {selectedWorkerForDetails.createdAt
+                          ? format(new Date(selectedWorkerForDetails.createdAt as any), "MMMM d, yyyy")
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="p-4 border-t border-border/70 bg-muted/20 flex gap-2.5">
                 <button
+                  type="button"
                   onClick={() => {
+                    const worker = selectedWorkerForDetails;
                     setSelectedWorkerForDetails(null);
-                    handleEdit(selectedWorkerForDetails);
+                    handleEdit(worker);
                   }}
-                  className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                  className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
                 >
+                  <UserCog className="h-4 w-4" />
                   Edit Worker
                 </button>
                 <button
+                  type="button"
                   onClick={() => setSelectedWorkerForDetails(null)}
-                  className="h-10 px-4 flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+                  className="h-10 px-5 flex items-center justify-center rounded-xl border border-border/70 bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
                 >
                   Close
                 </button>
               </div>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog

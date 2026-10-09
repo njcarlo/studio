@@ -12,8 +12,8 @@ export function useMinistries(options: { all?: boolean } = {}) {
     const { data, isLoading, error } = useQuery({
         queryKey: ['ministries'],
         queryFn: () => getMinistries(),
-        staleTime: 10_000,
-        refetchOnWindowFocus: true,
+        staleTime: 5 * 60_000,
+        refetchOnWindowFocus: false,
     });
 
     const createMutation = useMutation({

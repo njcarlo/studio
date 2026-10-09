@@ -28,6 +28,7 @@ export function useAssistanceRequestsForBooking(bookingId: string) {
         queryKey: assistanceRequestKeys.forBooking(bookingId),
         queryFn: () => getAssistanceRequestsForBooking(bookingId),
         enabled: !!bookingId,
+        staleTime: 30_000,
     });
 
     return {
@@ -43,6 +44,7 @@ export function useAssistanceRequestsForMinistry(ministryId: string) {
         queryKey: assistanceRequestKeys.forMinistry(ministryId),
         queryFn: () => getAssistanceRequestsForMinistry(ministryId),
         enabled: !!ministryId,
+        staleTime: 30_000,
     });
 
     return {
@@ -57,6 +59,7 @@ export function useCommandCenterData(filters: CommandCenterFilters = {}) {
     const { data, isLoading, error } = useQuery({
         queryKey: assistanceRequestKeys.commandCenter(filters),
         queryFn: () => getCommandCenterData(filters),
+        staleTime: 30_000,
     });
 
     return {

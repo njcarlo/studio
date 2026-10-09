@@ -26,6 +26,7 @@ export const viewport: Viewport = {
 import Script from "next/script";
 import { AuthSync } from "./auth-sync";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
+import { CookieConsentBanner } from "@/components/common/cookie-consent-banner";
 
 export default function RootLayout({
   children,
@@ -71,6 +72,7 @@ export default function RootLayout({
           <AuthSync>
             {children}
             <Toaster />
+            <CookieConsentBanner />
           </AuthSync>
         </ReactQueryProvider>
       </body>

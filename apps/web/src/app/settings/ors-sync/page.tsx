@@ -2203,22 +2203,23 @@ export default function OrsLegacySyncPage() {
       <div className="space-y-7 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
               ORS Legacy Sync
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
               Monitor and trigger synchronisation with the ORS legacy system.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
             <button onClick={handleManualSync} disabled={isSyncing}
-              className="h-9 px-4 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors shadow-2xs">
+              className="h-9 px-3.5 sm:px-4 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors shadow-2xs">
               <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-              Manual Sync
+              <span className="hidden sm:inline">Manual Sync</span>
+              <span className="sm:hidden">Sync</span>
             </button>
-            <Link href="/settings" className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs">
+            <Link href="/settings" className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs">
               <ArrowLeft className="h-3.5 w-3.5" /> Back
             </Link>
           </div>

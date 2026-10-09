@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
-import { Building2, UserCog, LoaderCircle, Users, Utensils, ArrowRight, ArrowLeft } from "lucide-react";
+import { Building2, UserCog, LoaderCircle, Users, Utensils, ArrowRight, ArrowLeft, X } from "lucide-react";
 import type { Department, Worker } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
@@ -53,38 +53,58 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <DialogHeader className="space-y-2 pb-1 border-b border-border/40">
-        <div className="flex items-center gap-3">
-          <div className={cn("p-2.5 rounded-xl shrink-0 shadow-2xs", deptColor.iconBadge)}>
-            <Building2 className="h-5 w-5" />
+    <div className="flex flex-col h-full max-h-[90vh] overflow-hidden">
+      {/* ── MODAL HEADER ── */}
+      <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+            <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center font-bold shrink-0 shadow-xs mt-0.5", deptColor.iconBadge)}>
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
+                Manage {departmentName}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground truncate">
+                Assign a department head and update allocations for the {departmentName} department.
+              </DialogDescription>
+            </div>
           </div>
-          <div>
-            <DialogTitle className="text-xl font-bold font-headline text-foreground">
-              Manage {departmentName}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-              Assign a department head and update allocations for the {departmentName} department.
-            </DialogDescription>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer shrink-0 -mt-1 -mr-1"
+            title="Close modal"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* ── SCROLLABLE BODY ── */}
+      <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
+        {/* Card 1: Department Overview */}
+        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3.5 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sidebar dark:text-sky-400">
+            <Building2 className="h-4 w-4" />
+            <span>Department Information</span>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-foreground">Description</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the department's purpose..."
+              className="rounded-xl border-slate-200/90 dark:border-border text-xs min-h-[90px] focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar bg-background resize-none transition-all"
+            />
           </div>
         </div>
-      </DialogHeader>
 
-      <div className="space-y-5">
-        {/* Description Group */}
-        <div className="space-y-2">
-          <Label className="text-xs font-bold text-foreground">Description</Label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the department's purpose..."
-            className="rounded-xl border-slate-200/90 dark:border-border text-xs min-h-[90px] focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar bg-background dark:bg-muted/20 resize-none transition-all"
-          />
-        </div>
-
-        {/* Meal Stub Allocation Card */}
-        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3.5">
+        {/* Card 2: Meal Stub Allocation */}
+        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3.5 shadow-2xs">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
               <Utensils className="h-3.5 w-3.5" />
@@ -99,9 +119,9 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">
                 Weekday Pool
               </Label>
               <Input
@@ -109,11 +129,11 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
                 min="0"
                 value={weekdayAlloc}
                 onChange={(e) => setWeekdayAlloc(parseInt(e.target.value) || 0)}
-                className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs font-semibold bg-white dark:bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
+                className="h-10 rounded-xl border-slate-200/90 dark:border-border text-base font-semibold bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">
                 Sunday Pool
               </Label>
               <Input
@@ -121,20 +141,20 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
                 min="0"
                 value={sundayAlloc}
                 onChange={(e) => setSundayAlloc(parseInt(e.target.value) || 0)}
-                className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs font-semibold bg-white dark:bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
+                className="h-10 rounded-xl border-slate-200/90 dark:border-border text-base font-semibold bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
               />
             </div>
           </div>
         </div>
 
-        {/* Department Head Group */}
-        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3">
+        {/* Card 3: Department Head Group */}
+        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3 shadow-2xs">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
               <UserCog className="h-3.5 w-3.5" />
             </div>
             <div>
-              <Label className="text-xs font-bold text-foreground">Department Head</Label>
+              <p className="text-xs font-bold text-foreground">Department Head</p>
               <p className="text-[11px] text-muted-foreground">
                 Designate the overarching head responsible for this department.
               </p>
@@ -142,7 +162,7 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
           </div>
 
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger className="h-11 rounded-xl border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
+            <SelectTrigger className="h-11 rounded-xl border-slate-200/90 dark:border-border text-xs bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
               <SelectValue placeholder="Select a department head" />
             </SelectTrigger>
             <SelectContent className="rounded-xl border border-border shadow-xl max-h-64">
@@ -167,12 +187,13 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
         </div>
       </div>
 
-      <DialogFooter className="pt-2 border-t border-border/40 flex items-center justify-end gap-2.5">
+      {/* ── MODAL FOOTER ── */}
+      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 shrink-0">
         <Button
           type="button"
           variant="outline"
           onClick={onClose}
-          className="h-10 px-4 rounded-xl border-border/70 text-xs font-semibold hover:bg-muted/50 transition-colors cursor-pointer"
+          className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer w-full sm:w-auto"
         >
           Cancel
         </Button>
@@ -186,11 +207,11 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
               sundayAlloc
             )
           }
-          className="h-10 px-5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto"
         >
           Save Changes
         </Button>
-      </DialogFooter>
+      </div>
     </div>
   );
 }
@@ -286,18 +307,18 @@ export default function DepartmentManagementPage() {
       <div className="space-y-6 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
               Department Management
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
               Manage overarching departments and assign department heads.
             </p>
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
@@ -409,7 +430,7 @@ export default function DepartmentManagementPage() {
 
       {/* Edit Dialog */}
       <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DialogContent className="sm:max-w-lg rounded-2xl p-6 sm:p-7 border-border/80 shadow-2xl">
+        <DialogContent className="sm:max-w-xl max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border border-border/80 shadow-2xl bg-card [&>button:last-child]:hidden">
           {deptToManage && workers && (
             <ManageDepartmentDialog
               departmentName={deptToManage}

@@ -182,12 +182,12 @@ export function SettingsPanel() {
   return (
     <div className="space-y-4 w-full">
       {/* ── TOP ACTIONS TOOLBAR ── */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex items-center justify-between gap-3 w-full">
+        <div className="min-w-0 flex-1">
           {successMsg && (
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5 animate-in fade-in">
-              <CheckCircle2 className="h-4 w-4" />
-              <span>{successMsg}</span>
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">{successMsg}</span>
             </span>
           )}
         </div>
@@ -195,7 +195,7 @@ export function SettingsPanel() {
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="h-9 px-5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs cursor-pointer flex items-center gap-2 shrink-0 transition-all"
+          className="h-9 px-4 sm:px-5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs cursor-pointer flex items-center gap-2 shrink-0 transition-all ml-auto"
         >
           {saving ? (
             <>
@@ -247,17 +247,17 @@ export function SettingsPanel() {
                     key={item.id}
                     className="p-3 sm:px-4 rounded-xl border border-border/60 bg-muted/[0.12] flex items-center justify-between gap-3 hover:border-sidebar/40 hover:bg-muted/[0.22] transition-all group shadow-2xs"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-6 h-6 rounded-lg bg-sidebar text-white font-bold text-[10px] font-mono flex items-center justify-center shrink-0 shadow-2xs">
                         {idx + 1}
                       </div>
-                      <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                      <span className="font-semibold text-xs sm:text-sm text-foreground break-words leading-snug">
                         {item.label}
                       </span>
                     </div>
                     <button
                       type="button"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
                       onClick={() =>
                         setItemToDelete({
                           id: item.id,
@@ -329,17 +329,17 @@ export function SettingsPanel() {
                     key={item.id}
                     className="p-3 sm:px-4 rounded-xl border border-border/60 bg-muted/[0.12] flex items-center justify-between gap-3 hover:border-sidebar/40 hover:bg-muted/[0.22] transition-all group shadow-2xs"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-6 h-6 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] font-mono flex items-center justify-center shrink-0 border border-emerald-500/30 shadow-2xs">
                         {idx + 1}
                       </div>
-                      <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                      <span className="font-semibold text-xs sm:text-sm text-foreground break-words leading-snug">
                         {item.label}
                       </span>
                     </div>
                     <button
                       type="button"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
                       onClick={() =>
                         setItemToDelete({
                           id: item.id,

@@ -29,7 +29,9 @@ export async function GET(req: NextRequest) {
       where.categoryId = categoryId;
     }
 
-    if (status) {
+    const isLowStockFilter = status === 'Low Stock' || status === 'low';
+
+    if (status && !isLowStockFilter) {
       where.status = status;
     }
 
@@ -46,6 +48,41 @@ export async function GET(req: NextRequest) {
 
     if (isKit === 'true') {
       where.group = 'Kit';
+    }
+
+    if (isLowStockFilter) {
+      const allMatching = await prisma.inventoryItem.findMany({
+        where,
+        include: {
+          category: {
+            select: { id: true, name: true, color: true, icon: true },
+          },
+          children: {
+            select: { id: true, name: true, inventoryCode: true, quantity: true, status: true },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+      });
+
+      const lowItems = allMatching.filter(
+        (item) => (item.quantity ?? 0) <= (item.minQuantity > 0 ? item.minQuantity : 5)
+      );
+
+      const total = lowItems.length;
+      const paginated = lowItems.slice(skip, skip + take);
+      const formatted = paginated.map((item) => ({
+        ...item,
+        stock: item.quantity,
+        minStock: item.minQuantity,
+        isKit: item.group === 'Kit' || (item.children && item.children.length > 0),
+      }));
+
+      return NextResponse.json({
+        items: formatted,
+        total,
+        skip,
+        take,
+      });
     }
 
     const [items, total] = await Promise.all([

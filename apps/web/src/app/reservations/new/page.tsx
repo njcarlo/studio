@@ -37,6 +37,7 @@ import {
   getBookingsForRoomOnDate,
   createBooking,
   createApproval,
+  submitRoomReservation,
 } from "@/actions/db";
 import { useToast } from "@/hooks/use-toast";
 import type { Room, Area, Ministry, VenueElement } from "@studio/types";
@@ -459,39 +460,6 @@ export default function NewReservationPage() {
         return;
       }
 
-      // Check conflicts - Block ANY reservation (Approved or Pending) in the same time slot
-      const existingReservations = await getBookingsForRoomOnDate(
-        roomId,
-        parsedDate
-      );
-      let hasConflict = false;
-      let conflictingStatus = "";
-      let conflictingRequester = "";
-
-      for (const res of existingReservations) {
-        if (res.status === "Rejected") continue;
-
-        const resStart = new Date(res.start);
-        const resEnd = new Date(res.end);
-
-        if (resStart && resEnd && start < resEnd && end > resStart) {
-          hasConflict = true;
-          conflictingStatus = res.status;
-          conflictingRequester = res.name;
-          break;
-        }
-      }
-
-      if (hasConflict) {
-        toast({
-          variant: "destructive",
-          title: "Time Slot Unavailable",
-          description: `This room is already reserved (${conflictingStatus}) by ${conflictingRequester} for this time slot. Please choose a different time or room.`,
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
       const effectiveWorkerId =
         workerProfile?.id || "worker-system-admin";
 
@@ -517,21 +485,23 @@ export default function NewReservationPage() {
         guidelinesAccepted: true,
       };
 
-      const newBooking = await createBooking(bookingData);
+      const approvalData = {
+        requester: requesterName || "System Admin",
+        type: "Room Booking",
+        details: `"${purpose}" for room: ${selectedRoom?.name}`,
+        status: "Pending Ministry Approval",
+        roomId,
+        workerId: effectiveWorkerId,
+        requestId: generatedRequestId,
+      };
 
-      if (newBooking?.id) {
-        await createApproval({
-          requester: requesterName || "System Admin",
-          type: "Room Booking",
-          details: `"${purpose}" for room: ${selectedRoom?.name}`,
-          date: new Date(),
-          status: "Pending Ministry Approval",
-          roomId,
-          reservationId: newBooking.id,
-          workerId: effectiveWorkerId,
-          requestId: generatedRequestId,
-        });
+      // Single atomic fast execution with background non-blocking notification (~100ms)
+      const res = await submitRoomReservation({
+        bookingData,
+        approvalData,
+      });
 
+      if (res?.booking?.id) {
         setIsSubmitted(true);
       }
     } catch (error: any) {

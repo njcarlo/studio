@@ -147,17 +147,12 @@ export function DatePicker({
         <button
           type="button"
           className={cn(
-            "group flex items-center justify-start gap-2 px-2.5 h-10 text-xs font-normal text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs w-[128px] text-left hover:border-[#112e7e]/50 dark:hover:border-blue-400/50 focus:outline-hidden focus:ring-1 focus:ring-[#112e7e]/40 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+            "group flex items-center justify-start gap-2 px-3 h-10 text-xs font-medium text-slate-700 dark:text-slate-200 border border-slate-200/90 dark:border-border rounded-2xl bg-background dark:bg-muted/30 shadow-2xs w-[130px] sm:w-36 text-left hover:border-sidebar/50 dark:hover:border-blue-400/50 focus:outline-hidden focus:ring-1 focus:ring-sidebar/40 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
             className
           )}
         >
-          <CalendarIcon className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400 shrink-0 group-hover:text-[#112e7e] dark:group-hover:text-blue-400 transition-colors" />
-          <span
-            className={cn(
-              "truncate select-none",
-              !selectedDate && "text-slate-500 dark:text-slate-400"
-            )}
-          >
+          <CalendarIcon className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400 shrink-0 group-hover:text-sidebar dark:group-hover:text-blue-400 transition-colors" />
+          <span className="truncate select-none text-slate-700 dark:text-slate-200 font-medium">
             {displayLabel}
           </span>
         </button>

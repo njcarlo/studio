@@ -283,31 +283,16 @@ export default function InquiriesPage() {
     <AppLayout>
       <div className="space-y-4 sm:space-y-6 pb-16 sm:pb-12">
         {/* Header Title & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5 sm:gap-3">
-              <span className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
-                <MessageSquareHeart className="w-5 h-5 sm:w-6 sm:h-6" />
-              </span>
-              <span>Inquiries & Requests</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Manage and follow up on messages and requests submitted through the website.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="gap-2 rounded-xl h-9 sm:h-10 text-xs sm:text-sm font-medium"
-            >
-              <RefreshCw className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4", isFetching && "animate-spin")} />
-              Refresh
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5 sm:gap-3">
+            <span className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+              <MessageSquareHeart className="w-5 h-5 sm:w-6 sm:h-6" />
+            </span>
+            <span>Inquiries & Requests</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Manage and follow up on messages and requests submitted through the website.
+          </p>
         </div>
 
         {/* Top Summary Stat Cards (2x2 on mobile, 4 columns on large screens) */}
@@ -618,7 +603,7 @@ export default function InquiriesPage() {
                           </p>
                         </div>
 
-                        {/* Card footer: relative date & quick buttons */}
+                        {/* Card footer: relative date */}
                         <div className="flex items-center justify-between gap-2 pt-1">
                           <div className="text-[11px] text-muted-foreground">
                             <span>{formatDistanceToNow(parseDateSafe(inquiry.createdAt), { addSuffix: true })}</span>
@@ -627,29 +612,6 @@ export default function InquiriesPage() {
                                 (30+ days)
                               </span>
                             )}
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={`mailto:${inquiry.email}?subject=Re: Church of God Dasmariñas - Your Message&body=Dear ${encodeURIComponent(
-                                inquiry.name
-                              )},%0D%0A%0D%0AThank you for contacting Church of God Dasmariñas regarding your message:%0D%0A"${encodeURIComponent(
-                                inquiry.message
-                              )}"%0D%0A%0D%0A`}
-                              className="inline-flex items-center justify-center gap-1 h-8 px-2.5 rounded-xl text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                            >
-                              <Mail className="w-3.5 h-3.5" />
-                              <span>Reply</span>
-                            </a>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenDetails(inquiry)}
-                              className="h-8 px-3 rounded-xl text-xs font-semibold gap-1 cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Details</span>
-                            </Button>
                           </div>
                         </div>
                       </div>

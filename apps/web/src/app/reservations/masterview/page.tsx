@@ -71,19 +71,22 @@ export default function MasterviewPage() {
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ["bookings", "masterview"],
     queryFn: () => getBookings(),
-    staleTime: 0,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
   });
 
   const { data: workers, isLoading: workersLoading } = useQuery({
     queryKey: ["workers", "masterview"],
     queryFn: () => getWorkers(),
+    staleTime: 2 * 60_000,
   });
 
   const { data: venueElements, isLoading: venueElementsLoading } = useQuery({
     queryKey: ["venue-elements"],
     queryFn: getVenueElements,
+    staleTime: 5 * 60_000,
   });
 
   const { data: ministries, isLoading: ministriesLoading } = useQuery({
@@ -199,9 +202,9 @@ export default function MasterviewPage() {
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Search Bar & View Mode Toggle Card */}
-        <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-none flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+        <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-none flex flex-col gap-3">
+          <div className="relative w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
             <Input
               type="text"
               placeholder="Search by title, purpose, or room..."
@@ -210,35 +213,37 @@ export default function MasterviewPage() {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="pl-9 pr-4 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 h-10 bg-background border border-slate-200/90 dark:border-border rounded-2xl shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
+              className="pl-10 pr-4 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 h-10 bg-background border border-slate-200/90 dark:border-border rounded-xl shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar w-full transition-all"
             />
           </div>
 
-          <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center self-end sm:self-auto border border-slate-200/70 dark:border-border/50 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => { setViewMode("history"); setCurrentPage(1); }}
-              className={cn(
-                "px-5 py-1.5 text-xs font-bold rounded-lg transition-all",
-                viewMode === "history"
-                  ? "bg-sidebar text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
-              )}
-            >
-              History
-            </button>
-            <button
-              type="button"
-              onClick={() => { setViewMode("upcoming"); setCurrentPage(1); }}
-              className={cn(
-                "px-5 py-1.5 text-xs font-bold rounded-lg transition-all",
-                viewMode === "upcoming"
-                  ? "bg-sidebar text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
-              )}
-            >
-              Upcoming
-            </button>
+          <div className="flex items-center">
+            <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => { setViewMode("history"); setCurrentPage(1); }}
+                className={cn(
+                  "flex-1 sm:flex-initial px-6 py-2 text-xs font-bold rounded-lg transition-all text-center",
+                  viewMode === "history"
+                    ? "bg-sidebar text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
+                )}
+              >
+                History
+              </button>
+              <button
+                type="button"
+                onClick={() => { setViewMode("upcoming"); setCurrentPage(1); }}
+                className={cn(
+                  "flex-1 sm:flex-initial px-6 py-2 text-xs font-bold rounded-lg transition-all text-center",
+                  viewMode === "upcoming"
+                    ? "bg-sidebar text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
+                )}
+              >
+                Upcoming
+              </button>
+            </div>
           </div>
         </div>
 

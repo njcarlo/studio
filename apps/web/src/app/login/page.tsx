@@ -244,7 +244,7 @@ export default function LoginPage() {
                 onChange={(e) => setIdentifier(e.target.value)}
                 disabled={isSigningIn}
                 onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-                className="h-10"
+                className="h-11 sm:h-10 text-base sm:text-sm"
               />
             </div>
 
@@ -288,6 +288,7 @@ export default function LoginPage() {
                         value={resetIdentifier}
                         onChange={(e) => setResetIdentifier(e.target.value)}
                         disabled={isResetting}
+                        className="h-11 sm:h-10 text-base sm:text-sm"
                         onKeyDown={(e) => e.key === "Enter" && handlePasswordReset()}
                       />
                     </div>
@@ -296,7 +297,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={handlePasswordReset}
                         disabled={isResetting}
-                        className="w-full"
+                        className="w-full h-11 sm:h-10 text-sm font-medium"
                       >
                         {isResetting && <LoaderCircle className="h-4 w-4 animate-spin mr-2" />}
                         Send Reset Link
@@ -314,7 +315,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isSigningIn}
                   onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-                  className="pr-10 h-10"
+                  className="pr-10 h-11 sm:h-10 text-base sm:text-sm"
                 />
                 <button
                   type="button"
@@ -372,6 +373,19 @@ export default function LoginPage() {
               )}
               {isGoogleSigningIn ? "Connecting to Google..." : "Sign in with Google"}
             </Button>
+
+            {/* Terms & Privacy Notice */}
+            <p className="text-xs text-center text-white/80 mt-3 leading-relaxed">
+              By signing in, you agree to our{" "}
+              <Link href="/terms" className="text-blue-300 hover:text-white underline underline-offset-2 transition-colors font-semibold">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="text-blue-300 hover:text-white underline underline-offset-2 transition-colors font-semibold">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </div>
         </CardContent>
       </Card>

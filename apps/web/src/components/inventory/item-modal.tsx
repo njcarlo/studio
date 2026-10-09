@@ -145,11 +145,15 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
     }
   }, [isOpen, fetchCategories, fetchLocations]);
 
+  const defaultCategoryId = categories[0]?.id || '';
+
   useEffect(() => {
+    if (!isOpen) return;
+
     if (item) {
       setFormData({
         name: item.name || '',
-        categoryId: item.categoryId || (categories[0]?.id ?? ''),
+        categoryId: item.categoryId || defaultCategoryId,
         type: item.type || 'EQUIPMENT',
         stock: item.stock ?? item.quantity ?? 0,
         minStock: item.minStock ?? item.minQuantity ?? 0,
@@ -173,7 +177,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
     } else {
       setFormData({
         name: '',
-        categoryId: categories[0]?.id || '',
+        categoryId: defaultCategoryId,
         type: 'EQUIPMENT',
         stock: 0,
         minStock: 0,
@@ -194,7 +198,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
       });
     }
     setError('');
-  }, [item, isOpen, categories]);
+  }, [item, isOpen, defaultCategoryId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
