@@ -353,7 +353,14 @@ Room Reservation Management System
      */
     static async sendPasswordResetEmail(email: string, resetLink: string, workerName?: string) {
         try {
-            const subject = 'Reset Your Password - Church of God Dasmariñas';
+            const timeStr = new Date().toLocaleTimeString('en-US', {
+                timeZone: 'Asia/Manila',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+            });
+            const reqRef = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const subject = `Reset Your Password - Church of God Dasmariñas (${timeStr})`;
             const displayName = workerName || 'Worker';
 
             // Resolve logo attachment
@@ -410,6 +417,9 @@ Room Reservation Management System
                                 <strong>Church of God Dasmariñas</strong><br />
                                 <span style="font-size: 12px; color: #94a3b8;">COG App Management</span>
                             </p>
+                            <p style="font-size: 11px; color: #94a3b8; margin: 8px 0 0 0;">
+                                Request Ref: #${reqRef} • ${timeStr}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -425,6 +435,7 @@ Click the link below to set a new password:
 
 ${resetLink}
 
+Reference: #${reqRef} • ${timeStr}
 This link will expire for your security.
 If you did not request a password reset, you can safely ignore this email.
 
