@@ -25,12 +25,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@studio/store";
 import { supabase } from "@studio/database";
-import { getWorkerEmail, validateLoginIdentifier } from "@/actions/legacy-auth";
+import { validateLoginIdentifier } from "@/actions/legacy-auth";
 import { requestPasswordReset } from "@/actions/auth";
 import { LandingNav } from "@/components/landing/landing-nav";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"email" | "worker">("worker");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -40,31 +39,10 @@ export default function LoginPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
   const { user, isUserLoading } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
-
-  const handleGoogleSignIn = async () => {
-    setIsGoogleSigningIn(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Google Sign-In Failed",
-        description: error.message || "Failed to initiate Google sign-in.",
-      });
-      setIsGoogleSigningIn(false);
-    }
-  };
 
   useEffect(() => {
     if (!isUserLoading && user) {
@@ -72,45 +50,19 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const error = params.get("error");
-      const emailParam = params.get("email");
-
-      if (error === "unregistered") {
-        toast({
-          variant: "destructive",
-          title: "Account Not Registered",
-          description: emailParam
-            ? `The Google account (${emailParam}) is not yet registered. Please contact your Ministry Head or Administrator to create your account first.`
-            : "This Google account is not yet registered. Please contact your Ministry Head or Administrator to create your account first.",
-        });
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    }
-  }, [toast]);
-
-  // Reset identifier when switching modes
-  const handleModeSwitch = (newMode: "email" | "worker") => {
-    setMode(newMode);
-    setIdentifier("");
-    setPassword("");
-  };
-
   const handleSignIn = async () => {
-    if (!identifier || !password) {
+    if (!identifier.trim() || !password) {
       toast({
         variant: "destructive",
         title: "Missing fields",
-        description: `Please enter your ${mode === "email" ? "email" : "Worker ID"} and password.`,
+        description: "Please enter your Worker ID and password.",
       });
       return;
     }
 
     setIsSigningIn(true);
     try {
-      const validation = await validateLoginIdentifier(identifier, mode);
+      const validation = await validateLoginIdentifier(identifier.trim(), "worker");
       if (!validation.success) {
         toast({
           variant: "destructive",
@@ -121,7 +73,7 @@ export default function LoginPage() {
         return;
       }
 
-      const loginEmail = validation.email || identifier;
+      const loginEmail = validation.email || identifier.trim();
 
       const { error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
@@ -144,8 +96,8 @@ export default function LoginPage() {
     if (!input) {
       toast({
         variant: "destructive",
-        title: mode === "worker" ? "Worker ID or Email Required" : "Email Required",
-        description: `Please enter your ${mode === "worker" ? "Worker ID or email" : "email"}.`,
+        title: "Worker ID or Email Required",
+        description: "Please enter your Worker ID or registered email.",
       });
       return;
     }
@@ -198,47 +150,33 @@ export default function LoginPage() {
         <div className="absolute inset-0 shadow-[inset_0_0_120px_60px_rgba(0,0,0,0.5)]" />
       </div>
 
-      <Card className="relative z-10 mx-auto max-w-[470px] w-full shadow-[0_8px_32px_0_rgba(0,0,0,0.9),0_0_80px_rgba(0, 0, 0, 0.9)] backdrop-blur-xl bg-black/15 border border-black/20 dark:bg-black/10 dark:border-black/10 animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out">
+      <Card className="relative z-10 mx-auto max-w-[430px] w-full shadow-[0_8px_32px_0_rgba(0,0,0,0.9),0_0_80px_rgba(0,0,0,0.9)] backdrop-blur-xl bg-black/15 border border-black/20 dark:bg-black/10 dark:border-black/10 animate-in fade-in zoom-in-95 slide-in-from-bottom-6 duration-700 ease-out">
         <CardHeader className="space-y-2.5 text-center pt-7 pb-3 px-8">
           <div className="flex justify-center items-center">
-            <Image src="/church-logo.png" alt="COG Logo" width={78} height={78} className="rounded-sm drop-shadow-[0_4px_8px_rgba(0, 0, 0, 0.9)]" />
+            <Image
+              src="/church-logo.png"
+              alt="COG Logo"
+              width={78}
+              height={78}
+              className="rounded-sm drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)]"
+            />
           </div>
           <CardTitle className="font-headline text-2xl text-white">COG App</CardTitle>
           <CardDescription className="text-white/90 text-sm">
-            {mode === "email" ? "Enter your Email and Password" : "Enter your Worker ID and Password"}
+            Enter your Worker ID and Password
           </CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-7">
-          <div className="grid gap-3.5">
-            {/* Mode toggle */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <Button
-                type="button"
-                variant={mode === "worker" ? "default" : "outline"}
-                onClick={() => handleModeSwitch("worker")}
-                disabled={isSigningIn}
-                className="h-10"
-              >
-                Worker ID Login
-              </Button>
-              <Button
-                type="button"
-                variant={mode === "email" ? "default" : "outline"}
-                onClick={() => handleModeSwitch("email")}
-                disabled={isSigningIn}
-                className="h-10"
-              >
-                Email Login
-              </Button>
-            </div>
-
-            {/* Identifier */}
+          <div className="grid gap-4">
+            {/* Worker ID */}
             <div className="grid gap-2">
-              <Label htmlFor="identifier" className="text-white text-sm font-medium">{mode === "email" ? "Email" : "Worker ID"}</Label>
+              <Label htmlFor="identifier" className="text-white text-sm font-medium">
+                Worker ID
+              </Label>
               <Input
                 id="identifier"
-                type={mode === "email" ? "email" : "text"}
-                placeholder={mode === "email" ? "m@example.com" : "e.g. 01042"}
+                type="text"
+                placeholder="e.g. 023316 or 10001"
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -251,7 +189,9 @@ export default function LoginPage() {
             {/* Password */}
             <div className="grid gap-2">
               <div className="flex items-center">
-                <Label htmlFor="password" className="text-white text-sm font-medium">Password</Label>
+                <Label htmlFor="password" className="text-white text-sm font-medium">
+                  Password
+                </Label>
                 <Dialog
                   open={isResetDialogOpen}
                   onOpenChange={(open) => {
@@ -264,7 +204,7 @@ export default function LoginPage() {
                   <DialogTrigger asChild>
                     <button
                       type="button"
-                      className="ml-auto inline-block text-xs sm:text-sm underline text-white/90 hover:text-white transition-colors"
+                      className="ml-auto inline-block text-xs sm:text-sm underline text-white/90 hover:text-white transition-colors cursor-pointer"
                     >
                       Forgot password?
                     </button>
@@ -273,18 +213,16 @@ export default function LoginPage() {
                     <DialogHeader>
                       <DialogTitle>Reset Password</DialogTitle>
                       <DialogDescription>
-                        {mode === "worker"
-                          ? "Enter your Worker ID or registered email to receive reset instructions."
-                          : "Enter your email for reset instructions."}
+                        Enter your Worker ID or registered email to receive reset instructions.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-2 py-4">
                       <Label htmlFor="reset-identifier">
-                        {mode === "worker" ? "Worker ID or Email" : "Email"}
+                        Worker ID or Email
                       </Label>
                       <Input
                         id="reset-identifier"
-                        placeholder={mode === "worker" ? "e.g. 01042 or m@example.com" : "m@example.com"}
+                        placeholder="e.g. 023316 or m@example.com"
                         value={resetIdentifier}
                         onChange={(e) => setResetIdentifier(e.target.value)}
                         disabled={isResetting}
@@ -320,7 +258,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -328,60 +266,28 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button onClick={handleSignIn} className="w-full h-10 mt-2 font-medium text-sm" disabled={isSigningIn || isGoogleSigningIn}>
+            <Button
+              onClick={handleSignIn}
+              className="w-full h-10 mt-1 font-medium text-sm cursor-pointer"
+              disabled={isSigningIn}
+            >
               {isSigningIn ? <LoaderCircle className="animate-spin" /> : "Login"}
             </Button>
 
-            {/* Divider */}
-            <div className="relative my-2 flex items-center gap-3">
-              <div className="h-px flex-1 bg-white/20" />
-              <span className="bg-black/40 px-3 py-1 rounded-full text-[11px] font-medium uppercase tracking-wider text-white/70 backdrop-blur-md shrink-0 border border-white/10">
-                Or continue with
-              </span>
-              <div className="h-px flex-1 bg-white/20" />
-            </div>
-
-            {/* Google Sign-in Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGoogleSignIn}
-              disabled={isSigningIn || isGoogleSigningIn}
-              className="w-full bg-white text-gray-900 hover:bg-gray-100 hover:text-gray-900 border-none font-medium h-10 gap-2.5 shadow-sm transition-all"
-            >
-              {isGoogleSigningIn ? (
-                <LoaderCircle className="h-4 w-4 animate-spin text-gray-700" />
-              ) : (
-                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    fill="#EA4335"
-                  />
-                </svg>
-              )}
-              {isGoogleSigningIn ? "Connecting to Google..." : "Sign in with Google"}
-            </Button>
-
             {/* Terms & Privacy Notice */}
-            <p className="text-xs text-center text-white/80 mt-3 leading-relaxed">
+            <p className="text-xs text-center text-white/80 mt-2 leading-relaxed">
               By signing in, you agree to our{" "}
-              <Link href="/terms" className="text-blue-300 hover:text-white underline underline-offset-2 transition-colors font-semibold">
+              <Link
+                href="/terms"
+                className="text-blue-300 hover:text-white underline underline-offset-2 transition-colors font-semibold"
+              >
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="text-blue-300 hover:text-white underline underline-offset-2 transition-colors font-semibold">
+              <Link
+                href="/privacy"
+                className="text-blue-300 hover:text-white underline underline-offset-2 transition-colors font-semibold"
+              >
                 Privacy Policy
               </Link>
               .
