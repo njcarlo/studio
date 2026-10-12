@@ -757,60 +757,119 @@ function MealsPageContent() {
               {/* Inner Table Container with Direct Navy Header */}
               <div className="bg-card rounded-2xl border border-border/60 overflow-hidden flex flex-col">
                 {/* ── MOBILE CARD LIST (below sm) ── */}
-                <div className="sm:hidden divide-y divide-gray-100 dark:divide-border/60">
+                <div className="sm:hidden p-3.5 sm:p-4 space-y-3 bg-slate-50/50 dark:bg-muted/10">
                   {filteredAssignerWorkers.length === 0 ? (
-                    <p className="py-14 text-center text-xs text-muted-foreground font-medium">No workers found.</p>
+                    <p className="py-14 text-center text-xs text-muted-foreground font-medium bg-white dark:bg-card rounded-2xl border border-border/60">
+                      No workers found.
+                    </p>
                   ) : (
                     filteredAssignerWorkers.map((w) => {
                       const dayCount = getStubCountForDate((allMealStubsInRange as any) || [], w.id, assignDateObj);
                       const isAllocated = dayCount >= 1;
                       const initials = `${w.firstName?.[0] || ""}${w.lastName?.[0] || ""}`.toUpperCase();
+                      const isChecked = selectedWorkerIds.includes(w.id);
+                      const ministry = ministries.find((m) => m.id === w.majorMinistryId);
+                      const workerIdFormatted = w.workerId
+                        ? `WRK-${String(w.workerId).replace(/^COG-?/i, "").padStart(4, "0")}`
+                        : `WRK-${w.id.slice(0, 4).toUpperCase()}`;
 
                       return (
-                        <div key={w.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50/60 dark:hover:bg-muted/30 transition-colors">
-                          {/* Checkbox */}
-                          <Checkbox checked={selectedWorkerIds.includes(w.id)} onCheckedChange={() => toggleSelectWorker(w.id)} />
+                        <div
+                          key={w.id}
+                          className={cn(
+                            "overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xs hover:shadow-xs transition-all",
+                            isChecked ? "ring-1 ring-sidebar" : ""
+                          )}
+                        >
+                          {/* Navy header: Checkbox + Worker ID + Status Badge */}
+                          <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                            <div className="flex items-center gap-2.5">
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => toggleSelectWorker(w.id)}
+                                className="h-[17px] w-[17px] rounded-[4px] border-[1.5px] border-white/90 bg-transparent data-[state=checked]:bg-white data-[state=checked]:border-white [&_svg]:text-sidebar focus-visible:ring-0 cursor-pointer shadow-xs transition-colors"
+                              />
+                              <span className="text-xs font-mono font-bold text-white tracking-wide">
+                                {workerIdFormatted}
+                              </span>
+                            </div>
 
-                          {/* Avatar */}
-                          <div className="w-8 h-8 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 font-bold text-[11px] flex items-center justify-center shrink-0">
-                            {initials}
-                          </div>
-
-                          {/* Name + Type + Status */}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-xs text-foreground truncate">{w.firstName} {w.lastName}</p>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              {/* Type badge */}
-                              {w.employmentType === "Full-Time" ? (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">Full-Time</span>
-                              ) : w.employmentType === "On-Call" ? (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">On-Call</span>
-                              ) : (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">{w.employmentType || "Volunteer"}</span>
-                              )}
-                              {/* Status badge */}
+                            <div className="flex items-center gap-2">
                               {isAllocated ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" /> Allocated
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                  Allocated
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-muted dark:text-slate-400 border border-slate-200 dark:border-border">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" /> Not Allocated
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/10 text-white/80 border border-white/20">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                                  Not Allocated
                                 </span>
                               )}
                             </div>
                           </div>
 
-                          {/* Action button */}
-                          {isAllocated ? (
-                            <Button variant="outline" size="sm" onClick={() => handleCancelStub(w.id)} disabled={isAssigning} className="shrink-0 rounded-xl px-3 h-8 text-xs font-semibold shadow-2xs">
-                              Reassign
-                            </Button>
-                          ) : (
-                            <Button size="sm" onClick={() => setAssignSingleWorker(w)} disabled={isAssigning} className="shrink-0 bg-sidebar hover:bg-sidebar/90 text-white rounded-xl px-4 h-8 text-xs font-semibold shadow-xs cursor-pointer">
-                              Assign
-                            </Button>
-                          )}
+                          {/* Card body */}
+                          <div className="p-4 space-y-3 bg-white dark:bg-card">
+                            {/* Worker Profile row */}
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground font-bold text-xs flex items-center justify-center shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-sm text-foreground truncate">
+                                  {w.firstName} {w.lastName}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                  {ministry?.name || "No Ministry"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Inset details box */}
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Type
+                                </p>
+                                <p className="font-semibold text-foreground text-xs mt-0.5 truncate">
+                                  {w.employmentType || "Volunteer"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Date
+                                </p>
+                                <p className="font-semibold text-foreground text-xs mt-0.5">
+                                  {format(assignDateObj, "MMM d, yyyy")}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <div className="pt-0.5 flex items-center justify-end">
+                              {isAllocated ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCancelStub(w.id)}
+                                  disabled={isAssigning}
+                                  className="w-full rounded-xl px-4 h-9 text-xs font-semibold shadow-2xs hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                                >
+                                  Reassign
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => setAssignSingleWorker(w)}
+                                  disabled={isAssigning}
+                                  className="w-full bg-sidebar hover:bg-sidebar/90 text-white rounded-xl px-5 h-9 text-xs font-semibold shadow-xs cursor-pointer"
+                                >
+                                  Assign
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       );
                     })

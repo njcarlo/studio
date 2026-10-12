@@ -459,7 +459,7 @@ export default function InquiriesPage() {
             ) : (
               <>
                 {/* ── Mobile Card List View (Visible on screens < md) ── */}
-                <div className="md:hidden divide-y divide-border/40">
+                <div className="md:hidden p-3.5 sm:p-4 space-y-3 bg-slate-50/50 dark:bg-muted/10">
                   {displayedInquiries.map((inquiry) => {
                     const daysOld = differenceInDays(new Date(), parseDateSafe(inquiry.createdAt));
                     const isResponded = inquiry.status === "Responded" || inquiry.status === "Resolved";
@@ -473,142 +473,141 @@ export default function InquiriesPage() {
                     return (
                       <div
                         key={inquiry.id}
-                        className="p-4 space-y-3 hover:bg-muted/20 transition-colors"
+                        className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xs hover:shadow-xs transition-all"
                       >
-                        {/* Top: Avatar, Name, Status, Actions Menu */}
-                        <div className="flex items-start justify-between gap-2.5">
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                        {/* Navy header: ID + Status + Actions Menu */}
+                        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-white tracking-wide">
+                              INQ-{inquiry.id.slice(0, 4).toUpperCase()}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {isResponded ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-200 bg-emerald-400/20 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
+                                <Check className="w-3 h-3" /> Responded
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-200 bg-amber-400/20 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+                                <Clock className="w-3 h-3 animate-pulse" /> Pending
+                              </span>
+                            )}
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                  <span className="sr-only">Actions</span>
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-52 rounded-xl">
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenDetails(inquiry)}
+                                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
+                                >
+                                  <Eye className="w-4 h-4 text-blue-500" />
+                                  <span>View Details</span>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  asChild
+                                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
+                                >
+                                  <a
+                                    href={`mailto:${inquiry.email}?subject=Re: Church of God Dasmariñas - Your Message&body=Dear ${encodeURIComponent(
+                                      inquiry.name
+                                    )},%0D%0A%0D%0AThank you for contacting Church of God Dasmariñas regarding your message:%0D%0A"${encodeURIComponent(
+                                      inquiry.message
+                                    )}"%0D%0A%0D%0A`}
+                                    className="flex items-center gap-2 w-full text-foreground"
+                                  >
+                                    <Mail className="w-4 h-4 text-violet-500" />
+                                    <span>Reply via Email</span>
+                                  </a>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setStatusCandidate({
+                                      inquiry,
+                                      targetStatus: isResponded ? "Pending" : "Responded",
+                                    })
+                                  }
+                                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
+                                >
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                  <span>{isResponded ? "Mark as Pending" : "Mark as Responded"}</span>
+                                </DropdownMenuItem>
+
+                                {activeTab === "active" ? (
+                                  <DropdownMenuItem
+                                    onClick={() => setArchiveCandidate(inquiry)}
+                                    className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
+                                  >
+                                    <Archive className="w-4 h-4 text-amber-500" />
+                                    <span>Archive</span>
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={() => unarchiveMutation.mutate(inquiry.id)}
+                                    className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
+                                  >
+                                    <ArchiveRestore className="w-4 h-4 text-emerald-500" />
+                                    <span>Restore to Active</span>
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+
+                        {/* Card body */}
+                        <div className="p-4 space-y-3 bg-white dark:bg-card">
+                          {/* Sender row: Avatar + Name + Date */}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground font-bold text-xs flex items-center justify-center shrink-0">
                               {initials}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-sm text-foreground truncate">
-                                  {inquiry.name}
-                                </span>
-                                {isResponded ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md shrink-0">
-                                    <Check className="w-3 h-3" /> Responded
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md shrink-0">
-                                    <Clock className="w-3 h-3" /> Pending
-                                  </span>
-                                )}
-                              </div>
+                              <p className="font-bold text-sm text-foreground truncate">{inquiry.name}</p>
                               <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                                <Clock className="w-3 h-3 shrink-0" />
+                                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
                                 <span>{format(parseDateSafe(inquiry.createdAt), "MMM d, yyyy • h:mm a")}</span>
                               </p>
                             </div>
                           </div>
 
-                          {/* 3 Dots Menu */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 -mr-1"
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                                <span className="sr-only">Actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-52 rounded-xl">
-                              <DropdownMenuItem
-                                onClick={() => handleOpenDetails(inquiry)}
-                                className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
-                              >
-                                <Eye className="w-4 h-4 text-muted-foreground" />
-                                <span>View Details</span>
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem
-                                asChild
-                                className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
-                              >
-                                <a
-                                  href={`mailto:${inquiry.email}?subject=Re: Church of God Dasmariñas - Your Message&body=Dear ${encodeURIComponent(
-                                    inquiry.name
-                                  )},%0D%0A%0D%0AThank you for contacting Church of God Dasmariñas regarding your message:%0D%0A"${encodeURIComponent(
-                                    inquiry.message
-                                  )}"%0D%0A%0D%0A`}
-                                  className="flex items-center gap-2 w-full text-foreground"
-                                >
-                                  <Mail className="w-4 h-4 text-muted-foreground" />
-                                  <span>Reply via Email</span>
-                                </a>
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  setStatusCandidate({
-                                    inquiry,
-                                    targetStatus: isResponded ? "Pending" : "Responded",
-                                  })
-                                }
-                                className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
-                              >
-                                <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
-                                <span>{isResponded ? "Mark as Pending" : "Mark as Responded"}</span>
-                              </DropdownMenuItem>
-
-                              {activeTab === "active" ? (
-                                <DropdownMenuItem
-                                  onClick={() => setArchiveCandidate(inquiry)}
-                                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
-                                >
-                                  <Archive className="w-4 h-4 text-muted-foreground" />
-                                  <span>Archive</span>
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => unarchiveMutation.mutate(inquiry.id)}
-                                  className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
-                                >
-                                  <ArchiveRestore className="w-4 h-4 text-muted-foreground" />
-                                  <span>Restore to Active</span>
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-
-                        {/* Contact details */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-0.5">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="truncate select-text">{inquiry.email}</span>
+                          {/* Contact Info Box */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <Mail className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                              <span className="text-[11px] text-muted-foreground truncate select-text">{inquiry.email}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 truncate">
+                              <Phone className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              <span className="text-[11px] text-muted-foreground select-text">{inquiry.phone || "No phone"}</span>
+                            </div>
                           </div>
-                          {inquiry.phone ? (
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                              <span className="select-text">{inquiry.phone}</span>
-                            </div>
-                          ) : (
-                            <div className="text-[11px] text-muted-foreground/60 italic shrink-0">
-                              No phone
-                            </div>
-                          )}
-                        </div>
 
-                        {/* Message preview block */}
-                        <div
-                          onClick={() => handleOpenDetails(inquiry)}
-                          className="p-3 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors border border-border/50 cursor-pointer"
-                        >
-                          <p className="text-xs text-foreground/90 line-clamp-3 leading-relaxed select-text">
-                            {inquiry.message}
-                          </p>
-                        </div>
+                          {/* Message preview block */}
+                          <div
+                            onClick={() => handleOpenDetails(inquiry)}
+                            className="p-3 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors border border-border/50 cursor-pointer"
+                          >
+                            <p className="text-xs text-foreground/90 line-clamp-3 leading-relaxed select-text">
+                              {inquiry.message}
+                            </p>
+                          </div>
 
-                        {/* Card footer: relative date */}
-                        <div className="flex items-center justify-between gap-2 pt-1">
-                          <div className="text-[11px] text-muted-foreground">
+                          {/* Footer: relative time badge */}
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
                             <span>{formatDistanceToNow(parseDateSafe(inquiry.createdAt), { addSuffix: true })}</span>
                             {daysOld >= 30 && (
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400 ml-1.5 font-medium">
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
                                 (30+ days)
                               </span>
                             )}
@@ -737,7 +736,7 @@ export default function InquiriesPage() {
                                       onClick={() => handleOpenDetails(inquiry)}
                                       className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
                                     >
-                                      <Eye className="w-4 h-4 text-muted-foreground" />
+                                      <Eye className="w-4 h-4 text-blue-500" />
                                       <span>View Details</span>
                                     </DropdownMenuItem>
 
@@ -753,7 +752,7 @@ export default function InquiriesPage() {
                                         )}"%0D%0A%0D%0A`}
                                         className="flex items-center gap-2 w-full text-foreground"
                                       >
-                                        <Mail className="w-4 h-4 text-muted-foreground" />
+                                        <Mail className="w-4 h-4 text-violet-500" />
                                         <span>Reply via Email</span>
                                       </a>
                                     </DropdownMenuItem>
@@ -767,7 +766,7 @@ export default function InquiriesPage() {
                                       }
                                       className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
                                     >
-                                      <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                       <span>{isResponded ? "Mark as Pending" : "Mark as Responded"}</span>
                                     </DropdownMenuItem>
 
@@ -776,7 +775,7 @@ export default function InquiriesPage() {
                                         onClick={() => setArchiveCandidate(inquiry)}
                                         className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
                                       >
-                                        <Archive className="w-4 h-4 text-muted-foreground" />
+                                        <Archive className="w-4 h-4 text-amber-500" />
                                         <span>Archive</span>
                                       </DropdownMenuItem>
                                     ) : (
@@ -784,7 +783,7 @@ export default function InquiriesPage() {
                                         onClick={() => unarchiveMutation.mutate(inquiry.id)}
                                         className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
                                       >
-                                        <ArchiveRestore className="w-4 h-4 text-muted-foreground" />
+                                        <ArchiveRestore className="w-4 h-4 text-emerald-500" />
                                         <span>Restore to Active</span>
                                       </DropdownMenuItem>
                                     )}

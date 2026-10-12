@@ -194,32 +194,32 @@ function InventoryPageContent() {
     <AppLayout>
       <div className="space-y-6">
         {/* ── TOP HEADER ── */}
-        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
-          <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white truncate">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-0.5 sm:space-y-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white leading-tight">
               Stock Monitoring &amp; Assets
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Centralized equipment tracking, barcode checkout system, and preventive maintenance.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
-            {['items', 'borrowings', 'logs', 'reports'].includes(activeTab) && (
+          <div className="flex items-center gap-2 shrink-0 sm:ml-auto">
+            {['items', 'borrowings', 'logs'].includes(activeTab) && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => window.dispatchEvent(new CustomEvent('trigger-inventory-export'))}
                 className="gap-1.5 sm:gap-2 rounded-xl border border-border/80 bg-white dark:bg-card hover:bg-muted/60 text-foreground shadow-2xs text-xs font-semibold cursor-pointer h-9 px-3 sm:px-3.5 shrink-0"
-                title={activeTab === 'reports' ? 'Export / Print PDF' : 'Export Excel (.xlsx)'}
+                title="Export Excel (.xlsx)"
               >
                 <Download className="h-4 w-4 text-muted-foreground" />
-                <span className="hidden sm:inline">{activeTab === 'reports' ? 'Export PDF' : 'Export Excel'}</span>
+                <span className="hidden sm:inline">Export Excel</span>
                 <span className="sm:hidden">Export</span>
               </Button>
             )}
 
-            {!['reports', 'settings'].includes(activeTab) && (
+            {!['reports', 'settings', 'logs'].includes(activeTab) && (
               <Button
                 size="sm"
                 onClick={() => setIsCameraScannerOpen(true)}

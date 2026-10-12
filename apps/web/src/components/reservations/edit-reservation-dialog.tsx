@@ -190,7 +190,7 @@ export function EditReservationDialog({
                   value={requesterName}
                   onChange={(e) => setRequesterName(e.target.value)}
                   placeholder="Requester Name"
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
               </div>
 
@@ -199,7 +199,7 @@ export function EditReservationDialog({
                   Ministry
                 </label>
                 <Select value={ministryId} onValueChange={setMinistryId}>
-                  <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
+                  <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                     <SelectValue placeholder="Select Ministry" />
                   </SelectTrigger>
                   <SelectContent>
@@ -223,7 +223,7 @@ export function EditReservationDialog({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address"
-                className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
               />
             </div>
 
@@ -236,7 +236,7 @@ export function EditReservationDialog({
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 placeholder="Describe the event or meeting...."
-                className="bg-background dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl min-h-[100px] p-3 text-xs leading-relaxed text-slate-800 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                className="bg-background dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl min-h-[100px] p-3 text-[11px] leading-relaxed font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
               />
             </div>
           </div>

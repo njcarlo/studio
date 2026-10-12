@@ -517,10 +517,10 @@ export function InventoryTable({
               )}
             </div>
 
-            {/* Filter Dropdowns with Styled Select Controls in ONE ROW */}
-            <div className="flex items-center gap-2.5 flex-wrap xl:flex-nowrap shrink-0 overflow-x-auto pb-0.5">
+            {/* Filter Dropdowns with Clean Responsive Grid/Flex Controls */}
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full md:w-auto flex-wrap xl:flex-nowrap">
               {/* Quick Filter Dropdown */}
-              <div className="shrink-0">
+              <div className="w-full sm:w-[155px] shrink-0">
                 <Select
                   value={selectedStatus === 'Low Stock' ? 'low' : selectedType === 'EQUIPMENT' ? 'equipment' : selectedType === 'CONSUMABLE' ? 'consumables' : 'all'}
                   onValueChange={(val) => {
@@ -543,7 +543,7 @@ export function InventoryTable({
                     setSkip(0);
                   }}
                 >
-                  <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <SelectTrigger className="h-10 w-full sm:w-[155px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                     <SelectValue placeholder="All Items" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -564,7 +564,7 @@ export function InventoryTable({
               </div>
 
               {/* Category Filter */}
-              <div className="shrink-0">
+              <div className="w-full sm:w-[155px] shrink-0">
                 <Select
                   value={selectedCategory || 'ALL'}
                   onValueChange={(val) => {
@@ -572,7 +572,7 @@ export function InventoryTable({
                     setSkip(0);
                   }}
                 >
-                  <SelectTrigger className="h-10 w-[165px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
+                  <SelectTrigger className="h-10 w-full sm:w-[155px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <SelectValue placeholder="Category: All" className="truncate text-left" />
@@ -590,7 +590,7 @@ export function InventoryTable({
               </div>
 
               {/* Status Filter */}
-              <div className="shrink-0">
+              <div className="w-full sm:w-[150px] shrink-0">
                 <Select
                   value={selectedStatus || 'ALL'}
                   onValueChange={(val) => {
@@ -598,7 +598,7 @@ export function InventoryTable({
                     setSkip(0);
                   }}
                 >
-                  <SelectTrigger className="h-10 w-[155px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
+                  <SelectTrigger className="h-10 w-full sm:w-[150px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <SelectValue placeholder="Status: All" className="truncate text-left" />
@@ -618,7 +618,7 @@ export function InventoryTable({
 
               {/* Location Filter */}
               {locations.length > 0 && (
-                <div className="shrink-0">
+                <div className="w-full sm:w-[150px] shrink-0">
                   <Select
                     value={selectedLocation || 'ALL'}
                     onValueChange={(val) => {
@@ -626,7 +626,7 @@ export function InventoryTable({
                       setSkip(0);
                     }}
                   >
-                    <SelectTrigger className="h-10 w-[160px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
+                    <SelectTrigger className="h-10 w-full sm:w-[150px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <SelectValue placeholder="Location: All" className="truncate text-left" />
@@ -649,7 +649,7 @@ export function InventoryTable({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-10 px-3 text-xs text-muted-foreground hover:text-foreground rounded-xl gap-1 cursor-pointer shrink-0"
+                  className="h-10 px-3 text-xs text-muted-foreground hover:text-foreground rounded-xl gap-1 cursor-pointer shrink-0 col-span-2 sm:col-auto"
                   onClick={resetAllFilters}
                 >
                   <X className="h-3.5 w-3.5" />
@@ -659,10 +659,37 @@ export function InventoryTable({
             </div>
           </div>
 
-          {/* Action Buttons Row with Low Stock Summary / Filter */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
-            {/* Summary / Filter: ⚠ Low Stock · X items */}
-            <div className="flex items-center gap-2">
+          {/* Action Buttons Row: Swapped (+ Add Item & Activity Feed on Left, Low Stock on Right) */}
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+            {/* Left: Primary + Add Item Button & Activity Feed */}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+              <Button
+                size="sm"
+                className="h-9 px-3.5 sm:px-4 text-xs font-bold rounded-xl gap-1.5 bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer flex-1 sm:flex-initial justify-center"
+                onClick={() => {
+                  setModalItem(null);
+                  setIsItemModalOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">Add Item</span>
+              </Button>
+
+              {onActivityFeedClick && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onActivityFeedClick}
+                  className="h-9 px-3 sm:px-3.5 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs cursor-pointer hover:bg-muted/40 flex-1 sm:flex-initial justify-center"
+                >
+                  <Activity className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="whitespace-nowrap">Activity Feed</span>
+                </Button>
+              )}
+            </div>
+
+            {/* Right: Low Stock · X items */}
+            <div className="flex items-center sm:justify-end gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => {
@@ -675,7 +702,7 @@ export function InventoryTable({
                   setSkip(0);
                 }}
                 className={cn(
-                  "h-9 px-3.5 text-xs font-semibold rounded-xl border transition-colors flex items-center gap-2 cursor-pointer shadow-2xs select-none",
+                  "h-9 px-3.5 text-xs font-semibold rounded-xl border transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs select-none w-full sm:w-auto",
                   selectedStatus === 'Low Stock'
                     ? "bg-red-600 text-white border-red-600 shadow-xs"
                     : "bg-red-50 text-red-700 border-red-200/90 hover:bg-red-100/90 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60"
@@ -690,33 +717,6 @@ export function InventoryTable({
                   </span>
                 )}
               </button>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-              {onActivityFeedClick && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onActivityFeedClick}
-                  className="h-9 px-3 sm:px-3.5 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs cursor-pointer hover:bg-muted/40 flex-1 sm:flex-initial justify-center"
-                >
-                  <Activity className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="whitespace-nowrap">Activity Feed</span>
-                </Button>
-              )}
-
-              {/* Primary + Add Item Button */}
-              <Button
-                size="sm"
-                className="h-9 px-3.5 sm:px-4 text-xs font-bold rounded-xl gap-1.5 bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer flex-1 sm:flex-initial justify-center"
-                onClick={() => {
-                  setModalItem(null);
-                  setIsItemModalOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4 shrink-0" />
-                <span className="whitespace-nowrap">Add Item</span>
-              </Button>
             </div>
           </div>
 
@@ -1417,10 +1417,10 @@ export function InventoryTable({
                       <Boxes className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <DialogTitle className="text-base font-bold font-headline tracking-tight text-foreground flex items-center gap-2 flex-wrap">
-                        <span>Adjust Stock Quantity</span>
+                      <DialogTitle className="text-base font-bold font-headline tracking-tight text-foreground flex items-center gap-2 flex-nowrap">
+                        <span className="whitespace-nowrap">Adjust Stock Quantity</span>
                         {stockAdjustItem.inventoryCode && (
-                          <span className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/70 shrink-0">
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20 shrink-0 whitespace-nowrap">
                             {stockAdjustItem.inventoryCode}
                           </span>
                         )}

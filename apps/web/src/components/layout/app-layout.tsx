@@ -130,8 +130,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, isUserLoading, router]);
 
 
-  // While auth is loading, show a full-screen loader
-  if (isUserLoading) {
+  // While auth is loading, show a full-screen loader if there is no cached user yet
+  if (isUserLoading && !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
@@ -146,7 +146,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible="icon" className="border-r-0 border-none">
         <SidebarHeader className="pb-1.5 px-3 pt-2.5 sticky top-0 z-10 bg-sidebar">
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:hidden">

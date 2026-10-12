@@ -285,7 +285,7 @@ export default function MyReservationsPage() {
               <DatePicker
                 value={dateFilter}
                 onChange={setDateFilter}
-                align="end"
+                align="start"
               />
 
               {/* Status Select */}

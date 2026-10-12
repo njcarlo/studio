@@ -596,7 +596,7 @@ export default function AllReservationsPage() {
                     setCurrentPage(1);
                   }}
                   className="w-full text-slate-700 dark:text-slate-200 font-medium"
-                  align="end"
+                  align="start"
                 />
               </div>
             </div>

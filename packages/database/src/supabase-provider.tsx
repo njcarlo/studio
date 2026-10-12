@@ -41,26 +41,50 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({
 
     let cancelled = false;
 
-    // Listen for changes first so we don't miss events that fire before getUser resolves
+    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!cancelled) {
-        setUser(session?.user ?? null);
-        setIsLoading(false);
+        if (session?.user) {
+          setUser(session.user);
+          setIsLoading(false);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+          setIsLoading(false);
+        }
       }
     });
 
-    // Initial check — only apply result if this effect instance is still mounted
+    // Initial check — use getSession first to retrieve and refresh stored credentials
     const checkUser = async () => {
       try {
         const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
-        if (!cancelled) {
-          setUser(user);
-          setError(error);
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          if (!cancelled) {
+            setUser(session.user);
+            setIsLoading(false);
+          }
+
+          // In the background, verify against the server without booting out offline/mobile users
+          try {
+            const {
+              data: { user: verifiedUser },
+            } = await supabase.auth.getUser();
+
+            if (!cancelled && verifiedUser) {
+              setUser(verifiedUser);
+            }
+          } catch {
+            // Keep active session.user if network is temporarily slow or offline
+          }
+        } else {
+          if (!cancelled) {
+            setUser(null);
+          }
         }
       } catch (e) {
         if (!cancelled) {

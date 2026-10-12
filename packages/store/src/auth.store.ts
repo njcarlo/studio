@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 
 /**
  * Auth store — holds the authenticated Supabase user and loading state.
@@ -17,14 +17,21 @@ export interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
     devtools(
-        (set) => ({
-            user: null,
-            isUserLoading: true,
-            userError: null,
+        persist(
+            (set) => ({
+                user: null,
+                isUserLoading: true,
+                userError: null,
 
-            _setAuthState: (user, isUserLoading, userError) =>
-                set({ user, isUserLoading, userError }, false, 'auth/_setAuthState'),
-        }),
+                _setAuthState: (user, isUserLoading, userError) =>
+                    set({ user, isUserLoading, userError }, false, 'auth/_setAuthState'),
+            }),
+            {
+                name: 'cog_auth_user',
+                storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : ({} as any))),
+                partialize: (state) => ({ user: state.user }),
+            }
+        ),
         { name: 'AuthStore' }
     )
 );

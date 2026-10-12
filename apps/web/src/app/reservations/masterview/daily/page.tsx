@@ -338,7 +338,7 @@ export default function ScheduleCalendarPage() {
 
         {/* Floor / Area selector for Day view */}
         {viewMode === "day" && (
-          <div className="flex items-center justify-end gap-2.5">
+          <div className="flex items-center justify-start gap-2.5">
             <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
               Show rooms:
             </span>

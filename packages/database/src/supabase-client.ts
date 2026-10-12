@@ -30,6 +30,7 @@ export const supabase: SupabaseClient = hasSupabaseConfig
             persistSession: !isServer,
             autoRefreshToken: !isServer,
             detectSessionInUrl: !isServer,
+            storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         }
     })
     : createMissingSupabaseClient();

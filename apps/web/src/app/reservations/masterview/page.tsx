@@ -202,8 +202,8 @@ export default function MasterviewPage() {
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Search Bar & View Mode Toggle Card */}
-        <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-none flex flex-col gap-3">
-          <div className="relative w-full">
+        <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-none flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="relative w-full sm:max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
             <Input
               type="text"
@@ -217,13 +217,13 @@ export default function MasterviewPage() {
             />
           </div>
 
-          <div className="flex items-center">
+          <div className="flex items-center justify-end shrink-0">
             <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => { setViewMode("history"); setCurrentPage(1); }}
                 className={cn(
-                  "flex-1 sm:flex-initial px-6 py-2 text-xs font-bold rounded-lg transition-all text-center",
+                  "flex-1 sm:flex-initial px-6 py-2 text-xs font-bold rounded-lg transition-all text-center cursor-pointer",
                   viewMode === "history"
                     ? "bg-sidebar text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
@@ -235,7 +235,7 @@ export default function MasterviewPage() {
                 type="button"
                 onClick={() => { setViewMode("upcoming"); setCurrentPage(1); }}
                 className={cn(
-                  "flex-1 sm:flex-initial px-6 py-2 text-xs font-bold rounded-lg transition-all text-center",
+                  "flex-1 sm:flex-initial px-6 py-2 text-xs font-bold rounded-lg transition-all text-center cursor-pointer",
                   viewMode === "upcoming"
                     ? "bg-sidebar text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"

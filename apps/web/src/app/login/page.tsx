@@ -52,7 +52,13 @@ export default function LoginPage() {
           title: "Password Updated",
           description: "Your password was changed successfully! Please log in with your Worker ID and new password.",
         });
-        // Clean up URL parameter cleanly
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (params.get("reason") === "idle") {
+        toast({
+          variant: "destructive",
+          title: "Session Expired",
+          description: "You have been logged out due to 10 minutes of inactivity.",
+        });
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }

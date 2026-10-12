@@ -1071,7 +1071,7 @@ export default function WorkersPage() {
                         Status {sortField === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                       </th>
                       <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Registered</th>
-                      <th className="px-6 pr-8 sm:pr-10 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Actions</th>
+                      <th className="w-32 min-w-[130px] pl-4 pr-8 sm:pr-10 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1132,8 +1132,9 @@ export default function WorkersPage() {
                           <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap font-medium">
                             {registeredDate ? format(registeredDate, "MMM d, yyyy") : "—"}
                           </td>
-                          <td className="px-6 pr-8 sm:pr-10 py-3.5 text-center" onClick={e => e.stopPropagation()}>
-                            <DropdownMenu>
+                          <td className="w-32 min-w-[130px] pl-4 pr-8 sm:pr-10 py-3.5 text-center whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-center">
+                              <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                                   <MoreHorizontal className="h-4 w-4" />
@@ -1160,6 +1161,7 @@ export default function WorkersPage() {
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
+                            </div>
                           </td>
                         </tr>
                       );

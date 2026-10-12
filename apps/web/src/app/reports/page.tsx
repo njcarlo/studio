@@ -494,18 +494,10 @@ function AttendanceTab() {
 
       {/* Main Table & Unified Controls Container */}
       <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
-        {/* Section Header with Export Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <h3 className="text-base font-bold font-headline text-foreground">Attendance Records</h3>
-            <p className="text-xs text-muted-foreground">Detailed logs and time tracking records this month.</p>
-          </div>
-          <button
-            onClick={() => setShowExportConfirm(true)}
-            className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
-          >
-            <Download className="h-4 w-4" /> Export
-          </button>
+        {/* Section Header */}
+        <div className="mb-4">
+          <h3 className="text-base font-bold font-headline text-foreground">Attendance Records</h3>
+          <p className="text-xs text-muted-foreground">Detailed logs and time tracking records this month.</p>
         </div>
 
         {/* Top Controls Row: Search + Ministry + Worker Type + Range */}
@@ -928,18 +920,10 @@ function MealStubClaimsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
         {/* Table Card */}
         <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
-          {/* Section Header with Export Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="text-base font-bold font-headline text-foreground">Meal Stub Claims</h3>
-              <p className="text-xs text-muted-foreground">Track claimed and unclaimed meal vouchers across ministries.</p>
-            </div>
-            <button
-              onClick={() => setShowExportConfirm(true)}
-              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
-            >
-              <Download className="h-4 w-4" /> Export
-            </button>
+          {/* Section Header */}
+          <div className="mb-4">
+            <h3 className="text-base font-bold font-headline text-foreground">Meal Stub Claims</h3>
+            <p className="text-xs text-muted-foreground">Track claimed and unclaimed meal vouchers across ministries.</p>
           </div>
 
           {/* Top Controls Row: Search + Ministry + Worker Type */}
@@ -1319,18 +1303,10 @@ function AllocationsTab() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
         {/* Table Card */}
         <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
-          {/* Section Header with Export Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="text-base font-bold font-headline text-foreground">Worker Allocations</h3>
-              <p className="text-xs text-muted-foreground">Monthly allocation limits and usage breakdown per worker.</p>
-            </div>
-            <button
-              onClick={() => setShowExportConfirm(true)}
-              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
-            >
-              <Download className="h-4 w-4" /> Export
-            </button>
+          {/* Section Header */}
+          <div className="mb-4">
+            <h3 className="text-base font-bold font-headline text-foreground">Worker Allocations</h3>
+            <p className="text-xs text-muted-foreground">Monthly allocation limits and usage breakdown per worker.</p>
           </div>
 
           {/* Top Controls Row: Search + Ministry + Worker Type */}
@@ -1717,17 +1693,9 @@ function ReservationsTab() {
         {/* Table Card */}
         <div className="bg-white dark:bg-card rounded-2xl border border-gray-200/80 dark:border-border shadow-xs p-5 sm:p-6 overflow-hidden">
           {/* Section Header with Export Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="text-base font-bold font-headline text-foreground">Facility Reservations</h3>
-              <p className="text-xs text-muted-foreground">Monitor venue bookings and approvals across facilities.</p>
-            </div>
-            <button
-              onClick={() => setShowExportConfirm(true)}
-              className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
-            >
-              <Download className="h-4 w-4" /> Export
-            </button>
+          <div className="mb-4">
+            <h3 className="text-base font-bold font-headline text-foreground">Facility Reservations</h3>
+            <p className="text-xs text-muted-foreground">Monitor venue bookings and approvals across facilities.</p>
           </div>
 
           {/* Top Controls Row: Search + Ministry + Status */}
@@ -2002,18 +1970,18 @@ function ReportsContent() {
     <AppLayout>
       <div className="space-y-7 pb-12 w-full">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-row items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
               Reports &amp; Analytics
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Monitor attendance, meal stub usage, allocations, and room reservations across the organization.
             </p>
           </div>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("reports:trigger-export"))}
-            className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+            className="h-9 sm:h-10 px-3.5 sm:px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0 ml-auto"
           >
             <Download className="h-4 w-4" /> Export
           </button>

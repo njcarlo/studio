@@ -566,13 +566,6 @@ export default function ApprovalsPage() {
 
                         {/* Card body */}
                         <div className="p-4 space-y-3">
-                          {/* Request title / details */}
-                          <div>
-                            <p className="text-sm font-bold text-foreground leading-snug line-clamp-2">
-                              {req.details}
-                            </p>
-                          </div>
-
                           {/* Requester row: Status is beside requester name + Details button */}
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2.5 min-w-0">
@@ -597,6 +590,13 @@ export default function ApprovalsPage() {
                                 Details
                               </button>
                             </div>
+                          </div>
+
+                          {/* Request title / details (purpose and room) */}
+                          <div>
+                            <p className="text-sm font-bold text-foreground leading-snug line-clamp-2">
+                              {req.details}
+                            </p>
                           </div>
 
                           {/* 2x2 Details Box */}
@@ -1024,24 +1024,54 @@ export default function ApprovalsPage() {
 
       {/* Confirm dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={open => !open && setConfirmAction(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmAction?.action === "Approved" ? "Confirm Approval" : "Confirm Rejection"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmAction?.ids.length === 1
-                ? `Are you sure you want to ${confirmAction?.action === "Approved" ? "approve" : "reject"} this request? This action cannot be undone.`
-                : `Are you sure you want to ${confirmAction?.action?.toLowerCase()} ${confirmAction?.ids.length} selected request(s)?`
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogContent className="rounded-2xl p-6 sm:p-7 max-w-md border border-border/80 shadow-xl">
+          <div className="flex flex-col items-center sm:items-start sm:flex-row gap-4">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-xs",
+              confirmAction?.action === "Approved"
+                ? "bg-emerald-50 text-emerald-600 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60"
+                : "bg-rose-50 text-rose-600 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/60"
+            )}>
+              {confirmAction?.action === "Approved" ? (
+                <CheckCircle2 className="h-6 w-6 stroke-[2.25]" />
+              ) : (
+                <XCircle className="h-6 w-6 stroke-[2.25]" />
+              )}
+            </div>
+
+            <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
+              <AlertDialogHeader className="space-y-1.5 p-0 text-center sm:text-left">
+                <AlertDialogTitle className="text-lg font-bold font-headline text-foreground">
+                  {confirmAction?.action === "Approved" ? "Confirm Approval" : "Confirm Rejection"}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  {confirmAction?.ids.length === 1
+                    ? `Are you sure you want to ${confirmAction?.action === "Approved" ? "approve" : "reject"} this request? This action cannot be undone.`
+                    : `Are you sure you want to ${confirmAction?.action?.toLowerCase()} ${confirmAction?.ids.length} selected request(s)? This action cannot be undone.`
+                  }
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+            </div>
+          </div>
+
+          <AlertDialogFooter className="mt-5 pt-3 border-t border-border/50 gap-2 sm:gap-2.5">
+            <AlertDialogCancel className="rounded-xl h-10 px-4 text-xs font-semibold cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              className={confirmAction?.action === "Rejected" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              className={cn(
+                "rounded-xl h-10 px-5 text-xs font-bold text-white shadow-xs cursor-pointer transition-all",
+                confirmAction?.action === "Approved"
+                  ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                  : "bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500"
+              )}
               onClick={executeBulkAction}
             >
+              {confirmAction?.action === "Approved" ? (
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5 mr-1.5" />
+              )}
               Yes, {confirmAction?.action === "Approved" ? "Approve" : "Reject"}
             </AlertDialogAction>
           </AlertDialogFooter>

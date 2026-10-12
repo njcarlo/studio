@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@stud
 import {
   Building2, HeartHandshake, User as UserIcon, Users, LoaderCircle,
   PlusCircle, MoreHorizontal, Edit, Trash2, UserCog, Utensils,
-  Eye, ArrowLeft, Search, Copy, ClipboardCheck, X,
+  Eye, ArrowLeft, Search, Copy, ClipboardCheck, X, AlertTriangle,
 } from "lucide-react";
 import type { Ministry, Worker, Department } from "@studio/types";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -56,6 +56,7 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
 
   const set = (field: keyof Ministry, value: string | number) => setFormData(p => ({ ...p, [field]: value }));
   const sorted = [...workers].sort((a, b) => a.firstName.localeCompare(b.firstName));
+  const selectedHead = workers.find(w => w.id === formData.headId);
 
   return (
     <div className="flex flex-col h-full max-h-[90vh] overflow-hidden">
@@ -71,7 +72,7 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
                 {ministry?.id ? "Edit Ministry" : "Add New Ministry"}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground truncate">
-                Fill in the ministry details, assigned leadership, and parent department.
+                Update ministry details, assigned leadership, and parent department.
               </DialogDescription>
             </div>
           </div>
@@ -111,16 +112,6 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-foreground">Description</Label>
-            <Textarea
-              value={formData.description}
-              onChange={e => set("description", e.target.value)}
-              placeholder="Brief overview of the ministry's role..."
-              className="rounded-xl border-slate-200/90 dark:border-border text-xs min-h-[85px] focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar bg-background resize-none transition-all"
-            />
-          </div>
-
-          <div className="space-y-1.5">
             <Label className="text-xs font-bold text-foreground">
               Department <span className="text-destructive">*</span>
             </Label>
@@ -136,6 +127,16 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-foreground">Description</Label>
+            <Textarea
+              value={formData.description}
+              onChange={e => set("description", e.target.value)}
+              placeholder="Brief overview of the ministry's role..."
+              className="rounded-xl border-slate-200/90 dark:border-border text-xs min-h-[85px] focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar bg-background resize-none transition-all"
+            />
           </div>
         </div>
 
@@ -154,7 +155,7 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
               </SelectTrigger>
               <SelectContent className="rounded-xl border border-border shadow-xl max-h-56">
                 <SelectItem value="none" className="text-xs font-medium cursor-pointer text-muted-foreground">
-                  None
+                  None (Unassigned)
                 </SelectItem>
                 {sorted.map(w => (
                   <SelectItem key={w.id} value={w.id} className="text-xs font-medium cursor-pointer">
@@ -168,6 +169,32 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Selected Head Preview */}
+            {selectedHead && (
+              <div className="mt-3 flex items-center justify-between p-3 rounded-xl bg-background border border-border/80 shadow-2xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <WorkerInitials name={`${selectedHead.firstName} ${selectedHead.lastName}`} />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-foreground truncate">
+                      {selectedHead.firstName} {selectedHead.lastName}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {selectedHead.email || "Designated Ministry Head"}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => set("headId", "")}
+                  className="h-7 px-2 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer shrink-0"
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -195,15 +222,14 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
 }
 
 // ── Appoint Dialog ──────────────────────────────────────────────────────────────
-function AppointDialog({ ministry, workers, onSave, onClose, type = "approver" }: {
+function AppointDialog({ ministry, workers, onSave, onClose }: {
   ministry: Ministry; workers: Worker[];
-  onSave: (id: string, userId: string | null, type: "approver" | "head") => void;
-  onClose: () => void; type?: "approver" | "head";
+  onSave: (id: string, userId: string | null) => void;
+  onClose: () => void;
 }) {
-  const init = type === "approver" ? (ministry.approverId || "none") : (ministry.headId || "none");
-  const [sel, setSel] = useState<string>(init);
+  const [sel, setSel] = useState<string>(ministry.headId || "none");
   const sorted = [...workers].sort((a, b) => a.firstName.localeCompare(b.firstName));
-  const label = type === "approver" ? "Approver" : "Ministry Head";
+  const selectedWorker = workers.find(w => w.id === sel);
 
   return (
     <div className="flex flex-col h-full max-h-[90vh] overflow-hidden">
@@ -216,10 +242,10 @@ function AppointDialog({ ministry, workers, onSave, onClose, type = "approver" }
             </div>
             <div className="min-w-0 flex-1 space-y-0.5">
               <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
-                Appoint {label}
+                Appoint Ministry Head
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground truncate">
-                Select an authorized worker for <span className="font-semibold text-foreground">{ministry.name}</span>.
+                Assign authorized leadership for <span className="font-semibold text-foreground">{ministry.name}</span>.
               </DialogDescription>
             </div>
           </div>
@@ -239,15 +265,35 @@ function AppointDialog({ ministry, workers, onSave, onClose, type = "approver" }
 
       {/* ── SCROLLABLE BODY ── */}
       <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        {/* Ministry summary context card */}
+        <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-xl bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20 shrink-0">
+              <Building2 className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-foreground truncate">{ministry.name}</p>
+              <p className="text-[10px] text-muted-foreground">{ministry.department} Department</p>
+            </div>
+          </div>
+          <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20 shrink-0">
+            {ministry.department}
+          </span>
+        </div>
+
+        {/* Worker selection card */}
         <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3.5 shadow-2xs">
-          <Label className="text-xs font-bold text-foreground">{label}</Label>
+          <Label className="text-xs font-bold text-foreground flex items-center gap-2">
+            <Users className="h-3.5 w-3.5 text-sidebar dark:text-sky-400" />
+            <span>Select Appointed Head</span>
+          </Label>
           <Select value={sel} onValueChange={setSel}>
             <SelectTrigger className="h-11 rounded-xl border-slate-200/90 dark:border-border text-xs bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
-              <SelectValue placeholder={`Select a ${label.toLowerCase()}`} />
+              <SelectValue placeholder="Choose a worker to appoint" />
             </SelectTrigger>
             <SelectContent className="rounded-xl border border-border shadow-xl max-h-64">
               <SelectItem value="none" className="text-xs font-medium cursor-pointer text-muted-foreground">
-                None (Remove {label})
+                None (Remove Appointed Head)
               </SelectItem>
               {sorted.map(w => (
                 <SelectItem key={w.id} value={w.id} className="text-xs font-medium cursor-pointer">
@@ -261,6 +307,28 @@ function AppointDialog({ ministry, workers, onSave, onClose, type = "approver" }
               ))}
             </SelectContent>
           </Select>
+
+          {/* Selected Worker Preview */}
+          {selectedWorker ? (
+            <div className="p-3.5 rounded-xl bg-background border border-border/80 shadow-2xs flex items-center gap-3 animate-in fade-in duration-200">
+              <WorkerInitials name={`${selectedWorker.firstName} ${selectedWorker.lastName}`} />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-foreground truncate">
+                  {selectedWorker.firstName} {selectedWorker.lastName}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {selectedWorker.email || "Active Worker"}
+                </p>
+              </div>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20 shrink-0">
+                Selected
+              </span>
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground italic px-1">
+              No worker currently appointed as head.
+            </p>
+          )}
         </div>
       </div>
 
@@ -275,10 +343,10 @@ function AppointDialog({ ministry, workers, onSave, onClose, type = "approver" }
           Cancel
         </Button>
         <Button
-          onClick={() => onSave(ministry.id, sel === "none" ? null : sel, type)}
+          onClick={() => onSave(ministry.id, sel === "none" ? null : sel)}
           className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto"
         >
-          Save Changes
+          Save Leadership
         </Button>
       </div>
     </div>
@@ -295,11 +363,8 @@ export default function MinistryManagementPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [detailsMinistry, setDetailsMinistry] = useState<Ministry | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Ministry | null>(null);
   const [appointOpen, setAppointOpen] = useState(false);
-  const [appointType, setAppointType] = useState<"approver" | "head">("approver");
   const [appointTarget, setAppointTarget] = useState<Ministry | null>(null);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState<"all" | Department>("all");
@@ -324,12 +389,10 @@ export default function MinistryManagementPage() {
     } catch { toast({ variant: "destructive", title: "Save Failed" }); }
   };
 
-  const handleSaveAppointed = async (ministryId: string, userId: string | null, type: "approver" | "head") => {
+  const handleSaveAppointed = async (ministryId: string, userId: string | null) => {
     try {
-      const field = type === "approver" ? "approverId" : "headId";
-      await updateMinistry({ id: ministryId, data: { [field]: userId === null ? "" : userId } });
-      const label = type === "approver" ? "Approver" : "Ministry Head";
-      toast({ title: `${label} Updated` });
+      await updateMinistry({ id: ministryId, data: { headId: userId === null ? "" : userId } });
+      toast({ title: "Ministry Head Updated" });
       setAppointOpen(false);
     } catch { toast({ variant: "destructive", title: "Update Failed" }); }
   };
@@ -446,12 +509,29 @@ export default function MinistryManagementPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem onClick={() => { setDetailsMinistry(ministry); setDetailsOpen(true); }}><Eye className="mr-2 h-3.5 w-3.5" /> View Details</DropdownMenuItem>
-                        {canManageMinistries && <DropdownMenuItem onClick={() => { setSelectedMinistry(ministry); setFormOpen(true); }}><Edit className="mr-2 h-3.5 w-3.5" /> Edit</DropdownMenuItem>}
-                        <DropdownMenuItem onClick={() => { setAppointTarget(ministry); setAppointType("head"); setAppointOpen(true); }}><Users className="mr-2 h-3.5 w-3.5" /> Appoint Head</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setAppointTarget(ministry); setAppointType("approver"); setAppointOpen(true); }}><UserCog className="mr-2 h-3.5 w-3.5" /> Appoint Approver</DropdownMenuItem>
-                        {canManageMinistries && <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(ministry)}><Trash2 className="mr-2 h-3.5 w-3.5" /> Delete</DropdownMenuItem>}
+                      <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5 shadow-xl border-border/80">
+                        {canManageMinistries && (
+                          <DropdownMenuItem
+                            onClick={() => { setSelectedMinistry(ministry); setFormOpen(true); }}
+                            className="cursor-pointer rounded-lg text-xs font-semibold py-2"
+                          >
+                            <Edit className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Edit
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => { setAppointTarget(ministry); setAppointOpen(true); }}
+                          className="cursor-pointer rounded-lg text-xs font-semibold py-2"
+                        >
+                          <UserCog className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Appoint Head
+                        </DropdownMenuItem>
+                        {canManageMinistries && (
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer rounded-lg text-xs font-semibold py-2"
+                            onClick={() => setDeleteTarget(ministry)}
+                          >
+                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -486,15 +566,6 @@ export default function MinistryManagementPage() {
                     </span>
                   )}
                 </div>
-
-                {/* View Details */}
-                <button
-                  type="button"
-                  onClick={() => { setDetailsMinistry(ministry); setDetailsOpen(true); }}
-                  className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border border-border/60 bg-muted/[0.08] hover:bg-muted/[0.22] text-xs font-bold text-foreground transition-colors cursor-pointer shadow-2xs"
-                >
-                  <Eye className="h-3.5 w-3.5" /> View Details
-                </button>
               </div>
             );
           })}
@@ -512,93 +583,48 @@ export default function MinistryManagementPage() {
       {/* Appoint Dialog */}
       <Dialog open={appointOpen} onOpenChange={setAppointOpen}>
         <DialogContent className="sm:max-w-md max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border border-border/80 shadow-2xl bg-card [&>button:last-child]:hidden">
-          {appointTarget && <AppointDialog ministry={appointTarget} workers={workers || []} onSave={handleSaveAppointed} onClose={() => setAppointOpen(false)} type={appointType} />}
-        </DialogContent>
-      </Dialog>
-
-      {/* Details Dialog */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="sm:max-w-xl rounded-2xl p-6 sm:p-7 border-border/80 shadow-2xl">
-          {detailsMinistry && (() => {
-            const m = detailsMinistry;
-            const head = getWorker(m.headId);
-            const members = (workers || []).filter(w => w.majorMinistryId === m.id || w.minorMinistryId === m.id);
-            return (
-              <div className="flex flex-col gap-5">
-                <DialogHeader className="space-y-1 pb-3 border-b border-border/40 pr-8">
-                  <div className="flex items-start gap-3.5">
-                    <div className="p-2.5 rounded-xl bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20 shrink-0 mt-0.5">
-                      <Building2 className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <DialogTitle className="text-xl font-bold font-headline text-foreground">{m.name}</DialogTitle>
-                      <DialogDescription className="text-xs text-muted-foreground">{m.department} Department</DialogDescription>
-                    </div>
-                  </div>
-                </DialogHeader>
-
-                {m.description && <p className="text-xs text-muted-foreground">{m.description}</p>}
-
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5">
-                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-1.5">Ministry Head</p>
-                  {head ? (
-                    <div className="flex items-center gap-2">
-                      <WorkerInitials name={`${head.firstName} ${head.lastName}`} />
-                      <p className="text-xs font-semibold text-foreground truncate">{head.firstName} {head.lastName}</p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic">Unassigned</p>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-xs font-bold text-foreground mb-2">Members ({members.length})</p>
-                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-                    {members.map(w => (
-                      <div key={w.id} className="flex items-center gap-2 rounded-xl border border-border/60 bg-background p-2">
-                        <WorkerInitials name={`${w.firstName} ${w.lastName}`} />
-                        <p className="text-xs font-medium text-foreground truncate">{w.firstName} {w.lastName}</p>
-                      </div>
-                    ))}
-                    {members.length === 0 && <p className="col-span-2 text-xs text-muted-foreground italic text-center py-4">No members.</p>}
-                  </div>
-                </div>
-
-                <DialogFooter className="pt-2 border-t border-border/40 flex items-center justify-end gap-2.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => { setSelectedMinistry(m); setDetailsOpen(false); setFormOpen(true); }}
-                    className="h-10 px-4 rounded-xl border-border/70 text-xs font-semibold hover:bg-muted/50 transition-colors cursor-pointer gap-1.5"
-                  >
-                    <Edit className="h-3.5 w-3.5" /> Edit Ministry
-                  </Button>
-                  <Button
-                    onClick={() => setDetailsOpen(false)}
-                    className="h-10 px-5 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs cursor-pointer"
-                  >
-                    Close
-                  </Button>
-                </DialogFooter>
-              </div>
-            );
-          })()}
+          {appointTarget && <AppointDialog ministry={appointTarget} workers={workers || []} onSave={handleSaveAppointed} onClose={() => setAppointOpen(false)} />}
         </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete ministry?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete <span className="font-bold">{deleteTarget?.name}</span>.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
+        <AlertDialogContent className="max-w-md rounded-3xl p-6 sm:p-7 border border-border/80 shadow-2xl bg-card">
+          <div className="flex flex-col gap-5">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 flex items-center justify-center font-bold shrink-0 border border-rose-200/80 dark:border-rose-900 shadow-xs">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <div className="space-y-1 pt-0.5">
+                <AlertDialogTitle className="text-lg font-bold font-headline text-foreground">
+                  Delete Ministry?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                  Are you sure you want to delete <span className="font-bold text-foreground underline decoration-rose-300 underline-offset-2">{deleteTarget?.name}</span>? This action is permanent and cannot be undone.
+                </AlertDialogDescription>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20 p-3.5 text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2.5">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span>Assigned members will have their ministry affiliation unlinked.</span>
+            </div>
+
+            <AlertDialogFooter className="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5">
+              <AlertDialogCancel className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer w-full sm:w-auto">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="rounded-xl h-10 px-6 text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto shadow-xs"
+              >
+                Delete Ministry
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
     </AppLayout>
   );
 }
+

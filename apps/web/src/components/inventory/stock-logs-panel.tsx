@@ -358,17 +358,6 @@ export function StockLogsPanel() {
               <Download className="h-3.5 w-3.5 text-muted-foreground" />
               <span>Export Excel</span>
             </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchAuditLogs}
-              className="h-10 px-3.5 gap-1.5 rounded-2xl border-slate-200/90 dark:border-border shadow-2xs text-xs font-semibold text-foreground hover:bg-muted/60 cursor-pointer bg-white dark:bg-muted/30"
-              title="Refresh logs"
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5 text-muted-foreground", loading && "animate-spin text-primary")} />
-              <span>Refresh</span>
-            </Button>
           </div>
         </div>
 
@@ -409,7 +398,7 @@ export function StockLogsPanel() {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {filteredLogs.map((entry, idx) => {
                 const { timestamp, data } = entry;
                 const d = data || {};
@@ -425,48 +414,49 @@ export function StockLogsPanel() {
                   <div
                     key={idx}
                     onClick={() => toggleExpand(idx)}
-                    className="p-3 sm:p-3.5 px-3.5 sm:px-4 rounded-2xl border border-border/70 bg-card hover:border-sidebar/40 dark:hover:border-sidebar/60 transition-all cursor-pointer shadow-2xs hover:shadow-xs space-y-1.5 group"
+                    className="p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-border/70 bg-white dark:bg-card hover:border-sidebar/40 dark:hover:border-sidebar/60 transition-all cursor-pointer shadow-2xs hover:shadow-xs space-y-2 group"
                   >
                     {/* Header line: Action Badge, Item Name, SKU, Time, Expand */}
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs", theme.iconWrapper)}>
-                          <Icon className="h-3.5 w-3.5" />
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs", theme.iconWrapper)}>
+                          <Icon className="h-4 w-4" />
                         </div>
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          {/* Top Row: Badge, Title, Code */}
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge
                               variant="outline"
                               className={cn(
-                                "text-[10px] px-2 py-0.5 font-bold rounded-full border uppercase tracking-wider",
+                                "text-[10px] px-2.5 py-0.5 font-bold rounded-full border uppercase tracking-wider shrink-0",
                                 theme.badge
                               )}
                             >
                               {d.action || entry.action || 'Stock Movement'}
                             </Badge>
 
-                            <h4 className="text-xs font-bold text-foreground group-hover:text-sidebar transition-colors truncate">
-                              {d.item?.name || 'Item'}
+                            <h4 className="text-xs sm:text-sm font-bold text-foreground group-hover:text-sidebar transition-colors truncate">
+                              {d.item?.name || 'Item Record'}
                             </h4>
 
                             {d.item?.inventoryCode && (
-                              <span className="font-mono text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/60 shrink-0">
+                              <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/70 shrink-0">
                                 {d.item.inventoryCode}
                               </span>
                             )}
                           </div>
 
-                          {/* Detail line */}
-                          <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground flex-wrap">
-                            <span className="flex items-center gap-1 font-medium text-foreground">
-                              <User className="h-3 w-3 text-primary shrink-0" />
+                          {/* Detail line: Worker, Qty, Balance */}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                            <span className="flex items-center gap-1 font-semibold text-foreground">
+                              <User className="h-3 w-3 text-sidebar dark:text-sky-400 shrink-0" />
                               <span>{workerDisplay}</span>
                             </span>
 
                             {qty !== 0 && (
                               <>
-                                <span>&bull;</span>
+                                <span className="opacity-40">&bull;</span>
                                 <span className={theme.qtyBadge}>
                                   {sign} {qty === 1 || qty === -1 ? 'unit' : 'units'}
                                 </span>
@@ -475,9 +465,9 @@ export function StockLogsPanel() {
 
                             {d.balance !== undefined && (
                               <>
-                                <span>&bull;</span>
+                                <span className="opacity-40">&bull;</span>
                                 <span className="font-medium text-muted-foreground">
-                                  Balance: <strong className="text-foreground">{d.balance}</strong>
+                                  Balance: <strong className="text-foreground font-bold">{d.balance}</strong>
                                 </span>
                               </>
                             )}
@@ -485,12 +475,12 @@ export function StockLogsPanel() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground">
-                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground/90 font-medium">
+                      <div className="flex items-center gap-2.5 shrink-0 text-xs text-muted-foreground">
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground/80 font-medium">
                           <Clock className="h-3 w-3 opacity-70" />
                           <span>{timeInfo.short}</span>
                         </span>
-                        <div className="p-1 rounded-lg text-muted-foreground group-hover:text-foreground">
+                        <div className="p-1.5 rounded-lg text-muted-foreground group-hover:text-foreground hover:bg-muted/60 transition-colors">
                           {isExpanded ? (
                             <ChevronDown className="h-4 w-4" />
                           ) : (
@@ -502,14 +492,14 @@ export function StockLogsPanel() {
 
                     {/* Expandable Notes / Meta section */}
                     {isExpanded && (
-                      <div className="pt-2 border-t border-border/50 text-xs space-y-2 animate-in fade-in duration-200">
+                      <div className="pt-2.5 border-t border-border/50 text-xs space-y-2 animate-in fade-in duration-200">
                         {d.notes && (
-                          <div className="p-2.5 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground italic flex items-start gap-1.5">
+                          <div className="p-2.5 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground italic flex items-start gap-2">
                             <FileText className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0 mt-0.5" />
                             <span>"{d.notes}"</span>
                           </div>
                         )}
-                        <div className="flex items-center justify-between text-[11px] text-muted-foreground/80 pt-0.5">
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground/80 pt-0.5 px-0.5">
                           <span>Recorded on {timeInfo.full}</span>
                           <span className="font-mono text-[10px]">Log ID: #{idx + 1}</span>
                         </div>

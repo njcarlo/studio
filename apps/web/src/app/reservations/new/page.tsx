@@ -23,6 +23,10 @@ import {
   LoaderCircle,
   XCircle,
   Info,
+  MapPin,
+  Clock,
+  ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -519,39 +523,124 @@ export default function NewReservationPage() {
   };
 
   if (isSubmitted) {
+    const reservedRoom = rooms?.find((r: any) => r.id === roomId);
+
     return (
       <AppLayout>
-        <div className="w-full max-w-2xl mx-auto py-12">
-          <div className="bg-white dark:bg-card rounded-2xl border border-border/60 p-8 text-center shadow-card-dark space-y-6">
+        <div className="w-full max-w-xl mx-auto py-10 sm:py-16 px-4">
+          <div className="bg-white dark:bg-card rounded-3xl border border-gray-200/90 dark:border-border shadow-lg p-6 sm:p-8 text-center space-y-6">
+            {/* Success Icon */}
             <div className="flex justify-center">
-              <CheckCircle2 className="h-16 w-16 text-emerald-500" />
+              <div className="relative">
+                <div className="w-16 h-16 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
+                  <CheckCircle2 className="h-8 w-8 stroke-[2.25]" />
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
+
+            {/* Request ID Tag */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-muted text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-border font-mono">
+              <span className="text-muted-foreground font-sans font-normal">Reference:</span>
+              <span className="font-bold text-slate-900 dark:text-white">{generatedRequestId}</span>
+            </div>
+
+            {/* Title & Description */}
+            <div className="space-y-1.5">
               <h2 className="text-2xl font-bold font-headline text-gray-900 dark:text-white">
                 Request Submitted!
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Your room reservation request (
-                <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">
-                  {generatedRequestId}
-                </span>
-                ) has been submitted and is now pending approval.
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+                Your room reservation request has been submitted successfully and is now waiting for administrative review.
               </p>
             </div>
-            <div className="pt-2 flex items-center justify-center gap-3">
+
+            {/* Reservation Summary Box */}
+            <div className="bg-slate-50 dark:bg-muted/30 rounded-2xl p-4 sm:p-5 border border-slate-100 dark:border-border/60 text-left space-y-3">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                <span>Reservation Details</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Pending Approval
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs pt-1">
+                {reservedRoom && (
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="font-medium truncate">{reservedRoom.name}</span>
+                  </div>
+                )}
+                {selectedDate && (
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <CalendarIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="font-medium">
+                      {(() => {
+                        try {
+                          return format(new Date(selectedDate), "MMM dd, yyyy");
+                        } catch {
+                          return selectedDate;
+                        }
+                      })()}
+                    </span>
+                  </div>
+                )}
+                {(startTime || endTime) && (
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="font-medium">{startTime || "--"} - {endTime || "--"}</span>
+                  </div>
+                )}
+                {pax && (
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <Info className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="font-medium">{pax} attendees expected</span>
+                  </div>
+                )}
+                {purpose && (
+                  <div className="flex items-start gap-2 text-slate-700 dark:text-slate-300 sm:col-span-2 pt-1 border-t border-slate-200/50 dark:border-border/40">
+                    <span className="text-muted-foreground text-[11px] shrink-0">Purpose:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200 text-xs truncate">{purpose}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
               <Button
                 variant="outline"
-                className="rounded-xl px-5 h-9 text-xs font-semibold"
+                className="w-full sm:w-auto rounded-xl px-4 h-10 text-xs font-semibold cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted"
                 onClick={() => router.push("/reservations/masterview/daily")}
               >
+                <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
                 View Calendar
               </Button>
               <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5 h-9 text-xs font-semibold shadow-xs"
+                className="w-full sm:w-auto bg-sidebar hover:bg-sidebar/90 text-white rounded-xl px-5 h-10 text-xs font-semibold shadow-xs cursor-pointer gap-1.5"
                 onClick={() => router.push("/reservations/my")}
               >
-                Go to My Reservations
+                <span>Go to My Reservations</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </Button>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSubmitted(false);
+                  setPurpose("");
+                  setStartTime("");
+                  setEndTime("");
+                  setRoomId("");
+                  setGeneratedRequestId(`REQ-${Math.floor(1000 + Math.random() * 9000)}`);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-slate-900 dark:hover:text-slate-100 transition-colors pt-1 cursor-pointer font-medium"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Submit another reservation
+              </button>
             </div>
           </div>
         </div>
@@ -594,7 +683,7 @@ export default function NewReservationPage() {
                 <Input
                   value={generatedRequestId || "REQ-1000"}
                   disabled
-                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-xs font-medium cursor-not-allowed shadow-2xs"
+                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-[11px] font-normal cursor-not-allowed shadow-2xs"
                 />
               </div>
 
@@ -605,7 +694,7 @@ export default function NewReservationPage() {
                 <Input
                   value={format(new Date(), "MMM d, yyyy")}
                   disabled
-                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-xs font-medium cursor-not-allowed shadow-2xs"
+                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-[11px] font-normal cursor-not-allowed shadow-2xs"
                 />
               </div>
             </div>
@@ -621,7 +710,7 @@ export default function NewReservationPage() {
                   value={requesterName}
                   onChange={(e) => setRequesterName(e.target.value)}
                   placeholder="System Admin"
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
               </div>
 
@@ -632,7 +721,7 @@ export default function NewReservationPage() {
                 <Input
                   value={userMinistry?.name || "General Ministry"}
                   disabled
-                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-xs font-medium cursor-not-allowed shadow-2xs"
+                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-[11px] font-normal cursor-not-allowed shadow-2xs"
                 />
               </div>
             </div>
@@ -648,7 +737,7 @@ export default function NewReservationPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@gmail.com"
-                className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
               />
             </div>
 
@@ -662,7 +751,7 @@ export default function NewReservationPage() {
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 placeholder="Describe the event or meeting...."
-                className="bg-background dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl min-h-[110px] p-3 text-xs leading-relaxed text-slate-800 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                className="bg-background dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl min-h-[110px] p-3 text-[11px] leading-relaxed font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
               />
             </div>
 
@@ -672,7 +761,7 @@ export default function NewReservationPage() {
                 Floor / Room <span className="text-red-500 ml-0.5">*</span>
               </label>
               <Select value={roomId} onValueChange={setRoomId}>
-                <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
+                <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                   <SelectValue placeholder="Select floor / room" />
                 </SelectTrigger>
                 <SelectContent>
@@ -722,7 +811,7 @@ export default function NewReservationPage() {
                       }
                     }}
                     disablePastDates={true}
-                    className="w-full h-10 rounded-xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 shadow-2xs"
+                    className="w-full h-10 rounded-xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 shadow-2xs text-[11px] font-normal"
                     align="start"
                   />
                   {isDateInPast && (
@@ -738,7 +827,7 @@ export default function NewReservationPage() {
                     Start Time <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <Select value={startTime} onValueChange={setStartTime}>
-                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
+                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                       <SelectValue placeholder="Start" />
                     </SelectTrigger>
                     <SelectContent>
@@ -777,7 +866,7 @@ export default function NewReservationPage() {
                     End Time <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <Select value={endTime} onValueChange={setEndTime}>
-                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
+                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                       <SelectValue placeholder="End" />
                     </SelectTrigger>
                     <SelectContent>
@@ -878,7 +967,7 @@ export default function NewReservationPage() {
                   }}
                   placeholder="Number of people"
                   max={selectedRoom?.capacity || undefined}
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
                 {selectedRoom && (
                   <p className="text-[11px] font-medium mt-1 text-muted-foreground">
@@ -904,7 +993,7 @@ export default function NewReservationPage() {
                   }}
                   placeholder="0"
                   max={5}
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
                 <p className="text-[11px] font-medium text-muted-foreground mt-1">
                   Maximum: 5 tables
@@ -928,7 +1017,7 @@ export default function NewReservationPage() {
                   }}
                   placeholder="0"
                   max={60}
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[11px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
                 <p className="text-[11px] font-medium mt-1 text-muted-foreground">
                   Maximum: 60 chairs

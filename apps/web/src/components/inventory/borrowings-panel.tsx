@@ -574,15 +574,15 @@ export function BorrowingsPanel() {
 
           {/* ── MASTER TABLE CONTAINER (Rounded Card inside White Container) ── */}
           <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card shadow-card-dark">
-            {/* ── MOBILE CARD LIST VIEW ── */}
-            <div className="md:hidden divide-y divide-border/40">
+            {/* ── MOBILE / CARD LIST VIEW (Enhanced to match reference design) ── */}
+            <div className="md:hidden p-3.5 sm:p-4 space-y-4 bg-muted/[0.15]">
               {loading && borrowings.length === 0 ? (
                 <div className="h-44 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                   <RefreshCw className="h-6 w-6 animate-spin text-primary" />
                   <span className="text-xs font-medium">Loading borrowings...</span>
                 </div>
               ) : filteredBorrowings.length === 0 ? (
-                <div className="h-44 flex flex-col items-center justify-center gap-2 text-muted-foreground p-6 text-center">
+                <div className="h-44 flex flex-col items-center justify-center gap-2 text-muted-foreground p-6 text-center bg-card rounded-2xl border border-border/60">
                   <Package className="h-8 w-8 text-muted-foreground/40" />
                   <span className="text-xs font-bold text-foreground">No borrowing records found</span>
                   <p className="text-[11px]">Try adjusting your search query or status filter.</p>
@@ -591,130 +591,174 @@ export function BorrowingsPanel() {
                 filteredBorrowings.map((b) => {
                   const isOverdue = b.status === 'BORROWED' && b.dueDate && new Date(b.dueDate) < new Date();
                   const dueInfo = getRelativeDueInfo(b.dueDate, b.status);
+                  const codeDisplay = b.item?.inventoryCode || `BORROW-${b.id.slice(0, 6).toUpperCase()}`;
+                  const borrowerInitials = b.borrowerName.trim().split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'BW';
 
                   return (
-                    <div key={b.id} className="p-4 space-y-3.5 hover:bg-muted/[0.12] transition-colors border-b border-border/40 last:border-b-0">
-                      {/* Item + Status */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-11 h-11 rounded-xl bg-muted/60 border border-border/70 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
-                            {b.item?.imageUrl ? (
-                              <img src={b.item.imageUrl} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <Package className="h-5 w-5 text-muted-foreground/60" />
-                            )}
+                    <div key={b.id} className="rounded-2xl overflow-hidden border border-border/70 shadow-2xs hover:shadow-sm transition-all bg-card">
+                      {/* ── TOP HEADER BANNER (Dark Blue style matching right reference) ── */}
+                      <div className="bg-sidebar px-4 py-3 flex items-center justify-between text-white shadow-2xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-4 h-4 rounded-md border border-white/40 flex items-center justify-center shrink-0">
+                            <Package className="h-2.5 w-2.5 text-white/80" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm text-foreground leading-snug">{b.item?.name}</p>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                              <span className="font-mono font-bold text-[11px] text-foreground bg-muted/80 px-2 py-0.5 rounded-md border border-border/60">
-                                {b.item?.inventoryCode || b.itemId.slice(0, 8)}
-                              </span>
-                              {b.item?.status && (
-                                <span className="text-[10px] text-muted-foreground font-medium">· {b.item.status}</span>
-                              )}
-                            </div>
-                          </div>
+                          <span className="font-mono font-bold text-xs tracking-wider text-white truncate">
+                            {codeDisplay}
+                          </span>
                         </div>
 
-                        <span
-                          className={`inline-flex items-center gap-1.5 text-[10px] shrink-0 font-semibold px-2.5 py-1 rounded-full border ${
-                            b.status === 'RETURNED'
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                              : isOverdue
-                              ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-800 animate-pulse'
-                              : 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800'
-                          }`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${b.status === 'RETURNED' ? 'bg-emerald-500' : isOverdue ? 'bg-red-500' : 'bg-sky-500'}`} />
-                          <span>{b.status === 'RETURNED' ? 'Returned' : isOverdue ? 'Overdue' : 'Borrowed'}</span>
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs",
+                              b.status === 'RETURNED'
+                                ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/40"
+                                : isOverdue
+                                ? "bg-rose-500/25 text-rose-200 border-rose-400/40 animate-pulse"
+                                : "bg-amber-400/20 text-amber-200 border-amber-300/40"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                b.status === 'RETURNED'
+                                  ? "bg-emerald-400"
+                                  : isOverdue
+                                  ? "bg-rose-400"
+                                  : "bg-amber-400"
+                              )}
+                            />
+                            <span>{b.status === 'RETURNED' ? 'Returned' : isOverdue ? 'Overdue' : 'Borrowed'}</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => setDetailsBorrowing(b)}
+                            className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                            title="More details"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Borrower */}
-                      <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-muted/[0.25] border border-border/50 text-xs">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 border border-primary/20">
-                          {b.borrowerName.charAt(0).toUpperCase()}
+                      {/* ── CARD BODY ── */}
+                      <div className="p-4 sm:p-5 space-y-4 bg-white dark:bg-card">
+                        {/* Title & Subtitle */}
+                        <div className="space-y-0.5">
+                          <h4 className="text-base sm:text-lg font-bold font-headline text-foreground leading-snug truncate">
+                            {b.item?.name || 'Equipment'}
+                          </h4>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {(b.item as any)?.category?.name || b.item?.status || 'Active Asset'} &bull; {(b as any).quantity || 1} {(b.item as any)?.unit || 'pcs'}
+                          </p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-bold text-foreground text-xs truncate block">{b.borrowerName}</span>
-                          {b.borrowerEmail ? (
-                            <span className="text-[11px] text-muted-foreground truncate block">{b.borrowerEmail}</span>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground truncate block">Church Worker</span>
+
+                        {/* Borrower User Row */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center font-black text-xs shrink-0 border border-sidebar/20 shadow-2xs">
+                            {borrowerInitials}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-foreground truncate">{b.borrowerName}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {b.borrowerEmail || 'Church Worker / Volunteer'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 2x2 Grid Info Box (matching ROOM / DATE & TIME / HEADCOUNT / CREATED layout) */}
+                        <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/70 dark:bg-muted/20 border border-slate-200/80 dark:border-border/60 grid grid-cols-2 gap-3.5 text-xs shadow-2xs">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              BORROWED
+                            </span>
+                            <span className="font-bold text-foreground text-xs block truncate">
+                              {b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              DUE SCHEDULE
+                            </span>
+                            <span className={cn("font-bold text-xs block truncate", isOverdue ? "text-destructive" : "text-foreground")}>
+                              {dueInfo?.text || 'Open Schedule'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              CONDITION
+                            </span>
+                            <span className="font-bold text-foreground text-xs block truncate">
+                              {b.status === 'RETURNED' ? b.returnCondition || 'Returned' : b.checkoutCondition || 'Good Condition'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              QUANTITY
+                            </span>
+                            <span className="font-bold text-foreground text-xs block truncate">
+                              {(b as any).quantity || 1} {(b.item as any)?.unit || 'pcs'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Condition Notes Banner */}
+                        {(b.checkoutNotes || b.returnNotes) && (
+                          <div className="text-xs text-muted-foreground bg-muted/30 p-2.5 rounded-xl border border-border/50 leading-relaxed italic">
+                            "{b.status === 'RETURNED' ? b.returnNotes || 'No return notes' : b.checkoutNotes || 'Standard checkout'}"
+                          </div>
+                        )}
+
+                        {b.returnPhotos && b.returnPhotos.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setDetailsBorrowing(b)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer w-fit"
+                          >
+                            <Camera className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                            <span>{b.returnPhotos.length} Damage Photo Evidence in DB (View)</span>
+                          </button>
+                        )}
+
+                        {/* Card Actions */}
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-border/50">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-9 text-xs gap-1.5 rounded-xl border-border/70 cursor-pointer px-3.5 shadow-2xs font-semibold hover:bg-muted/50"
+                              onClick={() => setDetailsBorrowing(b)}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>Details</span>
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-9 w-9 p-0 rounded-xl border-border/70 cursor-pointer shadow-2xs hover:bg-muted/50"
+                              title="Print Borrowing Transaction QR"
+                              onClick={() => setQrBorrowing(b)}
+                            >
+                              <QrCode className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                            </Button>
+                          </div>
+
+                          {b.status === 'BORROWED' && (
+                            <Button
+                              size="sm"
+                              className="h-9 text-xs gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer px-4 shadow-xs ml-auto"
+                              onClick={() => openReturnModal(b)}
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>Return Item</span>
+                            </Button>
                           )}
                         </div>
-                      </div>
-
-                      {/* Dates & Status Note */}
-                      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-                          <span className="truncate">Borrowed: {b.borrowedAt ? new Date(b.borrowedAt).toLocaleDateString() : '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className={`h-3.5 w-3.5 shrink-0 ${isOverdue ? 'text-destructive' : 'text-muted-foreground/70'}`} />
-                          <span className={`truncate ${isOverdue ? 'text-destructive font-bold' : ''}`}>
-                            {dueInfo?.text || 'No due date'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Condition & Notes */}
-                      {(b.checkoutNotes || b.returnNotes || b.checkoutCondition || b.returnCondition) && (
-                        <div className="text-xs text-muted-foreground bg-muted/[0.2] p-2.5 rounded-xl border border-border/40 leading-relaxed">
-                          <span className="font-semibold text-foreground">
-                            {b.status === 'RETURNED' ? b.returnCondition || 'Returned' : b.checkoutCondition || 'Checked out'}:
-                          </span>{' '}
-                          <span className="text-muted-foreground">
-                            {b.status === 'RETURNED' ? b.returnNotes || 'No notes' : b.checkoutNotes || 'Standard checkout'}
-                          </span>
-                        </div>
-                      )}
-
-                      {b.returnPhotos && b.returnPhotos.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setDetailsBorrowing(b)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer w-fit"
-                        >
-                          <Camera className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                          <span>{b.returnPhotos.length} Damage Photo Evidence in DB (View)</span>
-                        </button>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex items-center justify-end gap-2 pt-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 text-xs gap-1.5 rounded-xl border-border/70 cursor-pointer px-3 shadow-2xs font-semibold"
-                          onClick={() => setDetailsBorrowing(b)}
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>Details</span>
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0 rounded-xl border-border/70 cursor-pointer shadow-2xs"
-                          title="Print Borrowing Transaction QR"
-                          onClick={() => setQrBorrowing(b)}
-                        >
-                          <QrCode className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                        </Button>
-
-                        {b.status === 'BORROWED' && (
-                          <Button
-                            size="sm"
-                            className="h-8 text-xs gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer px-3.5 shadow-xs"
-                            onClick={() => openReturnModal(b)}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Return Item</span>
-                          </Button>
-                        )}
                       </div>
                     </div>
                   );

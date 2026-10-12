@@ -380,7 +380,13 @@ function AttendanceContent() {
   const lateCount = sessions.filter(s => s.isLate && s.timeOut !== null).length;
 
   const workerStatusMap = useMemo(() => {
-    const map: Record<string, { status: "timed-in" | "timed-out" | "not-yet"; lastTime: Date | null; lastType: string | null }> = {};
+    const map: Record<string, {
+      status: "timed-in" | "timed-out" | "not-yet";
+      lastTime: Date | null;
+      lastType: string | null;
+      timeIn: Date | null;
+      timeOut: Date | null;
+    }> = {};
     if (!todayAttendance) return map;
     const sorted = [...todayAttendance].sort((a, b) => {
       const da = a.time instanceof Date ? a.time : new Date(a.time);
@@ -389,7 +395,23 @@ function AttendanceContent() {
     });
     for (const r of sorted) {
       const t = r.time instanceof Date ? r.time : new Date(r.time);
-      map[r.workerProfileId] = { status: r.type === "Clock In" ? "timed-in" : "timed-out", lastTime: t, lastType: r.type };
+      const entry = map[r.workerProfileId] || {
+        status: "not-yet",
+        lastTime: null,
+        lastType: null,
+        timeIn: null,
+        timeOut: null,
+      };
+      if (r.type === "Clock In") {
+        if (!entry.timeIn) entry.timeIn = t;
+        entry.status = "timed-in";
+      } else if (r.type === "Clock Out") {
+        entry.timeOut = t;
+        entry.status = "timed-out";
+      }
+      entry.lastTime = t;
+      entry.lastType = r.type;
+      map[r.workerProfileId] = entry;
     }
     return map;
   }, [todayAttendance]);
@@ -719,77 +741,110 @@ function AttendanceContent() {
             <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card">
 
               {/* ── Mobile card view ── */}
-              <div className="md:hidden divide-y divide-border/60 flex-grow">
+              <div className="md:hidden p-3 sm:p-4 space-y-3 flex-grow bg-slate-50/50 dark:bg-muted/10">
                 {filteredWorkers.length === 0 ? (
-                  <div className="py-14 text-center text-xs font-medium text-muted-foreground">No workers found.</div>
-                ) : filteredWorkers.map(w => {
-                  const ws = workerStatusMap[w.id];
-                  const currentStatus = ws?.status ?? "not-yet";
-                  const lastTime = ws?.lastTime ? format(ws.lastTime, "h:mm a") : null;
-                  const lastType = ws?.lastType;
-                  const ministry = (ministries as any[]).find(m => m.id === w.majorMinistryId);
-                  const roleName = getRoleName(w);
-                  return (
-                    <div key={w.id} className="p-4 space-y-3 bg-card hover:bg-muted/10 transition-colors">
-                      {/* Top: Avatar, Name, Ministry & Status Badge */}
-                      <div className="flex items-start justify-between gap-2.5">
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <WorkerInitials name={`${w.firstName} ${w.lastName}`} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold text-foreground leading-tight truncate">
+                  <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/60">
+                    No workers found.
+                  </div>
+                ) : (
+                  filteredWorkers.map(w => {
+                    const ws = workerStatusMap[w.id];
+                    const timeInStr = ws?.timeIn ? format(ws.timeIn, "h:mm a") : null;
+                    const timeOutStr = ws?.timeOut ? format(ws.timeOut, "h:mm a") : null;
+                    const ministry = (ministries as any[]).find(m => m.id === w.majorMinistryId);
+                    const initials = (() => {
+                      const parts = `${w.firstName} ${w.lastName}`.trim().split(" ");
+                      return parts.length >= 2
+                        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                        : `${w.firstName}`.slice(0, 2).toUpperCase();
+                    })();
+
+                    return (
+                      <div
+                        key={w.id}
+                        className="rounded-2xl border border-slate-200/80 dark:border-border/70 bg-white dark:bg-card p-4 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 shadow-2xs hover:shadow-xs transition-shadow"
+                      >
+                        {/* Left: Avatar, Name, Ministry & Date, Times + Badge */}
+                        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                          <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-blue-100 dark:bg-blue-950/60 text-primary dark:text-blue-300 text-sm font-bold flex items-center justify-center shrink-0">
+                            {initials}
+                          </span>
+
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="text-sm sm:text-base font-bold font-headline text-foreground leading-tight truncate">
                               {w.firstName} {w.lastName}
                             </p>
-                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                              {ministry?.name || "—"}
+                            <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                              {ministry?.name || "No Ministry"} · {format(new Date(), "MMM d, yyyy")}
                             </p>
+
+                            <div className="flex items-center gap-2 pt-1 flex-wrap">
+                              <span className="text-xs text-muted-foreground">
+                                In: <strong className="text-foreground font-semibold">{timeInStr || "——"}</strong>
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Out: <strong className="text-foreground font-semibold">{timeOutStr || "——"}</strong>
+                              </span>
+                              {timeInStr && !timeOutStr ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800">
+                                  Incomplete
+                                </span>
+                              ) : timeInStr && timeOutStr ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+                                  Completed
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
+                                  Not Yet Timed In
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <AttendanceStatusBadge status={currentStatus} />
-                      </div>
 
-                      {/* Middle: Role & Last Activity */}
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <RoleBadge role={roleName} />
-                        {lastTime ? (
-                          <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            {lastType === "Clock In" ? "In" : "Out"} · {lastTime}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground/60 italic">
-                            No logs today
-                          </span>
-                        )}
+                        {/* Right: Stacked Action Buttons */}
+                        <div className="flex flex-col gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
+                              const hasStub = assignedStubs?.some((s: any) => {
+                                const sd = s.date instanceof Date ? s.date : new Date(s.date);
+                                return s.workerId === w.id && sd >= todayStart;
+                              });
+                              if (!hasStub) {
+                                try {
+                                  await createMealStub({
+                                    workerId: w.id,
+                                    workerName: `${w.firstName} ${w.lastName}`,
+                                    status: "Issued",
+                                    assignedBy: workerProfile?.id || user?.id,
+                                    assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"),
+                                    stubType: "daily",
+                                  });
+                                } catch {}
+                              }
+                              toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
+                            }}
+                            className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer min-w-[76px]"
+                          >
+                            <LogIn className="h-3.5 w-3.5" /> In
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
+                              toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
+                            }}
+                            className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer min-w-[76px]"
+                          >
+                            <LogOut className="h-3.5 w-3.5" /> Out
+                          </button>
+                        </div>
                       </div>
-
-                      {/* Bottom Actions: Two Full-Width Styled Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
-                            const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === w.id && sd >= todayStart; });
-                            if (!hasStub) { try { await createMealStub({ workerId: w.id, workerName: `${w.firstName} ${w.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch {} }
-                            toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
-                          }}
-                          className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                        >
-                          <LogIn className="h-3.5 w-3.5" /> Time In
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
-                            toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
-                          }}
-                          className="h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                        >
-                          <LogOut className="h-3.5 w-3.5" /> Time Out
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
 
               {/* ── Desktop table view ── */}

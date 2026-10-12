@@ -101,27 +101,7 @@ export function ReportsPanel() {
         }
       `}</style>
 
-      {/* ── TOP ACTIONS TOOLBAR ── */}
-      <div className="flex items-center justify-end gap-2 no-print">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchAnalytics(true)}
-          disabled={refreshing}
-          className="gap-2 rounded-xl border-border/80 shadow-2xs text-xs font-semibold hover:border-sidebar/40 hover:text-sidebar cursor-pointer h-9 px-3"
-          title="Refresh Analytics Data"
-        >
-          <RotateCw className={cn("h-4 w-4 text-muted-foreground", refreshing && "animate-spin")} />
-          <span>Refresh</span>
-        </Button>
-        <Button
-          onClick={handleExportPDF}
-          className="gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs cursor-pointer h-9 px-4"
-        >
-          <Printer className="h-4 w-4" />
-          <span>Export / Print PDF</span>
-        </Button>
-      </div>
+
 
       {/* ── MAIN CHARTS & LISTS GRID ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -553,12 +553,12 @@ const RoomForm = ({ room, areas, branches, venueElements, onSave, onClose }: { r
 
                 {/* 2. Venue Elements Card */}
                 <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3.5 shadow-2xs">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sidebar dark:text-sky-400">
-                            <Sparkles className="h-4 w-4" />
-                            <span>Included Venue Elements / Amenities</span>
+                    <div className="flex items-center justify-between gap-3 flex-nowrap">
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sidebar dark:text-sky-400 min-w-0">
+                            <Sparkles className="h-4 w-4 shrink-0" />
+                            <span className="truncate sm:whitespace-normal">Included Venue Elements / Amenities</span>
                         </div>
-                        <Badge variant="outline" className="text-[10px] font-bold bg-sidebar/10 text-sidebar dark:text-sky-400 border-sidebar/20 rounded-full px-2.5 py-0.5">
+                        <Badge variant="outline" className="text-[10px] font-bold bg-sidebar/10 text-sidebar dark:text-sky-400 border-sidebar/20 rounded-full px-2.5 py-0.5 whitespace-nowrap shrink-0 inline-flex items-center justify-center">
                             {formData.elements?.length || 0} selected
                         </Badge>
                     </div>
@@ -730,27 +730,36 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                         const status = (room as any).status || 'Active';
                         const isMaintenance = status === 'Maintenance';
                         return (
-                            <div key={room.id} className="rounded-2xl border border-border/70 bg-card p-4 space-y-3 shadow-2xs">
+                            <div
+                                key={room.id}
+                                className="group rounded-2xl border border-slate-200/80 dark:border-border/80 bg-white dark:bg-card p-4 sm:p-5 space-y-3.5 shadow-xs hover:shadow-md hover:border-sidebar/40 dark:hover:border-sidebar/40 transition-all duration-200"
+                            >
                                 <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <div className="w-10 h-10 rounded-2xl bg-sidebar/10 text-sidebar dark:bg-sidebar/30 text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20 shadow-xs">
+                                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                        <div className="w-11 h-11 rounded-2xl bg-sidebar/10 text-sidebar dark:bg-sidebar/25 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sidebar/20 shadow-2xs group-hover:scale-105 transition-transform">
                                             <MapPin className="h-5 w-5" />
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                            <h4 className="font-bold text-foreground text-sm truncate">{room.name}</h4>
-                                            <p className="text-[11px] text-muted-foreground truncate">{branchName !== 'N/A' ? branchName : 'Main Campus'}</p>
+                                        <div className="min-w-0 flex-1 space-y-0.5">
+                                            <h4 className="font-bold text-foreground text-sm sm:text-base font-headline truncate group-hover:text-sidebar transition-colors leading-snug">
+                                                {room.name}
+                                            </h4>
+                                            <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5 font-medium">
+                                                <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                                                <span>{branchName !== 'N/A' ? branchName : 'Main Campus'}</span>
+                                            </p>
                                         </div>
                                     </div>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <button
                                                 type="button"
-                                                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+                                                className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 -mt-1 -mr-1"
+                                                title="Room actions"
                                             >
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
+                                        <DropdownMenuContent align="end" className="w-40 p-1.5 rounded-xl shadow-xl border-border/80">
                                             <DropdownMenuItem
                                                 onClick={() => onEdit(room)}
                                                 className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
@@ -761,33 +770,38 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                                                 onClick={() => onDelete(room)}
                                                 className="text-destructive cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 focus:text-destructive focus:bg-destructive/10"
                                             >
-                                                <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete
+                                                <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Room
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
 
-                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+                                <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-border/60">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <Badge variant="outline" className="text-[11px] font-semibold bg-slate-100 dark:bg-muted/40 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-border rounded-lg px-2.5 py-0.5">
-                                            {areaName}
+                                        <Badge
+                                            variant="outline"
+                                            className="text-[11px] font-semibold bg-slate-100 dark:bg-muted/50 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-border/70 rounded-lg px-2.5 py-1 inline-flex items-center gap-1.5"
+                                        >
+                                            <Layers className="h-3 w-3 text-slate-400 shrink-0" />
+                                            <span>{areaName}</span>
                                         </Badge>
                                         <Badge
                                             variant="secondary"
                                             className={cn(
-                                                "px-2.5 py-0.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1.5",
+                                                "px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 border",
                                                 isMaintenance
-                                                    ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                                    ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                                                     : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                                             )}
                                         >
-                                            <span className={cn("w-1.5 h-1.5 rounded-full", isMaintenance ? "bg-amber-500" : "bg-emerald-500")} />
-                                            {status}
+                                            <span className={cn("w-1.5 h-1.5 rounded-full", isMaintenance ? "bg-amber-500" : "bg-emerald-500 animate-pulse")} />
+                                            <span>{status}</span>
                                         </Badge>
                                     </div>
 
-                                    <span className="inline-flex items-center justify-center gap-1 px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs whitespace-nowrap shrink-0">
-                                        {room.capacity} seats
+                                    <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs whitespace-nowrap shrink-0 ml-auto">
+                                        <Users className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                        <span>{room.capacity} seats</span>
                                     </span>
                                 </div>
                             </div>
@@ -1058,8 +1072,8 @@ export default function RoomManagementPage() {
                 </div>
 
                 <div className="space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {/* Segmented Tab Selector (Left aligned) */}
-                <div className="flex items-center justify-start w-full -mb-5">
+                    {/* Segmented Tab Selector (Right aligned) */}
+                <div className="flex items-center justify-end w-full -mb-5">
                     <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-muted p-1 rounded-xl border border-slate-200/70 dark:border-border/50 shadow-2xs w-fit">
                         <button
                             type="button"

@@ -991,16 +991,17 @@ const DevotionDetailsModal = ({
                   )}
                 </div>
 
-                <DialogDescription className="text-xs text-muted-foreground truncate pt-0.5">
-                  Mentor: <strong className="text-foreground font-semibold">{devotion.mentorName || "Mentor"}</strong>
-                  {devotion.mentorRole && (
-                    <span className="ml-1 text-[10px] bg-sidebar/10 text-sidebar px-2 py-0.5 rounded-full font-bold">
-                      {devotion.mentorRole}
-                    </span>
-                  )}
-                  {" • "}
-                  Attendees: <strong className="text-foreground font-semibold">{devotion.attendeeNames?.join(", ") || "Mentee"}</strong>
+                <DialogDescription className="sr-only">
+                  Devotion session details and reflections
                 </DialogDescription>
+                <div className="text-xs text-muted-foreground pt-1 space-y-0.5">
+                  <p className="truncate">
+                    Mentor: <strong className="text-foreground font-semibold">{devotion.mentorName || "Mentor"}</strong>
+                  </p>
+                  <p className="truncate">
+                    Mentee: <strong className="text-foreground font-semibold">{devotion.attendeeNames?.join(", ") || "Mentee"}</strong>
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -3359,15 +3360,39 @@ function C2SPageContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const getRoleString = (raw: any): string => {
+    if (!raw) return "";
+    if (typeof raw === "string") return raw.toLowerCase().trim();
+    if (typeof raw === "object" && raw.name && typeof raw.name === "string") return raw.name.toLowerCase().trim();
+    if (typeof raw === "object" && raw.role && typeof raw.role === "string") return raw.role.toLowerCase().trim();
+    return "";
+  };
+
+  const matchedRoleObj = Array.isArray(allRoles)
+    ? allRoles.find((r: any) => r && (r.id === workerProfile?.roleId || r.id === (workerProfile as any)?.role?.id))
+    : null;
+
+  const userRoleName = getRoleString(matchedRoleObj?.name || (workerProfile as any)?.role || (workerProfile as any)?.role?.name || "");
+
+  // Strict Admin detection: ONLY true if the CURRENT USER is Super Admin or has an Admin role
+  const isAdminUser = Boolean(
+    isSuperAdmin ||
+    userRoleName === "admin" ||
+    userRoleName === "super admin" ||
+    userRoleName.includes("admin")
+  );
+
+  const effectiveMinistryIds = !isAdminUser && !isSuperAdmin ? myMinistryIds : undefined;
+
   // Queries placed at top of component
   const { data: devotions, isLoading: devotionsLoading } = useQuery({
-    queryKey: ["c2s-devotions", { actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }],
-    queryFn: () => getC2SDevotionRecords({ actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }),
+    queryKey: ["c2s-devotions", { actorId: workerProfile?.id, ministryIds: effectiveMinistryIds }],
+    queryFn: () => getC2SDevotionRecords({ actorId: workerProfile?.id, ministryIds: effectiveMinistryIds }),
   });
 
   const { data: rawGroups, isLoading: groupsLoading } = useQuery({
-    queryKey: ["c2s-groups", { actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }],
-    queryFn: () => getC2SGroups({ actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }),
+    queryKey: ["c2s-groups", { actorId: workerProfile?.id, ministryIds: effectiveMinistryIds }],
+    queryFn: () => getC2SGroups({ actorId: workerProfile?.id, ministryIds: effectiveMinistryIds }),
   });
   const groups = useMemo<any[]>(() => {
     if (Array.isArray(rawGroups)) return rawGroups;
@@ -3376,8 +3401,8 @@ function C2SPageContent() {
   }, [rawGroups]);
 
   const { data: rawMentees, isLoading: menteesLoading } = useQuery({
-    queryKey: ["c2s-mentees", { actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }],
-    queryFn: () => getC2SMentees({ actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }),
+    queryKey: ["c2s-mentees", { actorId: workerProfile?.id, ministryIds: effectiveMinistryIds }],
+    queryFn: () => getC2SMentees({ actorId: workerProfile?.id, ministryIds: effectiveMinistryIds }),
   });
   const mentees = useMemo<any[]>(() => {
     if (Array.isArray(rawMentees)) return rawMentees;
@@ -3386,8 +3411,8 @@ function C2SPageContent() {
   }, [rawMentees]);
 
   const { data: rawWorkers, isLoading: workersLoading } = useQuery({
-    queryKey: ["workers", "all", { actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }],
-    queryFn: () => getWorkers({ actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }),
+    queryKey: ["workers", "all", { actorId: workerProfile?.id, ministryIds: effectiveMinistryIds }],
+    queryFn: () => getWorkers({ actorId: workerProfile?.id, ministryIds: effectiveMinistryIds }),
   });
   const workers = useMemo<Worker[]>(() => {
     if (Array.isArray(rawWorkers)) return rawWorkers as Worker[];
@@ -3490,28 +3515,6 @@ function C2SPageContent() {
     return map;
   }, [allMinistries]);
 
-  const getRoleString = (raw: any): string => {
-    if (!raw) return "";
-    if (typeof raw === "string") return raw.toLowerCase().trim();
-    if (typeof raw === "object" && raw.name && typeof raw.name === "string") return raw.name.toLowerCase().trim();
-    if (typeof raw === "object" && raw.role && typeof raw.role === "string") return raw.role.toLowerCase().trim();
-    return "";
-  };
-
-  const matchedRoleObj = Array.isArray(allRoles)
-    ? allRoles.find((r: any) => r && (r.id === workerProfile?.roleId || r.id === (workerProfile as any)?.role?.id))
-    : null;
-
-  const userRoleName = getRoleString(matchedRoleObj?.name || (workerProfile as any)?.role || (workerProfile as any)?.role?.name || "");
-
-  // Strict Admin detection: ONLY true if the CURRENT USER is Super Admin or has an Admin role
-  const isAdminUser = Boolean(
-    isSuperAdmin ||
-    userRoleName === "admin" ||
-    userRoleName === "super admin" ||
-    userRoleName.includes("admin")
-  );
-
   // Strict Ministry Head detection: ONLY true if the CURRENT USER is a Ministry Head (NOT worker, NOT admin)
   const isExplicitHeadInMinistries = Boolean(
     Array.isArray(allMinistries) &&
@@ -3568,10 +3571,23 @@ function C2SPageContent() {
     }
   }, [searchParams, isAdminUser, isHeadOrAdmin, tabParam]);
 
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
   const handleTabChange = (val: string) => {
     const normalized = val === "groups" ? "mentees" : val;
     setActiveTab(normalized);
     router.push(`/c2s?tab=${normalized}`);
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -3749,7 +3765,7 @@ function C2SPageContent() {
     onSuccess: (newRecord) => {
       if (newRecord) {
         setLocalDevotions((prev) => {
-          const updated = [newRecord, ...prev.filter((d) => d.id !== newRecord.id)];
+          const updated = [newRecord as unknown as C2SDevotionRecord, ...prev.filter((d) => d.id !== newRecord.id)];
           try {
             localStorage.setItem("c2s_devotions_storage", JSON.stringify(updated));
           } catch (e) {}
@@ -3771,7 +3787,7 @@ function C2SPageContent() {
     onSuccess: (updatedRecord) => {
       if (updatedRecord) {
         setLocalDevotions((prev) => {
-          const updated = prev.map((d) => (d.id === updatedRecord.id ? updatedRecord : d));
+          const updated = prev.map((d) => (d.id === updatedRecord.id ? (updatedRecord as unknown as C2SDevotionRecord) : d));
           try {
             localStorage.setItem("c2s_devotions_storage", JSON.stringify(updated));
           } catch (e) {}
@@ -4740,10 +4756,10 @@ function C2SPageContent() {
             </div>
 
             {/* Filter and Keyword Search Toolbar */}
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-white dark:bg-card p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-border shadow-xs">
-              {/* Left: Search Bar & Submit Devotion Record Below It */}
-              <div className="flex flex-col gap-2.5 w-full md:w-auto md:min-w-[340px] lg:min-w-[420px]">
-                <div className="relative w-full">
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white dark:bg-card p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-border shadow-xs">
+              {/* Left: Search Bar & Ministry Filter */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 min-w-0">
+                <div className="relative w-full sm:w-72 lg:w-80 shrink-0">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
                   <Input
                     placeholder="Search keyword (lesson, mentee, mentor, prayer)..."
@@ -4761,86 +4777,85 @@ function C2SPageContent() {
                   )}
                 </div>
 
-                <div className="flex items-center">
-                  <Button
-                    onClick={() => {
-                      setEditingDevotion(null);
-                      setIsDevotionSheetOpen(true);
-                    }}
-                    className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-bold text-xs h-10 px-4 gap-1.5 rounded-2xl transition-all cursor-pointer w-full sm:w-auto shrink-0"
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                    Submit Devotion Record
-                  </Button>
-                </div>
+                {/* Department & Ministry Filters */}
+                {(isAdminUser || isMinistryHeadUser) && (
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    {isAdminUser ? (
+                      <Select
+                        value={selectedDeptFilter}
+                        onValueChange={(val) => {
+                          setSelectedDeptFilter(val);
+                          setSelectedClusterFilter(val);
+                        }}
+                      >
+                        <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                          <SelectValue placeholder="All Ministries" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-96 overflow-y-auto">
+                          <SelectItem value="all" className="text-xs font-bold text-primary">
+                            All Ministries
+                          </SelectItem>
+                          {WORDA_ORDER.map((dept) => {
+                            const items = departmentClusters[dept] || [];
+                            if (!items || items.length === 0) return null;
+                            const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
+                            return (
+                              <SelectGroup key={dept}>
+                                <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                                  {titleLabel}
+                                </SelectLabel>
+                                {items.map((item, idx) => (
+                                  <SelectItem key={`admin-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
+                                    {item.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    ) : isMinistryHeadUser ? (
+                      <Select
+                        value={selectedClusterFilter}
+                        onValueChange={(val) => {
+                          setSelectedClusterFilter(val);
+                        }}
+                      >
+                        <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                          <SelectValue placeholder="All Ministries" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-96 overflow-y-auto">
+                          <SelectItem value="all" className="text-xs font-bold text-primary">
+                            All Ministries
+                          </SelectItem>
+                          <SelectGroup>
+                            <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
+                              {headDepartment.toUpperCase()} MINISTRIES
+                            </SelectLabel>
+                            {activeClusterOptions.map((item, idx) => (
+                              <SelectItem key={`head-cluster-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
+                                {item.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
-              {/* Right: Department & Ministry Filters */}
-              {(isAdminUser || isMinistryHeadUser) && (
-                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end">
-                  {isAdminUser ? (
-                    <Select
-                      value={selectedDeptFilter}
-                      onValueChange={(val) => {
-                        setSelectedDeptFilter(val);
-                        setSelectedClusterFilter(val);
-                      }}
-                    >
-                      <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                        <SelectValue placeholder="All Ministries" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-96 overflow-y-auto">
-                        <SelectItem value="all" className="text-xs font-bold text-primary">
-                          All Ministries
-                        </SelectItem>
-                        {WORDA_ORDER.map((dept) => {
-                          const items = departmentClusters[dept] || [];
-                          if (!items || items.length === 0) return null;
-                          const titleLabel = `${dept.charAt(0) + dept.slice(1).toLowerCase()} Department`;
-                          return (
-                            <SelectGroup key={dept}>
-                              <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                                {titleLabel}
-                              </SelectLabel>
-                              {items.map((item, idx) => (
-                                <SelectItem key={`admin-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
-                                  {item.label}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  ) : isMinistryHeadUser ? (
-                    <Select
-                      value={selectedClusterFilter}
-                      onValueChange={(val) => {
-                        setSelectedClusterFilter(val);
-                      }}
-                    >
-                      <SelectTrigger className="w-full sm:w-[220px] h-10 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                        <SelectValue placeholder="All Ministries" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-96 overflow-y-auto">
-                        <SelectItem value="all" className="text-xs font-bold text-primary">
-                          All Ministries
-                        </SelectItem>
-                        <SelectGroup>
-                          <SelectLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 my-1 rounded-sm">
-                            {headDepartment.toUpperCase()} MINISTRIES
-                          </SelectLabel>
-                          {activeClusterOptions.map((item, idx) => (
-                            <SelectItem key={`head-cluster-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  ) : null}
-                </div>
-              )}
+              {/* Right: Submit Devotion Record Action Button */}
+              <Button
+                onClick={() => {
+                  setEditingDevotion(null);
+                  setIsDevotionSheetOpen(true);
+                }}
+                className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-bold text-xs h-10 px-4 gap-1.5 rounded-2xl transition-all cursor-pointer w-full sm:w-auto shrink-0"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Submit Devotion Record
+              </Button>
             </div>
 
             {/* Devotions Grid / Feed */}
@@ -5419,57 +5434,25 @@ function C2SPageContent() {
                     </Button>
                   </div>
 
-                  {/* Segmented Assignment Pills (Thumb-friendly & 1-click on all screen sizes) */}
-                  <div className="grid grid-cols-3 sm:inline-flex p-1 bg-muted/60 dark:bg-muted/30 rounded-2xl border border-border/50 text-center gap-1 sm:w-fit">
-                    <button
-                      type="button"
-                      onClick={() => setMenteeAssignmentFilter("all")}
-                      className={cn(
-                        "py-2 px-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 cursor-pointer",
-                        menteeAssignmentFilter === "all"
-                          ? "bg-primary/10 text-primary border border-primary/20 shadow-2xs font-bold"
-                          : "text-muted-foreground hover:text-foreground border border-transparent"
-                      )}
-                    >
-                      <span className="leading-tight">All Mentees</span>
-                      <span className={cn("text-[10px] sm:text-xs font-bold mt-0.5 sm:mt-0", menteeAssignmentFilter === "all" ? "text-primary" : "text-muted-foreground/80")}>
-                        ({headMenteeCounts.all})
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMenteeAssignmentFilter("my")}
-                      className={cn(
-                        "py-2 px-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 cursor-pointer",
-                        menteeAssignmentFilter === "my"
-                          ? "bg-primary/10 text-primary border border-primary/20 shadow-2xs font-bold"
-                          : "text-muted-foreground hover:text-foreground border border-transparent"
-                      )}
-                    >
-                      <span className="leading-tight">My Mentees</span>
-                      <span className={cn("text-[10px] sm:text-xs font-bold mt-0.5 sm:mt-0", menteeAssignmentFilter === "my" ? "text-primary" : "text-muted-foreground/80")}>
-                        ({headMenteeCounts.my})
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMenteeAssignmentFilter("workers")}
-                      className={cn(
-                        "py-2 px-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 cursor-pointer",
-                        menteeAssignmentFilter === "workers"
-                          ? "bg-primary/10 text-primary border border-primary/20 shadow-2xs font-bold"
-                          : "text-muted-foreground hover:text-foreground border border-transparent"
-                      )}
-                    >
-                      <span className="leading-tight">Worker&apos;s Mentees</span>
-                      <span className={cn("text-[10px] sm:text-xs font-bold mt-0.5 sm:mt-0", menteeAssignmentFilter === "workers" ? "text-primary" : "text-muted-foreground/80")}>
-                        ({headMenteeCounts.workers})
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Secondary Filters Row: On mobile in a clean 2-column grid; on desktop inline */}
-                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5">
+                  {/* Filters Row: On mobile in a clean 2-column grid; on desktop inline */}
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 flex-wrap">
+                    {/* Assignment Filter Dropdown */}
+                    <Select value={menteeAssignmentFilter} onValueChange={(val: any) => setMenteeAssignmentFilter(val)}>
+                      <SelectTrigger className="h-9 sm:h-10 w-full sm:w-44 text-xs rounded-xl sm:rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                        <SelectValue placeholder="All Mentees" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-xs cursor-pointer">
+                          All Mentees ({headMenteeCounts.all})
+                        </SelectItem>
+                        <SelectItem value="my" className="text-xs cursor-pointer">
+                          My Mentees ({headMenteeCounts.my})
+                        </SelectItem>
+                        <SelectItem value="workers" className="text-xs cursor-pointer">
+                          Worker&apos;s Mentees ({headMenteeCounts.workers})
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     {/* Admin Department Filter */}
                     {isAdminUser && (
                       <Select
