@@ -998,23 +998,27 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
                     </div>
                     <table role="presentation" width="100%" style="font-size: 14px; border-collapse: collapse;">
                       <tr>
-                        <td style="padding: 5px 0; color: #64748b; width: 140px; font-weight: 500;">Login Portal:</td>
-                        <td style="padding: 5px 0; color: #0f172a; font-weight: 600;">
+                        <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 150px; white-space: nowrap; vertical-align: middle;">Login Portal:</td>
+                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">
                           <a href="${loginUrl}" style="color: #2563eb; text-decoration: underline;">${loginUrl}</a>
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 5px 0; color: #64748b; font-weight: 500;">Email:</td>
-                        <td style="padding: 5px 0; color: #0f172a; font-weight: 600; font-family: monospace;">${data.email}</td>
+                        <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 150px; white-space: nowrap; vertical-align: middle;">Email:</td>
+                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600; font-family: monospace; vertical-align: middle;">${data.email}</td>
                       </tr>
                       <tr>
-                        <td style="padding: 5px 0; color: #64748b; font-weight: 500;">Worker ID:</td>
-                        <td style="padding: 5px 0; color: #0f172a; font-weight: 600; font-family: monospace;">${worker.workerId || 'Pending'}</td>
+                        <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 150px; white-space: nowrap; vertical-align: middle;">Worker ID:</td>
+                        <td style="padding: 6px 0; vertical-align: middle;">
+                          <span style="display: inline-block; background-color: #1e3a8a; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-family: monospace; font-size: 14px; letter-spacing: 0.05em; white-space: nowrap;">
+                            ${worker.workerId || 'Pending'}
+                          </span>
+                        </td>
                       </tr>
                       <tr>
-                        <td style="padding: 5px 0; color: #64748b; font-weight: 500;">Default Password:</td>
-                        <td style="padding: 5px 0;">
-                          <span style="display: inline-block; background-color: #1e3a8a; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-family: monospace; font-size: 14px; letter-spacing: 0.05em;">
+                        <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 150px; white-space: nowrap; vertical-align: middle;">Default Password:</td>
+                        <td style="padding: 6px 0; vertical-align: middle;">
+                          <span style="display: inline-block; background-color: #1e3a8a; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-family: monospace; font-size: 14px; letter-spacing: 0.05em; white-space: nowrap;">
                             ${defaultPassword}
                           </span>
                         </td>
@@ -1861,6 +1865,7 @@ export async function getMealStubs(filters: {
     ministryIds?: string[];
     actorId?: string;
     take?: number;
+    includeSelf?: boolean;
 } = {}) {
     const where: any = {};
     if (filters.workerId) where.workerId = filters.workerId;
@@ -1874,26 +1879,39 @@ export async function getMealStubs(filters: {
     let allowedIds: string[] | null = null;
 
     if (filters.actorId) {
-        const access = await getActorMinistryAccess(filters.actorId);
-        if (!access.isSuperAdmin && access.allowedMinistryIds !== null) {
-            allowedIds = filters.ministryIds && filters.ministryIds.length > 0
-                ? filters.ministryIds.filter(id => access.allowedMinistryIds!.includes(id))
-                : access.allowedMinistryIds;
-            if (allowedIds.length === 0) {
-                return [];
+        const isSelfQuery = Boolean(filters.workerId && filters.actorId === filters.workerId);
+        if (!isSelfQuery) {
+            const access = await getActorMinistryAccess(filters.actorId);
+            if (!access.isSuperAdmin && access.allowedMinistryIds !== null) {
+                allowedIds = filters.ministryIds && filters.ministryIds.length > 0
+                    ? filters.ministryIds.filter(id => access.allowedMinistryIds!.includes(id))
+                    : access.allowedMinistryIds;
+                if (allowedIds.length === 0 && !filters.includeSelf) {
+                    return [];
+                }
             }
         }
     } else if (filters.ministryIds && filters.ministryIds.length > 0) {
         allowedIds = filters.ministryIds;
     }
 
-    if (allowedIds !== null) {
-        where.worker = {
-            OR: [
-                { majorMinistryId: { in: allowedIds } },
-                { minorMinistryId: { in: allowedIds } },
-            ],
-        };
+    if (allowedIds !== null && allowedIds.length > 0) {
+        const ministryConditions = [
+            { majorMinistryId: { in: allowedIds } },
+            { minorMinistryId: { in: allowedIds } },
+        ];
+        if (filters.includeSelf && filters.actorId) {
+            where.OR = [
+                { worker: { OR: ministryConditions } },
+                { workerId: filters.actorId },
+            ];
+        } else {
+            where.worker = {
+                OR: ministryConditions,
+            };
+        }
+    } else if (filters.includeSelf && filters.actorId) {
+        where.workerId = filters.actorId;
     }
 
     return await prisma.mealStub.findMany({

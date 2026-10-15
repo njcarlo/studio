@@ -166,6 +166,13 @@
     width: 0px;
     height: 0px;
   }
+
+  /* Remove white border line on mobile sidebar drawer */
+  [data-sidebar="sidebar"][data-mobile="true"],
+  [data-sidebar="sidebar"][data-mobile="true"] > div {
+    border: none !important;
+    border-right: none !important;
+  }
 }
 
 /* ============================================================ */
@@ -313,7 +320,46 @@ select {
   font-size: calc(1rem * var(--font-scale, 1)) !important;
 }
 
+/* Allow explicit font size overrides on form controls */
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]).text-sm,
+input.text-sm,
+textarea.text-sm,
+select.text-sm {
+  font-size: calc(0.875rem * var(--font-scale, 1)) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]).text-xs,
+input.text-xs,
+textarea.text-xs,
+select.text-xs {
+  font-size: calc(0.75rem * var(--font-scale, 1)) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]).text-\[11px\],
+input.text-\[11px\],
+textarea.text-\[11px\],
+select.text-\[11px\],
+input.text-\[11px\]::placeholder,
+textarea.text-\[11px\]::placeholder {
+  font-size: calc(11px * var(--font-scale, 1)) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]).text-\[10px\],
+input.text-\[10px\],
+textarea.text-\[10px\],
+select.text-\[10px\],
+input.text-\[10px\]::placeholder,
+textarea.text-\[10px\]::placeholder {
+  font-size: calc(10px * var(--font-scale, 1)) !important;
+}
+
+/* Ensure password inputs match normal text font family and size consistently */
+input[type="password"] {
+  font-family: inherit !important;
+}
+
 table th,
 table td {
   font-size: calc(1rem * var(--font-scale, 1));
-}
+}
+

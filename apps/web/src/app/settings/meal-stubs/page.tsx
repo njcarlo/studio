@@ -201,25 +201,37 @@ export default function MealStubAllocationPage() {
                 <div className={cn("h-1.5 w-full", colors.stripe)} />
 
                 {/* Department header — clickable */}
-                <button onClick={() => toggleDept(dept)} className="w-full px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/20 transition-colors text-left">
-                  <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggleDept(dept)}
+                  className="w-full px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col gap-3 hover:bg-muted/20 transition-colors text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 w-full">
                     <div className={cn("p-2 rounded-xl shrink-0 transition-colors", colors.iconBadge)}>
                       <Utensils className="h-4 w-4" />
                     </div>
-                    <div>
-                      <h3 className="text-base font-bold text-foreground">{dept}</h3>
-                      <p className="text-[11px] text-muted-foreground">
-                        Pool <span className="font-semibold text-foreground">{pool}</span>
-                        {" · "}Allocated <span className={cn("font-semibold", isOver ? "text-red-500" : "text-foreground")}>{allocated}</span>
-                        {" · "}Remaining <span className="font-semibold text-foreground">{remaining}</span>
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-bold text-foreground leading-tight">{dept}</h3>
+                      <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground mt-0.5">
+                        <span>Pool <strong className="font-semibold text-foreground">{pool}</strong></span>
+                        <span className="text-muted-foreground/60">·</span>
+                        <span>Allocated <strong className={cn("font-semibold", isOver ? "text-red-500 font-bold" : "text-foreground")}>{allocated}</strong></span>
+                        <span className="text-muted-foreground/60">·</span>
+                        <span>Remaining <strong className={cn("font-semibold", remaining < 0 ? "text-red-500 font-bold" : "text-foreground")}>{remaining}</strong></span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
+
+                  {/* Sa baba yung line tsaka arrow */}
+                  <div className="flex items-center gap-3 w-full pt-0.5">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div className={cn("h-full rounded-full transition-all", isOver ? "bg-red-500" : colors.progress)} style={{ width: `${pct}%` }} />
                     </div>
-                    {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                    {isExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                    )}
                   </div>
                 </button>
 

@@ -442,8 +442,8 @@ export default function InquiriesPage() {
                   {searchQuery
                     ? "No messages match your search query."
                     : activeTab === "active"
-                    ? "Messages submitted via the Contact Us form will appear here. Messages automatically move to archive after 30 days."
-                    : "Archived messages and messages older than 30 days will appear here."}
+                      ? "Messages submitted via the Contact Us form will appear here. Messages automatically move to archive after 30 days."
+                      : "Archived messages and messages older than 30 days will appear here."}
                 </p>
                 {searchQuery && (
                   <Button
@@ -509,7 +509,7 @@ export default function InquiriesPage() {
                                   onClick={() => handleOpenDetails(inquiry)}
                                   className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
                                 >
-                                  <Eye className="w-4 h-4 text-blue-500" />
+                                  <Eye className="w-4 h-4 text-muted-foreground" />
                                   <span>View Details</span>
                                 </DropdownMenuItem>
 
@@ -736,7 +736,7 @@ export default function InquiriesPage() {
                                       onClick={() => handleOpenDetails(inquiry)}
                                       className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
                                     >
-                                      <Eye className="w-4 h-4 text-blue-500" />
+                                      <Eye className="w-4 h-4 text-muted-foreground" />
                                       <span>View Details</span>
                                     </DropdownMenuItem>
 
@@ -961,13 +961,13 @@ export default function InquiriesPage() {
               </div>
             )}
 
-            <AlertDialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">
-              <AlertDialogCancel className="h-10 rounded-xl px-5 text-xs font-semibold cursor-pointer">
+            <AlertDialogFooter className="flex flex-row items-center justify-end gap-2 pt-3 border-t border-border/40">
+              <AlertDialogCancel className="h-10 rounded-xl px-4 sm:px-5 text-xs font-semibold cursor-pointer mt-0 shrink-0">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => archiveCandidate && archiveMutation.mutate(archiveCandidate.id)}
-                className="h-10 rounded-xl px-5 text-xs font-semibold bg-sidebar hover:bg-sidebar/90 text-white shadow-sm flex items-center gap-2 cursor-pointer"
+                className="h-10 rounded-xl px-4 sm:px-5 text-xs font-semibold bg-sidebar hover:bg-sidebar/90 text-white shadow-sm flex items-center gap-2 cursor-pointer shrink-0"
               >
                 <Archive className="w-3.5 h-3.5" />
                 Archive Message
@@ -1040,8 +1040,8 @@ export default function InquiriesPage() {
               </div>
             )}
 
-            <AlertDialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-border/40">
-              <AlertDialogCancel className="h-10 rounded-xl px-5 text-xs font-semibold cursor-pointer">
+            <AlertDialogFooter className="flex flex-row items-center justify-end gap-2 pt-3 border-t border-border/40">
+              <AlertDialogCancel className="h-10 rounded-xl px-4 sm:px-5 text-xs font-semibold cursor-pointer mt-0 shrink-0">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
@@ -1054,7 +1054,7 @@ export default function InquiriesPage() {
                     setStatusCandidate(null);
                   }
                 }}
-                className="h-10 rounded-xl px-5 text-xs font-semibold bg-sidebar hover:bg-sidebar/90 text-white shadow-sm flex items-center gap-2 cursor-pointer"
+                className="h-10 rounded-xl px-4 sm:px-5 text-xs font-semibold bg-sidebar hover:bg-sidebar/90 text-white shadow-sm flex items-center gap-2 cursor-pointer shrink-0"
               >
                 {statusCandidate?.targetStatus === "Responded" ? (
                   <>

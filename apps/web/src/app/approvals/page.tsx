@@ -425,16 +425,16 @@ export default function ApprovalsPage() {
             <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleBulkAction("Approved")}
-                className="h-8 px-4 flex items-center gap-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-              </button>
-              <button
                 onClick={() => handleBulkAction("Rejected")}
-                className="h-8 px-4 flex items-center gap-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-semibold hover:bg-red-100 transition-colors"
+                className="h-8 px-4 flex items-center gap-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-semibold hover:bg-red-100 transition-colors cursor-pointer"
               >
                 <XCircle className="h-3.5 w-3.5" /> Reject
+              </button>
+              <button
+                onClick={() => handleBulkAction("Approved")}
+                className="h-8 px-4 flex items-center gap-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors cursor-pointer"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" /> Approve
               </button>
             </div>
           </div>
@@ -492,6 +492,17 @@ export default function ApprovalsPage() {
                       : null;
                     const room = rooms?.find((r) => r.id === booking?.roomId);
                     const area = areas?.find((a) => a.id === room?.areaId);
+                    let purposeText = booking?.purpose || booking?.title;
+                    if (!purposeText && req.details) {
+                      const match = req.details.match(/^"?(.*?)"?\s+for room:\s*(.*)$/i);
+                      if (match) {
+                        purposeText = match[1];
+                      } else {
+                        purposeText = req.details;
+                      }
+                    }
+                    if (!purposeText) purposeText = "—";
+
                     const reqId = req.id || "";
                     const reqDate = booking?.dateRequested
                       ? new Date(booking.dateRequested)
@@ -580,22 +591,15 @@ export default function ApprovalsPage() {
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="shrink-0">
                               <StatusBadge status={req.status} />
-                              <button
-                                type="button"
-                                onClick={() => setSelectedRequest(req)}
-                                className="text-xs font-semibold text-primary hover:underline px-1 py-0.5 cursor-pointer"
-                              >
-                                Details
-                              </button>
                             </div>
                           </div>
 
-                          {/* Request title / details (purpose and room) */}
+                          {/* Request title / purpose */}
                           <div>
                             <p className="text-sm font-bold text-foreground leading-snug line-clamp-2">
-                              {req.details}
+                              {purposeText}
                             </p>
                           </div>
 
@@ -655,16 +659,16 @@ export default function ApprovalsPage() {
                           {canManage && isPending && (
                             <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                               <button
-                                onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
-                                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-                              >
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-                              </button>
-                              <button
                                 onClick={() => setConfirmAction({ action: "Rejected", ids: [req.id!] })}
                                 className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer"
                               >
                                 <XCircle className="h-3.5 w-3.5" /> Reject
+                              </button>
+                              <button
+                                onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
+                                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Yes
                               </button>
                             </div>
                           )}
@@ -690,7 +694,8 @@ export default function ApprovalsPage() {
                       </div>
                     </th>
                     <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Request ID</th>
-                    <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Request</th>
+                    <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Room</th>
+                    <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Purpose</th>
                     <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Requestor</th>
                     <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Ministry</th>
                     <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Date & Time</th>
@@ -702,7 +707,7 @@ export default function ApprovalsPage() {
                 <tbody>
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-20 text-center text-sm text-muted-foreground font-medium">
+                      <td colSpan={10} className="py-20 text-center text-sm text-muted-foreground font-medium">
                         No requests found.
                       </td>
                     </tr>
@@ -710,6 +715,19 @@ export default function ApprovalsPage() {
                     filteredRequests.map(req => {
                       const worker = workers?.find(w => w.id === req.workerId);
                       const booking = bookings?.find(b => b.id === req.reservationId);
+                      const room = rooms?.find(r => r.id === (req.roomId || booking?.roomId));
+                      const roomName = room?.name || "—";
+                      let purposeText = booking?.purpose || booking?.title;
+                      if (!purposeText && req.details) {
+                        const match = req.details.match(/^"?(.*?)"?\s+for room:\s*(.*)$/i);
+                        if (match) {
+                          purposeText = match[1];
+                        } else {
+                          purposeText = req.details;
+                        }
+                      }
+                      if (!purposeText) purposeText = "—";
+
                       const targetMinistryId = booking?.ministryId || worker?.majorMinistryId || req.newMajorId || req.oldMajorId;
                       const ministry = targetMinistryId
                         ? (allMinistries || ministries)?.find(m => m.id === targetMinistryId)
@@ -740,9 +758,12 @@ export default function ApprovalsPage() {
                           <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground whitespace-nowrap font-medium">
                             REQ-{reqId.slice(-4).toUpperCase()}
                           </td>
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            <span className="text-sm font-semibold text-foreground">{roomName}</span>
+                          </td>
                           <td className="px-5 py-3.5">
-                            <p className="text-sm font-semibold text-foreground leading-snug line-clamp-1">{req.details}</p>
-                            </td>
+                            <p className="text-sm font-medium text-foreground leading-snug line-clamp-1">{purposeText}</p>
+                          </td>
                             <td className="px-5 py-3.5">
                               <div className="flex items-center gap-2">
                                 <Initials name={req.requester} />
@@ -891,16 +912,16 @@ export default function ApprovalsPage() {
                       {canManage && isPending ? (
                         <>
                           <button
-                            onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
-                            className="flex-1 h-8.5 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300/90 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-950/60 shadow-2xs transition-all cursor-pointer"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-                          </button>
-                          <button
                             onClick={() => setConfirmAction({ action: "Rejected", ids: [req.id!] })}
                             className="flex-1 h-8.5 flex items-center justify-center gap-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-300/90 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 dark:hover:bg-red-950/60 shadow-2xs transition-all cursor-pointer"
                           >
                             <XCircle className="h-3.5 w-3.5" /> Reject
+                          </button>
+                          <button
+                            onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
+                            className="flex-1 h-8.5 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300/90 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-950/60 shadow-2xs transition-all cursor-pointer"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Approve
                           </button>
                           <button
                             onClick={() => setSelectedRequest(req)}
@@ -1001,11 +1022,11 @@ export default function ApprovalsPage() {
                           {/* Actions */}
                           {canManage && isPending && (
                             <div className="flex gap-1.5 pt-1 border-t border-border/30" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })} className="flex-1 h-7 flex items-center justify-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors">
-                                <CheckCircle2 className="h-3 w-3" /> Approve
-                              </button>
                               <button onClick={() => setConfirmAction({ action: "Rejected", ids: [req.id!] })} className="flex-1 h-7 flex items-center justify-center gap-1 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-[11px] font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
                                 <XCircle className="h-3 w-3" /> Reject
+                              </button>
+                              <button onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })} className="flex-1 h-7 flex items-center justify-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors">
+                                <CheckCircle2 className="h-3 w-3" /> Approve
                               </button>
                             </div>
                           )}
@@ -1072,7 +1093,7 @@ export default function ApprovalsPage() {
               ) : (
                 <XCircle className="h-3.5 w-3.5 mr-1.5" />
               )}
-              Yes, {confirmAction?.action === "Approved" ? "Approve" : "Reject"}
+              {confirmAction?.action === "Approved" ? "Yes" : "Yes, Reject"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

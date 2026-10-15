@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   SidebarProvider,
@@ -22,6 +22,10 @@ import {
   Calendar as CalendarIcon,
   Menu,
   QrCode,
+  UtensilsCrossed,
+  UserCheck,
+  Package,
+  HeartHandshake,
 } from "lucide-react";
 import Image from "next/image";
 import { useAuthStore } from "@studio/store";
@@ -29,7 +33,6 @@ import { useImpersonation } from "@/hooks/use-impersonation";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@studio/ui";
 import { useSidebar } from "@studio/ui";
-import { useState } from "react";
 
 const MobileSidebarTrigger = () => {
   const { setOpenMobile } = useSidebar();
@@ -121,6 +124,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
+  const { isSuperAdmin, isMinistryHead } = useUserRole();
 
   useEffect(() => {
     // If auth is done loading and there's no user, redirect to login
@@ -128,6 +132,133 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       router.push("/login");
     }
   }, [user, isUserLoading, router]);
+
+  // Mobile Bottom Navigation Tabs by Role
+  const mobileNavTabs = useMemo(() => {
+    // 1. Admin Account:
+    // Stock Monitoring and C2S placed below existing items
+    if (isSuperAdmin) {
+      return [
+        {
+          id: "home",
+          label: "Home",
+          icon: LayoutDashboard,
+          href: "/dashboard",
+          isActive: currentPathname === "/dashboard" || currentPathname === "/",
+        },
+        {
+          id: "my-qr",
+          label: "My QR",
+          icon: QrCode,
+          href: "/workers/my-qr",
+          isActive: currentPathname.startsWith("/workers/my-qr"),
+        },
+        {
+          id: "rooms",
+          label: "Rooms",
+          icon: CalendarIcon,
+          href: "/reservations/all",
+          isActive: currentPathname.startsWith("/reservations"),
+        },
+        {
+          id: "stock",
+          label: "Stock Monitoring",
+          icon: Package,
+          href: "/inventory",
+          isActive: currentPathname.startsWith("/inventory"),
+        },
+        {
+          id: "c2s",
+          label: "C2S",
+          icon: HeartHandshake,
+          href: "/c2s",
+          isActive: currentPathname.startsWith("/c2s"),
+        },
+      ];
+    }
+
+    // 2. Ministry Head Account:
+    // Add C2S tab to existing mobile navigation
+    if (isMinistryHead) {
+      return [
+        {
+          id: "home",
+          label: "Home",
+          icon: LayoutDashboard,
+          href: "/dashboard",
+          isActive: currentPathname === "/dashboard" || currentPathname === "/",
+        },
+        {
+          id: "my-qr",
+          label: "My QR",
+          icon: QrCode,
+          href: "/workers/my-qr",
+          isActive: currentPathname.startsWith("/workers/my-qr"),
+        },
+        {
+          id: "rooms",
+          label: "Rooms",
+          icon: CalendarIcon,
+          href: "/reservations/my",
+          isActive: currentPathname.startsWith("/reservations"),
+        },
+        {
+          id: "c2s",
+          label: "C2S",
+          icon: HeartHandshake,
+          href: "/c2s",
+          isActive: currentPathname.startsWith("/c2s"),
+        },
+      ];
+    }
+
+    // 3. Worker Account:
+    // Home, My QR, Rooms, Meal Stub, Attendance, C2S
+    return [
+      {
+        id: "home",
+        label: "Home",
+        icon: LayoutDashboard,
+        href: "/dashboard",
+        isActive: currentPathname === "/dashboard" || currentPathname === "/",
+      },
+      {
+        id: "my-qr",
+        label: "My QR",
+        icon: QrCode,
+        href: "/workers/my-qr",
+        isActive: currentPathname.startsWith("/workers/my-qr"),
+      },
+      {
+        id: "rooms",
+        label: "Rooms",
+        icon: CalendarIcon,
+        href: "/reservations/my",
+        isActive: currentPathname.startsWith("/reservations"),
+      },
+      {
+        id: "meals",
+        label: "Meal Stub",
+        icon: UtensilsCrossed,
+        href: "/meals?tab=view",
+        isActive: currentPathname.startsWith("/meals") || currentPathname.startsWith("/mealstub"),
+      },
+      {
+        id: "attendance",
+        label: "Attendance",
+        icon: UserCheck,
+        href: "/attendance?tab=personal",
+        isActive: currentPathname.startsWith("/attendance"),
+      },
+      {
+        id: "c2s",
+        label: "C2S",
+        icon: HeartHandshake,
+        href: "/c2s",
+        isActive: currentPathname.startsWith("/c2s"),
+      },
+    ];
+  }, [isSuperAdmin, isMinistryHead, currentPathname]);
 
 
   // While auth is loading, show a full-screen loader if there is no cached user yet
@@ -215,37 +346,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </SidebarInset>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border/60 flex justify-around items-center z-50 pb-[env(safe-area-inset-bottom)] box-content shadow-lg">
-        <Button
-          variant="ghost"
-          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground data-[active=true]:text-primary active:scale-95 transition-all"
-          data-active={currentPathname === "/dashboard" || currentPathname === "/"}
-          onClick={() => router.push("/dashboard")}
-        >
-          <LayoutDashboard className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">Home</span>
-        </Button>
-        <Button
-          variant="ghost"
-          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground data-[active=true]:text-primary active:scale-95 transition-all"
-          data-active={currentPathname.startsWith("/workers/my-qr")}
-          onClick={() => router.push("/workers/my-qr")}
-        >
-          <QrCode className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">My QR</span>
-        </Button>
-        <Button
-          variant="ghost"
-          className="flex-1 h-full flex flex-col justify-center items-center gap-1 rounded-none text-muted-foreground hover:text-foreground data-[active=true]:text-primary active:scale-95 transition-all"
-          data-active={currentPathname.startsWith("/reservations")}
-          onClick={() => router.push("/reservations/my")}
-        >
-          <CalendarIcon className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">Rooms</span>
-        </Button>
-
-        {/* Connects with Sidebar to open the side menu - removed */}
-      </div>
+      <nav
+        aria-label="Mobile Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border/60 z-50 pb-[env(safe-area-inset-bottom)] box-content shadow-lg overflow-x-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex w-full h-full items-center justify-around min-w-full">
+          {mobileNavTabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <Button
+                key={tab.id}
+                variant="ghost"
+                className="flex-1 min-w-[56px] h-full flex flex-col justify-center items-center gap-1 px-1 rounded-none text-muted-foreground hover:text-foreground data-[active=true]:text-primary active:scale-95 transition-all"
+                data-active={tab.isActive}
+                onClick={() => router.push(tab.href)}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className="text-[10px] font-semibold leading-none truncate max-w-full text-center">
+                  {tab.label}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+      </nav>
     </SidebarProvider>
   );
 }

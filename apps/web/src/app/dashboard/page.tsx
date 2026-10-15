@@ -16,7 +16,6 @@ import {
   ArrowRight,
   User,
   Box,
-  CheckCircle2,
   CalendarCheck,
   ChevronDown,
   Building2,
@@ -54,7 +53,8 @@ function parseActivityDate(raw: any): Date {
   if (!raw) return new Date();
   if (raw instanceof Date) return raw;
   if (raw?.seconds) return new Date(raw.seconds * 1000);
-  return new Date(raw);
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? new Date() : d;
 }
 
 export default function DashboardPage() {
@@ -141,7 +141,6 @@ export default function DashboardPage() {
 // ── Admin / Ministry Head view ─────────────────────────────────────────────────
 function AdminDashboard() {
   const [timeRange, setTimeRange] = useState<"7" | "14" | "30">("7");
-  const [activityFilter, setActivityFilter] = useState<"all" | "low-stock">("all");
 
   const { data: workerStats, isLoading: workerStatsLoading } = useWorkerStats();
   const { attendanceRecords, isLoading: attendanceLoading } = useAttendance({
@@ -393,12 +392,13 @@ function AdminDashboard() {
         const currentQty = item.stock ?? item.quantity ?? 0;
         const minQty = item.minQuantity > 0 ? item.minQuantity : 5;
         const catName = item.category?.name || "Equipment";
+        const d = parseActivityDate(item.updatedAt || item.createdAt);
         list.push({
           id: `low-stock-${item.id}`,
           type: "low-stock",
           title: `Low stock: ${item.name}`,
           subtitle: `${currentQty} in stock (safety min: ${minQty}) • ${catName}`,
-          timeStr: "Needs Restock",
+          timeStr: format(d, "h:mm a"),
           // High timestamp so critical low-stock alerts sit directly at top for admin
           timestamp: Date.now() + 100000,
           actionUrl: `/inventory?tab=items&search=${encodeURIComponent(item.name)}`,
@@ -408,27 +408,6 @@ function AdminDashboard() {
 
     return list.sort((a, b) => b.timestamp - a.timestamp).slice(0, 6);
   }, [attendanceRecords, mealStubs, bookings, lowStockItems]);
-
-  const displayedActivities = useMemo(() => {
-    if (activityFilter === "low-stock") {
-      return (lowStockItems || []).map((item: any) => {
-        const currentQty = item.stock ?? item.quantity ?? 0;
-        const minQty = item.minQuantity > 0 ? item.minQuantity : 5;
-        const catName = item.category?.name || "Equipment";
-        const d = parseActivityDate(item.updatedAt);
-        return {
-          id: `low-stock-tab-${item.id}`,
-          type: "low-stock" as const,
-          title: item.name,
-          subtitle: `${catName} • ${item.location || "General Storage"} (Safety min: ${minQty})`,
-          timeStr: `${currentQty} / ${minQty} pcs`,
-          timestamp: d.getTime(),
-          actionUrl: `/inventory?tab=items&search=${encodeURIComponent(item.name)}`,
-        };
-      });
-    }
-    return recentActivities;
-  }, [activityFilter, lowStockItems, recentActivities]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -698,65 +677,23 @@ function AdminDashboard() {
         {/* Widget 3: Recent Activities & Low Stock Restock Alerts */}
         <Card className="border-0 border-none shadow-card-dark bg-card flex flex-col justify-between rounded-2xl overflow-hidden">
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-border/60">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-bold text-foreground">
-                  Recent Activities
-                </CardTitle>
-                {lowStockItems.length > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                    {lowStockItems.length} Low Stock
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex bg-muted/60 p-0.5 rounded-lg border border-border/50 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setActivityFilter("all")}
-                    className={cn(
-                      "px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer",
-                      activityFilter === "all"
-                        ? "bg-background text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActivityFilter("low-stock")}
-                    className={cn(
-                      "px-2.5 py-0.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer",
-                      activityFilter === "low-stock"
-                        ? "bg-background text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground",
-                      lowStockItems.length > 0 && activityFilter !== "low-stock" && "text-rose-600 dark:text-rose-400 font-bold"
-                    )}
-                  >
-                    <span>Low Stock</span>
-                    {lowStockItems.length > 0 && (
-                      <span className="h-4 min-w-4 px-1 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center font-bold">
-                        {lowStockItems.length}
-                      </span>
-                    )}
-                  </button>
-                </div>
-                <Link
-                  href={activityFilter === "low-stock" ? "/inventory?tab=items&status=Low Stock" : "/reports"}
-                  className="text-xs font-bold text-primary hover:underline items-center gap-1 hidden sm:flex"
-                >
-                  <span>View All</span>
-                  <ArrowUpRight className="h-3 w-3" />
-                </Link>
-              </div>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base font-bold text-foreground">
+                Recent Activities
+              </CardTitle>
+              <Link
+                href="/reports"
+                className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+              >
+                <span>View All</span>
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
             </div>
           </CardHeader>
 
           <CardContent className="pt-3 flex flex-col justify-between flex-1">
             {/* Urgent Notice Banner if Low Stock items exist */}
-            {activityFilter === "all" && lowStockItems.length > 0 && (
+            {lowStockItems.length > 0 && (
               <div className="mb-2.5 p-2.5 rounded-xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 flex items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="h-7 w-7 rounded-lg bg-rose-100 dark:bg-rose-900/60 text-rose-600 flex items-center justify-center shrink-0">
@@ -796,8 +733,8 @@ function AdminDashboard() {
                     <div className="h-3 w-14 bg-muted/40 rounded" />
                   </div>
                 ))
-              ) : displayedActivities.length > 0 ? (
-                displayedActivities.map((act: any) => (
+              ) : recentActivities.length > 0 ? (
+                recentActivities.map((act: any) => (
                   <div
                     key={act.id}
                     className="flex items-center justify-between gap-3 text-xs py-2.5 first:pt-1 last:pb-1 group hover:bg-muted/30 px-1 rounded-lg transition-colors"
@@ -830,66 +767,34 @@ function AdminDashboard() {
                         </p>
                       </div>
                     </div>
-                    {act.type === "low-stock" ? (
-                      <Link
-                        href={act.actionUrl || "/inventory?tab=items&status=Low Stock"}
-                        className="text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 px-2 py-0.5 rounded-md border border-rose-200/60 dark:border-rose-800/40 shrink-0 transition-colors flex items-center gap-1"
-                      >
-                        <span>Restock</span>
-                        <ArrowUpRight className="h-3 w-3" />
-                      </Link>
-                    ) : (
-                      <span className="text-[11px] font-semibold text-muted-foreground shrink-0 bg-muted/40 px-2 py-0.5 rounded-md">
-                        {act.timeStr}
-                      </span>
-                    )}
+                    <span className="text-[11px] font-semibold text-muted-foreground shrink-0 bg-muted/40 px-2 py-0.5 rounded-md">
+                      {act.timeStr}
+                    </span>
                   </div>
                 ))
               ) : (
                 <div className="py-10 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
-                  {activityFilter === "low-stock" ? (
-                    <>
-                      <div className="h-8 w-8 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
-                        <CheckCircle2 className="h-4 w-4" />
-                      </div>
-                      <p className="font-semibold text-foreground">Stock levels healthy</p>
-                      <p className="text-[11px]">All items are currently above safety reorder points.</p>
-                    </>
-                  ) : (
-                    <p>No recent activities recorded.</p>
-                  )}
+                  <p>No recent activities recorded.</p>
                 </div>
               )}
             </div>
 
             <div className="pt-3 mt-2 border-t border-slate-200 dark:border-border/80 flex items-center justify-between">
-              {activityFilter === "low-stock" ? (
+              <Link
+                href="/reports"
+                className="text-xs font-bold text-primary hover:underline flex items-center gap-1 group"
+              >
+                <span>View all activity audit logs</span>
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </Link>
+              {lowStockItems.length > 0 && (
                 <Link
                   href="/inventory?tab=items&status=Low Stock"
-                  className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 group"
+                  className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1"
                 >
-                  <span>Manage all stock in Stock Monitoring</span>
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Restock ({lowStockItems.length})</span>
                 </Link>
-              ) : (
-                <>
-                  <Link
-                    href="/reports"
-                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1 group"
-                  >
-                    <span>View all activity audit logs</span>
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                  {lowStockItems.length > 0 && (
-                    <Link
-                      href="/inventory?tab=items&status=Low Stock"
-                      className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1"
-                    >
-                      <AlertTriangle className="h-3 w-3" />
-                      <span>Restock ({lowStockItems.length})</span>
-                    </Link>
-                  )}
-                </>
               )}
             </div>
           </CardContent>

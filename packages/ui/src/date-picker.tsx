@@ -163,7 +163,7 @@ export function DatePicker({
         sideOffset={6}
         collisionPadding={16}
         className={cn(
-          "w-[270px] p-3.5 rounded-2xl border border-slate-200/90 dark:border-border bg-white dark:bg-card shadow-xl shadow-slate-200/50 dark:shadow-none text-slate-900 dark:text-slate-100 select-none",
+          "w-[270px] p-3.5 rounded-2xl border border-slate-200/90 dark:border-border bg-white dark:bg-card shadow-xl text-slate-900 dark:text-slate-100 select-none",
           popoverClassName
         )}
       >

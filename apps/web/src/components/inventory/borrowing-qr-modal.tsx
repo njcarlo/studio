@@ -252,23 +252,23 @@ export function BorrowingQRModal({ isOpen, onClose, borrowing }: BorrowingQRModa
               type="button"
               variant="outline"
               size="sm"
-              onClick={handlePrint}
-              disabled={loading}
-              className="gap-1.5 rounded-xl h-10 px-4 text-xs font-semibold cursor-pointer flex-1 sm:flex-initial"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              <span>Print Slip</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
               onClick={handleDownload}
               disabled={loading}
               className="gap-1.5 rounded-xl h-10 px-4 text-xs font-semibold cursor-pointer flex-1 sm:flex-initial"
             >
               <Download className="h-3.5 w-3.5" />
               <span>PNG</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              disabled={loading}
+              className="gap-1.5 rounded-xl h-10 px-4 text-xs font-semibold cursor-pointer flex-1 sm:flex-initial"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span>Print Slip</span>
             </Button>
           </div>
 

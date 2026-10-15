@@ -479,13 +479,12 @@ export default function QRScannerPage() {
                             {/* Live Result Feedback Banner */}
                             {lastScanResult && (
                                 <div
-                                    className={`p-3.5 rounded-xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${
-                                        lastScanResult.status === 'success'
+                                    className={`p-3.5 rounded-xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${lastScanResult.status === 'success'
                                             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
                                             : lastScanResult.status === 'warning'
-                                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
-                                            : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
-                                    }`}
+                                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
+                                                : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                                        }`}
                                 >
                                     {lastScanResult.status === 'success' ? (
                                         <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -536,13 +535,12 @@ export default function QRScannerPage() {
                                             className="p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors flex items-start gap-2.5"
                                         >
                                             <div
-                                                className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                                                    log.status === 'success'
+                                                className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${log.status === 'success'
                                                         ? 'bg-emerald-500'
                                                         : log.status === 'warning'
-                                                        ? 'bg-amber-500'
-                                                        : 'bg-rose-500'
-                                                }`}
+                                                            ? 'bg-amber-500'
+                                                            : 'bg-rose-500'
+                                                    }`}
                                             />
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-semibold text-xs text-foreground leading-snug">{log.details}</p>

@@ -755,70 +755,70 @@ export default function AllReservationsPage() {
                           </div>
                         </div>
 
-                        {/* Event Title & Purpose */}
                         <div className="p-4">
-                        <div className="mb-2">
-                          <p className="text-sm font-bold text-foreground">
-                            {booking.title}
-                          </p>
-                          {booking.purpose && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {booking.purpose}
-                            </p>
-                          )}
-                        </div>
+                          {/* Requester */}
+                          <div className="flex items-center gap-2.5 mb-2.5">
+                            <div className="w-7 h-7 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
+                              {initials}
+                            </div>
+                            <span className="text-xs font-semibold text-foreground">
+                              {requesterName}
+                            </span>
+                          </div>
 
-                        {/* Requester */}
-                        <div className="flex items-center gap-2.5 mb-3">
-                          <div className="w-7 h-7 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sidebar-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
-                            {initials}
+                          {/* Event Title & Purpose */}
+                          <div className="mb-3">
+                            <p className="text-sm font-bold text-foreground">
+                              {booking.title}
+                            </p>
+                            {booking.purpose && (
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                {booking.purpose}
+                              </p>
+                            )}
                           </div>
-                          <span className="text-xs font-semibold text-foreground">
-                            {requesterName}
-                          </span>
-                        </div>
 
-                        {/* Details grid */}
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                              Room
-                            </p>
-                            <p className="font-semibold text-foreground">
-                              {room?.name || "—"}
-                            </p>
-                            <p className="text-muted-foreground text-[11px]">
-                              {area?.name || "First Floor"}
-                            </p>
+                          {/* Details grid */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Room
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {room?.name || "—"}
+                              </p>
+                              <p className="text-muted-foreground text-[11px]">
+                                {area?.name || "First Floor"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Date & Time
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {format(startTime, "MMM d, yyyy")}
+                              </p>
+                              <p className="text-muted-foreground text-[11px]">
+                                {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Headcount
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {booking.pax || 0} pax
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Created
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {format(createdDate, "MMM d, yyyy")}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                              Date & Time
-                            </p>
-                            <p className="font-semibold text-foreground">
-                              {format(startTime, "MMM d, yyyy")}
-                            </p>
-                            <p className="text-muted-foreground text-[11px]">
-                              {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                              Headcount
-                            </p>
-                            <p className="font-semibold text-foreground">
-                              {booking.pax || 0} pax
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                              Created
-                            </p>
-                            <p className="font-semibold text-foreground">
-                              {format(createdDate, "MMM d, yyyy")}
-                            </p>
-                          </div>
-                        </div>
                         </div>{/* end body padding */}
                       </div>
                     );
@@ -1034,9 +1034,9 @@ export default function AllReservationsPage() {
                     Showing{" "}
                     {totalRecords > 0
                       ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}–${Math.min(
-                          currentPage * ITEMS_PER_PAGE,
-                          totalRecords
-                        )}`
+                        currentPage * ITEMS_PER_PAGE,
+                        totalRecords
+                      )}`
                       : "0"}{" "}
                     of {totalRecords} records
                   </p>
@@ -1098,7 +1098,7 @@ export default function AllReservationsPage() {
         areaName={
           selectedBooking
             ? getArea(getRoom(selectedBooking.roomId)?.areaId)?.name ||
-              "First Floor"
+            "First Floor"
             : ""
         }
         requesterName={

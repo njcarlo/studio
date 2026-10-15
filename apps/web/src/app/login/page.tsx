@@ -211,7 +211,7 @@ export default function LoginPage() {
                 onChange={(e) => setIdentifier(e.target.value)}
                 disabled={isSigningIn}
                 onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-                className="h-11 sm:h-10 text-base sm:text-sm"
+                className="h-11 sm:h-10 text-sm font-sans"
               />
             </div>
 
@@ -255,7 +255,7 @@ export default function LoginPage() {
                         value={resetIdentifier}
                         onChange={(e) => setResetIdentifier(e.target.value)}
                         disabled={isResetting}
-                        className="h-11 sm:h-10 text-base sm:text-sm"
+                        className="h-11 sm:h-10 text-sm font-sans"
                         onKeyDown={(e) => e.key === "Enter" && handlePasswordReset()}
                       />
                     </div>
@@ -282,7 +282,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isSigningIn}
                   onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-                  className="pr-10 h-11 sm:h-10 text-base sm:text-sm"
+                  className="pr-10 h-11 sm:h-10 text-sm font-sans"
                 />
                 <button
                   type="button"

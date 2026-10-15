@@ -21,8 +21,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   LoaderCircle, PlusCircle, Trash2, Save, ShieldCheck,
   Shield, ArrowLeft, Search, MoreHorizontal, RefreshCw, Pencil, KeyRound,
-  X, CheckCheck, XCircle, ChevronsUpDown, Sparkles,
+  X, CheckCheck, XCircle, ChevronsUpDown, Sparkles, Users,
 } from "lucide-react";
+import { DeleteConfirmationDialog } from "@/components/common/delete-confirmation-dialog";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { useAuditLog } from "@/hooks/use-audit-log";
@@ -571,8 +572,124 @@ export default function RoleManagementPage() {
 
           {/* Table Container */}
           <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            {/* ── Mobile Card View (md:hidden) ── */}
+            <div className="md:hidden p-3 space-y-3 bg-muted/15 dark:bg-muted/10">
+              {filtered.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  No roles found.
+                </div>
+              ) : (
+                filtered.map((role: any) => {
+                  const permLabels = getPermLabels(role);
+                  const memberCount = workerCountByRole(role.id);
+                  return (
+                    <div
+                      key={role.id}
+                      className="group rounded-2xl border border-slate-200/80 dark:border-border/80 bg-card overflow-hidden shadow-xs hover:shadow-md transition-all duration-200"
+                    >
+                      {/* Top Navy Blue Header Banner */}
+                      <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="p-1 rounded-md bg-white/10 shrink-0">
+                            <Shield className="h-3.5 w-3.5 text-white" />
+                          </div>
+                          <span className="font-bold text-xs sm:text-sm text-white truncate">
+                            {role.name}
+                          </span>
+                          {role.isSuperAdmin && (
+                            <span title="Super Admin" className="shrink-0 flex items-center">
+                              <ShieldCheck className="h-3.5 w-3.5 text-sky-300" />
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {role.isSystemRole ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/15 text-white border border-white/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-sky-300" />
+                              System
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Custom
+                            </span>
+                          )}
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer shrink-0"
+                                title="Role actions"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-xl border-border/80">
+                              <DropdownMenuItem
+                                onClick={() => { setSelectedRole(role); setSheetOpen(true); }}
+                                className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
+                              >
+                                <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Role
+                              </DropdownMenuItem>
+                              {!role.isSystemRole && (
+                                <DropdownMenuItem
+                                  className="text-destructive cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 focus:text-destructive focus:bg-destructive/10"
+                                  onClick={() => setRoleToDelete(role)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Role
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 space-y-3 bg-white dark:bg-card">
+                        {/* Members count */}
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                            <Users className="h-3.5 w-3.5 text-sidebar dark:text-sky-400" />
+                            Assigned Members
+                          </span>
+                          <span className="font-bold text-foreground px-2 py-0.5 rounded-md bg-muted/50 border border-border/50 text-xs">
+                            {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                          </span>
+                        </div>
+
+                        {/* Permissions */}
+                        <div className="space-y-1.5 pt-2 border-t border-border/40">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Permissions ({role.rolePermissions?.length || 0})
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {permLabels.map(item => (
+                              <span
+                                key={item.key}
+                                className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                              >
+                                {item.label}
+                              </span>
+                            ))}
+                            {(role.rolePermissions?.length || 0) > 5 && (
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground border border-border/60">
+                                +{(role.rolePermissions?.length || 0) - 5} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* ── Desktop Table View (hidden md:block) ── */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="bg-sidebar text-white border-b border-sidebar">
                     <th className="px-6 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white">Role</th>
@@ -649,18 +766,22 @@ export default function RoleManagementPage() {
       <RolePermissionDialog isOpen={sheetOpen} onOpenChange={setSheetOpen} role={selectedRole} onSave={handleSaveRole} isSaving={saveMutation.isPending}
         onDelete={roleId => { const role = sortedRoles.find((r: any) => r.id === roleId); if (role) { setRoleToDelete(role); setSheetOpen(false); } }} />
 
-      <AlertDialog open={!!roleToDelete} onOpenChange={open => !open && setRoleToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete role?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete <span className="font-bold">{roleToDelete?.name}</span> and remove it from all assigned workers.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteMutation.mutate(roleToDelete.id)}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmationDialog
+        isOpen={!!roleToDelete}
+        onClose={() => setRoleToDelete(null)}
+        onConfirm={() => roleToDelete && deleteMutation.mutate(roleToDelete.id)}
+        title="Delete Role?"
+        itemName={roleToDelete?.name}
+        confirmLabel="Delete Role"
+        isLoading={deleteMutation.isPending}
+        description={
+          roleToDelete ? (
+            <p className="text-xs text-muted-foreground leading-relaxed text-center">
+              Are you sure you want to delete <strong className="font-bold text-foreground underline decoration-rose-300 underline-offset-2">{roleToDelete.name}</strong>? This action is permanent and will remove it from all assigned workers.
+            </p>
+          ) : undefined
+        }
+      />
     </AppLayout>
   );
 }

@@ -348,16 +348,6 @@ export function StockLogsPanel() {
                 <span>Clear</span>
               </Button>
             )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-10 px-3.5 text-xs font-semibold rounded-2xl gap-1.5 border-slate-200/90 dark:border-border shadow-2xs cursor-pointer hover:bg-muted/60 bg-white dark:bg-muted/30 text-foreground"
-              onClick={() => setShowExportConfirm(true)}
-            >
-              <Download className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>Export Excel</span>
-            </Button>
           </div>
         </div>
 

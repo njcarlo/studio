@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@studio/ui";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useWorkers } from "@/hooks/use-workers";
+import { DeleteConfirmationDialog } from "@/components/common/delete-confirmation-dialog";
 import { cn } from "@/lib/utils";
 
 const generateMinistryId = (name: string, department: string) =>
@@ -518,12 +519,6 @@ export default function MinistryManagementPage() {
                             <Edit className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Edit
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem
-                          onClick={() => { setAppointTarget(ministry); setAppointOpen(true); }}
-                          className="cursor-pointer rounded-lg text-xs font-semibold py-2"
-                        >
-                          <UserCog className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Appoint Head
-                        </DropdownMenuItem>
                         {canManageMinistries && (
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer rounded-lg text-xs font-semibold py-2"
@@ -588,42 +583,25 @@ export default function MinistryManagementPage() {
       </Dialog>
 
       {/* Delete Dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-        <AlertDialogContent className="max-w-md rounded-3xl p-6 sm:p-7 border border-border/80 shadow-2xl bg-card">
-          <div className="flex flex-col gap-5">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 flex items-center justify-center font-bold shrink-0 border border-rose-200/80 dark:border-rose-900 shadow-xs">
-                <Trash2 className="h-6 w-6" />
-              </div>
-              <div className="space-y-1 pt-0.5">
-                <AlertDialogTitle className="text-lg font-bold font-headline text-foreground">
-                  Delete Ministry?
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
-                  Are you sure you want to delete <span className="font-bold text-foreground underline decoration-rose-300 underline-offset-2">{deleteTarget?.name}</span>? This action is permanent and cannot be undone.
-                </AlertDialogDescription>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20 p-3.5 text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2.5">
+      <DeleteConfirmationDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Ministry?"
+        itemName={deleteTarget?.name}
+        confirmLabel="Delete Ministry"
+        description={
+          <div className="space-y-3 pt-1">
+            <p className="text-xs text-muted-foreground leading-relaxed text-center">
+              Are you sure you want to delete <strong className="font-bold text-foreground underline decoration-rose-300 underline-offset-2">{deleteTarget?.name}</strong>? This action is permanent and cannot be undone.
+            </p>
+            <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20 p-2.5 text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2 text-left">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>Assigned members will have their ministry affiliation unlinked.</span>
             </div>
-
-            <AlertDialogFooter className="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5">
-              <AlertDialogCancel className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer w-full sm:w-auto">
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                className="rounded-xl h-10 px-6 text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto shadow-xs"
-              >
-                Delete Ministry
-              </AlertDialogAction>
-            </AlertDialogFooter>
           </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        }
+      />
     </AppLayout>
   );
 }

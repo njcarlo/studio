@@ -505,13 +505,12 @@ export default function QRScannerPage() {
                                         <AvatarImage src={scanResult.worker.avatarUrl} alt={`${scanResult.worker.firstName} ${scanResult.worker.lastName}`} />
                                         <AvatarFallback><UserIcon className="h-14 w-14" /></AvatarFallback>
                                     </Avatar>
-                                    <div className={`absolute -bottom-1 -right-1 p-2 rounded-full shadow-lg text-white ${
-                                        scanResult.action === 'Clock In'
+                                    <div className={`absolute -bottom-1 -right-1 p-2 rounded-full shadow-lg text-white ${scanResult.action === 'Clock In'
                                             ? 'bg-emerald-600'
                                             : scanResult.action === 'Clock Out'
-                                            ? 'bg-blue-600'
-                                            : 'bg-amber-600'
-                                    }`}>
+                                                ? 'bg-blue-600'
+                                                : 'bg-amber-600'
+                                        }`}>
                                         {scanResult.action === 'Clock In' ? (
                                             <LogIn className="h-5 w-5" />
                                         ) : scanResult.action === 'Clock Out' ? (
@@ -531,20 +530,18 @@ export default function QRScannerPage() {
                                 </p>
 
                                 {/* Action & Status Card */}
-                                <div className={`w-full rounded-xl p-4 border mb-4 flex flex-col items-center gap-1.5 shadow-sm ${
-                                    scanResult.action === 'Clock In'
+                                <div className={`w-full rounded-xl p-4 border mb-4 flex flex-col items-center gap-1.5 shadow-sm ${scanResult.action === 'Clock In'
                                         ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
                                         : scanResult.action === 'Clock Out'
-                                        ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
-                                        : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
-                                }`}>
-                                    <span className={`text-xs font-bold uppercase tracking-wider px-3 py-0.5 rounded-full ${
-                                        scanResult.action === 'Clock In'
+                                            ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
+                                            : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
+                                    }`}>
+                                    <span className={`text-xs font-bold uppercase tracking-wider px-3 py-0.5 rounded-full ${scanResult.action === 'Clock In'
                                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
                                             : scanResult.action === 'Clock Out'
-                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
-                                            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
-                                    }`}>
+                                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
+                                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                                        }`}>
                                         {scanResult.action === 'Clock In' ? '✓ TIMED IN' : scanResult.action === 'Clock Out' ? '✓ TIMED OUT' : '⚠ COOLDOWN ACTIVE'}
                                     </span>
 
@@ -557,8 +554,8 @@ export default function QRScannerPage() {
                                             scanResult.status === 'On Time' || scanResult.status === 'Shift Completed'
                                                 ? 'success'
                                                 : scanResult.status === 'Late' || scanResult.status === 'Undertime'
-                                                ? 'warning'
-                                                : 'secondary'
+                                                    ? 'warning'
+                                                    : 'secondary'
                                         }>
                                             {scanResult.status || 'Recorded'}
                                         </Badge>

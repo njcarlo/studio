@@ -782,8 +782,8 @@ export function EditWorkerDialog({
         </div>
 
         {/* ── MODAL FOOTER ── */}
-        <div className="p-4 border-t border-border/70 bg-card/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="w-full sm:w-auto">
+        <div className="p-3.5 sm:p-4 border-t border-border/70 bg-card/80 backdrop-blur-md flex flex-row items-center justify-between gap-2 shrink-0">
+          <div className="min-w-0">
             {worker.email ? (
               <Button
                 type="button"
@@ -791,7 +791,7 @@ export function EditWorkerDialog({
                 size="sm"
                 onClick={handleResetPassword}
                 disabled={isSendingReset || isSaving}
-                className="w-full sm:w-auto rounded-xl text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
+                className="rounded-xl text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs px-2.5 sm:px-3 whitespace-nowrap"
               >
                 {isSendingReset ? (
                   <LoaderCircle className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -803,14 +803,14 @@ export function EditWorkerDialog({
             ) : null}
           </div>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 shrink-0 justify-end">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isSaving}
-              className="rounded-xl text-xs font-semibold px-4 cursor-pointer"
+              className="rounded-xl text-xs font-semibold px-3 sm:px-4 cursor-pointer"
             >
               Cancel
             </Button>
@@ -819,7 +819,7 @@ export function EditWorkerDialog({
               size="sm"
               onClick={() => handleSave()}
               disabled={isSaving || roleIds.length === 0}
-              className="rounded-xl text-xs font-bold px-5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md gap-1.5 cursor-pointer"
+              className="rounded-xl text-xs font-bold px-3.5 sm:px-5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md gap-1.5 cursor-pointer whitespace-nowrap"
             >
               {isSaving ? (
                 <>

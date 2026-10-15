@@ -47,7 +47,7 @@ function MySettingsContent() {
   const { user } = useAuthStore();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const rawTab = searchParams.get("tab");
   const activeTab: SettingTab =
     rawTab && ["appearance", "password", "security", "support", "report"].includes(rawTab)
@@ -162,8 +162,7 @@ function MySettingsContent() {
             {/* Theme / Dark Mode Section */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
-                  <SunMoon className="h-3.5 w-3.5" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
                   <span>Color Theme</span>
                 </div>
                 <h3 className="text-2xl font-bold font-headline text-foreground">
@@ -183,8 +182,7 @@ function MySettingsContent() {
             {/* Typography / Font Size Section */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
-                  <Type className="h-3.5 w-3.5" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
                   <span>Accessibility & Typography</span>
                 </div>
                 <h3 className="text-2xl font-bold font-headline text-foreground">
@@ -206,8 +204,7 @@ function MySettingsContent() {
             {/* Left Column: Action Card */}
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
-                  <KeyRound className="h-3.5 w-3.5" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
                   <span>Account Credentials</span>
                 </div>
                 <h3 className="text-2xl font-bold font-headline text-foreground">
@@ -356,8 +353,7 @@ function MySettingsContent() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
-                  <Shield className="h-3.5 w-3.5" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
                   <span>Session Security</span>
                 </div>
                 <h3 className="text-2xl font-bold font-headline text-foreground">
@@ -476,8 +472,7 @@ function MySettingsContent() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
-                  <HelpCircle className="h-3.5 w-3.5" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
                   <span>Knowledge Base</span>
                 </div>
                 <h3 className="text-2xl font-bold font-headline text-foreground">
@@ -558,8 +553,7 @@ function MySettingsContent() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
-                  <AlertCircle className="h-3.5 w-3.5" />
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
                   <span>Helpdesk Ticket</span>
                 </div>
                 <h3 className="text-2xl font-bold font-headline text-foreground">

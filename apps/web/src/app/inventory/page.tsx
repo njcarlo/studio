@@ -32,6 +32,8 @@ import {
   Badge,
   Sheet,
   SheetContent,
+  SheetTitle,
+  SheetDescription,
 } from '@studio/ui';
 import { useInventory } from '@/hooks/use-inventory';
 import { InventoryTable } from '@/components/inventory/inventory-table';
@@ -204,8 +206,8 @@ function InventoryPageContent() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 sm:ml-auto">
-            {['items', 'borrowings', 'logs'].includes(activeTab) && (
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto sm:ml-auto">
+            {['items', 'borrowings', 'logs', 'reports'].includes(activeTab) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -219,7 +221,7 @@ function InventoryPageContent() {
               </Button>
             )}
 
-            {!['reports', 'settings', 'logs'].includes(activeTab) && (
+            {!['settings'].includes(activeTab) && (
               <Button
                 size="sm"
                 onClick={() => setIsCameraScannerOpen(true)}
@@ -581,6 +583,8 @@ function InventoryPageContent() {
           {/* ── ACTIVITY FEED SIDE SHEET (Unclutters the Table) ── */}
           <Sheet open={isActivityFeedOpen} onOpenChange={setIsActivityFeedOpen}>
             <SheetContent className="sm:max-w-xl w-full p-0 flex flex-col bg-background border border-border/80 shadow-2xl overflow-hidden rounded-2xl">
+              <SheetTitle className="sr-only">Live Activity Feed</SheetTitle>
+              <SheetDescription className="sr-only">Real-time inventory audit trail and equipment history.</SheetDescription>
               <ActivityFeed onClose={() => setIsActivityFeedOpen(false)} />
             </SheetContent>
           </Sheet>

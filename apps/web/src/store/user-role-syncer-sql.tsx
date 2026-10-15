@@ -298,9 +298,9 @@ export function UserRoleSyncerSQL() {
       canOperateScanner:
         sa || hasPerm('attendance:scan') || hasPerm('operate_scanner'),
       canViewAttendance:
-        sa || hasPerm('attendance:view') || hasPerm('view_attendance_log'),
+        sa || hasPerm('attendance:view') || hasPerm('view_attendance_log') || !!effectiveProfile,
       canViewMealStubs:
-        sa || hasPerm('meals:view') || hasPerm('view_meal_stubs'),
+        sa || hasPerm('meals:view') || hasPerm('view_meal_stubs') || !!effectiveProfile,
       canManageAllMealStubs:
         sa || hasPerm('meals:manage') || hasPerm('manage_all_mealstubs'),
       canViewReports:

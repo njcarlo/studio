@@ -42,7 +42,9 @@ export function useVenueBookings(filters?: { ministryIds?: string[]; actorId?: s
     const { data, isLoading, error } = useQuery({
         queryKey: [...venueBookingKeys.all, actorId, effectiveMinistryIds],
         queryFn: () => getVenueBookings({ ministryIds: effectiveMinistryIds, actorId }),
-        staleTime: 30_000,
+        staleTime: 4_000,
+        refetchInterval: 5_000,
+        refetchOnWindowFocus: true,
     });
 
     return {

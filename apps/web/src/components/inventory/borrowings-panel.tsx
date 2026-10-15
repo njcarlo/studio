@@ -236,12 +236,6 @@ export function BorrowingsPanel() {
   const checkoutTemplate = checklistTemplates.find((t) => t.type === 'checkout');
   const returnTemplate = checklistTemplates.find((t) => t.type === 'return');
 
-  // Quick preset helper for due dates
-  const setQuickDueDate = (days: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    setCheckoutDueDate(d.toISOString().split('T')[0]);
-  };
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -631,14 +625,39 @@ export function BorrowingsPanel() {
                             <span>{b.status === 'RETURNED' ? 'Returned' : isOverdue ? 'Overdue' : 'Borrowed'}</span>
                           </span>
 
-                          <button
-                            type="button"
-                            onClick={() => setDetailsBorrowing(b)}
-                            className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                            title="More details"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                                title="Actions"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border border-border bg-popover">
+                              <DropdownMenuItem
+                                onClick={() => setDetailsBorrowing(b)}
+                                className="cursor-pointer text-xs font-medium"
+                              >
+                                <Eye className="h-3.5 w-3.5 mr-2" /> Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setQrBorrowing(b)}
+                                className="cursor-pointer text-xs font-medium"
+                              >
+                                <QrCode className="h-3.5 w-3.5 mr-2 text-sky-600" /> Transaction QR
+                              </DropdownMenuItem>
+                              {b.status === 'BORROWED' && (
+                                <DropdownMenuItem
+                                  onClick={() => openReturnModal(b)}
+                                  className="cursor-pointer text-xs font-bold text-emerald-600 focus:text-emerald-700"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5 mr-2 text-emerald-600" /> Return Item
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
 
@@ -724,41 +743,6 @@ export function BorrowingsPanel() {
                           </button>
                         )}
 
-                        {/* Card Actions */}
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-border/50">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-9 text-xs gap-1.5 rounded-xl border-border/70 cursor-pointer px-3.5 shadow-2xs font-semibold hover:bg-muted/50"
-                              onClick={() => setDetailsBorrowing(b)}
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                              <span>Details</span>
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-9 w-9 p-0 rounded-xl border-border/70 cursor-pointer shadow-2xs hover:bg-muted/50"
-                              title="Print Borrowing Transaction QR"
-                              onClick={() => setQrBorrowing(b)}
-                            >
-                              <QrCode className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                            </Button>
-                          </div>
-
-                          {b.status === 'BORROWED' && (
-                            <Button
-                              size="sm"
-                              className="h-9 text-xs gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer px-4 shadow-xs ml-auto"
-                              onClick={() => openReturnModal(b)}
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              <span>Return Item</span>
-                            </Button>
-                          )}
-                        </div>
                       </div>
                     </div>
                   );
@@ -783,7 +767,7 @@ export function BorrowingsPanel() {
                     <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[125px]">
                       Due Date / Schedule
                     </TableHead>
-                    <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[85px]">
+                    <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[130px]">
                       Status
                     </TableHead>
                     <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[200px]">
@@ -907,9 +891,9 @@ export function BorrowingsPanel() {
                           </TableCell>
 
                           {/* 5. Status Badge */}
-                          <TableCell className="py-3">
+                          <TableCell className="py-3 whitespace-nowrap min-w-[130px]">
                             <span
-                              className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${
+                              className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap shrink-0 ${
                                 b.status === 'RETURNED'
                                   ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                                   : isOverdue
@@ -918,7 +902,7 @@ export function BorrowingsPanel() {
                               }`}
                             >
                               <span
-                                className={`w-1.5 h-1.5 rounded-full ${
+                                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                   b.status === 'RETURNED'
                                     ? 'bg-emerald-500'
                                     : isOverdue
@@ -926,19 +910,19 @@ export function BorrowingsPanel() {
                                     : 'bg-sky-500'
                                 }`}
                               />
-                              <span>{b.status === 'RETURNED' ? 'Returned' : isOverdue ? 'Overdue' : 'Active Borrowed'}</span>
+                              <span className="whitespace-nowrap">{b.status === 'RETURNED' ? 'Returned' : isOverdue ? 'Overdue' : 'Active Borrowed'}</span>
                             </span>
                           </TableCell>
 
                           {/* 6. Condition / Notes */}
-                          <TableCell className="py-3 text-xs text-muted-foreground min-w-[200px] max-w-[320px]">
-                            <div className="line-clamp-2 leading-relaxed" title={`${b.status === 'RETURNED' ? b.returnCondition || 'Good' : b.checkoutCondition || 'Good'}: ${b.status === 'RETURNED' ? b.returnNotes || 'Returned in good order' : b.checkoutNotes || 'Standard checkout'}`}>
-                              <span className="font-semibold text-foreground">
+                          <TableCell className="py-3 text-xs text-muted-foreground min-w-[200px]">
+                            <div className="flex flex-col gap-0.5 leading-snug" title={`${b.status === 'RETURNED' ? b.returnCondition || 'Good' : b.checkoutCondition || 'Good Condition'}: ${b.status === 'RETURNED' ? b.returnNotes || 'Returned in good order' : b.checkoutNotes || 'Standard checkout'}`}>
+                              <span className="font-semibold text-foreground text-xs leading-tight">
                                 {b.status === 'RETURNED'
                                   ? b.returnCondition || 'Good'
-                                  : b.checkoutCondition || 'Good'}:
-                              </span>{' '}
-                              <span className="text-muted-foreground">
+                                  : b.checkoutCondition || 'Good Condition'}:
+                              </span>
+                              <span className="text-muted-foreground text-[11px] leading-tight">
                                 {b.status === 'RETURNED'
                                   ? b.returnNotes || 'Returned in good order'
                                   : b.checkoutNotes || 'Standard checkout'}
@@ -1132,44 +1116,6 @@ export function BorrowingsPanel() {
                   onChange={(e) => setCheckoutDueDate(e.target.value)}
                   className="h-9 text-xs rounded-xl"
                 />
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] text-muted-foreground font-medium mr-1">Presets:</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuickDueDate(0)}
-                    className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-muted/70 hover:bg-muted border border-border/60 transition-colors"
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickDueDate(1)}
-                    className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-muted/70 hover:bg-muted border border-border/60 transition-colors"
-                  >
-                    Tomorrow
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickDueDate(3)}
-                    className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-muted/70 hover:bg-muted border border-border/60 transition-colors"
-                  >
-                    +3 Days
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickDueDate(7)}
-                    className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-muted/70 hover:bg-muted border border-border/60 transition-colors"
-                  >
-                    +1 Week
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickDueDate(14)}
-                    className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-muted/70 hover:bg-muted border border-border/60 transition-colors"
-                  >
-                    +2 Weeks
-                  </button>
-                </div>
               </div>
 
               {/* Condition at Checkout */}

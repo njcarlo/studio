@@ -125,14 +125,16 @@ function AttendanceStatusBadge({ status }: { status: "timed-in" | "timed-out" | 
 
 // ── Main Content ──────────────────────────────────────────────────────────────
 function AttendanceContent() {
+  const searchParams = useSearchParams();
   const { user } = useAuthStore();
   const { canViewAttendance, workerProfile, isLoading: isRoleLoading, isMinistryHead, isSuperAdmin, canManageWorkers, canOperateScanner } = useUserRole();
   const isMinistryHeadOnly = isMinistryHead && !isSuperAdmin;
   const { toast } = useToast();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [localToken, setLocalToken] = useState<string | null>(null);
-  const searchParams = useSearchParams();
-  const activeTab = (searchParams.get("tab") || "personal") as "personal" | "manual" | "records";
+  const isAssigner = Boolean(isSuperAdmin || isMinistryHead || canManageWorkers || canOperateScanner);
+  const requestedTab = (searchParams.get("tab") || "personal") as "personal" | "manual" | "records";
+  const activeTab = (requestedTab === "manual" || requestedTab === "records") && !isAssigner ? "personal" : requestedTab;
 
   // Manual tab state
   const [assignSearch, setAssignSearch] = useState("");
@@ -146,8 +148,6 @@ function AttendanceContent() {
   const [recordsRoleFilter, setRecordsRoleFilter] = useState("all");
   const [recordsStatusFilter, setRecordsStatusFilter] = useState("all");
   const [recordsRange, setRecordsRange] = useState<"today" | "yesterday" | "this-week" | "this-month" | "all-time">("today");
-
-  const isAssigner = isMinistryHead || canManageWorkers || canOperateScanner;
 
   const { workers: allWorkers } = useWorkers({ enabled: isAssigner, limit: 999999 });
   const { createAttendanceRecord } = useAttendance({ enabled: false });
@@ -163,8 +163,14 @@ function AttendanceContent() {
   );
 
   const weekStart = useMemo(() => startOfWeek(new Date(), { weekStartsOn: 1 }), []);
+  const personalRecordsStart = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
   const { attendanceRecords: allAttendance, isLoading: attendanceLoading } = useAttendance(
-    workerProfile?.id ? { workerProfileId: workerProfile.id, dateFrom: weekStart } : { enabled: false }
+    workerProfile?.id ? { workerProfileId: workerProfile.id, dateFrom: personalRecordsStart } : { enabled: false }
   );
 
   // Records tab date range
@@ -229,8 +235,8 @@ function AttendanceContent() {
           ws?.status === "timed-in"
             ? "Timed In"
             : ws?.status === "timed-out"
-            ? "Timed Out"
-            : "Not Yet Timed In";
+              ? "Timed Out"
+              : "Not Yet Timed In";
 
         return [
           `${w.firstName} ${w.lastName}`,
@@ -553,12 +559,14 @@ function AttendanceContent() {
             <p className="text-sm text-muted-foreground">Scan, monitor, and manage attendance across every ministry — in one workforce command center.</p>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            <Link href="/attendance/scanner">
-              <button className="h-10 px-4 flex items-center gap-2 rounded-2xl border border-border/80 bg-white dark:bg-card hover:bg-muted/40 text-foreground text-xs font-bold shadow-xs transition-colors cursor-pointer">
-                <ScanLine className="h-4 w-4 text-primary" /> Scanner
-              </button>
-            </Link>
-            {(activeTab === "manual" || activeTab === "records") && (
+            {isAssigner && (
+              <Link href="/attendance/scanner">
+                <button className="h-10 px-4 flex items-center gap-2 rounded-2xl border border-border/80 bg-white dark:bg-card hover:bg-muted/40 text-foreground text-xs font-bold shadow-xs transition-colors cursor-pointer">
+                  <ScanLine className="h-4 w-4 text-primary" /> Scanner
+                </button>
+              </Link>
+            )}
+            {isAssigner && (activeTab === "manual" || activeTab === "records") && (
               <button
                 onClick={() => setShowExportConfirm(true)}
                 className="h-10 px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
@@ -571,435 +579,116 @@ function AttendanceContent() {
 
         <div className="space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* ── Personal Log ── */}
-        {activeTab === "personal" && (
-          <div className="flex flex-col gap-6 w-full">
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <StatCard
-                label="PRESENT COUNT"
-                value={presentCount}
-                sub="this week"
-                icon={CheckCircle2}
-                accentColor="bg-emerald-500"
-                iconClass="text-emerald-600"
-                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
-              />
-              <StatCard
-                label="LATE COUNT"
-                value={lateCount}
-                sub="this week"
-                icon={Clock}
-                accentColor="bg-amber-500"
-                iconClass="text-amber-600"
-                iconBgClass="bg-amber-50 dark:bg-amber-950/40"
-              />
-            </div>
-
-            {/* Attendance Table */}
-            <div className="bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden flex flex-col gap-4">
-              <div className="space-y-0.5">
-                <h3 className="text-base font-bold text-foreground font-headline">This week&apos;s personal log</h3>
-                <p className="text-xs text-muted-foreground">Recent attendance history.</p>
-              </div>
-
-              {/* Inner Table Container */}
-              <div className="bg-card rounded-2xl border border-border/60 overflow-hidden flex flex-col">
-
-                {/* Mobile card view */}
-                <div className="md:hidden divide-y divide-border/30">
-                  {sessions.length === 0 ? (
-                    <div className="py-14 text-center text-xs font-medium text-muted-foreground">No records this week.</div>
-                  ) : sessions.map((s, i) => (
-                    <div key={i} className="p-4 flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground">{format(s.date, "EEE, MMM d, yyyy")}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          In: <strong className="text-foreground">{format(s.timeIn, "h:mm a")}</strong>
-                          {" · "}
-                          Out: <strong className="text-foreground">{s.timeOut ? format(s.timeOut, "h:mm a") : "—"}</strong>
-                          {" · "}
-                          {formatHours(s.totalMinutes)}
-                        </p>
-                      </div>
-                      <StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Desktop table view */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-sidebar">
-                      <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                        <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[25%]">DATE</th>
-                        <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[20%]">TIME IN</th>
-                        <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[20%]">TIME OUT</th>
-                        <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[18%]">TOTAL HOURS</th>
-                        <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-center w-[17%]">STATUS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sessions.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="py-14 text-center text-xs font-medium text-muted-foreground">No records this week.</td>
-                        </tr>
-                      ) : (
-                        sessions.map((s, i) => (
-                          <tr key={i} className="border-b border-gray-100 dark:border-border/60 hover:bg-gray-50/60 dark:hover:bg-muted/30 transition-colors">
-                            <td className="py-4 px-6 font-bold text-xs text-foreground whitespace-nowrap align-middle">{format(s.date, "EEE, MMM d, yyyy")}</td>
-                            <td className="py-4 px-6 text-xs text-muted-foreground font-medium whitespace-nowrap align-middle">{format(s.timeIn, "h:mm a")}</td>
-                            <td className="py-4 px-6 text-xs text-muted-foreground font-medium whitespace-nowrap align-middle">{s.timeOut ? format(s.timeOut, "h:mm a") : "—"}</td>
-                            <td className="py-4 px-6 text-xs text-muted-foreground font-medium whitespace-nowrap align-middle">{formatHours(s.totalMinutes)}</td>
-                            <td className="py-4 px-6 text-center align-middle whitespace-nowrap"><StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} /></td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Manual Attendance ── */}
-        {activeTab === "manual" && isAssigner && (
-          <div className="bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden flex flex-col gap-4">
-            {/* Top Controls Row */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              {/* Left: Search Bar */}
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search ID, worker name..."
-                  value={assignSearch}
-                  onChange={e => setAssignSearch(e.target.value)}
-                  className="w-full pl-9 pr-8 h-10 rounded-2xl border border-slate-200/90 dark:border-border bg-slate-50/50 dark:bg-muted/30 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-2xs focus:outline-none focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all"
+          {activeTab === "personal" && (
+            <div className="flex flex-col gap-6 w-full">
+              {/* Stat Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <StatCard
+                  label="PRESENT COUNT"
+                  value={presentCount}
+                  sub="this week"
+                  icon={CheckCircle2}
+                  accentColor="bg-emerald-500"
+                  iconClass="text-emerald-600"
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
                 />
-                {assignSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setAssignSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <StatCard
+                  label="LATE COUNT"
+                  value={lateCount}
+                  sub="this week"
+                  icon={Clock}
+                  accentColor="bg-amber-500"
+                  iconClass="text-amber-600"
+                  iconBgClass="bg-amber-50 dark:bg-amber-950/40"
+                />
               </div>
 
-              {/* Right: Ministries, Roles, and Status Filter Tabs */}
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <Select value={ministryFilter} onValueChange={setMinistryFilter}>
-                  <SelectTrigger className="h-10 w-[145px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                    <SelectValue placeholder="All Ministries" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-                    <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
-                    {(ministries as any[]).map(m => (
-                      <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Attendance Table */}
+              <div className="bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden flex flex-col gap-4">
+                <div className="space-y-0.5">
+                  <h3 className="text-base font-bold text-foreground font-headline">This week&apos;s personal log</h3>
+                  <p className="text-xs text-muted-foreground">Recent attendance history.</p>
+                </div>
 
-                {!isMinistryHeadOnly && (
-                  <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                      <SelectValue placeholder="All Roles" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-                      <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Roles</SelectItem>
-                      {(roles as any[]).map(r => (
-                        <SelectItem key={r.id} value={r.name} className="text-xs font-medium cursor-pointer">{r.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                {/* Inner Table Container */}
+                <div className="bg-card rounded-2xl border border-border/60 overflow-hidden flex flex-col">
 
-                {/* Status Filter Dropdown */}
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-                    {[
-                      { id: "all", label: "All Statuses", count: manualStatusCounts.all },
-                      { id: "timed-in", label: "Timed In", count: manualStatusCounts["timed-in"] },
-                      { id: "timed-out", label: "Timed Out", count: manualStatusCounts["timed-out"] },
-                      { id: "not-yet", label: "Not Yet Timed In", count: manualStatusCounts["not-yet"] },
-                    ].map(tab => (
-                      <SelectItem key={tab.id} value={tab.id} className="text-xs font-medium cursor-pointer">
-                        {tab.label} ({tab.count})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card">
-
-              {/* ── Mobile card view ── */}
-              <div className="md:hidden p-3 sm:p-4 space-y-3 flex-grow bg-slate-50/50 dark:bg-muted/10">
-                {filteredWorkers.length === 0 ? (
-                  <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/60">
-                    No workers found.
-                  </div>
-                ) : (
-                  filteredWorkers.map(w => {
-                    const ws = workerStatusMap[w.id];
-                    const timeInStr = ws?.timeIn ? format(ws.timeIn, "h:mm a") : null;
-                    const timeOutStr = ws?.timeOut ? format(ws.timeOut, "h:mm a") : null;
-                    const ministry = (ministries as any[]).find(m => m.id === w.majorMinistryId);
-                    const initials = (() => {
-                      const parts = `${w.firstName} ${w.lastName}`.trim().split(" ");
-                      return parts.length >= 2
-                        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-                        : `${w.firstName}`.slice(0, 2).toUpperCase();
-                    })();
-
-                    return (
-                      <div
-                        key={w.id}
-                        className="rounded-2xl border border-slate-200/80 dark:border-border/70 bg-white dark:bg-card p-4 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 shadow-2xs hover:shadow-xs transition-shadow"
-                      >
-                        {/* Left: Avatar, Name, Ministry & Date, Times + Badge */}
-                        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
-                          <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-blue-100 dark:bg-blue-950/60 text-primary dark:text-blue-300 text-sm font-bold flex items-center justify-center shrink-0">
-                            {initials}
-                          </span>
-
-                          <div className="min-w-0 flex-1 space-y-0.5">
-                            <p className="text-sm sm:text-base font-bold font-headline text-foreground leading-tight truncate">
-                              {w.firstName} {w.lastName}
-                            </p>
-                            <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
-                              {ministry?.name || "No Ministry"} · {format(new Date(), "MMM d, yyyy")}
-                            </p>
-
-                            <div className="flex items-center gap-2 pt-1 flex-wrap">
-                              <span className="text-xs text-muted-foreground">
-                                In: <strong className="text-foreground font-semibold">{timeInStr || "——"}</strong>
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                Out: <strong className="text-foreground font-semibold">{timeOutStr || "——"}</strong>
-                              </span>
-                              {timeInStr && !timeOutStr ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800">
-                                  Incomplete
-                                </span>
-                              ) : timeInStr && timeOutStr ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
-                                  Completed
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
-                                  Not Yet Timed In
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                  {/* Mobile card view */}
+                  <div className="md:hidden divide-y divide-border/30">
+                    {sessions.length === 0 ? (
+                      <div className="py-14 text-center text-xs font-medium text-muted-foreground">No records this week.</div>
+                    ) : sessions.map((s, i) => (
+                      <div key={i} className="p-4 flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground">{format(s.date, "EEE, MMM d, yyyy")}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            In: <strong className="text-foreground">{format(s.timeIn, "h:mm a")}</strong>
+                            {" · "}
+                            Out: <strong className="text-foreground">{s.timeOut ? format(s.timeOut, "h:mm a") : "—"}</strong>
+                            {" · "}
+                            {formatHours(s.totalMinutes)}
+                          </p>
                         </div>
-
-                        {/* Right: Stacked Action Buttons */}
-                        <div className="flex flex-col gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
-                              const hasStub = assignedStubs?.some((s: any) => {
-                                const sd = s.date instanceof Date ? s.date : new Date(s.date);
-                                return s.workerId === w.id && sd >= todayStart;
-                              });
-                              if (!hasStub) {
-                                try {
-                                  await createMealStub({
-                                    workerId: w.id,
-                                    workerName: `${w.firstName} ${w.lastName}`,
-                                    status: "Issued",
-                                    assignedBy: workerProfile?.id || user?.id,
-                                    assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"),
-                                    stubType: "daily",
-                                  });
-                                } catch {}
-                              }
-                              toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
-                            }}
-                            className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer min-w-[76px]"
-                          >
-                            <LogIn className="h-3.5 w-3.5" /> In
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
-                              toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
-                            }}
-                            className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer min-w-[76px]"
-                          >
-                            <LogOut className="h-3.5 w-3.5" /> Out
-                          </button>
-                        </div>
+                        <StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} />
                       </div>
-                    );
-                  })
-                )}
-              </div>
+                    ))}
+                  </div>
 
-              {/* ── Desktop table view ── */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-sidebar">
-                    <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                      {["Worker", "Worker ID", "Role", "Ministry", "Current Status", "Last Activity", "Actions"].map(h => (
-                        <th key={h} className={cn("px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap", h === "Actions" ? "text-center w-20" : "text-left")}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredWorkers.length === 0 ? (
-                      <tr><td colSpan={7} className="py-14 text-center text-xs font-medium text-muted-foreground">No workers found.</td></tr>
-                    ) : filteredWorkers.map(w => {
-                      const ws = workerStatusMap[w.id];
-                      const currentStatus = ws?.status ?? "not-yet";
-                      const lastTime = ws?.lastTime ? format(ws.lastTime, "h:mm a") : null;
-                      const lastType = ws?.lastType;
-                      const ministry = (ministries as any[]).find(m => m.id === w.majorMinistryId);
-                      const roleName = getRoleName(w);
-                      return (
-                        <tr key={w.id} className="border-b border-gray-100 dark:border-border/60 hover:bg-slate-50/70 dark:hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-3.5 align-middle">
-                            <div className="flex items-center gap-2.5">
-                              <WorkerInitials name={`${w.firstName} ${w.lastName}`} />
-                              <span className="text-xs font-semibold text-foreground whitespace-nowrap">{w.firstName} {w.lastName}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 text-xs font-mono font-bold text-foreground align-middle whitespace-nowrap">{fmtId(w.workerId)}</td>
-                          <td className="px-4 py-3.5 align-middle whitespace-nowrap">
-                            <RoleBadge role={roleName} />
-                          </td>
-                          <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{ministry?.name || "—"}</td>
-                          <td className="px-4 py-3.5 align-middle whitespace-nowrap"><AttendanceStatusBadge status={currentStatus} /></td>
-                          <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">
-                            {lastTime ? `${lastType === "Clock In" ? "In" : "Out"} · ${lastTime}` : "——"}
-                          </td>
-                          <td className="px-4 py-3.5 align-middle whitespace-nowrap text-center">
-                            <div className="flex items-center justify-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border border-border bg-popover">
-                                  <DropdownMenuItem
-                                    onClick={async () => {
-                                      await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
-                                      const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === w.id && sd >= todayStart; });
-                                      if (!hasStub) { try { await createMealStub({ workerId: w.id, workerName: `${w.firstName} ${w.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch {} }
-                                      toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
-                                    }}
-                                    className="cursor-pointer text-xs font-medium"
-                                  >
-                                    <LogIn className="h-3.5 w-3.5 mr-2" /> Time In
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={async () => {
-                                      await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
-                                      toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
-                                    }}
-                                    className="cursor-pointer text-xs font-medium"
-                                  >
-                                    <LogOut className="h-3.5 w-3.5 mr-2" /> Time Out
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </td>
+                  {/* Desktop table view */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-sidebar">
+                        <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                          <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[25%]">DATE</th>
+                          <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[20%]">TIME IN</th>
+                          <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[20%]">TIME OUT</th>
+                          <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[18%]">TOTAL HOURS</th>
+                          <th className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-center w-[17%]">STATUS</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {sessions.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-14 text-center text-xs font-medium text-muted-foreground">No records this week.</td>
+                          </tr>
+                        ) : (
+                          sessions.map((s, i) => (
+                            <tr key={i} className="border-b border-gray-100 dark:border-border/60 hover:bg-gray-50/60 dark:hover:bg-muted/30 transition-colors">
+                              <td className="py-4 px-6 font-bold text-xs text-foreground whitespace-nowrap align-middle">{format(s.date, "EEE, MMM d, yyyy")}</td>
+                              <td className="py-4 px-6 text-xs text-muted-foreground font-medium whitespace-nowrap align-middle">{format(s.timeIn, "h:mm a")}</td>
+                              <td className="py-4 px-6 text-xs text-muted-foreground font-medium whitespace-nowrap align-middle">{s.timeOut ? format(s.timeOut, "h:mm a") : "—"}</td>
+                              <td className="py-4 px-6 text-xs text-muted-foreground font-medium whitespace-nowrap align-middle">{formatHours(s.totalMinutes)}</td>
+                              <td className="py-4 px-6 text-center align-middle whitespace-nowrap"><StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} /></td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── Attendance Records ── */}
-        {activeTab === "records" && isAssigner && (
-          <div className="flex flex-col gap-6">
-            {/* Stat Cards with top accent stripes (matching Workers page) */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <StatCard
-                label="TOTAL TODAY"
-                value={recordStats.total}
-                sub="records"
-                icon={Users}
-                accentColor="bg-sidebar"
-                iconClass="text-sidebar"
-                iconBgClass="bg-sidebar/10"
-              />
-              <StatCard
-                label="PRESENT"
-                value={recordStats.present}
-                sub="on time"
-                icon={CheckCircle2}
-                accentColor="bg-emerald-500"
-                iconClass="text-emerald-600"
-                iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
-              />
-              <StatCard
-                label="LATE"
-                value={recordStats.late}
-                sub="after 8:30"
-                icon={Clock}
-                accentColor="bg-amber-500"
-                iconClass="text-amber-600"
-                iconBgClass="bg-amber-50 dark:bg-amber-950/40"
-              />
-              <StatCard
-                label="ABSENT"
-                value={recordStats.absent}
-                sub="no time in"
-                icon={XCircle}
-                accentColor="bg-red-500"
-                iconClass="text-red-600"
-                iconBgClass="bg-red-50 dark:bg-red-950/40"
-              />
-              <StatCard
-                label="INCOMPLETE"
-                value={recordStats.incomplete}
-                sub="missing time out"
-                icon={AlertCircle}
-                accentColor="bg-blue-500"
-                iconClass="text-blue-600"
-                iconBgClass="bg-blue-50 dark:bg-blue-950/40"
-              />
-            </div>
-
-            {/* Main Unified Table & Controls Container (Matching Room Reservations & Workers) */}
+          {/* ── Manual Attendance ── */}
+          {activeTab === "manual" && isAssigner && (
             <div className="bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden flex flex-col gap-4">
               {/* Top Controls Row */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                {/* Left: Search */}
-                <div className="relative w-full sm:w-60">
+                {/* Left: Search Bar */}
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                   <input
                     type="text"
                     placeholder="Search ID, worker name..."
-                    value={recordsSearch}
-                    onChange={e => setRecordsSearch(e.target.value)}
+                    value={assignSearch}
+                    onChange={e => setAssignSearch(e.target.value)}
                     className="w-full pl-9 pr-8 h-10 rounded-2xl border border-slate-200/90 dark:border-border bg-slate-50/50 dark:bg-muted/30 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-2xs focus:outline-none focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all"
                   />
-                  {recordsSearch && (
+                  {assignSearch && (
                     <button
                       type="button"
-                      onClick={() => setRecordsSearch("")}
+                      onClick={() => setAssignSearch("")}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -1007,11 +696,10 @@ function AttendanceContent() {
                   )}
                 </div>
 
-                {/* Right Controls: Ministry + Role + Range + Status Dropdown */}
+                {/* Right: Ministries, Roles, and Status Filter Tabs */}
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  {/* Ministry */}
-                  <Select value={recordsMinistryFilter} onValueChange={setRecordsMinistryFilter}>
-                    <SelectTrigger className="h-10 w-[140px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <Select value={ministryFilter} onValueChange={setMinistryFilter}>
+                    <SelectTrigger className="h-10 w-[145px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                       <SelectValue placeholder="All Ministries" />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
@@ -1022,10 +710,9 @@ function AttendanceContent() {
                     </SelectContent>
                   </Select>
 
-                  {/* Role */}
                   {!isMinistryHeadOnly && (
-                    <Select value={recordsRoleFilter} onValueChange={setRecordsRoleFilter}>
-                      <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                    <Select value={roleFilter} onValueChange={setRoleFilter}>
+                      <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                         <SelectValue placeholder="All Roles" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
@@ -1037,32 +724,17 @@ function AttendanceContent() {
                     </Select>
                   )}
 
-                  {/* Range */}
-                  <Select value={recordsRange} onValueChange={(val: any) => setRecordsRange(val)}>
-                    <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                      <SelectValue placeholder="Range" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-                      <SelectItem value="today" className="text-xs font-medium cursor-pointer">Today</SelectItem>
-                      <SelectItem value="yesterday" className="text-xs font-medium cursor-pointer">Yesterday</SelectItem>
-                      <SelectItem value="this-week" className="text-xs font-medium cursor-pointer">This week</SelectItem>
-                      <SelectItem value="this-month" className="text-xs font-medium cursor-pointer">This month</SelectItem>
-                      <SelectItem value="all-time" className="text-xs font-medium cursor-pointer">All time</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {/* Status */}
-                  <Select value={recordsStatusFilter} onValueChange={setRecordsStatusFilter}>
+                  {/* Status Filter Dropdown */}
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                       <SelectValue placeholder="All Statuses" />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
                       {[
-                        { id: "all", label: "All Statuses", count: recordStats.total },
-                        { id: "present", label: "Present", count: recordStats.present },
-                        { id: "late", label: "Late", count: recordStats.late },
-                        { id: "absent", label: "Absent", count: recordStats.absent },
-                        { id: "incomplete", label: "Incomplete", count: recordStats.incomplete },
+                        { id: "all", label: "All Statuses", count: manualStatusCounts.all },
+                        { id: "timed-in", label: "Timed In", count: manualStatusCounts["timed-in"] },
+                        { id: "timed-out", label: "Timed Out", count: manualStatusCounts["timed-out"] },
+                        { id: "not-yet", label: "Not Yet Timed In", count: manualStatusCounts["not-yet"] },
                       ].map(tab => (
                         <SelectItem key={tab.id} value={tab.id} className="text-xs font-medium cursor-pointer">
                           {tab.label} ({tab.count})
@@ -1073,64 +745,114 @@ function AttendanceContent() {
                 </div>
               </div>
 
-              {/* Table Container */}
+              {/* Table */}
               <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card">
 
                 {/* ── Mobile card view ── */}
-                <div className="md:hidden divide-y divide-border/30">
-                  {recordsLoading ? (
-                    <div className="py-12 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-sidebar" /></div>
-                  ) : filteredRecordRows.length === 0 ? (
-                    <div className="py-14 text-center text-xs font-medium text-muted-foreground">No records found.</div>
-                  ) : filteredRecordRows.map((row, i) => {
-                    const ministry = (ministries as any[]).find(m => m.id === row.worker.majorMinistryId);
-                    return (
-                      <div key={i} className="p-4 flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2.5 mb-1.5">
-                            <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-foreground leading-tight truncate">{row.worker.firstName} {row.worker.lastName}</p>
-                              <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"} · {format(row.date, "MMM d, yyyy")}</p>
+                <div className="md:hidden p-3 sm:p-4 space-y-3 flex-grow bg-slate-50/50 dark:bg-muted/10">
+                  {filteredWorkers.length === 0 ? (
+                    <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/60">
+                      No workers found.
+                    </div>
+                  ) : (
+                    filteredWorkers.map(w => {
+                      const ws = workerStatusMap[w.id];
+                      const timeInStr = ws?.timeIn ? format(ws.timeIn, "h:mm a") : null;
+                      const timeOutStr = ws?.timeOut ? format(ws.timeOut, "h:mm a") : null;
+                      const ministry = (ministries as any[]).find(m => m.id === w.majorMinistryId);
+                      const initials = (() => {
+                        const parts = `${w.firstName} ${w.lastName}`.trim().split(" ");
+                        return parts.length >= 2
+                          ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                          : `${w.firstName}`.slice(0, 2).toUpperCase();
+                      })();
+
+                      return (
+                        <div
+                          key={w.id}
+                          className="rounded-2xl border border-slate-200/80 dark:border-border/70 bg-white dark:bg-card p-4 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 shadow-2xs hover:shadow-xs transition-shadow"
+                        >
+                          {/* Left: Avatar, Name, Ministry & Date, Times + Badge */}
+                          <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                            <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-blue-100 dark:bg-blue-950/60 text-primary dark:text-blue-300 text-sm font-bold flex items-center justify-center shrink-0">
+                              {initials}
+                            </span>
+
+                            <div className="min-w-0 flex-1 space-y-0.5">
+                              <p className="text-sm sm:text-base font-bold font-headline text-foreground leading-tight truncate">
+                                {w.firstName} {w.lastName}
+                              </p>
+                              <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                                {ministry?.name || "No Ministry"} · {format(new Date(), "MMM d, yyyy")}
+                              </p>
+
+                              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                                <span className="text-xs text-muted-foreground">
+                                  In: <strong className="text-foreground font-semibold">{timeInStr || "——"}</strong>
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  Out: <strong className="text-foreground font-semibold">{timeOutStr || "——"}</strong>
+                                </span>
+                                {timeInStr && !timeOutStr ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800">
+                                    Incomplete
+                                  </span>
+                                ) : timeInStr && timeOutStr ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+                                    Completed
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
+                                    Not Yet Timed In
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
-                            <span>In: <strong className="text-foreground">{row.timeIn ? format(row.timeIn, "h:mm a") : "——"}</strong></span>
-                            <span>Out: <strong className="text-foreground">{row.timeOut ? format(row.timeOut, "h:mm a") : "——"}</strong></span>
-                            <span>{formatHours(row.hours)}</span>
-                            {row.status === "present"    && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Present</span>}
-                            {row.status === "late"       && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Late</span>}
-                            {row.status === "absent"     && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">Absent</span>}
-                            {row.status === "incomplete" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Incomplete</span>}
+
+                          {/* Right: Stacked Action Buttons */}
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
+                                const hasStub = assignedStubs?.some((s: any) => {
+                                  const sd = s.date instanceof Date ? s.date : new Date(s.date);
+                                  return s.workerId === w.id && sd >= todayStart;
+                                });
+                                if (!hasStub) {
+                                  try {
+                                    await createMealStub({
+                                      workerId: w.id,
+                                      workerName: `${w.firstName} ${w.lastName}`,
+                                      status: "Issued",
+                                      assignedBy: workerProfile?.id || user?.id,
+                                      assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"),
+                                      stubType: "daily",
+                                    });
+                                  } catch { }
+                                }
+                                toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
+                              }}
+                              className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer min-w-[76px]"
+                            >
+                              <LogIn className="h-3.5 w-3.5" /> In
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
+                                toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
+                              }}
+                              className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer min-w-[76px]"
+                            >
+                              <LogOut className="h-3.5 w-3.5" /> Out
+                            </button>
                           </div>
                         </div>
-                        <div className="flex flex-col gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock In" });
-                              const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === row.worker.id && sd >= todayStart; });
-                              if (!hasStub) { try { await createMealStub({ workerId: row.worker.id, workerName: `${row.worker.firstName} ${row.worker.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch {} }
-                              toast({ title: "Timed In", description: `${row.worker.firstName} ${row.worker.lastName}` });
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-700 transition-colors"
-                          >
-                            <LogIn className="h-3 w-3" /> In
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock Out" });
-                              toast({ title: "Timed Out", description: `${row.worker.firstName} ${row.worker.lastName}` });
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-blue-700 transition-colors"
-                          >
-                            <LogOut className="h-3 w-3" /> Out
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* ── Desktop table view ── */}
@@ -1138,56 +860,56 @@ function AttendanceContent() {
                   <table className="w-full">
                     <thead className="bg-sidebar">
                       <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                        {["Worker", "Worker ID", "Role", "Ministry", "Date", "Time In", "Time Out", "Hours", "Status", "Actions"].map(h => (
+                        {["Worker", "Worker ID", "Role", "Ministry", "Current Status", "Last Activity", "Actions"].map(h => (
                           <th key={h} className={cn("px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap", h === "Actions" ? "text-center w-20" : "text-left")}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {recordsLoading ? (
-                        <tr><td colSpan={10} className="py-12 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-sidebar" /></td></tr>
-                      ) : filteredRecordRows.length === 0 ? (
-                        <tr><td colSpan={10} className="py-14 text-center text-xs font-medium text-muted-foreground">No records found.</td></tr>
-                      ) : filteredRecordRows.map((row, i) => {
-                        const ministry = (ministries as any[]).find(m => m.id === row.worker.majorMinistryId);
+                      {filteredWorkers.length === 0 ? (
+                        <tr><td colSpan={7} className="py-14 text-center text-xs font-medium text-muted-foreground">No workers found.</td></tr>
+                      ) : filteredWorkers.map(w => {
+                        const ws = workerStatusMap[w.id];
+                        const currentStatus = ws?.status ?? "not-yet";
+                        const lastTime = ws?.lastTime ? format(ws.lastTime, "h:mm a") : null;
+                        const lastType = ws?.lastType;
+                        const ministry = (ministries as any[]).find(m => m.id === w.majorMinistryId);
+                        const roleName = getRoleName(w);
                         return (
-                          <tr key={i} className="border-b border-gray-100 dark:border-border/60 hover:bg-slate-50/70 dark:hover:bg-muted/30 transition-colors">
+                          <tr key={w.id} className="border-b border-gray-100 dark:border-border/60 hover:bg-slate-50/70 dark:hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-3.5 align-middle">
                               <div className="flex items-center gap-2.5">
-                                <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
-                                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{row.worker.firstName} {row.worker.lastName}</span>
+                                <WorkerInitials name={`${w.firstName} ${w.lastName}`} />
+                                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{w.firstName} {w.lastName}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3.5 text-xs font-mono font-bold text-foreground align-middle whitespace-nowrap">{fmtId(row.worker.workerId)}</td>
+                            <td className="px-4 py-3.5 text-xs font-mono font-bold text-foreground align-middle whitespace-nowrap">{fmtId(w.workerId)}</td>
                             <td className="px-4 py-3.5 align-middle whitespace-nowrap">
-                              <RoleBadge role={getRoleName(row.worker)} />
+                              <RoleBadge role={roleName} />
                             </td>
                             <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{ministry?.name || "—"}</td>
-                            <td className="px-4 py-3.5 text-xs font-semibold text-foreground align-middle whitespace-nowrap">{format(row.date, "EEE, MMM d, yyyy")}</td>
-                            <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{row.timeIn ? format(row.timeIn, "h:mm a") : "——"}</td>
-                            <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{row.timeOut ? format(row.timeOut, "h:mm a") : "——"}</td>
-                            <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{formatHours(row.hours)}</td>
-                            <td className="px-4 py-3.5 align-middle whitespace-nowrap">
-                              {row.status === "present"    && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Present</span>}
-                              {row.status === "late"       && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Late</span>}
-                              {row.status === "absent"     && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Absent</span>}
-                              {row.status === "incomplete" && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Incomplete</span>}
+                            <td className="px-4 py-3.5 align-middle whitespace-nowrap"><AttendanceStatusBadge status={currentStatus} /></td>
+                            <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">
+                              {lastTime ? `${lastType === "Clock In" ? "In" : "Out"} · ${lastTime}` : "——"}
                             </td>
                             <td className="px-4 py-3.5 align-middle whitespace-nowrap text-center">
                               <div className="flex items-center justify-center">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <button type="button" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                                    <button
+                                      type="button"
+                                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                    >
                                       <MoreHorizontal className="h-4 w-4" />
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border border-border bg-popover">
                                     <DropdownMenuItem
                                       onClick={async () => {
-                                        await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock In" });
-                                        const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === row.worker.id && sd >= todayStart; });
-                                        if (!hasStub) { try { await createMealStub({ workerId: row.worker.id, workerName: `${row.worker.firstName} ${row.worker.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch {} }
-                                        toast({ title: "Timed In", description: `${row.worker.firstName} ${row.worker.lastName}` });
+                                        await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
+                                        const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === w.id && sd >= todayStart; });
+                                        if (!hasStub) { try { await createMealStub({ workerId: w.id, workerName: `${w.firstName} ${w.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch { } }
+                                        toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
                                       }}
                                       className="cursor-pointer text-xs font-medium"
                                     >
@@ -1195,8 +917,8 @@ function AttendanceContent() {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={async () => {
-                                        await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock Out" });
-                                        toast({ title: "Timed Out", description: `${row.worker.firstName} ${row.worker.lastName}` });
+                                        await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
+                                        toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
                                       }}
                                       className="cursor-pointer text-xs font-medium"
                                     >
@@ -1213,14 +935,300 @@ function AttendanceContent() {
                   </table>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Table Footer */}
-              <div className="flex items-center justify-between pt-4 text-xs text-muted-foreground">
-                <span>Showing <strong className="text-foreground">{filteredRecordRows.length}</strong> record{filteredRecordRows.length !== 1 ? "s" : ""}</span>
+          {/* ── Attendance Records ── */}
+          {activeTab === "records" && isAssigner && (
+            <div className="flex flex-col gap-6">
+              {/* Stat Cards with top accent stripes (matching Workers page) */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <StatCard
+                  label="TOTAL TODAY"
+                  value={recordStats.total}
+                  sub="records"
+                  icon={Users}
+                  accentColor="bg-sidebar"
+                  iconClass="text-sidebar"
+                  iconBgClass="bg-sidebar/10"
+                />
+                <StatCard
+                  label="PRESENT"
+                  value={recordStats.present}
+                  sub="on time"
+                  icon={CheckCircle2}
+                  accentColor="bg-emerald-500"
+                  iconClass="text-emerald-600"
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
+                />
+                <StatCard
+                  label="LATE"
+                  value={recordStats.late}
+                  sub="after 8:30"
+                  icon={Clock}
+                  accentColor="bg-amber-500"
+                  iconClass="text-amber-600"
+                  iconBgClass="bg-amber-50 dark:bg-amber-950/40"
+                />
+                <StatCard
+                  label="ABSENT"
+                  value={recordStats.absent}
+                  sub="no time in"
+                  icon={XCircle}
+                  accentColor="bg-red-500"
+                  iconClass="text-red-600"
+                  iconBgClass="bg-red-50 dark:bg-red-950/40"
+                />
+                <StatCard
+                  label="INCOMPLETE"
+                  value={recordStats.incomplete}
+                  sub="missing time out"
+                  icon={AlertCircle}
+                  accentColor="bg-blue-500"
+                  iconClass="text-blue-600"
+                  iconBgClass="bg-blue-50 dark:bg-blue-950/40"
+                />
+              </div>
+
+              {/* Main Unified Table & Controls Container (Matching Room Reservations & Workers) */}
+              <div className="bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden flex flex-col gap-4">
+                {/* Top Controls Row */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  {/* Left: Search */}
+                  <div className="relative w-full sm:w-60">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Search ID, worker name..."
+                      value={recordsSearch}
+                      onChange={e => setRecordsSearch(e.target.value)}
+                      className="w-full pl-9 pr-8 h-10 rounded-2xl border border-slate-200/90 dark:border-border bg-slate-50/50 dark:bg-muted/30 text-xs font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-2xs focus:outline-none focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all"
+                    />
+                    {recordsSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setRecordsSearch("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Right Controls: Ministry + Role + Range + Status Dropdown */}
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {/* Ministry */}
+                    <Select value={recordsMinistryFilter} onValueChange={setRecordsMinistryFilter}>
+                      <SelectTrigger className="h-10 w-[140px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                        <SelectValue placeholder="All Ministries" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                        <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
+                        {(ministries as any[]).map(m => (
+                          <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Role */}
+                    {!isMinistryHeadOnly && (
+                      <Select value={recordsRoleFilter} onValueChange={setRecordsRoleFilter}>
+                        <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                          <SelectValue placeholder="All Roles" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                          <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Roles</SelectItem>
+                          {(roles as any[]).map(r => (
+                            <SelectItem key={r.id} value={r.name} className="text-xs font-medium cursor-pointer">{r.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    {/* Range */}
+                    <Select value={recordsRange} onValueChange={(val: any) => setRecordsRange(val)}>
+                      <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                        <SelectValue placeholder="Range" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                        <SelectItem value="today" className="text-xs font-medium cursor-pointer">Today</SelectItem>
+                        <SelectItem value="yesterday" className="text-xs font-medium cursor-pointer">Yesterday</SelectItem>
+                        <SelectItem value="this-week" className="text-xs font-medium cursor-pointer">This week</SelectItem>
+                        <SelectItem value="this-month" className="text-xs font-medium cursor-pointer">This month</SelectItem>
+                        <SelectItem value="all-time" className="text-xs font-medium cursor-pointer">All time</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Status */}
+                    <Select value={recordsStatusFilter} onValueChange={setRecordsStatusFilter}>
+                      <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                        {[
+                          { id: "all", label: "All Statuses", count: recordStats.total },
+                          { id: "present", label: "Present", count: recordStats.present },
+                          { id: "late", label: "Late", count: recordStats.late },
+                          { id: "absent", label: "Absent", count: recordStats.absent },
+                          { id: "incomplete", label: "Incomplete", count: recordStats.incomplete },
+                        ].map(tab => (
+                          <SelectItem key={tab.id} value={tab.id} className="text-xs font-medium cursor-pointer">
+                            {tab.label} ({tab.count})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Table Container */}
+                <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card">
+
+                  {/* ── Mobile card view ── */}
+                  <div className="md:hidden divide-y divide-border/30">
+                    {recordsLoading ? (
+                      <div className="py-12 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-sidebar" /></div>
+                    ) : filteredRecordRows.length === 0 ? (
+                      <div className="py-14 text-center text-xs font-medium text-muted-foreground">No records found.</div>
+                    ) : filteredRecordRows.map((row, i) => {
+                      const ministry = (ministries as any[]).find(m => m.id === row.worker.majorMinistryId);
+                      return (
+                        <div key={i} className="p-4 flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2.5 mb-1.5">
+                              <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-foreground leading-tight truncate">{row.worker.firstName} {row.worker.lastName}</p>
+                                <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"} · {format(row.date, "MMM d, yyyy")}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
+                              <span>In: <strong className="text-foreground">{row.timeIn ? format(row.timeIn, "h:mm a") : "——"}</strong></span>
+                              <span>Out: <strong className="text-foreground">{row.timeOut ? format(row.timeOut, "h:mm a") : "——"}</strong></span>
+                              <span>{formatHours(row.hours)}</span>
+                              {row.status === "present" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Present</span>}
+                              {row.status === "late" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Late</span>}
+                              {row.status === "absent" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">Absent</span>}
+                              {row.status === "incomplete" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Incomplete</span>}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock In" });
+                                const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === row.worker.id && sd >= todayStart; });
+                                if (!hasStub) { try { await createMealStub({ workerId: row.worker.id, workerName: `${row.worker.firstName} ${row.worker.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch { } }
+                                toast({ title: "Timed In", description: `${row.worker.firstName} ${row.worker.lastName}` });
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-700 transition-colors"
+                            >
+                              <LogIn className="h-3 w-3" /> In
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock Out" });
+                                toast({ title: "Timed Out", description: `${row.worker.firstName} ${row.worker.lastName}` });
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-blue-700 transition-colors"
+                            >
+                              <LogOut className="h-3 w-3" /> Out
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Desktop table view ── */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-sidebar">
+                        <tr className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
+                          {["Worker", "Worker ID", "Role", "Ministry", "Date", "Time In", "Time Out", "Hours", "Status", "Actions"].map(h => (
+                            <th key={h} className={cn("px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap", h === "Actions" ? "text-center w-20" : "text-left")}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recordsLoading ? (
+                          <tr><td colSpan={10} className="py-12 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-sidebar" /></td></tr>
+                        ) : filteredRecordRows.length === 0 ? (
+                          <tr><td colSpan={10} className="py-14 text-center text-xs font-medium text-muted-foreground">No records found.</td></tr>
+                        ) : filteredRecordRows.map((row, i) => {
+                          const ministry = (ministries as any[]).find(m => m.id === row.worker.majorMinistryId);
+                          return (
+                            <tr key={i} className="border-b border-gray-100 dark:border-border/60 hover:bg-slate-50/70 dark:hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-3.5 align-middle">
+                                <div className="flex items-center gap-2.5">
+                                  <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
+                                  <span className="text-xs font-semibold text-foreground whitespace-nowrap">{row.worker.firstName} {row.worker.lastName}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5 text-xs font-mono font-bold text-foreground align-middle whitespace-nowrap">{fmtId(row.worker.workerId)}</td>
+                              <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                                <RoleBadge role={getRoleName(row.worker)} />
+                              </td>
+                              <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{ministry?.name || "—"}</td>
+                              <td className="px-4 py-3.5 text-xs font-semibold text-foreground align-middle whitespace-nowrap">{format(row.date, "EEE, MMM d, yyyy")}</td>
+                              <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{row.timeIn ? format(row.timeIn, "h:mm a") : "——"}</td>
+                              <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{row.timeOut ? format(row.timeOut, "h:mm a") : "——"}</td>
+                              <td className="px-4 py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">{formatHours(row.hours)}</td>
+                              <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                                {row.status === "present" && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Present</span>}
+                                {row.status === "late" && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Late</span>}
+                                {row.status === "absent" && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Absent</span>}
+                                {row.status === "incomplete" && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Incomplete</span>}
+                              </td>
+                              <td className="px-4 py-3.5 align-middle whitespace-nowrap text-center">
+                                <div className="flex items-center justify-center">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button type="button" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border border-border bg-popover">
+                                      <DropdownMenuItem
+                                        onClick={async () => {
+                                          await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock In" });
+                                          const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === row.worker.id && sd >= todayStart; });
+                                          if (!hasStub) { try { await createMealStub({ workerId: row.worker.id, workerName: `${row.worker.firstName} ${row.worker.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch { } }
+                                          toast({ title: "Timed In", description: `${row.worker.firstName} ${row.worker.lastName}` });
+                                        }}
+                                        className="cursor-pointer text-xs font-medium"
+                                      >
+                                        <LogIn className="h-3.5 w-3.5 mr-2" /> Time In
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={async () => {
+                                          await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock Out" });
+                                          toast({ title: "Timed Out", description: `${row.worker.firstName} ${row.worker.lastName}` });
+                                        }}
+                                        className="cursor-pointer text-xs font-medium"
+                                      >
+                                        <LogOut className="h-3.5 w-3.5 mr-2" /> Time Out
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Table Footer */}
+                <div className="flex items-center justify-between pt-4 text-xs text-muted-foreground">
+                  <span>Showing <strong className="text-foreground">{filteredRecordRows.length}</strong> record{filteredRecordRows.length !== 1 ? "s" : ""}</span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
         </div>
       </div>
 

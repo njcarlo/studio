@@ -511,7 +511,7 @@ export default function MyReservationsPage() {
         areaName={
           selectedBooking
             ? getArea(getRoom(selectedBooking.roomId)?.areaId)?.name ||
-              "First Floor"
+            "First Floor"
             : ""
         }
         venueElements={(venueElements as any[]) || []}

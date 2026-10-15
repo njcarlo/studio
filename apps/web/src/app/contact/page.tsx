@@ -149,7 +149,7 @@ export default function ContactPage() {
                   <div>
                     <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-0.5">Location</div>
                     <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug">
-                      COG Dasmariñas Worship Center, Cavite, Philippines
+                      Church of God Building, Marilag Subdivision, Emilio Aguinaldo Highway
                     </p>
                   </div>
                 </div>

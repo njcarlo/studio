@@ -660,7 +660,7 @@ export function InventoryTable({
           </div>
 
           {/* Action Buttons Row: Swapped (+ Add Item & Activity Feed on Left, Low Stock on Right) */}
-          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
             {/* Left: Primary + Add Item Button & Activity Feed */}
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
               <Button
@@ -903,15 +903,39 @@ export function InventoryTable({
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h4
-                              onClick={() => {
-                                setModalItem(item);
-                                setIsItemModalOpen(true);
-                              }}
-                              className="text-sm font-bold text-foreground hover:text-primary cursor-pointer line-clamp-1"
-                            >
-                              {item.name}
-                            </h4>
+                            <div className="flex items-center justify-between gap-2">
+                              <h4
+                                onClick={() => {
+                                  setModalItem(item);
+                                  setIsItemModalOpen(true);
+                                }}
+                                className="text-sm font-bold text-foreground hover:text-primary cursor-pointer line-clamp-1"
+                              >
+                                {item.name}
+                              </h4>
+                              {/* Quick In/Out buttons in row with item name */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 w-6 p-0 rounded-md cursor-pointer hover:bg-muted"
+                                  disabled={item.stock <= 0}
+                                  onClick={() => handleQuickStock(item, 'Stock Out')}
+                                  title="Quick -1"
+                                >
+                                  <ArrowDown className="h-3 w-3 text-amber-600" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 w-6 p-0 rounded-md cursor-pointer hover:bg-muted"
+                                  onClick={() => handleQuickStock(item, 'Stock In')}
+                                  title="Quick +1"
+                                >
+                                  <ArrowUp className="h-3 w-3 text-emerald-600" />
+                                </Button>
+                              </div>
+                            </div>
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${categoryClass}`}>
                                 {item.category?.name || 'Unassigned'}
@@ -943,34 +967,13 @@ export function InventoryTable({
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                               Current Stock
                             </p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="mt-0.5">
                               <span className={cn(
                                 "font-bold text-xs",
                                 isOut || isLow ? "text-red-600 dark:text-red-400 font-mono" : "text-foreground font-mono"
                               )}>
                                 {item.stock} {item.unit || 'pcs'}
                               </span>
-                              <div className="flex items-center gap-0.5 ml-auto">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 w-6 p-0 rounded-md cursor-pointer hover:bg-muted"
-                                  disabled={item.stock <= 0}
-                                  onClick={() => handleQuickStock(item, 'Stock Out')}
-                                  title="Quick -1"
-                                >
-                                  <ArrowDown className="h-3 w-3 text-amber-600" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 w-6 p-0 rounded-md cursor-pointer hover:bg-muted"
-                                  onClick={() => handleQuickStock(item, 'Stock In')}
-                                  title="Quick +1"
-                                >
-                                  <ArrowUp className="h-3 w-3 text-emerald-600" />
-                                </Button>
-                              </div>
                             </div>
                           </div>
 

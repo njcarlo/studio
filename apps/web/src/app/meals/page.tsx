@@ -140,7 +140,7 @@ function StatCard({
 // ------------------------------------------------------------
 function MealsPageContent() {
   const { user } = useAuthStore();
-  const { canViewMealStubs, canManageAllMealStubs, isMealStubAssigner, workerProfile, isLoading: isRoleLoading, isMinistryHead, myMinistryIds, isSuperAdmin } = useUserRole();
+  const { canViewMealStubs, canManageAllMealStubs, isMealStubAssigner, workerProfile, isLoading: isRoleLoading, isMinistryHead, myMinistryIds, isSuperAdmin, canOperateScanner } = useUserRole();
   const { toast } = useToast();
   const { playSuccess, playError } = useMealAudio();
   const searchParams = useSearchParams();
@@ -181,6 +181,8 @@ function MealsPageContent() {
   const { settings: globalSettings } = useSettings('mealstubs');
 
   const thirtyDaysAgo = useMemo(() => subDays(new Date(), 30), []);
+  const currentWorkerId = workerProfile?.id || user?.id;
+  const isMinistryLeader = isMinistryHead || (myMinistryIds && myMinistryIds.length > 0) || isMealStubAssigner;
   const {
     mealStubs,
     isLoading: mealStubsLoading,
@@ -188,7 +190,9 @@ function MealsPageContent() {
     deleteMealStub
   } = useMealStubs(canManageAllMealStubs
     ? { dateFrom: thirtyDaysAgo }
-    : { workerId: user?.id, dateFrom: thirtyDaysAgo, enabled: !!user?.id }
+    : isMinistryLeader
+    ? { dateFrom: thirtyDaysAgo, actorId: currentWorkerId, ministryIds: myMinistryIds, includeSelf: true, enabled: !!currentWorkerId }
+    : { workerId: currentWorkerId, actorId: currentWorkerId, dateFrom: thirtyDaysAgo, enabled: !!currentWorkerId }
   );
 
   const { mealStubs: allMealStubsInRange } = useMealStubs({
@@ -530,7 +534,7 @@ function MealsPageContent() {
               Issue, claim and audit daily meal allocations across every worker type — all from one place.
             </p>
           </div>
-          {activeTab !== "reports" && (
+          {activeTab !== "reports" && (canOperateScanner || isSuperAdmin || isMealStubAssigner || canManageAllMealStubs) && (
             <div className="flex items-center gap-2 self-end sm:self-auto">
               <Link href="/mealstub/scanner">
                 <Button
@@ -578,7 +582,7 @@ function MealsPageContent() {
                   Issued Stubs
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Recent meal stub activity for your account.
+                  Recent meal stub activity for your account and department.
                 </p>
               </div>
 
@@ -588,13 +592,19 @@ function MealsPageContent() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[40%]">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left">
+                          CLAIMANT / WORKER
+                        </TableHead>
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left">
                           DATE
                         </TableHead>
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left w-[35%]">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left">
+                          TYPE & QTY
+                        </TableHead>
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left">
                           TIME
                         </TableHead>
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-center w-[25%]">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-center">
                           STATUS
                         </TableHead>
                       </TableRow>
@@ -603,7 +613,7 @@ function MealsPageContent() {
                       {(!mealStubs || mealStubs.length === 0) ? (
                         <TableRow>
                           <TableCell
-                            colSpan={3}
+                            colSpan={5}
                             className="py-14 text-center text-xs text-muted-foreground font-medium"
                           >
                             No meal stub activity recorded.
@@ -622,7 +632,7 @@ function MealsPageContent() {
                                 : new Date(b.date as any);
                             return db.getTime() - da.getTime();
                           })
-                          .slice(0, 10)
+                          .slice(0, 15)
                           .map((stub: any) => {
                             const d =
                               stub.date instanceof Date
@@ -630,19 +640,45 @@ function MealsPageContent() {
                                 : new Date(stub.date);
                             const isClaimed =
                               stub.status === "Claimed" || stub.claimedAt;
+                            const claimantName =
+                              stub.workerName ||
+                              (stub.worker
+                                ? `${stub.worker.firstName} ${stub.worker.lastName}`
+                                : "Worker");
+                            const isMe =
+                              stub.workerId === currentWorkerId ||
+                              stub.worker?.id === currentWorkerId;
 
                             return (
                               <TableRow
                                 key={stub.id}
                                 className="hover:bg-gray-50/60 dark:hover:bg-muted/30 border-b border-gray-100 dark:border-border/60 transition-colors"
                               >
-                                <TableCell className="py-4 px-6 font-bold text-xs text-foreground align-middle">
+                                <TableCell className="py-4 px-6 text-xs text-foreground align-middle">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-foreground">
+                                      {claimantName}
+                                    </span>
+                                    {isMe && (
+                                      <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.2 shrink-0">
+                                        You
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-4 px-4 font-semibold text-xs text-foreground align-middle whitespace-nowrap">
                                   {format(d, "EEE, MMM d, yyyy")}
                                 </TableCell>
-                                <TableCell className="py-4 px-6 text-xs text-muted-foreground font-medium align-middle">
+                                <TableCell className="py-4 px-4 text-xs text-foreground align-middle whitespace-nowrap">
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold capitalize">{stub.stubType || "Daily"}</span>
+                                    <span className="text-[11px] text-muted-foreground">1 Meal Stub</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-4 px-4 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">
                                   {format(d, "h:mm a")}
                                 </TableCell>
-                                <TableCell className="py-4 px-6 text-center align-middle">
+                                <TableCell className="py-4 px-6 text-center align-middle whitespace-nowrap">
                                   {isClaimed ? (
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />

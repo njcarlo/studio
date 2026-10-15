@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@studio/ui";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, Dialog, DialogContent, DialogTitle } from "@studio/ui";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@studio/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -233,9 +233,12 @@ export default function WorkersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  const [activeTab, setActiveTab] = useState<"all" | "active" | "inactive" | "heads" | "mentors" | "admins">("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | "heads" | "mentors" | "admins">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
   const [ministryFilter, setMinistryFilter] = useState<string>("all");
   const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
+  const [workerToToggleStatus, setWorkerToToggleStatus] = useState<Worker | null>(null);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
 
   React.useEffect(() => {
     const timer = setTimeout(() => { setSearchQuery(searchInput); setCurrentPage(1); }, 400);
@@ -472,8 +475,15 @@ export default function WorkersPage() {
     }
   };
 
-  const handleToggleStatus = async (worker: Worker) => {
+  const handleToggleStatus = (worker: Worker) => {
+    setWorkerToToggleStatus(worker);
+  };
+
+  const handleConfirmToggleStatus = async () => {
+    if (!workerToToggleStatus) return;
+    const worker = workerToToggleStatus;
     const newStatus = worker.status === "Active" ? "Inactive" : "Active";
+    setIsTogglingStatus(true);
     try {
       await updateWorkerSql({ id: worker.id, data: { status: newStatus } });
       await logAction(
@@ -487,12 +497,15 @@ export default function WorkersPage() {
         title: newStatus === "Active" ? "Worker Activated" : "Worker Deactivated",
         description: `${worker.firstName} ${worker.lastName} is now ${newStatus.toLowerCase()}.`,
       });
+      setWorkerToToggleStatus(null);
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Status Update Failed",
         description: error?.message || "Failed to update worker status.",
       });
+    } finally {
+      setIsTogglingStatus(false);
     }
   };
 
@@ -661,20 +674,24 @@ export default function WorkersPage() {
   const displayedWorkers = useMemo(() => {
     let list = baseWorkers;
 
-    if (activeTab === "active") {
-      list = list.filter(w => w.status === "Active");
-    } else if (activeTab === "inactive") {
-      list = list.filter(w => w.status === "Inactive");
-    } else if (activeTab === "heads") {
+    // Filter by role / category
+    if (roleFilter === "heads") {
       list = isMinistryHeadScoped ? [] : list.filter(w => isWorkerAdminOrHead(w));
-    } else if (activeTab === "mentors") {
+    } else if (roleFilter === "mentors") {
       list = list.filter(w => !isWorkerAdminOrHead(w));
-    } else if (activeTab === "admins") {
+    } else if (roleFilter === "admins") {
       list = isMinistryHeadScoped ? [] : list.filter(w => getWorkerRoleLabel(w).toLowerCase().includes("admin"));
     }
 
+    // Filter by status (Active / Inactive)
+    if (statusFilter === "active") {
+      list = list.filter(w => w.status === "Active");
+    } else if (statusFilter === "inactive") {
+      list = list.filter(w => w.status === "Inactive");
+    }
+
     return list;
-  }, [baseWorkers, activeTab, isMinistryHeadScoped, ministries, roles]);
+  }, [baseWorkers, roleFilter, statusFilter, isMinistryHeadScoped, ministries, roles]);
 
   const tabCounts = useMemo(() => {
     if (isMinistryHeadScoped) {
@@ -846,31 +863,44 @@ export default function WorkersPage() {
                   </div>
                 ) : null}
 
-                {/* Status & Role Filter Dropdown */}
-                <Select value={activeTab} onValueChange={(val) => { setActiveTab(val as any); setCurrentPage(1); }}>
-                  <SelectTrigger className="h-10 w-[180px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                    <SelectValue placeholder={isMinistryHeadScoped ? "All Mentors" : "All Workers"} />
+                {/* Role / Category Filter Dropdown */}
+                {!isMinistryHeadScoped && (
+                  <Select value={roleFilter} onValueChange={(val) => { setRoleFilter(val as any); setCurrentPage(1); }}>
+                    <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                      <SelectValue placeholder="All Workers" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="all" className="text-xs font-medium cursor-pointer">
+                        All Workers ({tabCounts.all})
+                      </SelectItem>
+                      <SelectItem value="mentors" className="text-xs font-medium cursor-pointer">
+                        Mentors ({tabCounts.mentors})
+                      </SelectItem>
+                      <SelectItem value="heads" className="text-xs font-medium cursor-pointer">
+                        Ministry Heads ({tabCounts.heads})
+                      </SelectItem>
+                      <SelectItem value="admins" className="text-xs font-medium cursor-pointer">
+                        Admins ({tabCounts.admins})
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Status Filter Dropdown (Active / Inactive) */}
+                <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val as any); setCurrentPage(1); }}>
+                  <SelectTrigger className="h-10 w-[150px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                    <SelectValue placeholder="Active" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    {(isMinistryHeadScoped
-                      ? [
-                        { id: "all", label: "All Mentors", count: tabCounts.all },
-                        { id: "active", label: "Active", count: tabCounts.active },
-                        { id: "inactive", label: "Inactive", count: tabCounts.inactive },
-                      ]
-                      : [
-                        { id: "all", label: "All Workers", count: tabCounts.all },
-                        { id: "active", label: "Active", count: tabCounts.active },
-                        { id: "inactive", label: "Inactive", count: tabCounts.inactive },
-                        { id: "mentors", label: "Mentors", count: tabCounts.mentors },
-                        { id: "heads", label: "Ministry Heads", count: tabCounts.heads },
-                        { id: "admins", label: "Admins", count: tabCounts.admins },
-                      ]
-                    ).map(tab => (
-                      <SelectItem key={tab.id} value={tab.id} className="text-xs font-medium cursor-pointer">
-                        {tab.label} ({tab.count})
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all" className="text-xs font-medium cursor-pointer">
+                      All Status ({tabCounts.all})
+                    </SelectItem>
+                    <SelectItem value="active" className="text-xs font-medium cursor-pointer">
+                      Active ({tabCounts.active})
+                    </SelectItem>
+                    <SelectItem value="inactive" className="text-xs font-medium cursor-pointer">
+                      Inactive ({tabCounts.inactive})
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -983,22 +1013,13 @@ export default function WorkersPage() {
                             </p>
                           </div>
 
-                          {/* Worker Initials & Role / Details Button */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5">
-                              <WorkerInitials
-                                name={`${worker.firstName} ${worker.lastName}`}
-                                avatarUrl={worker.avatarUrl}
-                              />
-                              <RoleBadge role={roleLabel} />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedWorkerForDetails(worker)}
-                              className="text-xs font-semibold text-primary hover:underline px-2 py-1 cursor-pointer"
-                            >
-                              Details
-                            </button>
+                          {/* Worker Initials & Role */}
+                          <div className="flex items-center gap-2.5">
+                            <WorkerInitials
+                              name={`${worker.firstName} ${worker.lastName}`}
+                              avatarUrl={worker.avatarUrl}
+                            />
+                            <RoleBadge role={roleLabel} />
                           </div>
 
                           {/* 2x2 Details Box */}
@@ -1211,12 +1232,14 @@ export default function WorkersPage() {
 
       <Sheet open={isBatchMoveSheetOpen} onOpenChange={setIsBatchMoveSheetOpen}>
         <SheetContent className="sm:max-w-lg">
+          <SheetTitle className="sr-only">Batch Move Ministry</SheetTitle>
           <BatchMinistrySheet selectedCount={selectedWorkerIds.length} ministries={availableMinistries} onSave={handleBatchMove} onClose={() => setIsBatchMoveSheetOpen(false)} />
         </SheetContent>
       </Sheet>
 
       <Sheet open={isBatchMealStubSheetOpen} onOpenChange={setIsBatchMealStubSheetOpen}>
         <SheetContent className="sm:max-w-md">
+          <SheetTitle className="sr-only">Batch Issue Meal Stubs</SheetTitle>
           <BatchMealStubSheet selectedCount={selectedWorkerIds.length} onSave={handleBatchMealStub} onClose={() => setIsBatchMealStubSheetOpen(false)} />
         </SheetContent>
       </Sheet>
@@ -1373,6 +1396,91 @@ export default function WorkersPage() {
         itemName={workerToDelete ? `${workerToDelete.firstName} ${workerToDelete.lastName}` : "this worker"}
         confirmLabel="Delete Worker"
       />
+
+      {/* Status Toggle Confirmation Dialog (Deactivate / Activate) */}
+      <Dialog
+        open={!!workerToToggleStatus}
+        onOpenChange={(open) => {
+          if (!open && !isTogglingStatus) setWorkerToToggleStatus(null);
+        }}
+      >
+        <DialogContent className="max-w-sm rounded-2xl p-6 text-center">
+          {workerToToggleStatus && (
+            <>
+              <div
+                className={cn(
+                  "w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-2",
+                  workerToToggleStatus.status === "Active"
+                    ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                    : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                )}
+              >
+                {workerToToggleStatus.status === "Active" ? (
+                  <UserX className="h-6 w-6" />
+                ) : (
+                  <UserCheck className="h-6 w-6" />
+                )}
+              </div>
+
+              <DialogHeader className="space-y-1">
+                <DialogTitle className="text-base font-bold text-center text-foreground font-headline">
+                  {workerToToggleStatus.status === "Active"
+                    ? "Deactivate Worker Account?"
+                    : "Activate Worker Account?"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-center text-muted-foreground mt-1 leading-relaxed">
+                  {workerToToggleStatus.status === "Active" ? (
+                    <>
+                      Are you sure you want to deactivate{" "}
+                      <strong className="text-foreground font-semibold">
+                        {workerToToggleStatus.firstName} {workerToToggleStatus.lastName}
+                      </strong>
+                      ? Their account will be marked as inactive and access to ministry features will be paused.
+                    </>
+                  ) : (
+                    <>
+                      Are you sure you want to activate{" "}
+                      <strong className="text-foreground font-semibold">
+                        {workerToToggleStatus.firstName} {workerToToggleStatus.lastName}
+                      </strong>
+                      ? Their account will be restored to active status.
+                    </>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+
+              <DialogFooter className="flex flex-row gap-2 sm:justify-center mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isTogglingStatus}
+                  className="flex-1 rounded-xl text-xs h-9 cursor-pointer"
+                  onClick={() => setWorkerToToggleStatus(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={isTogglingStatus}
+                  className={cn(
+                    "flex-1 rounded-xl text-xs h-9 font-bold cursor-pointer text-white shadow-xs",
+                    workerToToggleStatus.status === "Active"
+                      ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700"
+                      : "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                  )}
+                  onClick={handleConfirmToggleStatus}
+                >
+                  {isTogglingStatus
+                    ? "Processing..."
+                    : workerToToggleStatus.status === "Active"
+                    ? "Deactivate"
+                    : "Activate"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Centered Edit Worker Dialog */}
       <EditWorkerDialog

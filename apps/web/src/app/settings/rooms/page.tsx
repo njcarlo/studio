@@ -28,17 +28,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@studio/ui";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
+import { DeleteConfirmationDialog } from "@/components/common/delete-confirmation-dialog";
 import { MoreHorizontal, PlusCircle, LoaderCircle, MapPin, Search, Pencil, Trash2, X, Layers, ArrowLeft, Building, Building2, Users, ArrowUpDown, Sparkles } from "lucide-react";
 import { Label } from "@studio/ui";
 import { Input } from "@studio/ui";
@@ -732,52 +723,72 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                         return (
                             <div
                                 key={room.id}
-                                className="group rounded-2xl border border-slate-200/80 dark:border-border/80 bg-white dark:bg-card p-4 sm:p-5 space-y-3.5 shadow-xs hover:shadow-md hover:border-sidebar/40 dark:hover:border-sidebar/40 transition-all duration-200"
+                                className="group rounded-2xl border border-slate-200/80 dark:border-border/80 bg-card overflow-hidden shadow-xs hover:shadow-md hover:border-sidebar/40 dark:hover:border-sidebar/40 transition-all duration-200"
                             >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                                        <div className="w-11 h-11 rounded-2xl bg-sidebar/10 text-sidebar dark:bg-sidebar/25 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sidebar/20 shadow-2xs group-hover:scale-105 transition-transform">
-                                            <MapPin className="h-5 w-5" />
-                                        </div>
-                                        <div className="min-w-0 flex-1 space-y-0.5">
-                                            <h4 className="font-bold text-foreground text-sm sm:text-base font-headline truncate group-hover:text-sidebar transition-colors leading-snug">
-                                                {room.name}
-                                            </h4>
-                                            <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5 font-medium">
-                                                <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
-                                                <span>{branchName !== 'N/A' ? branchName : 'Main Campus'}</span>
-                                            </p>
-                                        </div>
+                                {/* Top Navy Blue Banner */}
+                                <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="w-2.5 h-2.5 rounded-[3px] border border-white/60 bg-white/20 shrink-0" />
+                                        <span className="text-xs font-mono font-bold text-white tracking-wide truncate">
+                                            {room.id}
+                                        </span>
                                     </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button
-                                                type="button"
-                                                className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 -mt-1 -mr-1"
-                                                title="Room actions"
-                                            >
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-40 p-1.5 rounded-xl shadow-xl border-border/80">
-                                            <DropdownMenuItem
-                                                onClick={() => onEdit(room)}
-                                                className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
-                                            >
-                                                <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Room
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => onDelete(room)}
-                                                className="text-destructive cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 focus:text-destructive focus:bg-destructive/10"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Room
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {isMaintenance ? (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-400/20 text-amber-200 border border-amber-400/30">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                                Maintenance
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                Active
+                                            </span>
+                                        )}
+
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button
+                                                    type="button"
+                                                    className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer shrink-0"
+                                                    title="Room actions"
+                                                >
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-40 p-1.5 rounded-xl shadow-xl border-border/80">
+                                                <DropdownMenuItem
+                                                    onClick={() => onEdit(room)}
+                                                    className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Room
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => onDelete(room)}
+                                                    className="text-destructive cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 focus:text-destructive focus:bg-destructive/10"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Room
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </div>
 
-                                <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-border/60">
-                                    <div className="flex items-center gap-2 flex-wrap">
+                                {/* Card Body */}
+                                <div className="p-4 space-y-3 bg-white dark:bg-card">
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-foreground text-base font-headline leading-tight">
+                                            {room.name}
+                                        </h4>
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+                                            <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                            <span>{branchName !== 'N/A' ? branchName : 'Main Campus'}</span>
+                                        </p>
+                                    </div>
+
+                                    {/* Aligned Row: Second floor & Seats capacity */}
+                                    <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 dark:border-border/60">
                                         <Badge
                                             variant="outline"
                                             className="text-[11px] font-semibold bg-slate-100 dark:bg-muted/50 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-border/70 rounded-lg px-2.5 py-1 inline-flex items-center gap-1.5"
@@ -785,24 +796,12 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                                             <Layers className="h-3 w-3 text-slate-400 shrink-0" />
                                             <span>{areaName}</span>
                                         </Badge>
-                                        <Badge
-                                            variant="secondary"
-                                            className={cn(
-                                                "px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 border",
-                                                isMaintenance
-                                                    ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                                                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                                            )}
-                                        >
-                                            <span className={cn("w-1.5 h-1.5 rounded-full", isMaintenance ? "bg-amber-500" : "bg-emerald-500 animate-pulse")} />
-                                            <span>{status}</span>
-                                        </Badge>
-                                    </div>
 
-                                    <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs whitespace-nowrap shrink-0 ml-auto">
-                                        <Users className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                                        <span>{room.capacity} seats</span>
-                                    </span>
+                                        <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs whitespace-nowrap shrink-0">
+                                            <Users className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                            <span>{room.capacity} seats</span>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -1073,55 +1072,55 @@ export default function RoomManagementPage() {
 
                 <div className="space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Segmented Tab Selector (Right aligned) */}
-                <div className="flex items-center justify-end w-full -mb-5">
-                    <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-muted p-1 rounded-xl border border-slate-200/70 dark:border-border/50 shadow-2xs w-fit">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('rooms')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${activeTab === 'rooms' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
-                        >
-                            <span>Rooms</span>
-                            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${activeTab === 'rooms' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-                                {rooms?.length ?? 0}
-                            </span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('areas')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${activeTab === 'areas' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
-                        >
-                            <span>Areas</span>
-                            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${activeTab === 'areas' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-                                {areas?.length ?? 0}
-                            </span>
-                        </button>
+                    <div className="flex items-center justify-end w-full -mb-5">
+                        <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-muted p-1 rounded-xl border border-slate-200/70 dark:border-border/50 shadow-2xs w-fit">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('rooms')}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${activeTab === 'rooms' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
+                            >
+                                <span>Rooms</span>
+                                <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${activeTab === 'rooms' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                                    {rooms?.length ?? 0}
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('areas')}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${activeTab === 'areas' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
+                            >
+                                <span>Areas</span>
+                                <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${activeTab === 'areas' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                                    {areas?.length ?? 0}
+                                </span>
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                {/* Content */}
-                {activeTab === 'rooms' && (
-                    <RoomsTab
-                        rooms={[...(rooms || [])].sort((a, b) => { const wa = a.weight ?? 0, wb = b.weight ?? 0; return wa !== wb ? wa - wb : a.name.localeCompare(b.name); })}
-                        areas={areas || []}
-                        branches={branches || []}
-                        venueElements={venueElements || []}
-                        isLoading={isLoading}
-                        onAdd={() => { setSelectedRoom(null); setIsRoomSheetOpen(true); }}
-                        onEdit={(room) => { setSelectedRoom(room); setIsRoomSheetOpen(true); }}
-                        onDelete={(room) => setRoomToDelete(room)}
-                    />
-                )}
-                {activeTab === 'areas' && (
-                    <AreasTab
-                        areas={areas || []}
-                        branches={branches || []}
-                        rooms={rooms || []}
-                        isLoading={isLoading}
-                        onAdd={() => { setSelectedArea(null); setIsAreaSheetOpen(true); }}
-                        onEdit={(area) => { setSelectedArea(area); setIsAreaSheetOpen(true); }}
-                        onDelete={(area) => setAreaToDelete(area)}
-                    />
-                )}
+                    {/* Content */}
+                    {activeTab === 'rooms' && (
+                        <RoomsTab
+                            rooms={[...(rooms || [])].sort((a, b) => { const wa = a.weight ?? 0, wb = b.weight ?? 0; return wa !== wb ? wa - wb : a.name.localeCompare(b.name); })}
+                            areas={areas || []}
+                            branches={branches || []}
+                            venueElements={venueElements || []}
+                            isLoading={isLoading}
+                            onAdd={() => { setSelectedRoom(null); setIsRoomSheetOpen(true); }}
+                            onEdit={(room) => { setSelectedRoom(room); setIsRoomSheetOpen(true); }}
+                            onDelete={(room) => setRoomToDelete(room)}
+                        />
+                    )}
+                    {activeTab === 'areas' && (
+                        <AreasTab
+                            areas={areas || []}
+                            branches={branches || []}
+                            rooms={rooms || []}
+                            isLoading={isLoading}
+                            onAdd={() => { setSelectedArea(null); setIsAreaSheetOpen(true); }}
+                            onEdit={(area) => { setSelectedArea(area); setIsAreaSheetOpen(true); }}
+                            onDelete={(area) => setAreaToDelete(area)}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -1150,49 +1149,31 @@ export default function RoomManagementPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Dialogs */}
-            <AlertDialog open={!!branchToDelete} onOpenChange={(open) => !open && setBranchToDelete(null)}>
-                <AlertDialogContent className="rounded-2xl p-6 border-border/80 shadow-2xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete the satellite <span className="font-bold">{branchToDelete?.name}</span>. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteBranch} className="bg-destructive hover:bg-destructive/90 rounded-xl">Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            <AlertDialog open={!!areaToDelete} onOpenChange={(open) => !open && setAreaToDelete(null)}>
-                <AlertDialogContent className="rounded-2xl p-6 border-border/80 shadow-2xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete the area <span className="font-bold">{areaToDelete?.name}</span>. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteArea} className="bg-destructive hover:bg-destructive/90 rounded-xl">Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            <AlertDialog open={!!roomToDelete} onOpenChange={(open) => !open && setRoomToDelete(null)}>
-                <AlertDialogContent className="rounded-2xl p-6 border-border/80 shadow-2xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete the room <span className="font-bold">{roomToDelete?.name}</span>. This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteRoom} className="bg-destructive hover:bg-destructive/90 rounded-xl">Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {/* Delete Confirmation Dialogs */}
+            <DeleteConfirmationDialog
+                isOpen={!!branchToDelete}
+                onClose={() => setBranchToDelete(null)}
+                onConfirm={handleDeleteBranch}
+                title="Delete Satellite?"
+                itemName={branchToDelete?.name}
+                confirmLabel="Delete Satellite"
+            />
+            <DeleteConfirmationDialog
+                isOpen={!!areaToDelete}
+                onClose={() => setAreaToDelete(null)}
+                onConfirm={handleDeleteArea}
+                title="Delete Area?"
+                itemName={areaToDelete?.name}
+                confirmLabel="Delete Area"
+            />
+            <DeleteConfirmationDialog
+                isOpen={!!roomToDelete}
+                onClose={() => setRoomToDelete(null)}
+                onConfirm={handleDeleteRoom}
+                title="Delete Room?"
+                itemName={roomToDelete?.name}
+                confirmLabel="Delete Room"
+            />
         </AppLayout>
     );
 }

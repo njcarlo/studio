@@ -17,6 +17,7 @@ import {
   MapPin,
   User,
   X,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   format,
@@ -49,6 +50,10 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
 } from "@studio/ui";
 import { cn, toJsDate } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -92,6 +97,13 @@ const EVENT_COLORS = [
     border: "border-l-rose-500",
   },
 ];
+
+function getInitials(name: string): string {
+  if (!name) return "U";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function ScheduleCalendarPage() {
   const { canViewScheduleMasterview, canApproveRoomReservation, workerProfile, isSuperAdmin, myMinistryIds, isLoading: roleLoading } = useUserRole();
@@ -338,7 +350,7 @@ export default function ScheduleCalendarPage() {
 
         {/* Floor / Area selector for Day view */}
         {viewMode === "day" && (
-          <div className="flex items-center justify-start gap-2.5">
+          <div className="flex items-center justify-end gap-2.5">
             <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
               Show rooms:
             </span>
@@ -382,15 +394,10 @@ export default function ScheduleCalendarPage() {
               {/* Day Headers (Sun - Sat) with styled header cards */}
               <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (dayName, i) => (
+                  (dayName) => (
                     <div
                       key={dayName}
-                      className={cn(
-                        "text-[10px] sm:text-xs font-bold py-1.5 sm:py-2 px-0.5 sm:px-1 text-center uppercase tracking-wider rounded-xl transition-colors shadow-2xs",
-                        i === 0 || i === 6
-                          ? "bg-blue-50/90 dark:bg-blue-950/40 text-sidebar dark:text-blue-300 font-extrabold border border-blue-200/50 dark:border-blue-900/40"
-                          : "bg-slate-100/80 dark:bg-muted/60 text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-border/40"
-                      )}
+                      className="text-[10px] sm:text-xs font-bold py-1.5 sm:py-2 px-0.5 sm:px-1 text-center uppercase tracking-wider rounded-xl transition-colors shadow-2xs bg-sidebar text-white border border-sidebar-border/60"
                     >
                       {dayName}
                     </div>
@@ -431,7 +438,7 @@ export default function ScheduleCalendarPage() {
                           : "bg-slate-50/30 dark:bg-muted/10 border-slate-100 dark:border-border/30 text-slate-400 dark:text-slate-600 opacity-60"
                       )}
                     >
-                      {/* Top Header: Day Number + Event Badge count */}
+                      {/* Top Header: Day Number */}
                       <div className="flex items-center justify-between mb-0.5 sm:mb-1 w-full">
                         {isDayToday ? (
                           <div className="flex items-center gap-1">
@@ -454,17 +461,6 @@ export default function ScheduleCalendarPage() {
                             )}
                           >
                             {format(day, "d")}
-                          </span>
-                        )}
-
-                        {dayEvents.length > 0 && (
-                          <span className={cn(
-                            "text-[9px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.2 rounded-full",
-                            isSelected
-                              ? "bg-sidebar text-white"
-                              : "bg-sidebar/10 text-sidebar dark:bg-blue-950/60 dark:text-blue-300"
-                          )}>
-                            {dayEvents.length}
                           </span>
                         )}
                       </div>
@@ -608,24 +604,21 @@ export default function ScheduleCalendarPage() {
                   return (
                     <div key={day.toISOString()} className="rounded-xl border border-gray-200 dark:border-border overflow-hidden">
                       {/* Day header */}
-                      <div className={cn(
-                        "px-4 py-2.5 border-b border-gray-200 dark:border-border flex items-center gap-3",
-                        isDayToday ? "bg-sidebar/10 dark:bg-blue-950/20" : "bg-gray-50 dark:bg-muted/40"
-                      )}>
+                      <div className="px-4 py-2.5 border-b border-sidebar-border/60 flex items-center gap-3 bg-sidebar text-white">
                         <div className={cn(
                           "w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shrink-0",
-                          isDayToday ? "bg-sidebar text-white shadow-xs" : "bg-transparent text-gray-700 dark:text-gray-200"
+                          isDayToday ? "bg-white text-sidebar shadow-xs" : "bg-white/15 text-white"
                         )}>
                           {format(day, "d")}
                         </div>
                         <div>
-                          <p className={cn("text-xs font-extrabold uppercase tracking-wider", isDayToday ? "text-sidebar dark:text-blue-400" : "text-gray-500 dark:text-gray-400")}>
+                          <p className="text-xs font-extrabold uppercase tracking-wider text-white">
                             {format(day, "EEEE")}
                           </p>
-                          <p className="text-[11px] text-gray-400 dark:text-gray-500">{format(day, "MMMM d, yyyy")}</p>
+                          <p className="text-[11px] text-blue-100/80">{format(day, "MMMM d, yyyy")}</p>
                         </div>
                         {dayEvents.length > 0 && (
-                          <span className="ml-auto text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          <span className="ml-auto text-[11px] font-bold text-sidebar bg-white px-2 py-0.5 rounded-full shadow-2xs">
                             {dayEvents.length} event{dayEvents.length > 1 ? "s" : ""}
                           </span>
                         )}
@@ -667,52 +660,31 @@ export default function ScheduleCalendarPage() {
               <div className="hidden lg:block overflow-x-auto -mx-6">
                 <div className="min-w-[760px] px-6">
                 {/* Header Row: Days of the Week */}
-                <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-slate-50/90 dark:bg-muted/40 border-b border-slate-200/80 dark:border-border/80 sticky top-0 z-10">
-                  <div className="border-r border-slate-200/80 dark:border-border/80 py-3" />
+                <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-sidebar text-white border-b border-sidebar-border/60 sticky top-0 z-10 shadow-xs">
+                  <div className="border-r border-white/15 py-3" />
 
-                  {weekDays.map((day, dIdx) => {
+                  {weekDays.map((day) => {
                     const isDayToday = isToday(day);
-                    const isWeekend = dIdx === 0 || dIdx === 6;
 
                     return (
                       <div
                         key={day.toISOString()}
                         className={cn(
-                          "py-3 px-2 text-center border-r border-slate-200/80 dark:border-border/80 last:border-r-0 transition-colors flex flex-col items-center justify-center gap-0.5",
-                          isDayToday
-                            ? "bg-sidebar/5 dark:bg-blue-950/20"
-                            : isWeekend
-                            ? "bg-slate-100/50 dark:bg-muted/20"
-                            : ""
+                          "py-3 px-2 text-center border-r border-white/15 last:border-r-0 transition-colors flex flex-col items-center justify-center gap-0.5",
+                          isDayToday ? "bg-white/15" : ""
                         )}
                       >
-                        <p
-                          className={cn(
-                            "text-[10px] font-bold uppercase tracking-wider",
-                            isDayToday
-                              ? "text-sidebar dark:text-blue-400 font-extrabold"
-                              : isWeekend
-                              ? "text-sidebar/70 dark:text-blue-300/70"
-                              : "text-slate-500 dark:text-slate-400"
-                          )}
-                        >
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-blue-100/90">
                           {format(day, "EEE")}
                         </p>
                         {isDayToday ? (
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="w-7 h-7 rounded-full bg-sidebar text-white flex items-center justify-center text-xs font-black shadow-xs ring-2 ring-sidebar/20">
+                            <span className="w-7 h-7 rounded-full bg-white text-sidebar flex items-center justify-center text-xs font-black shadow-xs ring-2 ring-white/30">
                               {format(day, "d")}
                             </span>
                           </div>
                         ) : (
-                          <p
-                            className={cn(
-                              "text-sm font-bold mt-0.5",
-                              isWeekend
-                                ? "text-slate-700 dark:text-slate-200"
-                                : "text-slate-800 dark:text-slate-100"
-                            )}
-                          >
+                          <p className="text-sm font-bold mt-0.5 text-white">
                             {format(day, "d")}
                           </p>
                         )}
@@ -812,12 +784,13 @@ export default function ScheduleCalendarPage() {
           ) : (
             /* Day View — vertical room list on mobile, grid on desktop */
             <div>
-              {/* ── MOBILE: vertical list of rooms with their bookings ── */}
+              {/* ── MOBILE: vertical list of rooms with their bookings (Image 2 style) ── */}
               <div className="lg:hidden space-y-3">
                 {dayRooms.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-12">No rooms found.</p>
                 ) : (
                   dayRooms.map((room) => {
+                    const area = areas?.find((a) => a.id === room.areaId);
                     const roomBookings = approvedBookings
                       .filter((b) =>
                         b.roomId === room.id &&
@@ -825,36 +798,179 @@ export default function ScheduleCalendarPage() {
                       )
                       .sort((a, b) => toJsDate(a.start).getTime() - toJsDate(b.start).getTime());
 
-                    return (
-                      <div key={room.id} className="rounded-xl border border-gray-200 dark:border-border overflow-hidden">
-                        <div className="bg-gray-50 dark:bg-muted/40 px-4 py-2.5 border-b border-gray-200 dark:border-border">
-                          <p className="text-xs font-bold text-gray-700 dark:text-gray-200">{room.name}</p>
+                    if (roomBookings.length === 0) {
+                      return (
+                        <div key={room.id} className="rounded-xl border border-gray-200 dark:border-border overflow-hidden bg-card shadow-2xs">
+                          <div className="bg-gray-50/80 dark:bg-muted/40 px-4 py-2.5 border-b border-gray-100 dark:border-border/50 flex items-center justify-between">
+                            <p className="text-xs font-bold text-gray-700 dark:text-gray-200">{room.name}</p>
+                            <span className="text-[10px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">Available</span>
+                          </div>
+                          <div className="px-4 py-3 text-xs text-muted-foreground italic flex items-center gap-2">
+                            <span>No reservations today</span>
+                          </div>
                         </div>
-                        {roomBookings.length === 0 ? (
-                          <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 italic">No reservations today</div>
-                        ) : (
-                          <div className="divide-y divide-gray-100 dark:divide-border">
-                            {roomBookings.map((booking) => {
-                              const worker = workers?.find((w) => w.id === booking.workerProfileId);
-                              const startTime = toJsDate(booking.start);
-                              const endTime = toJsDate(booking.end);
-                              const requesterName = worker ? `${worker.firstName} ${worker.lastName}` : booking.name || "Requester";
-                              return (
-                                <div key={booking.id} onClick={() => handleBookingClick(booking)} className="px-4 py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors border-l-[3px] border-l-blue-500">
-                                  <div>
-                                    <p className="text-xs font-bold text-gray-800 dark:text-gray-100 leading-snug">{booking.title}</p>
-                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{requesterName}</p>
+                      );
+                    }
+
+                    return (
+                      <div key={room.id} className="space-y-3">
+                        {roomBookings.map((booking) => {
+                          const worker = workers?.find((w) => w.id === booking.workerProfileId);
+                          const workerMinistry = ministries?.find(
+                            (m) => m.id === worker?.majorMinistryId || m.id === (booking as any)?.ministryId
+                          );
+                          const ministryName = workerMinistry?.name || (booking as any)?.ministry?.name || (booking as any)?.department || "Whitelight";
+                          const startTime = toJsDate(booking.start);
+                          const endTime = toJsDate(booking.end);
+                          const createdDate = booking.dateRequested || (booking as any)?.createdAt
+                            ? toJsDate(booking.dateRequested || (booking as any)?.createdAt)
+                            : startTime;
+                          const requesterName = worker
+                            ? `${worker.firstName} ${worker.lastName}`
+                            : booking.name || (booking as any)?.workerName || "User";
+                          const initials = getInitials(requesterName);
+                          const reqId = booking.requestId || (booking.id ? `REQ-${booking.id.slice(-4).toUpperCase()}` : "REQ-1000");
+                          const isApproved = booking.status === "Approved";
+                          const isPending = booking.status?.toLowerCase().startsWith("pending");
+
+                          return (
+                            <div
+                              key={booking.id}
+                              className="rounded-2xl border border-gray-200 dark:border-border overflow-hidden bg-card shadow-card-dark transition-all"
+                            >
+                              {/* Blue Header: REQ ID + Actions */}
+                              <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                                <span className="text-xs font-mono font-bold text-white tracking-wide">
+                                  {reqId}
+                                </span>
+
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="p-1 rounded-lg hover:bg-white/10 text-white/90 hover:text-white transition-colors cursor-pointer"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-card-dark">
+                                    <DropdownMenuItem
+                                      onClick={() => handleBookingClick(booking)}
+                                      className="text-xs cursor-pointer font-medium gap-2"
+                                    >
+                                      <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+
+                              {/* Card Body */}
+                              <div className="p-4 space-y-3">
+                                {/* Requester info row */}
+                                <div className="flex items-start justify-between gap-2.5">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-9 h-9 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sky-300 font-bold text-xs flex items-center justify-center shrink-0">
+                                      {initials}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-bold text-foreground leading-tight truncate">
+                                        {requesterName}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">
+                                        {ministryName}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="text-right shrink-0 whitespace-nowrap">
-                                    <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-                                      {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
-                                    </p>
+
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {isApproved ? (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                        Approved
+                                      </span>
+                                    ) : isPending ? (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                        Pending
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                        {booking.status || "Scheduled"}
+                                      </span>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleBookingClick(booking)}
+                                      className="text-xs font-bold text-primary hover:underline px-1 py-0.5 cursor-pointer"
+                                    >
+                                      Details
+                                    </button>
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        )}
+
+                                {/* Title line: "Title" for room: RoomName */}
+                                <div>
+                                  <p className="text-sm font-bold text-foreground leading-snug">
+                                    &ldquo;{booking.title}&rdquo; for room: {room.name}
+                                  </p>
+                                  {booking.purpose && booking.purpose !== booking.title && (
+                                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                                      {booking.purpose}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* 2x2 Info Grid Box (Matching Image 2) */}
+                                <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-muted/20 border border-slate-200/80 dark:border-border/60 grid grid-cols-2 gap-3.5 text-xs shadow-2xs">
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                      ROOM
+                                    </span>
+                                    <span className="font-bold text-foreground text-xs block truncate">
+                                      {room.name}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground block truncate">
+                                      {area?.name || "First Floor"}
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                      DATE & TIME
+                                    </span>
+                                    <span className="font-bold text-foreground text-xs block truncate">
+                                      {format(startTime, "MMM d, yyyy")}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground block truncate">
+                                      {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                      MINISTRY
+                                    </span>
+                                    <span className="font-bold text-foreground text-xs block truncate">
+                                      {ministryName}
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                      CREATED
+                                    </span>
+                                    <span className="font-bold text-foreground text-xs block truncate">
+                                      {format(createdDate, "MMM d, yyyy")}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })

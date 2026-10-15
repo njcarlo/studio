@@ -1970,7 +1970,7 @@ function ReportsContent() {
     <AppLayout>
       <div className="space-y-7 pb-12 w-full">
         {/* Header */}
-        <div className="flex flex-row items-center justify-between gap-4">
+        <div className="flex flex-col gap-3">
           <div className="space-y-1">
             <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
               Reports &amp; Analytics
@@ -1979,12 +1979,14 @@ function ReportsContent() {
               Monitor attendance, meal stub usage, allocations, and room reservations across the organization.
             </p>
           </div>
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent("reports:trigger-export"))}
-            className="h-9 sm:h-10 px-3.5 sm:px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0 ml-auto"
-          >
-            <Download className="h-4 w-4" /> Export
-          </button>
+          <div>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("reports:trigger-export"))}
+              className="h-9 sm:h-10 px-3.5 sm:px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+            >
+              <Download className="h-4 w-4" /> Export
+            </button>
+          </div>
         </div>
 
         {/* Tab content */}

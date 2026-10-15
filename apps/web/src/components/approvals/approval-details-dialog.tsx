@@ -226,30 +226,64 @@ export function ApprovalDetailsDialog({
             </div>
           )}
 
-          {/* 4. Description Block */}
-          <div className="p-4 rounded-2xl border border-border/70 bg-card/60 space-y-2 shadow-2xs">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              <FileText className="h-3.5 w-3.5 text-primary" />
-              <span>Request Details</span>
+          {/* 4. Description / Room & Purpose Block */}
+          {request.type === "Room Booking" ? (
+            <div className="p-4 rounded-2xl border border-border/70 bg-card/60 space-y-3 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                <span>Reservation Details</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {(() => {
+                  let purpose = request.details;
+                  let room = "";
+                  if (request.details) {
+                    const match = request.details.match(/^"?(.*?)"?\s+for room:\s*(.*)$/i);
+                    if (match) {
+                      purpose = match[1];
+                      room = match[2];
+                    }
+                  }
+                  return (
+                    <>
+                      {room && (
+                        <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                            Room
+                          </p>
+                          <p className="text-xs font-bold text-foreground mt-0.5">
+                            {room}
+                          </p>
+                        </div>
+                      )}
+                      <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Purpose
+                        </p>
+                        <p className="text-xs font-semibold text-foreground mt-0.5">
+                          {purpose || "—"}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
-            <div className="p-3 rounded-xl bg-muted/30 border border-border/60 text-xs font-medium text-foreground leading-relaxed whitespace-pre-wrap">
-              {request.details || "No additional details provided."}
+          ) : (
+            <div className="p-4 rounded-2xl border border-border/70 bg-card/60 space-y-2 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                <span>Request Details</span>
+              </div>
+              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 text-xs font-medium text-foreground leading-relaxed whitespace-pre-wrap">
+                {request.details || "No additional details provided."}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 5. Approve / Reject Actions */}
           {canManage && request.status.startsWith("Pending") && (onApprove || onReject) && (
             <div className="pt-1 grid grid-cols-2 gap-3">
-              {onApprove && (
-                <button
-                  type="button"
-                  onClick={() => { onApprove(request.id!); onOpenChange(false); }}
-                  className="flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 active:scale-95 transition-all cursor-pointer"
-                >
-                  <CheckCircle2 className="h-5 w-5" />
-                  Approve
-                </button>
-              )}
               {onReject && (
                 <button
                   type="button"
@@ -258,6 +292,16 @@ export function ApprovalDetailsDialog({
                 >
                   <XCircle className="h-5 w-5" />
                   Reject
+                </button>
+              )}
+              {onApprove && (
+                <button
+                  type="button"
+                  onClick={() => { onApprove(request.id!); onOpenChange(false); }}
+                  className="flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 active:scale-95 transition-all cursor-pointer"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                  Yes
                 </button>
               )}
             </div>

@@ -194,9 +194,9 @@ const allNavItems: NavItem[] = [
     label: "Reports",
     permissionKey: "canViewReports",
     subItems: [
-      { href: "/reports?tab=attendance",   label: "Attendance" },
-      { href: "/reports?tab=meal-stubs",   label: "Meal Stub Claims" },
-      { href: "/reports?tab=allocations",  label: "Allocations" },
+      { href: "/reports?tab=attendance", label: "Attendance" },
+      { href: "/reports?tab=meal-stubs", label: "Meal Stub Claims" },
+      { href: "/reports?tab=allocations", label: "Allocations" },
       { href: "/reports?tab=reservations", label: "Room Reservations" },
     ],
   },
@@ -271,9 +271,9 @@ export function Nav({
   const hasAccess = (
     key:
       | keyof Omit<
-          UserRoleContextType,
-          "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
-        >
+        UserRoleContextType,
+        "needsSeeding" | "isLoading" | "allRoles" | "workerProfile"
+      >
       | undefined,
     anyKeys?: Array<keyof Omit<
       UserRoleContextType,
@@ -335,231 +335,231 @@ export function Nav({
           Menu
         </SidebarGroupLabel>
         <SidebarGroupContent>
-      <SidebarMenu className="gap-0.5">
-        {navItems.map((item) => {
-          const visibleSubItems =
-            item.subItems?.filter((sub) => hasAccess(sub.permissionKey, sub.anyPermissionKeys)) || [];
+          <SidebarMenu className="gap-0.5">
+            {navItems.map((item) => {
+              const visibleSubItems =
+                item.subItems?.filter((sub) => hasAccess(sub.permissionKey, sub.anyPermissionKeys)) || [];
 
-          // No sub-items: simple link
-          if (!item.subItems || visibleSubItems.length === 0) {
-            const isExternal = item.href.startsWith('http');
-            return (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={!isExternal && isActiveHref(item.href)}
-                  tooltip={{ children: item.label }}
-                  className="rounded-xl py-1.5 px-3.5 font-semibold min-h-[40px] h-auto [&>svg]:size-[19px]"
-                  style={{ fontSize: mainFontSize }}
-                >
-                  {isExternal ? (
-                    <a href={item.href} target="_blank" rel="noopener noreferrer" onClick={handleNavClick}>
-                      <item.icon className="size-[19px]" />
-                      <span>{item.label}</span>
-                      <ExternalLink className="size-3.5 ml-auto opacity-50" />
-                    </a>
-                  ) : (
-                    <Link href={item.href} onClick={handleNavClick}>
-                      <item.icon className="size-[19px]" />
-                      <span>{item.label}</span>
-                    </Link>
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          }
-
-          // Has sub-items and sidebar is collapsed: use DropdownMenu
-          if (isCollapsed) {
-            return (
-              <SidebarMenuItem key={item.href}>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
+              // No sub-items: simple link
+              if (!item.subItems || visibleSubItems.length === 0) {
+                const isExternal = item.href.startsWith('http');
+                return (
+                  <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
-                      isActive={pathname.startsWith(item.href)}
+                      asChild
+                      isActive={!isExternal && isActiveHref(item.href)}
+                      tooltip={{ children: item.label }}
                       className="rounded-xl py-1.5 px-3.5 font-semibold min-h-[40px] h-auto [&>svg]:size-[19px]"
                       style={{ fontSize: mainFontSize }}
                     >
-                      <item.icon className="size-[19px]" />
-                      <span>{item.label}</span>
+                      {isExternal ? (
+                        <a href={item.href} target="_blank" rel="noopener noreferrer" onClick={handleNavClick}>
+                          <item.icon className="size-[19px]" />
+                          <span>{item.label}</span>
+                          <ExternalLink className="size-3.5 ml-auto opacity-50" />
+                        </a>
+                      ) : (
+                        <Link href={item.href} onClick={handleNavClick}>
+                          <item.icon className="size-[19px]" />
+                          <span>{item.label}</span>
+                        </Link>
+                      )}
                     </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    side="right"
-                    align="start"
-                    className="min-w-[200px]"
-                  >
-                    {/* Special case for Settings */}
-                    {item.href === "/settings" &&
-                      (hasAccess("canManageRoles") ||
-                        hasAccess("canManageMinistries") ||
-                        hasAccess("canManageFacilities")) && (
-                        <DropdownMenuItem asChild>
-                          <Link href={item.href} onClick={handleNavClick}>General</Link>
-                        </DropdownMenuItem>
-                      )}
+                  </SidebarMenuItem>
+                );
+              }
 
-                    {visibleSubItems.map((subItem) => {
-                      const visibleNestedItems =
-                        subItem.subItems?.filter((nested) =>
-                          hasAccess(nested.permissionKey),
-                        ) || [];
-
-                      if (visibleNestedItems.length > 0) {
-                        return (
-                          <DropdownMenuSub key={subItem.label}>
-                            <DropdownMenuSubTrigger className="font-semibold" style={{ fontSize: subFontSize }}>
-                              {subItem.label}
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
-                                {visibleNestedItems.map((nested) => (
-                                   <DropdownMenuItem key={nested.href} asChild style={{ fontSize: subFontSize }}>
-                                    <Link href={nested.href} onClick={handleNavClick}>
-                                      {nested.label}
-                                    </Link>
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                        );
-                      }
-
-                      return (
-                        <DropdownMenuItem
-                          key={subItem.href + subItem.label}
-                          asChild
-                          className="font-semibold"
-                          style={{ fontSize: subFontSize }}
+              // Has sub-items and sidebar is collapsed: use DropdownMenu
+              if (isCollapsed) {
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuButton
+                          isActive={pathname.startsWith(item.href)}
+                          className="rounded-xl py-1.5 px-3.5 font-semibold min-h-[40px] h-auto [&>svg]:size-[19px]"
+                          style={{ fontSize: mainFontSize }}
                         >
-                          <Link href={subItem.href} onClick={handleNavClick}>{subItem.label}</Link>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SidebarMenuItem>
-            );
-          }
+                          <item.icon className="size-[19px]" />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="right"
+                        align="start"
+                        className="min-w-[200px]"
+                      >
+                        {/* Special case for Settings */}
+                        {item.href === "/settings" &&
+                          (hasAccess("canManageRoles") ||
+                            hasAccess("canManageMinistries") ||
+                            hasAccess("canManageFacilities")) && (
+                            <DropdownMenuItem asChild>
+                              <Link href={item.href} onClick={handleNavClick}>General</Link>
+                            </DropdownMenuItem>
+                          )}
 
-          // Has sub-items and sidebar is expanded: use Collapsible
-          return (
-            <Collapsible
-              key={item.href}
-              asChild
-              defaultOpen={pathname.startsWith(item.href)}
-              className="group/collapsible"
-            >
-              <SidebarMenuItem className="flex flex-col group/collapsible">
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton
-                    isActive={pathname.startsWith(item.href)}
-                    className="rounded-xl justify-between w-full py-1.5 px-3.5 font-semibold min-h-[40px] h-auto [&>svg]:size-[19px]"
-                    style={{ fontSize: mainFontSize }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <item.icon className="size-[19px]" />
-                      <span>{item.label}</span>
-                    </div>
-                    <ChevronRight className="size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub className="gap-1 py-1 ml-3 pl-3">
-                    {/* Special case for Settings: show 'General' link if top-level is clicked */}
-                    {item.href === "/settings" &&
-                      (hasAccess("canManageRoles") ||
-                        hasAccess("canManageMinistries") ||
-                        hasAccess("canManageFacilities")) && (
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={isActiveHref(item.href)}
-                            className="rounded-xl py-1 px-3 font-semibold min-h-[34px] h-auto"
-                            style={{ fontSize: subFontSize }}
-                          >
-                            <Link href={item.href} onClick={handleNavClick}>
-                              <span>General</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      )}
+                        {visibleSubItems.map((subItem) => {
+                          const visibleNestedItems =
+                            subItem.subItems?.filter((nested) =>
+                              hasAccess(nested.permissionKey),
+                            ) || [];
 
-                    {visibleSubItems.map((subItem) => {
-                      const visibleNestedItems =
-                        subItem.subItems?.filter((nested) =>
-                          hasAccess(nested.permissionKey),
-                        ) || [];
-
-                      if (visibleNestedItems.length > 0) {
-                        return (
-                          <Collapsible
-                            key={subItem.label}
-                            asChild
-                            defaultOpen={
-                              pathname.startsWith(subItem.href.split("?")[0]) ||
-                              visibleNestedItems.some((n) =>
-                                isActiveHref(n.href),
-                              )
-                            }
-                            className="group/subcollapsible"
-                          >
-                            <SidebarMenuSubItem className="flex flex-col group/subcollapsible">
-                              <CollapsibleTrigger asChild>
-                                <SidebarMenuSubButton
-                                  className="rounded-xl justify-between w-full py-1 px-3 font-semibold min-h-[34px] h-auto"
-                                  style={{ fontSize: subFontSize }}
-                                >
-                                  <span>{subItem.label}</span>
-                                  <ChevronRight className="size-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]/subcollapsible:rotate-90" />
-                                </SidebarMenuSubButton>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <SidebarMenuSub className="gap-1 py-1 ml-3 pl-3">
-                                  {visibleNestedItems.map((nested) => (
-                                    <SidebarMenuSubItem key={nested.href}>
-                                      <SidebarMenuSubButton
-                                        asChild
-                                        isActive={isActiveHref(nested.href)}
-                                        className="rounded-xl py-1 px-3 font-semibold min-h-[34px] h-auto"
-                                        style={{ fontSize: subFontSize }}
-                                      >
+                          if (visibleNestedItems.length > 0) {
+                            return (
+                              <DropdownMenuSub key={subItem.label}>
+                                <DropdownMenuSubTrigger className="font-semibold" style={{ fontSize: subFontSize }}>
+                                  {subItem.label}
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                  <DropdownMenuSubContent>
+                                    {visibleNestedItems.map((nested) => (
+                                      <DropdownMenuItem key={nested.href} asChild style={{ fontSize: subFontSize }}>
                                         <Link href={nested.href} onClick={handleNavClick}>
-                                          <span>{nested.label}</span>
+                                          {nested.label}
                                         </Link>
-                                      </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                  ))}
-                                </SidebarMenuSub>
-                              </CollapsibleContent>
-                            </SidebarMenuSubItem>
-                          </Collapsible>
-                        );
-                      }
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                              </DropdownMenuSub>
+                            );
+                          }
 
-                      return (
-                        <SidebarMenuSubItem key={subItem.href + subItem.label}>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={isActiveHref(subItem.href)}
-                            className="rounded-xl py-1 px-3 font-semibold min-h-[34px] h-auto"
-                            style={{ fontSize: subFontSize }}
-                          >
-                            <Link href={subItem.href} onClick={handleNavClick}>
-                              <span>{subItem.label}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      );
-                    })}
-                  </SidebarMenuSub>
-                </CollapsibleContent>
-              </SidebarMenuItem>
-            </Collapsible>
-          );
-        })}
-      </SidebarMenu>
+                          return (
+                            <DropdownMenuItem
+                              key={subItem.href + subItem.label}
+                              asChild
+                              className="font-semibold"
+                              style={{ fontSize: subFontSize }}
+                            >
+                              <Link href={subItem.href} onClick={handleNavClick}>{subItem.label}</Link>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </SidebarMenuItem>
+                );
+              }
+
+              // Has sub-items and sidebar is expanded: use Collapsible
+              return (
+                <Collapsible
+                  key={item.href}
+                  asChild
+                  defaultOpen={pathname.startsWith(item.href)}
+                  className="group/collapsible"
+                >
+                  <SidebarMenuItem className="flex flex-col group/collapsible">
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        isActive={pathname.startsWith(item.href)}
+                        className="rounded-xl justify-between w-full py-1.5 px-3.5 font-semibold min-h-[40px] h-auto [&>svg]:size-[19px]"
+                        style={{ fontSize: mainFontSize }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <item.icon className="size-[19px]" />
+                          <span>{item.label}</span>
+                        </div>
+                        <ChevronRight className="size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub className="gap-1 py-1 ml-3 pl-3">
+                        {/* Special case for Settings: show 'General' link if top-level is clicked */}
+                        {item.href === "/settings" &&
+                          (hasAccess("canManageRoles") ||
+                            hasAccess("canManageMinistries") ||
+                            hasAccess("canManageFacilities")) && (
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={isActiveHref(item.href)}
+                                className="rounded-xl py-1 px-3 font-semibold min-h-[34px] h-auto"
+                                style={{ fontSize: subFontSize }}
+                              >
+                                <Link href={item.href} onClick={handleNavClick}>
+                                  <span>General</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          )}
+
+                        {visibleSubItems.map((subItem) => {
+                          const visibleNestedItems =
+                            subItem.subItems?.filter((nested) =>
+                              hasAccess(nested.permissionKey),
+                            ) || [];
+
+                          if (visibleNestedItems.length > 0) {
+                            return (
+                              <Collapsible
+                                key={subItem.label}
+                                asChild
+                                defaultOpen={
+                                  pathname.startsWith(subItem.href.split("?")[0]) ||
+                                  visibleNestedItems.some((n) =>
+                                    isActiveHref(n.href),
+                                  )
+                                }
+                                className="group/subcollapsible"
+                              >
+                                <SidebarMenuSubItem className="flex flex-col group/subcollapsible">
+                                  <CollapsibleTrigger asChild>
+                                    <SidebarMenuSubButton
+                                      className="rounded-xl justify-between w-full py-1 px-3 font-semibold min-h-[34px] h-auto"
+                                      style={{ fontSize: subFontSize }}
+                                    >
+                                      <span>{subItem.label}</span>
+                                      <ChevronRight className="size-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]/subcollapsible:rotate-90" />
+                                    </SidebarMenuSubButton>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <SidebarMenuSub className="gap-1 py-1 ml-3 pl-3">
+                                      {visibleNestedItems.map((nested) => (
+                                        <SidebarMenuSubItem key={nested.href}>
+                                          <SidebarMenuSubButton
+                                            asChild
+                                            isActive={isActiveHref(nested.href)}
+                                            className="rounded-xl py-1 px-3 font-semibold min-h-[34px] h-auto"
+                                            style={{ fontSize: subFontSize }}
+                                          >
+                                            <Link href={nested.href} onClick={handleNavClick}>
+                                              <span>{nested.label}</span>
+                                            </Link>
+                                          </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                      ))}
+                                    </SidebarMenuSub>
+                                  </CollapsibleContent>
+                                </SidebarMenuSubItem>
+                              </Collapsible>
+                            );
+                          }
+
+                          return (
+                            <SidebarMenuSubItem key={subItem.href + subItem.label}>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={isActiveHref(subItem.href)}
+                                className="rounded-xl py-1 px-3 font-semibold min-h-[34px] h-auto"
+                                style={{ fontSize: subFontSize }}
+                              >
+                                <Link href={subItem.href} onClick={handleNavClick}>
+                                  <span>{subItem.label}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              );
+            })}
+          </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
 

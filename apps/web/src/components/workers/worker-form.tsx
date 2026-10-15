@@ -22,6 +22,7 @@ import { WorkerActivityLog } from "./worker-activity-log";
 import { assignRolesToWorker } from "@/actions/db";
 import { useToast } from "@/hooks/use-toast";
 import { isValidPhilippineNumber, cleanPhoneNumber, isValidEmail } from "@/lib/validation";
+import Link from "next/link";
 
 interface WorkerFormProps {
   worker: Partial<Worker> | null;
@@ -64,9 +65,11 @@ export function WorkerForm({
 
   // Multi-role state: list of selected role IDs
   const [roleIds, setRoleIds] = useState<string[]>(["viewer"]);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     if (worker) {
+      setAgreedToTerms(true);
       setFormData({
         ...worker,
         firstName: worker.firstName || "",
@@ -201,11 +204,24 @@ export function WorkerForm({
       return;
     }
 
+    if (!worker && !agreedToTerms) {
+      toast({
+        variant: "destructive",
+        title: "Terms & Privacy Acceptance Required",
+        description: "Please confirm that the worker has reviewed and accepted the Terms of Service and Privacy Policy.",
+      });
+      return;
+    }
+
     // Keep legacy roleId in sync with first selected role
     const primaryRoleId = roleIds[0] ?? "viewer";
     const dataToSave: Partial<Worker> = {
       ...formData,
       roleId: primaryRoleId,
+      ...((!worker && agreedToTerms) ? {
+        termsAcceptedVersion: "1.0",
+        termsAcceptedAt: new Date().toISOString(),
+      } : {}),
     };
 
     // Pass roleIds to parent so it can handle full synchronization
@@ -397,7 +413,7 @@ export function WorkerForm({
           </TabsList>
           <TabsContent value="details" className="mt-0 space-y-6">
             {fields}
-            <div className="flex flex-col sm:flex-row gap-2 pt-6 border-t mt-6">
+            <div className="flex flex-row items-center justify-between gap-2 pt-6 border-t mt-6">
               {worker && onResetPassword && (
                 <Button 
                   type="button" 
@@ -430,11 +446,41 @@ export function WorkerForm({
       ) : (
         <div className="space-y-6">
           {fields}
+
+          {/* Terms & Privacy Agreement for New Worker */}
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-2 mt-4">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="worker-form-terms-checkbox"
+                checked={agreedToTerms}
+                onCheckedChange={(checked) => setAgreedToTerms(Boolean(checked))}
+                className="mt-0.5 shrink-0"
+              />
+              <label
+                htmlFor="worker-form-terms-checkbox"
+                className="text-xs text-foreground leading-relaxed cursor-pointer select-none"
+              >
+                I confirm that this worker has been oriented on and explicitly agrees to the Church of God Dasmariñas{" "}
+                <Link href="/terms" target="_blank" className="font-semibold text-primary underline underline-offset-2 hover:opacity-80">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" target="_blank" className="font-semibold text-primary underline underline-offset-2 hover:opacity-80">
+                  Privacy Policy
+                </Link>{" "}
+                (Version 1.0). <span className="text-destructive font-bold">*</span>
+              </label>
+            </div>
+            <p className="text-[11px] text-muted-foreground pl-7">
+              This acceptance is required before the worker profile can be created.
+            </p>
+          </div>
+
           <div className="flex gap-2 justify-end pt-6 border-t">
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={roleIds.length === 0}>
+            <Button onClick={handleSave} disabled={roleIds.length === 0 || !agreedToTerms}>
               Save changes
             </Button>
           </div>

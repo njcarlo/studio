@@ -91,13 +91,13 @@ export function ReservationDetailsSheet({
         {/* ── MODAL HEADER ── */}
         <SheetHeader className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 text-left space-y-0">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 min-w-0">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
               <div className="h-10 w-10 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs">
                 <CalendarDays className="h-5 w-5" />
               </div>
-              <div className="min-w-0">
-                <SheetTitle className="text-lg font-bold font-headline tracking-tight text-foreground flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-base font-bold text-foreground">
+              <div className="min-w-0 flex-1">
+                <SheetTitle className="text-lg font-bold font-headline tracking-tight text-foreground flex items-center gap-2.5 flex-nowrap">
+                  <span className="font-mono text-base font-bold text-foreground shrink-0">
                     {reqId}
                   </span>
                   <span
@@ -182,17 +182,17 @@ export function ReservationDetailsSheet({
                 <Label className="text-[11px] font-semibold text-muted-foreground">Schedule Time</Label>
                 <div className="h-9 px-3 text-xs rounded-xl bg-muted/30 border border-border/70 flex items-center gap-2 font-medium text-foreground">
                   <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="truncate font-mono whitespace-nowrap">
-                    {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                  <span className="truncate whitespace-nowrap">
+                    {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-semibold text-muted-foreground">Headcount</Label>
-                <div className="h-9 px-3 text-xs rounded-xl bg-muted/30 border border-border/70 flex items-center gap-2 font-mono font-bold text-foreground">
+                <div className="h-9 px-3 text-xs rounded-xl bg-muted/30 border border-border/70 flex items-center gap-2 font-medium text-foreground">
                   <Users className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span>{booking.pax || 0} pax</span>
+                  <span className="truncate whitespace-nowrap">{booking.pax || 0} pax</span>
                 </div>
               </div>
             </div>
@@ -362,20 +362,20 @@ export function ReservationDetailsSheet({
               <div className="grid grid-cols-2 gap-2.5">
                 <Button
                   type="button"
-                  onClick={() => onApprove(booking.id)}
-                  className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 h-10 shadow-xs cursor-pointer"
-                >
-                  <Check className="h-4 w-4" />
-                  Approve Reservation
-                </Button>
-                <Button
-                  type="button"
                   variant="outline"
                   onClick={() => onReject(booking.id)}
                   className="w-full rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-semibold gap-1.5 h-10 shadow-xs cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                   Reject
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => onApprove(booking.id)}
+                  className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 h-10 shadow-xs cursor-pointer"
+                >
+                  <Check className="h-4 w-4" />
+                  Approve Reservation
                 </Button>
               </div>
             </div>

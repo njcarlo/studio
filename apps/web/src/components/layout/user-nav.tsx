@@ -144,19 +144,7 @@ export function UserNav() {
           </button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent className="w-56 mt-1.5 shadow-lg rounded-xl" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-semibold leading-none">{displayName}</p>
-              {!isSuperAdmin && (
-                <p className="text-xs leading-none text-muted-foreground">
-                  {indicatorBadge || roleName}
-                </p>
-              )}
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-
+        <DropdownMenuContent className="w-40 mt-1.5 shadow-lg rounded-xl p-1" align="end" forceMount>
           {impersonatedWorkerId && (
             <>
               <DropdownMenuGroup>

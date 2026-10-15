@@ -19,6 +19,12 @@ import {
   CardContent,
   Button,
   Badge,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
 } from '@studio/ui';
 import { cn } from '@/lib/utils';
 
@@ -250,16 +256,16 @@ export function ReportsPanel() {
       {/* ── SAFETY STOCK & REORDER ALERT LIST TABLE ── */}
       <Card className="rounded-2xl border border-border/60 bg-white dark:bg-card shadow-card-dark overflow-hidden print-card">
         <CardHeader className="p-4 sm:p-5 border-b border-border/70 bg-muted/[0.12]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="h-8 w-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
                 <ShieldAlert className="h-4 w-4" />
               </div>
-              <div>
-                <CardTitle className="text-sm font-bold font-headline text-foreground">
+              <div className="min-w-0">
+                <CardTitle className="text-sm sm:text-base font-bold font-headline text-foreground truncate">
                   Safety Stock &amp; Reorder Alert List
                 </CardTitle>
-                <CardDescription className="text-[11px] text-muted-foreground">
+                <CardDescription className="text-xs text-muted-foreground truncate">
                   Items currently at or below their minimum safety stock threshold
                 </CardDescription>
               </div>
@@ -267,14 +273,14 @@ export function ReportsPanel() {
             <Badge
               variant="outline"
               className={cn(
-                "text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-lg border",
+                "text-xs font-bold px-2.5 sm:px-3 py-1 rounded-xl border whitespace-nowrap shrink-0 flex items-center",
                 (data.lowStockItems?.length || 0) > 0
                   ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
                   : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
               )}
             >
               {(data.lowStockItems?.length || 0) > 0
-                ? `${data.lowStockItems.length} Warnings`
+                ? `${data.lowStockItems.length} ${data.lowStockItems.length === 1 ? 'Warning' : 'Warnings'}`
                 : 'All Healthy'}
             </Badge>
           </div>
@@ -287,7 +293,7 @@ export function ReportsPanel() {
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <p className="font-semibold text-foreground">All inventory items are currently well-stocked.</p>
-              <p className="text-[11px] text-muted-foreground">No equipment or supplies require immediate reordering.</p>
+              <p className="text-xs text-muted-foreground">No equipment or supplies require immediate reordering.</p>
             </div>
           ) : (
             <>
@@ -301,10 +307,10 @@ export function ReportsPanel() {
                           {item.name}
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                          <span className="font-mono text-[11px] text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md border border-border/50">
+                          <span className="font-mono text-xs font-semibold text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md border border-border/50">
                             {item.inventoryCode || '—'}
                           </span>
-                          <span className="text-[11px] text-muted-foreground font-medium bg-muted/40 px-2 py-0.5 rounded-md">
+                          <span className="text-xs text-muted-foreground font-medium bg-muted/40 px-2 py-0.5 rounded-md">
                             {item.category}
                           </span>
                         </div>
@@ -312,7 +318,7 @@ export function ReportsPanel() {
                       <Badge
                         variant={item.stock === 0 ? 'destructive' : 'secondary'}
                         className={cn(
-                          "text-[10px] font-bold rounded-lg px-2 py-0.5 shrink-0",
+                          "text-xs font-bold rounded-lg px-2.5 py-0.5 shrink-0 whitespace-nowrap",
                           item.stock === 0
                             ? "bg-destructive text-destructive-foreground"
                             : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
@@ -324,7 +330,7 @@ export function ReportsPanel() {
 
                     <div className="flex items-center justify-between text-xs pt-1.5 border-t border-border/40">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-muted-foreground text-[11px]">Current Stock:</span>
+                        <span className="text-muted-foreground text-xs">Current Stock:</span>
                         <span className={cn(
                           "font-mono font-bold px-2 py-0.5 rounded-md text-xs",
                           item.stock === 0
@@ -334,7 +340,7 @@ export function ReportsPanel() {
                           {item.stock}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                         <span>Min Threshold:</span>
                         <span className="font-mono font-semibold text-foreground bg-muted/70 px-2 py-0.5 rounded-md border border-border/50">
                           {item.minStock}
@@ -347,30 +353,30 @@ export function ReportsPanel() {
 
               {/* Desktop View: Full Table with Horizontal Scroll Safety */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-xs min-w-[650px]">
-                  <thead className="bg-sidebar text-white font-bold tracking-wider text-[11px] uppercase select-none">
-                    <tr>
-                      <th className="py-3 px-4 text-left font-bold">Item Name</th>
-                      <th className="py-3 px-4 text-left font-bold">Code</th>
-                      <th className="py-3 px-4 text-left font-bold">Category</th>
-                      <th className="py-3 px-4 text-center font-bold">Current Stock</th>
-                      <th className="py-3 px-4 text-center font-bold">Min Threshold</th>
-                      <th className="py-3 px-4 text-right font-bold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/60">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40 whitespace-nowrap">
+                      <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap">Item Name</TableHead>
+                      <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap">Code</TableHead>
+                      <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap">Category</TableHead>
+                      <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider text-center bg-sidebar whitespace-nowrap">Current Stock</TableHead>
+                      <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider text-center bg-sidebar whitespace-nowrap">Min Threshold</TableHead>
+                      <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider text-right pr-4 bg-sidebar whitespace-nowrap">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {data.lowStockItems.map((item: any) => (
                       <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-4 font-semibold text-foreground">{item.name}</td>
-                        <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground">
-                          <span className="bg-muted/70 px-2 py-0.5 rounded-md border border-border/50">
+                        <td className="py-3 px-4 font-semibold text-xs sm:text-sm text-foreground">{item.name}</td>
+                        <td className="py-3 px-4 font-mono text-xs text-muted-foreground">
+                          <span className="bg-muted/70 px-2 py-0.5 rounded-md border border-border/50 font-semibold">
                             {item.inventoryCode || '—'}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-muted-foreground font-medium">{item.category}</td>
-                        <td className="py-3 px-4 text-center font-mono font-bold">
+                        <td className="py-3 px-4 text-muted-foreground font-medium text-xs sm:text-sm">{item.category}</td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-xs sm:text-sm">
                           <span className={cn(
-                            "px-2 py-0.5 rounded-md",
+                            "px-2.5 py-0.5 rounded-md",
                             item.stock === 0
                               ? "bg-destructive/15 text-destructive border border-destructive/30"
                               : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
@@ -378,14 +384,14 @@ export function ReportsPanel() {
                             {item.stock}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-center font-mono text-muted-foreground">
+                        <td className="py-3 px-4 text-center font-mono text-foreground font-semibold text-xs sm:text-sm">
                           {item.minStock}
                         </td>
                         <td className="py-3 px-4 text-right">
                           <Badge
                             variant={item.stock === 0 ? 'destructive' : 'secondary'}
                             className={cn(
-                              "text-[10px] font-bold rounded-lg px-2 py-0.5",
+                              "text-xs font-bold rounded-lg px-2.5 py-0.5 whitespace-nowrap",
                               item.stock === 0
                                 ? "bg-destructive text-destructive-foreground"
                                 : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
@@ -396,8 +402,8 @@ export function ReportsPanel() {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </>
           )}

@@ -7,7 +7,7 @@ import Image from "next/image";
 import { supabase } from "@studio/database";
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Lock, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { LandingNav } from "@/components/landing/landing-nav";
 
 export default function UpdatePasswordPage() {
@@ -15,6 +15,8 @@ export default function UpdatePasswordPage() {
   const { toast } = useToast();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
   const [sessionReady, setSessionReady] = useState(false);
@@ -197,29 +199,49 @@ export default function UpdatePasswordPage() {
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-2 text-left">
                 <Label htmlFor="password" className="text-white">New Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter new password (min. 6 chars)"
-                  minLength={6}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter new password (min. 6 chars)"
+                    minLength={6}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors cursor-pointer p-0.5 rounded focus:outline-hidden"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div className="space-y-2 text-left">
                 <Label htmlFor="confirmPassword" className="text-white">Confirm New Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  minLength={6}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    minLength={6}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-white/30 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors cursor-pointer p-0.5 rounded focus:outline-hidden"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" className="w-full bg-white text-black hover:bg-gray-200 mt-2 font-semibold h-11" disabled={loading}>
                 {loading ? "Updating..." : "Update Password"}

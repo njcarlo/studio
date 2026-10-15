@@ -331,7 +331,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
               {/* Row 1: Item Name & Item Code */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 w-full min-w-0">
                 <div className="space-y-1.5 min-w-0">
-                  <Label htmlFor="item-name" className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <Label htmlFor="item-name" className="text-xs font-semibold text-foreground/85 flex items-center gap-1">
                     <span>Item Name</span>
                     <span className="text-destructive">*</span>
                   </Label>
@@ -341,22 +341,26 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     placeholder="e.g. Chauvet DJ SlimPAR Pro LED"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <Label htmlFor="item-code" className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                    <span>Item Code / Barcode</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="item-code" className="text-xs font-semibold text-foreground/85 flex items-center gap-1">
+                      <span>Item Code / Barcode</span>
+                    </Label>
+                    <span className="text-[10px] font-medium text-muted-foreground/75 bg-muted/60 px-1.5 py-0.5 rounded">Auto</span>
+                  </div>
                   <div className="relative w-full min-w-0">
-                    <Barcode className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Barcode className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 pointer-events-none" />
                     <Input
                       id="item-code"
+                      readOnly
+                      tabIndex={-1}
                       placeholder="Auto-generated if empty"
                       value={formData.inventoryCode}
-                      onChange={(e) => setFormData({ ...formData, inventoryCode: e.target.value })}
-                      className="w-full min-w-0 pl-10 min-h-[2.5rem] h-10 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                      className="w-full min-w-0 pl-10 min-h-[2.5rem] h-10 text-sm rounded-xl bg-muted/50 border border-border/70 font-mono text-muted-foreground placeholder:text-muted-foreground/70 cursor-not-allowed select-none focus-visible:ring-0 focus-visible:border-border/70 transition-all"
                     />
                   </div>
                 </div>
@@ -365,7 +369,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
               {/* Row 2: Category & Type */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 w-full min-w-0">
                 <div className="space-y-1.5 min-w-0">
-                  <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <Label className="text-xs font-semibold text-foreground/85 flex items-center gap-1">
                     <span>Category</span>
                     <span className="text-destructive">*</span>
                   </Label>
@@ -373,7 +377,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     value={formData.categoryId || ''}
                     onValueChange={(val) => setFormData({ ...formData, categoryId: val })}
                   >
-                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
+                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
                       <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                         <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="truncate text-left flex-1 min-w-0">
@@ -383,7 +387,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     </SelectTrigger>
                     <SelectContent className="rounded-xl w-[var(--radix-popover-trigger-width)]">
                       {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="text-xs sm:text-sm">
+                        <SelectItem key={c.id} value={c.id} className="text-sm font-medium">
                           {c.name}
                         </SelectItem>
                       ))}
@@ -392,14 +396,14 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                  <Label className="text-xs font-semibold text-foreground/85 flex items-center gap-1">
                     <span>Type</span>
                   </Label>
                   <Select
                     value={formData.type}
                     onValueChange={(val) => setFormData({ ...formData, type: val as any })}
                   >
-                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
+                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
                       <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                         <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="truncate text-left flex-1 min-w-0">
@@ -408,10 +412,10 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                       </div>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl w-[var(--radix-popover-trigger-width)]">
-                      <SelectItem value="EQUIPMENT" className="text-xs sm:text-sm">
+                      <SelectItem value="EQUIPMENT" className="text-sm font-medium">
                         Equipment (Tracked &amp; Borrowable)
                       </SelectItem>
-                      <SelectItem value="CONSUMABLE" className="text-xs sm:text-sm">
+                      <SelectItem value="CONSUMABLE" className="text-sm font-medium">
                         Consumable (Stock tracked only)
                       </SelectItem>
                     </SelectContent>
@@ -431,7 +435,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
               {/* Row 1: Stock, Min Stock, Unit */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3.5 w-full min-w-0">
                 <div className="space-y-1.5 min-w-0">
-                  <Label htmlFor="current-stock" className="text-xs font-semibold text-muted-foreground">
+                  <Label htmlFor="current-stock" className="text-xs font-semibold text-foreground/85">
                     Current Stock
                   </Label>
                   <Input
@@ -440,12 +444,12 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     min="0"
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <Label htmlFor="min-stock" className="text-xs font-semibold text-muted-foreground">
+                  <Label htmlFor="min-stock" className="text-xs font-semibold text-foreground/85">
                     Min Stock Alert
                   </Label>
                   <Input
@@ -454,12 +458,12 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     min="0"
                     value={formData.minStock}
                     onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <Label htmlFor="unit" className="text-xs font-semibold text-muted-foreground">
+                  <Label htmlFor="unit" className="text-xs font-semibold text-foreground/85">
                     Unit
                   </Label>
                   <Input
@@ -467,7 +471,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     placeholder="pcs, box, roll"
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
               </div>
@@ -475,31 +479,31 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
               {/* Row 2: Condition / Status & Next Maintenance */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 w-full min-w-0">
                 <div className="space-y-1.5 min-w-0">
-                  <Label className="text-xs font-semibold text-muted-foreground">
+                  <Label className="text-xs font-semibold text-foreground/85">
                     Condition / Status
                   </Label>
                   <Select
                     value={formData.status}
                     onValueChange={(val) => setFormData({ ...formData, status: val })}
                   >
-                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
+                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
                       <span className="truncate text-left flex-1 min-w-0">
                         <SelectValue placeholder="Select Status..." />
                       </span>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl w-[var(--radix-popover-trigger-width)]">
-                      <SelectItem value="Good Condition" className="text-xs sm:text-sm font-medium">Good Condition</SelectItem>
-                      <SelectItem value="Low Stock" className="text-xs sm:text-sm font-medium">Low Stock</SelectItem>
-                      <SelectItem value="Out of Stock" className="text-xs sm:text-sm font-medium">Out of Stock</SelectItem>
-                      <SelectItem value="Under Maintenance" className="text-xs sm:text-sm font-medium">Under Maintenance</SelectItem>
-                      <SelectItem value="Damaged" className="text-xs sm:text-sm font-medium">Damaged</SelectItem>
-                      <SelectItem value="Borrowed" className="text-xs sm:text-sm font-medium">Borrowed</SelectItem>
+                      <SelectItem value="Good Condition" className="text-sm font-medium">Good Condition</SelectItem>
+                      <SelectItem value="Low Stock" className="text-sm font-medium">Low Stock</SelectItem>
+                      <SelectItem value="Out of Stock" className="text-sm font-medium">Out of Stock</SelectItem>
+                      <SelectItem value="Under Maintenance" className="text-sm font-medium">Under Maintenance</SelectItem>
+                      <SelectItem value="Damaged" className="text-sm font-medium">Damaged</SelectItem>
+                      <SelectItem value="Borrowed" className="text-sm font-medium">Borrowed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <Label htmlFor="maintenance-date" className="text-xs font-semibold text-muted-foreground">
+                  <Label htmlFor="maintenance-date" className="text-xs font-semibold text-foreground/85">
                     Next Maintenance (PMS)
                   </Label>
                   <div className="relative w-full min-w-0">
@@ -508,7 +512,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                       type="date"
                       value={formData.nextMaintenanceDate}
                       onChange={(e) => setFormData({ ...formData, nextMaintenanceDate: e.target.value })}
-                      className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                      className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                     />
                   </div>
                 </div>
@@ -528,14 +532,14 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 w-full min-w-0">
                 <div className="space-y-1.5 min-w-0">
-                  <Label htmlFor="loc-area" className="text-xs font-semibold text-muted-foreground">Location Area / Room</Label>
+                  <Label htmlFor="loc-area" className="text-xs font-semibold text-foreground/85">Location Area / Room</Label>
                   <Input
                     id="loc-area"
                     placeholder="e.g. 4th Floor Studio"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     list="locations-list"
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-xs sm:text-sm rounded-xl bg-background border border-border/70 text-foreground font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-background border border-border/70 text-foreground font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                   <datalist id="locations-list">
                     {locations.map((l) => (
@@ -545,7 +549,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <Label htmlFor="assigned-custodian" className="text-xs font-semibold text-muted-foreground">Assigned Custodian / Person</Label>
+                  <Label htmlFor="assigned-custodian" className="text-xs font-semibold text-foreground/85">Assigned Custodian / Person</Label>
                   <div className="relative w-full min-w-0">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
@@ -553,7 +557,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                       placeholder="e.g. Tech Head"
                       value={formData.assignedTo}
                       onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                      className="w-full min-w-0 pl-10 min-h-[2.5rem] h-10 text-xs sm:text-sm rounded-xl bg-background border border-border/70 text-foreground font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                      className="w-full min-w-0 pl-10 min-h-[2.5rem] h-10 text-sm rounded-xl bg-background border border-border/70 text-foreground font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                     />
                   </div>
                 </div>
@@ -561,35 +565,35 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
 
               <div className="grid grid-cols-3 gap-2 sm:gap-3.5 pt-1 w-full min-w-0">
                 <div className="space-y-1 min-w-0">
-                  <Label htmlFor="loc-aisle" className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center block truncate">Aisle</Label>
+                  <Label htmlFor="loc-aisle" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center block truncate">Aisle</Label>
                   <Input
                     id="loc-aisle"
                     placeholder="A-1"
                     value={formData.aisle}
                     onChange={(e) => setFormData({ ...formData, aisle: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-xs sm:text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
+                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
                   />
                 </div>
 
                 <div className="space-y-1 min-w-0">
-                  <Label htmlFor="loc-shelf" className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center block truncate">Shelf</Label>
+                  <Label htmlFor="loc-shelf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center block truncate">Shelf</Label>
                   <Input
                     id="loc-shelf"
                     placeholder="S-2"
                     value={formData.shelf}
                     onChange={(e) => setFormData({ ...formData, shelf: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-xs sm:text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
+                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
                   />
                 </div>
 
                 <div className="space-y-1 min-w-0">
-                  <Label htmlFor="loc-bin" className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center block truncate">Bin</Label>
+                  <Label htmlFor="loc-bin" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center block truncate">Bin</Label>
                   <Input
                     id="loc-bin"
                     placeholder="B-04"
                     value={formData.bin}
                     onChange={(e) => setFormData({ ...formData, bin: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-xs sm:text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
+                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
                   />
                 </div>
               </div>
