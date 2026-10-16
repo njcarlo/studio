@@ -399,6 +399,10 @@ export async function deleteRole(id: string) {
 // --- Workers ---
 
 export async function getWorkers(filters?: { ministryIds?: string[]; actorId?: string } | any) {
+    const cacheKey = `workers:${JSON.stringify(filters || {})}`;
+    const cached = getCached<any[]>(cacheKey);
+    if (cached) return cached;
+
     const where: any = {};
 
     if (filters?.actorId) {
@@ -455,7 +459,7 @@ export async function getWorkers(filters?: { ministryIds?: string[]; actorId?: s
         ];
     }
 
-    return await prisma.worker.findMany({
+    const workers = await prisma.worker.findMany({
         where,
         include: {
             role: true,
@@ -463,6 +467,8 @@ export async function getWorkers(filters?: { ministryIds?: string[]; actorId?: s
         },
         orderBy: { createdAt: 'desc' },
     });
+    setCached(cacheKey, workers, 30_000);
+    return workers;
 }
 
 export async function getPaginatedWorkers(
@@ -561,6 +567,10 @@ export async function getPaginatedWorkers(
 }
 
 export async function getWorkerStats(ministryIds?: string[], actorId?: string) {
+    const cacheKey = `worker_stats:${JSON.stringify(ministryIds || [])}:${actorId || 'all'}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
     let effectiveMinistryIds = ministryIds;
 
     if (actorId) {
@@ -614,7 +624,9 @@ export async function getWorkerStats(ministryIds?: string[], actorId?: string) {
         });
     }
 
-    return { total, active, inactive, secondary, ministryStats };
+    const result = { total, active, inactive, secondary, ministryStats };
+    setCached(cacheKey, result, 30_000);
+    return result;
 }
 
 async function attachWorkerAssignedMinistries(worker: any) {
@@ -743,6 +755,8 @@ export async function createWorker(data: any) {
             createdAt: new Date(),
         },
     });
+    invalidateServerCache('workers');
+    invalidateServerCache('worker_stats');
     revalidatePath('/workers');
     return worker;
 }
@@ -1160,6 +1174,8 @@ Next Steps:
         console.error(`[createWorkerWithAuth] Failed to send welcome email to ${data.email}:`, emailError);
     }
 
+    invalidateServerCache('workers');
+    invalidateServerCache('worker_stats');
     revalidatePath('/workers');
     return {
         ...worker,
@@ -1222,6 +1238,8 @@ export async function updateWorker(id: string, data: any) {
         }
     }
 
+    invalidateServerCache('workers');
+    invalidateServerCache('worker_stats');
     revalidatePath('/workers');
     return worker;
 }
@@ -1237,6 +1255,8 @@ export async function deleteWorker(id: string) {
     await prisma.worker.delete({
         where: { id },
     });
+    invalidateServerCache('workers');
+    invalidateServerCache('worker_stats');
     revalidatePath('/workers');
 }
 
@@ -1253,6 +1273,8 @@ export async function deleteWorkers(ids: string[]) {
     await prisma.worker.deleteMany({
         where: { id: { in: ids } },
     });
+    invalidateServerCache('workers');
+    invalidateServerCache('worker_stats');
     revalidatePath('/workers');
 }
 
@@ -1444,12 +1466,17 @@ export async function updateApproval(id: string, data: any, actorId?: string) {
 
 export async function getMinistries(actorId?: string | any): Promise<any[]> {
     const effectiveActorId = typeof actorId === 'string' ? actorId : undefined;
+    const cacheKey = `ministries:${effectiveActorId || 'all'}`;
+    const cached = getCached<any[]>(cacheKey);
+    if (cached) return cached;
+
     let allowedIds: string[] | null = null;
     if (effectiveActorId) {
         const access = await getActorMinistryAccess(effectiveActorId);
         if (!access.isSuperAdmin) {
             allowedIds = access.allowedMinistryIds;
             if (allowedIds && allowedIds.length === 0) {
+                setCached(cacheKey, [], 60_000);
                 return [];
             }
         }
@@ -1472,7 +1499,9 @@ export async function getMinistries(actorId?: string | any): Promise<any[]> {
         ],
     });
 
-    return ministries.map(mapMinistryForClient);
+    const result = ministries.map(mapMinistryForClient);
+    setCached(cacheKey, result, 60_000);
+    return result;
 }
 
 export async function createMinistry(data: any) {
@@ -1489,6 +1518,7 @@ export async function createMinistry(data: any) {
             department: true,
         },
     });
+    invalidateServerCache('ministries');
     revalidatePath('/settings/ministries');
     return mapMinistryForClient(ministry);
 }
@@ -1514,6 +1544,7 @@ export async function updateMinistry(id: string, data: any) {
             department: true,
         },
     });
+    invalidateServerCache('ministries');
     revalidatePath('/settings/ministries');
     return mapMinistryForClient(ministry);
 }
@@ -1548,12 +1579,14 @@ export async function createMinistries(data: any[]) {
         createdCount++;
     }
 
+    invalidateServerCache('ministries');
     revalidatePath('/settings/ministries');
     return { count: createdCount };
 }
 
 export async function deleteMinistry(id: string) {
     await prisma.ministry.delete({ where: { id } });
+    invalidateServerCache('ministries');
     revalidatePath('/settings/ministries');
 }
 

@@ -17,8 +17,31 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '50mb',
     },
   },
+  compress: true,
   transpilePackages: ["@studio/ui", "@studio/database", "@studio/store", "@studio/types", "@studio/graphql"],
   outputFileTracingRoot: monorepoRoot,
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/:path*.(png|jpg|jpeg|svg|webp|ico|woff|woff2|apk)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
   images: {
     unoptimized: true,
     remotePatterns: [
