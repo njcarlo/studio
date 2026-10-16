@@ -1,4 +1,4 @@
-﻿{
+{
     "$schema": "https://turbo.build/schema.json",
     "tasks": {
         "build": {
@@ -10,6 +10,9 @@
                 "NEXT_PUBLIC_SUPABASE_ANON_KEY",
                 "SUPABASE_SERVICE_ROLE_KEY",
                 "RESEND_API_KEY",
+                "SMTP_USER",
+                "SMTP_PASS",
+                "SMTP_FROM",
                 "NEXT_PUBLIC_APP_URL",
                 "GOOGLE_APPLICATION_CREDENTIALS",
                 "VITE_SUPABASE_URL",
