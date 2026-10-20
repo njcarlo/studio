@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   SidebarProvider,
@@ -120,9 +120,18 @@ const ImpersonationBanner = () => {
   );
 };
 
+function ScrollResetWatcher({ mainRef }: { mainRef: React.RefObject<HTMLElement | null> }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [searchParams, mainRef]);
+  return null;
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
   const { isSuperAdmin, isMinistryHead } = useUserRole();
@@ -135,12 +144,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, router]);
 
-  // Always reset scroll to the top of the page when pathname or query parameters change
+  // Always reset scroll to the top of the page when pathname changes
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTo({ top: 0, behavior: "instant" });
     }
-  }, [currentPathname, searchParams]);
+  }, [currentPathname]);
 
   // Listen for tab switch events or clicks on tab elements
   useEffect(() => {
@@ -321,6 +330,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      <Suspense fallback={null}>
+        <ScrollResetWatcher mainRef={mainRef} />
+      </Suspense>
       <Sidebar collapsible="icon" className="border-r-0 border-none">
         <SidebarHeader className="pb-1.5 px-3 pt-2.5 sticky top-0 z-10 bg-sidebar">
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
@@ -345,7 +357,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="h-[1px] bg-white/15 mx-1.5 mt-2.5 mb-1 group-data-[collapsible=icon]:hidden" />
         </SidebarHeader>
         <SidebarContent className="overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <Nav pathname={currentPathname} />
+          <Suspense fallback={<div className="p-4" />}>
+            <Nav pathname={currentPathname} />
+          </Suspense>
         </SidebarContent>
       </Sidebar>
       {/* Fixed Header - mobile only. Desktop uses the sidebar header instead. */}
