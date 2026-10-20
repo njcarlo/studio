@@ -358,10 +358,10 @@ export function CategoriesPanel() {
         <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl md:rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
           {/* ── STICKY MODAL HEADER ── */}
           <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
-            <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2.5 w-full min-w-0">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div
-                  className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-300 shadow-2xs mt-0.5"
+                  className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-300 shadow-2xs"
                   style={{
                     backgroundColor: `${color}15`,
                     color: color,
@@ -376,16 +376,6 @@ export function CategoriesPanel() {
                     <DialogTitle className="text-base font-bold font-headline tracking-tight text-foreground">
                       {editingCategory ? 'Edit Category' : 'Create Category'}
                     </DialogTitle>
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border transition-colors shrink-0"
-                      style={{
-                        backgroundColor: `${color}10`,
-                        color: color,
-                        borderColor: `${color}30`,
-                      }}
-                    >
-                      {editingCategory ? 'Editing' : 'New'}
-                    </span>
                   </div>
                   <DialogDescription className="text-xs text-muted-foreground">
                     Define category name, description, icon and theme color.

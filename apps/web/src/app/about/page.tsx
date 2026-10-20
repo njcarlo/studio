@@ -19,10 +19,29 @@ import {
   ScrollText,
   MapPin,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@studio/store";
+import { isNativeMobileApp } from "@/lib/native-app";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 export default function AboutPage() {
+  const router = useRouter();
+  const { user, isUserLoading } = useAuthStore();
+  const [isNative, setIsNative] = useState(false);
+
+  useEffect(() => {
+    const native = isNativeMobileApp();
+    setIsNative(native);
+    if (native && !isUserLoading) {
+      if (user) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/login");
+      }
+    }
+  }, [user, isUserLoading, router]);
+
   const [activeTab, setActiveTab] = useState<"history" | "beliefs" | "services">("history");
   const [isDocked, setIsDocked] = useState(false);
 
@@ -48,6 +67,8 @@ export default function AboutPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
+
+  if (isNative) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col selection:bg-primary selection:text-white">

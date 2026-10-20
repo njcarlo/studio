@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   SidebarProvider,
   Sidebar,
@@ -122,9 +122,11 @@ const ImpersonationBanner = () => {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
   const { isSuperAdmin, isMinistryHead } = useUserRole();
+  const mainRef = React.useRef<HTMLElement>(null);
 
   useEffect(() => {
     // If auth is done loading and there's no user, redirect to login
@@ -132,6 +134,48 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       router.push("/login");
     }
   }, [user, isUserLoading, router]);
+
+  // Always reset scroll to the top of the page when pathname or query parameters change
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [currentPathname, searchParams]);
+
+  // Listen for tab switch events or clicks on tab elements
+  useEffect(() => {
+    const handleScrollTop = () => {
+      if (mainRef.current) {
+        mainRef.current.scrollTo({ top: 0, behavior: "instant" });
+      }
+    };
+
+    window.addEventListener("app:scroll-to-top", handleScrollTop);
+
+    const handleTabClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest?.('[role="tab"]') ||
+        target?.closest?.('[data-radix-collection-item]') ||
+        target?.closest?.('button[data-state]') ||
+        target?.closest?.('.tab-trigger') ||
+        target?.closest?.('button[data-tab]')
+      ) {
+        setTimeout(() => {
+          if (mainRef.current) {
+            mainRef.current.scrollTo({ top: 0, behavior: "instant" });
+          }
+        }, 15);
+      }
+    };
+
+    window.addEventListener("click", handleTabClick, true);
+
+    return () => {
+      window.removeEventListener("app:scroll-to-top", handleScrollTop);
+      window.removeEventListener("click", handleTabClick, true);
+    };
+  }, []);
 
   // Mobile Bottom Navigation Tabs by Role
   const mobileNavTabs = useMemo(() => {
@@ -340,7 +384,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
         {/* Mobile spacer so content doesn't hide behind fixed header */}
         <div className="md:hidden h-14 shrink-0 pt-[env(safe-area-inset-top)] box-content" />
-        <main className="flex-1 overflow-y-auto flex flex-col gap-4 p-3 sm:p-4 lg:gap-6 lg:p-6 min-w-0 max-w-full">
+        <main ref={mainRef} className="flex-1 overflow-y-auto flex flex-col gap-4 p-3 sm:p-4 lg:gap-6 lg:p-6 min-w-0 max-w-full">
           {children}
         </main>
       </SidebarInset>
@@ -362,8 +406,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(tab.href)}
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                <span className="text-[10px] font-semibold leading-none truncate max-w-full text-center">
-                  {tab.label}
+                <span className="text-[10px] font-semibold leading-[1.15] text-center max-w-full px-0.5">
+                  {tab.id === 'stock' ? (
+                    <>
+                      <span className="block leading-none">Stock</span>
+                      <span className="block leading-none mt-0.5">Monitoring</span>
+                    </>
+                  ) : (
+                    <span className="truncate block max-w-full leading-none">{tab.label}</span>
+                  )}
                 </span>
               </Button>
             );

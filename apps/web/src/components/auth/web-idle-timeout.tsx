@@ -2,9 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Capacitor } from '@capacitor/core';
 import { supabase } from '@studio/database';
 import { useAuthStore } from '@studio/store';
+import { isNativeMobileApp } from '@/lib/native-app';
 
 // 10 minutes of inactivity in milliseconds
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
@@ -32,12 +32,8 @@ export function WebIdleTimeout() {
     }
 
     // 2. Do NOT auto-logout on native mobile APK (persistent one-time login)
-    try {
-      if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
-        return;
-      }
-    } catch {
-      // In case Capacitor is undefined, proceed with web behavior
+    if (isNativeMobileApp()) {
+      return;
     }
 
     isLoggingOutRef.current = false;

@@ -56,9 +56,9 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
     <div className="flex flex-col h-full max-h-[90vh] overflow-hidden">
       {/* ── MODAL HEADER ── */}
       <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3.5 min-w-0 flex-1">
-            <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center font-bold shrink-0 shadow-xs mt-0.5", deptColor.iconBadge)}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+            <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center font-bold shrink-0 shadow-xs", deptColor.iconBadge)}>
               <Building2 className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1 space-y-0.5">
@@ -188,12 +188,12 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
       </div>
 
       {/* ── MODAL FOOTER ── */}
-      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 shrink-0">
+      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-row items-center justify-end gap-2.5 shrink-0">
         <Button
           type="button"
           variant="outline"
           onClick={onClose}
-          className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer w-full sm:w-auto"
+          className="rounded-xl h-10 px-4 sm:px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer flex-1 sm:flex-initial"
         >
           Cancel
         </Button>
@@ -207,7 +207,7 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
               sundayAlloc
             )
           }
-          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto"
+          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-5 sm:px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer flex-1 sm:flex-initial"
         >
           Save Changes
         </Button>
@@ -307,18 +307,18 @@ export default function DepartmentManagementPage() {
       <div className="space-y-6 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-0.5 sm:space-y-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
               Department Management
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Manage overarching departments and assign department heads.
             </p>
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto sm:ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>

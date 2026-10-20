@@ -739,7 +739,7 @@ export default function WorkersPage() {
                 : "Monitor workforce, assign roles and ministries, and register new workers."}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="w-full sm:w-auto flex items-center justify-end ml-auto gap-2 shrink-0">
             <button
               onClick={() => setShowExportConfirm(true)}
               className="h-10 px-3.5 flex items-center gap-2 rounded-2xl border border-slate-200/90 dark:border-border bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shadow-2xs cursor-pointer"

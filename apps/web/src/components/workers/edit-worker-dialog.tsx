@@ -286,15 +286,10 @@ export function EditWorkerDialog({
                 <UserCog className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold font-headline tracking-tight text-foreground">
                     Edit Worker Profile
                   </h2>
-                  {workerIdFormatted && (
-                    <span className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/70 shrink-0">
-                      {workerIdFormatted}
-                    </span>
-                  )}
                   <span
                     className={cn(
                       "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap shadow-2xs border shrink-0",
@@ -318,12 +313,19 @@ export function EditWorkerDialog({
                     {formData.status}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                  Update personal details, roles, ministry assignment, and permissions for{" "}
-                  <span className="font-semibold text-foreground">
-                    {worker.firstName} {worker.lastName}
-                  </span>
-                </p>
+                <div className="flex items-center gap-2 mt-1 min-w-0">
+                  {workerIdFormatted && (
+                    <span className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/70 shrink-0">
+                      {workerIdFormatted}
+                    </span>
+                  )}
+                  <p className="text-xs text-muted-foreground truncate">
+                    Update personal details, roles, ministry assignment, and permissions for{" "}
+                    <span className="font-semibold text-foreground">
+                      {worker.firstName} {worker.lastName}
+                    </span>
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -346,27 +348,27 @@ export function EditWorkerDialog({
               type="button"
               onClick={() => setActiveTab("details")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer",
                 activeTab === "details"
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <User className="h-3.5 w-3.5" />
-              Profile & Assignments
+              <User className="h-3.5 w-3.5 shrink-0" />
+              <span className="whitespace-nowrap">Profile & Assignments</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("activity")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer",
                 activeTab === "activity"
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <History className="h-3.5 w-3.5" />
-              Activity Log
+              <History className="h-3.5 w-3.5 shrink-0" />
+              <span className="whitespace-nowrap">Activity Log</span>
             </button>
           </div>
         </div>

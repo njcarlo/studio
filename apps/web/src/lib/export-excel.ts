@@ -7,7 +7,57 @@ export interface ExcelSheetData {
 }
 
 /**
- * Exports data to a formatted multi-sheet Excel file (.xlsx) with clean column widths.
+ * Capitalizes the first letter of each word in a string,
+ * while preserving acronyms (ID, QR, URL, TV, etc.), emails, and code identifiers.
+ */
+export function capitalizeWords(input: string): string {
+  if (!input) return "";
+  const str = input.trim();
+  if (!str) return "";
+
+  // Preserve email addresses and URLs
+  if (str.includes("@") && str.includes(".")) return str;
+  if (/^https?:\/\//i.test(str)) return str;
+
+  // Preserve already uppercase short codes or IDs (e.g. WORKER-001, EQP-8124, BORROW-2026-...)
+  if (/^[A-Z0-9_\-]+$/.test(str) && /[A-Z]/.test(str) && str.length > 2) {
+    return str;
+  }
+
+  // Preserve dates (YYYY-MM-DD, etc.) and times (10:30 AM)
+  if (/^\d{4}-\d{2}-\d{2}/.test(str) || /^\d{1,2}:\d{2}/.test(str)) {
+    return str;
+  }
+
+  // Convert kebab-case or snake_case statuses like "timed-in", "time-out", "not-yet", "in-progress"
+  let formatted = str;
+  if (/^[a-z]+(-[a-z]+)+$/i.test(formatted)) {
+    formatted = formatted.replace(/-/g, " ");
+  }
+
+  // Capitalize first letter of every word
+  return formatted.replace(/(^|[\s/([{\-_])([a-z])/g, (_, boundary, letter) => {
+    return boundary + letter.toUpperCase();
+  });
+}
+
+/**
+ * Cleanly format an individual cell for Excel export:
+ * - Null/undefined becomes "—"
+ * - Strings have their first letters cleanly capitalized (e.g. "present" -> "Present", "timed-in" -> "Timed In")
+ * - Numbers and booleans are preserved as native Excel values
+ */
+export function formatExcelCell(val: string | number | boolean | null | undefined): string | number | boolean {
+  if (val == null) return "—";
+  if (typeof val === "number" || typeof val === "boolean") return val;
+  const str = String(val).trim();
+  if (str === "" || str === "—" || str === "--" || str === "-") return "—";
+
+  return capitalizeWords(str);
+}
+
+/**
+ * Exports data to a formatted multi-sheet Excel file (.xlsx) with clean capitalization and column widths.
  */
 export function exportToExcel(
   filename: string,
@@ -16,18 +66,23 @@ export function exportToExcel(
   const workbook = XLSX.utils.book_new();
 
   sheets.forEach((sheet) => {
-    const ws = XLSX.utils.aoa_to_sheet(sheet.data);
+    // Automatically sanitize and capitalize all string cells across the sheet
+    const cleanData = sheet.data.map((row) =>
+      row.map((cell) => formatExcelCell(cell))
+    );
+
+    const ws = XLSX.utils.aoa_to_sheet(cleanData);
 
     if (sheet.colWidths && sheet.colWidths.length > 0) {
-      ws["!cols"] = sheet.colWidths.map((wch) => ({ wch }));
+      ws["!cols"] = sheet.colWidths.map((wch) => ({ wch: Math.max(wch, 12) }));
     } else {
       // Auto-calculate column widths from data
-      const maxColCounts = Math.max(...sheet.data.map((r) => r.length), 0);
+      const maxColCounts = Math.max(...cleanData.map((r) => r.length), 0);
       const colWidths: { wch: number }[] = [];
 
       for (let c = 0; c < maxColCounts; c++) {
-        let maxLen = 10;
-        for (const row of sheet.data) {
+        let maxLen = 12;
+        for (const row of cleanData) {
           const val = row[c];
           if (val != null) {
             const str = String(val);

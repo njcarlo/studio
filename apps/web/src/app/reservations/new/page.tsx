@@ -680,7 +680,7 @@ export default function NewReservationPage() {
             <h2 className="text-xl font-bold font-headline text-gray-900 dark:text-white">
               Request Information
             </h2>
-            <p className="text-[11px] italic text-red-500 font-medium">
+            <p className="text-xs italic text-red-500 font-medium">
               All fields are required to be filled out.
             </p>
           </div>
@@ -689,24 +689,24 @@ export default function NewReservationPage() {
             {/* Row 1: Request ID & Date Requested */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Request ID
                 </label>
                 <Input
                   value={generatedRequestId || "REQ-1000"}
                   disabled
-                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-[10px] font-normal cursor-not-allowed shadow-2xs"
+                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-xs font-normal cursor-not-allowed shadow-2xs"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Date Requested
                 </label>
                 <Input
                   value={format(new Date(), "MMM d, yyyy")}
                   disabled
-                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-[10px] font-normal cursor-not-allowed shadow-2xs"
+                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-xs font-normal cursor-not-allowed shadow-2xs"
                 />
               </div>
             </div>
@@ -714,7 +714,7 @@ export default function NewReservationPage() {
             {/* Row 2: Requester Name & Ministry */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Requester Name <span className="text-red-500 ml-0.5">*</span>
                 </label>
                 <Input
@@ -722,25 +722,25 @@ export default function NewReservationPage() {
                   value={requesterName}
                   onChange={(e) => setRequesterName(e.target.value)}
                   placeholder="System Admin"
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[10px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Ministry
                 </label>
                 <Input
                   value={userMinistry?.name || "General Ministry"}
                   disabled
-                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-[10px] font-normal cursor-not-allowed shadow-2xs"
+                  className="bg-slate-50/90 dark:bg-muted/30 border border-slate-200/80 dark:border-border text-slate-600 dark:text-slate-300 rounded-xl h-10 text-xs font-normal cursor-not-allowed shadow-2xs"
                 />
               </div>
             </div>
 
             {/* Row 3: Email */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+              <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                 Email <span className="text-red-500 ml-0.5">*</span>
               </label>
               <Input
@@ -749,13 +749,13 @@ export default function NewReservationPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@gmail.com"
-                className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[10px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
               />
             </div>
 
             {/* Row 4: Purpose of Reservation */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+              <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                 Purpose of Reservation <span className="text-red-500 ml-0.5">*</span>
               </label>
               <Textarea
@@ -763,17 +763,17 @@ export default function NewReservationPage() {
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 placeholder="Describe the event or meeting...."
-                className="bg-background dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl min-h-[110px] p-3 text-[10px] leading-relaxed font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                className="bg-background dark:bg-muted/30 border border-slate-200/90 dark:border-border rounded-xl min-h-[110px] p-3 text-xs leading-relaxed font-normal text-slate-800 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
               />
             </div>
 
             {/* Row 5: Floor / Room */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+              <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                 Floor / Room <span className="text-red-500 ml-0.5">*</span>
               </label>
               <Select value={roomId} onValueChange={setRoomId}>
-                <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[10px] font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
+                <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                   <SelectValue placeholder="Select floor / room" />
                 </SelectTrigger>
                 <SelectContent>
@@ -785,14 +785,14 @@ export default function NewReservationPage() {
 
                     return (
                       <SelectGroup key={area.id}>
-                        <SelectLabel className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                        <SelectLabel className="text-xs font-bold text-gray-500 dark:text-gray-400">
                           {area.name}
                         </SelectLabel>
                         {areaRooms.map((room) => (
                           <SelectItem
                             key={room.id}
                             value={room.id}
-                            className="text-[10px]"
+                            className="text-xs"
                           >
                             {area.name} – {room.name} (Cap: {room.capacity})
                           </SelectItem>
@@ -808,7 +808,7 @@ export default function NewReservationPage() {
             <div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                     Select Date <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <DatePicker
@@ -823,11 +823,11 @@ export default function NewReservationPage() {
                       }
                     }}
                     disablePastDates={true}
-                    className="w-full h-10 rounded-xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 shadow-2xs text-[10px] font-normal"
+                    className="w-full h-10 rounded-xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 shadow-2xs text-xs font-normal"
                     align="start"
                   />
                   {isDateInPast && (
-                    <p className="text-[10px] font-semibold text-red-500 mt-1 flex items-center gap-1">
+                    <p className="text-xs font-semibold text-red-500 mt-1 flex items-center gap-1">
                       <XCircle className="h-3.5 w-3.5 shrink-0" />
                       Past dates are not allowed.
                     </p>
@@ -835,11 +835,11 @@ export default function NewReservationPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                     Start Time <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <Select value={startTime} onValueChange={setStartTime}>
-                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[10px] font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
+                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                       <SelectValue placeholder="Start" />
                     </SelectTrigger>
                     <SelectContent>
@@ -858,7 +858,7 @@ export default function NewReservationPage() {
                           <SelectItem
                             key={`start-${slot.value}`}
                             value={slot.value}
-                            className="text-[10px]"
+                            className="text-xs"
                           >
                             {slot.display}
                           </SelectItem>
@@ -866,7 +866,7 @@ export default function NewReservationPage() {
                     </SelectContent>
                   </Select>
                   {isTimeInPast && (
-                    <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                       <Info className="h-3.5 w-3.5 shrink-0" />
                       Time has already passed.
                     </p>
@@ -874,11 +874,11 @@ export default function NewReservationPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                     End Time <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <Select value={endTime} onValueChange={setEndTime}>
-                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[10px] font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
+                    <SelectTrigger className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-normal shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all">
                       <SelectValue placeholder="End" />
                     </SelectTrigger>
                     <SelectContent>
@@ -908,7 +908,7 @@ export default function NewReservationPage() {
                           <SelectItem
                             key={`end-${slot.value}`}
                             value={slot.value}
-                            className="text-[10px]"
+                            className="text-xs"
                           >
                             {slot.display}
                           </SelectItem>
@@ -917,7 +917,7 @@ export default function NewReservationPage() {
                   </Select>
                 </div>
               </div>
-              <p className="text-[10px] italic text-red-500 font-medium mt-1.5">
+              <p className="text-xs italic text-red-500 font-medium mt-1.5">
                 Note: Room reservations are until 8:00 pm only.
               </p>
 
@@ -925,12 +925,12 @@ export default function NewReservationPage() {
               {roomId && selectedDate && (
                 <div className="mt-2.5">
                   {isCheckingBookings ? (
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground animate-pulse py-1">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse py-1">
                       <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
                       <span>Checking room schedule...</span>
                     </div>
                   ) : bookedRanges.length > 0 ? (
-                    <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/25 p-3 text-[10px] space-y-1.5">
+                    <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/25 p-3 text-xs space-y-1.5">
                       <div className="flex items-center gap-1.5 font-semibold text-amber-900 dark:text-amber-300">
                         <Info className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                         <span>Already reserved for {selectedRoom?.name || "this room"} on {selectedDate}:</span>
@@ -939,7 +939,7 @@ export default function NewReservationPage() {
                         {bookedRanges.map((range, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-card border border-amber-200/90 dark:border-amber-800/80 text-[10px] font-medium text-gray-800 dark:text-gray-200 shadow-2xs"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-card border border-amber-200/90 dark:border-amber-800/80 text-xs font-medium text-gray-800 dark:text-gray-200 shadow-2xs"
                           >
                             <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
                             <span className="font-semibold text-red-600 dark:text-red-400">
@@ -950,7 +950,7 @@ export default function NewReservationPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium py-0.5">
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium py-0.5">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       <span>{selectedRoom?.name || "This room"} is fully available on this date.</span>
                     </div>
@@ -962,7 +962,7 @@ export default function NewReservationPage() {
             {/* Row 7: Pax, No. of Tables, No. of Chairs */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Pax <span className="text-red-500 ml-0.5">*</span>
                 </label>
                 <Input
@@ -979,17 +979,17 @@ export default function NewReservationPage() {
                   }}
                   placeholder="Number of people"
                   max={selectedRoom?.capacity || undefined}
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[10px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
                 {selectedRoom && (
-                  <p className="text-[10px] font-medium mt-1 text-muted-foreground">
+                  <p className="text-xs font-medium mt-1 text-muted-foreground">
                     Max room capacity: {selectedRoom.capacity}
                   </p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                   No. of Tables <span className="text-red-500 ml-0.5">*</span>
                 </label>
                 <Input
@@ -1005,15 +1005,15 @@ export default function NewReservationPage() {
                   }}
                   placeholder="0"
                   max={5}
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[10px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
-                <p className="text-[10px] font-medium text-muted-foreground mt-1">
+                <p className="text-xs font-medium text-muted-foreground mt-1">
                   Maximum: 5 tables
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                   No. of Chairs <span className="text-red-500 ml-0.5">*</span>
                 </label>
                 <Input
@@ -1030,9 +1030,9 @@ export default function NewReservationPage() {
                   }}
                   placeholder="0"
                   max={selectedRoom?.capacity || 60}
-                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-[10px] font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  className="bg-background dark:bg-muted/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200/90 dark:border-border rounded-xl h-10 text-xs font-normal shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                 />
-                <p className="text-[10px] font-medium text-muted-foreground mt-1">
+                <p className="text-xs font-medium text-muted-foreground mt-1">
                   Maximum: {selectedRoom?.capacity ? `${selectedRoom.capacity} chairs` : "60 chairs"}
                 </p>
               </div>
@@ -1043,7 +1043,7 @@ export default function NewReservationPage() {
               selectedRoom.elements &&
               selectedRoom.elements.length > 0 && (
                 <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-border/60">
-                  <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                     Requested Equipment & Facility Elements
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -1075,7 +1075,7 @@ export default function NewReservationPage() {
                           />
                           <label
                             htmlFor={`element-${element.id}`}
-                            className="cursor-pointer text-[11px] font-medium text-gray-700 dark:text-gray-300 select-none"
+                            className="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 select-none"
                           >
                             {element.name}
                           </label>
@@ -1088,10 +1088,10 @@ export default function NewReservationPage() {
 
             {/* ORS Guidelines Section (Retained before Submit & Cancel buttons) */}
             <div className="bg-slate-50/90 dark:bg-muted/30 p-4 rounded-xl border border-slate-200/90 dark:border-border space-y-2.5 mt-6 shadow-2xs">
-              <div className="font-bold text-[11px] text-slate-900 dark:text-white">
+              <div className="font-bold text-xs text-slate-900 dark:text-white">
                 ORS Guidelines
               </div>
-              <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+              <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                 1. Rooms must be left clean and tidy after use.
                 <br />
                 2. Switch off all lights, AC, and equipment before leaving.
@@ -1106,7 +1106,7 @@ export default function NewReservationPage() {
                 />
                 <label
                   htmlFor="guidelines"
-                  className="text-[11px] font-semibold cursor-pointer text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white select-none transition-colors"
+                  className="text-xs font-semibold cursor-pointer text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white select-none transition-colors"
                 >
                   I understand and will follow the ORS guidelines
                 </label>
@@ -1119,7 +1119,7 @@ export default function NewReservationPage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
-                className="rounded-xl px-6 h-10 text-[11px] font-semibold border-slate-200/90 dark:border-border hover:bg-slate-100 dark:hover:bg-muted"
+                className="rounded-xl px-6 h-10 text-xs font-semibold border-slate-200/90 dark:border-border hover:bg-slate-100 dark:hover:bg-muted"
               >
                 Cancel
               </Button>
@@ -1127,7 +1127,7 @@ export default function NewReservationPage() {
                 type="submit"
                 disabled={isSubmitting || !guidelinesAccepted || isDateInPast || isTimeInPast}
                 className={cn(
-                  "rounded-xl px-7 h-10 text-[11px] font-bold shadow-xs gap-1.5 transition-all",
+                  "rounded-xl px-7 h-10 text-xs font-bold shadow-xs gap-1.5 transition-all",
                   guidelinesAccepted && !isDateInPast && !isTimeInPast
                     ? "bg-sidebar hover:bg-sidebar/90 text-white cursor-pointer shadow-sm"
                     : "bg-sidebar/40 text-white dark:bg-sidebar/40 dark:text-white/80 cursor-not-allowed"

@@ -1213,8 +1213,8 @@ export async function updateWorker(id: string, data: any) {
         ).catch((e) => console.error('Failed to update assignedMinistryIds:', e));
     }
 
-    // If worker is active and has an email, ensure an Auth account exists in Supabase so they can log in
-    if (worker.email && worker.status === 'Active') {
+    // If worker is active and has an email, ensure an Auth account exists in Supabase so they can log in (only on email/status changes)
+    if (worker.email && worker.status === 'Active' && (safeData.email !== undefined || safeData.status !== undefined)) {
         try {
             const supabaseAdmin = getSupabaseAdminClient();
             const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
@@ -1241,7 +1241,45 @@ export async function updateWorker(id: string, data: any) {
     invalidateServerCache('workers');
     invalidateServerCache('worker_stats');
     revalidatePath('/workers');
+    revalidatePath('/workers/my-qr');
+    revalidatePath('/attendance');
+    revalidatePath('/meals');
     return worker;
+}
+
+export async function regenerateWorkerQrToken(identifier: string, customToken?: string) {
+    const newToken = customToken || (Math.random().toString(36).slice(2) + Date.now().toString(36));
+
+    // Resolve worker by id, workerId, or email to ensure relationship workers and workers with differing auth UIDs succeed
+    const worker = await prisma.worker.findFirst({
+        where: {
+            OR: [
+                { id: identifier },
+                { workerId: identifier },
+                { email: identifier },
+            ],
+        },
+        select: { id: true, email: true },
+    });
+
+    if (!worker) {
+        throw new Error('Worker profile not found for QR regeneration.');
+    }
+
+    const updated = await prisma.worker.update({
+        where: { id: worker.id },
+        data: { qrToken: newToken },
+        select: { id: true, qrToken: true },
+    });
+
+    invalidateServerCache('workers');
+    invalidateServerCache('worker_stats');
+    revalidatePath('/workers');
+    revalidatePath('/workers/my-qr');
+    revalidatePath('/attendance');
+    revalidatePath('/meals');
+
+    return updated.qrToken;
 }
 
 export async function deleteWorker(id: string) {
@@ -1348,18 +1386,18 @@ export async function getApprovals(filters?: { ministryIds?: string[]; actorId?:
 
     return approvals.filter(app => {
         const bookingMinistry = app.reservationId ? bookingMinistryMap.get(app.reservationId) : null;
-        if (bookingMinistry) {
-            return allowedIds!.includes(bookingMinistry);
-        }
         const workerMajor = app.worker?.majorMinistryId;
         const workerMinor = app.worker?.minorMinistryId;
 
-        return (
+        const matchesBooking = Boolean(bookingMinistry && allowedIds!.includes(bookingMinistry));
+        const matchesWorker = Boolean(
             (workerMajor && allowedIds!.includes(workerMajor)) ||
             (workerMinor && allowedIds!.includes(workerMinor)) ||
             (app.oldMajorId && allowedIds!.includes(app.oldMajorId)) ||
             (app.newMajorId && allowedIds!.includes(app.newMajorId))
         );
+
+        return matchesBooking || matchesWorker;
     });
 }
 
@@ -2621,9 +2659,23 @@ export async function createC2SMentee(data: {
             where: { mentorId: data.mentorId },
         });
         if (!group) {
+            let defaultName = "Sports";
+            if (data.mentorId) {
+                const mentor = await prisma.worker.findUnique({
+                    where: { id: data.mentorId },
+                    select: { majorMinistryId: true },
+                });
+                if (mentor?.majorMinistryId) {
+                    const min = await prisma.ministry.findUnique({
+                        where: { id: mentor.majorMinistryId },
+                        select: { name: true },
+                    });
+                    if (min?.name) defaultName = min.name;
+                }
+            }
             group = await prisma.c2SGroup.create({
                 data: {
-                    name: "Default Group",
+                    name: defaultName,
                     mentorId: data.mentorId,
                     menteeIds: [],
                 },
@@ -2673,9 +2725,23 @@ export async function updateC2SMentee(id: string, data: {
             });
         }
         if (!targetGroup) {
+            let defaultName = "Sports";
+            if (data.mentorId) {
+                const mentor = await prisma.worker.findUnique({
+                    where: { id: data.mentorId },
+                    select: { majorMinistryId: true },
+                });
+                if (mentor?.majorMinistryId) {
+                    const min = await prisma.ministry.findUnique({
+                        where: { id: mentor.majorMinistryId },
+                        select: { name: true },
+                    });
+                    if (min?.name) defaultName = min.name;
+                }
+            }
             targetGroup = await prisma.c2SGroup.create({
                 data: {
-                    name: "Default Group",
+                    name: defaultName,
                     mentorId: data.mentorId,
                     menteeIds: [id],
                 },
@@ -2714,6 +2780,20 @@ export async function updateC2SMentee(id: string, data: {
 }
 
 export async function deleteC2SMentee(id: string) {
+    // Remove mentee id from any group menteeIds array
+    const groups = await prisma.c2SGroup.findMany({
+        where: { menteeIds: { has: id } },
+        select: { id: true, menteeIds: true },
+    });
+    for (const g of groups) {
+        await prisma.c2SGroup.update({
+            where: { id: g.id },
+            data: {
+                menteeIds: g.menteeIds.filter((mId) => mId !== id),
+            },
+        });
+    }
+
     await prisma.c2SMentee.delete({ where: { id } });
     revalidatePath('/c2s');
 }

@@ -247,21 +247,24 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
         }}
       >
         {/* ── STICKY MODAL HEADER ── */}
-        <DialogHeader className="p-3.5 sm:p-5 pb-3 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
+        <DialogHeader className="p-4 sm:p-5 pb-3.5 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
           <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
-            <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                <Boxes className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+              <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs">
+                <Boxes className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1 space-y-0.5">
-                <DialogTitle className="text-sm sm:text-base font-bold font-headline tracking-tight text-foreground flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
-                  <span className="font-mono text-sm sm:text-base font-bold text-foreground break-all">
-                    {item ? (item.inventoryCode || item.name) : 'Add New Item'}
-                  </span>
+                <DialogTitle className="text-base sm:text-lg font-bold font-headline tracking-tight text-foreground flex items-center gap-2 flex-wrap min-w-0">
+                  <span>{item ? (item.name || item.inventoryCode) : 'Add New Item'}</span>
+                  {item?.inventoryCode && (
+                    <span className="font-mono text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/70 shrink-0">
+                      {item.inventoryCode}
+                    </span>
+                  )}
                   {item?.status && (
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap shadow-2xs border shrink-0",
+                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap shadow-2xs border shrink-0",
                         item.status === "Good Condition"
                           ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                           : item.status === "Low Stock"
@@ -283,12 +286,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     </span>
                   )}
                 </DialogTitle>
-                {item?.name && item?.inventoryCode && (
-                  <p className="text-xs sm:text-sm font-semibold text-foreground/90 break-words leading-tight">
-                    {item.name}
-                  </p>
-                )}
-                <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground break-words leading-tight">
+                <DialogDescription className="text-xs text-muted-foreground break-words leading-snug">
                   {item
                     ? 'Update specifications, stock levels, location placement, and PMS status.'
                     : 'Register a new equipment or consumable record into the catalog.'}
@@ -312,7 +310,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
 
         {/* ── FORM CONTENT ── */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden w-full">
-          <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-5 w-full min-w-0">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 w-full min-w-0">
             {error && (
               <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-xl flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -321,9 +319,10 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
             )}
 
             {/* 1. Item Specifications */}
-            <div className="space-y-3 sm:space-y-3.5 w-full min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground font-headline">
+            <div className="p-4 sm:p-5 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3.5 w-full min-w-0">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-border/50">
+                <Package className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider font-headline">
                   Item Specifications
                 </span>
               </div>
@@ -341,7 +340,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     placeholder="e.g. Chauvet DJ SlimPAR Pro LED"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 text-foreground font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
 
@@ -353,14 +352,14 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     <span className="text-[10px] font-medium text-muted-foreground/75 bg-muted/60 px-1.5 py-0.5 rounded">Auto</span>
                   </div>
                   <div className="relative w-full min-w-0">
-                    <Barcode className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 pointer-events-none" />
+                    <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 pointer-events-none" />
                     <Input
                       id="item-code"
                       readOnly
                       tabIndex={-1}
                       placeholder="Auto-generated if empty"
                       value={formData.inventoryCode}
-                      className="w-full min-w-0 pl-10 min-h-[2.5rem] h-10 text-sm rounded-xl bg-muted/50 border border-border/70 font-mono text-muted-foreground placeholder:text-muted-foreground/70 cursor-not-allowed select-none focus-visible:ring-0 focus-visible:border-border/70 transition-all"
+                      className="w-full min-w-0 pl-9 h-9 text-xs rounded-xl bg-muted/40 border border-border/70 font-mono text-muted-foreground placeholder:text-muted-foreground/70 cursor-not-allowed select-none focus-visible:ring-0 focus-visible:border-border/70 transition-all"
                     />
                   </div>
                 </div>
@@ -377,9 +376,9 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     value={formData.categoryId || ''}
                     onValueChange={(val) => setFormData({ ...formData, categoryId: val })}
                   >
-                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
+                    <SelectTrigger className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
                       <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                        <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="truncate text-left flex-1 min-w-0">
                           <SelectValue placeholder="Select Category..." />
                         </span>
@@ -387,7 +386,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     </SelectTrigger>
                     <SelectContent className="rounded-xl w-[var(--radix-popover-trigger-width)]">
                       {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="text-sm font-medium">
+                        <SelectItem key={c.id} value={c.id} className="text-xs font-medium">
                           {c.name}
                         </SelectItem>
                       ))}
@@ -403,19 +402,19 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     value={formData.type}
                     onValueChange={(val) => setFormData({ ...formData, type: val as any })}
                   >
-                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
+                    <SelectTrigger className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
                       <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                        <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="truncate text-left flex-1 min-w-0">
                           <SelectValue placeholder="Select Type..." />
                         </span>
                       </div>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl w-[var(--radix-popover-trigger-width)]">
-                      <SelectItem value="EQUIPMENT" className="text-sm font-medium">
+                      <SelectItem value="EQUIPMENT" className="text-xs font-medium">
                         Equipment (Tracked &amp; Borrowable)
                       </SelectItem>
-                      <SelectItem value="CONSUMABLE" className="text-sm font-medium">
+                      <SelectItem value="CONSUMABLE" className="text-xs font-medium">
                         Consumable (Stock tracked only)
                       </SelectItem>
                     </SelectContent>
@@ -425,9 +424,10 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
             </div>
 
             {/* 2. Stock & Condition Section */}
-            <div className="space-y-3 sm:space-y-3.5 pt-1 border-t border-border/50 w-full min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground font-headline">
+            <div className="p-4 sm:p-5 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3.5 w-full min-w-0">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-border/50">
+                <Boxes className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider font-headline">
                   Stock &amp; Condition
                 </span>
               </div>
@@ -444,7 +444,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     min="0"
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
 
@@ -458,7 +458,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     min="0"
                     value={formData.minStock}
                     onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
 
@@ -471,7 +471,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     placeholder="pcs, box, roll"
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
               </div>
@@ -486,18 +486,18 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     value={formData.status}
                     onValueChange={(val) => setFormData({ ...formData, status: val })}
                   >
-                    <SelectTrigger className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
+                    <SelectTrigger className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 text-foreground font-medium hover:bg-muted/50 transition-colors focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar">
                       <span className="truncate text-left flex-1 min-w-0">
                         <SelectValue placeholder="Select Status..." />
                       </span>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl w-[var(--radix-popover-trigger-width)]">
-                      <SelectItem value="Good Condition" className="text-sm font-medium">Good Condition</SelectItem>
-                      <SelectItem value="Low Stock" className="text-sm font-medium">Low Stock</SelectItem>
-                      <SelectItem value="Out of Stock" className="text-sm font-medium">Out of Stock</SelectItem>
-                      <SelectItem value="Under Maintenance" className="text-sm font-medium">Under Maintenance</SelectItem>
-                      <SelectItem value="Damaged" className="text-sm font-medium">Damaged</SelectItem>
-                      <SelectItem value="Borrowed" className="text-sm font-medium">Borrowed</SelectItem>
+                      <SelectItem value="Good Condition" className="text-xs font-medium">Good Condition</SelectItem>
+                      <SelectItem value="Low Stock" className="text-xs font-medium">Low Stock</SelectItem>
+                      <SelectItem value="Out of Stock" className="text-xs font-medium">Out of Stock</SelectItem>
+                      <SelectItem value="Under Maintenance" className="text-xs font-medium">Under Maintenance</SelectItem>
+                      <SelectItem value="Damaged" className="text-xs font-medium">Damaged</SelectItem>
+                      <SelectItem value="Borrowed" className="text-xs font-medium">Borrowed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -506,26 +506,22 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                   <Label htmlFor="maintenance-date" className="text-xs font-semibold text-foreground/85">
                     Next Maintenance (PMS)
                   </Label>
-                  <div className="relative w-full min-w-0">
-                    <Input
-                      id="maintenance-date"
-                      type="date"
-                      value={formData.nextMaintenanceDate}
-                      onChange={(e) => setFormData({ ...formData, nextMaintenanceDate: e.target.value })}
-                      className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-muted/30 border border-border/70 text-foreground font-medium focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
-                    />
-                  </div>
+                  <Input
+                    id="maintenance-date"
+                    type="date"
+                    value={formData.nextMaintenanceDate}
+                    onChange={(e) => setFormData({ ...formData, nextMaintenanceDate: e.target.value })}
+                    className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 text-foreground font-medium focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* 3. Location & Placement Card (matching LOCATION & VENUE style) */}
-            <div className="rounded-2xl border border-border/70 bg-card/60 p-3.5 sm:p-4 space-y-3 sm:space-y-3.5 shadow-2xs w-full min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded-lg bg-primary/10 text-primary">
-                  <MapPin className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-foreground font-headline">
+            {/* 3. Location & Placement Card */}
+            <div className="p-4 sm:p-5 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3.5 w-full min-w-0">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-border/50">
+                <MapPin className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider font-headline">
                   Location &amp; Placement
                 </span>
               </div>
@@ -539,7 +535,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     list="locations-list"
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-3 text-sm rounded-xl bg-background border border-border/70 text-foreground font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                    className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 text-foreground font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                   <datalist id="locations-list">
                     {locations.map((l) => (
@@ -551,13 +547,13 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                 <div className="space-y-1.5 min-w-0">
                   <Label htmlFor="assigned-custodian" className="text-xs font-semibold text-foreground/85">Assigned Custodian / Person</Label>
                   <div className="relative w-full min-w-0">
-                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                     <Input
                       id="assigned-custodian"
                       placeholder="e.g. Tech Head"
                       value={formData.assignedTo}
                       onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                      className="w-full min-w-0 pl-10 min-h-[2.5rem] h-10 text-sm rounded-xl bg-background border border-border/70 text-foreground font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
+                      className="w-full min-w-0 pl-9 h-9 text-xs rounded-xl bg-background border border-border/70 text-foreground font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                     />
                   </div>
                 </div>
@@ -571,7 +567,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     placeholder="A-1"
                     value={formData.aisle}
                     onChange={(e) => setFormData({ ...formData, aisle: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
+                    className="w-full min-w-0 h-9 px-1.5 text-xs rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
                   />
                 </div>
 
@@ -582,7 +578,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     placeholder="S-2"
                     value={formData.shelf}
                     onChange={(e) => setFormData({ ...formData, shelf: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
+                    className="w-full min-w-0 h-9 px-1.5 text-xs rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
                   />
                 </div>
 
@@ -593,20 +589,22 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     placeholder="B-04"
                     value={formData.bin}
                     onChange={(e) => setFormData({ ...formData, bin: e.target.value })}
-                    className="w-full min-w-0 min-h-[2.5rem] h-10 px-1.5 text-sm rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
+                    className="w-full min-w-0 h-9 px-1.5 text-xs rounded-xl bg-background border border-border/70 text-center font-medium text-foreground shadow-2xs"
                   />
                 </div>
               </div>
             </div>
 
-            {/* 4. Photo & Attributes */}
-            <div className="space-y-3 sm:space-y-3.5 pt-1 border-t border-border/50 w-full min-w-0">
-              <div className="space-y-2 w-full min-w-0">
-                <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                  <ImageIcon className="h-4 w-4 text-primary" />
-                  <span>Item Photo (Optional)</span>
-                </Label>
+            {/* 4. Photo Proof & Attachments */}
+            <div className="p-4 sm:p-5 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3.5 w-full min-w-0">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-border/50">
+                <Camera className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider font-headline">
+                  Item Photo &amp; Proof (Optional)
+                </span>
+              </div>
 
+              <div className="space-y-2 w-full min-w-0">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -637,7 +635,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                         size="sm"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploadingImage}
-                        className="min-h-[2rem] h-8 px-2.5 sm:px-3 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer border-border/80 hover:bg-muted/50"
+                        className="h-8 px-2.5 sm:px-3 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer border-border/80 hover:bg-muted/50"
                       >
                         <Camera className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>Change</span>
@@ -648,7 +646,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                         size="sm"
                         onClick={() => setFormData({ ...formData, imageUrl: '' })}
                         disabled={isUploadingImage}
-                        className="min-h-[2rem] h-8 text-xs font-semibold rounded-xl text-destructive hover:bg-destructive/10 cursor-pointer px-2 sm:px-2.5"
+                        className="h-8 text-xs font-semibold rounded-xl text-destructive hover:bg-destructive/10 cursor-pointer px-2 sm:px-2.5"
                         title="Remove photo"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -660,7 +658,7 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploadingImage}
-                    className="w-full flex flex-col items-center justify-center p-3.5 sm:p-4 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer group"
+                    className="w-full flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer group"
                   >
                     <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
                       {isUploadingImage ? (
@@ -678,57 +676,31 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                   </button>
                 )}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-1 w-full min-w-0">
-                <label className="flex items-start gap-2.5 p-3 rounded-xl border border-border/70 bg-card hover:bg-muted/30 transition-colors cursor-pointer shadow-2xs">
-                  <Checkbox
-                    className="mt-0.5 shrink-0"
-                    checked={formData.isKit}
-                    onCheckedChange={(c) => setFormData({ ...formData, isKit: Boolean(c) })}
-                  />
-                  <div className="text-xs min-w-0 flex-1">
-                    <p className="font-bold text-foreground">Kit / Bundle</p>
-                    <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-normal">Check out child items together</p>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-2.5 p-3 rounded-xl border border-border/70 bg-card hover:bg-muted/30 transition-colors cursor-pointer shadow-2xs">
-                  <Checkbox
-                    className="mt-0.5 shrink-0"
-                    checked={formData.isApprovalRequired}
-                    onCheckedChange={(c) => setFormData({ ...formData, isApprovalRequired: Boolean(c) })}
-                  />
-                  <div className="text-xs min-w-0 flex-1">
-                    <p className="font-bold text-foreground">Requires Approval</p>
-                    <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-normal">Needs manager check before release</p>
-                  </div>
-                </label>
-              </div>
             </div>
           </div>
 
           {/* ── STICKY MODAL FOOTER ── */}
-          <DialogFooter className="p-3.5 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex flex-row items-center justify-end gap-2 sm:gap-2.5 w-full min-w-0">
+          <DialogFooter className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex flex-row items-center justify-end gap-2.5 w-full min-w-0">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-3.5 sm:px-4 text-xs sm:text-sm font-semibold rounded-xl border-border/80 hover:bg-muted/50 cursor-pointer flex-1 sm:flex-initial"
+              className="h-9 px-4 text-xs font-semibold rounded-xl border-border/80 hover:bg-muted/50 cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-4 sm:px-5 text-xs sm:text-sm font-bold rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer flex-1 sm:flex-initial"
+              className="h-9 px-5 text-xs font-bold rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer"
             >
               {submitting ? (
                 <>
-                  <Loader2 className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                   Saving...
                 </>
               ) : item ? (
-                'Update Item'
+                'Save Changes'
               ) : (
                 'Add Item'
               )}

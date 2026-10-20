@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { X, Download, Printer, Loader2, QrCode } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Button } from '@studio/ui';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, Button } from '@studio/ui';
+import { cn } from '@/lib/utils';
 
 interface QRModalItem {
   id: string;
@@ -173,39 +174,64 @@ export function QRModal({ isOpen, onClose, item, items }: QRModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className={isBatch ? 'max-w-2xl' : 'max-w-md'}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <QrCode className="h-5 w-5 text-primary" />
-            {isBatch ? `QR Labels (${allItems.length} items)` : 'Item QR Code'}
-          </DialogTitle>
-          <DialogDescription>
-            {isBatch
-              ? 'Print-ready batch labels for selected items'
-              : 'Scan this code with a mobile camera or barcode scanner to lookup and adjust stock.'}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className={cn(
+          "w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border-border/80 shadow-2xl bg-background [&>button:last-child]:hidden",
+          isBatch ? "sm:max-w-2xl" : "sm:max-w-md"
+        )}
+      >
+        {/* ── STICKY MODAL HEADER ── */}
+        <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md shrink-0 sticky top-0 z-10 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs">
+              <QrCode className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <DialogTitle className="text-base sm:text-lg font-bold font-headline tracking-tight text-foreground">
+                {isBatch ? `QR Labels (${allItems.length} items)` : 'Item QR Code'}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                {isBatch
+                  ? 'Print-ready batch labels for selected items'
+                  : 'Scan this code with a mobile camera or barcode scanner to lookup and adjust stock.'}
+              </DialogDescription>
+            </div>
+          </div>
 
-        <div className="py-4 max-h-[60vh] overflow-y-auto">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 w-8 p-0 rounded-full border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer shrink-0 -mt-1 -mr-1"
+            title="Close modal"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+
+        {/* ── MODAL BODY ── */}
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center min-h-[300px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="text-sm font-medium">Generating high-resolution QR codes...</span>
+              <span className="text-xs font-semibold">Generating high-resolution QR codes...</span>
             </div>
           ) : (
-            <div ref={printRef}>
+            <div ref={printRef} className="w-full flex flex-col items-center justify-center">
               {isBatch ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
                   {records.map((r) => (
                     <div
                       key={r.itemId}
-                      className="border rounded-xl p-3 bg-muted/20 flex flex-col items-center gap-2 text-center"
+                      className="p-3.5 rounded-2xl border border-border/70 bg-card/60 shadow-2xs flex flex-col items-center gap-2 text-center"
                     >
-                      <img src={r.pngDataUrl} alt={r.itemName} className="w-28 h-28 object-contain rounded" />
-                      <div className="text-xs font-semibold line-clamp-1 w-full" title={r.itemName}>
+                      <img src={r.pngDataUrl} alt={r.itemName} className="w-28 h-28 object-contain rounded-xl" />
+                      <div className="font-headline font-bold text-xs text-foreground line-clamp-1 w-full" title={r.itemName}>
                         {r.itemName}
                       </div>
-                      <div className="text-[10px] font-mono text-muted-foreground">
+                      <div className="text-[10px] font-mono font-semibold text-muted-foreground">
                         {r.inventoryCode || r.itemId.slice(0, 8).toUpperCase()}
                       </div>
                     </div>
@@ -213,16 +239,18 @@ export function QRModal({ isOpen, onClose, item, items }: QRModalProps) {
                 </div>
               ) : (
                 records[0] && (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="p-4 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm flex flex-col items-center gap-3">
+                  <div className="w-full flex flex-col items-center justify-center">
+                    <div className="w-full max-w-[340px] p-6 bg-white dark:bg-card border border-border/80 rounded-3xl shadow-sm flex flex-col items-center justify-center text-center">
                       <img
                         src={records[0].pngDataUrl}
                         alt={records[0].itemName}
-                        className="w-52 h-52 object-contain"
+                        className="w-56 h-56 object-contain"
                       />
-                      <div className="text-center">
-                        <div className="font-bold text-base">{records[0].itemName}</div>
-                        <div className="text-xs font-mono text-muted-foreground mt-0.5">
+                      <div className="mt-3.5 space-y-1 w-full">
+                        <div className="font-headline font-bold text-sm tracking-wide text-foreground uppercase truncate" title={records[0].itemName}>
+                          {records[0].itemName}
+                        </div>
+                        <div className="font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                           {records[0].inventoryCode || records[0].itemId.slice(0, 8).toUpperCase()}
                         </div>
                       </div>
@@ -234,16 +262,30 @@ export function QRModal({ isOpen, onClose, item, items }: QRModalProps) {
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={handleDownloadAll} disabled={loading || records.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Download PNG{records.length > 1 ? 's' : ''}
+        {/* ── STICKY MODAL FOOTER ── */}
+        <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex items-center justify-end gap-2.5 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadAll}
+            disabled={loading || records.length === 0}
+            className="rounded-xl text-xs h-9 px-4 font-semibold border-border/80 hover:bg-muted/60 cursor-pointer shadow-2xs gap-1.5"
+          >
+            <Download className="h-4 w-4 text-muted-foreground" />
+            <span>Download PNG{records.length > 1 ? 's' : ''}</span>
           </Button>
-          <Button onClick={handlePrint} disabled={loading || records.length === 0}>
-            <Printer className="mr-2 h-4 w-4" />
-            {isBatch ? `Print ${records.length} Labels` : 'Print Label'}
+          <Button
+            type="button"
+            size="sm"
+            onClick={handlePrint}
+            disabled={loading || records.length === 0}
+            className="rounded-xl text-xs h-9 px-4 font-bold bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer gap-1.5"
+          >
+            <Printer className="h-4 w-4" />
+            <span>{isBatch ? `Print ${records.length} Labels` : 'Print Label'}</span>
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

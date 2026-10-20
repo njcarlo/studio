@@ -157,9 +157,9 @@ export function BorrowingQRModal({ isOpen, onClose, borrowing }: BorrowingQRModa
       <DialogContent className="w-[95vw] sm:max-w-md p-0 rounded-3xl border border-border/80 shadow-2xl bg-card overflow-hidden max-h-[92vh] flex flex-col [&>button:last-child]:hidden">
         {/* ── MODAL HEADER ── */}
         <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3.5 min-w-0 flex-1">
-              <div className="w-11 h-11 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold shrink-0 border border-sky-500/20 shadow-xs mt-0.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+              <div className="w-11 h-11 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold shrink-0 border border-sky-500/20 shadow-xs">
                 <ArrowLeftRight className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1 space-y-0.5">
@@ -246,7 +246,7 @@ export function BorrowingQRModal({ isOpen, onClose, borrowing }: BorrowingQRModa
         </div>
 
         {/* ── MODAL FOOTER ── */}
-        <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-2.5 shrink-0">
+        <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col sm:flex-row sm:justify-between items-center gap-2.5 shrink-0">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               type="button"

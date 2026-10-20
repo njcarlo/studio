@@ -86,6 +86,8 @@ import { useSettings } from "@/hooks/use-settings";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
 import { DeleteConfirmationDialog } from "@/components/common/delete-confirmation-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { regenerateWorkerQrToken } from "@/actions/db";
 import type { Worker } from "@studio/types";
 
 // ------------------------------------------------------------
@@ -182,18 +184,28 @@ function MealsPageContent() {
 
   const thirtyDaysAgo = useMemo(() => subDays(new Date(), 30), []);
   const currentWorkerId = workerProfile?.id || user?.id;
-  const isMinistryLeader = isMinistryHead || (myMinistryIds && myMinistryIds.length > 0) || isMealStubAssigner;
+  const isMinistryLeader = Boolean(isMinistryHead || isMealStubAssigner);
+  const isGlobalManager = Boolean(isSuperAdmin || canManageAllMealStubs);
+
   const {
-    mealStubs,
+    mealStubs: rawMealStubs,
     isLoading: mealStubsLoading,
     createMealStub,
     deleteMealStub
-  } = useMealStubs(canManageAllMealStubs
+  } = useMealStubs(isGlobalManager
     ? { dateFrom: thirtyDaysAgo }
     : isMinistryLeader
     ? { dateFrom: thirtyDaysAgo, actorId: currentWorkerId, ministryIds: myMinistryIds, includeSelf: true, enabled: !!currentWorkerId }
     : { workerId: currentWorkerId, actorId: currentWorkerId, dateFrom: thirtyDaysAgo, enabled: !!currentWorkerId }
   );
+
+  const mealStubs = useMemo(() => {
+    if (!rawMealStubs) return [];
+    if (isGlobalManager || isMinistryLeader) {
+      return rawMealStubs;
+    }
+    return rawMealStubs.filter(s => s.workerId === currentWorkerId);
+  }, [rawMealStubs, isGlobalManager, isMinistryLeader, currentWorkerId]);
 
   const { mealStubs: allMealStubsInRange } = useMealStubs({
     dateFrom: thirtyDaysAgo,
@@ -211,13 +223,18 @@ function MealsPageContent() {
   const qrData = activeToken ? `MEAL_STUB:${workerProfile?.id}:${activeToken}` : '';
   const qrUrl = qrData ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}` : '';
 
+  const queryClient = useQueryClient();
   const handleRegenerateQR = useCallback(async () => {
-    if (!workerProfile?.id) return;
+    const targetId = workerProfile?.id || user?.id || user?.email;
+    if (!targetId) return;
     setIsRegenerating(true);
     try {
       const newToken = generateToken();
-      await updateWorker({ id: workerProfile.id, data: { qrToken: newToken } });
+      await regenerateWorkerQrToken(targetId, newToken);
       setLocalSeed(newToken);
+      queryClient.invalidateQueries({ queryKey: ["worker"] });
+      queryClient.invalidateQueries({ queryKey: ["worker-view-as"] });
+      queryClient.invalidateQueries({ queryKey: ["workers"] });
       toast({
         title: "QR Code Regenerated",
         description: "Your old QR code is now invalid.",
@@ -228,7 +245,7 @@ function MealsPageContent() {
     } finally {
       setIsRegenerating(false);
     }
-  }, [user, updateWorker, toast]);
+  }, [workerProfile?.id, user?.id, user?.email, queryClient, toast]);
 
   const assignerMinistries = useMemo(() => {
     if (!ministries) return [];
@@ -528,10 +545,22 @@ function MealsPageContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white">
-              Mealstub Management
+              {activeTab === "view"
+                ? "View Meal Stub"
+                : activeTab === "assign"
+                ? "Assign Meal Stub"
+                : activeTab === "reports"
+                ? "Reports"
+                : "Mealstub Management"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Issue, claim and audit daily meal allocations across every worker type — all from one place.
+              {activeTab === "view"
+                ? "View, track, and audit your personal meal allocations and daily stubs."
+                : activeTab === "assign"
+                ? "Issue and assign daily meal allocations across workers and ministries."
+                : activeTab === "reports"
+                ? "Audit, filter and export historical meal stub distribution records."
+                : "Issue, claim and audit daily meal allocations across every worker type — all from one place."}
             </p>
           </div>
           {activeTab !== "reports" && (canOperateScanner || isSuperAdmin || isMealStubAssigner || canManageAllMealStubs) && (
@@ -717,7 +746,7 @@ function MealsPageContent() {
               </div>
 
               {/* Right: Date Picker and Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                 {/* Assignment Date */}
                 <DatePicker
                   value={assignDate}
@@ -742,7 +771,7 @@ function MealsPageContent() {
                   type="button"
                   onClick={() => setIsAssignAllConfirmOpen(true)}
                   disabled={isAssigning || filteredAssignerWorkers.length === 0}
-                  className="bg-sidebar hover:bg-sidebar/90 text-white rounded-2xl text-xs font-semibold px-5 h-10 flex items-center gap-2 shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+                  className="w-full sm:w-auto justify-center bg-sidebar hover:bg-sidebar/90 text-white rounded-2xl text-xs font-semibold px-5 h-10 flex items-center gap-2 shadow-xs transition-all active:scale-[0.99] cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   Assign All

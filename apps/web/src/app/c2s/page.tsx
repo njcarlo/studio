@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, Suspense } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { format, formatDistanceToNow } from "date-fns";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -149,6 +149,8 @@ import {
   getMinistries,
   getDepartmentSettings,
 } from "@/actions/db";
+
+const EMPTY_ARRAY: any[] = [];
 
 // ── StatCard Component (Consistent with Dashboard & Attendance) ───────────────
 function StatCard({
@@ -992,7 +994,7 @@ const DevotionDetailsModal = ({
                   {devotion.clusterName && (
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       <MapPin className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                      <span>{devotion.clusterName}</span>
+                      <span>{devotion.clusterName === "Default Group" ? "Sports" : devotion.clusterName}</span>
                     </div>
                   )}
                 </div>
@@ -1324,7 +1326,7 @@ const MenteeForm = ({
   const isEditing = Boolean(mentee?.id);
   const isMentorLocked = !isEditing && isMentorUser && !isSuperAdmin && !isMinistryHead;
 
-  const resolveMentorId = (m: any) => {
+  const resolveMentorId = useCallback((m: any) => {
     if (m?.mentorId) return m.mentorId;
     if (m?.groupId) {
       const gMentor = groups.find((g) => g.id === m.groupId)?.mentorId;
@@ -1334,9 +1336,9 @@ const MenteeForm = ({
       return currentWorkerId;
     }
     return workers.length === 1 ? workers[0].id : "";
-  };
+  }, [groups, workers, currentWorkerId]);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     firstName: mentee?.firstName || "",
     lastName: mentee?.lastName || "",
     email: mentee?.email || "",
@@ -1344,19 +1346,34 @@ const MenteeForm = ({
     status: mentee?.status || "Active",
     mentorId: resolveMentorId(mentee),
     groupId: mentee?.groupId || "",
-  });
+  }));
 
+  const prevMenteeIdRef = useRef(mentee?.id);
   useEffect(() => {
-    setFormData({
-      firstName: mentee?.firstName || "",
-      lastName: mentee?.lastName || "",
-      email: mentee?.email || "",
-      phone: mentee?.phone || "",
-      status: mentee?.status || "Active",
-      mentorId: resolveMentorId(mentee),
-      groupId: mentee?.groupId || "",
-    });
-  }, [mentee, groups, workers, currentWorkerId]);
+    // Only reset form data if the user explicitly switched to editing a different mentee
+    if (mentee?.id !== prevMenteeIdRef.current) {
+      prevMenteeIdRef.current = mentee?.id;
+      setFormData({
+        firstName: mentee?.firstName || "",
+        lastName: mentee?.lastName || "",
+        email: mentee?.email || "",
+        phone: mentee?.phone || "",
+        status: mentee?.status || "Active",
+        mentorId: resolveMentorId(mentee),
+        groupId: mentee?.groupId || "",
+      });
+    }
+  }, [mentee?.id, resolveMentorId, mentee]);
+
+  // If mentorId was not resolved during initial mount (e.g. workers were still loading), set default once without wiping inputs
+  useEffect(() => {
+    if (!formData.mentorId && workers.length > 0) {
+      const fallbackId = resolveMentorId(mentee);
+      if (fallbackId) {
+        setFormData((prev) => (prev.mentorId ? prev : { ...prev, mentorId: fallbackId }));
+      }
+    }
+  }, [formData.mentorId, workers.length, resolveMentorId, mentee]);
 
   const assignedMentorObj = useMemo(
     () => workers.find((w) => w.id === formData.mentorId),
@@ -1431,12 +1448,14 @@ const MenteeForm = ({
               </Label>
               <Input
                 id="first-name"
+                name="firstName"
+                autoComplete="given-name"
                 required
                 className="h-9 rounded-xl bg-background border border-border/70 text-xs font-medium focus-visible:ring-primary"
                 placeholder="e.g. Samantha"
                 value={formData.firstName}
                 onChange={(e) =>
-                  setFormData({ ...formData, firstName: e.target.value })
+                  setFormData((prev) => ({ ...prev, firstName: e.target.value }))
                 }
               />
             </div>
@@ -1447,12 +1466,14 @@ const MenteeForm = ({
               </Label>
               <Input
                 id="last-name"
+                name="lastName"
+                autoComplete="family-name"
                 required
                 className="h-9 rounded-xl bg-background border border-border/70 text-xs font-medium focus-visible:ring-primary"
                 placeholder="e.g. Conche"
                 value={formData.lastName}
                 onChange={(e) =>
-                  setFormData({ ...formData, lastName: e.target.value })
+                  setFormData((prev) => ({ ...prev, lastName: e.target.value }))
                 }
               />
             </div>
@@ -1466,12 +1487,16 @@ const MenteeForm = ({
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <Input
                 id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 required
                 className="h-9 pl-9 rounded-xl bg-background border border-border/70 text-xs font-medium focus-visible:ring-primary"
                 placeholder="e.g. samantha.conche@mentee.org"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, email: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -1484,14 +1509,18 @@ const MenteeForm = ({
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <Input
                 id="phone"
+                name="phone"
                 type="tel"
+                autoComplete="tel"
                 required
                 inputMode="numeric"
                 maxLength={11}
                 className="h-9 pl-9 rounded-xl bg-background border border-border/70 text-xs font-medium focus-visible:ring-primary"
                 placeholder="09179876543"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: cleanPhoneNumber(e.target.value) })}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, phone: cleanPhoneNumber(e.target.value) }))
+                }
               />
             </div>
           </div>
@@ -3128,8 +3157,8 @@ const C2SAnalytics = ({
                           {titleLabel}
                         </SelectLabel>
                         {items.map((item, idx) => (
-                          <SelectItem key={`analytics-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
-                            • {item.label}
+                          <SelectItem key={`analytics-cluster-${dept}-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
+                            {item.label}
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -3141,8 +3170,8 @@ const C2SAnalytics = ({
                       {formattedDeptName.toUpperCase()} MINISTRIES
                     </SelectLabel>
                     {clusterOptions.map((item, idx) => (
-                      <SelectItem key={`analytics-cluster-${item.value}-${idx}`} value={item.value} className="text-xs pl-6 cursor-pointer">
-                        • {item.label}
+                      <SelectItem key={`analytics-cluster-${item.value}-${idx}`} value={item.value} className="text-xs cursor-pointer">
+                        {item.label}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -4040,10 +4069,19 @@ function C2SPageContent() {
 
   const deleteMenteeMutation = useMutation({
     mutationFn: deleteC2SMentee,
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["c2s-mentees"] });
+      queryClient.setQueriesData({ queryKey: ["c2s-mentees"] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((m: any) => m.id !== deletedId);
+      });
+    },
     onSuccess: () => {
+      toast({ title: "Mentee Deleted" });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["c2s-mentees"], refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: ["c2s-groups"], refetchType: "all" });
-      toast({ title: "Mentee Deleted" });
     },
   });
 
@@ -4730,10 +4768,26 @@ function C2SPageContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
-              Connect 2 Souls
+              {activeTab === "overview"
+                ? "Overview"
+                : activeTab === "devotions"
+                ? "Devotions"
+                : activeTab === "mentees" || activeTab === "groups"
+                ? "Mentees"
+                : activeTab === "analytics"
+                ? "Analytics"
+                : "Connect 2 Souls"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Spiritual mentorship tracking, devotions oversight, and soul care across all departments.
+              {activeTab === "overview"
+                ? "High-level mentorship statistics, spiritual pulse, and departmental oversight."
+                : activeTab === "devotions"
+                ? "Daily reflections, scripture readings, and mentee spiritual journal logs."
+                : activeTab === "mentees" || activeTab === "groups"
+                ? "Track mentee growth, spiritual milestones, and mentor group assignments."
+                : activeTab === "analytics"
+                ? "In-depth analytics, devotion completion rates, and ministry breakdown."
+                : "Spiritual mentorship tracking, devotions oversight, and soul care across all departments."}
             </p>
           </div>
         </div>
@@ -4890,7 +4944,7 @@ function C2SPageContent() {
                       className="rounded-2xl border border-slate-200/90 dark:border-border/80 bg-white dark:bg-card p-5 sm:p-6 flex flex-col hover:border-sidebar/40 hover:shadow-md transition-all shadow-2xs group"
                     >
                       {/* ── TOP HEADER BAR: DATE PILL, TIME, VIEW PHOTO BUTTON & MENU ── */}
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 min-h-[40px] pb-1">
                         <div className="flex items-center gap-2">
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                             <Calendar className="h-3.5 w-3.5 text-blue-500 shrink-0" />
@@ -4901,16 +4955,16 @@ function C2SPageContent() {
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {photos.length > 0 && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => setViewingDevotion(record)}
-                              className="h-8.5 px-3 rounded-xl text-xs font-bold bg-sidebar/5 hover:bg-sidebar/10 text-sidebar dark:text-blue-400 border border-sidebar/20 hover:border-sidebar/40 flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                              className="h-8 px-3 rounded-full text-xs font-semibold bg-sidebar/5 hover:bg-sidebar/10 text-sidebar dark:text-blue-400 border border-sidebar/20 hover:border-sidebar/40 flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer shrink-0"
                             >
-                              <Camera className="h-3.5 w-3.5" />
-                              <span>View Photo</span>
+                              <Camera className="h-3 w-3 shrink-0" />
+                              <span className="leading-none text-[11px] font-semibold">View Photo</span>
                             </Button>
                           )}
 
@@ -5286,7 +5340,7 @@ function C2SPageContent() {
                               <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[12%]">
                                 Last Session
                               </TableHead>
-                              <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[8%]">
+                              <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 pr-6 sm:pr-8 text-center w-[8%]">
                                 Actions
                               </TableHead>
                             </TableRow>
@@ -5372,7 +5426,7 @@ function C2SPageContent() {
                                     {lastSessionDate}
                                   </TableCell>
 
-                                  <TableCell className="px-4 py-3.5 text-center align-middle">
+                                  <TableCell className="px-4 pr-6 sm:pr-8 py-3.5 text-center align-middle">
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <button
@@ -5457,106 +5511,109 @@ function C2SPageContent() {
                     </Button>
                   </div>
 
-                  {/* Filter Dropdowns: 2-column grid on mobile, inline on desktop */}
-                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 w-full lg:w-auto">
-                    {/* Assignment Filter Dropdown */}
-                    <Select value={menteeAssignmentFilter} onValueChange={(val: any) => setMenteeAssignmentFilter(val)}>
-                      <SelectTrigger className="h-10 w-full sm:w-44 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                        <SelectValue placeholder="All Mentees" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="text-xs cursor-pointer">
-                          All Mentees ({headMenteeCounts.all})
-                        </SelectItem>
-                        <SelectItem value="my" className="text-xs cursor-pointer">
-                          My Mentees ({headMenteeCounts.my})
-                        </SelectItem>
-                        <SelectItem value="workers" className="text-xs cursor-pointer">
-                          Worker&apos;s Mentees ({headMenteeCounts.workers})
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {/* Right Controls: Filters and Add Mentee grouped together */}
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full lg:w-auto">
+                    {/* Filter Dropdowns: 2-column grid on mobile, inline on desktop */}
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+                      {/* Assignment Filter Dropdown */}
+                      <Select value={menteeAssignmentFilter} onValueChange={(val: any) => setMenteeAssignmentFilter(val)}>
+                        <SelectTrigger className="h-10 w-full sm:w-44 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                          <SelectValue placeholder="All Mentees" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all" className="text-xs cursor-pointer">
+                            All Mentees ({headMenteeCounts.all})
+                          </SelectItem>
+                          <SelectItem value="my" className="text-xs cursor-pointer">
+                            My Mentees ({headMenteeCounts.my})
+                          </SelectItem>
+                          <SelectItem value="workers" className="text-xs cursor-pointer">
+                            Worker&apos;s Mentees ({headMenteeCounts.workers})
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
 
-                    {/* Admin Department Filter */}
-                    {isAdminUser && (
-                      <Select
-                        value={menteeDeptFilter}
-                        onValueChange={(val) => {
-                          setMenteeDeptFilter(val);
-                          setSelectedMinistryFilter("all");
-                        }}
-                      >
-                        <SelectTrigger className="h-10 w-full sm:w-40 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                          <SelectValue placeholder="Department" />
+                      {/* Admin Department Filter */}
+                      {isAdminUser && (
+                        <Select
+                          value={menteeDeptFilter}
+                          onValueChange={(val) => {
+                            setMenteeDeptFilter(val);
+                            setSelectedMinistryFilter("all");
+                          }}
+                        >
+                          <SelectTrigger className="h-10 w-full sm:w-40 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                            <SelectValue placeholder="Department" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72 overflow-y-auto">
+                            <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
+                              All Departments
+                            </SelectItem>
+                            {adminDepartments.map((dept) => (
+                              <SelectItem
+                                key={`mentee-dept-${dept.value}`}
+                                value={dept.value}
+                                className="text-xs cursor-pointer"
+                              >
+                                {dept.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {/* Ministries Filter */}
+                      <Select value={selectedMinistryFilter} onValueChange={setSelectedMinistryFilter}>
+                        <SelectTrigger className="h-10 w-full sm:w-44 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                          <SelectValue placeholder="Ministry" />
                         </SelectTrigger>
                         <SelectContent className="max-h-72 overflow-y-auto">
                           <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
-                            All Departments
+                            All Ministries
                           </SelectItem>
-                          {adminDepartments.map((dept) => (
+                          {availableMinistriesForMenteeFilter.map((item, idx) => (
                             <SelectItem
-                              key={`mentee-dept-${dept.value}`}
-                              value={dept.value}
+                              key={`head-ministry-fltr-${item.value}-${idx}`}
+                              value={item.value}
                               className="text-xs cursor-pointer"
                             >
-                              {dept.label}
+                              {item.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    )}
 
-                    {/* Ministries Filter */}
-                    <Select value={selectedMinistryFilter} onValueChange={setSelectedMinistryFilter}>
-                      <SelectTrigger className="h-10 w-full sm:w-44 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                        <SelectValue placeholder="Ministry" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72 overflow-y-auto">
-                        <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
-                          All Ministries
-                        </SelectItem>
-                        {availableMinistriesForMenteeFilter.map((item, idx) => (
-                          <SelectItem
-                            key={`head-ministry-fltr-${item.value}-${idx}`}
-                            value={item.value}
-                            className="text-xs cursor-pointer"
-                          >
-                            {item.label}
+                      {/* Status Filter */}
+                      <Select value={menteeStatusFilter} onValueChange={setMenteeStatusFilter}>
+                        <SelectTrigger className="h-10 w-full sm:w-36 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all" className="text-xs cursor-pointer">
+                            All Statuses
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          <SelectItem value="Active" className="text-xs cursor-pointer">
+                            Active
+                          </SelectItem>
+                          <SelectItem value="Inactive" className="text-xs cursor-pointer">
+                            Inactive
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                    {/* Status Filter */}
-                    <Select value={menteeStatusFilter} onValueChange={setMenteeStatusFilter}>
-                      <SelectTrigger className="h-10 w-full sm:w-36 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="text-xs cursor-pointer">
-                          All Statuses
-                        </SelectItem>
-                        <SelectItem value="Active" className="text-xs cursor-pointer">
-                          Active
-                        </SelectItem>
-                        <SelectItem value="Inactive" className="text-xs cursor-pointer">
-                          Inactive
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {/* Desktop Only: Add Mentee Button */}
+                    <Button
+                      onClick={() => {
+                        setSelectedMentee(null);
+                        setIsMenteeSheetOpen(true);
+                      }}
+                      className="hidden lg:flex bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-semibold text-xs h-10 px-4 gap-1.5 rounded-2xl shrink-0 transition-colors cursor-pointer"
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                      <span>Add Mentee</span>
+                    </Button>
                   </div>
-
-                  {/* Desktop Only: Add Mentee Button */}
-                  <Button
-                    onClick={() => {
-                      setSelectedMentee(null);
-                      setIsMenteeSheetOpen(true);
-                    }}
-                    className="hidden lg:flex bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-semibold text-xs h-10 px-4 gap-1.5 rounded-2xl shrink-0 transition-colors cursor-pointer"
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                    <span>Add Mentee</span>
-                  </Button>
                 </div>
 
                 {/* Table Container */}
@@ -5760,15 +5817,15 @@ function C2SPageContent() {
                         <Table className="w-full">
                           <TableHeader>
                             <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                              <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left whitespace-nowrap", isAdminUser ? "w-[18%]" : "w-[22%]")}>Mentee</TableHead>
+                              <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-left whitespace-nowrap", isAdminUser ? "w-[17%]" : "w-[21%]")}>Mentee</TableHead>
                               <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[11%]" : "w-[13%]")}>Assignment</TableHead>
-                              {isAdminUser && (<TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap w-[12%]">Department</TableHead>)}
-                              <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[16%]" : "w-[19%]")}>Assigned Worker</TableHead>
+                              {isAdminUser && (<TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap w-[11%]">Department</TableHead>)}
+                              <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[15%]" : "w-[18%]")}>Assigned Worker</TableHead>
                               <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-left whitespace-nowrap", isAdminUser ? "w-[14%]" : "w-[16%]")}>Ministry</TableHead>
                               <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-2.5 text-center whitespace-nowrap w-[8%]">Status</TableHead>
                               <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-2.5 text-center whitespace-nowrap w-[8%]">Progress</TableHead>
                               <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3 text-center whitespace-nowrap w-[8%]">Last Session</TableHead>
-                              <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-3.5 sm:px-4 text-center whitespace-nowrap", isAdminUser ? "w-[5%]" : "w-[6%]")}><span className="relative -left-2">Actions</span></TableHead>
+                              <TableHead className={cn("bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 pr-6 sm:pr-8 text-center whitespace-nowrap", isAdminUser ? "w-[8%]" : "w-[8%]")}>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -5850,7 +5907,7 @@ function C2SPageContent() {
                                   <TableCell className="px-2.5 py-3 text-center align-middle whitespace-nowrap"><Badge variant="secondary" className={`${statusColorClass} font-semibold px-2.5 py-0.5 rounded-full text-[10px] border-transparent`}>{displayStatus}</Badge></TableCell>
                                   <TableCell className="px-2.5 py-3 align-middle text-center whitespace-nowrap"><div className="flex items-center justify-center gap-1.5"><div className="w-12 bg-muted h-1.5 rounded-full overflow-hidden"><div className="bg-primary h-full rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} /></div><span className="font-semibold text-muted-foreground text-[11px]">{progressPct}%</span></div></TableCell>
                                   <TableCell className="px-3 py-3 text-xs text-muted-foreground text-center align-middle font-mono whitespace-nowrap">{lastSessionDate}</TableCell>
-                                  <TableCell className="px-3.5 sm:px-4 py-3 text-center align-middle whitespace-nowrap">
+                                  <TableCell className="px-4 pr-6 sm:pr-8 py-3 text-center align-middle whitespace-nowrap">
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild><button type="button" className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><MoreHorizontal className="h-4 w-4" /></button></DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
@@ -6161,17 +6218,20 @@ function C2SPageContent() {
           </SheetHeader>
 
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <MenteeForm
-              mentee={selectedMentee}
-              groups={groups || []}
-              workers={workers || []}
-              currentWorkerId={workerProfile?.id}
-              isMentorUser={isMentorUser}
-              isMinistryHead={isMinistryHeadUser}
-              isSuperAdmin={isAdminUser}
-              onSave={handleSaveMentee}
-              onClose={() => setIsMenteeSheetOpen(false)}
-            />
+            {isMenteeSheetOpen && (
+              <MenteeForm
+                key={selectedMentee?.id || "new-mentee"}
+                mentee={selectedMentee}
+                groups={groups || EMPTY_ARRAY}
+                workers={workers || EMPTY_ARRAY}
+                currentWorkerId={workerProfile?.id}
+                isMentorUser={isMentorUser}
+                isMinistryHead={isMinistryHeadUser}
+                isSuperAdmin={isAdminUser}
+                onSave={handleSaveMentee}
+                onClose={() => setIsMenteeSheetOpen(false)}
+              />
+            )}
           </div>
         </SheetContent>
       </Sheet>
@@ -6179,6 +6239,7 @@ function C2SPageContent() {
       {/* ── Delete Confirmation Dialog ── */}
       <DeleteConfirmationDialog
         isOpen={!!itemToDelete}
+        isLoading={deleteMenteeMutation.isPending || deleteDevotionMutation.isPending || deleteGroupMutation.isPending}
         onClose={() => setItemToDelete(null)}
         onConfirm={handleDeleteConfirm}
         title={

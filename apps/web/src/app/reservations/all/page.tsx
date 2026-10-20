@@ -727,7 +727,7 @@ export default function AllReservationsPage() {
                               <DropdownMenuTrigger asChild>
                                 <button
                                   type="button"
-                                  className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                  className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white data-[state=open]:bg-white/10 transition-colors cursor-pointer"
                                 >
                                   <MoreHorizontal className="h-4 w-4" />
                                 </button>
@@ -863,7 +863,7 @@ export default function AllReservationsPage() {
                         <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center whitespace-nowrap">
                           Created
                         </TableHead>
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center whitespace-nowrap">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 pr-6 sm:pr-8 text-center whitespace-nowrap">
                           Actions
                         </TableHead>
                       </TableRow>
@@ -989,7 +989,7 @@ export default function AllReservationsPage() {
                             </TableCell>
 
                             {/* Actions */}
-                            <TableCell className="py-3.5 px-4 text-center align-middle">
+                            <TableCell className="py-3.5 px-4 pr-6 sm:pr-8 text-center align-middle">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button

@@ -89,7 +89,11 @@ export function UserRoleSyncerSQL() {
     queryKey: ["worker-view-as", idToFetch],
     queryFn: async () => {
       if (!idToFetch) return null;
-      return await getWorkerById(idToFetch);
+      let w = await getWorkerById(idToFetch);
+      if (!w && !viewAsWorkerId && user?.email) {
+        w = await getWorkerByEmail(user.email);
+      }
+      return w;
     },
     enabled: !!idToFetch,
     staleTime: 2 * 60_000,
@@ -262,7 +266,7 @@ export function UserRoleSyncerSQL() {
     return {
       isLoading,
       needsSeeding,
-      workerProfile: workerProfile ?? null,
+      workerProfile: effectiveProfile ?? null,
       allRoles: (allRoles as any) ?? [],
       myMinistryIds,
       isSuperAdmin: effectiveIsSuperAdmin, // use effective — false during impersonation

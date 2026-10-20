@@ -40,11 +40,13 @@ import {
 import { AppLayout } from "@/components/layout/app-layout";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useMinistries } from "@/hooks/use-ministries";
-import { updateWorker as updateWorkerSql } from "@/actions/db";
+import { updateWorker as updateWorkerSql, regenerateWorkerQrToken } from "@/actions/db";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function MyQRCodePage() {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { workerProfile, allRoles, isSuperAdmin, isLoading: roleLoading } = useUserRole();
   const { ministries } = useMinistries();
@@ -85,25 +87,37 @@ export default function MyQRCodePage() {
   );
 
   const refreshCodes = async () => {
-    if (!workerProfile?.id) return;
+    const targetId = workerProfile?.id || user?.uid || user?.email;
+    if (!targetId) {
+      toast({
+        variant: "destructive",
+        title: "Regeneration failed",
+        description: "Worker profile could not be loaded. Please refresh the page.",
+      });
+      return;
+    }
     setIsRegenerating(true);
     try {
       const newToken =
         Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-      await (updateWorkerSql as any)(workerProfile.id, { qrToken: newToken });
+      await regenerateWorkerQrToken(targetId, newToken);
 
       setLocalToken(newToken);
       setIsConfirmRegenOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["worker"] });
+      queryClient.invalidateQueries({ queryKey: ["worker-view-as"] });
+      queryClient.invalidateQueries({ queryKey: ["workers"] });
       toast({
         title: "QR Code regenerated",
         description: "Your identification token has been securely updated.",
       });
-    } catch (e) {
+    } catch (e: any) {
+      console.error("QR Regeneration failed:", e);
       toast({
         variant: "destructive",
         title: "Regeneration failed",
-        description: "Could not update your QR token. Please try again.",
+        description: e?.message || "Could not update your QR token. Please try again.",
       });
     } finally {
       setIsRegenerating(false);

@@ -75,25 +75,47 @@ import { StockScanModal } from './stock-scan-modal';
 import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 
-// Category badge color mapping for instant visual recognition
-const getCategoryBadgeStyle = (categoryName?: string) => {
-  const name = (categoryName || '').toLowerCase();
-  if (name.includes('audio') || name.includes('sound') || name.includes('mic')) {
-    return 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20';
+// Category badge color mapping for instant visual recognition matching category settings
+const getCategoryStyleProps = (category?: { name?: string; color?: string | null }) => {
+  const hex = category?.color;
+  if (hex && hex.startsWith('#')) {
+    return {
+      style: {
+        backgroundColor: `${hex}15`,
+        color: hex,
+        borderColor: `${hex}40`,
+      },
+      className: "border font-semibold shadow-2xs",
+    };
   }
-  if (name.includes('light') || name.includes('lamp')) {
-    return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20';
+
+  // Fallback to name-based mapping matching the preset category colors
+  const name = (category?.name || '').toLowerCase();
+  let fallbackColor = '#64748b'; // Slate
+  if (name.includes('video') || name.includes('projection') || name.includes('camera') || name.includes('screen')) {
+    fallbackColor = '#10b981'; // Emerald
+  } else if (name.includes('light') || name.includes('lamp')) {
+    fallbackColor = '#f59e0b'; // Amber
+  } else if (name.includes('audio') || name.includes('sound') || name.includes('mic')) {
+    fallbackColor = '#8b5cf6'; // Purple
+  } else if (name.includes('it') || name.includes('electron') || name.includes('laptop')) {
+    fallbackColor = '#06b6d4'; // Cyan
+  } else if (name.includes('music') || name.includes('instrument')) {
+    fallbackColor = '#8b5cf6'; // Purple
+  } else if (name.includes('furniture') || name.includes('chair') || name.includes('table')) {
+    fallbackColor = '#64748b'; // Slate
+  } else if (name.includes('consumable') || name.includes('suppl') || name.includes('batter')) {
+    fallbackColor = '#ef4444'; // Rose
   }
-  if (name.includes('consumable') || name.includes('suppl') || name.includes('batter')) {
-    return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20';
-  }
-  if (name.includes('video') || name.includes('camera') || name.includes('screen')) {
-    return 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20';
-  }
-  if (name.includes('cable') || name.includes('wire') || name.includes('cord')) {
-    return 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20';
-  }
-  return 'bg-muted/80 text-muted-foreground border-border/70';
+
+  return {
+    style: {
+      backgroundColor: `${fallbackColor}15`,
+      color: fallbackColor,
+      borderColor: `${fallbackColor}40`,
+    },
+    className: "border font-semibold shadow-2xs",
+  };
 };
 
 
@@ -792,7 +814,7 @@ export function InventoryTable({
               ) : (
                 displayedItems.map((item) => {
                   const isSelected = selectedIds.has(item.id);
-                  const categoryClass = getCategoryBadgeStyle(item.category?.name);
+                  const categoryStyle = getCategoryStyleProps(item.category);
                   const isLow = item.stock <= (item.minStock > 0 ? item.minStock : 5) && item.stock > 0;
                   const isOut = item.stock === 0;
 
@@ -844,9 +866,9 @@ export function InventoryTable({
                                 <MoreHorizontal className="h-4 w-4" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-card-dark">
+                            <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg border border-border/80 bg-popover/95 backdrop-blur-sm p-1.5 space-y-0.5">
                               <DropdownMenuItem
-                                className="gap-2 cursor-pointer"
+                                className="gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer text-foreground/90 hover:text-foreground hover:bg-muted/70 transition-colors"
                                 onClick={() => {
                                   setModalItem(item);
                                   setIsItemModalOpen(true);
@@ -856,7 +878,7 @@ export function InventoryTable({
                                 <span>Edit Item</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="gap-2 cursor-pointer"
+                                className="gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer text-foreground/90 hover:text-foreground hover:bg-muted/70 transition-colors"
                                 onClick={() => {
                                   setStockAdjustItem(item);
                                   setAdjustAction('Stock In');
@@ -868,21 +890,21 @@ export function InventoryTable({
                                 <span>Adjust Stock</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="gap-2 cursor-pointer"
+                                className="gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer text-foreground/90 hover:text-foreground hover:bg-muted/70 transition-colors"
                                 onClick={() => handleSingleQR(item)}
                               >
                                 <QrCode className="h-3.5 w-3.5 text-muted-foreground" />
                                 <span>Print QR Label</span>
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
+                              <DropdownMenuSeparator className="my-1 bg-border/60" />
                               <DropdownMenuItem
-                                className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+                                className="gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 focus:text-rose-700 focus:bg-rose-50 dark:focus:bg-rose-950/40 transition-colors"
                                 onClick={() => {
                                   setDeleteConfirmId(item.id);
                                   setDeleteConfirmName(item.name);
                                 }}
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 className="h-3.5 w-3.5 text-rose-500" />
                                 <span>Delete Item</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -937,7 +959,10 @@ export function InventoryTable({
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${categoryClass}`}>
+                              <span
+                                className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-md", categoryStyle.className)}
+                                style={categoryStyle.style}
+                              >
                                 {item.category?.name || 'Unassigned'}
                               </span>
                               {item.isKit && (
@@ -951,18 +976,6 @@ export function InventoryTable({
 
                         {/* Details 2-Column Grid */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                              Location
-                            </p>
-                            <p className="font-semibold text-foreground truncate">
-                              {item.location || '—'}
-                            </p>
-                            <p className="text-muted-foreground text-[11px] truncate">
-                              {[item.aisle ? `Aisle ${item.aisle}` : '', item.shelf ? `Shelf ${item.shelf}` : '', item.bin ? `Bin ${item.bin}` : ''].filter(Boolean).join(' · ') || 'Storage Floor'}
-                            </p>
-                          </div>
-
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                               Current Stock
@@ -979,19 +992,22 @@ export function InventoryTable({
 
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                              Safety Min
-                            </p>
-                            <p className="font-mono text-xs font-semibold text-foreground">
-                              {item.minStock || 1} {item.unit || 'pcs'}
-                            </p>
-                          </div>
-
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                               Type / Class
                             </p>
                             <p className="font-semibold text-foreground truncate capitalize">
                               {item.type?.toLowerCase() || 'Equipment'}
+                            </p>
+                          </div>
+
+                          <div className="col-span-2 pt-1 border-t border-border/30">
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                              Location
+                            </p>
+                            <p className="font-semibold text-foreground truncate">
+                              {item.location || '—'}
+                            </p>
+                            <p className="text-muted-foreground text-[11px] truncate">
+                              {[item.aisle ? `Aisle ${item.aisle}` : '', item.shelf ? `Shelf ${item.shelf}` : '', item.bin ? `Bin ${item.bin}` : ''].filter(Boolean).join(' · ') || 'Storage Floor'}
                             </p>
                           </div>
                         </div>
@@ -1026,7 +1042,7 @@ export function InventoryTable({
                       Stock
                     </TableHead>
                     <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap">Location</TableHead>
-                    <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider text-right pr-4 bg-sidebar whitespace-nowrap">
+                    <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider text-left pl-3 bg-sidebar whitespace-nowrap min-w-[100px]">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -1079,7 +1095,7 @@ export function InventoryTable({
                       const isSelected = selectedIds.has(item.id);
                       const isLow = item.stock <= (item.minStock > 0 ? item.minStock : 5) && item.stock > 0;
                       const isOut = item.stock === 0;
-                      const categoryClass = getCategoryBadgeStyle(item.category?.name);
+                      const categoryStyle = getCategoryStyleProps(item.category);
 
                       return (
                         <TableRow
@@ -1140,7 +1156,8 @@ export function InventoryTable({
                           {/* 4. Category */}
                           <TableCell className="py-3">
                             <span
-                              className={`inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-lg border ${categoryClass}`}
+                              className={cn("inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-lg", categoryStyle.className)}
+                              style={categoryStyle.style}
                             >
                               {item.category?.name || 'General'}
                             </span>
@@ -1228,12 +1245,7 @@ export function InventoryTable({
                                     </p>
                                   </TooltipContent>
                                 </Tooltip>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium text-muted-foreground">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                  <span>Min: {item.minStock || 1}</span>
-                                </span>
-                              )}
+                              ) : null}
                             </div>
                           </TableCell>
 
@@ -1252,9 +1264,9 @@ export function InventoryTable({
                             )}
                           </TableCell>
 
-                          {/* 8. Actions Column (Intuitive Quick Stock + QR + More) */}
-                          <TableCell className="text-right pr-4 py-3">
-                            <div className="flex items-center justify-end gap-1">
+                          {/* 8. Actions Column (Aligned with Actions header & Stock Out icon) */}
+                          <TableCell className="text-left pl-3 py-3">
+                            <div className="flex items-center justify-start gap-1">
                               {/* Stock Out (-1) */}
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1290,23 +1302,6 @@ export function InventoryTable({
                                 </TooltipContent>
                               </Tooltip>
 
-                              {/* Print QR */}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7 w-7 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                                    onClick={() => handleSingleQR(item)}
-                                  >
-                                    <QrCode className="h-3.5 w-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                  <p className="text-xs">View / Print QR Code</p>
-                                </TooltipContent>
-                              </Tooltip>
-
                               {/* More Options Dropdown */}
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -1318,9 +1313,9 @@ export function InventoryTable({
                                     <MoreHorizontal className="h-3.5 w-3.5" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                                <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg border border-border/80 bg-popover/95 backdrop-blur-sm p-1.5 space-y-0.5">
                                   <DropdownMenuItem
-                                    className="gap-2 cursor-pointer"
+                                    className="gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer text-foreground/90 hover:text-foreground hover:bg-muted/70 transition-colors"
                                     onClick={() => {
                                       setModalItem(item);
                                       setIsItemModalOpen(true);
@@ -1330,7 +1325,7 @@ export function InventoryTable({
                                     <span>Edit Item</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    className="gap-2 cursor-pointer"
+                                    className="gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer text-foreground/90 hover:text-foreground hover:bg-muted/70 transition-colors"
                                     onClick={() => {
                                       setStockAdjustItem(item);
                                       setAdjustAction('Stock In');
@@ -1342,23 +1337,23 @@ export function InventoryTable({
                                     <span>Adjust Stock</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    className="gap-2 cursor-pointer"
+                                    className="gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer text-foreground/90 hover:text-foreground hover:bg-muted/70 transition-colors"
                                     onClick={() => handleSingleQR(item)}
                                   >
                                     <QrCode className="h-3.5 w-3.5 text-muted-foreground" />
                                     <span>Print QR Label</span>
                                   </DropdownMenuItem>
 
-                                  <DropdownMenuSeparator />
+                                  <DropdownMenuSeparator className="my-1 bg-border/60" />
 
                                   <DropdownMenuItem
-                                    className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+                                    className="gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 focus:text-rose-700 focus:bg-rose-50 dark:focus:bg-rose-950/40 transition-colors"
                                     onClick={() => {
                                       setDeleteConfirmId(item.id);
                                       setDeleteConfirmName(item.name);
                                     }}
                                   >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <Trash2 className="h-3.5 w-3.5 text-rose-500" />
                                     <span>Delete Item</span>
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -1409,30 +1404,28 @@ export function InventoryTable({
         </div>
 
         {/* ── CUSTOM STOCK ADJUSTMENT DIALOG ── */}
+        {/* ── CUSTOM STOCK ADJUSTMENT DIALOG ── */}
         {stockAdjustItem && (
           <Dialog open={!!stockAdjustItem} onOpenChange={(open) => !open && setStockAdjustItem(null)}>
-            <DialogContent className="w-[95vw] sm:max-w-xl p-0 rounded-2xl gap-0 border-border/80 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col [&>button:last-child]:hidden">
+            <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] sm:max-w-xl max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border-border/80 shadow-2xl bg-background [&>button:last-child]:hidden">
               {/* ── MODAL HEADER ── */}
               <DialogHeader className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md shrink-0 text-left sticky top-0 z-10">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="h-10 w-10 rounded-2xl bg-sidebar/10 border border-sidebar/20 text-sidebar dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
+                    <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs">
                       <Boxes className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <DialogTitle className="text-base font-bold font-headline tracking-tight text-foreground flex items-center gap-2 flex-nowrap">
-                        <span className="whitespace-nowrap">Adjust Stock Quantity</span>
+                      <DialogTitle className="text-base sm:text-lg font-bold font-headline tracking-tight text-foreground flex items-center gap-2 flex-wrap">
+                        <span>Adjust Stock Quantity</span>
                         {stockAdjustItem.inventoryCode && (
-                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-sidebar/10 text-sidebar dark:text-sky-400 border border-sidebar/20 shrink-0 whitespace-nowrap">
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
                             {stockAdjustItem.inventoryCode}
                           </span>
                         )}
                       </DialogTitle>
                       <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                        <span>Update inventory levels for <strong className="text-foreground">{stockAdjustItem.name}</strong>.</span>
-                        <span className="block text-muted-foreground mt-0.5">
-                          Current level: <strong className="text-foreground font-semibold">{stockAdjustItem.stock} {stockAdjustItem.unit || 'pcs'}</strong>
-                        </span>
+                        Update inventory levels for <strong className="text-foreground">{stockAdjustItem.name}</strong>. Current level: <strong className="text-foreground font-semibold">{stockAdjustItem.stock} {stockAdjustItem.unit || 'pcs'}</strong>
                       </DialogDescription>
                     </div>
                   </div>
@@ -1452,12 +1445,15 @@ export function InventoryTable({
               </DialogHeader>
 
               {/* ── FORM BODY ── */}
-              <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
+              <div className="p-5 space-y-4 overflow-y-auto flex-1">
                 {/* 1. Action Type Selection */}
-                <div className="space-y-2.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground font-headline">
-                    Adjustment Type
-                  </span>
+                <div className="p-4 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                    <SlidersHorizontal className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                      Adjustment Type
+                    </span>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -1466,7 +1462,7 @@ export function InventoryTable({
                         "flex items-center justify-center gap-2 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-2xs",
                         adjustAction === 'Stock In'
                           ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs"
-                          : "bg-slate-50/50 dark:bg-muted/30 border-slate-200/90 dark:border-border text-foreground hover:bg-muted"
+                          : "bg-background/80 border-border/60 text-foreground hover:bg-muted/60"
                       )}
                     >
                       <ArrowUp className="h-4 w-4 shrink-0" />
@@ -1479,7 +1475,7 @@ export function InventoryTable({
                         "flex items-center justify-center gap-2 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-2xs",
                         adjustAction === 'Stock Out'
                           ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600 shadow-xs"
-                          : "bg-slate-50/50 dark:bg-muted/30 border-slate-200/90 dark:border-border text-foreground hover:bg-muted"
+                          : "bg-background/80 border-border/60 text-foreground hover:bg-muted/60"
                       )}
                     >
                       <ArrowDown className="h-4 w-4 shrink-0" />
@@ -1489,14 +1485,17 @@ export function InventoryTable({
                 </div>
 
                 {/* 2. Quantity & Presets */}
-                <div className="space-y-2.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground font-headline">
-                    Quantity &amp; Amount
-                  </span>
+                <div className="p-4 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                    <Boxes className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                      Quantity &amp; Amount
+                    </span>
+                  </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground flex items-center gap-1">
                       <span>Quantity to {adjustAction === 'Stock In' ? 'Add' : 'Deduct'}</span>
-                      <span className="text-destructive">*</span>
+                      <span className="text-destructive font-bold">*</span>
                     </Label>
                     <div className="flex items-center gap-2 sm:gap-2.5 w-full">
                       <Input
@@ -1504,7 +1503,7 @@ export function InventoryTable({
                         min={1}
                         value={adjustQuantity}
                         onChange={(e) => setAdjustQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                        className="h-10 text-xs font-bold rounded-xl bg-slate-50/50 dark:bg-muted/30 border-slate-200/90 dark:border-border focus:bg-background transition-all shadow-2xs flex-1 min-w-0"
+                        className="h-10 text-xs font-bold rounded-xl border-border/70 bg-background focus:bg-background transition-all shadow-2xs flex-1 min-w-0"
                       />
                       <div className="flex gap-1.5 shrink-0">
                         {[1, 5, 10].map((qty) => (
@@ -1516,7 +1515,7 @@ export function InventoryTable({
                               "h-10 px-3 sm:px-3.5 text-xs font-bold rounded-xl border transition-all cursor-pointer shadow-2xs shrink-0",
                               adjustQuantity === qty
                                 ? "bg-sidebar text-white border-sidebar"
-                                : "bg-slate-50/50 dark:bg-muted/30 border-slate-200/90 dark:border-border text-foreground hover:bg-muted"
+                                : "bg-background/80 border-border/60 text-foreground hover:bg-muted/60"
                             )}
                           >
                             +{qty}
@@ -1528,29 +1527,27 @@ export function InventoryTable({
                 </div>
 
                 {/* 3. Live Impact Preview Box */}
-                <div className="rounded-2xl border border-slate-200/90 dark:border-border/70 bg-slate-50/50 dark:bg-muted/20 p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-lg bg-sidebar/10 text-sidebar dark:text-blue-400 flex items-center justify-center shrink-0">
-                      <Activity className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                <div className="p-4 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                    <Activity className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">
                       Stock Level Impact
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-2.5 text-center">
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-card border border-border/60 shadow-2xs min-w-0">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-background/80 border border-border/60 shadow-2xs min-w-0">
                       <p className="text-[10px] text-muted-foreground uppercase font-bold truncate">Current</p>
                       <p className="text-xs sm:text-sm font-black text-foreground mt-0.5 font-mono truncate">
                         {stockAdjustItem.stock} <span className="text-[10px] font-normal text-muted-foreground">{stockAdjustItem.unit || 'pcs'}</span>
                       </p>
                     </div>
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-card border border-border/60 shadow-2xs min-w-0">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-background/80 border border-border/60 shadow-2xs min-w-0">
                       <p className="text-[10px] text-muted-foreground uppercase font-bold truncate">Adjustment</p>
                       <p className={cn("text-xs sm:text-sm font-black mt-0.5 font-mono truncate", adjustAction === 'Stock In' ? 'text-emerald-600' : 'text-amber-600')}>
                         {adjustAction === 'Stock In' ? '+' : '-'}{adjustQuantity} <span className="text-[10px] font-normal text-muted-foreground">{stockAdjustItem.unit || 'pcs'}</span>
                       </p>
                     </div>
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-card border border-border/60 shadow-2xs min-w-0">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-background/80 border border-border/60 shadow-2xs min-w-0">
                       <p className="text-[10px] text-muted-foreground uppercase font-bold truncate">Projected</p>
                       <p className="text-xs sm:text-sm font-black text-foreground mt-0.5 font-mono truncate">
                         {Math.max(0, adjustAction === 'Stock In' ? stockAdjustItem.stock + adjustQuantity : stockAdjustItem.stock - adjustQuantity)}{' '}
@@ -1561,27 +1558,31 @@ export function InventoryTable({
                 </div>
 
                 {/* 4. Audit Note */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                    <span>Reason / Audit Note</span>
-                    <span className="text-muted-foreground font-normal text-[10px]">(Optional)</span>
-                  </Label>
-                  <Input
-                    placeholder="e.g. Shipment arrival, Sunday service use, Damaged replacement..."
-                    value={adjustNote}
-                    onChange={(e) => setAdjustNote(e.target.value)}
-                    className="h-10 text-xs rounded-xl bg-slate-50/50 dark:bg-muted/30 border-slate-200/90 dark:border-border focus:bg-background transition-all shadow-2xs"
-                  />
+                <div className="p-4 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                    <Tag className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                      Reason / Audit Note
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Input
+                      placeholder="e.g. Shipment arrival, Sunday service use, Damaged replacement..."
+                      value={adjustNote}
+                      onChange={(e) => setAdjustNote(e.target.value)}
+                      className="h-10 text-xs rounded-xl border-border/70 bg-background focus:bg-background transition-all shadow-2xs"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* ── MODAL FOOTER ── */}
-              <div className="p-4 sm:p-5 pt-3 border-t border-border/70 bg-muted/20 flex flex-row items-center justify-end gap-2.5 shrink-0">
+              <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex items-center justify-end gap-2.5 shrink-0">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setStockAdjustItem(null)}
-                  className="rounded-xl text-xs h-10 px-4 font-semibold border-slate-200/90 dark:border-border cursor-pointer hover:bg-muted shrink-0"
+                  className="rounded-xl text-xs h-9 px-4 font-semibold border-border/80 cursor-pointer hover:bg-muted/60 shrink-0"
                   disabled={isAdjusting}
                 >
                   Cancel
@@ -1589,7 +1590,7 @@ export function InventoryTable({
                 <Button
                   type="button"
                   onClick={handleCustomStockAdjust}
-                  className="rounded-xl text-xs h-10 px-5 font-bold bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer gap-1.5 shrink-0"
+                  className="rounded-xl text-xs h-9 px-5 font-bold bg-sidebar hover:bg-sidebar/90 text-white shadow-xs cursor-pointer gap-1.5 shrink-0"
                   disabled={isAdjusting}
                 >
                   {isAdjusting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -1625,20 +1626,36 @@ export function InventoryTable({
         {/* ── SINGLE DELETE CONFIRMATION ── */}
         {deleteConfirmId && (
           <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-            <DialogContent className="max-w-sm rounded-2xl p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive mx-auto flex items-center justify-center mb-2">
+            <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md rounded-3xl p-6 text-center border-border/80 shadow-2xl bg-background [&>button:last-child]:hidden">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDeleteConfirmId(null);
+                  setDeleteConfirmName('');
+                }}
+                className="absolute top-4 right-4 h-8 w-8 p-0 rounded-full border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+              <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-500 mx-auto flex items-center justify-center mb-3 shadow-xs">
                 <Trash2 className="h-6 w-6" />
               </div>
-              <DialogHeader>
-                <DialogTitle className="text-base font-bold text-center">Delete Catalog Item</DialogTitle>
-                <DialogDescription className="text-xs text-center mt-1">
-                  Are you sure you want to delete <strong>{deleteConfirmName}</strong>? All associated barcodes and audit logs will be permanently removed.
+              <DialogHeader className="p-0 text-center sm:text-center space-y-1.5">
+                <DialogTitle className="text-base sm:text-lg font-bold text-center font-headline text-foreground">
+                  Delete Catalog Item
+                </DialogTitle>
+                <DialogDescription className="text-xs text-center text-muted-foreground leading-relaxed px-2">
+                  Are you sure you want to proceed with <strong className="text-foreground">{deleteConfirmName}</strong>? This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter className="flex gap-2 sm:justify-center mt-4">
+              <div className="flex items-center gap-2.5 mt-5">
                 <Button
                   variant="outline"
-                  className="flex-1 rounded-xl text-xs h-9"
+                  className="flex-1 rounded-xl text-xs h-10 font-semibold border-border/80 hover:bg-muted/60 cursor-pointer"
                   onClick={() => {
                     setDeleteConfirmId(null);
                     setDeleteConfirmName('');
@@ -1646,10 +1663,13 @@ export function InventoryTable({
                 >
                   Cancel
                 </Button>
-                <Button variant="destructive" className="flex-1 rounded-xl text-xs h-9 font-bold" onClick={confirmDelete}>
+                <Button
+                  className="flex-1 rounded-xl text-xs h-10 font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer"
+                  onClick={confirmDelete}
+                >
                   Delete Item
                 </Button>
-              </DialogFooter>
+              </div>
             </DialogContent>
           </Dialog>
         )}
@@ -1657,24 +1677,44 @@ export function InventoryTable({
         {/* ── BULK DELETE CONFIRMATION ── */}
         {bulkDeleteConfirm && (
           <Dialog open={bulkDeleteConfirm} onOpenChange={setBulkDeleteConfirm}>
-            <DialogContent className="max-w-sm rounded-2xl p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive mx-auto flex items-center justify-center mb-2">
+            <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md rounded-3xl p-6 text-center border-border/80 shadow-2xl bg-background [&>button:last-child]:hidden">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setBulkDeleteConfirm(false)}
+                className="absolute top-4 right-4 h-8 w-8 p-0 rounded-full border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+              <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-500 mx-auto flex items-center justify-center mb-3 shadow-xs">
                 <Trash2 className="h-6 w-6" />
               </div>
-              <DialogHeader>
-                <DialogTitle className="text-base font-bold text-center">Delete Selected Items</DialogTitle>
-                <DialogDescription className="text-xs text-center mt-1">
-                  Are you sure you want to permanently delete <strong>{selectedIds.size}</strong> selected items? This action cannot be undone.
+              <DialogHeader className="p-0 text-center sm:text-center space-y-1.5">
+                <DialogTitle className="text-base sm:text-lg font-bold text-center font-headline text-foreground">
+                  Delete Selected Items
+                </DialogTitle>
+                <DialogDescription className="text-xs text-center text-muted-foreground leading-relaxed px-2">
+                  Are you sure you want to permanently delete <strong className="text-foreground">{selectedIds.size}</strong> selected items? This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter className="flex gap-2 sm:justify-center mt-4">
-                <Button variant="outline" className="flex-1 rounded-xl text-xs h-9" onClick={() => setBulkDeleteConfirm(false)}>
+              <div className="flex items-center gap-2.5 mt-5">
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-xl text-xs h-10 font-semibold border-border/80 hover:bg-muted/60 cursor-pointer"
+                  onClick={() => setBulkDeleteConfirm(false)}
+                >
                   Cancel
                 </Button>
-                <Button variant="destructive" className="flex-1 rounded-xl text-xs h-9 font-bold" onClick={confirmBulkDelete}>
+                <Button
+                  className="flex-1 rounded-xl text-xs h-10 font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer"
+                  onClick={confirmBulkDelete}
+                >
                   Delete All
                 </Button>
-              </DialogFooter>
+              </div>
             </DialogContent>
           </Dialog>
         )}

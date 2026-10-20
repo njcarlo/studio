@@ -263,13 +263,57 @@ const AreaForm = ({ area, branches, onSave, onClose }: { area: Partial<Area> | n
     );
 };
 
+const getFloorRank = (name: string): number => {
+    const lower = (name || '').toLowerCase().trim();
+    if (lower.includes('basement 2') || lower.includes('b2')) return -2;
+    if (lower.includes('basement') || lower.includes('b1')) return -1;
+    if (lower.includes('ground') || lower.includes('lower ground') || lower.includes('ug') || lower.includes('lg') || lower.includes('g/f') || lower.includes('gf')) return 0;
+
+    const ordinalMap: Record<string, number> = {
+        'first': 1, '1st': 1, 'one': 1,
+        'second': 2, '2nd': 2, 'two': 2,
+        'third': 3, '3rd': 3, 'three': 3,
+        'fourth': 4, '4th': 4, 'four': 4,
+        'fifth': 5, '5th': 5, 'five': 5,
+        'sixth': 6, '6th': 6, 'six': 6,
+        'seventh': 7, '7th': 7, 'seven': 7,
+        'eighth': 8, '8th': 8, 'eight': 8,
+        'ninth': 9, '9th': 9, 'nine': 9,
+        'tenth': 10, '10th': 10, 'ten': 10,
+        'eleventh': 11, '11th': 11,
+        'twelfth': 12, '12th': 12,
+    };
+
+    for (const [key, val] of Object.entries(ordinalMap)) {
+        const regex = new RegExp(`\\b${key}\\b`, 'i');
+        if (regex.test(lower)) return val;
+    }
+
+    const numMatch = lower.match(/(\d+)/);
+    if (numMatch) {
+        return parseInt(numMatch[1], 10);
+    }
+
+    if (lower.includes('roof') || lower.includes('deck') || lower.includes('penthouse')) return 999;
+    return 100;
+};
+
 const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete }: { areas: Area[], branches: Branch[], rooms: Room[], isLoading: boolean, onAdd: () => void, onEdit: (area: Area) => void, onDelete: (area: Area) => void }) => {
     const getBranchName = (branchId: string) => branches.find(b => b.id === branchId)?.name || 'N/A';
     const getRoomCount = (areaId: string) => rooms.filter(r => r.areaId === areaId).length;
 
     const [search, setSearch] = useState('');
 
-    const filtered = areas.filter(area => {
+    const sortedAreas = useMemo(() => {
+        return [...areas].sort((a, b) => {
+            const rankA = getFloorRank(a.name || a.areaId || '');
+            const rankB = getFloorRank(b.name || b.areaId || '');
+            if (rankA !== rankB) return rankA - rankB;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+    }, [areas]);
+
+    const filtered = sortedAreas.filter(area => {
         const matchesSearch = !search || area.name.toLowerCase().includes(search.toLowerCase()) || (area.areaId || area.id).toLowerCase().includes(search.toLowerCase());
         return matchesSearch;
     });
@@ -300,8 +344,7 @@ const AreasTab = ({ areas, branches, rooms, isLoading, onAdd, onEdit, onDelete }
                 </div>
 
                 {/* Right Actions & Filters */}
-                <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
-
+                <div className="flex items-center justify-end gap-2.5 shrink-0 self-end sm:self-auto sm:ml-auto">
                     {/* Add Area Button */}
                     <Button
                         type="button"
@@ -661,41 +704,44 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                 </div>
 
                 {/* Right Actions & Filters */}
-                <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
-                    {/* Area Filter */}
-                    <Select value={areaFilter} onValueChange={setAreaFilter}>
-                        <SelectTrigger className="h-10 w-[140px] sm:w-40 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
-                            <SelectValue placeholder="All Areas" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-72 overflow-y-auto">
-                            <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
-                                All Areas
-                            </SelectItem>
-                            {areas.map(a => (
-                                <SelectItem key={a.id} value={a.id} className="text-xs cursor-pointer">
-                                    {a.name}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
+                    {/* Filter Dropdowns */}
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                        {/* Area Filter */}
+                        <Select value={areaFilter} onValueChange={setAreaFilter}>
+                            <SelectTrigger className="h-10 w-full sm:w-40 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                                <SelectValue placeholder="All Areas" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72 overflow-y-auto">
+                                <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
+                                    All Areas
                                 </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                                {areas.map(a => (
+                                    <SelectItem key={a.id} value={a.id} className="text-xs cursor-pointer">
+                                        {a.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
 
-                    {/* Status Filter */}
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="h-10 w-[130px] sm:w-36 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
-                            <SelectValue placeholder="All Statuses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all" className="text-xs cursor-pointer">All Statuses</SelectItem>
-                            <SelectItem value="Active" className="text-xs cursor-pointer">Active</SelectItem>
-                            <SelectItem value="Maintenance" className="text-xs cursor-pointer">Maintenance</SelectItem>
-                        </SelectContent>
-                    </Select>
+                        {/* Status Filter */}
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="h-10 w-full sm:w-36 text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3 shrink-0">
+                                <SelectValue placeholder="All Statuses" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all" className="text-xs cursor-pointer">All Statuses</SelectItem>
+                                <SelectItem value="Active" className="text-xs cursor-pointer">Active</SelectItem>
+                                <SelectItem value="Maintenance" className="text-xs cursor-pointer">Maintenance</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
 
                     {/* Add Room Button */}
                     <Button
                         type="button"
                         onClick={onAdd}
-                        className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-semibold text-xs h-10 px-4 gap-1.5 rounded-2xl shrink-0 transition-colors cursor-pointer"
+                        className="bg-sidebar hover:bg-sidebar/90 text-white shadow-xs font-semibold text-xs h-10 px-4 gap-1.5 rounded-2xl shrink-0 transition-colors cursor-pointer self-end sm:self-auto"
                     >
                         <PlusCircle className="h-4 w-4" />
                         <span>Add Room</span>
@@ -1053,50 +1099,51 @@ export default function RoomManagementPage() {
             <div className="space-y-7 pb-12 w-full">
 
                 {/* Header */}
-                <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
-                    <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                        <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
-                            Facilities Management
-                        </h1>
-                        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
-                            Rooms, areas and satellite campuses in one place.
-                        </p>
-                    </div>
+                <div className="space-y-0.5 sm:space-y-1 min-w-0">
+                    <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
+                        Facilities Management
+                    </h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                        Rooms, areas and satellite campuses in one place.
+                    </p>
+                </div>
+
+                {/* Sub-Header Navigation Bar: Back on the LEFT, Rooms/Areas on the RIGHT */}
+                <div className="flex items-center justify-between w-full gap-3">
+                    {/* Back Button (LEFT) */}
                     <Link
                         href="/settings"
-                        className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
+                        className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs"
                     >
                         <ArrowLeft className="h-3.5 w-3.5" /> Back
                     </Link>
+
+                    {/* Segmented Tab Selector (RIGHT) */}
+                    <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-muted p-1 rounded-xl border border-slate-200/70 dark:border-border/50 shadow-2xs">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('rooms')}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${activeTab === 'rooms' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
+                        >
+                            <span>Rooms</span>
+                            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${activeTab === 'rooms' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                                {rooms?.length ?? 0}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('areas')}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${activeTab === 'areas' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
+                        >
+                            <span>Areas</span>
+                            <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${activeTab === 'areas' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                                {areas?.length ?? 0}
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
-                <div className="space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {/* Segmented Tab Selector (Right aligned) */}
-                    <div className="flex items-center justify-end w-full -mb-5">
-                        <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-muted p-1 rounded-xl border border-slate-200/70 dark:border-border/50 shadow-2xs w-fit">
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('rooms')}
-                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${activeTab === 'rooms' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
-                            >
-                                <span>Rooms</span>
-                                <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${activeTab === 'rooms' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-                                    {rooms?.length ?? 0}
-                                </span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('areas')}
-                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${activeTab === 'areas' ? 'bg-sidebar text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
-                            >
-                                <span>Areas</span>
-                                <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${activeTab === 'areas' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-                                    {areas?.length ?? 0}
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Content */}
                     {activeTab === 'rooms' && (
                         <RoomsTab

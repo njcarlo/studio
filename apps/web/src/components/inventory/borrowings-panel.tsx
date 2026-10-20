@@ -30,6 +30,7 @@ import {
   AlertCircle,
   MoreHorizontal,
   Camera,
+  ChevronDown,
 } from 'lucide-react';
 import {
   Table,
@@ -765,13 +766,13 @@ export function BorrowingsPanel() {
                       Borrowed Date
                     </TableHead>
                     <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[125px]">
-                      Due Date / Schedule
+                      Returned Date
                     </TableHead>
                     <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[130px]">
                       Status
                     </TableHead>
-                    <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[200px]">
-                      Condition / Notes
+                    <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider bg-sidebar whitespace-nowrap min-w-[140px]">
+                      Condition
                     </TableHead>
                     <TableHead className="text-[11px] font-bold text-white uppercase tracking-wider text-right pr-8 bg-sidebar whitespace-nowrap w-24 sticky right-0 z-20 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]">
                       Actions
@@ -860,9 +861,19 @@ export function BorrowingsPanel() {
                             </div>
                           </TableCell>
 
-                          {/* 4. Due Date / Schedule */}
+                          {/* 4. Returned Date */}
                           <TableCell className="py-3">
-                            {b.dueDate ? (
+                            {b.returnedAt ? (
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                <span>{new Date(b.returnedAt).toLocaleDateString()}</span>
+                              </div>
+                            ) : b.status === 'RETURNED' ? (
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                <span>Returned</span>
+                              </div>
+                            ) : b.dueDate ? (
                               <div className="space-y-0.5">
                                 <div className="flex items-center gap-1.5 text-xs font-medium">
                                   <Clock className={`h-3.5 w-3.5 shrink-0 ${isOverdue ? 'text-destructive' : 'text-muted-foreground/70'}`} />
@@ -886,7 +897,7 @@ export function BorrowingsPanel() {
                                 )}
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground/70">No due date</span>
+                              <span className="text-xs text-muted-foreground/70">—</span>
                             )}
                           </TableCell>
 
@@ -914,30 +925,23 @@ export function BorrowingsPanel() {
                             </span>
                           </TableCell>
 
-                          {/* 6. Condition / Notes */}
-                          <TableCell className="py-3 text-xs text-muted-foreground min-w-[200px]">
-                            <div className="flex flex-col gap-0.5 leading-snug" title={`${b.status === 'RETURNED' ? b.returnCondition || 'Good' : b.checkoutCondition || 'Good Condition'}: ${b.status === 'RETURNED' ? b.returnNotes || 'Returned in good order' : b.checkoutNotes || 'Standard checkout'}`}>
-                              <span className="font-semibold text-foreground text-xs leading-tight">
-                                {b.status === 'RETURNED'
-                                  ? b.returnCondition || 'Good'
-                                  : b.checkoutCondition || 'Good Condition'}:
-                              </span>
-                              <span className="text-muted-foreground text-[11px] leading-tight">
-                                {b.status === 'RETURNED'
-                                  ? b.returnNotes || 'Returned in good order'
-                                  : b.checkoutNotes || 'Standard checkout'}
-                              </span>
-                            </div>
-                            {b.returnPhotos && b.returnPhotos.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => setDetailsBorrowing(b)}
-                                className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors cursor-pointer"
-                              >
-                                <Camera className="h-3 w-3 shrink-0" />
-                                <span>{b.returnPhotos.length} Photo{b.returnPhotos.length > 1 ? 's' : ''} Saved</span>
-                              </button>
-                            )}
+                          {/* 6. Condition Only */}
+                          <TableCell className="py-3 text-xs text-foreground min-w-[140px]">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs font-semibold px-2.5 py-0.5 rounded-full border",
+                                (b.status === 'RETURNED' ? b.returnCondition : b.checkoutCondition)?.toLowerCase().includes('damage')
+                                  ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                                  : (b.status === 'RETURNED' ? b.returnCondition : b.checkoutCondition)?.toLowerCase().includes('wear')
+                                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                  : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                              )}
+                            >
+                              {b.status === 'RETURNED'
+                                ? b.returnCondition || 'Good Condition'
+                                : b.checkoutCondition || 'Good Condition'}
+                            </Badge>
                           </TableCell>
 
                           {/* 7. Actions */}
@@ -1030,9 +1034,9 @@ export function BorrowingsPanel() {
           <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl md:rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
             {/* ── STICKY MODAL HEADER ── */}
             <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
-              <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
-                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 shadow-2xs mt-0.5">
+              <div className="flex items-center justify-between gap-2.5 w-full min-w-0">
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 shadow-2xs">
                     <ArrowUpCircle className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                   </div>
                   <div className="min-w-0 flex-1 space-y-0.5">
@@ -1062,46 +1066,56 @@ export function BorrowingsPanel() {
             <form onSubmit={handleCheckoutSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden w-full">
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 w-full min-w-0">
               {/* Equipment Item Selection */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label className="text-xs font-bold text-foreground flex items-center justify-between">
                   <span>Select Equipment / SKU *</span>
                   <span className="text-[10px] text-muted-foreground font-normal">Available items with stock &gt; 0</span>
                 </Label>
-                <select
-                  className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs shadow-2xs focus:outline-none focus:ring-1 focus:ring-ring font-medium"
+                <Select
                   value={checkoutItemId}
-                  onChange={(e) => setCheckoutItemId(e.target.value)}
+                  onValueChange={(val) => setCheckoutItemId(val)}
                   required
                 >
-                  <option value="">Select Equipment...</option>
-                  {items
-                    .filter((i) => i.type === 'EQUIPMENT' && i.stock > 0)
-                    .map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name} ({i.stock} avail) {i.inventoryCode ? `[${i.inventoryCode}]` : ''} {i.isKit ? '★ KIT' : ''}
-                      </option>
-                    ))}
-                </select>
+                  <SelectTrigger className="h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs shadow-2xs font-medium cursor-pointer">
+                    <SelectValue placeholder="Select Equipment..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[calc(100vw-2.5rem)] sm:max-w-md max-h-60 rounded-xl">
+                    {items
+                      .filter((i) => i.type === 'EQUIPMENT' && i.stock > 0)
+                      .map((i) => (
+                        <SelectItem key={i.id} value={i.id} className="text-xs cursor-pointer truncate">
+                          <span className="truncate">
+                            {i.name} ({i.stock} avail) {i.inventoryCode ? `[${i.inventoryCode}]` : ''} {i.isKit ? '★ KIT' : ''}
+                          </span>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Borrower Worker Selection */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label className="text-xs font-bold text-foreground">Borrower (Assigned Worker) *</Label>
-                <select
-                  className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs shadow-2xs focus:outline-none focus:ring-1 focus:ring-ring font-medium"
+                <Select
                   value={checkoutWorkerId}
-                  onChange={(e) => setCheckoutWorkerId(e.target.value)}
+                  onValueChange={(val) => setCheckoutWorkerId(val)}
                   required
                 >
-                  <option value="">Select Worker...</option>
-                  {workers
-                    ?.filter((w) => w.status === 'Active')
-                    .map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.firstName} {w.lastName} ({w.employmentType || 'Worker'})
-                      </option>
-                    ))}
-                </select>
+                  <SelectTrigger className="h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs shadow-2xs font-medium cursor-pointer">
+                    <SelectValue placeholder="Select Worker..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[calc(100vw-2.5rem)] sm:max-w-md max-h-60 rounded-xl">
+                    {workers
+                      ?.filter((w) => w.status === 'Active')
+                      .map((w) => (
+                        <SelectItem key={w.id} value={w.id} className="text-xs cursor-pointer truncate">
+                          <span className="truncate">
+                            {w.firstName} {w.lastName} ({w.employmentType || 'Worker'})
+                          </span>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Expected Return Date with Quick Presets */}
@@ -1192,9 +1206,9 @@ export function BorrowingsPanel() {
           <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-lg max-h-[92dvh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl md:rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
             {/* ── STICKY MODAL HEADER ── */}
             <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b border-border/70 bg-card shrink-0 text-left space-y-0 w-full min-w-0">
-              <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
-                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-2xs mt-0.5">
+              <div className="flex items-center justify-between gap-2.5 w-full min-w-0">
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-2xs">
                     <ArrowDownCircle className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                   </div>
                   <div className="min-w-0 flex-1 space-y-0.5">
@@ -1254,15 +1268,20 @@ export function BorrowingsPanel() {
                 {/* Return Condition */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-foreground">Return Condition</Label>
-                  <select
-                    className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs shadow-2xs focus:outline-none focus:ring-1 focus:ring-ring font-medium"
-                    value={returnCondition}
-                    onChange={(e) => setReturnCondition(e.target.value)}
-                  >
-                    <option value="Good Condition">Good Condition (No issues)</option>
-                    <option value="Minor Wear">Minor Wear (Functional)</option>
-                    <option value="Damaged">Damaged / Needs Maintenance</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      className="flex h-10 w-full appearance-none rounded-xl border border-input bg-background pl-3.5 pr-10 py-2 text-xs shadow-2xs focus:outline-none focus:ring-1 focus:ring-ring font-medium text-foreground cursor-pointer transition-colors"
+                      value={returnCondition}
+                      onChange={(e) => setReturnCondition(e.target.value)}
+                    >
+                      <option value="Good Condition">Good Condition (No issues)</option>
+                      <option value="Minor Wear">Minor Wear (Functional)</option>
+                      <option value="Damaged">Damaged / Needs Maintenance</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-muted-foreground">
+                      <ChevronDown className="h-4 w-4" />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Photo Upload Section: Damaged (Required), Minor Wear (Optional), Good Condition (Hidden) */}
@@ -1321,8 +1340,8 @@ export function BorrowingsPanel() {
                       )}
                     >
                       {returnCondition === 'Damaged'
-                        ? 'Kailangang kunan o i-upload ang litrato ng sira upang ma-verify bago tanggapin ang pagbalik.'
-                        : 'Maaaring mag-upload ng litrato ng minor wear o gasgas (opsyonal para sa inspection records).'}
+                        ? 'A clear photo of the damage is required for verification before processing the return.'
+                        : 'You can upload a photo of minor wear or scratches (optional for inspection records).'}
                     </p>
 
                     <input
@@ -1558,10 +1577,16 @@ export function BorrowingsPanel() {
 
                   <div className="p-3 rounded-xl bg-muted/20 border border-border/50">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                      Due Date
+                      Returned Date
                     </span>
                     <span className="font-bold text-foreground mt-0.5 block">
-                      {detailsBorrowing.dueDate ? new Date(detailsBorrowing.dueDate).toLocaleDateString() : 'None'}
+                      {detailsBorrowing.returnedAt
+                        ? new Date(detailsBorrowing.returnedAt).toLocaleDateString()
+                        : detailsBorrowing.status === 'RETURNED'
+                        ? 'Returned'
+                        : detailsBorrowing.dueDate
+                        ? new Date(detailsBorrowing.dueDate).toLocaleDateString()
+                        : '—'}
                     </span>
                   </div>
                 </div>

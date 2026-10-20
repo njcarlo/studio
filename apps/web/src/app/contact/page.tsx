@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@studio/store";
+import { isNativeMobileApp } from "@/lib/native-app";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -22,6 +25,21 @@ import { isValidPhilippineNumber, cleanPhoneNumber, isValidEmail } from "@/lib/v
 import { createInquiry } from "@/actions/db";
 
 export default function ContactPage() {
+  const router = useRouter();
+  const { user, isUserLoading } = useAuthStore();
+  const [isNative, setIsNative] = useState(false);
+
+  useEffect(() => {
+    const native = isNativeMobileApp();
+    setIsNative(native);
+    if (native && !isUserLoading) {
+      if (user) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/login");
+      }
+    }
+  }, [user, isUserLoading, router]);
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -94,6 +112,8 @@ export default function ContactPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isNative) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col selection:bg-primary selection:text-white">

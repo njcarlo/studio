@@ -135,18 +135,18 @@ export default function MealStubAllocationPage() {
       <div className="space-y-7 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-0.5 sm:space-y-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
               Meal Stub Allocation
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Distribute the weekly meal stub pool across departments and ministries.
             </p>
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto sm:ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
@@ -240,7 +240,7 @@ export default function MealStubAllocationPage() {
                   <div className="border-t border-border/40 px-6 py-5 flex flex-col gap-4">
                     {/* Dept pool input */}
                     {/* Dept pool input */}
-                    <div className="flex items-center justify-between gap-4 bg-muted/30 rounded-xl p-4">
+                    <div className="flex items-end justify-between gap-4 bg-muted/30 rounded-xl p-4">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Department Weekly Pool</p>
                         <input type="number" min="0" value={pool} onChange={e => handleDeptEdit(dept, e.target.value)}

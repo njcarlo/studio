@@ -5,13 +5,41 @@ import Link from "next/link";
 import { Cookie, ShieldCheck, Check, Settings2, X, Sparkles, Smartphone } from "lucide-react";
 import { Button } from "@studio/ui";
 
+import { useAuthStore } from "@studio/store";
+
 const CONSENT_KEY = "cog_cookie_consent";
 
 export function CookieConsentBanner() {
+  const { user } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [isManuallyOpened, setIsManuallyOpened] = useState(false);
 
   useEffect(() => {
+    if (user) {
+      try {
+        const consent = localStorage.getItem(CONSENT_KEY);
+        if (!consent) {
+          localStorage.setItem(
+            CONSENT_KEY,
+            JSON.stringify({
+              version: "1.0",
+              type: "essential",
+              essential: true,
+              functional: true,
+              analytics: false,
+              date: new Date().toISOString(),
+              autoLoggedIn: true,
+            })
+          );
+        }
+      } catch {}
+      if (!isManuallyOpened) {
+        setIsOpen(false);
+      }
+      return;
+    }
+
     try {
       const consent = localStorage.getItem(CONSENT_KEY);
       if (!consent) {
@@ -19,10 +47,11 @@ export function CookieConsentBanner() {
         return () => clearTimeout(timer);
       }
     } catch {}
-  }, []);
+  }, [user, isManuallyOpened]);
 
   useEffect(() => {
     const handleReopen = () => {
+      setIsManuallyOpened(true);
       setShowDetails(true);
       setIsOpen(true);
     };
@@ -45,6 +74,7 @@ export function CookieConsentBanner() {
       );
     } catch {}
     setIsOpen(false);
+    setIsManuallyOpened(false);
   };
 
   const handleAcceptEssential = () => {
@@ -62,6 +92,7 @@ export function CookieConsentBanner() {
       );
     } catch {}
     setIsOpen(false);
+    setIsManuallyOpened(false);
   };
 
   const handleDismiss = () => {
@@ -80,9 +111,10 @@ export function CookieConsentBanner() {
       );
     } catch {}
     setIsOpen(false);
+    setIsManuallyOpened(false);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || (user && !isManuallyOpened)) return null;
 
   return (
     <div

@@ -28,6 +28,7 @@ import { supabase } from "@studio/database";
 import { validateLoginIdentifier } from "@/actions/legacy-auth";
 import { requestPasswordReset } from "@/actions/auth";
 import { LandingNav } from "@/components/landing/landing-nav";
+import { useIsNativeApp } from "@/lib/native-app";
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState("");
@@ -149,10 +150,12 @@ export default function LoginPage() {
     }
   };
 
+  const isNative = useIsNativeApp();
+
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4 pt-20">
-      {/* Floating Capsule Header */}
-      <LandingNav currentPath="/login" />
+    <div className={`relative flex min-h-screen items-center justify-center p-4 ${isNative ? 'pt-4' : 'pt-20'}`}>
+      {/* Floating Capsule Header - only displayed on Web, hidden on APK */}
+      {!isNative && <LandingNav currentPath="/login" />}
 
       {/* Background Image */}
       <div className="absolute inset-0 z-0">

@@ -18,10 +18,29 @@ import {
   Youtube,
   Tv,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@studio/store";
+import { isNativeMobileApp } from "@/lib/native-app";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const { user, isUserLoading } = useAuthStore();
+  const [isNative, setIsNative] = useState<boolean | null>(null);
+
+  // APK Mobile Native Landing Guard: If opening from the APK, jump directly to login or dashboard
+  useEffect(() => {
+    const native = isNativeMobileApp();
+    setIsNative(native);
+    if (native && !isUserLoading) {
+      if (user) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/login");
+      }
+    }
+  }, [user, isUserLoading, router]);
   // Background Media Slider State (0: Image Slideshow, 1: Video)
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
@@ -195,6 +214,24 @@ export default function LandingPage() {
       youtubeUrl: "https://www.youtube.com/@cogdasma",
     },
   ];
+
+  if (isNative) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-black">
+        <div className="flex flex-col items-center gap-3">
+          <Image
+            src="/church-logo.png"
+            alt="COG Logo"
+            width={72}
+            height={72}
+            className="animate-pulse drop-shadow-md"
+            priority
+          />
+          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin mt-2" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col selection:bg-primary selection:text-white">

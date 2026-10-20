@@ -113,18 +113,38 @@ export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalPro
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5 text-primary" />
-            Quick Scan
-          </DialogTitle>
-          <DialogDescription>
-            Point your camera at a QR code or barcode to scan, or type code below.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] sm:max-w-md max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border-border/80 shadow-2xl bg-background [&>button:last-child]:hidden">
+        {/* ── STICKY MODAL HEADER ── */}
+        <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md shrink-0 sticky top-0 z-10 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs">
+              <Camera className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <DialogTitle className="text-base sm:text-lg font-bold font-headline tracking-tight text-foreground">
+                Quick Scan
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                Point your camera at a QR code or barcode to scan, or type code below.
+              </DialogDescription>
+            </div>
+          </div>
 
-        <div className="py-2 space-y-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 w-8 p-0 rounded-full border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer shrink-0 -mt-1 -mr-1"
+            title="Close modal"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+
+        {/* ── MODAL BODY ── */}
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
           {error && (
             <div className="p-3 text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-xl flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -132,44 +152,59 @@ export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalPro
             </div>
           )}
 
-          <div className="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center">
-            <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-            <canvas ref={canvasRef} className="hidden" />
+          {/* Camera Viewport Card */}
+          <div className="p-3 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-3">
+            <div className="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center">
+              <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+              <canvas ref={canvasRef} className="hidden" />
 
-            {!cameraActive && !error && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white">
-                <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-                <span className="text-xs font-medium">Starting camera...</span>
+              {!cameraActive && !error && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white">
+                  <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+                  <span className="text-xs font-semibold">Starting camera...</span>
+                </div>
+              )}
+
+              {/* Target Reticle */}
+              <div className="absolute inset-[15%] border-2 border-dashed border-white/80 rounded-2xl pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" />
               </div>
-            )}
-
-            {/* Target Reticle */}
-            <div className="absolute inset-[15%] border-2 border-dashed border-white/80 rounded-2xl pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
-              <div className="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" />
             </div>
           </div>
 
           {/* Manual Input Fallback */}
-          <form onSubmit={handleManualSubmit} className="flex gap-2 pt-1">
-            <Input
-              placeholder="Or type/scan code here..."
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value)}
-              className="text-xs h-9 rounded-xl font-mono"
-            />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!manualCode.trim()}
-              className="h-9 px-3.5 rounded-xl text-xs font-semibold cursor-pointer"
-            >
-              Enter
-            </Button>
-          </form>
+          <div className="p-4 rounded-2xl border border-border/70 bg-card/60 shadow-2xs space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground font-headline">
+              Manual Code Lookup
+            </span>
+            <form onSubmit={handleManualSubmit} className="flex gap-2">
+              <Input
+                placeholder="Type or paste code here..."
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value)}
+                className="text-xs h-9 rounded-xl border-border/70 bg-background flex-1"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!manualCode.trim()}
+                className="h-9 px-4 rounded-xl text-xs font-bold bg-sidebar hover:bg-sidebar/90 text-white cursor-pointer shadow-xs"
+              >
+                Enter
+              </Button>
+            </form>
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={onClose}>
+        {/* ── STICKY MODAL FOOTER ── */}
+        <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex items-center justify-end gap-2.5 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-xl text-xs h-9 px-4 font-semibold border-border/80 hover:bg-muted/60 cursor-pointer"
+            onClick={onClose}
+          >
             Cancel
           </Button>
         </div>

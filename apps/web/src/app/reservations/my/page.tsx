@@ -279,36 +279,8 @@ export default function MyReservationsPage() {
               />
             </div>
 
-            {/* Right: Date Picker, Status Filter, Tab Switcher Pills */}
+            {/* Right: Tab Switcher Pills (Upcoming container), Status Filter, Date Picker */}
             <div className="flex flex-wrap items-center gap-2.5">
-              {/* Date Filter */}
-              <DatePicker
-                value={dateFilter}
-                onChange={setDateFilter}
-                align="start"
-              />
-
-              {/* Status Select */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">
-                    All Statuses
-                  </SelectItem>
-                  <SelectItem value="Approved" className="text-xs">
-                    Approved
-                  </SelectItem>
-                  <SelectItem value="Pending" className="text-xs">
-                    Pending
-                  </SelectItem>
-                  <SelectItem value="Rejected" className="text-xs">
-                    Rejected
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
               {/* Tab Switcher Pills */}
               <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs">
                 <button
@@ -348,6 +320,34 @@ export default function MyReservationsPage() {
                   History
                 </button>
               </div>
+
+              {/* Status Select */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">
+                    All Statuses
+                  </SelectItem>
+                  <SelectItem value="Approved" className="text-xs">
+                    Approved
+                  </SelectItem>
+                  <SelectItem value="Pending" className="text-xs">
+                    Pending
+                  </SelectItem>
+                  <SelectItem value="Rejected" className="text-xs">
+                    Rejected
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Date Filter */}
+              <DatePicker
+                value={dateFilter}
+                onChange={setDateFilter}
+                align="start"
+              />
             </div>
           </div>
 
@@ -434,7 +434,7 @@ export default function MyReservationsPage() {
                         <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-left w-[18%]">Time</TableHead>
                         <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-4 text-center w-[8%]">Pax</TableHead>
                         <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-center w-[10%]">Status</TableHead>
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 text-center w-[8%]">Actions</TableHead>
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-11 px-6 pr-8 text-center w-[8%]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -467,7 +467,7 @@ export default function MyReservationsPage() {
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" />{booking.status}</span>
                               )}
                             </TableCell>
-                            <TableCell className="py-4 px-6 text-center align-middle">
+                            <TableCell className="py-4 px-6 pr-8 text-center align-middle">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button type="button" className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">

@@ -283,14 +283,11 @@ export default function InquiriesPage() {
     <AppLayout>
       <div className="space-y-4 sm:space-y-6 pb-16 sm:pb-12">
         {/* Header Title & Actions */}
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5 sm:gap-3">
-            <span className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
-              <MessageSquareHeart className="w-5 h-5 sm:w-6 sm:h-6" />
-            </span>
-            <span>Inquiries & Requests</span>
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-headline tracking-tight text-foreground">
+            Inquiries & Requests
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Manage and follow up on messages and requests submitted through the website.
           </p>
         </div>
@@ -809,34 +806,34 @@ export default function InquiriesPage() {
             {selectedInquiry && (
               <>
                 {/* Modal Top Bar Header with Icon & Badge & Close Button */}
-                <div className="p-4 sm:p-5 pr-12 pb-3 sm:pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 flex items-start justify-between gap-3">
+                <div className="p-4 sm:p-5 pr-12 pb-3 sm:pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
                       <MessageSquareHeart className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base font-bold font-headline tracking-tight text-foreground">
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <h2 className="text-base font-bold font-headline tracking-tight text-foreground whitespace-nowrap">
                           Message Details
                         </h2>
                         {selectedInquiry.status === "Responded" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shadow-2xs">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shadow-2xs shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                             Responded
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap shadow-2xs">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap shadow-2xs shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                             Pending Response
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
-                        <span>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate">
                           Received {format(parseDateSafe(selectedInquiry.createdAt), "MMM d, yyyy • h:mm a")} ({formatDistanceToNow(parseDateSafe(selectedInquiry.createdAt), { addSuffix: true })})
                         </span>
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>

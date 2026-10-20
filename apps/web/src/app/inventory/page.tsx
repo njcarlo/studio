@@ -199,10 +199,34 @@ function InventoryPageContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-0.5 sm:space-y-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white leading-tight">
-              Stock Monitoring &amp; Assets
+              {activeTab === "items"
+                ? "Items & Catalog"
+                : activeTab === "borrowings"
+                ? "Borrowings"
+                : activeTab === "logs"
+                ? "Stock Logs"
+                : activeTab === "categories"
+                ? "Categories"
+                : activeTab === "reports"
+                ? "Reports & Analytics"
+                : activeTab === "settings"
+                ? "Settings & Checklists"
+                : "Stock Monitoring & Assets"}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Centralized equipment tracking, barcode checkout system, and preventive maintenance.
+              {activeTab === "items"
+                ? "Browse, manage, and catalog all organization inventory items and assets."
+                : activeTab === "borrowings"
+                ? "Monitor active borrowings, overdue equipment, and return verifications."
+                : activeTab === "logs"
+                ? "Audit historical stock adjustments, additions, and status changes."
+                : activeTab === "categories"
+                ? "Organize items by classification, storage location, and department."
+                : activeTab === "reports"
+                ? "Generate asset utilization insights, damaged item audits, and inventory summaries."
+                : activeTab === "settings"
+                ? "Configure checkout policies, checklists, and inventory alert parameters."
+                : "Centralized equipment tracking, barcode checkout system, and preventive maintenance."}
             </p>
           </div>
 
@@ -221,7 +245,7 @@ function InventoryPageContent() {
               </Button>
             )}
 
-            {!['settings'].includes(activeTab) && (
+            {['items', 'borrowings'].includes(activeTab) && (
               <Button
                 size="sm"
                 onClick={() => setIsCameraScannerOpen(true)}

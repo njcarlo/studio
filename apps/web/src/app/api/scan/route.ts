@@ -195,6 +195,23 @@ export async function POST(req: NextRequest) {
     });
 
     if (item) {
+      // Check if there is an active borrowing for this item
+      const activeBorrowing = await prisma.inventoryBorrowing.findFirst({
+        where: {
+          itemId: item.id,
+          status: 'BORROWED',
+        },
+        orderBy: { borrowedAt: 'desc' },
+        include: {
+          borrower: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+          item: { include: { category: true } },
+        },
+      });
+
+      const borrowYear = activeBorrowing?.borrowedAt ? new Date(activeBorrowing.borrowedAt).getFullYear() : 2026;
+
       return NextResponse.json({
         success: true,
         qrType: 'ITEM',
@@ -217,6 +234,40 @@ export async function POST(req: NextRequest) {
           availability: item.quantity > 0 ? 'Available' : 'Out of Stock',
           description: (item as any).description || (item as any).statusDetails || '',
         },
+        activeBorrowing: activeBorrowing
+          ? {
+              id: activeBorrowing.id,
+              borrowingCode: `BORROW-${borrowYear}-${activeBorrowing.id.slice(0, 8).toUpperCase()}`,
+              borrowerId: activeBorrowing.borrowerId,
+              borrowerName: activeBorrowing.borrower
+                ? `${activeBorrowing.borrower.firstName} ${activeBorrowing.borrower.lastName}`
+                : (activeBorrowing as any).borrowerName || 'Worker',
+              borrowerEmail: activeBorrowing.borrower?.email || '',
+              borrowedAt: activeBorrowing.borrowedAt,
+              dueDate: activeBorrowing.dueDate,
+              returnedAt: activeBorrowing.returnedAt,
+              status: activeBorrowing.status,
+              quantity: (activeBorrowing as any).quantity || 1,
+              checkoutNotes: activeBorrowing.checkoutNotes,
+              checkoutCondition: activeBorrowing.checkoutCondition,
+              returnNotes: activeBorrowing.returnNotes,
+              returnCondition: activeBorrowing.returnCondition,
+              returnPhotos: (activeBorrowing as any).returnPhotos || [],
+              item: {
+                id: item.id,
+                name: item.name,
+                inventoryCode: item.inventoryCode,
+                itemQrCode: `ITEM-${item.inventoryCode}`,
+                category: item.category?.name || 'General',
+                imageUrl: item.imageUrl,
+                stock: item.quantity,
+                unit: item.unit || 'pcs',
+                location: (item as any).location || 'Main Storage',
+                condition: (item as any).condition || 'Good Condition',
+                status: item.status,
+              },
+            }
+          : null,
       });
     }
 

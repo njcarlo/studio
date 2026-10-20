@@ -351,19 +351,19 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
         </div>
 
         {/* ── MODAL FOOTER ── */}
-        <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-2.5 shrink-0">
+        <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col sm:flex-row sm:justify-between items-center gap-2.5 shrink-0">
           {role?.id && !role?.isSystemRole && !isAdminRole ? (
             <Button
               type="button"
               variant="ghost"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl h-10 px-4 text-xs font-semibold w-full sm:w-auto"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl h-10 px-4 text-xs font-semibold w-full sm:w-auto cursor-pointer order-2 sm:order-1"
               onClick={() => onDelete(role.id)}
             >
               <Trash2 className="h-4 w-4 mr-1.5" /> Delete Role
             </Button>
-          ) : <div />}
+          ) : <div className="hidden sm:block" />}
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-col-reverse sm:flex-row">
+          <div className="flex items-center gap-2 justify-end w-full sm:w-auto order-1 sm:order-2">
             {isAdminRole ? (
               <Button
                 type="button"
@@ -378,7 +378,7 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors w-full sm:w-auto cursor-pointer"
+                  className="rounded-xl h-10 px-4 sm:px-5 text-xs font-semibold hover:bg-muted/60 transition-colors flex-1 sm:flex-initial cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -386,7 +386,7 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
                   type="button"
                   disabled={isSaving || !name.trim()}
                   onClick={() => onSave(name, selectedKeys)}
-                  className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] w-full sm:w-auto cursor-pointer"
+                  className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-5 sm:px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] flex-1 sm:flex-initial cursor-pointer"
                 >
                   {isSaving ? <><LoaderCircle className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <><Save className="h-4 w-4 mr-2" /> {role?.id ? "Save Changes" : "Create Role"}</>}
                 </Button>
@@ -509,18 +509,18 @@ export default function RoleManagementPage() {
       <div className="space-y-6 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-0.5 sm:space-y-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
               Role Management
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Define roles and fine-grained permissions across the app.
             </p>
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto sm:ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
@@ -543,10 +543,10 @@ export default function RoleManagementPage() {
             </div>
 
             {/* Filter Tabs & New Role Button (Right side) */}
-            <div className="flex items-center gap-3 flex-wrap justify-between sm:justify-end">
+            <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:w-auto sm:items-center sm:gap-3">
               {/* Type filter dropdown */}
               <Select value={typeFilter} onValueChange={(val: any) => setTypeFilter(val)}>
-                <SelectTrigger className="h-10 w-[150px] text-xs rounded-xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                <SelectTrigger className="h-10 w-full sm:w-[150px] text-xs rounded-xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -562,7 +562,7 @@ export default function RoleManagementPage() {
               <button
                 type="button"
                 onClick={() => { setSelectedRole(null); setSheetOpen(true); }}
-                className="h-10 px-4 flex items-center gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer shrink-0"
+                className="h-10 px-4 w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer shrink-0"
               >
                 <PlusCircle className="h-4 w-4" />
                 <span>New Role</span>

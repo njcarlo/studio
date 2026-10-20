@@ -160,21 +160,33 @@ export function isRequestInDepartment(
   workers: any[]
 ): boolean {
   const booking = bookings?.find((b) => b.id === req.reservationId);
-  const worker = workers?.find((w) => w.id === req.workerId);
-  const targetMinistryId = booking?.ministryId || worker?.majorMinistryId || req.newMajorId || req.oldMajorId;
-  const ministry = targetMinistryId ? allMinistries?.find((m: any) => m.id === targetMinistryId) : null;
+  const worker = workers?.find((w) => w.id === req.workerId) || (req as any).worker;
 
-  const minName = (ministry?.name || "").toLowerCase().trim();
-  const minDept = (typeof ministry?.department === 'string' ? ministry.department : ministry?.department?.name || ministry?.departmentCode || "").toLowerCase().trim();
+  const candidateMinistryIds = [
+    booking?.ministryId,
+    worker?.majorMinistryId,
+    worker?.minorMinistryId,
+    (req as any).worker?.majorMinistryId,
+    (req as any).worker?.minorMinistryId,
+    req.newMajorId,
+    req.oldMajorId,
+  ].filter(Boolean) as string[];
+
   const targetDeptCode = deptName === "Worship" ? "w" : deptName === "Outreach" ? "o" : deptName === "Relationship" ? "r" : deptName === "Discipleship" ? "d" : "a";
+  const deptKeywords = WORDA_MINISTRIES_BY_DEPT[deptName] || [];
 
-  const deptKeywords = WORDA_MINISTRIES_BY_DEPT[deptName];
-  if (deptKeywords.some(keyword => minName === keyword || minName.includes(keyword))) {
-    return true;
-  }
+  for (const mid of candidateMinistryIds) {
+    const ministry = allMinistries?.find((m: any) => m.id === mid);
+    if (!ministry) continue;
+    const minName = (ministry.name || "").toLowerCase().trim();
+    const minDept = (typeof ministry.department === 'string' ? ministry.department : ministry.department?.name || ministry.departmentCode || "").toLowerCase().trim();
 
-  if (minDept === deptName.toLowerCase() || minDept === targetDeptCode) {
-    return true;
+    if (deptKeywords.some(keyword => minName === keyword || minName.includes(keyword))) {
+      return true;
+    }
+    if (minDept === deptName.toLowerCase() || minDept === targetDeptCode) {
+      return true;
+    }
   }
 
   return false;
@@ -552,24 +564,6 @@ export default function ApprovalsPage() {
                                   <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                                   View Details
                                 </DropdownMenuItem>
-                                {canManage && isPending && (
-                                  <>
-                                    <DropdownMenuItem
-                                      onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
-                                      className="text-xs cursor-pointer font-medium text-emerald-600 dark:text-emerald-400 gap-2"
-                                    >
-                                      <CheckCircle2 className="h-3.5 w-3.5" />
-                                      Approve
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setConfirmAction({ action: "Rejected", ids: [req.id!] })}
-                                      className="text-xs cursor-pointer font-medium text-red-600 dark:text-red-400 gap-2"
-                                    >
-                                      <XCircle className="h-3.5 w-3.5" />
-                                      Reject
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -660,15 +654,15 @@ export default function ApprovalsPage() {
                             <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => setConfirmAction({ action: "Rejected", ids: [req.id!] })}
-                                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer"
+                                className="flex-1 h-8 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer"
                               >
-                                <XCircle className="h-3.5 w-3.5" /> Reject
+                                Reject
                               </button>
                               <button
                                 onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
-                                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+                                className="flex-1 h-8 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
                               >
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Yes
+                                Yes
                               </button>
                             </div>
                           )}
@@ -701,7 +695,7 @@ export default function ApprovalsPage() {
                     <th className="px-4 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Date & Time</th>
                     <th className="px-4 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Status</th>
                     <th className="px-4 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Type</th>
-                    <th className="px-4 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Actions</th>
+                    <th className="px-4 pr-6 sm:pr-8 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -804,7 +798,7 @@ export default function ApprovalsPage() {
                                 {req.type}
                               </span>
                             </td>
-                            <td className="px-5 py-3.5 text-center" onClick={e => e.stopPropagation()}>
+                            <td className="px-5 pr-6 sm:pr-8 py-3.5 text-center" onClick={e => e.stopPropagation()}>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
@@ -1045,54 +1039,47 @@ export default function ApprovalsPage() {
 
       {/* Confirm dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={open => !open && setConfirmAction(null)}>
-        <AlertDialogContent className="rounded-2xl p-6 sm:p-7 max-w-md border border-border/80 shadow-xl">
-          <div className="flex flex-col items-center sm:items-start sm:flex-row gap-4">
-            <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-xs",
+        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+          <div
+            className={cn(
+              "w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-2 border shadow-xs",
               confirmAction?.action === "Approved"
-                ? "bg-emerald-50 text-emerald-600 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60"
-                : "bg-rose-50 text-rose-600 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/60"
-            )}>
-              {confirmAction?.action === "Approved" ? (
-                <CheckCircle2 className="h-6 w-6 stroke-[2.25]" />
-              ) : (
-                <XCircle className="h-6 w-6 stroke-[2.25]" />
-              )}
-            </div>
-
-            <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
-              <AlertDialogHeader className="space-y-1.5 p-0 text-center sm:text-left">
-                <AlertDialogTitle className="text-lg font-bold font-headline text-foreground">
-                  {confirmAction?.action === "Approved" ? "Confirm Approval" : "Confirm Rejection"}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  {confirmAction?.ids.length === 1
-                    ? `Are you sure you want to ${confirmAction?.action === "Approved" ? "approve" : "reject"} this request? This action cannot be undone.`
-                    : `Are you sure you want to ${confirmAction?.action?.toLowerCase()} ${confirmAction?.ids.length} selected request(s)? This action cannot be undone.`
-                  }
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-            </div>
+                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
+                : "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800"
+            )}
+          >
+            {confirmAction?.action === "Approved" ? (
+              <CheckCircle2 className="h-6 w-6 stroke-[2.25]" />
+            ) : (
+              <XCircle className="h-6 w-6 stroke-[2.25]" />
+            )}
           </div>
 
-          <AlertDialogFooter className="mt-5 pt-3 border-t border-border/50 gap-2 sm:gap-2.5">
-            <AlertDialogCancel className="rounded-xl h-10 px-4 text-xs font-semibold cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted">
+          <AlertDialogHeader className="space-y-1">
+            <AlertDialogTitle className="text-base font-bold text-center text-foreground font-headline">
+              {confirmAction?.action === "Approved" ? "Confirm Approval" : "Confirm Rejection"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-center text-muted-foreground mt-1 leading-relaxed">
+              {confirmAction?.ids.length === 1
+                ? `Are you sure you want to ${confirmAction?.action === "Approved" ? "approve" : "reject"} this request? This action cannot be undone.`
+                : `Are you sure you want to ${confirmAction?.action?.toLowerCase()} ${confirmAction?.ids.length} selected request(s)? This action cannot be undone.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="flex flex-row gap-2 sm:justify-center mt-4">
+            <AlertDialogCancel className="flex-1 rounded-xl text-xs h-9 cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted font-semibold mt-0">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className={cn(
-                "rounded-xl h-10 px-5 text-xs font-bold text-white shadow-xs cursor-pointer transition-all",
+                "flex-1 rounded-xl text-xs h-9 font-bold text-white shadow-xs cursor-pointer transition-all mt-0",
                 confirmAction?.action === "Approved"
                   ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
                   : "bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500"
               )}
               onClick={executeBulkAction}
             >
-              {confirmAction?.action === "Approved" ? (
-                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-              ) : (
-                <XCircle className="h-3.5 w-3.5 mr-1.5" />
-              )}
               {confirmAction?.action === "Approved" ? "Yes" : "Yes, Reject"}
             </AlertDialogAction>
           </AlertDialogFooter>

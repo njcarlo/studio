@@ -16,6 +16,13 @@ const config: CapacitorConfig = {
   server: {
     url: isLiveReload ? `http://${DEV_SERVER_IP}:${DEV_SERVER_PORT}` : PRODUCTION_URL,
     cleartext: isLiveReload, // HTTP allowed only during local dev; HTTPS used for production
+    androidScheme: 'https',
+  },
+  android: {
+    appendUserAgent: 'COGApp-Native-APK',
+  },
+  ios: {
+    appendUserAgent: 'COGApp-Native-APK',
   },
 };
 

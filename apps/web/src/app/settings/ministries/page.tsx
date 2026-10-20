@@ -201,19 +201,19 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
       </div>
 
       {/* ── MODAL FOOTER ── */}
-      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 shrink-0">
+      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-row items-center justify-end gap-2.5 shrink-0">
         <Button
           type="button"
           variant="outline"
           onClick={onClose}
-          className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer w-full sm:w-auto"
+          className="rounded-xl h-10 px-4 sm:px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer flex-1 sm:flex-initial"
         >
           Cancel
         </Button>
         <Button
           onClick={() => onSave(formData)}
           disabled={!formData.name?.trim()}
-          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto disabled:opacity-50"
+          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-5 sm:px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer flex-1 sm:flex-initial disabled:opacity-50"
         >
           {ministry?.id ? "Save Changes" : "Create Ministry"}
         </Button>
@@ -334,18 +334,18 @@ function AppointDialog({ ministry, workers, onSave, onClose }: {
       </div>
 
       {/* ── MODAL FOOTER ── */}
-      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 shrink-0">
+      <div className="p-4 sm:p-5 border-t border-border/70 bg-card/95 backdrop-blur-md sticky bottom-0 z-10 flex flex-row items-center justify-end gap-2.5 shrink-0">
         <Button
           type="button"
           variant="outline"
           onClick={onClose}
-          className="rounded-xl h-10 px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer w-full sm:w-auto"
+          className="rounded-xl h-10 px-4 sm:px-5 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-pointer flex-1 sm:flex-initial"
         >
           Cancel
         </Button>
         <Button
           onClick={() => onSave(ministry.id, sel === "none" ? null : sel)}
-          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer w-full sm:w-auto"
+          className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-5 sm:px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer flex-1 sm:flex-initial"
         >
           Save Leadership
         </Button>
@@ -423,18 +423,18 @@ export default function MinistryManagementPage() {
       <div className="space-y-6 pb-12 w-full">
 
         {/* Header */}
-        <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-0.5 sm:space-y-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground truncate">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
               Ministry Management
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-none">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Manage ministries, leaders and weekly allocations.
             </p>
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs ml-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto sm:ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>

@@ -52,20 +52,20 @@ export function KanbanCard({
   return (
     <>
       <AlertDialog open={confirmApproveOpen} onOpenChange={setConfirmApproveOpen}>
-        <AlertDialogContent className="max-w-md rounded-2xl p-6 border-border/60 shadow-xl">
-          <AlertDialogHeader className="space-y-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <AlertDialogTitle className="text-lg font-bold text-foreground">Confirm Approval</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
+        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+          <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-2 border shadow-xs bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+            <CheckCircle2 className="h-6 w-6 stroke-[2.25]" />
+          </div>
+          <AlertDialogHeader className="space-y-1">
+            <AlertDialogTitle className="text-base font-bold text-center text-foreground font-headline">Confirm Approval</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-center text-muted-foreground mt-1 leading-relaxed">
               Are you sure that you want to approve this request? This action will mark the request as approved.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-5 gap-2 sm:gap-0">
-            <AlertDialogCancel className="rounded-xl font-medium">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex flex-row gap-2 sm:justify-center mt-4">
+            <AlertDialogCancel className="flex-1 rounded-xl text-xs h-9 cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted font-semibold mt-0">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all"
+              className="flex-1 rounded-xl text-xs h-9 font-bold bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white shadow-xs cursor-pointer transition-all mt-0"
               onClick={() => {
                 setConfirmApproveOpen(false);
                 onUpdateStatus(request, "Approved");
@@ -78,20 +78,20 @@ export function KanbanCard({
       </AlertDialog>
 
       <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
-        <AlertDialogContent className="max-w-md rounded-2xl p-6 border-border/60 shadow-xl">
-          <AlertDialogHeader className="space-y-3">
-            <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-              <XCircle className="h-5 w-5" />
-            </div>
-            <AlertDialogTitle className="text-lg font-bold text-foreground">Confirm Rejection</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Are you sure that you want to reject this request?
+        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+          <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-2 border shadow-xs bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800">
+            <XCircle className="h-6 w-6 stroke-[2.25]" />
+          </div>
+          <AlertDialogHeader className="space-y-1">
+            <AlertDialogTitle className="text-base font-bold text-center text-foreground font-headline">Confirm Rejection</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-center text-muted-foreground mt-1 leading-relaxed">
+              Are you sure that you want to reject this request? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-5 gap-2 sm:gap-0">
-            <AlertDialogCancel className="rounded-xl font-medium">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex flex-row gap-2 sm:justify-center mt-4">
+            <AlertDialogCancel className="flex-1 rounded-xl text-xs h-9 cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted font-semibold mt-0">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm transition-all"
+              className="flex-1 rounded-xl text-xs h-9 font-bold bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500 text-white shadow-xs cursor-pointer transition-all mt-0"
               onClick={() => {
                 setConfirmRejectOpen(false);
                 onUpdateStatus(request, "Rejected");

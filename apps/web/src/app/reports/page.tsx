@@ -67,7 +67,7 @@ function StatusBadge({ status }: { status: string }) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-        <span className="capitalize">{status === "issued" ? "Unclaimed" : status}</span>
+        <span className="capitalize">{(s === "issued" || s === "unclaimed") ? "Unclaimed" : status}</span>
       </span>
     );
   }
@@ -101,7 +101,7 @@ function HeaderStatusBadge({ status }: { status: string }) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/20 text-amber-200 border border-amber-400/30 whitespace-nowrap">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-        <span className="capitalize">{status === "issued" ? "Unclaimed" : status}</span>
+        <span className="capitalize">{(s === "issued" || s === "unclaimed") ? "Unclaimed" : status}</span>
       </span>
     );
   }
@@ -382,8 +382,7 @@ function AttendanceTab() {
       format(r.date, "MMM d, yyyy"),
       r.timeIn ? format(r.timeIn, "H:mm") : "—",
       r.timeOut ? format(r.timeOut, "H:mm") : "—",
-      r.hours != null ? `${Math.floor(r.hours / 60)}h ${r.hours % 60}m` : "—",
-      r.status,
+      r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : "—",
     ]);
 
     const statusCounts: Record<string, number> = {};
@@ -840,7 +839,7 @@ function MealStubClaimsTab() {
       s.ministry?.name || "—",
       format(toJsDate(s.date), "MMM d, yyyy"),
       (s as any).claimedAt ? format(toJsDate((s as any).claimedAt), "MMM d, yyyy") : "——",
-      s.status,
+      s.status === "Issued" ? "Unclaimed" : s.status,
       (s as any).stubType || "Daily",
     ]);
 
@@ -1973,13 +1972,29 @@ function ReportsContent() {
         <div className="flex flex-col gap-3">
           <div className="space-y-1">
             <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
-              Reports &amp; Analytics
+              {activeTab === "attendance"
+                ? "Attendance"
+                : activeTab === "meal-stubs"
+                ? "Meal Stub Claims"
+                : activeTab === "allocations"
+                ? "Allocations"
+                : activeTab === "reservations"
+                ? "Room Reservations"
+                : "Reports & Analytics"}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Monitor attendance, meal stub usage, allocations, and room reservations across the organization.
+              {activeTab === "attendance"
+                ? "Detailed logs, service attendance breakdowns, and exportable records."
+                : activeTab === "meal-stubs"
+                ? "Historical meal stub claims, worker disbursements, and status tracking."
+                : activeTab === "allocations"
+                ? "Aggregated food allocation reports, ministry budget oversight, and analytics."
+                : activeTab === "reservations"
+                ? "Room reservation summaries, facility usage rates, and event logs."
+                : "Monitor attendance, meal stub usage, allocations, and room reservations across the organization."}
             </p>
           </div>
-          <div>
+          <div className="flex items-center justify-start">
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("reports:trigger-export"))}
               className="h-9 sm:h-10 px-3.5 sm:px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"

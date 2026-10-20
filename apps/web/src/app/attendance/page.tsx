@@ -26,6 +26,8 @@ import {
 } from "@studio/ui";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { regenerateWorkerQrToken } from "@/actions/db";
 import { exportToExcel } from "@/lib/export-excel";
 import { ExportConfirmDialog } from "@/components/common/export-confirm-dialog";
 
@@ -169,8 +171,9 @@ function AttendanceContent() {
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
+  const currentWorkerId = workerProfile?.id || user?.id;
   const { attendanceRecords: allAttendance, isLoading: attendanceLoading } = useAttendance(
-    workerProfile?.id ? { workerProfileId: workerProfile.id, dateFrom: personalRecordsStart } : { enabled: false }
+    currentWorkerId ? { workerProfileId: currentWorkerId, dateFrom: personalRecordsStart } : { enabled: false }
   );
 
   // Records tab date range
@@ -195,20 +198,25 @@ function AttendanceContent() {
     ? `https://api.qrserver.com/v1/create-qr-code/?size=230x230&data=${encodeURIComponent(qrData)}&bgcolor=ffffff&color=000000&margin=8`
     : "";
 
+  const queryClient = useQueryClient();
   const handleRegenerateQR = useCallback(async () => {
-    if (!workerProfile?.id) return;
+    const targetId = workerProfile?.id || user?.id || user?.email;
+    if (!targetId) return;
     setIsRegenerating(true);
     try {
       const newToken = generateToken();
-      await updateWorkerSql({ id: workerProfile.id, data: { qrToken: newToken } });
+      await regenerateWorkerQrToken(targetId, newToken);
       setLocalToken(newToken);
+      queryClient.invalidateQueries({ queryKey: ["worker"] });
+      queryClient.invalidateQueries({ queryKey: ["worker-view-as"] });
+      queryClient.invalidateQueries({ queryKey: ["workers"] });
       toast({ title: "QR Code Regenerated", description: "Your old QR is now invalid." });
     } catch {
       toast({ variant: "destructive", title: "Failed to regenerate QR" });
     } finally {
       setIsRegenerating(false);
     }
-  }, [workerProfile?.id]);
+  }, [workerProfile?.id, user?.id, user?.email, queryClient, toast]);
 
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
@@ -244,8 +252,7 @@ function AttendanceContent() {
           getRoleName(w),
           ministries.find((m) => m.id === w.majorMinistryId)?.name || "—",
           statusLabel,
-          ws?.lastTime ? format(ws.lastTime, "h:mm a") : "—",
-          ws?.lastType || "—",
+          ws?.lastType === "time-in" ? "Time In" : ws?.lastType === "time-out" ? "Time Out" : (ws?.lastType ? ws.lastType.charAt(0).toUpperCase() + ws.lastType.slice(1) : "—"),
         ];
       });
 
@@ -381,7 +388,13 @@ function AttendanceContent() {
     }
   };
 
-  const sessions = useMemo(() => pairSessions(allAttendance || []), [allAttendance]);
+  const userPersonalAttendance = useMemo(() => {
+    if (!allAttendance) return [];
+    if (isSuperAdmin || isMinistryHead) return allAttendance;
+    return allAttendance.filter(r => r.workerProfileId === currentWorkerId);
+  }, [allAttendance, currentWorkerId, isSuperAdmin, isMinistryHead]);
+
+  const sessions = useMemo(() => pairSessions(userPersonalAttendance), [userPersonalAttendance]);
   const presentCount = sessions.filter(s => s.timeOut !== null).length;
   const lateCount = sessions.filter(s => s.isLate && s.timeOut !== null).length;
 
@@ -541,9 +554,10 @@ function AttendanceContent() {
   }), [baseFilteredRecordRows]);
 
   const filteredRecordRows = useMemo(() => {
-    if (recordsStatusFilter === "all") return baseFilteredRecordRows;
-    return baseFilteredRecordRows.filter(r => r.status === recordsStatusFilter);
-  }, [baseFilteredRecordRows, recordsStatusFilter]);
+    const rows = recordsStatusFilter === "all" ? baseFilteredRecordRows : baseFilteredRecordRows.filter(r => r.status === recordsStatusFilter);
+    if (isSuperAdmin || isMinistryHead) return rows;
+    return rows.filter(r => r.worker.id === currentWorkerId);
+  }, [baseFilteredRecordRows, recordsStatusFilter, isSuperAdmin, isMinistryHead, currentWorkerId]);
 
   if (isLoading) return <AppLayout><div className="flex justify-center py-10"><LoaderCircle className="h-8 w-8 animate-spin" /></div></AppLayout>;
   if (!canViewAttendance) return <AppLayout><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>No permission.</CardDescription></CardHeader></Card></AppLayout>;
@@ -555,8 +569,24 @@ function AttendanceContent() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Attendance</h1>
-            <p className="text-sm text-muted-foreground">Scan, monitor, and manage attendance across every ministry — in one workforce command center.</p>
+            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
+              {activeTab === "personal"
+                ? "Personal Log"
+                : activeTab === "manual"
+                ? "Manual Attendance"
+                : activeTab === "records"
+                ? "Attendance Records"
+                : "Attendance"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === "personal"
+                ? "View your personal daily clock-in and clock-out logs."
+                : activeTab === "manual"
+                ? "Manually record and manage time-ins and time-outs for workers."
+                : activeTab === "records"
+                ? "Comprehensive attendance history, exportable logs, and filtering."
+                : "Scan, monitor, and manage attendance across every ministry — in one workforce command center."}
+            </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             {isAssigner && (
@@ -770,84 +800,121 @@ function AttendanceContent() {
                       return (
                         <div
                           key={w.id}
-                          className="rounded-2xl border border-slate-200/80 dark:border-border/70 bg-white dark:bg-card p-4 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 shadow-2xs hover:shadow-xs transition-shadow"
+                          className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xs hover:shadow-xs transition-shadow flex flex-col"
                         >
-                          {/* Left: Avatar, Name, Ministry & Date, Times + Badge */}
-                          <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
-                            <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-blue-100 dark:bg-blue-950/60 text-primary dark:text-blue-300 text-sm font-bold flex items-center justify-center shrink-0">
-                              {initials}
-                            </span>
-
-                            <div className="min-w-0 flex-1 space-y-0.5">
-                              <p className="text-sm sm:text-base font-bold font-headline text-foreground leading-tight truncate">
-                                {w.firstName} {w.lastName}
-                              </p>
-                              <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
-                                {ministry?.name || "No Ministry"} · {format(new Date(), "MMM d, yyyy")}
-                              </p>
-
-                              <div className="flex items-center gap-2 pt-1 flex-wrap">
-                                <span className="text-xs text-muted-foreground">
-                                  In: <strong className="text-foreground font-semibold">{timeInStr || "——"}</strong>
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  Out: <strong className="text-foreground font-semibold">{timeOutStr || "——"}</strong>
-                                </span>
-                                {timeInStr && !timeOutStr ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800">
-                                    Incomplete
-                                  </span>
-                                ) : timeInStr && timeOutStr ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
-                                    Completed
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
-                                    Not Yet Timed In
-                                  </span>
-                                )}
+                          {/* Blue header: Avatar + Worker Name + Ministry + Status Badge */}
+                          <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-sidebar text-white">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="w-8 h-8 rounded-full bg-white/20 text-white text-xs font-bold flex items-center justify-center shrink-0 border border-white/25">
+                                {initials}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-xs sm:text-sm font-bold font-headline text-white leading-tight truncate">
+                                  {w.firstName} {w.lastName}
+                                </p>
+                                <p className="text-[10px] text-white/70 truncate">
+                                  {ministry?.name || "No Ministry"}
+                                </p>
                               </div>
+                            </div>
+
+                            {/* Status Badge in Header */}
+                            <div className="shrink-0">
+                              {timeInStr && !timeOutStr ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-400/20 text-blue-100 border border-blue-400/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                                  Incomplete
+                                </span>
+                              ) : timeInStr && timeOutStr ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-400/20 text-emerald-100 border border-emerald-400/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                  Completed
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-400/20 text-amber-100 border border-amber-400/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                  Not Yet Timed In
+                                </span>
+                              )}
                             </div>
                           </div>
 
-                          {/* Right: Stacked Action Buttons */}
-                          <div className="flex flex-col gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
-                                const hasStub = assignedStubs?.some((s: any) => {
-                                  const sd = s.date instanceof Date ? s.date : new Date(s.date);
-                                  return s.workerId === w.id && sd >= todayStart;
-                                });
-                                if (!hasStub) {
-                                  try {
-                                    await createMealStub({
-                                      workerId: w.id,
-                                      workerName: `${w.firstName} ${w.lastName}`,
-                                      status: "Issued",
-                                      assignedBy: workerProfile?.id || user?.id,
-                                      assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"),
-                                      stubType: "daily",
-                                    });
-                                  } catch { }
-                                }
-                                toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
-                              }}
-                              className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer min-w-[76px]"
-                            >
-                              <LogIn className="h-3.5 w-3.5" /> In
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
-                                toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
-                              }}
-                              className="h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer min-w-[76px]"
-                            >
-                              <LogOut className="h-3.5 w-3.5" /> Out
-                            </button>
+                          {/* Body: Details Grid */}
+                          <div className="p-4 space-y-3">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Date
+                                </p>
+                                <p className="font-semibold text-foreground truncate">
+                                  {format(new Date(), "MMM d, yyyy")}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Worker ID
+                                </p>
+                                <p className="font-mono text-xs text-muted-foreground truncate">
+                                  {w.workerId ? String(w.workerId).replace(/^COG-?/i, "").padStart(6, "0") : "——"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Time In
+                                </p>
+                                <p className="font-semibold text-foreground truncate">
+                                  {timeInStr || "——"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Time Out
+                                </p>
+                                <p className="font-semibold text-foreground truncate">
+                                  {timeOutStr || "——"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons at the Bottom */}
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
+                                  const hasStub = assignedStubs?.some((s: any) => {
+                                    const sd = s.date instanceof Date ? s.date : new Date(s.date);
+                                    return s.workerId === w.id && sd >= todayStart;
+                                  });
+                                  if (!hasStub) {
+                                    try {
+                                      await createMealStub({
+                                        workerId: w.id,
+                                        workerName: `${w.firstName} ${w.lastName}`,
+                                        status: "Issued",
+                                        assignedBy: workerProfile?.id || user?.id,
+                                        assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"),
+                                        stubType: "daily",
+                                      });
+                                    } catch { }
+                                  }
+                                  toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
+                                }}
+                                className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                              >
+                                <LogIn className="h-3.5 w-3.5" /> Time In
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
+                                  toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
+                                }}
+                                className="h-9 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                              >
+                                <LogOut className="h-3.5 w-3.5" /> Time Out
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
