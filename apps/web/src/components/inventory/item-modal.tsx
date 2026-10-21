@@ -29,7 +29,7 @@ import {
   User,
   Calendar,
   ShieldCheck,
-  Image as ImageIcon,
+  ImageIcon,
   Loader2,
   AlertTriangle,
   FolderTree,

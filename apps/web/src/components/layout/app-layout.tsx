@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, Suspense } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   SidebarProvider,
   Sidebar,
@@ -120,15 +120,6 @@ const ImpersonationBanner = () => {
   );
 };
 
-function ScrollResetWatcher({ mainRef }: { mainRef: React.RefObject<HTMLElement | null> }) {
-  const searchParams = useSearchParams();
-  useEffect(() => {
-    if (mainRef.current) {
-      mainRef.current.scrollTo({ top: 0, behavior: "instant" });
-    }
-  }, [searchParams, mainRef]);
-  return null;
-}
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
@@ -163,13 +154,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
     const handleTabClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // Never scroll when clicking inside or on any dropdown, select, popover, combobox, or menu
       if (
-        target?.closest?.('[role="tab"]') ||
-        target?.closest?.('[data-radix-collection-item]') ||
-        target?.closest?.('button[data-state]') ||
-        target?.closest?.('.tab-trigger') ||
-        target?.closest?.('button[data-tab]')
+        target.closest('[role="combobox"]') ||
+        target.closest('[role="listbox"]') ||
+        target.closest('[role="option"]') ||
+        target.closest('[role="menu"]') ||
+        target.closest('[role="menuitem"]') ||
+        target.closest('[data-radix-popper-content-wrapper]') ||
+        target.closest('[data-radix-select-viewport]') ||
+        target.closest('[data-radix-select-trigger]') ||
+        target.closest('button[aria-haspopup]')
       ) {
+        return;
+      }
+
+      // Only scroll to top if clicking an actual tab switch button in a tab list
+      const isActualTab =
+        target.closest('[role="tablist"] [role="tab"]') ||
+        target.closest('.tab-trigger') ||
+        target.closest('button[data-tab]');
+
+      if (isActualTab) {
         setTimeout(() => {
           if (mainRef.current) {
             mainRef.current.scrollTo({ top: 0, behavior: "instant" });
@@ -330,9 +338,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Suspense fallback={null}>
-        <ScrollResetWatcher mainRef={mainRef} />
-      </Suspense>
       <Sidebar collapsible="icon" className="border-r-0 border-none">
         <SidebarHeader className="pb-1.5 px-3 pt-2.5 sticky top-0 z-10 bg-sidebar">
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">

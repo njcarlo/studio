@@ -713,7 +713,7 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                                 <SelectValue placeholder="All Areas" />
                             </SelectTrigger>
                             <SelectContent className="max-h-72 overflow-y-auto">
-                                <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
+                                <SelectItem value="all" className="text-xs font-semibold cursor-pointer">
                                     All Areas
                                 </SelectItem>
                                 {areas.map(a => (

@@ -64,6 +64,7 @@ function Select<T extends string = string>({
   onOpenChange,
   disabled = false,
   children,
+  modal = false,
 }: SelectProps<T>) {
   const [uncontrolledValue, setUncontrolledValue] = React.useState<string | undefined>(defaultValue)
   const isControlledValue = controlledValue !== undefined
@@ -137,7 +138,7 @@ function Select<T extends string = string>({
 
   return (
     <SelectContext.Provider value={contextValue}>
-      <PopoverPrimitive.Root open={isOpen} onOpenChange={handleOpenChange} modal={true}>
+      <PopoverPrimitive.Root open={isOpen} onOpenChange={handleOpenChange} modal={modal}>
         {children}
       </PopoverPrimitive.Root>
     </SelectContext.Provider>
@@ -186,6 +187,9 @@ const SelectTrigger = React.forwardRef<
       <button
         ref={ref}
         type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        data-radix-select-trigger=""
         className={cn(
           "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-white dark:bg-card px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30 focus:border-primary/60 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
           className
@@ -233,7 +237,7 @@ const SelectContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
     position?: "item-aligned" | "popper"
   }
->(({ className, children, position = "popper", side = "bottom", align = "start", sideOffset = 4, avoidCollisions = false, ...props }, ref) => {
+>(({ className, children, position = "popper", side = "bottom", align = "start", sideOffset = 4, avoidCollisions = true, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -242,6 +246,14 @@ const SelectContent = React.forwardRef<
         align={align}
         sideOffset={sideOffset}
         avoidCollisions={avoidCollisions}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          onOpenAutoFocus?.(e);
+        }}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          onCloseAutoFocus?.(e);
+        }}
         className={cn(
           "relative z-[100] max-h-60 min-w-[8rem] overflow-y-auto rounded-xl border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 p-1",
           position === "popper" && "min-w-[var(--radix-popover-trigger-width)] w-auto max-w-[min(calc(100vw-32px),360px)]",
@@ -287,6 +299,7 @@ const SelectItem = React.forwardRef<HTMLButtonElement, SelectItemProps>(
     }, [value, children, registerItem, unregisterItem])
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
       onClick?.(e)
       if (!disabled) {
         onValueChange?.(value)
@@ -304,17 +317,17 @@ const SelectItem = React.forwardRef<HTMLButtonElement, SelectItemProps>(
         onClick={handleClick}
         className={cn(
           "relative flex w-full cursor-default select-none items-center rounded-lg py-2 pl-8 pr-3 text-xs outline-none transition-colors disabled:pointer-events-none disabled:opacity-50 text-left font-medium",
+          className,
           isSelected
-            ? "bg-sidebar text-white font-semibold hover:bg-sidebar hover:text-white focus:bg-sidebar focus:text-white shadow-xs"
-            : "text-foreground hover:bg-slate-100 hover:text-foreground focus:bg-slate-100 focus:text-foreground dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus:bg-slate-800 dark:focus:text-slate-100",
-          className
+            ? "!bg-sidebar !text-white font-semibold hover:!bg-sidebar hover:!text-white focus:!bg-sidebar focus:!text-white shadow-xs"
+            : "text-foreground hover:bg-slate-100 hover:text-foreground focus:bg-slate-100 focus:text-foreground dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus:bg-slate-800 dark:focus:text-slate-100"
         )}
         {...props}
       >
         <span className="absolute left-2.5 flex h-3.5 w-3.5 items-center justify-center">
           {isSelected && <Check className="h-4 w-4 text-white stroke-[2.5]" />}
         </span>
-        <span className="truncate">{children}</span>
+        <span className={cn("truncate", isSelected && "!text-white font-semibold")}>{children}</span>
       </button>
     )
   }

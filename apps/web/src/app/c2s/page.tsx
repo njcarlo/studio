@@ -5546,7 +5546,7 @@ function C2SPageContent() {
                             <SelectValue placeholder="Department" />
                           </SelectTrigger>
                           <SelectContent className="max-h-72 overflow-y-auto">
-                            <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
+                            <SelectItem value="all" className="text-xs font-semibold cursor-pointer">
                               All Departments
                             </SelectItem>
                             {adminDepartments.map((dept) => (
@@ -5568,7 +5568,7 @@ function C2SPageContent() {
                           <SelectValue placeholder="Ministry" />
                         </SelectTrigger>
                         <SelectContent className="max-h-72 overflow-y-auto">
-                          <SelectItem value="all" className="text-xs font-semibold text-primary cursor-pointer">
+                          <SelectItem value="all" className="text-xs font-semibold cursor-pointer">
                             All Ministries
                           </SelectItem>
                           {availableMinistriesForMenteeFilter.map((item, idx) => (
