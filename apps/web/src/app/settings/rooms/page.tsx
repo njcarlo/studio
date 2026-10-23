@@ -171,7 +171,7 @@ const AreaForm = ({ area, branches, onSave, onClose }: { area: Partial<Area> | n
         id: area?.id,
         areaId: area?.areaId || '',
         name: area?.name || '',
-        branchId: area?.branchId || ''
+        branchId: area?.branchId || branches[0]?.id || ''
     });
 
     return (
@@ -187,8 +187,8 @@ const AreaForm = ({ area, branches, onSave, onClose }: { area: Partial<Area> | n
                             <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
                                 {area ? 'Edit Area' : 'Add New Area'}
                             </DialogTitle>
-                            <DialogDescription className="text-xs text-muted-foreground truncate">
-                                {area ? 'Modify area details and satellite mapping.' : 'Add a floor, wing, or section to a satellite campus.'}
+                            <DialogDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                                {area ? 'Modify area details and configuration.' : 'Add a floor, wing, or section to the facility.'}
                             </DialogDescription>
                         </div>
                     </div>
@@ -221,23 +221,6 @@ const AreaForm = ({ area, branches, onSave, onClose }: { area: Partial<Area> | n
                             className="h-10 text-xs rounded-xl border-slate-200/90 dark:border-border bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
                         />
                     </div>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="area-branch" className="text-xs font-bold text-foreground">
-                            Satellite Campus <span className="text-destructive">*</span>
-                        </Label>
-                        <Select value={formData.branchId} onValueChange={value => setFormData({ ...formData, branchId: value })}>
-                            <SelectTrigger id="area-branch" className="h-10 text-xs rounded-xl border-slate-200/90 dark:border-border bg-background shadow-2xs font-medium focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
-                                <SelectValue placeholder="Select a satellite campus" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl shadow-xl border-border/80">
-                                {branches.map(branch => (
-                                    <SelectItem key={branch.id} value={branch.id} className="text-xs cursor-pointer">
-                                        {branch.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
                 </div>
             </div>
 
@@ -252,8 +235,8 @@ const AreaForm = ({ area, branches, onSave, onClose }: { area: Partial<Area> | n
                     Cancel
                 </Button>
                 <Button
-                    onClick={() => onSave(formData)}
-                    disabled={!formData.name?.trim() || !formData.branchId}
+                    onClick={() => onSave({ ...formData, branchId: formData.branchId || branches[0]?.id || '' })}
+                    disabled={!formData.name?.trim()}
                     className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] cursor-pointer disabled:opacity-50"
                 >
                     {area ? 'Update Area' : 'Create Area'}
@@ -467,7 +450,14 @@ const RoomForm = ({ room, areas, branches, venueElements, onSave, onClose }: { r
     const groupedAreas = useMemo(() => {
         return branches.map(branch => ({
             branchName: branch.name,
-            areas: areas.filter(area => area.branchId === branch.id)
+            areas: areas
+                .filter(area => area.branchId === branch.id)
+                .sort((a, b) => {
+                    const rankA = getFloorRank(a.name || a.areaId || '');
+                    const rankB = getFloorRank(b.name || b.areaId || '');
+                    if (rankA !== rankB) return rankA - rankB;
+                    return (a.name || '').localeCompare(b.name || '');
+                })
         })).filter(group => group.areas.length > 0);
     }, [areas, branches]);
 
@@ -484,7 +474,7 @@ const RoomForm = ({ room, areas, branches, venueElements, onSave, onClose }: { r
                             <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
                                 {room ? 'Edit Room' : 'Add New Room'}
                             </DialogTitle>
-                            <DialogDescription className="text-xs text-muted-foreground truncate">
+                            <DialogDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                 {room ? 'Update room capacity, location, and equipment configuration.' : 'Configure a new room for reservation and scheduling.'}
                             </DialogDescription>
                         </div>
@@ -550,38 +540,21 @@ const RoomForm = ({ room, areas, branches, venueElements, onSave, onClose }: { r
                         </Select>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="room-capacity" className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span>Seating Capacity</span>
-                                <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                id="room-capacity"
-                                type="number"
-                                min={0}
-                                value={formData.capacity === 0 ? '' : formData.capacity}
-                                onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value, 10) || 0 })}
-                                placeholder="e.g., 50"
-                                className="h-10 text-xs rounded-xl border-slate-200/90 dark:border-border bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
-                            />
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label htmlFor="room-weight" className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span>Weight (Sort Priority)</span>
-                            </Label>
-                            <Input
-                                id="room-weight"
-                                type="number"
-                                value={formData.weight === 0 ? '' : formData.weight}
-                                onChange={e => setFormData({ ...formData, weight: parseInt(e.target.value, 10) || 0 })}
-                                placeholder="0 (Lower shows first)"
-                                className="h-10 text-xs rounded-xl border-slate-200/90 dark:border-border bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
-                            />
-                        </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="room-capacity" className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Seating Capacity</span>
+                            <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                            id="room-capacity"
+                            type="number"
+                            min={0}
+                            value={formData.capacity === 0 ? '' : formData.capacity}
+                            onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value, 10) || 0 })}
+                            placeholder="e.g., 50"
+                            className="h-10 text-xs rounded-xl border-slate-200/90 dark:border-border bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
+                        />
                     </div>
                 </div>
 
@@ -670,6 +643,15 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
     const [areaFilter, setAreaFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
 
+    const sortedAreasForFilter = useMemo(() => {
+        return [...areas].sort((a, b) => {
+            const rankA = getFloorRank(a.name || a.areaId || '');
+            const rankB = getFloorRank(b.name || b.areaId || '');
+            if (rankA !== rankB) return rankA - rankB;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+    }, [areas]);
+
     const filtered = rooms.filter(room => {
         const matchesSearch = !search || room.name.toLowerCase().includes(search.toLowerCase());
         const matchesArea = areaFilter === 'all' || room.areaId === areaFilter;
@@ -716,7 +698,7 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                                 <SelectItem value="all" className="text-xs font-semibold cursor-pointer">
                                     All Areas
                                 </SelectItem>
-                                {areas.map(a => (
+                                {sortedAreasForFilter.map(a => (
                                     <SelectItem key={a.id} value={a.id} className="text-xs cursor-pointer">
                                         {a.name}
                                     </SelectItem>
@@ -769,7 +751,7 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                         return (
                             <div
                                 key={room.id}
-                                className="group rounded-2xl border border-slate-200/80 dark:border-border/80 bg-card overflow-hidden shadow-xs hover:shadow-md hover:border-sidebar/40 dark:hover:border-sidebar/40 transition-all duration-200"
+                                className="rounded-2xl border border-slate-200/80 dark:border-border/80 bg-card overflow-hidden shadow-xs transition-colors"
                             >
                                 {/* Top Navy Blue Banner */}
                                 <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
@@ -797,7 +779,7 @@ const RoomsTab = ({ rooms, areas, branches, venueElements, isLoading, onAdd, onE
                                             <DropdownMenuTrigger asChild>
                                                 <button
                                                     type="button"
-                                                    className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer shrink-0"
+                                                    className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer shrink-0 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none ring-0"
                                                     title="Room actions"
                                                 >
                                                     <MoreHorizontal className="h-4 w-4" />
@@ -1098,26 +1080,28 @@ export default function RoomManagementPage() {
         <AppLayout>
             <div className="space-y-7 pb-12 w-full">
 
-                {/* Header */}
-                <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                    <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
-                        Facilities Management
-                    </h1>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                        Rooms, areas and satellite campuses in one place.
-                    </p>
-                </div>
+                {/* Header: Facilities Management with Back Button on the right (same row) */}
+                <div className="flex items-center justify-between gap-3 w-full">
+                    <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                        <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
+                            Facilities Management
+                        </h1>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                            Rooms, areas and satellite campuses in one place.
+                        </p>
+                    </div>
 
-                {/* Sub-Header Navigation Bar: Back on the LEFT, Rooms/Areas on the RIGHT */}
-                <div className="flex items-center justify-between w-full gap-3">
-                    {/* Back Button (LEFT) */}
+                    {/* Back Button (RIGHT, in same row as Facilities Management) */}
                     <Link
                         href="/settings"
                         className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs"
                     >
                         <ArrowLeft className="h-3.5 w-3.5" /> Back
                     </Link>
+                </div>
 
+                {/* Sub-Header Navigation Bar: Rooms/Areas Segmented Tab Selector on the RIGHT */}
+                <div className="flex items-center justify-end w-full gap-3">
                     {/* Segmented Tab Selector (RIGHT) */}
                     <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-muted p-1 rounded-xl border border-slate-200/70 dark:border-border/50 shadow-2xs">
                         <button

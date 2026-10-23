@@ -137,6 +137,33 @@ export function EditWorkerDialog({
     );
   };
 
+  const visibleRoles = useMemo(() => {
+    return (roles || []).filter((r) => {
+      if (isSuperAdmin) return true;
+      const lower = (r.name || "").toLowerCase().trim();
+      // On Ministry Head (MH) side, remove Ministry Head and Super Admin / Admin roles
+      if (
+        lower.includes("super admin") ||
+        lower === "admin" ||
+        lower.includes("admin") ||
+        lower.includes("ministry head") ||
+        lower === "head" ||
+        r.id === "admin" ||
+        r.id === "super_admin" ||
+        r.id === "ministry_head"
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [roles, isSuperAdmin]);
+
+  const getRoleDisplayName = (name: string) => {
+    if (!name) return "";
+    if (name.toLowerCase() === "super admin") return "Admin";
+    return name.replace(/^super\s+admin$/i, "Admin");
+  };
+
   const groupedMinistries = useMemo(() => {
     const groups: Record<string, Ministry[]> = {};
     ministries.forEach((m) => {
@@ -313,19 +340,19 @@ export function EditWorkerDialog({
                     {formData.status}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-1 min-w-0">
-                  {workerIdFormatted && (
-                    <span className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/70 shrink-0">
+                {workerIdFormatted && (
+                  <div className="mt-1">
+                    <span className="inline-flex font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/70 shrink-0">
                       {workerIdFormatted}
                     </span>
-                  )}
-                  <p className="text-xs text-muted-foreground truncate">
-                    Update personal details, roles, ministry assignment, and permissions for{" "}
-                    <span className="font-semibold text-foreground">
-                      {worker.firstName} {worker.lastName}
-                    </span>
-                  </p>
-                </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Update personal details, roles, ministry assignment, and permissions for{" "}
+                  <span className="font-semibold text-foreground">
+                    {worker.firstName} {worker.lastName}
+                  </span>
+                </p>
               </div>
             </div>
 
@@ -529,7 +556,7 @@ export function EditWorkerDialog({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {roles.map((r) => {
+                  {visibleRoles.map((r) => {
                     const isChecked = roleIds.includes(r.id);
                     return (
                       <label
@@ -551,7 +578,7 @@ export function EditWorkerDialog({
                         />
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-foreground leading-tight">
-                            {r.name}
+                            {getRoleDisplayName(r.name)}
                           </p>
                           {(r as any).description && (
                             <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">

@@ -310,10 +310,7 @@ export function StockLogsPanel() {
             {/* Action filter dropdown */}
             <Select value={selectedAction} onValueChange={(val: ActionCategory) => setSelectedAction(val)}>
               <SelectTrigger className="h-10 w-[170px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs cursor-pointer">
-                <div className="flex items-center gap-2 truncate">
-                  <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <SelectValue placeholder="All Logs" />
-                </div>
+                <SelectValue placeholder="All Logs" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectItem value="ALL" className="text-xs font-medium cursor-pointer">

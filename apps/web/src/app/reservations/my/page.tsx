@@ -266,9 +266,9 @@ export default function MyReservationsPage() {
         {/* Main Card Container */}
         <div className="bg-card rounded-2xl border border-border/60 shadow-card-dark p-5 sm:p-6 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Top Controls Row */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             {/* Left: Search Bar */}
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full lg:w-72">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
               <Input
                 type="text"
@@ -280,14 +280,14 @@ export default function MyReservationsPage() {
             </div>
 
             {/* Right: Tab Switcher Pills (Upcoming container), Status Filter, Date Picker */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
               {/* Tab Switcher Pills */}
-              <div className="bg-slate-100/90 dark:bg-muted p-1 rounded-xl flex items-center border border-slate-200/70 dark:border-border/50 shadow-2xs">
+              <div className="w-full sm:w-auto bg-slate-100/90 dark:bg-muted p-1 rounded-xl grid grid-cols-3 items-center border border-slate-200/70 dark:border-border/50 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setActiveTab("upcoming")}
                   className={cn(
-                    "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    "w-full text-center px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
                     activeTab === "upcoming"
                       ? "bg-sidebar text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
@@ -299,7 +299,7 @@ export default function MyReservationsPage() {
                   type="button"
                   onClick={() => setActiveTab("active")}
                   className={cn(
-                    "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    "w-full text-center px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
                     activeTab === "active"
                       ? "bg-sidebar text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
@@ -311,7 +311,7 @@ export default function MyReservationsPage() {
                   type="button"
                   onClick={() => setActiveTab("history")}
                   className={cn(
-                    "px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    "w-full text-center px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
                     activeTab === "history"
                       ? "bg-sidebar text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground"
@@ -321,33 +321,36 @@ export default function MyReservationsPage() {
                 </button>
               </div>
 
-              {/* Status Select */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">
-                    All Statuses
-                  </SelectItem>
-                  <SelectItem value="Approved" className="text-xs">
-                    Approved
-                  </SelectItem>
-                  <SelectItem value="Pending" className="text-xs">
-                    Pending
-                  </SelectItem>
-                  <SelectItem value="Rejected" className="text-xs">
-                    Rejected
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Status Select & Date Filter */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-10 flex-1 sm:w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-background dark:bg-muted/30 font-medium shadow-2xs px-3">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">
+                      All Statuses
+                    </SelectItem>
+                    <SelectItem value="Approved" className="text-xs">
+                      Approved
+                    </SelectItem>
+                    <SelectItem value="Pending" className="text-xs">
+                      Pending
+                    </SelectItem>
+                    <SelectItem value="Rejected" className="text-xs">
+                      Rejected
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
 
-              {/* Date Filter */}
-              <DatePicker
-                value={dateFilter}
-                onChange={setDateFilter}
-                align="start"
-              />
+                <div className="flex-1 sm:flex-initial">
+                  <DatePicker
+                    value={dateFilter}
+                    onChange={setDateFilter}
+                    align="start"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -377,47 +380,173 @@ export default function MyReservationsPage() {
               </div>
             ) : (
               <div>
-                {/* ── Mobile card view ── */}
-                <div className="md:hidden divide-y divide-border/30">
+                {/* ── Mobile card view (Enhanced with Navy Top Header & 2x2 Grid) ── */}
+                <div className="md:hidden space-y-3 p-3 bg-muted/10">
                   {filteredBookings.map((booking) => {
                     const room = getRoom(booking.roomId);
                     const area = getArea(room?.areaId);
                     const startTime = toJsDate(booking.start);
                     const endTime = toJsDate(booking.end);
-                    const reqId = booking.requestId || `REQ-${booking.id?.slice(0, 4)}`;
+                    const reqId = booking.requestId || `REQ-${booking.id?.slice(0, 4)?.toUpperCase()}`;
                     const isApproved = booking.status === "Approved";
                     const isPending = booking.status?.toLowerCase().startsWith("pending");
+                    const ministry = (ministries as any[])?.find(
+                      (m: any) => m.id === booking.ministryId || m.name === booking.ministry
+                    );
+                    const ministryName = ministry?.name || booking.ministry || "Whitelight";
+                    const requesterName =
+                      booking.requesterName ||
+                      booking.userName ||
+                      (workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : "Worship Worker");
+                    const initials = requesterName
+                      .trim()
+                      .split(" ")
+                      .map((n: string) => n[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase() || "WW";
+                    const createdDate = booking.createdAt ? toJsDate(booking.createdAt) : startTime;
+
                     return (
-                      <div key={booking.id} className="p-4 flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono text-[10px] text-muted-foreground font-medium">{reqId}</span>
-                            {isApproved ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Approved
-                              </span>
-                            ) : isPending ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Pending
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />{booking.status}
-                              </span>
+                      <div
+                        key={booking.id}
+                        className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/40 transition-all text-left"
+                      >
+                        {/* Navy Header: Checkbox + REQ ID + Actions */}
+                        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded border border-white/40 flex items-center justify-center shrink-0" />
+                            <span className="text-xs font-mono font-bold text-white tracking-wide">
+                              {reqId}
+                            </span>
+                          </div>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="p-1 rounded-lg hover:bg-white/10 text-white/90 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border-border/80">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedBooking(booking);
+                                  setIsDetailsOpen(true);
+                                }}
+                                className="text-xs cursor-pointer font-medium gap-2 py-2 rounded-lg"
+                              >
+                                <Eye className="h-3.5 w-3.5 text-muted-foreground" /> View Details
+                              </DropdownMenuItem>
+                              {canCheckIn(booking) && (
+                                <DropdownMenuItem
+                                  onClick={() => handleCheckIn(booking)}
+                                  className="text-xs cursor-pointer font-medium text-blue-600 dark:text-blue-400 gap-2 py-2 rounded-lg"
+                                >
+                                  <ScanLine className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /> Check In
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        {/* Card Body */}
+                        <div className="p-4 space-y-3">
+                          {/* Requester info row */}
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sky-300 font-bold text-xs flex items-center justify-center shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-foreground leading-tight truncate">
+                                  {requesterName}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">
+                                  {ministryName}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0">
+                              {isApproved ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                  Approved
+                                </span>
+                              ) : isPending ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                  Pending
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                  {booking.status}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Purpose / Title */}
+                          <div>
+                            <p className="text-sm font-bold text-foreground leading-snug">
+                              {booking.title || booking.purpose || "Room Reservation"}
+                            </p>
+                            {booking.purpose && booking.purpose !== booking.title && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                {booking.purpose}
+                              </p>
                             )}
                           </div>
-                          <p className="text-sm font-bold text-foreground">{room?.name || "Unknown Room"}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {area?.name || ""} · {format(startTime, "MMM d, yyyy")} · {format(startTime, "h:mm a")}–{format(endTime, "h:mm a")} · {booking.pax || 0} pax
-                          </p>
+
+                          {/* 2x2 Info Grid Box */}
+                          <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-muted/20 border border-slate-200/80 dark:border-border/60 grid grid-cols-2 gap-3.5 text-xs shadow-2xs">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                ROOM
+                              </span>
+                              <span className="font-bold text-foreground text-xs block truncate">
+                                {room?.name || "Room"}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground block truncate">
+                                {area?.name || "First Floor"}
+                              </span>
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                DATE & TIME
+                              </span>
+                              <span className="font-bold text-foreground text-xs block truncate">
+                                {format(startTime, "MMM d, yyyy")}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground block truncate">
+                                {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                              </span>
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                MINISTRY
+                              </span>
+                              <span className="font-bold text-foreground text-xs block truncate">
+                                {ministryName}
+                              </span>
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                CREATED
+                              </span>
+                              <span className="font-bold text-foreground text-xs block truncate">
+                                {format(createdDate, "MMM d, yyyy")}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedBooking(booking); setIsDetailsOpen(true); }}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-primary hover:bg-primary/10 transition-colors whitespace-nowrap shrink-0"
-                        >
-                          Details
-                        </button>
                       </div>
                     );
                   })}

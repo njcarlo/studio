@@ -238,7 +238,7 @@ export function DatePicker({
                   "h-8 w-8 mx-auto text-xs rounded-xl flex items-center justify-center font-medium transition-all",
                   // Disabled state
                   isDayDisabled &&
-                    "opacity-25 cursor-not-allowed text-slate-400 dark:text-slate-600 line-through select-none pointer-events-none",
+                    "opacity-25 cursor-not-allowed text-slate-400 dark:text-slate-600 select-none pointer-events-none",
                   // Selected state (Royal Blue #112e7e)
                   !isDayDisabled && isSelected &&
                     "bg-[#112e7e] text-white font-bold shadow-xs hover:bg-[#112e7e] hover:text-white cursor-pointer",

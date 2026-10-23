@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button, Badge } from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,7 @@ interface AutoAttendanceScanResult {
 }
 
 export default function QRScannerPage() {
+    const router = useRouter();
     const { toast } = useToast();
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,37 +53,67 @@ export default function QRScannerPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
 
+    const handleBack = useCallback(() => {
+        if (typeof window !== 'undefined' && window.history.length > 1) {
+            router.back();
+        } else {
+            router.push('/attendance');
+        }
+    }, [router]);
+
     const { workers: allWorkers, isLoading: workersLoading } = useWorkers({ limit: 10000, unrestricted: true });
     const { scanLogs, isLoading: logsLoading, createScanLog: createScanLogSql } = useScanLogs();
     const { createAttendanceRecord: createAttendanceSql, recordAutoAttendance: recordAutoAttendanceSql } = useAttendance();
     const { mealStubs: allMealStubs, updateMealStub: updateMealStubSql } = useMealStubs();
     const { settings: shiftSettings } = useAttendanceSettings();
 
-    // Get camera devices on auth
-    useEffect(() => {
-        if (!isAuthenticated) return;
-
-        if (typeof navigator.mediaDevices?.enumerateDevices === 'undefined') {
-            toast({ variant: 'destructive', title: 'Camera Not Supported', description: 'Your browser does not support camera access.' });
+    const requestCameraPermission = useCallback(async () => {
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+            toast({ variant: 'destructive', title: 'Camera Not Supported', description: 'Your browser or device does not support camera access.' });
             setHasCameraPermission(false);
             return;
         }
 
-        const getDevices = async () => {
-            try {
-                await navigator.mediaDevices.getUserMedia({ video: true });
-                setHasCameraPermission(true);
+        try {
+            const initialStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } }
+            });
+            initialStream.getTracks().forEach(t => t.stop());
+
+            setHasCameraPermission(true);
+
+            if (navigator.mediaDevices.enumerateDevices) {
                 const allDevices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
                 setDevices(videoDevices);
-                if (videoDevices.length > 0) setSelectedDeviceId(videoDevices[0].deviceId);
-            } catch {
-                setHasCameraPermission(false);
-                toast({ variant: 'destructive', title: 'Camera Access Denied', description: 'Please enable camera permissions in your browser settings.' });
+
+                const backCamera = videoDevices.find(d => {
+                    const label = (d.label || '').toLowerCase();
+                    return label.includes('back') || label.includes('rear') || label.includes('environment');
+                });
+
+                if (backCamera) {
+                    setSelectedDeviceId(backCamera.deviceId);
+                } else if (videoDevices.length > 0) {
+                    setSelectedDeviceId(videoDevices[0].deviceId);
+                }
             }
-        };
-        getDevices();
-    }, [isAuthenticated, toast]);
+        } catch (err) {
+            console.error('Camera permission/access error:', err);
+            setHasCameraPermission(false);
+            toast({
+                variant: 'destructive',
+                title: 'Camera Access Denied',
+                description: 'Please enable camera permissions in your device settings.',
+            });
+        }
+    }, [toast]);
+
+    // Get camera devices on auth
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        requestCameraPermission();
+    }, [isAuthenticated, requestCameraPermission]);
 
     const handleSwitchCamera = () => {
         if (devices.length < 2) return;
@@ -347,15 +379,70 @@ export default function QRScannerPage() {
 
     // jsQR scan loop — start camera stream
     useEffect(() => {
-        if (!isAuthenticated || !hasCameraPermission || !selectedDeviceId) return;
+        if (!isAuthenticated || !hasCameraPermission) return;
 
         const videoElement = videoRef.current;
+        if (!videoElement) return;
+
+        let isSubscribed = true;
+
+        const start = async () => {
+            try {
+                if (streamRef.current) {
+                    streamRef.current.getTracks().forEach(t => t.stop());
+                    streamRef.current = null;
+                }
+
+                const constraints: MediaStreamConstraints = {
+                    video: selectedDeviceId
+                        ? { deviceId: { ideal: selectedDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+                        : { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                if (!isSubscribed) {
+                    stream.getTracks().forEach(t => t.stop());
+                    return;
+                }
+
+                streamRef.current = stream;
+                videoElement.srcObject = stream;
+                videoElement.setAttribute('playsinline', 'true');
+                videoElement.play().catch((err) => {
+                    // Ignore AbortError when video is interrupted
+                    if (err.name !== 'AbortError') {
+                        console.error('Video play error:', err);
+                    }
+                });
+            } catch (err) {
+                console.error('Camera stream error:', err);
+            }
+        };
+
+        start();
+
+        return () => {
+            isSubscribed = false;
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(t => t.stop());
+                streamRef.current = null;
+            }
+        };
+    }, [selectedDeviceId, hasCameraPermission, isAuthenticated]);
+
+    // Resume scanning after processing/worker dismissed
+    useEffect(() => {
+        if (isProcessing || scannedWorker || scanResult) return;
+        const videoElement = videoRef.current;
         const canvas = canvasRef.current;
-        if (!videoElement || !canvas) return;
+        if (!videoElement || !canvas || !isAuthenticated || !hasCameraPermission) return;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
+        let active = true;
+
         const scan = () => {
+            if (!active) return;
             if (videoElement.readyState >= 2 && !isProcessing && !scannedWorker && !scanResult) {
                 canvas.width = videoElement.videoWidth;
                 canvas.height = videoElement.videoHeight;
@@ -372,66 +459,30 @@ export default function QRScannerPage() {
             animFrameRef.current = requestAnimationFrame(scan);
         };
 
-        const start = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { deviceId: { exact: selectedDeviceId } },
-                });
-                streamRef.current = stream;
-                videoElement.srcObject = stream;
-                videoElement.play().catch((err) => {
-                    // Ignore AbortError when video is interrupted
-                    if (err.name !== 'AbortError') {
-                        console.error('Video play error:', err);
-                    }
-                });
-                animFrameRef.current = requestAnimationFrame(scan);
-            } catch (err) {
-                console.error('Camera stream error:', err);
-            }
-        };
-
-        start();
-
-        return () => {
-            cancelAnimationFrame(animFrameRef.current);
-            streamRef.current?.getTracks().forEach(t => t.stop());
-        };
-    }, [selectedDeviceId, hasCameraPermission, isAuthenticated, isProcessing, scannedWorker, scanResult, handleScan]);
-
-    // Resume scanning after processing/worker dismissed
-    useEffect(() => {
-        if (isProcessing || scannedWorker || scanResult) return;
-        const videoElement = videoRef.current;
-        const canvas = canvasRef.current;
-        if (!videoElement || !canvas || !isAuthenticated || !hasCameraPermission) return;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) return;
-
-        const scan = () => {
-            if (videoElement.readyState >= 2) {
-                canvas.width = videoElement.videoWidth;
-                canvas.height = videoElement.videoHeight;
-                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                    inversionAttempts: 'dontInvert',
-                });
-                if (code?.data) {
-                    handleScan(code.data);
-                    return;
-                }
-            }
-            animFrameRef.current = requestAnimationFrame(scan);
-        };
-
         animFrameRef.current = requestAnimationFrame(scan);
-        return () => cancelAnimationFrame(animFrameRef.current);
+        return () => {
+            active = false;
+            cancelAnimationFrame(animFrameRef.current);
+        };
     }, [isProcessing, scannedWorker, scanResult, isAuthenticated, hasCameraPermission, handleScan]);
 
     if (!isAuthenticated) {
         return (
-            <div className="flex h-screen items-center justify-center bg-background">
+            <div className="relative flex h-screen items-center justify-center bg-background p-4">
+                {/* Back button for APK Mode and mobile */}
+                <div className="absolute top-4 left-4 z-20">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleBack}
+                        className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        <span>Back</span>
+                    </Button>
+                </div>
+
                 <Card className="w-full max-w-sm">
                     <CardHeader>
                         <CardTitle className="font-headline text-center text-2xl">Scanner Login</CardTitle>
@@ -443,10 +494,24 @@ export default function QRScannerPage() {
                             if (passwordInput === 'CogMain123') setIsAuthenticated(true);
                             else toast({ variant: 'destructive', title: 'Invalid Password', description: 'Incorrect scanner password.' });
                         }} className="flex flex-col gap-4">
-                            <input type="password"
+                            <input
+                                type="password"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                placeholder="Scanner Password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} />
+                                placeholder="Scanner Password"
+                                value={passwordInput}
+                                onChange={e => setPasswordInput(e.target.value)}
+                                autoFocus
+                            />
                             <Button type="submit">Unlock Scanner</Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleBack}
+                                className="flex items-center justify-center gap-2"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                Back
+                            </Button>
                         </form>
                     </CardContent>
                 </Card>
@@ -457,9 +522,22 @@ export default function QRScannerPage() {
     return (
         <div className="flex flex-col h-screen bg-background overflow-hidden">
             <header className="flex items-center justify-between border-b p-4 shrink-0">
-                <div>
-                    <h1 className="text-2xl font-headline font-bold">Attendance Scanner</h1>
-                    <p className="text-sm text-muted-foreground">Scan QR codes for automatic attendance.</p>
+                <div className="flex items-center gap-3">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleBack}
+                        className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+                        title="Back"
+                    >
+                        <ArrowLeft className="h-5 w-5" />
+                        <span className="sr-only">Back</span>
+                    </Button>
+                    <div>
+                        <h1 className="text-2xl font-headline font-bold">Attendance Scanner</h1>
+                        <p className="text-sm text-muted-foreground">Scan QR codes for automatic attendance.</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-semibold border border-emerald-500/20 shadow-sm">
@@ -610,7 +688,19 @@ export default function QRScannerPage() {
                                     {hasCameraPermission === false && (
                                         <Alert variant="destructive">
                                             <AlertTitle>Camera Access Required</AlertTitle>
-                                            <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
+                                            <AlertDescription className="space-y-2 mt-1">
+                                                <p>Please allow camera access to use this feature.</p>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={requestCameraPermission}
+                                                    className="gap-1.5 text-xs bg-background hover:bg-muted text-foreground"
+                                                >
+                                                    <RefreshCw className="h-3.5 w-3.5" />
+                                                    Retry Camera Access
+                                                </Button>
+                                            </AlertDescription>
                                         </Alert>
                                     )}
                                 </div>

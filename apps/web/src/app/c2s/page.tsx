@@ -545,7 +545,7 @@ const DevotionForm = ({
       if (typeof reader.result === "string") {
         const img = new Image();
         img.onload = () => {
-          const maxDim = 1400;
+          const maxDim = 1024;
           let width = img.width;
           let height = img.height;
           if (width > maxDim || height > maxDim) {
@@ -563,7 +563,7 @@ const DevotionForm = ({
           const ctx = canvas.getContext("2d");
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            const compressed = canvas.toDataURL("image/jpeg", 0.82);
+            const compressed = canvas.toDataURL("image/jpeg", 0.72);
             setPhotoUrls([compressed]);
           } else {
             setPhotoUrls([reader.result as string]);
@@ -992,8 +992,7 @@ const DevotionDetailsModal = ({
                     )}
                   </div>
                   {devotion.clusterName && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                      <MapPin className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       <span>{devotion.clusterName === "Default Group" ? "Sports" : devotion.clusterName}</span>
                     </div>
                   )}
@@ -1745,6 +1744,7 @@ const DEFAULT_DEPARTMENT_CLUSTERS: Record<string, { value: string; label: string
     { value: "Ladies", label: "Ladies" },
     { value: "Youth Empowered", label: "Youth Empowered" },
     { value: "Young Adults", label: "Young Adults" },
+    { value: "Worker", label: "Worker" },
   ],
   DISCIPLESHIP: [
     { value: "J12", label: "J12" },
@@ -2378,8 +2378,7 @@ const AdminOverview = ({
                   </Badge>
                 </div>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5 text-left">
-                  Assigned Head: <strong className="text-foreground">{viewingDept?.headName}</strong> •{" "}
-                  {viewingDept?.completionPct}% overall mentee completion rate.
+                  Assigned Head: <strong className="text-foreground">{viewingDept?.headName}</strong>
                 </DialogDescription>
               </div>
             </div>
@@ -3963,10 +3962,27 @@ function C2SPageContent() {
   // --- Mutations ---
   const createDevotionMutation = useMutation({
     mutationFn: createC2SDevotionRecord,
-    onSuccess: (newRecord) => {
+    onMutate: async (newDevoData: any) => {
+      await queryClient.cancelQueries({ queryKey: ["c2s-devotions"] });
+      const tempId = `temp-${Date.now()}`;
+      const optimisticRecord: C2SDevotionRecord = {
+        id: tempId,
+        ...newDevoData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setLocalDevotions((prev) => [optimisticRecord, ...prev]);
+      queryClient.setQueriesData({ queryKey: ["c2s-devotions"] }, (old: any) => {
+        if (!old || !Array.isArray(old)) return [optimisticRecord];
+        return [optimisticRecord, ...old];
+      });
+      return { tempId };
+    },
+    onSuccess: (newRecord, _, context) => {
       if (newRecord) {
         setLocalDevotions((prev) => {
-          const updated = [newRecord as unknown as C2SDevotionRecord, ...prev.filter((d) => d.id !== newRecord.id)];
+          const filtered = prev.filter((d) => d.id !== context?.tempId && d.id !== newRecord.id);
+          const updated = [newRecord as unknown as C2SDevotionRecord, ...filtered];
           try {
             localStorage.setItem("c2s_devotions_storage", JSON.stringify(updated));
           } catch (e) { }
@@ -3974,11 +3990,26 @@ function C2SPageContent() {
         });
         queryClient.setQueriesData({ queryKey: ["c2s-devotions"] }, (old: any) => {
           if (!old || !Array.isArray(old)) return [newRecord];
-          return [newRecord, ...old.filter((item: any) => item.id !== newRecord.id)];
+          const filtered = old.filter((item: any) => item.id !== context?.tempId && item.id !== newRecord.id);
+          return [newRecord, ...filtered];
         });
       }
-      queryClient.invalidateQueries({ queryKey: ["c2s-devotions"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["c2s-devotions"] });
       toast({ title: "Devotion Record Submitted", description: "Your devotion session has been recorded successfully." });
+    },
+    onError: (err: any, _, context) => {
+      if (context?.tempId) {
+        setLocalDevotions((prev) => prev.filter((d) => d.id !== context.tempId));
+        queryClient.setQueriesData({ queryKey: ["c2s-devotions"] }, (old: any) => {
+          if (!old || !Array.isArray(old)) return [];
+          return old.filter((item: any) => item.id !== context.tempId);
+        });
+      }
+      toast({
+        variant: "destructive",
+        title: "Submission Failed",
+        description: err?.message || "Could not save devotion record.",
+      });
     },
   });
 
@@ -3999,27 +4030,26 @@ function C2SPageContent() {
           return old.map((item: any) => (item.id === updatedRecord.id ? updatedRecord : item));
         });
       }
-      queryClient.invalidateQueries({ queryKey: ["c2s-devotions"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["c2s-devotions"] });
       toast({ title: "Devotion Record Updated" });
     },
   });
 
   const deleteDevotionMutation = useMutation({
     mutationFn: deleteC2SDevotionRecord,
-    onSuccess: (_, deletedId) => {
-      setLocalDevotions((prev) => {
-        const updated = prev.filter((d) => d.id !== deletedId);
-        try {
-          localStorage.setItem("c2s_devotions_storage", JSON.stringify(updated));
-        } catch (e) { }
-        return updated;
-      });
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["c2s-devotions"] });
+      setLocalDevotions((prev) => prev.filter((d) => d.id !== deletedId));
       queryClient.setQueriesData({ queryKey: ["c2s-devotions"] }, (old: any) => {
         if (!old || !Array.isArray(old)) return [];
         return old.filter((item: any) => item.id !== deletedId);
       });
-      queryClient.invalidateQueries({ queryKey: ["c2s-devotions"], refetchType: "all" });
+    },
+    onSuccess: (_, deletedId) => {
       toast({ title: "Devotion Record Deleted" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["c2s-devotions"] });
     },
   });
 
@@ -4051,19 +4081,77 @@ function C2SPageContent() {
 
   const createMenteeMutation = useMutation({
     mutationFn: createC2SMentee,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["c2s-mentees"], refetchType: "all" });
-      queryClient.invalidateQueries({ queryKey: ["c2s-groups"], refetchType: "all" });
+    onMutate: async (newMenteeData: any) => {
+      await queryClient.cancelQueries({ queryKey: ["c2s-mentees"] });
+      const previousMentees = queryClient.getQueryData(["c2s-mentees"]);
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMentee = {
+        id: tempId,
+        ...newMenteeData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      queryClient.setQueriesData({ queryKey: ["c2s-mentees"] }, (old: any) => {
+        if (!Array.isArray(old)) return [optimisticMentee];
+        return [optimisticMentee, ...old];
+      });
+      return { previousMentees, tempId };
+    },
+    onSuccess: (createdMentee, _, context) => {
+      if (createdMentee) {
+        queryClient.setQueriesData({ queryKey: ["c2s-mentees"] }, (old: any) => {
+          if (!Array.isArray(old)) return [createdMentee];
+          const filtered = old.filter((m: any) => m.id !== context?.tempId && m.id !== createdMentee.id);
+          return [createdMentee, ...filtered];
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["c2s-mentees"] });
+      queryClient.invalidateQueries({ queryKey: ["c2s-groups"] });
       toast({ title: "Mentee Added" });
+    },
+    onError: (err: any, _, context) => {
+      if (context?.previousMentees) {
+        queryClient.setQueriesData({ queryKey: ["c2s-mentees"] }, context.previousMentees);
+      }
+      toast({
+        variant: "destructive",
+        title: "Action Failed",
+        description: err?.message || "Could not save mentee.",
+      });
     },
   });
 
   const updateMenteeMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       updateC2SMentee(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["c2s-mentees"], refetchType: "all" });
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["c2s-mentees"] });
+      const previousMentees = queryClient.getQueryData(["c2s-mentees"]);
+      queryClient.setQueriesData({ queryKey: ["c2s-mentees"] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((m: any) => (m.id === id ? { ...m, ...data } : m));
+      });
+      return { previousMentees };
+    },
+    onSuccess: (updated) => {
+      if (updated) {
+        queryClient.setQueriesData({ queryKey: ["c2s-mentees"] }, (old: any) => {
+          if (!Array.isArray(old)) return [updated];
+          return old.map((m: any) => (m.id === updated.id ? updated : m));
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["c2s-mentees"] });
       toast({ title: "Mentee Updated" });
+    },
+    onError: (err: any, _, context) => {
+      if (context?.previousMentees) {
+        queryClient.setQueriesData({ queryKey: ["c2s-mentees"] }, context.previousMentees);
+      }
+      toast({
+        variant: "destructive",
+        title: "Action Failed",
+        description: err?.message || "Could not update mentee.",
+      });
     },
   });
 
@@ -4080,8 +4168,8 @@ function C2SPageContent() {
       toast({ title: "Mentee Deleted" });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["c2s-mentees"], refetchType: "all" });
-      queryClient.invalidateQueries({ queryKey: ["c2s-groups"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["c2s-mentees"] });
+      queryClient.invalidateQueries({ queryKey: ["c2s-groups"] });
     },
   });
 
@@ -4317,6 +4405,8 @@ function C2SPageContent() {
 
   // Handlers
   const handleSaveDevotion = async (data: any) => {
+    setIsDevotionSheetOpen(false);
+    setEditingDevotion(null);
     if (editingDevotion) {
       await updateDevotionMutation.mutateAsync({
         id: editingDevotion.id,
@@ -4325,8 +4415,6 @@ function C2SPageContent() {
     } else {
       await createDevotionMutation.mutateAsync(data);
     }
-    setIsDevotionSheetOpen(false);
-    setEditingDevotion(null);
   };
 
   const handleSaveGroup = async (data: { name: string; mentorId: string; menteeIds: string[] }) => {
@@ -4391,14 +4479,16 @@ function C2SPageContent() {
   };
 
   const handleSaveMentee = async (data: any) => {
+    const isEdit = Boolean(selectedMentee?.id);
+    const targetId = selectedMentee?.id;
+    setIsMenteeSheetOpen(false);
+    setSelectedMentee(null);
     try {
-      if (selectedMentee?.id) {
-        await updateMenteeMutation.mutateAsync({ id: selectedMentee.id, data });
+      if (isEdit && targetId) {
+        await updateMenteeMutation.mutateAsync({ id: targetId, data });
       } else {
         await createMenteeMutation.mutateAsync(data);
       }
-      setIsMenteeSheetOpen(false);
-      setSelectedMentee(null);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -4410,15 +4500,16 @@ function C2SPageContent() {
 
   const handleDeleteConfirm = async () => {
     if (!itemToDelete) return;
+    const target = itemToDelete;
+    setItemToDelete(null);
     try {
-      if (itemToDelete.type === "devotion") {
-        await deleteDevotionMutation.mutateAsync(itemToDelete.id);
-      } else if (itemToDelete.type === "group") {
-        await deleteGroupMutation.mutateAsync(itemToDelete.id);
+      if (target.type === "devotion") {
+        await deleteDevotionMutation.mutateAsync(target.id);
+      } else if (target.type === "group") {
+        await deleteGroupMutation.mutateAsync(target.id);
       } else {
-        await deleteMenteeMutation.mutateAsync(itemToDelete.id);
+        await deleteMenteeMutation.mutateAsync(target.id);
       }
-      setItemToDelete(null);
     } catch (error) {
       toast({ variant: "destructive", title: "Delete Failed" });
     }
@@ -5006,19 +5097,20 @@ function C2SPageContent() {
                         </div>
                       </div>
 
-                      {/* ── TITLE & SUBTITLE ── */}
+                      {/* ── TITLE & SUBTITLE (Mentor on top, with mentee below, lesson at bottom) ── */}
                       <div className="mt-3.5 space-y-1">
                         <h3
                           onClick={() => setViewingDevotion(record)}
                           className="text-base sm:text-lg font-bold text-foreground font-headline hover:text-sidebar cursor-pointer transition-colors leading-snug"
                         >
-                          {record.lessonName || record.topic}
+                          {record.mentorName || "Mentor"}
                         </h3>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
                           <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>
-                            <strong className="font-semibold text-foreground">{record.mentorName || "Mentor"}</strong> with {attendeesString}
-                          </span>
+                          <span>with {attendeesString}</span>
+                        </div>
+                        <div className="text-xs font-semibold text-sidebar dark:text-blue-400 pt-0.5">
+                          {record.lessonName || record.topic}
                         </div>
                       </div>
 
@@ -5235,6 +5327,12 @@ function C2SPageContent() {
                                       </button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
+                                      <DropdownMenuItem
+                                        onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry, mentorName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : "You", isMyMentee: true, progressPct, lastSessionDate, displayStatus, statusColorClass })}
+                                        className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
+                                      >
+                                        <Eye className="h-3.5 w-3.5 text-muted-foreground" /> View Details
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => { setSelectedMentee(m); setIsMenteeSheetOpen(true); }} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2">
                                         <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Mentee
                                       </DropdownMenuItem>
@@ -5291,27 +5389,16 @@ function C2SPageContent() {
                                     </p>
                                   </div>
 
-                                  <div>
+                                  <div className="col-span-2">
                                     <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                                       Progress
                                     </p>
-                                    <div className="flex items-center gap-1.5 mt-1">
-                                      <div className="w-16 bg-muted h-1.5 rounded-full overflow-hidden">
+                                    <div className="flex items-center gap-2.5 mt-1.5">
+                                      <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
                                         <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${progressPct}%` }} />
                                       </div>
-                                      <span className="text-[11px] font-bold text-foreground">{progressPct}%</span>
+                                      <span className="text-xs font-bold text-foreground shrink-0">{progressPct}%</span>
                                     </div>
-                                  </div>
-
-                                  <div className="flex flex-col justify-end">
-                                    <button
-                                      type="button"
-                                      onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry, mentorName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : "You", isMyMentee: true, progressPct, lastSessionDate, displayStatus, statusColorClass })}
-                                      className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-0.5 transition-colors cursor-pointer self-start"
-                                    >
-                                      <span>View Details</span>
-                                      <ChevronRight className="h-3.5 w-3.5" />
-                                    </button>
                                   </div>
                                 </div>
                               </div>
@@ -5710,6 +5797,7 @@ function C2SPageContent() {
                                       </button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
+                                        <DropdownMenuItem onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry, menteeDepartment, mentorName, mentorInitials, isMyMentee, progressPct, lastSessionDate, displayStatus, statusColorClass })} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"><Eye className="h-3.5 w-3.5 text-muted-foreground" /> View Details</DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => { setSelectedMentee(m); setIsMenteeSheetOpen(true); }} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2">
                                         <Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Mentee
                                       </DropdownMenuItem>
@@ -5783,27 +5871,16 @@ function C2SPageContent() {
                                     </p>
                                   </div>
 
-                                  <div>
+                                  <div className="col-span-2">
                                     <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                                       Progress
                                     </p>
-                                    <div className="flex items-center gap-1.5 mt-1">
-                                      <div className="w-16 bg-muted h-1.5 rounded-full overflow-hidden">
+                                    <div className="flex items-center gap-2.5 mt-1.5">
+                                      <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
                                         <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${progressPct}%` }} />
                                       </div>
-                                      <span className="text-[11px] font-bold text-foreground">{progressPct}%</span>
+                                      <span className="text-xs font-bold text-foreground shrink-0">{progressPct}%</span>
                                     </div>
-                                  </div>
-
-                                  <div className="flex flex-col justify-end">
-                                    <button
-                                      type="button"
-                                      onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry, menteeDepartment, mentorName, mentorInitials, isMyMentee, progressPct, lastSessionDate, displayStatus, statusColorClass })}
-                                      className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-0.5 transition-colors cursor-pointer self-start"
-                                    >
-                                      <span>View Details</span>
-                                      <ChevronRight className="h-3.5 w-3.5" />
-                                    </button>
                                   </div>
                                 </div>
                               </div>
@@ -5911,6 +5988,12 @@ function C2SPageContent() {
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild><button type="button" className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><MoreHorizontal className="h-4 w-4" /></button></DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" className="w-36 p-1 rounded-xl shadow-lg border-border/80">
+                                        <DropdownMenuItem
+                                          onClick={() => setViewingMenteeDetail({ ...m, fullName, initials, menteeMinistry, menteeDepartment, mentorName, mentorInitials, isMyMentee, progressPct, lastSessionDate, displayStatus, statusColorClass })}
+                                          className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"
+                                        >
+                                          <Eye className="h-3.5 w-3.5 text-muted-foreground" /> View Details
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => { setSelectedMentee(m); setIsMenteeSheetOpen(true); }} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2"><Pencil className="h-3.5 w-3.5 text-muted-foreground" /> Edit Mentee</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => setItemToDelete({ id: m.id, type: "mentee", name: fullName })} className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Mentee</DropdownMenuItem>
                                       </DropdownMenuContent>

@@ -165,7 +165,7 @@ export default function MyQRCodePage() {
           </div>
 
           {/* Top Actions Controls */}
-          <div className="flex flex-wrap items-center gap-2.5 print:hidden">
+          <div className="flex flex-wrap items-center justify-end gap-2.5 print:hidden w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"

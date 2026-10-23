@@ -595,10 +595,7 @@ export function InventoryTable({
                   }}
                 >
                   <SelectTrigger className="h-10 w-full sm:w-[155px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <SelectValue placeholder="Category: All" className="truncate text-left" />
-                    </div>
+                    <SelectValue placeholder="Category: All" className="truncate text-left" />
                   </SelectTrigger>
                   <SelectContent side="bottom" align="start" className="rounded-xl w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)]">
                     <SelectItem value="ALL" className="text-xs">Category: All</SelectItem>
@@ -621,10 +618,7 @@ export function InventoryTable({
                   }}
                 >
                   <SelectTrigger className="h-10 w-full sm:w-[150px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <SelectValue placeholder="Status: All" className="truncate text-left" />
-                    </div>
+                    <SelectValue placeholder="Status: All" className="truncate text-left" />
                   </SelectTrigger>
                   <SelectContent side="bottom" align="start" className="rounded-xl w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)]">
                     <SelectItem value="ALL" className="text-xs">Status: All</SelectItem>
@@ -649,10 +643,7 @@ export function InventoryTable({
                     }}
                   >
                     <SelectTrigger className="h-10 w-full sm:w-[150px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <SelectValue placeholder="Location: All" className="truncate text-left" />
-                      </div>
+                      <SelectValue placeholder="Location: All" className="truncate text-left" />
                     </SelectTrigger>
                     <SelectContent side="bottom" align="start" className="rounded-xl w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)]">
                       <SelectItem value="ALL" className="text-xs">Location: All</SelectItem>

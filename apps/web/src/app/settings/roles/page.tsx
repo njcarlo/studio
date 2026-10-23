@@ -75,7 +75,11 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
       const relPerms = (role?.rolePermissions || []).map((rp: any) =>
         rp.permission ? `${rp.permission.module}:${rp.permission.action}` : null
       ).filter(Boolean);
-      const combined = Array.from(new Set([...legacyPerms, ...relPerms]));
+      let combined = Array.from(new Set([...legacyPerms, ...relPerms]));
+      const isRoleAdmin = role?.isSuperAdmin || role?.id === "admin" || role?.name?.toLowerCase() === "super admin";
+      if (isRoleAdmin && combined.length === 0) {
+        combined = ALL_PERMISSIONS.map(p => `${p.module}:${p.action}`);
+      }
       setSelectedKeys(combined);
       setSearchPerm("");
       setAccordionValue(PERMISSION_CATEGORIES.map(c => c.module));
@@ -138,7 +142,7 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
                 <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
                   {role?.id ? "Edit Role" : "Add New Role"}
                 </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground truncate">
+                <DialogDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                   {isAdminRole ? "Super Admin roles have all permissions enabled by default." : "Configure granular permissions and access levels for this role."}
                 </DialogDescription>
               </div>
@@ -175,45 +179,28 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
               id="role-name"
               value={name}
               onChange={e => setName(e.target.value)}
-              disabled={isAdminRole}
-              placeholder="e.g., Ministry Coordinator, Venue Supervisor"
+              placeholder="e.g., Admin, Ministry Coordinator, Venue Supervisor"
               className="h-10 text-xs rounded-xl border-slate-200/90 dark:border-border bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
             />
           </div>
 
-          {/* Super Admin Notice Card */}
-          {isAdminRole ? (
-            <div className="rounded-2xl border border-primary/30 bg-primary/[0.04] p-5 sm:p-6 space-y-4 shadow-2xs">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
-                  <ShieldCheck className="h-6 w-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-foreground font-headline">
-                    Full Administrative Access
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    Super Admin roles automatically hold unconditional master access across all system modules, features, and operations by default. Permissions cannot be restricted for master administrators.
-                  </p>
-                </div>
+          {isAdminRole && (
+            <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4 flex items-start gap-3 shadow-2xs">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
+                <ShieldCheck className="h-5 w-5" />
               </div>
-
-              <div className="pt-2 border-t border-primary/20">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">
-                  Included System Modules (100% Granted)
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-bold text-foreground">
+                  Master Administrator Role
+                </h4>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                  Configure role name and specific module privileges for this administrator role below.
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {PERMISSION_CATEGORIES.map(c => (
-                    <div key={c.module} className="flex items-center gap-2 p-2 rounded-xl bg-background border border-border/60 text-xs font-medium text-foreground">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                      <span className="truncate">{c.category}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
-          ) : (
-            <div className="space-y-3.5">
+          )}
+
+          <div className="space-y-3.5">
               {/* Permission Controls Bar */}
               <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-3.5 sm:p-4 space-y-3 shadow-2xs">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -347,7 +334,6 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
                 })}
               </Accordion>
             </div>
-          )}
         </div>
 
         {/* ── MODAL FOOTER ── */}
@@ -364,34 +350,22 @@ function RolePermissionDialog({ role, isOpen, onOpenChange, onSave, onDelete, is
           ) : <div className="hidden sm:block" />}
 
           <div className="flex items-center gap-2 justify-end w-full sm:w-auto order-1 sm:order-2">
-            {isAdminRole ? (
-              <Button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-xs w-full sm:w-auto cursor-pointer"
-              >
-                Close
-              </Button>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="rounded-xl h-10 px-4 sm:px-5 text-xs font-semibold hover:bg-muted/60 transition-colors flex-1 sm:flex-initial cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  disabled={isSaving || !name.trim()}
-                  onClick={() => onSave(name, selectedKeys)}
-                  className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-5 sm:px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] flex-1 sm:flex-initial cursor-pointer"
-                >
-                  {isSaving ? <><LoaderCircle className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <><Save className="h-4 w-4 mr-2" /> {role?.id ? "Save Changes" : "Create Role"}</>}
-                </Button>
-              </>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="rounded-xl h-10 px-4 sm:px-5 text-xs font-semibold hover:bg-muted/60 transition-colors flex-1 sm:flex-initial cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isSaving || !name.trim()}
+              onClick={() => onSave(name, selectedKeys)}
+              className="bg-sidebar hover:bg-sidebar/90 text-white rounded-xl h-10 px-5 sm:px-6 text-xs font-bold shadow-xs transition-all active:scale-[0.99] flex-1 sm:flex-initial cursor-pointer"
+            >
+              {isSaving ? <><LoaderCircle className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <><Save className="h-4 w-4 mr-2" /> {role?.id ? "Save Changes" : "Create Role"}</>}
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -520,7 +494,7 @@ export default function RoleManagementPage() {
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto sm:ml-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-end sm:self-auto sm:ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>

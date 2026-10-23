@@ -146,7 +146,7 @@ export default function MealStubAllocationPage() {
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto sm:ml-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-end sm:self-auto sm:ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
@@ -242,12 +242,12 @@ export default function MealStubAllocationPage() {
                     {/* Dept pool input */}
                     <div className="flex items-end justify-between gap-4 bg-muted/30 rounded-xl p-4">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Department Weekly Pool</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Department Weekly Pool</p>
                         <input type="number" min="0" value={pool} onChange={e => handleDeptEdit(dept, e.target.value)}
-                          className="w-32 h-10 rounded-xl border border-border/70 bg-background px-3 text-base font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs" />
+                          className="w-32 h-10 rounded-xl border border-border/70 bg-background px-3 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs" />
                       </div>
                       <button onClick={() => handleSaveDeptPool(dept)} disabled={!hasDeptEdits || saving === `dept-${dept}`}
-                        className={cn("h-10 px-4 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors",
+                        className={cn("h-10 px-4 flex items-center gap-1.5 rounded-xl text-[11px] font-bold transition-colors",
                           hasDeptEdits ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-border/60 text-muted-foreground cursor-not-allowed")}>
                         {saving === `dept-${dept}` ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                         Save Pool
@@ -258,7 +258,7 @@ export default function MealStubAllocationPage() {
                     {deptMinistries.length > 0 && (
                       <div className="border border-border/60 rounded-xl overflow-hidden">
                         <div className="px-4 py-3 bg-muted/40 border-b border-border/40">
-                          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ministry Weekly Limits</p>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Ministry Weekly Limits</p>
                         </div>
                         <div className="divide-y divide-border/30">
                           {deptMinistries.map((m: any) => {
@@ -269,11 +269,11 @@ export default function MealStubAllocationPage() {
                             return (
                               <div key={m.id} className="px-4 py-3.5 flex flex-col gap-2.5">
                                 <div className="flex items-center justify-between gap-4">
-                                  <p className="text-sm sm:text-base font-semibold text-foreground">{m.name}</p>
+                                  <p className="text-xs font-semibold text-foreground">{m.name}</p>
                                   <div className="flex items-center gap-2.5 shrink-0">
-                                    <p className="text-xs font-semibold text-muted-foreground">Limit</p>
+                                    <p className="text-[10px] font-semibold text-muted-foreground">Limit</p>
                                     <input type="number" min="0" value={current} onChange={e => handleMinistryEdit(m.id, e.target.value)}
-                                      className="w-24 h-9 rounded-xl border border-border/70 bg-background px-2 text-base font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs transition-all" />
+                                      className="w-24 h-9 rounded-xl border border-border/70 bg-background px-2 text-xs font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs transition-all" />
                                     <button onClick={() => handleSaveMinistry(m)} disabled={!changed || saving === m.id}
                                       className={cn("h-9 w-9 flex items-center justify-center rounded-xl transition-colors shrink-0",
                                         changed ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-border/60 text-muted-foreground cursor-not-allowed")}>
@@ -285,7 +285,7 @@ export default function MealStubAllocationPage() {
                                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${mPct}%` }} />
                                   </div>
-                                  <span className="text-xs font-medium text-muted-foreground w-10 text-right shrink-0">{mPct}%</span>
+                                  <span className="text-[10px] font-medium text-muted-foreground w-10 text-right shrink-0">{mPct}%</span>
                                 </div>
                               </div>
                             );

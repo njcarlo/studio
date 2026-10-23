@@ -211,7 +211,7 @@ const allNavItems: NavItem[] = [
       { href: "/inventory?tab=logs", label: "Stock Logs" },
       { href: "/inventory?tab=categories", label: "Categories" },
       { href: "/inventory?tab=reports", label: "Reports & Analytics" },
-      { href: "/inventory?tab=settings", label: "Settings & Checklists" },
+      { href: "/inventory?tab=settings", label: "Checklist Management" },
     ],
   },
   {
@@ -256,7 +256,7 @@ export function Nav({
           if (hrefPath === "/attendance" && targetTab === "personal") return true;
           if (hrefPath === "/meals" && targetTab === "view") return true;
           if (hrefPath === "/reports" && targetTab === "attendance") return true;
-          if (hrefPath === "/my-settings" && (targetTab === "appearance" || targetTab === "password")) return true;
+          if (hrefPath === "/my-settings" && (targetTab === "profile" || targetTab === "appearance" || targetTab === "password")) return true;
         }
         return currentTab === targetTab;
       }
@@ -590,6 +590,7 @@ export function Nav({
                     className="min-w-[200px]"
                   >
                     {[
+                      { href: "/my-settings?tab=profile", label: "Profile & Name" },
                       { href: "/my-settings?tab=appearance", label: "Display & Font Size" },
                       { href: "/my-settings?tab=password", label: "Change Password" },
                       { href: "/my-settings?tab=security", label: "Login Security" },
@@ -633,6 +634,7 @@ export function Nav({
                   <CollapsibleContent>
                     <SidebarMenuSub className="gap-1 py-1 ml-3 pl-3">
                       {[
+                        { href: "/my-settings?tab=profile", label: "Profile & Name" },
                         { href: "/my-settings?tab=appearance", label: "Display & Font Size" },
                         { href: "/my-settings?tab=password", label: "Change Password" },
                         { href: "/my-settings?tab=security", label: "Login Security" },

@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@studio/ui";
-import { XCircle, CheckCircle2, Clock, ChevronRight } from "lucide-react";
+import { XCircle, CheckCircle2, Clock, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import type { ApprovalRequest, Worker } from "@studio/types";
@@ -52,7 +52,15 @@ export function KanbanCard({
   return (
     <>
       <AlertDialog open={confirmApproveOpen} onOpenChange={setConfirmApproveOpen}>
-        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+        <AlertDialogContent className="relative max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => setConfirmApproveOpen(false)}
+            className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground/80 hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-2 border shadow-xs bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
             <CheckCircle2 className="h-6 w-6 stroke-[2.25]" />
           </div>
@@ -78,7 +86,15 @@ export function KanbanCard({
       </AlertDialog>
 
       <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
-        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+        <AlertDialogContent className="relative max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => setConfirmRejectOpen(false)}
+            className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground/80 hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
           <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-2 border shadow-xs bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800">
             <XCircle className="h-6 w-6 stroke-[2.25]" />
           </div>

@@ -72,15 +72,20 @@ function getStatusBadge(status: ApprovalRequest["status"]) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap shadow-2xs">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-        Pending Admin
+        Pending Admin Approval
       </span>
     );
   }
-  if (status === "Pending Ministry Approval" || status === "Pending Outgoing Approval") {
+  if (
+    status === "Pending Ministry Approval" ||
+    status === "Pending Outgoing Approval" ||
+    (status as string) === "Pending Ministry" ||
+    (status as string) === "Pending Ministry Head"
+  ) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap shadow-2xs">
         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
-        Pending Ministry
+        Pending Ministry Head
       </span>
     );
   }
@@ -116,6 +121,7 @@ interface ApprovalDetailsDialogProps {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
   canManage?: boolean;
+  isAdmin?: boolean;
 }
 
 export function ApprovalDetailsDialog({
@@ -126,6 +132,7 @@ export function ApprovalDetailsDialog({
   onApprove,
   onReject,
   canManage = false,
+  isAdmin = false,
 }: ApprovalDetailsDialogProps) {
   if (!request) return null;
 
@@ -282,30 +289,64 @@ export function ApprovalDetailsDialog({
           )}
 
           {/* 5. Approve / Reject Actions */}
-          {canManage && request.status.startsWith("Pending") && (onApprove || onReject) && (
-            <div className="pt-1 grid grid-cols-2 gap-3">
-              {onReject && (
-                <button
-                  type="button"
-                  onClick={() => { onReject(request.id!); onOpenChange(false); }}
-                  className="flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-rose-500 text-rose-600 dark:text-rose-400 font-bold text-sm bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-950/40 active:scale-95 transition-all cursor-pointer"
-                >
-                  <XCircle className="h-5 w-5" />
-                  Reject
-                </button>
-              )}
-              {onApprove && (
-                <button
-                  type="button"
-                  onClick={() => { onApprove(request.id!); onOpenChange(false); }}
-                  className="flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 active:scale-95 transition-all cursor-pointer"
-                >
-                  <CheckCircle2 className="h-5 w-5" />
-                  Yes
-                </button>
-              )}
-            </div>
-          )}
+          {canManage && request.status.startsWith("Pending") && (onApprove || onReject) && (() => {
+            const statusStr = request.status as string;
+            const isWaitingForMinistryHead =
+              request.type === "Room Booking" &&
+              (
+                request.status === "Pending Ministry Approval" ||
+                request.status === "Pending" ||
+                statusStr === "Pending Ministry" ||
+                statusStr === "Pending Ministry Head" ||
+                statusStr.toLowerCase().includes("ministry")
+              );
+            const isActionDisabled = Boolean(isAdmin && isWaitingForMinistryHead);
+
+            return (
+              <div className="pt-1 grid grid-cols-2 gap-3">
+                {onReject && (
+                  <button
+                    type="button"
+                    disabled={isActionDisabled}
+                    onClick={() => {
+                      if (isActionDisabled) return;
+                      onReject(request.id!);
+                      onOpenChange(false);
+                    }}
+                    className={cn(
+                      "flex items-center justify-center h-11 rounded-xl border-2 border-rose-500 text-rose-600 dark:text-rose-400 font-bold text-sm bg-rose-50/50 dark:bg-rose-950/20 transition-all",
+                      isActionDisabled
+                        ? "opacity-50 cursor-not-allowed pointer-events-none"
+                        : "hover:bg-rose-100 dark:hover:bg-rose-950/40 active:scale-95 cursor-pointer"
+                    )}
+                    title={isActionDisabled ? "Awaiting Ministry Head response" : undefined}
+                  >
+                    Reject
+                  </button>
+                )}
+                {onApprove && (
+                  <button
+                    type="button"
+                    disabled={isActionDisabled}
+                    onClick={() => {
+                      if (isActionDisabled) return;
+                      onApprove(request.id!);
+                      onOpenChange(false);
+                    }}
+                    className={cn(
+                      "flex items-center justify-center h-11 rounded-xl border-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50/50 dark:bg-emerald-950/20 transition-all",
+                      isActionDisabled
+                        ? "opacity-50 cursor-not-allowed pointer-events-none"
+                        : "hover:bg-emerald-100 dark:hover:bg-emerald-950/40 active:scale-95 cursor-pointer"
+                    )}
+                    title={isActionDisabled ? "Awaiting Ministry Head response" : undefined}
+                  >
+                    Yes
+                  </button>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </DialogContent>
     </Dialog>

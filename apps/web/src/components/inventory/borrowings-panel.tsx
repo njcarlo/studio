@@ -31,6 +31,9 @@ import {
   MoreHorizontal,
   Camera,
   ChevronDown,
+  Pencil,
+  Save,
+  LoaderCircle,
 } from 'lucide-react';
 import {
   Table,
@@ -41,6 +44,7 @@ import {
   TableCell,
   Button,
   Input,
+  Textarea,
   Badge,
   Card,
   Dialog,
@@ -170,6 +174,58 @@ export function BorrowingsPanel() {
 
   // Details Modal State
   const [detailsBorrowing, setDetailsBorrowing] = useState<InventoryBorrowing | null>(null);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [editReturnCondition, setEditReturnCondition] = useState('Good Condition');
+  const [editReturnNotes, setEditReturnNotes] = useState('');
+  const [editStatus, setEditStatus] = useState('RETURNED');
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
+
+  useEffect(() => {
+    if (detailsBorrowing) {
+      setEditReturnCondition(detailsBorrowing.returnCondition || 'Good Condition');
+      setEditReturnNotes(detailsBorrowing.returnNotes || '');
+      setEditStatus(detailsBorrowing.status || 'RETURNED');
+      setIsEditingDetails(false);
+    }
+  }, [detailsBorrowing]);
+
+  const handleSaveDetails = async () => {
+    if (!detailsBorrowing) return;
+    setIsSavingDetails(true);
+    try {
+      const res = await fetch(`/api/borrowings/${detailsBorrowing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          returnCondition: editReturnCondition,
+          returnNotes: editReturnNotes,
+          status: editStatus,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update borrowing record');
+      }
+      const updated = await res.json();
+      setDetailsBorrowing(updated);
+      setIsEditingDetails(false);
+      toast({
+        title: 'Record Updated',
+        description: 'Borrowing status, condition, and maintenance notes updated successfully.',
+      });
+      loadData();
+      fetchItems({ take: 200 });
+      window.dispatchEvent(new CustomEvent('inventory-refresh'));
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: error.message || 'Failed to update borrowing details.',
+      });
+    } finally {
+      setIsSavingDetails(false);
+    }
+  };
 
   // Checklist Templates
   const [checklistTemplates, setChecklistTemplates] = useState<any[]>([]);
@@ -520,10 +576,7 @@ export function BorrowingsPanel() {
                 }}
               >
                 <SelectTrigger className="h-10 w-[170px] text-xs font-medium rounded-2xl bg-white dark:bg-muted/30 border-slate-200/90 dark:border-border hover:bg-muted/50 transition-colors px-3 gap-2 shadow-2xs cursor-pointer">
-                  <div className="flex items-center gap-2 truncate">
-                    <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <SelectValue placeholder="All Records" />
-                  </div>
+                  <SelectValue placeholder="All Records" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="ALL" className="text-xs font-medium cursor-pointer">
@@ -1592,78 +1645,188 @@ export function BorrowingsPanel() {
                 </div>
 
                 {/* Notes & Condition */}
-                <div className="space-y-2 p-3 rounded-xl bg-muted/20 border border-border/50">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                    Condition &amp; Notes
-                  </span>
-                  <div className="text-xs space-y-1">
-                    <p>
-                      <strong>Checkout Condition:</strong> {detailsBorrowing.checkoutCondition || 'Good'}
-                    </p>
-                    {detailsBorrowing.checkoutNotes && (
-                      <p className="text-muted-foreground">
-                        <strong>Checkout Notes:</strong> {detailsBorrowing.checkoutNotes}
-                      </p>
-                    )}
-                    {detailsBorrowing.status === 'RETURNED' && (
-                      <>
-                        <p>
-                          <strong>Return Condition:</strong> {detailsBorrowing.returnCondition || 'Good'}
-                        </p>
-                        {detailsBorrowing.returnNotes && (
-                          <p className="text-muted-foreground">
-                            <strong>Return Notes:</strong> {detailsBorrowing.returnNotes}
-                          </p>
-                        )}
-                        {detailsBorrowing.returnedAt && (
-                          <p className="text-muted-foreground">
-                            <strong>Returned Date:</strong> {new Date(detailsBorrowing.returnedAt).toLocaleDateString()}
-                          </p>
-                        )}
-                      </>
-                    )}
-
-                    {detailsBorrowing.returnPhotos && detailsBorrowing.returnPhotos.length > 0 && (
-                      <div className="pt-2 border-t border-border/50">
-                        <span className="text-[11px] font-bold text-destructive flex items-center gap-1 mb-1.5">
-                          <AlertTriangle className="h-3.5 w-3.5" /> Damage Photo Evidence:
-                        </span>
-                        <div className="grid grid-cols-2 gap-2">
-                          {detailsBorrowing.returnPhotos.map((photo: string, idx: number) => (
-                            <a
-                              key={idx}
-                              href={photo}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="relative aspect-video rounded-lg overflow-hidden border border-border/70 bg-black/5 hover:opacity-90 transition-opacity block group"
-                            >
-                              <img
-                                src={photo}
-                                alt={`Damage evidence ${idx + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                              <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-semibold transition-opacity">
-                                View Full
-                              </span>
-                            </a>
-                          ))}
-                        </div>
-                      </div>
+                <div className="space-y-3 p-3.5 rounded-xl bg-muted/20 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                      Condition &amp; Notes
+                    </span>
+                    {!isEditingDetails && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsEditingDetails(true)}
+                        className="h-7 px-2.5 text-[11px] font-semibold text-primary hover:text-primary hover:bg-primary/10 rounded-lg cursor-pointer"
+                      >
+                        <Pencil className="h-3 w-3 mr-1" /> Edit Status / Notes
+                      </Button>
                     )}
                   </div>
+
+                  {isEditingDetails ? (
+                    <div className="space-y-3 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Equipment Condition</Label>
+                          <Select value={editReturnCondition} onValueChange={setEditReturnCondition}>
+                            <SelectTrigger className="h-9 text-xs rounded-xl bg-background">
+                              <SelectValue placeholder="Select condition" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Good Condition" className="text-xs font-medium">Good Condition</SelectItem>
+                              <SelectItem value="Damaged" className="text-xs text-destructive font-semibold">Damaged (May Sira)</SelectItem>
+                              <SelectItem value="Repaired" className="text-xs text-emerald-600 font-semibold">Repaired (Naayos na)</SelectItem>
+                              <SelectItem value="Replaced" className="text-xs text-blue-600 font-semibold">Replaced (Napalitan na)</SelectItem>
+                              <SelectItem value="Under Repair" className="text-xs text-amber-600 font-semibold">Under Repair / Maintenance</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Borrowing Status</Label>
+                          <Select value={editStatus} onValueChange={setEditStatus}>
+                            <SelectTrigger className="h-9 text-xs rounded-xl bg-background">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="RETURNED" className="text-xs font-medium">RETURNED</SelectItem>
+                              <SelectItem value="BORROWED" className="text-xs font-medium">BORROWED</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Maintenance / Replacement Notes</Label>
+                        <Textarea
+                          value={editReturnNotes}
+                          onChange={(e) => setEditReturnNotes(e.target.value)}
+                          placeholder="Ilagay dito ang mga parts na nadamage, naayos, o pinalitan (e.g., Napalitan ang camera lens, naayos ang charging port)..."
+                          className="text-xs rounded-xl min-h-[75px] bg-background resize-none leading-relaxed"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs space-y-2">
+                      <p>
+                        <strong>Checkout Condition:</strong> {detailsBorrowing.checkoutCondition || 'Good'}
+                      </p>
+                      {detailsBorrowing.checkoutNotes && (
+                        <p className="text-muted-foreground">
+                          <strong>Checkout Notes:</strong> {detailsBorrowing.checkoutNotes}
+                        </p>
+                      )}
+                      {detailsBorrowing.status === 'RETURNED' && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <strong>Return Condition:</strong>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] font-bold",
+                                (detailsBorrowing.returnCondition || '').toLowerCase().includes('damage')
+                                  ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
+                                  : ['repaired', 'replaced', 'naayos', 'napalitan'].some(k => (detailsBorrowing.returnCondition || '').toLowerCase().includes(k))
+                                  ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30'
+                                  : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                              )}
+                            >
+                              {detailsBorrowing.returnCondition || 'Good'}
+                            </Badge>
+                          </div>
+                          {detailsBorrowing.returnNotes && (
+                            <div className="text-muted-foreground bg-background/80 p-2.5 rounded-xl border border-border/60">
+                              <strong className="text-foreground">Maintenance / Damage Notes:</strong>
+                              <p className="mt-0.5 whitespace-pre-wrap">{detailsBorrowing.returnNotes}</p>
+                            </div>
+                          )}
+                          {detailsBorrowing.returnedAt && (
+                            <p className="text-muted-foreground">
+                              <strong>Returned Date:</strong> {new Date(detailsBorrowing.returnedAt).toLocaleDateString()}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {detailsBorrowing.returnPhotos && detailsBorrowing.returnPhotos.length > 0 && (
+                    <div className="pt-2 border-t border-border/50">
+                      <span className="text-[11px] font-bold text-destructive flex items-center gap-1 mb-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Damage Photo Evidence:
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {detailsBorrowing.returnPhotos.map((photo: string, idx: number) => (
+                          <a
+                            key={idx}
+                            href={photo}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="relative aspect-video rounded-lg overflow-hidden border border-border/70 bg-black/5 hover:opacity-90 transition-opacity block group"
+                          >
+                            <img
+                              src={photo}
+                              alt={`Damage evidence ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-semibold transition-opacity">
+                              View Full
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 </div>
 
                 {/* ── STICKY MODAL FOOTER ── */}
-                <DialogFooter className="p-3.5 sm:p-4 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex flex-row items-center justify-end w-full min-w-0">
-                  <Button
-                    variant="outline"
-                    className="w-full min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 rounded-xl text-xs sm:text-sm font-semibold border-border/80 hover:bg-muted/50 cursor-pointer"
-                    onClick={() => setDetailsBorrowing(null)}
-                  >
-                    Close
-                  </Button>
+                <DialogFooter className="p-3.5 sm:p-4 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex flex-row items-center justify-end gap-2 w-full min-w-0">
+                  {isEditingDetails ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 sm:h-10 rounded-xl text-xs sm:text-sm font-semibold border-border/80 hover:bg-muted/50 cursor-pointer flex-1 sm:flex-initial"
+                        onClick={() => setIsEditingDetails(false)}
+                        disabled={isSavingDetails}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        className="h-9 sm:h-10 rounded-xl text-xs sm:text-sm font-bold bg-sidebar hover:bg-sidebar/90 text-white cursor-pointer flex-1 sm:flex-initial shadow-xs"
+                        onClick={handleSaveDetails}
+                        disabled={isSavingDetails}
+                      >
+                        {isSavingDetails ? (
+                          <><LoaderCircle className="h-4 w-4 mr-1.5 animate-spin" /> Saving…</>
+                        ) : (
+                          <><Save className="h-4 w-4 mr-1.5" /> Save Updates</>
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 sm:h-10 rounded-xl text-xs sm:text-sm font-semibold border-sidebar/30 text-sidebar hover:bg-sidebar/10 cursor-pointer flex-1 sm:flex-initial"
+                        onClick={() => setIsEditingDetails(true)}
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit Status &amp; Notes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 sm:h-10 rounded-xl text-xs sm:text-sm font-semibold border-border/80 hover:bg-muted/50 cursor-pointer flex-1 sm:flex-initial"
+                        onClick={() => setDetailsBorrowing(null)}
+                      >
+                        Close
+                      </Button>
+                    </>
+                  )}
                 </DialogFooter>
               </div>
             )}

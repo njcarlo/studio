@@ -72,7 +72,7 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
               <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
                 {ministry?.id ? "Edit Ministry" : "Add New Ministry"}
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground truncate">
+              <DialogDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                 Update ministry details, assigned leadership, and parent department.
               </DialogDescription>
             </div>
@@ -245,7 +245,7 @@ function AppointDialog({ ministry, workers, onSave, onClose }: {
               <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
                 Appoint Ministry Head
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground truncate">
+              <DialogDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                 Assign authorized leadership for <span className="font-semibold text-foreground">{ministry.name}</span>.
               </DialogDescription>
             </div>
@@ -434,7 +434,7 @@ export default function MinistryManagementPage() {
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto sm:ml-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-end sm:self-auto sm:ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
@@ -550,16 +550,11 @@ export default function MinistryManagementPage() {
                   )}
                 </div>
 
-                {/* Members + Weekly pool */}
+                {/* Members */}
                 <div className="flex items-center justify-between pt-2 border-t border-border/40">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
                     <Users className="h-3.5 w-3.5 text-sidebar dark:text-sky-400" /> {memberCount} members
                   </span>
-                  {weeklyPool > 0 && (
-                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
-                      ✦ {weeklyPool}/week
-                    </span>
-                  )}
                 </div>
               </div>
             );

@@ -28,9 +28,9 @@ import type { Worker } from "@studio/types";
 
 // ── Step definitions ──────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 1, label: "Personal Information", sub: "Worker details",        icon: User },
-  { id: 2, label: "Church Assignment",    sub: "Role & ministry",       icon: Building2 },
-  { id: 3, label: "Additional Information", sub: "Notes & emergency",   icon: FileText },
+  { id: 1, label: "Personal Information", sub: "Worker Details",        icon: User },
+  { id: 2, label: "Church Assignment",    sub: "Role & Ministry",       icon: Building2 },
+  { id: 3, label: "Additional Information", sub: "Notes & Emergency",   icon: FileText },
   { id: 4, label: "Review",               sub: "Confirm & Submit",      icon: ClipboardCheck },
 ];
 
@@ -430,16 +430,16 @@ export default function NewWorkerPage() {
       <div className="space-y-6 pb-12">
 
         {/* Page header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Register a new worker</h1>
+            <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">Register a New Worker</h1>
             <p className="text-sm text-muted-foreground">
               A guided onboarding flow — your progress saves automatically as you type.
             </p>
           </div>
           <button
             onClick={() => router.push("/workers")}
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+            className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/40 transition-colors self-start sm:self-auto cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
@@ -462,16 +462,16 @@ export default function NewWorkerPage() {
             <div className="px-7 py-6">
               {step === 1 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-                  <Field label="First name" required>
+                  <Field label="First Name" required>
                     <Input value={firstName} onChange={e => setFirstName(cleanName(e.target.value))} className="h-10 rounded-xl border-border/60 bg-background" />
                   </Field>
-                  <Field label="Last name" required>
+                  <Field label="Last Name" required>
                     <Input value={lastName} onChange={e => setLastName(cleanName(e.target.value))} className="h-10 rounded-xl border-border/60 bg-background" />
                   </Field>
                   <Field label="Email" required>
                     <Input type="email" value={email} onChange={e => setEmail(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
                   </Field>
-                  <Field label="Mobile number" required>
+                  <Field label="Mobile Number" required>
                     <Input
                       type="tel"
                       inputMode="numeric"
@@ -482,7 +482,7 @@ export default function NewWorkerPage() {
                       className="h-10 rounded-xl border-border/60 bg-background"
                     />
                   </Field>
-                  <Field label="Birth date" required>
+                  <Field label="Birth Date" required>
                     <Input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="h-10 rounded-xl border-border/60 bg-background" />
                   </Field>
                   <Field label="Address" required>
@@ -496,7 +496,7 @@ export default function NewWorkerPage() {
                   {/* Role cards */}
                   <div>
                     <p className="text-sm font-medium text-foreground mb-3">
-                      Choose a role <span className="text-red-500">*</span>
+                      Choose a Role <span className="text-red-500">*</span>
                     </p>
                     <div className={cn("grid gap-3.5", availableRoleCards.length === 1 ? "grid-cols-1 w-full" : "grid-cols-1 sm:grid-cols-3")}>
                       {availableRoleCards.map(card => {
@@ -612,7 +612,7 @@ export default function NewWorkerPage() {
                         </p>
                       )}
                     </Field>
-                    <Field label="Worker type" required>
+                    <Field label="Worker Type" required>
                       <Select
                         value={employmentType}
                         onValueChange={(v) => setEmploymentType(v)}
@@ -628,7 +628,7 @@ export default function NewWorkerPage() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label="Start date" required>
+                    <Field label="Start Date" required>
                       <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                         className="h-10 rounded-xl border-border/60 bg-background" />
                     </Field>

@@ -23,6 +23,14 @@ import {
   DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuTrigger,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@studio/ui";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
@@ -150,6 +158,52 @@ function AttendanceContent() {
   const [recordsRoleFilter, setRecordsRoleFilter] = useState("all");
   const [recordsStatusFilter, setRecordsStatusFilter] = useState("all");
   const [recordsRange, setRecordsRange] = useState<"today" | "yesterday" | "this-week" | "this-month" | "all-time">("today");
+
+  const [attendanceConfirm, setAttendanceConfirm] = useState<{
+    worker: any;
+    type: "Clock In" | "Clock Out";
+    status?: any;
+  } | null>(null);
+  const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
+
+  const handleConfirmAttendance = async () => {
+    if (!attendanceConfirm) return;
+    const { worker, type } = attendanceConfirm;
+    setIsSubmittingAttendance(true);
+    try {
+      await createAttendanceRecord({ workerProfileId: worker.id, type });
+      if (type === "Clock In") {
+        const hasStub = assignedStubs?.some((s: any) => {
+          const sd = s.date instanceof Date ? s.date : new Date(s.date);
+          return s.workerId === worker.id && sd >= todayStart;
+        });
+        if (!hasStub) {
+          try {
+            await createMealStub({
+              workerId: worker.id,
+              workerName: `${worker.firstName} ${worker.lastName}`,
+              status: "Issued",
+              assignedBy: workerProfile?.id || user?.id,
+              assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"),
+              stubType: "daily",
+            });
+          } catch { }
+        }
+        toast({ title: "Timed In", description: `${worker.firstName} ${worker.lastName}` });
+      } else {
+        toast({ title: "Timed Out", description: `${worker.firstName} ${worker.lastName}` });
+      }
+      setAttendanceConfirm(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to record attendance",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingAttendance(false);
+    }
+  };
 
   const { workers: allWorkers } = useWorkers({ enabled: isAssigner, limit: 999999 });
   const { createAttendanceRecord } = useAttendance({ enabled: false });
@@ -589,7 +643,7 @@ function AttendanceContent() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            {isAssigner && (
+            {isAssigner && activeTab !== "personal" && activeTab !== "manual" && (
               <Link href="/attendance/scanner">
                 <button className="h-10 px-4 flex items-center gap-2 rounded-2xl border border-border/80 bg-white dark:bg-card hover:bg-muted/40 text-foreground text-xs font-bold shadow-xs transition-colors cursor-pointer">
                   <ScanLine className="h-4 w-4 text-primary" /> Scanner
@@ -643,23 +697,90 @@ function AttendanceContent() {
                 {/* Inner Table Container */}
                 <div className="bg-card rounded-2xl border border-border/60 overflow-hidden flex flex-col">
 
-                  {/* Mobile card view */}
-                  <div className="md:hidden divide-y divide-border/30">
+                  {/* Mobile card view (Enhanced layout matching card style with Navy Header & 2x2 Grid) */}
+                  <div className="md:hidden p-3.5 space-y-3 bg-slate-50/50 dark:bg-muted/10">
                     {sessions.length === 0 ? (
-                      <div className="py-14 text-center text-xs font-medium text-muted-foreground">No records this week.</div>
+                      <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/40">No records this week.</div>
                     ) : sessions.map((s, i) => (
-                      <div key={i} className="p-4 flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-foreground">{format(s.date, "EEE, MMM d, yyyy")}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            In: <strong className="text-foreground">{format(s.timeIn, "h:mm a")}</strong>
-                            {" · "}
-                            Out: <strong className="text-foreground">{s.timeOut ? format(s.timeOut, "h:mm a") : "—"}</strong>
-                            {" · "}
-                            {formatHours(s.totalMinutes)}
-                          </p>
+                      <div key={i} className="rounded-2xl border border-border/60 overflow-hidden shadow-2xs bg-card flex flex-col">
+                        {/* Navy Header with checkbox square & date */}
+                        <div className="bg-sidebar px-4 py-2.5 flex items-center justify-between text-white">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-2.5 h-2.5 rounded-[3px] border border-white/60 bg-white/20 shrink-0" />
+                            <span className="text-xs font-mono font-bold text-white tracking-wide truncate">
+                              {format(s.date, "EEE, MMM d, yyyy")}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-white/50">
+                            <span className="w-1 h-1 rounded-full bg-white/40" />
+                            <span className="w-1 h-1 rounded-full bg-white/40" />
+                            <span className="w-1 h-1 rounded-full bg-white/40" />
+                          </div>
                         </div>
-                        <StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} />
+
+                        {/* Card Body */}
+                        <div className="p-3.5 sm:p-4 space-y-3 bg-white dark:bg-card">
+                          {/* Worker info + Status pill on the right */}
+                          <div className="flex items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <div className="w-8 h-8 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sky-300 text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
+                                {workerProfile?.firstName?.[0] || "W"}{workerProfile?.lastName?.[0] || ""}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-bold text-foreground leading-tight truncate">
+                                  {workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "Worker")}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {(workerProfile as any)?.ministry || ministries.find(m => m.id === workerProfile?.majorMinistryId)?.name || "Worker"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Status pill on right side (matching reference) */}
+                            <div className="shrink-0">
+                              <StatusPill isLate={s.isLate} hasOut={s.timeOut !== null} />
+                            </div>
+                          </div>
+
+                          {/* 2x2 Details Grid */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs bg-slate-50/70 dark:bg-muted/30 p-3 rounded-xl border border-border/40">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Time In
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {format(s.timeIn, "h:mm a")}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Time Out
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {s.timeOut ? format(s.timeOut, "h:mm a") : "—"}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Total Hours
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {formatHours(s.totalMinutes)}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                Date
+                              </p>
+                              <p className="font-semibold text-foreground">
+                                {format(s.date, "MMM d, yyyy")}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -880,36 +1001,14 @@ function AttendanceContent() {
                             <div className="grid grid-cols-2 gap-2 pt-1">
                               <button
                                 type="button"
-                                onClick={async () => {
-                                  await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
-                                  const hasStub = assignedStubs?.some((s: any) => {
-                                    const sd = s.date instanceof Date ? s.date : new Date(s.date);
-                                    return s.workerId === w.id && sd >= todayStart;
-                                  });
-                                  if (!hasStub) {
-                                    try {
-                                      await createMealStub({
-                                        workerId: w.id,
-                                        workerName: `${w.firstName} ${w.lastName}`,
-                                        status: "Issued",
-                                        assignedBy: workerProfile?.id || user?.id,
-                                        assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"),
-                                        stubType: "daily",
-                                      });
-                                    } catch { }
-                                  }
-                                  toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
-                                }}
+                                onClick={() => setAttendanceConfirm({ worker: w, type: "Clock In", status: ws })}
                                 className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                               >
                                 <LogIn className="h-3.5 w-3.5" /> Time In
                               </button>
                               <button
                                 type="button"
-                                onClick={async () => {
-                                  await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
-                                  toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
-                                }}
+                                onClick={() => setAttendanceConfirm({ worker: w, type: "Clock Out", status: ws })}
                                 className="h-9 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                               >
                                 <LogOut className="h-3.5 w-3.5" /> Time Out
@@ -972,21 +1071,13 @@ function AttendanceContent() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border border-border bg-popover">
                                     <DropdownMenuItem
-                                      onClick={async () => {
-                                        await createAttendanceRecord({ workerProfileId: w.id, type: "Clock In" });
-                                        const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === w.id && sd >= todayStart; });
-                                        if (!hasStub) { try { await createMealStub({ workerId: w.id, workerName: `${w.firstName} ${w.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch { } }
-                                        toast({ title: "Timed In", description: `${w.firstName} ${w.lastName}` });
-                                      }}
+                                      onClick={() => setAttendanceConfirm({ worker: w, type: "Clock In", status: ws })}
                                       className="cursor-pointer text-xs font-medium"
                                     >
                                       <LogIn className="h-3.5 w-3.5 mr-2" /> Time In
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onClick={async () => {
-                                        await createAttendanceRecord({ workerProfileId: w.id, type: "Clock Out" });
-                                        toast({ title: "Timed Out", description: `${w.firstName} ${w.lastName}` });
-                                      }}
+                                      onClick={() => setAttendanceConfirm({ worker: w, type: "Clock Out", status: ws })}
                                       className="cursor-pointer text-xs font-medium"
                                     >
                                       <LogOut className="h-3.5 w-3.5 mr-2" /> Time Out
@@ -1179,30 +1270,6 @@ function AttendanceContent() {
                               {row.status === "incomplete" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Incomplete</span>}
                             </div>
                           </div>
-                          <div className="flex flex-col gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock In" });
-                                const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === row.worker.id && sd >= todayStart; });
-                                if (!hasStub) { try { await createMealStub({ workerId: row.worker.id, workerName: `${row.worker.firstName} ${row.worker.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch { } }
-                                toast({ title: "Timed In", description: `${row.worker.firstName} ${row.worker.lastName}` });
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-emerald-700 transition-colors"
-                            >
-                              <LogIn className="h-3 w-3" /> In
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock Out" });
-                                toast({ title: "Timed Out", description: `${row.worker.firstName} ${row.worker.lastName}` });
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-blue-700 transition-colors"
-                            >
-                              <LogOut className="h-3 w-3" /> Out
-                            </button>
-                          </div>
                         </div>
                       );
                     })}
@@ -1258,21 +1325,13 @@ function AttendanceContent() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border border-border bg-popover">
                                       <DropdownMenuItem
-                                        onClick={async () => {
-                                          await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock In" });
-                                          const hasStub = assignedStubs?.some((s: any) => { const sd = s.date instanceof Date ? s.date : new Date(s.date); return s.workerId === row.worker.id && sd >= todayStart; });
-                                          if (!hasStub) { try { await createMealStub({ workerId: row.worker.id, workerName: `${row.worker.firstName} ${row.worker.lastName}`, status: "Issued", assignedBy: workerProfile?.id || user?.id, assignedByName: workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "System"), stubType: "daily" }); } catch { } }
-                                          toast({ title: "Timed In", description: `${row.worker.firstName} ${row.worker.lastName}` });
-                                        }}
+                                        onClick={() => setAttendanceConfirm({ worker: row.worker, type: "Clock In" })}
                                         className="cursor-pointer text-xs font-medium"
                                       >
                                         <LogIn className="h-3.5 w-3.5 mr-2" /> Time In
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
-                                        onClick={async () => {
-                                          await createAttendanceRecord({ workerProfileId: row.worker.id, type: "Clock Out" });
-                                          toast({ title: "Timed Out", description: `${row.worker.firstName} ${row.worker.lastName}` });
-                                        }}
+                                        onClick={() => setAttendanceConfirm({ worker: row.worker, type: "Clock Out" })}
                                         className="cursor-pointer text-xs font-medium"
                                       >
                                         <LogOut className="h-3.5 w-3.5 mr-2" /> Time Out
@@ -1310,6 +1369,78 @@ function AttendanceContent() {
         }
         onConfirm={handleExportAttendance}
       />
+
+      {/* Confirmation & Validation Dialog for Time In / Time Out */}
+      <AlertDialog open={!!attendanceConfirm} onOpenChange={(open) => !open && !isSubmittingAttendance && setAttendanceConfirm(null)}>
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+              {attendanceConfirm?.type === "Clock In" ? (
+                <>
+                  <LogIn className="h-5 w-5 text-emerald-600" /> Confirm Time In
+                </>
+              ) : (
+                <>
+                  <LogOut className="h-5 w-5 text-blue-600" /> Confirm Time Out
+                </>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-2 space-y-2">
+                <p>
+                  Are you sure you want to record{" "}
+                  <strong className="text-foreground font-semibold">
+                    {attendanceConfirm?.type === "Clock In" ? "Time In" : "Time Out"}
+                  </strong>{" "}
+                  for{" "}
+                  <strong className="text-foreground font-semibold">
+                    {attendanceConfirm?.worker?.firstName} {attendanceConfirm?.worker?.lastName}
+                  </strong>
+                  ?
+                </p>
+                {attendanceConfirm?.type === "Clock In" && attendanceConfirm?.status?.timeIn && (
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2 mt-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                    <span>Notice: This worker already timed in today at {format(attendanceConfirm.status.timeIn, "h:mm a")}.</span>
+                  </div>
+                )}
+                {attendanceConfirm?.type === "Clock Out" && !attendanceConfirm?.status?.timeIn && (
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2 mt-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                    <span>Notice: This worker has no recorded Time In today.</span>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row items-center justify-end gap-2 mt-4">
+            <AlertDialogCancel
+              disabled={isSubmittingAttendance}
+              className="rounded-xl h-9 text-xs font-semibold m-0"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isSubmittingAttendance}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmAttendance();
+              }}
+              className={cn(
+                "rounded-xl h-9 text-xs font-semibold text-white",
+                attendanceConfirm?.type === "Clock In"
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-blue-600 hover:bg-blue-700"
+              )}
+            >
+              {isSubmittingAttendance ? (
+                <LoaderCircle className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              ) : null}
+              Confirm {attendanceConfirm?.type === "Clock In" ? "Time In" : "Time Out"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

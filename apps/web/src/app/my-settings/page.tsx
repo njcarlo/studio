@@ -1,12 +1,20 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import {
   Button,
   Input,
   Label,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@studio/ui";
 import {
   Smartphone,
@@ -39,20 +47,42 @@ import { cn } from "@/lib/utils";
 import { FontSizeSlider } from "@/components/settings/font-size-slider";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
 import { requestPasswordReset } from "@/actions/auth";
+import { useUserRole } from "@/hooks/use-user-role";
+import { updateWorkerProfileSettings, getEmailChangeStatus } from "@/actions/db";
 
-type SettingTab = "appearance" | "password" | "security" | "support" | "report";
+type SettingTab = "profile" | "appearance" | "password" | "security" | "support" | "report";
 
 function MySettingsContent() {
   const { toast } = useToast();
   const { user } = useAuthStore();
+  const { workerProfile } = useUserRole();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const rawTab = searchParams.get("tab");
   const activeTab: SettingTab =
-    rawTab && ["appearance", "password", "security", "support", "report"].includes(rawTab)
+    rawTab && ["profile", "appearance", "password", "security", "support", "report"].includes(rawTab)
       ? (rawTab as SettingTab)
-      : "appearance";
+      : "profile";
+
+  const [firstName, setFirstName] = useState(workerProfile?.firstName || "");
+  const [lastName, setLastName] = useState(workerProfile?.lastName || "");
+  const [email, setEmail] = useState(workerProfile?.email || user?.email || "");
+  const [remainingEmailChanges, setRemainingEmailChanges] = useState<number>(2);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; email?: string }>({});
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (workerProfile) {
+      setFirstName(workerProfile.firstName || "");
+      setLastName(workerProfile.lastName || "");
+      setEmail(workerProfile.email || user?.email || "");
+      getEmailChangeStatus(workerProfile.id).then((st) => {
+        setRemainingEmailChanges(st.remaining);
+      }).catch(() => {});
+    }
+  }, [workerProfile?.id, workerProfile?.firstName, workerProfile?.lastName, workerProfile?.email, user?.email]);
 
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [reportCategory, setReportCategory] = useState("general");
@@ -64,6 +94,150 @@ function MySettingsContent() {
   const handleTabChange = (newTab: SettingTab) => {
     router.push(`/my-settings?tab=${newTab}`, { scroll: false });
   };
+
+  const handleFirstNameChange = (val: string) => {
+    setFirstName(val);
+    if (errors.firstName) {
+      setErrors((prev) => ({ ...prev, firstName: undefined }));
+    }
+  };
+
+  const handleLastNameChange = (val: string) => {
+    setLastName(val);
+    if (errors.lastName) {
+      setErrors((prev) => ({ ...prev, lastName: undefined }));
+    }
+  };
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    if (errors.email) {
+      setErrors((prev) => ({ ...prev, email: undefined }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: { firstName?: string; lastName?: string; email?: string } = {};
+
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedFirst) {
+      newErrors.firstName = "First name is required.";
+    } else if (trimmedFirst.length < 2) {
+      newErrors.firstName = "First name must be at least 2 characters.";
+    }
+
+    if (!trimmedLast) {
+      newErrors.lastName = "Last name is required.";
+    } else if (trimmedLast.length < 2) {
+      newErrors.lastName = "Last name must be at least 2 characters.";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail) {
+      newErrors.email = "Email address is required.";
+    } else if (!emailRegex.test(trimmedEmail)) {
+      newErrors.email = "Please enter a valid email address.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please check and correct the highlighted fields.",
+      });
+      return false;
+    }
+
+    const currentFirst = (workerProfile?.firstName || "").trim();
+    const currentLast = (workerProfile?.lastName || "").trim();
+    const currentEmail = (workerProfile?.email || user?.email || "").trim().toLowerCase();
+
+    const isNameUnchanged = trimmedFirst === currentFirst && trimmedLast === currentLast;
+    const isEmailUnchanged = trimmedEmail.toLowerCase() === currentEmail;
+
+    if (isNameUnchanged && isEmailUnchanged) {
+      toast({
+        variant: "destructive",
+        title: "No Changes Detected",
+        description: "You haven't made any modifications to your name or email.",
+      });
+      return false;
+    }
+
+    if (!isEmailUnchanged && remainingEmailChanges <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Email Change Limit Reached",
+        description: "You have already used your 2 email changes for this calendar month.",
+      });
+      return false;
+    }
+
+    setErrors({});
+    return true;
+  };
+
+  const handleProfileSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    setIsConfirmOpen(true);
+  };
+
+  const executeSaveProfile = async () => {
+    if (!workerProfile?.id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Worker profile not found.",
+      });
+      setIsConfirmOpen(false);
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const res = await updateWorkerProfileSettings(workerProfile.id, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+      });
+
+      if (!res.success) {
+        toast({
+          variant: "destructive",
+          title: "Update Failed",
+          description: res.error || "An error occurred while updating your profile.",
+        });
+        return;
+      }
+
+      if (res.remainingChanges !== undefined) {
+        setRemainingEmailChanges(res.remainingChanges);
+      }
+
+      toast({
+        title: "Profile Updated",
+        description: res.message || "Your profile details have been successfully updated.",
+      });
+      setIsConfirmOpen(false);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "An error occurred while saving your profile.",
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleSaveProfile = handleProfileSubmit;
+  const handleSaveName = handleProfileSubmit;
+  const isSavingName = isSavingProfile;
 
   const handleChangePassword = async () => {
     if (!user?.email) return;
@@ -138,6 +312,7 @@ function MySettingsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white">
+            {activeTab === "profile" && "Profile & Name"}
             {activeTab === "appearance" && "Display & Appearance"}
             {activeTab === "password" && "Change Password"}
             {activeTab === "security" && "Login Security"}
@@ -145,6 +320,7 @@ function MySettingsContent() {
             {activeTab === "report" && "Report a Problem"}
           </h1>
           <p className="text-sm text-muted-foreground">
+            {activeTab === "profile" && "Update your account display name and personal credentials."}
             {activeTab === "appearance" && "Customize theme mode (Dark / Light), typography, text sizing, and accessibility preferences across the application."}
             {activeTab === "password" && "Manage your account authentication credentials and security settings."}
             {activeTab === "security" && "Monitor active devices, login sessions, and global security controls."}
@@ -154,8 +330,290 @@ function MySettingsContent() {
         </div>
       </div>
 
+      {/* Tab Navigation Pills */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        {[
+          { id: "profile", label: "Profile & Name" },
+          { id: "appearance", label: "Display & Font Size" },
+          { id: "password", label: "Change Password" },
+          { id: "security", label: "Login Security" },
+          { id: "support", label: "Help & Support" },
+          { id: "report", label: "Report a Problem" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => handleTabChange(tab.id as SettingTab)}
+            className={cn(
+              "px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all cursor-pointer",
+              activeTab === tab.id
+                ? "bg-sidebar text-white shadow-xs"
+                : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Main Container Card */}
       <div className="bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark p-6 sm:p-8 md:p-10 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* ── Tab: Profile & Name ── */}
+        {activeTab === "profile" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-7 space-y-6">
+              <div className="space-y-2">
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-sidebar/10 text-sidebar dark:text-blue-400 text-xs font-bold">
+                  <span>Profile Information</span>
+                </div>
+                <h3 className="text-2xl font-bold font-headline text-foreground">
+                  Profile & Account Details
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Update your display name and email address. You are allowed to change your email up to 2 times per calendar month.
+                </p>
+              </div>
+
+              <form onSubmit={handleProfileSubmit} noValidate className="bg-slate-50/80 dark:bg-muted/30 rounded-2xl border border-border/60 p-6 sm:p-7 shadow-2xs space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      First Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="firstName"
+                      value={firstName}
+                      onChange={(e) => handleFirstNameChange(e.target.value)}
+                      placeholder="First Name"
+                      required
+                      className={cn(
+                        "bg-white dark:bg-background text-sm font-medium h-11 rounded-xl border-slate-200/90 dark:border-border text-foreground shadow-2xs pl-4 transition-colors",
+                        errors.firstName && "border-red-500 focus-visible:ring-red-500"
+                      )}
+                    />
+                    {errors.firstName && (
+                      <p className="text-[11px] text-red-500 font-medium flex items-center gap-1 mt-1">
+                        <AlertCircle className="h-3 w-3 shrink-0" />
+                        <span>{errors.firstName}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Last Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="lastName"
+                      value={lastName}
+                      onChange={(e) => handleLastNameChange(e.target.value)}
+                      placeholder="Last Name"
+                      required
+                      className={cn(
+                        "bg-white dark:bg-background text-sm font-medium h-11 rounded-xl border-slate-200/90 dark:border-border text-foreground shadow-2xs pl-4 transition-colors",
+                        errors.lastName && "border-red-500 focus-visible:ring-red-500"
+                      )}
+                    />
+                    {errors.lastName && (
+                      <p className="text-[11px] text-red-500 font-medium flex items-center gap-1 mt-1">
+                        <AlertCircle className="h-3 w-3 shrink-0" />
+                        <span>{errors.lastName}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <Label htmlFor="profileEmail" className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-sidebar dark:text-blue-400" />
+                      Email Address <span className="text-red-500">*</span>
+                    </Label>
+                    {remainingEmailChanges > 0 ? (
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/80 dark:border-emerald-800/80">
+                        {remainingEmailChanges} / 2 changes left this month
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/80 dark:border-amber-800/80">
+                        Monthly limit reached (0 / 2 left)
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    id="profileEmail"
+                    type="email"
+                    value={email}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    disabled={remainingEmailChanges <= 0 && email.trim().toLowerCase() === (workerProfile?.email || user?.email || "").toLowerCase()}
+                    placeholder="your.email@example.com"
+                    required
+                    className={cn(
+                      "bg-white dark:bg-background text-sm font-medium h-11 rounded-xl border-slate-200/90 dark:border-border text-foreground shadow-2xs pl-4 transition-colors",
+                      errors.email && "border-red-500 focus-visible:ring-red-500"
+                    )}
+                  />
+                  {errors.email ? (
+                    <p className="text-[11px] text-red-500 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span>{errors.email}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-sidebar dark:text-blue-400 shrink-0" />
+                      <span>
+                        {remainingEmailChanges > 0
+                          ? "You can change your email up to 2 times a month. Changes update your login credentials."
+                          : "You have used your 2 email changes for this month. You will be able to change it again next month."}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="w-full text-sm font-bold h-11 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                  >
+                    {isSavingProfile ? (
+                      <>
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                        <span>Saving Changes...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4" />
+                        <span>Save Changes</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+
+              {/* Confirmation Dialog on Save */}
+              <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                <AlertDialogContent className="max-w-md rounded-2xl bg-white dark:bg-card border border-border/80 shadow-2xl p-6">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
+                      <ShieldCheck className="h-5 w-5 text-sidebar dark:text-blue-400" />
+                      Confirm Profile Changes
+                    </AlertDialogTitle>
+                    <AlertDialogDescription asChild>
+                      <div className="space-y-3 pt-2 text-sm text-foreground">
+                        <p className="text-muted-foreground text-xs leading-relaxed">
+                          Please review the updates you are about to save to your account profile:
+                        </p>
+
+                        <div className="bg-slate-50 dark:bg-muted/40 rounded-xl p-3.5 border border-border/60 space-y-2 text-xs">
+                          <div className="flex justify-between items-center py-1 border-b border-border/40">
+                            <span className="text-muted-foreground">New Display Name</span>
+                            <span className="font-semibold text-foreground">
+                              {firstName.trim()} {lastName.trim()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-muted-foreground">New Email Address</span>
+                            <span className="font-semibold text-foreground truncate max-w-[200px]" title={email.trim()}>
+                              {email.trim()}
+                            </span>
+                          </div>
+                        </div>
+
+                        {email.trim().toLowerCase() !== (workerProfile?.email || user?.email || "").trim().toLowerCase() && (
+                          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
+                            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                            <div className="leading-relaxed">
+                              <strong className="font-semibold">Notice:</strong> Changing your email will use <strong>1</strong> of your <strong>2</strong> monthly changes ({Math.max(0, remainingEmailChanges - 1)} left after this).
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="mt-4 gap-2 sm:gap-2">
+                    <AlertDialogCancel
+                      disabled={isSavingProfile}
+                      className="rounded-xl border-border/60 hover:bg-muted text-xs font-semibold cursor-pointer"
+                    >
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => {
+                        e.preventDefault();
+                        executeSaveProfile();
+                      }}
+                      disabled={isSavingProfile}
+                      className="rounded-xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      {isSavingProfile ? (
+                        <>
+                          <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-3.5 w-3.5" />
+                          Confirm & Save
+                        </>
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+
+            {/* Right Column: Information Preview Card */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="bg-slate-50/70 dark:bg-muted/20 border border-slate-200/80 dark:border-border/80 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-foreground uppercase tracking-wider">
+                  <Info className="h-4 w-4 text-sidebar dark:text-blue-400" />
+                  <span>Profile Overview</span>
+                </div>
+                <div className="space-y-3 text-xs">
+                  <div className="flex justify-between py-1.5 border-b border-border/40">
+                    <span className="text-muted-foreground">Current Display Name</span>
+                    <span className="font-semibold text-foreground">
+                      {workerProfile?.firstName && workerProfile?.lastName
+                        ? `${workerProfile.firstName} ${workerProfile.lastName}`
+                        : user?.email?.split("@")[0] || "User"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-border/40">
+                    <span className="text-muted-foreground">Registered Email</span>
+                    <span className="font-semibold text-foreground truncate max-w-[170px]" title={workerProfile?.email || user?.email || ""}>
+                      {workerProfile?.email || user?.email || "—"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-border/40">
+                    <span className="text-muted-foreground">Email Changes (This Month)</span>
+                    <span className="font-semibold text-foreground">
+                      {Math.max(0, 2 - remainingEmailChanges)} / 2 used
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-border/40">
+                    <span className="text-muted-foreground">Worker ID</span>
+                    <span className="font-semibold font-mono text-foreground">
+                      {workerProfile?.workerId || workerProfile?.id?.slice(0, 8) || "—"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-border/40">
+                    <span className="text-muted-foreground">Role</span>
+                    <span className="font-semibold text-foreground">
+                      {(workerProfile as any)?.role?.name || workerProfile?.roleId || "Member"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5">
+                    <span className="text-muted-foreground">Account Status</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {workerProfile?.status || "Active"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Tab: Display & Appearance ── */}
         {activeTab === "appearance" && (
           <div className="space-y-10">

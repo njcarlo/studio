@@ -198,7 +198,7 @@ function InventoryPageContent() {
         {/* ── TOP HEADER ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-0.5 sm:space-y-1">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white leading-tight">
+            <h1 className="text-3xl font-bold font-headline tracking-tight text-gray-900 dark:text-white leading-tight">
               {activeTab === "items"
                 ? "Items & Catalog"
                 : activeTab === "borrowings"
@@ -210,7 +210,7 @@ function InventoryPageContent() {
                 : activeTab === "reports"
                 ? "Reports & Analytics"
                 : activeTab === "settings"
-                ? "Settings & Checklists"
+                ? "Checklist Management"
                 : "Stock Monitoring & Assets"}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">

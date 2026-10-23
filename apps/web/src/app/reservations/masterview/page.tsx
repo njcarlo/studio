@@ -13,6 +13,8 @@ import {
   Mic,
   Speaker,
   LoaderCircle,
+  MoreHorizontal,
+  Eye,
 } from "lucide-react";
 import { format, isAfter, isBefore, startOfToday } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -43,6 +45,10 @@ import {
   Separator,
   Input,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@studio/ui";
 
 const ITEMS_PER_PAGE = 6;
@@ -264,7 +270,7 @@ export default function MasterviewPage() {
           ) : (
             <>
               {/* ── MOBILE CARD LIST (hidden on lg+) ── */}
-              <div className="flex flex-col divide-y divide-gray-100 dark:divide-border lg:hidden flex-grow">
+              <div className="flex flex-col space-y-3 p-3 bg-muted/10 lg:hidden flex-grow">
                 {paginatedBookings.map((booking) => {
                   const room = rooms?.find((r) => r.id === booking.roomId);
                   const area = areas?.find(
@@ -272,57 +278,154 @@ export default function MasterviewPage() {
                   );
                   const startTime = toJsDate(booking.start);
                   const endTime = toJsDate(booking.end);
-                  const hasEquipment = booking.equipment_TV || booking.equipment_Mic || booking.equipment_Speakers;
-                  const hasRequestedElements = booking.requestedElements && booking.requestedElements.length > 0;
+                  const b = booking as any;
+                  const reqId = b.requestId || `REQ-${booking.id?.slice(0, 4)?.toUpperCase()}`;
+                  const isApproved = booking.status === "Approved";
+                  const isPending = booking.status?.toLowerCase().startsWith("pending");
+                  const requesterName = booking.worker
+                    ? `${booking.worker.firstName} ${booking.worker.lastName}`
+                    : b.requesterName || b.userName || "User";
+                  const ministry = (ministries as any[])?.find(
+                    (m: any) => m.id === booking.ministryId || m.name === b.ministry
+                  );
+                  const ministryName = ministry?.name || b.ministry || "Ministry";
+                  const initials = requesterName
+                    .trim()
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase() || "WW";
+                  const createdDate = b.createdAt ? toJsDate(b.createdAt) : startTime;
 
                   return (
                     <div
                       key={booking.id}
-                      className="p-4 hover:bg-gray-50/60 dark:hover:bg-muted/30 transition-colors"
+                      className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/40 transition-all text-left"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          {/* Title */}
-                          <p className="font-bold text-sm text-gray-800 dark:text-gray-100 leading-snug truncate">
-                            {booking.title}
-                          </p>
-                          {/* Venue */}
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            📍 {room?.name || "Unassigned"} · {area?.name || "First Floor"}
-                          </p>
-                          {/* Date & Time */}
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            📅 {format(startTime, "MMM d, yyyy")} · {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
-                          </p>
-                          {/* Requirements */}
-                          {(hasRequestedElements || hasEquipment) && (
-                            <div className="flex flex-wrap gap-1 pt-0.5">
-                              {hasRequestedElements
-                                ? booking.requestedElements.map((elId: string) => {
-                                    const el = venueElements?.find((v) => v.id === elId);
-                                    return (
-                                      <Badge key={elId} variant="outline" className="text-[9px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 rounded-md">
-                                        {el ? el.name : elId}
-                                      </Badge>
-                                    );
-                                  })
-                                : <>
-                                    {booking.equipment_TV && <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 rounded-md">TV</Badge>}
-                                    {booking.equipment_Mic && <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 rounded-md">Mic</Badge>}
-                                    {booking.equipment_Speakers && <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 rounded-md">Audio</Badge>}
-                                  </>
-                              }
+                      {/* Navy Header: Checkbox + REQ ID + Actions */}
+                      <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded border border-white/40 flex items-center justify-center shrink-0" />
+                          <span className="text-xs font-mono font-bold text-white tracking-wide">
+                            {reqId}
+                          </span>
+                        </div>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="p-1 rounded-lg hover:bg-white/10 text-white/90 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border-border/80">
+                            <DropdownMenuItem
+                              onClick={() => handleBookingClick(booking)}
+                              className="text-xs cursor-pointer font-medium gap-2 py-2 rounded-lg"
+                            >
+                              <Eye className="h-3.5 w-3.5 text-muted-foreground" /> View Details
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 space-y-3">
+                        {/* Requester info row */}
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sky-300 font-bold text-xs flex items-center justify-center shrink-0">
+                              {initials}
                             </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-foreground leading-tight truncate">
+                                {requesterName}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">
+                                {ministryName}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            {isApproved ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Approved
+                              </span>
+                            ) : isPending ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                Pending
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                {booking.status || "Scheduled"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Purpose / Title */}
+                        <div>
+                          <p className="text-sm font-bold text-foreground leading-snug">
+                            {booking.title || booking.purpose || "Room Reservation"}
+                          </p>
+                          {booking.purpose && booking.purpose !== booking.title && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                              {booking.purpose}
+                            </p>
                           )}
                         </div>
-                        {/* Info button */}
-                        <button
-                          type="button"
-                          onClick={() => handleBookingClick(booking)}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-muted shrink-0"
-                        >
-                          <Info className="h-4 w-4 stroke-[1.75]" />
-                        </button>
+
+                        {/* 2x2 Info Grid Box */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-muted/20 border border-slate-200/80 dark:border-border/60 grid grid-cols-2 gap-3.5 text-xs shadow-2xs">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              ROOM
+                            </span>
+                            <span className="font-bold text-foreground text-xs block truncate">
+                              {room?.name || "Room"}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground block truncate">
+                              {area?.name || "First Floor"}
+                            </span>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              DATE & TIME
+                            </span>
+                            <span className="font-bold text-foreground text-xs block truncate">
+                              {format(startTime, "MMM d, yyyy")}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground block truncate">
+                              {format(startTime, "h:mm a")} – {format(endTime, "h:mm a")}
+                            </span>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              MINISTRY
+                            </span>
+                            <span className="font-bold text-foreground text-xs block truncate">
+                              {ministryName}
+                            </span>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              CREATED
+                            </span>
+                            <span className="font-bold text-foreground text-xs block truncate">
+                              {format(createdDate, "MMM d, yyyy")}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );

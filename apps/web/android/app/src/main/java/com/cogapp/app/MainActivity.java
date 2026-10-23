@@ -25,6 +25,7 @@ public class MainActivity extends BridgeActivity {
                 settings.setRenderPriority(WebSettings.RenderPriority.HIGH);
                 settings.setOffscreenPreRaster(true);
                 settings.setAllowFileAccess(true);
+                settings.setMediaPlaybackRequiresUserGesture(false);
             }
         } catch (Exception ignored) {}
     }

@@ -563,20 +563,6 @@ function MealsPageContent() {
                 : "Issue, claim and audit daily meal allocations across every worker type — all from one place."}
             </p>
           </div>
-          {activeTab !== "reports" && (canOperateScanner || isSuperAdmin || isMealStubAssigner || canManageAllMealStubs) && (
-            <div className="flex items-center gap-2 self-end sm:self-auto">
-              <Link href="/mealstub/scanner">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-3.5 text-xs font-semibold rounded-xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <ScanLine className="h-3.5 w-3.5 text-primary" />
-                  <span>Scanner</span>
-                </Button>
-              </Link>
-            </div>
-          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -621,19 +607,19 @@ function MealsPageContent() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-sidebar hover:bg-sidebar border-b border-sidebar-border/40">
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-left leading-tight py-2">
                           CLAIMANT / WORKER
                         </TableHead>
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left leading-tight py-2">
                           DATE
                         </TableHead>
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left leading-tight py-2">
                           TYPE & QTY
                         </TableHead>
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-4 text-left leading-tight py-2">
                           TIME
                         </TableHead>
-                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-center">
+                        <TableHead className="bg-sidebar font-bold text-white text-[11px] uppercase tracking-wider h-12 px-6 text-center leading-tight py-2">
                           STATUS
                         </TableHead>
                       </TableRow>
@@ -674,25 +660,17 @@ function MealsPageContent() {
                               (stub.worker
                                 ? `${stub.worker.firstName} ${stub.worker.lastName}`
                                 : "Worker");
-                            const isMe =
-                              stub.workerId === currentWorkerId ||
-                              stub.worker?.id === currentWorkerId;
 
                             return (
                               <TableRow
                                 key={stub.id}
                                 className="hover:bg-gray-50/60 dark:hover:bg-muted/30 border-b border-gray-100 dark:border-border/60 transition-colors"
                               >
-                                <TableCell className="py-4 px-6 text-xs text-foreground align-middle">
+                                <TableCell className="py-4 px-6 text-xs text-foreground align-middle whitespace-nowrap">
                                   <div className="flex items-center gap-2">
-                                    <span className="font-bold text-foreground">
+                                    <span className="font-bold text-foreground whitespace-nowrap">
                                       {claimantName}
                                     </span>
-                                    {isMe && (
-                                      <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.2 shrink-0">
-                                        You
-                                      </span>
-                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell className="py-4 px-4 font-semibold text-xs text-foreground align-middle whitespace-nowrap">

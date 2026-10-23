@@ -65,7 +65,7 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
               <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground font-headline">
                 Manage {departmentName}
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground truncate">
+              <DialogDescription className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                 Assign a department head and update allocations for the {departmentName} department.
               </DialogDescription>
             </div>
@@ -318,7 +318,7 @@ export default function DepartmentManagementPage() {
           </div>
           <Link
             href="/settings"
-            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-start sm:self-auto sm:ml-auto"
+            className="flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-xl border border-border/60 bg-white dark:bg-card text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors shrink-0 shadow-2xs self-end sm:self-auto sm:ml-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>

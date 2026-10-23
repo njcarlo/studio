@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@stud
 import { Button } from "@studio/ui";
 import {
   LoaderCircle, GanttChartSquare, CheckCircle2, XCircle, Clock, Calendar,
-  Search, MoreHorizontal, Eye,
+  Search, MoreHorizontal, Eye, X,
   LayoutList, LayoutGrid, KanbanSquare,
 } from "lucide-react";
 import { Input, Checkbox } from "@studio/ui";
@@ -111,7 +111,7 @@ function StatCard({
 export const WORDA_MINISTRIES_BY_DEPT = {
   Worship: ["whitelight", "dance", "pmt", "crusade", "singers", "musicians", "audio"],
   Outreach: ["cluster 1", "cluster 2", "cluster 3", "cluster 4", "cluster 5", "cluster 6", "cluster 7", "cluster 8", "cluster 9", "weyj", "tapat"],
-  Relationship: ["sports", "gem", "ushering", "mens", "ladies", "youth empowered", "young adults"],
+  Relationship: ["sports", "gem", "ushering", "mens", "ladies", "youth empowered", "young adults", "worker"],
   Discipleship: ["j12", "oneliner", "cldp", "kid", "children's ministry", "life institute", "kca"],
   Administration: ["arts", "engineering", "finance", "in house", "linkages", "security and shuttle", "technology", "ventures"],
 };
@@ -220,6 +220,13 @@ export default function ApprovalsPage() {
   const [viewMode, setViewMode] = useState<"table" | "cards" | "kanban">("table");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<{ action: "Approved" | "Rejected"; ids: string[] } | null>(null);
+
+  const isAdmin = Boolean(
+    isSuperAdmin ||
+    canApproveAllRequests ||
+    (workerProfile as any)?.role === "Administrator" ||
+    (workerProfile as any)?.role === "Super Admin"
+  );
 
   // Only Room Booking requests belong in Approvals
   const roomBookingRequests = useMemo(() => {
@@ -1039,7 +1046,16 @@ export default function ApprovalsPage() {
 
       {/* Confirm dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={open => !open && setConfirmAction(null)}>
-        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+        <AlertDialogContent className="relative max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => setConfirmAction(null)}
+            className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground/80 hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+
           <div
             className={cn(
               "w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-2 border shadow-xs",
@@ -1092,6 +1108,7 @@ export default function ApprovalsPage() {
         requesterWorker={workers?.find(w => w.id === selectedRequest?.workerId)}
         onOpenChange={open => { if (!open) setSelectedRequest(null); }}
         canManage={selectedRequest ? checkCanManage(selectedRequest) : false}
+        isAdmin={isAdmin}
         onApprove={(id) => {
           setSelectedRequest(null);
           setConfirmAction({ action: "Approved", ids: [id] });

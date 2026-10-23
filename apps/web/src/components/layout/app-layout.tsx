@@ -22,8 +22,6 @@ import {
   Calendar as CalendarIcon,
   Menu,
   QrCode,
-  UtensilsCrossed,
-  UserCheck,
   Package,
   HeartHandshake,
 } from "lucide-react";
@@ -274,7 +272,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
 
     // 3. Worker Account:
-    // Home, My QR, Rooms, Meal Stub, Attendance, C2S
+    // Home, My QR, Rooms, C2S (matching MH)
     return [
       {
         id: "home",
@@ -296,20 +294,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         icon: CalendarIcon,
         href: "/reservations/my",
         isActive: currentPathname.startsWith("/reservations"),
-      },
-      {
-        id: "meals",
-        label: "Meal Stub",
-        icon: UtensilsCrossed,
-        href: "/meals?tab=view",
-        isActive: currentPathname.startsWith("/meals") || currentPathname.startsWith("/mealstub"),
-      },
-      {
-        id: "attendance",
-        label: "Attendance",
-        icon: UserCheck,
-        href: "/attendance?tab=personal",
-        isActive: currentPathname.startsWith("/attendance"),
       },
       {
         id: "c2s",

@@ -9,8 +9,6 @@ import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { EmailService } from '@/services/email-service';
 import { type AttendanceShiftSettings, DEFAULT_ATTENDANCE_SETTINGS } from '@/lib/attendance-config';
 
-export type { AttendanceShiftSettings };
-
 const DEPARTMENT_NAME_TO_CODE: Record<string, string> = {
     Worship: 'W',
     Outreach: 'O',
@@ -1247,6 +1245,155 @@ export async function updateWorker(id: string, data: any) {
     return worker;
 }
 
+export async function getEmailChangeStatus(workerId: string) {
+    if (!workerId) return { remaining: 2, totalAllowed: 2, countThisMonth: 0 };
+    const worker = await prisma.worker.findUnique({
+        where: { id: workerId },
+        select: { remarks: true, email: true },
+    });
+    if (!worker) return { remaining: 2, totalAllowed: 2, countThisMonth: 0 };
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    const matches = (worker.remarks || '').match(/\[EMAIL_CHANGED:\s*([^\]]+)\]/g) || [];
+    let count = 0;
+    for (const m of matches) {
+        const rawDate = m.replace(/\[EMAIL_CHANGED:\s*/, '').replace(/\].*/, '').trim().split(' to ')[0];
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime()) && d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+            count++;
+        }
+    }
+    const remaining = Math.max(0, 2 - count);
+    return {
+        remaining,
+        totalAllowed: 2,
+        countThisMonth: count,
+        currentEmail: worker.email,
+    };
+}
+
+export async function updateWorkerProfileSettings(workerId: string, data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+}) {
+    if (!workerId) {
+        return { success: false, error: 'Worker profile ID is required.' };
+    }
+
+    const worker = await prisma.worker.findUnique({
+        where: { id: workerId },
+    });
+    if (!worker) {
+        return { success: false, error: 'Worker profile not found.' };
+    }
+
+    let newEmail = worker.email;
+    let isEmailChanging = false;
+    let updatedRemarks = worker.remarks || '';
+
+    if (data.email && data.email.trim().toLowerCase() !== worker.email.toLowerCase()) {
+        const trimmedEmail = data.email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+            return { success: false, error: 'Please enter a valid email address.' };
+        }
+
+        const conflict = await prisma.worker.findFirst({
+            where: {
+                email: { equals: trimmedEmail, mode: 'insensitive' },
+                id: { not: workerId },
+            },
+        });
+        if (conflict) {
+            return { success: false, error: 'This email is already in use by another worker.' };
+        }
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        const matches = (worker.remarks || '').match(/\[EMAIL_CHANGED:\s*([^\]]+)\]/g) || [];
+        let countThisMonth = 0;
+        for (const m of matches) {
+            const rawDate = m.replace(/\[EMAIL_CHANGED:\s*/, '').replace(/\].*/, '').trim().split(' to ')[0];
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime()) && d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+                countThisMonth++;
+            }
+        }
+
+        if (countThisMonth >= 2) {
+            return {
+                success: false,
+                error: 'Email change limit reached. You can only change your email address 2 times per month.',
+                remainingChanges: 0,
+            };
+        }
+
+        const logEntry = `[EMAIL_CHANGED: ${now.toISOString()} to ${trimmedEmail}]`;
+        updatedRemarks = updatedRemarks ? `${updatedRemarks}\n${logEntry}` : logEntry;
+        newEmail = trimmedEmail;
+        isEmailChanging = true;
+    }
+
+    const updatePayload: any = {
+        remarks: updatedRemarks,
+    };
+    if (data.firstName?.trim()) updatePayload.firstName = data.firstName.trim();
+    if (data.lastName?.trim()) updatePayload.lastName = data.lastName.trim();
+    if (isEmailChanging) updatePayload.email = newEmail;
+
+    const updatedWorker = await prisma.worker.update({
+        where: { id: workerId },
+        data: updatePayload,
+    });
+
+    try {
+        const supabaseAdmin = getSupabaseAdminClient();
+        const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
+        const existingAuth = authList?.users?.find(
+            (u) => u.email?.toLowerCase() === worker.email.toLowerCase() || u.id === worker.id
+        );
+        if (existingAuth) {
+            const authUpdatePayload: any = {
+                user_metadata: {
+                    ...(existingAuth.user_metadata || {}),
+                    firstName: updatedWorker.firstName,
+                    lastName: updatedWorker.lastName,
+                },
+            };
+            if (isEmailChanging) {
+                authUpdatePayload.email = newEmail;
+                authUpdatePayload.email_confirm = true;
+            }
+            await supabaseAdmin.auth.admin.updateUserById(existingAuth.id, authUpdatePayload);
+        }
+    } catch (authErr) {
+        console.error('[updateWorkerProfileSettings] Auth sync warning:', authErr);
+    }
+
+    invalidateServerCache('workers');
+    invalidateServerCache('worker_stats');
+    revalidatePath('/workers');
+    revalidatePath('/my-settings');
+    revalidatePath('/profile');
+
+    const status = await getEmailChangeStatus(workerId);
+
+    return {
+        success: true,
+        worker: updatedWorker,
+        remainingChanges: status.remaining,
+        emailChanged: isEmailChanging,
+        message: isEmailChanging
+            ? `Profile updated. You have ${status.remaining} email change${status.remaining === 1 ? '' : 's'} remaining this month.`
+            : 'Profile updated successfully.',
+    };
+}
+
 export async function regenerateWorkerQrToken(identifier: string, customToken?: string) {
     const newToken = customToken || (Math.random().toString(36).slice(2) + Date.now().toString(36));
 
@@ -1715,14 +1862,37 @@ export async function getBookings(filters: {
 }
 
 export async function getBookingsForRoomOnDate(roomId: string, date: Date | string) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    let year: number;
+    let month: number;
+    let day: number;
+
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        const parts = date.split('-').map(Number);
+        year = parts[0];
+        month = parts[1];
+        day = parts[2];
+    } else {
+        const d = new Date(date);
+        // Manila is UTC+8: compute calendar date in Asia/Manila
+        const manilaTime = new Date(d.getTime() + 8 * 60 * 60 * 1000);
+        year = manilaTime.getUTCFullYear();
+        month = manilaTime.getUTCMonth() + 1;
+        day = manilaTime.getUTCDate();
+    }
+
+    // Manila day range in UTC
+    const startOfManilaDayUTC = new Date(Date.UTC(year, month - 1, day, 0 - 8, 0, 0, 0));
+    const endOfManilaDayUTC = new Date(Date.UTC(year, month - 1, day, 23 - 8, 59, 59, 999));
+
     return prisma.booking.findMany({
         where: {
             roomId,
-            start: { gte: startOfDay, lte: endOfDay },
+            status: { notIn: ['Rejected', 'Cancelled'] },
+            start: { lt: endOfManilaDayUTC },
+            end: { gt: startOfManilaDayUTC },
+        },
+        orderBy: {
+            start: 'asc',
         },
     });
 }
@@ -1785,52 +1955,72 @@ export async function submitRoomReservation(data: {
     const { bookingData, approvalData } = data;
     const { roomId, start, end } = bookingData;
 
-    // 1. Fast database-indexed conflict check
-    if (start && end && roomId) {
-        const conflicting = await prisma.booking.findFirst({
-            where: {
-                roomId,
-                status: { not: 'Rejected' },
-                start: { lt: new Date(end) },
-                end: { gt: new Date(start) },
-            },
-            select: { id: true, name: true, status: true },
-        });
-
-        if (conflicting) {
-            throw new Error(
-                `This room is already reserved (${conflicting.status}) by ${conflicting.name || 'another user'} for this time slot.`
-            );
-        }
-    }
-
-    // 2. Create the booking record
-    const booking = await createBooking(bookingData);
-
-    // 3. Create the approval request if provided
-    let approval: any = null;
-    if (booking?.id && approvalData) {
-        approval = await prisma.approvalRequest.create({
-            data: {
-                ...approvalData,
-                reservationId: booking.id,
-                date: new Date(),
-            },
-        });
-
-        // 4. Fire background email notification asynchronously (non-blocking)
-        void NotificationService.notifyNewRequest(approval).catch(err => {
-            console.error('[submitRoomReservation] Background notification error:', err);
-        });
-    }
-
     try {
-        revalidatePath('/reservations');
-        revalidatePath('/dashboard');
-        revalidatePath('/approvals');
-    } catch { }
+        // 1. Fast database-indexed conflict check
+        if (start && end && roomId) {
+            const conflicting = await prisma.booking.findFirst({
+                where: {
+                    roomId,
+                    status: { notIn: ['Rejected', 'Cancelled'] },
+                    start: { lt: new Date(end) },
+                    end: { gt: new Date(start) },
+                },
+                select: { id: true, name: true, status: true },
+            });
 
-    return { booking, approval };
+            if (conflicting) {
+                return {
+                    success: false,
+                    error: `This room is already reserved (${conflicting.status}) by ${conflicting.name || 'another user'} for this time slot.`,
+                };
+            }
+        }
+
+        // Check if requester is Admin or Ministry Head — if so, bypass MH approval and go directly to Admin approval
+        if (bookingData.workerProfileId) {
+            const access = await getActorMinistryAccess(bookingData.workerProfileId);
+            if (access.isSuperAdmin || access.isMinistryHead) {
+                bookingData.status = 'Pending Admin Approval';
+                if (approvalData) {
+                    approvalData.status = 'Pending Admin Approval';
+                }
+            }
+        }
+
+        // 2. Create the booking record
+        const booking = await createBooking(bookingData);
+
+        // 3. Create the approval request if provided
+        let approval: any = null;
+        if (booking?.id && approvalData) {
+            approval = await prisma.approvalRequest.create({
+                data: {
+                    ...approvalData,
+                    reservationId: booking.id,
+                    date: new Date(),
+                },
+            });
+
+            // 4. Fire background email notification asynchronously (non-blocking)
+            void NotificationService.notifyNewRequest(approval).catch(err => {
+                console.error('[submitRoomReservation] Background notification error:', err);
+            });
+        }
+
+        try {
+            revalidatePath('/reservations');
+            revalidatePath('/dashboard');
+            revalidatePath('/approvals');
+        } catch { }
+
+        return { success: true, booking, approval };
+    } catch (err: any) {
+        console.error('[submitRoomReservation] Error:', err);
+        return {
+            success: false,
+            error: err.message || 'Failed to submit reservation.',
+        };
+    }
 }
 
 export async function updateBooking(id: string, data: any, actorId?: string) {
@@ -2431,14 +2621,52 @@ export async function createRooms(data: any[]) {
     revalidatePath('/settings/rooms');
 }
 
+function getFloorRank(name: string): number {
+    const lower = (name || '').toLowerCase().trim();
+    if (lower.includes('basement 2') || lower.includes('b2')) return -2;
+    if (lower.includes('basement') || lower.includes('b1')) return -1;
+    if (lower.includes('ground') || lower.includes('lower ground') || lower.includes('ug') || lower.includes('lg') || lower.includes('g/f') || lower.includes('gf')) return 0;
+
+    const ordinalMap: Record<string, number> = {
+        'first': 1, '1st': 1, 'one': 1,
+        'second': 2, '2nd': 2, 'two': 2,
+        'third': 3, '3rd': 3, 'three': 3,
+        'fourth': 4, '4th': 4, 'four': 4,
+        'fifth': 5, '5th': 5, 'five': 5,
+        'sixth': 6, '6th': 6, 'six': 6,
+        'seventh': 7, '7th': 7, 'seven': 7,
+        'eighth': 8, '8th': 8, 'eight': 8,
+        'ninth': 9, '9th': 9, 'nine': 9,
+        'tenth': 10, '10th': 10, 'ten': 10,
+        'eleventh': 11, '11th': 11,
+        'twelfth': 12, '12th': 12,
+    };
+
+    for (const [key, val] of Object.entries(ordinalMap)) {
+        const regex = new RegExp(`\\b${key}\\b`, 'i');
+        if (regex.test(lower)) return val;
+    }
+
+    const numMatch = lower.match(/(\d+)/);
+    if (numMatch) {
+        return parseInt(numMatch[1], 10);
+    }
+
+    if (lower.includes('roof') || lower.includes('deck') || lower.includes('penthouse')) return 999;
+    return 100;
+}
+
 export async function getAreas() {
-    return await prisma.area.findMany({
+    const areas = await prisma.area.findMany({
         include: {
             branch: true,
         },
-        orderBy: {
-            name: 'asc',
-        },
+    });
+    return areas.sort((a, b) => {
+        const rankA = getFloorRank(a.name || a.areaId || '');
+        const rankB = getFloorRank(b.name || b.areaId || '');
+        if (rankA !== rankB) return rankA - rankB;
+        return (a.name || '').localeCompare(b.name || '');
     });
 }
 
@@ -2785,13 +3013,17 @@ export async function deleteC2SMentee(id: string) {
         where: { menteeIds: { has: id } },
         select: { id: true, menteeIds: true },
     });
-    for (const g of groups) {
-        await prisma.c2SGroup.update({
-            where: { id: g.id },
-            data: {
-                menteeIds: g.menteeIds.filter((mId) => mId !== id),
-            },
-        });
+    if (groups.length > 0) {
+        await Promise.all(
+            groups.map((g) =>
+                prisma.c2SGroup.update({
+                    where: { id: g.id },
+                    data: {
+                        menteeIds: g.menteeIds.filter((mId) => mId !== id),
+                    },
+                })
+            )
+        );
     }
 
     await prisma.c2SMentee.delete({ where: { id } });
@@ -2908,22 +3140,19 @@ export async function createC2SDevotionRecord(data: {
     let uploadedPhotoUrls: string[] = [];
     if (data.photoUrls && data.photoUrls.length > 0) {
         const { uploadBase64ToSupabase } = await import('@/lib/upload-to-supabase');
-        for (const photoUrl of data.photoUrls) {
-            if (photoUrl.startsWith('data:image')) {
-                // This is a base64 string, upload to Supabase
-                try {
-                    const publicUrl = await uploadBase64ToSupabase(photoUrl, 'Devotion-Photos', 'c2s');
-                    uploadedPhotoUrls.push(publicUrl);
-                } catch (error) {
-                    console.error('Error uploading photo to Supabase:', error);
-                    // Fallback to base64 if upload fails
-                    uploadedPhotoUrls.push(photoUrl);
+        uploadedPhotoUrls = await Promise.all(
+            data.photoUrls.map(async (photoUrl) => {
+                if (photoUrl.startsWith('data:image')) {
+                    try {
+                        return await uploadBase64ToSupabase(photoUrl, 'Devotion-Photos', 'c2s');
+                    } catch (error) {
+                        console.error('Error uploading photo to Supabase:', error);
+                        return photoUrl;
+                    }
                 }
-            } else {
-                // Already a URL, keep it
-                uploadedPhotoUrls.push(photoUrl);
-            }
-        }
+                return photoUrl;
+            })
+        );
     } else if (data.photoUrl && data.photoUrl.startsWith('data:image')) {
         // Upload single photo
         const { uploadBase64ToSupabase } = await import('@/lib/upload-to-supabase');

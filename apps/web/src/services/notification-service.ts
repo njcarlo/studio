@@ -42,8 +42,8 @@ export class NotificationService {
      * Resolves email addresses of users who should be notified.
      */
     private static async resolveRecipients(request: ApprovalRequest): Promise<string[]> {
-        // 1. If it's a Room Booking, notified the Ministry Approver if set
-        if (request.type === 'Room Booking' && request.reservationId) {
+        // 1. If it's a Room Booking pending Ministry Head approval, notify the Ministry Approver if set
+        if (request.type === 'Room Booking' && request.reservationId && request.status === 'Pending Ministry Approval') {
             const booking = await prisma.booking.findUnique({
                 where: { id: request.reservationId },
             });
@@ -197,6 +197,7 @@ export class NotificationService {
 
         // 6. Resolve Ministry Name & Department
         let ministryName = 'General';
+        let departmentName = 'General';
         const minId = booking?.ministryId || worker?.majorMinistryId || approval?.newMajorId || approval?.oldMajorId;
         if (minId) {
             const ministry = await prisma.ministry.findUnique({
@@ -204,9 +205,22 @@ export class NotificationService {
                 include: { department: true },
             });
             if (ministry) {
-                ministryName = ministry.department?.name
-                    ? `${ministry.name} (${ministry.department.name})`
-                    : ministry.name;
+                ministryName = ministry.name;
+                departmentName = ministry.department?.name || 'General';
+            }
+        }
+        if (departmentName === 'General') {
+            if ((worker as any)?.department) {
+                departmentName = (worker as any).department;
+            } else if ((worker as any)?.departmentCode) {
+                const codeMap: Record<string, string> = {
+                    W: 'Worship',
+                    O: 'Outreach',
+                    R: 'Relationship',
+                    D: 'Discipleship',
+                    A: 'Administration',
+                };
+                departmentName = codeMap[(worker as any).departmentCode.toUpperCase()] || 'General';
             }
         }
 
@@ -247,7 +261,8 @@ Request ID: ${requestId}
 Room: ${roomName}
 Date: ${reservationDate}
 Time: ${timeStr}
-Ministry/Department: ${ministryName}
+Ministry: ${ministryName}
+Department: ${departmentName}
 Purpose: ${purpose}
 Status: APPROVED
 
@@ -287,33 +302,37 @@ Room Reservation Management System
                         
                         <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                             <tr>
-                                <td style="padding: 6px 0; color: #64748b; width: 42%; font-weight: 500;">Request ID:</td>
-                                <td style="padding: 6px 0; color: #0f172a; font-weight: 700; font-family: monospace;">${requestId}</td>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Request ID:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; font-family: monospace; vertical-align: middle;">${requestId}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Room:</td>
-                                <td style="padding: 6px 0; color: #0f172a; font-weight: 700;">${roomName}</td>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Room:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; vertical-align: middle;">${roomName}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Date:</td>
-                                <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${reservationDate}</td>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Date:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${reservationDate}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Time:</td>
-                                <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${timeStr}</td>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Time:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${timeStr}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Ministry/Department:</td>
-                                <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${ministryName}</td>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Ministry:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${ministryName}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Purpose:</td>
-                                <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${purpose}</td>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Department:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${departmentName}</td>
                             </tr>
                             <tr>
-                                <td style="padding: 6px 0; color: #64748b; font-weight: 500;">Status:</td>
-                                <td style="padding: 6px 0;">
-                                    <span style="display: inline-block; background-color: #dcfce7; color: #15803d; font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 6px; border: 1px solid #86efac;">
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Purpose:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${purpose}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Status:</td>
+                                <td style="padding: 8px 0; vertical-align: middle;">
+                                    <span style="display: inline-block; background-color: #dcfce7; color: #15803d; font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 6px; border: 1px solid #86efac; text-transform: uppercase;">
                                         APPROVED
                                     </span>
                                 </td>

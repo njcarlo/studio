@@ -69,6 +69,7 @@ async function main() {
     { id: 'R-LADIES', name: 'Ladies', deptCode: 'R', weight: 5 },
     { id: 'R-YOUTHEMPOWERED', name: 'Youth Empowered', deptCode: 'R', weight: 6 },
     { id: 'R-YOUNGADULTS', name: 'Young Adults', deptCode: 'R', weight: 7 },
+    { id: 'R-WORKER', name: 'Worker', deptCode: 'R', weight: 8 },
 
     // DISCIPLESHIP
     { id: 'D-J12', name: 'J12', deptCode: 'D', weight: 1 },

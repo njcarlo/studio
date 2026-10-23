@@ -160,7 +160,7 @@ const fmtId = (id: string | null | undefined) => {
 export const WORDA_DEPARTMENTS: Record<string, string[]> = {
   Worship: ["whitelight", "white light", "dance", "pmt", "crusade", "singers", "musicians", "audio"],
   Outreach: ["cluster", "weyj", "tapat"],
-  Relationship: ["sports", "gem", "ushering", "mens", "men's", "ladies", "youth empowered", "young adults"],
+  Relationship: ["sports", "gem", "ushering", "mens", "men's", "ladies", "youth empowered", "young adults", "worker"],
   Discipleship: ["j12", "oneliner", "one liner", "cldp", "kid", "children", "life institute", "kca"],
   Administration: ["arts", "engineering", "finance", "in house", "in-house", "linkages", "security and shuttle", "security & shuttle", "technology", "ventures"],
 };
@@ -522,59 +522,62 @@ function AttendanceTab() {
             )}
           </div>
 
-          {/* Ministry */}
-          <Select value={ministryFilter} onValueChange={v => { setMinistryFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-10 w-[150px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-              <SelectValue placeholder="All Ministries" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-              <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
-              {filteredMinistries.map(m => (
-                <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Equalized Dropdowns Grid */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
+            {/* Ministry */}
+            <Select value={ministryFilter} onValueChange={v => { setMinistryFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-10 w-full sm:w-[150px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                <SelectValue placeholder="All Ministries" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
+                {filteredMinistries.map(m => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Worker Type */}
-          <Select value={workerTypeFilter} onValueChange={v => { setWorkerTypeFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-10 w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-              <SelectValue placeholder="Worker Type" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-              <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Types</SelectItem>
-              <SelectItem value="Full-Time" className="text-xs font-medium cursor-pointer">Full-Time</SelectItem>
-              <SelectItem value="Part-Time" className="text-xs font-medium cursor-pointer">Part-Time</SelectItem>
-              <SelectItem value="Volunteer" className="text-xs font-medium cursor-pointer">Volunteer</SelectItem>
-              <SelectItem value="On-Call" className="text-xs font-medium cursor-pointer">On-Call</SelectItem>
-            </SelectContent>
-          </Select>
+            {/* Worker Type */}
+            <Select value={workerTypeFilter} onValueChange={v => { setWorkerTypeFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-10 w-full sm:w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                <SelectValue placeholder="Worker Type" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Types</SelectItem>
+                <SelectItem value="Full-Time" className="text-xs font-medium cursor-pointer">Full-Time</SelectItem>
+                <SelectItem value="Part-Time" className="text-xs font-medium cursor-pointer">Part-Time</SelectItem>
+                <SelectItem value="Volunteer" className="text-xs font-medium cursor-pointer">Volunteer</SelectItem>
+                <SelectItem value="On-Call" className="text-xs font-medium cursor-pointer">On-Call</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {/* Status Filter Dropdown */}
-          <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
-            <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-              <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Statuses ({tabCounts.all})</SelectItem>
-              <SelectItem value="present" className="text-xs font-medium cursor-pointer">Present ({tabCounts.present})</SelectItem>
-              <SelectItem value="late" className="text-xs font-medium cursor-pointer">Late ({tabCounts.late})</SelectItem>
-              <SelectItem value="absent" className="text-xs font-medium cursor-pointer">Absent ({tabCounts.absent})</SelectItem>
-              <SelectItem value="incomplete" className="text-xs font-medium cursor-pointer">Incomplete ({tabCounts.incomplete})</SelectItem>
-            </SelectContent>
-          </Select>
+            {/* Status Filter Dropdown */}
+            <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+              <SelectTrigger className="h-10 w-full sm:w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Statuses ({tabCounts.all})</SelectItem>
+                <SelectItem value="present" className="text-xs font-medium cursor-pointer">Present ({tabCounts.present})</SelectItem>
+                <SelectItem value="late" className="text-xs font-medium cursor-pointer">Late ({tabCounts.late})</SelectItem>
+                <SelectItem value="absent" className="text-xs font-medium cursor-pointer">Absent ({tabCounts.absent})</SelectItem>
+                <SelectItem value="incomplete" className="text-xs font-medium cursor-pointer">Incomplete ({tabCounts.incomplete})</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {/* Range */}
-          <Select value={range} onValueChange={(v: any) => { setRange(v); setPage(1); }}>
-            <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-              <SelectValue placeholder="Range" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-              <SelectItem value="today" className="text-xs font-medium cursor-pointer">Today</SelectItem>
-              <SelectItem value="this-week" className="text-xs font-medium cursor-pointer">This Week</SelectItem>
-              <SelectItem value="this-month" className="text-xs font-medium cursor-pointer">This Month</SelectItem>
-              <SelectItem value="all-time" className="text-xs font-medium cursor-pointer">All Time</SelectItem>
-            </SelectContent>
-          </Select>
+            {/* Range */}
+            <Select value={range} onValueChange={(v: any) => { setRange(v); setPage(1); }}>
+              <SelectTrigger className="h-10 w-full sm:w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                <SelectValue placeholder="Range" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                <SelectItem value="today" className="text-xs font-medium cursor-pointer">Today</SelectItem>
+                <SelectItem value="this-week" className="text-xs font-medium cursor-pointer">This Week</SelectItem>
+                <SelectItem value="this-month" className="text-xs font-medium cursor-pointer">This Month</SelectItem>
+                <SelectItem value="all-time" className="text-xs font-medium cursor-pointer">All Time</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Table Container */}
@@ -948,44 +951,47 @@ function MealStubClaimsTab() {
               )}
             </div>
 
-            {/* Ministry */}
-            <Select value={ministryFilter} onValueChange={v => { setMinistryFilter(v); setPage(1); }}>
-              <SelectTrigger className="h-10 w-[140px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                <SelectValue placeholder="All Ministries" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
-                {filteredMinistries.map(m => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Equalized Dropdowns Grid */}
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
+              {/* Ministry */}
+              <Select value={ministryFilter} onValueChange={v => { setMinistryFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-10 w-full sm:w-[140px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <SelectValue placeholder="All Ministries" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                  <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
+                  {filteredMinistries.map(m => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {/* Worker Type */}
-            <Select value={workerTypeFilter} onValueChange={v => { setWorkerTypeFilter(v); setPage(1); }}>
-              <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                <SelectValue placeholder="Worker Type" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Types</SelectItem>
-                <SelectItem value="Full-Time" className="text-xs font-medium cursor-pointer">Full-Time</SelectItem>
-                <SelectItem value="Part-Time" className="text-xs font-medium cursor-pointer">Part-Time</SelectItem>
-                <SelectItem value="Volunteer" className="text-xs font-medium cursor-pointer">Volunteer</SelectItem>
-                <SelectItem value="On-Call" className="text-xs font-medium cursor-pointer">On-Call</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Worker Type */}
+              <Select value={workerTypeFilter} onValueChange={v => { setWorkerTypeFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-10 w-full sm:w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <SelectValue placeholder="Worker Type" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                  <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Types</SelectItem>
+                  <SelectItem value="Full-Time" className="text-xs font-medium cursor-pointer">Full-Time</SelectItem>
+                  <SelectItem value="Part-Time" className="text-xs font-medium cursor-pointer">Part-Time</SelectItem>
+                  <SelectItem value="Volunteer" className="text-xs font-medium cursor-pointer">Volunteer</SelectItem>
+                  <SelectItem value="On-Call" className="text-xs font-medium cursor-pointer">On-Call</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* Status Filter Dropdown */}
-            <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
-              <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Statuses ({tabCounts.all})</SelectItem>
-                <SelectItem value="Claimed" className="text-xs font-medium cursor-pointer">Claimed ({tabCounts.claimed})</SelectItem>
-                <SelectItem value="Issued" className="text-xs font-medium cursor-pointer">Unclaimed ({tabCounts.unclaimed})</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Status Filter Dropdown */}
+              <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+                <SelectTrigger className="h-10 w-full sm:w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                  <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Statuses ({tabCounts.all})</SelectItem>
+                  <SelectItem value="Claimed" className="text-xs font-medium cursor-pointer">Claimed ({tabCounts.claimed})</SelectItem>
+                  <SelectItem value="Issued" className="text-xs font-medium cursor-pointer">Unclaimed ({tabCounts.unclaimed})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Table */}
@@ -1331,32 +1337,35 @@ function AllocationsTab() {
               )}
             </div>
 
-            {/* Ministry */}
-            <Select value={ministryFilter} onValueChange={v => { setMinistryFilter(v); setPage(1); }}>
-              <SelectTrigger className="h-10 w-[145px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                <SelectValue placeholder="All Ministries" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
-                {filteredMinistries.map(m => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Equalized Dropdowns Grid */}
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
+              {/* Ministry */}
+              <Select value={ministryFilter} onValueChange={v => { setMinistryFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-10 w-full sm:w-[145px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <SelectValue placeholder="All Ministries" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                  <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
+                  {filteredMinistries.map(m => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {/* Worker Type Filter */}
-            <Select value={workerTypeFilter} onValueChange={(val) => { setWorkerTypeFilter(val); setPage(1); }}>
-              <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Types ({tabCounts.all})</SelectItem>
-                <SelectItem value="Full-Time" className="text-xs font-medium cursor-pointer">Full-Time ({tabCounts["Full-Time"]})</SelectItem>
-                <SelectItem value="Part-Time" className="text-xs font-medium cursor-pointer">Part-Time ({tabCounts["Part-Time"]})</SelectItem>
-                <SelectItem value="Volunteer" className="text-xs font-medium cursor-pointer">Volunteer ({tabCounts["Volunteer"]})</SelectItem>
-                <SelectItem value="On-Call" className="text-xs font-medium cursor-pointer">On-Call ({tabCounts["On-Call"]})</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Worker Type Filter */}
+              <Select value={workerTypeFilter} onValueChange={(val) => { setWorkerTypeFilter(val); setPage(1); }}>
+                <SelectTrigger className="h-10 w-full sm:w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                  <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Types ({tabCounts.all})</SelectItem>
+                  <SelectItem value="Full-Time" className="text-xs font-medium cursor-pointer">Full-Time ({tabCounts["Full-Time"]})</SelectItem>
+                  <SelectItem value="Part-Time" className="text-xs font-medium cursor-pointer">Part-Time ({tabCounts["Part-Time"]})</SelectItem>
+                  <SelectItem value="Volunteer" className="text-xs font-medium cursor-pointer">Volunteer ({tabCounts["Volunteer"]})</SelectItem>
+                  <SelectItem value="On-Call" className="text-xs font-medium cursor-pointer">On-Call ({tabCounts["On-Call"]})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Table */}
@@ -1720,31 +1729,34 @@ function ReservationsTab() {
               )}
             </div>
 
-            {/* Ministry */}
-            <Select value={ministryFilter} onValueChange={v => { setMinistryFilter(v); setPage(1); }}>
-              <SelectTrigger className="h-10 w-[145px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                <SelectValue placeholder="All Ministries" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
-                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
-                {filteredMinistries.map(m => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Equalized Dropdowns Grid */}
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
+              {/* Ministry */}
+              <Select value={ministryFilter} onValueChange={v => { setMinistryFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-10 w-full sm:w-[145px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <SelectValue placeholder="All Ministries" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
+                  <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Ministries</SelectItem>
+                  {filteredMinistries.map(m => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs font-medium cursor-pointer">{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
-              <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
-                <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Statuses ({tabCounts.all})</SelectItem>
-                <SelectItem value="approved" className="text-xs font-medium cursor-pointer">Approved ({tabCounts.approved})</SelectItem>
-                <SelectItem value="pending" className="text-xs font-medium cursor-pointer">Pending ({tabCounts.pending})</SelectItem>
-                <SelectItem value="rejected" className="text-xs font-medium cursor-pointer">Rejected ({tabCounts.rejected})</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+                <SelectTrigger className="h-10 w-full sm:w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
+                  <SelectItem value="all" className="text-xs font-medium cursor-pointer">All Statuses ({tabCounts.all})</SelectItem>
+                  <SelectItem value="approved" className="text-xs font-medium cursor-pointer">Approved ({tabCounts.approved})</SelectItem>
+                  <SelectItem value="pending" className="text-xs font-medium cursor-pointer">Pending ({tabCounts.pending})</SelectItem>
+                  <SelectItem value="rejected" className="text-xs font-medium cursor-pointer">Rejected ({tabCounts.rejected})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Table */}
@@ -1969,7 +1981,7 @@ function ReportsContent() {
     <AppLayout>
       <div className="space-y-7 pb-12 w-full">
         {/* Header */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight text-foreground">
               {activeTab === "attendance"
@@ -1994,7 +2006,7 @@ function ReportsContent() {
                 : "Monitor attendance, meal stub usage, allocations, and room reservations across the organization."}
             </p>
           </div>
-          <div className="flex items-center justify-start">
+          <div className="flex items-center self-end sm:self-auto sm:ml-auto shrink-0">
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("reports:trigger-export"))}
               className="h-9 sm:h-10 px-3.5 sm:px-4 flex items-center gap-2 rounded-2xl bg-sidebar hover:bg-sidebar/90 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"

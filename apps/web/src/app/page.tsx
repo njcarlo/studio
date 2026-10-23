@@ -17,6 +17,7 @@ import {
   Radio,
   Youtube,
   Tv,
+  LoaderCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@studio/store";
@@ -27,20 +28,64 @@ import { LandingFooter } from "@/components/landing/landing-footer";
 export default function LandingPage() {
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
-  const [isNative, setIsNative] = useState<boolean | null>(null);
 
-  // APK Mobile Native Landing Guard: If opening from the APK, jump directly to login or dashboard
+  // Synchronously evaluate if running inside native mobile APK on initial client render
+  const [isNative, setIsNative] = useState<boolean>(() =>
+    typeof window !== "undefined" ? isNativeMobileApp() : false
+  );
+
+  // Synchronously check for cached authenticated user in localStorage
+  const getCachedAuthUser = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const rawStore = localStorage.getItem("cog_auth_user");
+      if (rawStore) {
+        const parsed = JSON.parse(rawStore);
+        if (parsed?.state?.user) return parsed.state.user;
+      }
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+          const rawToken = localStorage.getItem(key);
+          if (rawToken) {
+            const parsed = JSON.parse(rawToken);
+            if (parsed?.user) return parsed.user;
+          }
+        }
+      }
+    } catch {}
+    return null;
+  };
+
+  // APK Mobile Native Landing Guard: Immediately redirect without flashing the web landing page
   useEffect(() => {
     const native = isNativeMobileApp();
-    setIsNative(native);
-    if (native && !isUserLoading) {
-      if (user) {
+    if (native !== isNative) {
+      setIsNative(native);
+    }
+    if (native) {
+      const activeUser = user || getCachedAuthUser();
+      if (activeUser) {
+        router.replace("/dashboard");
+      } else if (!isUserLoading) {
+        router.replace("/login");
+      }
+    }
+  }, [isNative, user, isUserLoading, router]);
+
+  // Fast fallback for native APK: Ensure redirection within 150ms even if auth state is resolving
+  useEffect(() => {
+    if (!isNative) return;
+    const timer = setTimeout(() => {
+      const activeUser = user || getCachedAuthUser();
+      if (activeUser) {
         router.replace("/dashboard");
       } else {
         router.replace("/login");
       }
-    }
-  }, [user, isUserLoading, router]);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [isNative, user, router]);
   // Background Media Slider State (0: Image Slideshow, 1: Video)
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
@@ -215,7 +260,7 @@ export default function LandingPage() {
     },
   ];
 
-  if (isNative) {
+  if (isNative || (typeof window !== "undefined" && isNativeMobileApp())) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-black">
         <div className="flex flex-col items-center gap-3">

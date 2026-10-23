@@ -114,6 +114,7 @@ export default function InquiriesPage() {
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [archiveCandidate, setArchiveCandidate] = useState<Inquiry | null>(null);
+  const [restoreCandidate, setRestoreCandidate] = useState<Inquiry | null>(null);
   const [statusCandidate, setStatusCandidate] = useState<{
     inquiry: Inquiry;
     targetStatus: "Pending" | "Responded";
@@ -209,6 +210,7 @@ export default function InquiriesPage() {
         title: "Message Restored",
         description: "The message has been restored to Active messages.",
       });
+      setRestoreCandidate(null);
     },
     onError: (err: any) => {
       toast({
@@ -284,7 +286,7 @@ export default function InquiriesPage() {
       <div className="space-y-4 sm:space-y-6 pb-16 sm:pb-12">
         {/* Header Title & Actions */}
         <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-headline tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold font-headline tracking-tight text-foreground">
             Inquiries & Requests
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
@@ -550,7 +552,7 @@ export default function InquiriesPage() {
                                   </DropdownMenuItem>
                                 ) : (
                                   <DropdownMenuItem
-                                    onClick={() => unarchiveMutation.mutate(inquiry.id)}
+                                    onClick={() => setRestoreCandidate(inquiry)}
                                     className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
                                   >
                                     <ArchiveRestore className="w-4 h-4 text-emerald-500" />
@@ -777,7 +779,7 @@ export default function InquiriesPage() {
                                       </DropdownMenuItem>
                                     ) : (
                                       <DropdownMenuItem
-                                        onClick={() => unarchiveMutation.mutate(inquiry.id)}
+                                        onClick={() => setRestoreCandidate(inquiry)}
                                         className="cursor-pointer gap-2 rounded-lg text-xs font-medium py-2 text-foreground"
                                       >
                                         <ArchiveRestore className="w-4 h-4 text-emerald-500" />
@@ -801,87 +803,92 @@ export default function InquiriesPage() {
 
         {/* Enhanced View Details Dialog */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg p-0 overflow-hidden rounded-2xl border-border/80 shadow-2xl gap-0">
+          <DialogContent
+            className="w-[calc(100%-2.5rem)] max-w-md p-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 shadow-2xl gap-0 bg-background flex flex-col h-auto"
+            style={{
+              maxHeight: "min(540px, calc(100dvh - 140px))",
+            }}
+          >
             <DialogTitle className="sr-only">Message Details</DialogTitle>
             {selectedInquiry && (
               <>
-                {/* Modal Top Bar Header with Icon & Badge & Close Button */}
-                <div className="p-4 sm:p-5 pr-12 pb-3 sm:pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
+                {/* Modal Top Bar Header with Icon & Badge */}
+                <div className="p-4 sm:p-5 pr-12 pb-3.5 sm:pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs mt-0.5">
                       <MessageSquareHeart className="h-5 w-5" />
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                        <h2 className="text-base font-bold font-headline tracking-tight text-foreground whitespace-nowrap">
+                        <h2 className="text-base sm:text-lg font-bold font-headline tracking-tight text-foreground whitespace-nowrap">
                           Message Details
                         </h2>
                         {selectedInquiry.status === "Responded" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shadow-2xs shrink-0">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shadow-2xs shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                             Responded
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap shadow-2xs shrink-0">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap shadow-2xs shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                             Pending Response
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                         <span className="truncate">
-                          Received {format(parseDateSafe(selectedInquiry.createdAt), "MMM d, yyyy • h:mm a")} ({formatDistanceToNow(parseDateSafe(selectedInquiry.createdAt), { addSuffix: true })})
+                          Received {format(parseDateSafe(selectedInquiry.createdAt), "MMM d, yyyy • h:mm a")}
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Modal Body Content */}
-                <div className="p-4 sm:p-5 pb-5 sm:pb-6 space-y-3 sm:space-y-3.5 max-h-[75vh] overflow-y-auto">
-                  {/* Sender Information Card (Vertical layout, clean & spacious, never wraps awkwardly) */}
-                  <div className="p-3.5 sm:p-4 rounded-2xl border border-border/70 bg-card/60 space-y-3 shadow-2xs">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                {/* Modal Body Content with enhanced spacing */}
+                <div className="p-4 sm:p-5 space-y-3.5 sm:space-y-4 overflow-y-auto flex-1">
+                  {/* Sender Information Card */}
+                  <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-border/75 bg-slate-50/70 dark:bg-muted/20 space-y-3 shadow-2xs">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                       <User className="h-3.5 w-3.5 text-primary" />
                       <span>Sender Information</span>
                     </div>
 
-                    <div className="space-y-2.5 divide-y divide-border/40 pt-0.5">
+                    <div className="space-y-3 divide-y divide-border/40 pt-1">
                       {/* Full Name */}
-                      <div className="flex items-center gap-3 pt-1.5 first:pt-0">
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <div className="flex items-center gap-3.5 pt-2 first:pt-0">
+                        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 shadow-2xs">
                           <User className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-muted-foreground font-medium">Full Name</p>
-                          <p className="text-sm font-bold text-foreground break-words select-text">
+                          <p className="text-[11px] text-muted-foreground font-semibold">Full Name</p>
+                          <p className="text-sm font-bold text-foreground break-words select-text mt-0.5">
                             {selectedInquiry.name}
                           </p>
                         </div>
                       </div>
 
                       {/* Email Address */}
-                      <div className="flex items-center gap-3 pt-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                      <div className="flex items-center gap-3.5 pt-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20 shadow-2xs">
                           <Mail className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-muted-foreground font-medium">Email Address</p>
-                          <p className="text-sm font-semibold text-foreground break-all select-text">
+                          <p className="text-[11px] text-muted-foreground font-semibold">Email Address</p>
+                          <p className="text-sm font-semibold text-foreground break-all select-text mt-0.5">
                             {selectedInquiry.email}
                           </p>
                         </div>
                       </div>
 
                       {/* Contact Number */}
-                      <div className="flex items-center gap-3 pt-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <div className="flex items-center gap-3.5 pt-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-2xs">
                           <Phone className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-muted-foreground font-medium">Contact Number</p>
-                          <p className="text-sm font-semibold text-foreground select-text">
+                          <p className="text-[11px] text-muted-foreground font-semibold">Contact Number</p>
+                          <p className="text-sm font-semibold text-foreground select-text mt-0.5">
                             {selectedInquiry.phone ? (
                               <span>{selectedInquiry.phone}</span>
                             ) : (
@@ -896,12 +903,12 @@ export default function InquiriesPage() {
                   </div>
 
                   {/* Message Content Block */}
-                  <div className="p-4 rounded-2xl border border-border/70 bg-card/60 space-y-2 shadow-2xs">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  <div className="p-4 sm:p-5 rounded-2xl border border-border/75 bg-slate-50/70 dark:bg-muted/20 space-y-2.5 shadow-2xs">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                       <FileText className="h-3.5 w-3.5 text-primary" />
                       <span>Message / Request</span>
                     </div>
-                    <div className="p-3.5 rounded-xl bg-muted/30 border border-border/60 text-xs sm:text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap break-words min-h-[90px] select-text">
+                    <div className="p-3.5 sm:p-4 rounded-xl bg-background/90 dark:bg-card border border-border/70 text-xs sm:text-sm font-normal text-foreground leading-relaxed whitespace-pre-wrap break-words min-h-[72px] select-text shadow-2xs">
                       {selectedInquiry.message}
                     </div>
                   </div>
@@ -968,6 +975,76 @@ export default function InquiriesPage() {
               >
                 <Archive className="w-3.5 h-3.5" />
                 Archive Message
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Restore to Active Confirmation Dialog */}
+        <AlertDialog
+          open={!!restoreCandidate}
+          onOpenChange={(open) => !open && setRestoreCandidate(null)}
+        >
+          <AlertDialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg rounded-2xl p-5 sm:p-7 border border-border/80 shadow-2xl space-y-4 sm:space-y-5 bg-background">
+            <AlertDialogHeader className="space-y-2 pb-1 border-b border-border/40 text-left">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0 shadow-2xs">
+                    <ArchiveRestore className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <AlertDialogTitle className="text-xl font-bold font-headline text-foreground">
+                      Restore Message to Active?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-xs text-muted-foreground mt-0.5">
+                      Move this inquiry back to the active messages list.
+                    </AlertDialogDescription>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRestoreCandidate(null)}
+                  className="h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </button>
+              </div>
+            </AlertDialogHeader>
+
+            {restoreCandidate && (
+              <div className="rounded-2xl border border-border/70 bg-slate-50/60 dark:bg-muted/20 p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-foreground">{restoreCandidate.name}</span>
+                  <span className="text-[11px] text-muted-foreground">{restoreCandidate.email}</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white dark:bg-background border border-border/60 text-xs text-foreground leading-relaxed italic">
+                  "{restoreCandidate.message}"
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  This message will reappear under the Active Messages tab and can receive replies and updates.
+                </p>
+              </div>
+            )}
+
+            <AlertDialogFooter className="flex items-center justify-end gap-2.5 pt-2">
+              <AlertDialogCancel
+                onClick={() => setRestoreCandidate(null)}
+                className="h-10 rounded-xl px-4 sm:px-5 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (restoreCandidate) {
+                    unarchiveMutation.mutate(restoreCandidate.id);
+                  }
+                }}
+                disabled={unarchiveMutation.isPending}
+                className="h-10 rounded-xl px-4 sm:px-5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <ArchiveRestore className="w-3.5 h-3.5" />
+                Restore to Active
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

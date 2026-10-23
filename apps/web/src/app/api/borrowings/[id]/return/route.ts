@@ -87,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           type: 'Return',
           quantity: returnedQty,
           balance: newStock,
-          notes: `Returned by ${borrowerName}. Condition: ${returnCondition || 'N/A'}${isDamagedItem ? ' — DAMAGED (Requires Maintenance Inspection)' : ''}${processedPhotos.length > 0 ? ` [${processedPhotos.length} Damage Photo(s) Saved in Database]` : ''}`,
+          notes: `Returned by ${borrowerName}. Condition: ${returnCondition || 'N/A'}${isDamagedItem ? ' — DAMAGED (Requires Maintenance Inspection)' : ''}`,
         },
       });
 

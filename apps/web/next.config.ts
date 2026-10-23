@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@studio/ui", "@studio/database", "@studio/store", "@studio/types", "@studio/graphql"],
   outputFileTracingRoot: monorepoRoot,
   async headers() {
+    if (process.env.NODE_ENV !== 'production') {
+      return [];
+    }
     return [
       {
         source: '/_next/static/:path*',

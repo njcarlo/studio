@@ -23,16 +23,16 @@ export function ThemeToggle({
         type="button"
         onClick={toggleTheme}
         className={cn(
-          "relative p-2 rounded-xl border border-border/70 bg-white dark:bg-card text-foreground hover:bg-muted/50 transition-colors shadow-2xs flex items-center justify-center cursor-pointer",
+          "relative h-9 w-9 p-2 rounded-xl border border-border/70 bg-white dark:bg-card text-foreground hover:bg-muted/50 transition-colors shadow-2xs flex items-center justify-center cursor-pointer shrink-0",
           className
         )}
         aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
         title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
       >
         {isDark ? (
-          <Sun className="h-4 w-4 text-amber-400 animate-in spin-in-90 duration-300" />
+          <Sun className="h-4 w-4 text-amber-400" />
         ) : (
-          <Moon className="h-4 w-4 text-slate-700 dark:text-slate-300 animate-in spin-in-90 duration-300" />
+          <Moon className="h-4 w-4 text-slate-700 dark:text-slate-300" />
         )}
       </button>
     );

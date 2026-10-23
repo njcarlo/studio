@@ -217,6 +217,12 @@ async function assertConfigPermission(actorId: string, ministryId: string) {
  * 3. Admin gives final approval → Status: 'Approved' (room officially reserved)
  */
 export async function createVenueBooking(data: CreateVenueBookingData) {
+    const { getActorMinistryAccess } = await import('@/actions/db');
+    const access = await getActorMinistryAccess(data.workerProfileId);
+    const initialStatus = (access.isSuperAdmin || access.isMinistryHead)
+        ? 'Pending Admin Approval'
+        : 'Pending Ministry Approval';
+
     const booking = await prisma.venueBooking.create({
         data: {
             requestId: generateRequestId(),
@@ -230,7 +236,7 @@ export async function createVenueBooking(data: CreateVenueBookingData) {
             numTables: data.numTables ?? 0,
             numChairs: data.numChairs ?? 0,
             guidelinesAccepted: data.guidelinesAccepted ?? false,
-            status: 'Pending Ministry Approval',
+            status: initialStatus,
         },
     });
 
@@ -282,6 +288,12 @@ export async function createRecurringBooking(data: CreateRecurringBookingData) {
     const [startHour, startMin] = data.startTime.split(':').map(Number);
     const [endHour, endMin] = data.endTime.split(':').map(Number);
 
+    const { getActorMinistryAccess } = await import('@/actions/db');
+    const access = await getActorMinistryAccess(data.workerProfileId);
+    const initialStatus = (access.isSuperAdmin || access.isMinistryHead)
+        ? 'Pending Admin Approval'
+        : 'Pending Ministry Approval';
+
     for (const date of occurrenceDates) {
         const start = new Date(date);
         start.setHours(startHour, startMin, 0, 0);
@@ -300,7 +312,7 @@ export async function createRecurringBooking(data: CreateRecurringBookingData) {
                 end,
                 pax: data.pax ?? 0,
                 guidelinesAccepted: data.guidelinesAccepted ?? false,
-                status: 'Pending Ministry Approval',
+                status: initialStatus,
                 recurringBookingId: recurringBooking.id,
             },
         });

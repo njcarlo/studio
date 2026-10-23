@@ -163,23 +163,31 @@ export default function NewReservationPage() {
     queryKey: ["room-bookings", roomId, selectedDate],
     queryFn: async () => {
       if (!roomId || !selectedDate) return [];
-      const [y, m, d] = selectedDate.split("-").map(Number);
-      const parsedDate = new Date(y, m - 1, d);
-      return getBookingsForRoomOnDate(roomId, parsedDate);
+      return getBookingsForRoomOnDate(roomId, selectedDate);
     },
     enabled: !!roomId && !!selectedDate,
   });
 
-  // Calculate booked minute ranges (excluding Rejected)
+  const getMinutesInManila = (dateInput: Date | string) => {
+    const d = new Date(dateInput);
+    const manilaStr = d.toLocaleTimeString("en-US", {
+      timeZone: "Asia/Manila",
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const [h, m] = manilaStr.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  // Calculate booked minute ranges (excluding Rejected and Cancelled)
   const bookedRanges = useMemo(() => {
     if (!existingBookings || existingBookings.length === 0) return [];
     return (existingBookings as any[])
-      .filter((res) => res.status !== "Rejected")
+      .filter((res) => res.status !== "Rejected" && res.status !== "Cancelled")
       .map((res) => {
-        const resStart = new Date(res.start);
-        const resEnd = new Date(res.end);
-        const startMin = resStart.getHours() * 60 + resStart.getMinutes();
-        const endMin = resEnd.getHours() * 60 + resEnd.getMinutes();
+        const startMin = getMinutesInManila(res.start);
+        const endMin = getMinutesInManila(res.end);
         return {
           startMin,
           endMin,
@@ -479,6 +487,12 @@ export default function NewReservationPage() {
       const effectiveWorkerId =
         workerProfile?.id || "worker-system-admin";
 
+      // If user is Admin or Ministry Head, skip Ministry approval and go directly to Admin approval
+      const isPrivileged = Boolean(isSuperAdmin || isMinistryHead);
+      const initialStatus = isPrivileged
+        ? "Pending Admin Approval"
+        : "Pending Ministry Approval";
+
       const bookingData = {
         requestId: generatedRequestId,
         roomId,
@@ -486,7 +500,7 @@ export default function NewReservationPage() {
         purpose,
         start,
         end,
-        status: "Pending Ministry Approval",
+        status: initialStatus,
         workerProfileId: effectiveWorkerId,
         name: requesterName || "System Admin",
         ministryId: effectiveMinistryId,
@@ -505,7 +519,7 @@ export default function NewReservationPage() {
         requester: requesterName || "System Admin",
         type: "Room Booking",
         details: purpose || selectedRoom?.name || "Room Booking",
-        status: "Pending Ministry Approval",
+        status: initialStatus,
         roomId,
         workerId: effectiveWorkerId,
         requestId: generatedRequestId,
@@ -517,17 +531,30 @@ export default function NewReservationPage() {
         approvalData,
       });
 
+      if (res && (!res.success || (res as any).error)) {
+        toast({
+          variant: "destructive",
+          title: "Submission Failed",
+          description:
+            (res as any).error ||
+            "This room is already reserved for the selected time slot.",
+        });
+        return;
+      }
+
       if (res?.booking?.id) {
         setIsSubmitted(true);
       }
     } catch (error: any) {
       console.error("Error submitting reservation:", error);
+      const rawMsg = String(error?.message || error || "");
+      const cleanMsg = rawMsg.includes("Minified React error #441")
+        ? "This room is already reserved for this time slot. Please choose another time."
+        : rawMsg || "There was an error submitting your request. Please try again.";
       toast({
         variant: "destructive",
         title: "Submission Failed",
-        description:
-          error?.message ||
-          "There was an error submitting your request. Please try again.",
+        description: cleanMsg,
       });
     } finally {
       setIsSubmitting(false);
@@ -568,10 +595,10 @@ export default function NewReservationPage() {
 
             {/* Reservation Summary Box */}
             <div className="bg-slate-50 dark:bg-muted/30 rounded-2xl p-4 sm:p-5 border border-slate-100 dark:border-border/60 text-left space-y-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-                <span>Reservation Details</span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between gap-2">
+                <span className="truncate">Reservation Details</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                   Pending Approval
                 </span>
               </div>
@@ -845,24 +872,31 @@ export default function NewReservationPage() {
                     <SelectContent>
                       {timeSlots
                         .filter((slot) => {
-                          const passed = isSlotInPast(slot.value);
-                          if (passed) return false;
                           const slotMin = timeToMinutes(slot.value);
                           if (slotMin >= 20 * 60) return false;
+                          const passed = isSlotInPast(slot.value);
+                          if (passed) return false;
+                          return true;
+                        })
+                        .map((slot) => {
+                          const slotMin = timeToMinutes(slot.value);
                           const isBooked = bookedRanges.some(
                             (r) => slotMin >= r.startMin && slotMin < r.endMin
                           );
-                          return !isBooked;
-                        })
-                        .map((slot) => (
-                          <SelectItem
-                            key={`start-${slot.value}`}
-                            value={slot.value}
-                            className="text-xs"
-                          >
-                            {slot.display}
-                          </SelectItem>
-                        ))}
+                          return (
+                            <SelectItem
+                              key={`start-${slot.value}`}
+                              value={slot.value}
+                              disabled={isBooked}
+                              className={cn(
+                                "text-xs",
+                                isBooked && "opacity-50 text-red-500 line-through cursor-not-allowed"
+                              )}
+                            >
+                              {slot.display} {isBooked ? " (Reserved)" : ""}
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                   {isTimeInPast && (
@@ -887,32 +921,40 @@ export default function NewReservationPage() {
                           const passed = isSlotInPast(slot.value);
                           if (passed) return false;
                           const slotMin = timeToMinutes(slot.value);
-
                           if (startTime) {
                             const startMin = timeToMinutes(startTime);
                             if (slotMin <= startMin) return false;
-                            const isBooked = bookedRanges.some(
-                              (r) => startMin < r.endMin && slotMin > r.startMin
-                            );
-                            if (isBooked) return false;
-                          } else {
-                            const isBooked = bookedRanges.some(
-                              (r) => slotMin > r.startMin && slotMin <= r.endMin
-                            );
-                            if (isBooked) return false;
                           }
-
                           return true;
                         })
-                        .map((slot) => (
-                          <SelectItem
-                            key={`end-${slot.value}`}
-                            value={slot.value}
-                            className="text-xs"
-                          >
-                            {slot.display}
-                          </SelectItem>
-                        ))}
+                        .map((slot) => {
+                          const slotMin = timeToMinutes(slot.value);
+                          let isConflict = false;
+                          if (startTime) {
+                            const startMin = timeToMinutes(startTime);
+                            isConflict = bookedRanges.some(
+                              (r) => startMin < r.endMin && slotMin > r.startMin
+                            );
+                          } else {
+                            isConflict = bookedRanges.some(
+                              (r) => slotMin > r.startMin && slotMin <= r.endMin
+                            );
+                          }
+
+                          return (
+                            <SelectItem
+                              key={`end-${slot.value}`}
+                              value={slot.value}
+                              disabled={isConflict}
+                              className={cn(
+                                "text-xs",
+                                isConflict && "opacity-50 text-red-500 line-through cursor-not-allowed"
+                              )}
+                            >
+                              {slot.display} {isConflict ? " (Conflict)" : ""}
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -944,6 +986,9 @@ export default function NewReservationPage() {
                             <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
                             <span className="font-semibold text-red-600 dark:text-red-400">
                               {formatTime12(range.startMin)} – {formatTime12(range.endMin)}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground font-normal">
+                              ({range.status})
                             </span>
                           </span>
                         ))}

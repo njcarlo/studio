@@ -97,12 +97,13 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function RoleBadge({ role }: { role: string }) {
-  const lower = role.toLowerCase();
+  const displayRole = role.toLowerCase() === "super admin" ? "Admin" : role;
+  const lower = displayRole.toLowerCase();
   if (lower.includes("admin"))
-    return <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 whitespace-nowrap">{role}</span>;
+    return <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 whitespace-nowrap">{displayRole}</span>;
   if (lower.includes("head") || lower.includes("pastor") || lower.includes("ministry"))
-    return <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap">{role}</span>;
-  return <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-muted/60 text-muted-foreground border border-slate-200/80 dark:border-border whitespace-nowrap shadow-2xs">{role}</span>;
+    return <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap">{displayRole}</span>;
+  return <span className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-muted/60 text-muted-foreground border border-slate-200/80 dark:border-border whitespace-nowrap shadow-2xs">{displayRole}</span>;
 }
 
 function StatCard({ label, value, icon: Icon, accentColor, iconClass, iconBgClass }: {
@@ -141,7 +142,7 @@ const formatWorkerId = (id: string | null | undefined) => {
 export const WORDA_MINISTRIES_BY_DEPT = {
   Worship: ["whitelight", "dance", "pmt", "crusade", "singers", "musicians", "audio"],
   Outreach: ["cluster 1", "cluster 2", "cluster 3", "cluster 4", "cluster 5", "cluster 6", "cluster 7", "cluster 8", "cluster 9", "weyj", "tapat"],
-  Relationship: ["sports", "gem", "ushering", "mens", "ladies", "youth empowered", "young adults"],
+  Relationship: ["sports", "gem", "ushering", "mens", "ladies", "youth empowered", "young adults", "worker"],
   Discipleship: ["j12", "oneliner", "cldp", "kid", "children's ministry", "life institute", "kca"],
   Administration: ["arts", "engineering", "finance", "in house", "linkages", "security and shuttle", "technology", "ventures"],
 };
@@ -578,11 +579,19 @@ export default function WorkersPage() {
 
   const getRoleName = (roleId?: string | null) => {
     if (!roleId) return "Worker";
-    return roles.find(r => r.id === roleId)?.name || "Worker";
+    const found = roles.find(r => r.id === roleId)?.name || "Worker";
+    return found.toLowerCase() === "super admin" ? "Admin" : found;
   };
 
   const getWorkerRoleLabel = (worker: Worker) => {
-    if ((worker as any).roles?.length > 0) return (worker as any).roles.map((wr: any) => wr.role?.name ?? wr.roleId).join(", ");
+    if ((worker as any).roles?.length > 0) {
+      return (worker as any).roles
+        .map((wr: any) => {
+          const n = wr.role?.name ?? wr.roleId;
+          return n?.toLowerCase() === "super admin" ? "Admin" : n;
+        })
+        .join(", ");
+    }
     return getRoleName(worker.roleId);
   };
 
