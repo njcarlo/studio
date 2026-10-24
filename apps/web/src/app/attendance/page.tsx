@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import {
   LoaderCircle, ShieldAlert, Search, Download, Upload,
   RefreshCw, CheckCircle2, Clock, QrCode, SlidersHorizontal,
-  LogIn, LogOut, MoreHorizontal, Users, XCircle, AlertCircle, RotateCcw, X, ScanLine,
+  LogIn, LogOut, MoreHorizontal, Users, XCircle, AlertCircle, RotateCcw, X, ScanLine, Eye,
 } from "lucide-react";
 import { useAuthStore } from "@studio/store";
 import { format, differenceInMinutes, startOfWeek } from "date-fns";
@@ -23,6 +23,9 @@ import {
   DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuTrigger,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -165,6 +168,13 @@ function AttendanceContent() {
     status?: any;
   } | null>(null);
   const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<{
+    date: Date;
+    timeIn: Date;
+    timeOut: Date | null;
+    totalMinutes: number | null;
+    isLate: boolean;
+  } | null>(null);
 
   const handleConfirmAttendance = async () => {
     if (!attendanceConfirm) return;
@@ -703,19 +713,32 @@ function AttendanceContent() {
                       <div className="py-14 text-center text-xs font-medium text-muted-foreground bg-white dark:bg-card rounded-2xl border border-border/40">No records this week.</div>
                     ) : sessions.map((s, i) => (
                       <div key={i} className="rounded-2xl border border-border/60 overflow-hidden shadow-2xs bg-card flex flex-col">
-                        {/* Navy Header with checkbox square & date */}
-                        <div className="bg-sidebar px-4 py-2.5 flex items-center justify-between text-white">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-2.5 h-2.5 rounded-[3px] border border-white/60 bg-white/20 shrink-0" />
-                            <span className="text-xs font-mono font-bold text-white tracking-wide truncate">
-                              {format(s.date, "EEE, MMM d, yyyy")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 text-white/50">
-                            <span className="w-1 h-1 rounded-full bg-white/40" />
-                            <span className="w-1 h-1 rounded-full bg-white/40" />
-                            <span className="w-1 h-1 rounded-full bg-white/40" />
-                          </div>
+                        {/* Navy Header: Date & Actions */}
+                        <div className="bg-sidebar px-4 py-2 flex items-center justify-between text-white">
+                          <span className="text-xs font-mono font-bold text-white tracking-wide truncate">
+                            {format(s.date, "EEE, MMM d, yyyy")}
+                          </span>
+
+                          <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="p-1 rounded-lg hover:bg-white/10 active:bg-white/20 text-white/90 hover:text-white transition-colors cursor-pointer"
+                                aria-label="Actions"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border border-border bg-popover text-popover-foreground">
+                              <DropdownMenuItem
+                                onSelect={() => setSelectedSession(s)}
+                                onClick={() => setSelectedSession(s)}
+                                className="text-xs cursor-pointer font-medium gap-2 py-2 rounded-lg"
+                              >
+                                <Eye className="h-3.5 w-3.5 text-muted-foreground" /> View Details
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
 
                         {/* Card Body */}
@@ -1441,6 +1464,105 @@ function AttendanceContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Attendance Session Details Dialog */}
+      <Dialog open={!!selectedSession} onOpenChange={(open) => !open && setSelectedSession(null)}>
+        <DialogContent
+          className="w-[calc(100%-2.5rem)] max-w-md p-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 shadow-2xl gap-0 bg-background flex flex-col"
+          style={{ maxHeight: "min(520px, calc(100dvh - 120px))" }}
+        >
+          <DialogTitle className="sr-only">Attendance Details</DialogTitle>
+          {selectedSession && (
+            <>
+              {/* Header */}
+              <div className="p-4 sm:p-5 pr-12 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="h-10 w-10 rounded-2xl border border-sidebar/20 bg-sidebar/10 text-sidebar dark:text-sky-400 flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-base sm:text-lg font-bold font-headline tracking-tight text-foreground whitespace-nowrap">
+                        Attendance Details
+                      </h2>
+                      <StatusPill isLate={selectedSession.isLate} hasOut={selectedSession.timeOut !== null} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {format(selectedSession.date, "EEEE, MMMM d, yyyy")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1">
+                {/* Worker Card */}
+                <div className="p-3.5 rounded-2xl bg-muted/30 border border-border/60 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-sidebar/10 text-sidebar dark:bg-sidebar/30 dark:text-sky-300 text-xs font-bold flex items-center justify-center shrink-0 border border-sidebar/20">
+                    {workerProfile?.firstName?.[0] || "W"}{workerProfile?.lastName?.[0] || ""}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-foreground leading-tight truncate">
+                      {workerProfile ? `${workerProfile.firstName} ${workerProfile.lastName}` : (user?.email || "Worker")}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {(workerProfile as any)?.ministry || ministries.find(m => m.id === workerProfile?.majorMinistryId)?.name || "Worker"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Grid details */}
+                <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50/80 dark:bg-muted/20 border border-border/60 text-xs">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Time In
+                    </span>
+                    <span className="font-bold text-foreground text-sm block">
+                      {format(selectedSession.timeIn, "h:mm a")}
+                    </span>
+                    {selectedSession.isLate && (
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium block">
+                        Clocked in late
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Time Out
+                    </span>
+                    <span className="font-bold text-foreground text-sm block">
+                      {selectedSession.timeOut ? format(selectedSession.timeOut, "h:mm a") : "—"}
+                    </span>
+                    {!selectedSession.timeOut && (
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium block">
+                        Currently clocked in
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-border/40">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Total Hours
+                    </span>
+                    <span className="font-bold text-foreground text-sm block">
+                      {formatHours(selectedSession.totalMinutes)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-border/40">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Status
+                    </span>
+                    <span className="font-bold text-foreground text-sm block">
+                      {!selectedSession.timeOut ? "Active Shift" : selectedSession.isLate ? "Late" : "Present"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

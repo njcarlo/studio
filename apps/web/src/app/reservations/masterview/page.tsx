@@ -303,26 +303,25 @@ export default function MasterviewPage() {
                       key={booking.id}
                       className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/40 transition-all text-left"
                     >
-                      {/* Navy Header: Checkbox + REQ ID + Actions */}
+                      {/* Navy Header: REQ ID + Actions */}
                       <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-sidebar text-white">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded border border-white/40 flex items-center justify-center shrink-0" />
-                          <span className="text-xs font-mono font-bold text-white tracking-wide">
-                            {reqId}
-                          </span>
-                        </div>
+                        <span className="text-xs font-mono font-bold text-white tracking-wide">
+                          {reqId}
+                        </span>
 
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="p-1 rounded-lg hover:bg-white/10 text-white/90 hover:text-white transition-colors cursor-pointer"
+                              className="p-1 rounded-lg hover:bg-white/10 active:bg-white/20 text-white/90 hover:text-white transition-colors cursor-pointer"
+                              aria-label="Actions"
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border-border/80">
+                          <DropdownMenuContent align="end" className="w-40 p-1 rounded-xl shadow-lg border-border/80 bg-popover text-popover-foreground">
                             <DropdownMenuItem
+                              onSelect={() => handleBookingClick(booking)}
                               onClick={() => handleBookingClick(booking)}
                               className="text-xs cursor-pointer font-medium gap-2 py-2 rounded-lg"
                             >
