@@ -537,8 +537,8 @@ export default function QRScannerPage() {
     }
 
     return (
-        <div className="flex flex-col h-[100dvh] max-h-[100dvh] bg-background overflow-hidden">
-            <header className="flex items-center justify-between border-b px-4 py-3 shrink-0 bg-card/60 backdrop-blur-xs">
+        <div className="flex flex-col min-h-screen bg-background overflow-hidden">
+            <header className="flex items-center justify-between border-b px-4 sm:px-6 py-3.5 shrink-0 bg-card/60 backdrop-blur-md">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                     <Button
                         type="button"
@@ -590,135 +590,147 @@ export default function QRScannerPage() {
                 </div>
             </header>
 
-            <main className="grid flex-1 grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6 overflow-hidden min-h-0">
-                <Card className="flex flex-col overflow-hidden min-h-0">
-                    <CardHeader className="text-center pb-2 shrink-0">
-                        <div className="flex justify-center"><ScanLine className="h-6 w-6 text-primary" /></div>
-                        <CardTitle className="font-headline text-lg sm:text-xl">Live Scan</CardTitle>
-                        <CardDescription className="text-xs">
-                            Position the QR code in the frame. System automatically records Time In / Time Out.
-                        </CardDescription>
+            <main className="grid flex-grow grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+                {/* Scanner Viewfinder Card */}
+                <Card className="flex flex-col rounded-2xl border border-border/80 shadow-xs overflow-hidden">
+                    <CardHeader className="text-center pb-3">
+                        <div className="flex justify-center mb-1">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                                <ScanLine className="h-5 w-5" />
+                            </div>
+                        </div>
+                        <CardTitle className="font-headline text-xl font-bold">Live Scan</CardTitle>
+                        <CardDescription className="text-xs">Position the QR code in the frame. System automatically records Time In / Time Out.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-1 items-center justify-center p-3 sm:p-4 overflow-hidden min-h-0">
-                        {scanResult ? (
-                            <div className="flex flex-col items-center justify-center p-4 text-center w-full max-w-sm mx-auto animate-in fade-in zoom-in-95 duration-200">
-                                {/* Avatar & Badge Icon */}
-                                <div className="relative mb-2">
-                                    <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-background shadow-xl ring-4 ring-offset-2 ring-primary/20">
-                                        <AvatarImage src={scanResult.worker.avatarUrl} alt={`${scanResult.worker.firstName} ${scanResult.worker.lastName}`} />
-                                        <AvatarFallback><UserIcon className="h-10 w-10 sm:h-12 sm:w-12" /></AvatarFallback>
-                                    </Avatar>
-                                    <div className={`absolute -bottom-1 -right-1 p-1.5 rounded-full shadow-lg text-white ${scanResult.action === 'Clock In'
-                                            ? 'bg-emerald-600'
+                    <CardContent className="flex flex-grow items-center justify-center p-4">
+                        <div className="w-full max-w-md space-y-4">
+                            {scanResult ? (
+                                <div className="flex flex-col items-center justify-center p-4 text-center w-full max-w-sm mx-auto animate-in fade-in zoom-in-95 duration-200">
+                                    {/* Avatar & Badge Icon */}
+                                    <div className="relative mb-2">
+                                        <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-background shadow-xl ring-4 ring-offset-2 ring-primary/20">
+                                            <AvatarImage src={scanResult.worker.avatarUrl} alt={`${scanResult.worker.firstName} ${scanResult.worker.lastName}`} />
+                                            <AvatarFallback><UserIcon className="h-10 w-10 sm:h-12 sm:w-12" /></AvatarFallback>
+                                        </Avatar>
+                                        <div className={`absolute -bottom-1 -right-1 p-1.5 rounded-full shadow-lg text-white ${scanResult.action === 'Clock In'
+                                                ? 'bg-emerald-600'
+                                                : scanResult.action === 'Clock Out'
+                                                    ? 'bg-blue-600'
+                                                    : 'bg-amber-600'
+                                            }`}>
+                                            {scanResult.action === 'Clock In' ? (
+                                                <LogIn className="h-4 w-4" />
+                                            ) : scanResult.action === 'Clock Out' ? (
+                                                <LogOut className="h-4 w-4" />
+                                            ) : (
+                                                <AlertTriangle className="h-4 w-4" />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Worker Name & Role */}
+                                    <h2 className="text-lg font-headline font-bold text-foreground">
+                                        {scanResult.worker.firstName} {scanResult.worker.lastName}
+                                    </h2>
+                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">
+                                        {scanResult.worker.roleId || scanResult.worker.employmentType || 'Personnel'}
+                                    </p>
+
+                                    {/* Action & Status Card */}
+                                    <div className={`w-full rounded-xl p-3 border mb-3 flex flex-col items-center gap-1 shadow-sm ${scanResult.action === 'Clock In'
+                                            ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
                                             : scanResult.action === 'Clock Out'
-                                                ? 'bg-blue-600'
-                                                : 'bg-amber-600'
+                                                ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
+                                                : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
                                         }`}>
-                                        {scanResult.action === 'Clock In' ? (
-                                            <LogIn className="h-4 w-4" />
-                                        ) : scanResult.action === 'Clock Out' ? (
-                                            <LogOut className="h-4 w-4" />
-                                        ) : (
-                                            <AlertTriangle className="h-4 w-4" />
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${scanResult.action === 'Clock In'
+                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
+                                                : scanResult.action === 'Clock Out'
+                                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
+                                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                                            }`}>
+                                            {scanResult.action === 'Clock In' ? '✓ TIMED IN' : scanResult.action === 'Clock Out' ? '✓ TIMED OUT' : '⚠ COOLDOWN ACTIVE'}
+                                        </span>
+
+                                        <span className="text-2xl font-extrabold font-mono tracking-tight text-foreground my-0.5">
+                                            {scanResult.time ? new Date(scanResult.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : ''}
+                                        </span>
+
+                                        <div className="flex items-center gap-1.5">
+                                            <Badge variant={
+                                                scanResult.status === 'On Time' || scanResult.status === 'Shift Completed'
+                                                    ? 'success'
+                                                    : scanResult.status === 'Late' || scanResult.status === 'Undertime'
+                                                        ? 'warning'
+                                                        : 'secondary'
+                                            }>
+                                                {scanResult.status || 'Recorded'}
+                                            </Badge>
+                                        </div>
+
+                                        <p className="text-[11px] text-muted-foreground mt-0.5 px-2 text-center leading-relaxed">
+                                            {scanResult.message}
+                                        </p>
+                                    </div>
+
+                                    {/* Auto-reset indicator */}
+                                    <div className="w-full flex flex-col items-center gap-1.5">
+                                        <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                                            <div
+                                                className="bg-primary h-full transition-all duration-1000 ease-linear"
+                                                style={{ width: `${(countdown / 5) * 100}%` }}
+                                            />
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                            <RefreshCw className="h-3 w-3 animate-spin text-primary" /> Auto-resetting in {countdown}s...
+                                        </p>
+                                        <Button variant="ghost" size="sm" onClick={resetScanner} className="text-xs text-primary hover:underline h-6 mt-0.5">
+                                            Scan next worker now →
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden shadow-inner border border-border/50">
+                                        <video
+                                            ref={videoRef}
+                                            className="w-full h-full object-cover"
+                                            autoPlay
+                                            muted
+                                            playsInline
+                                        />
+                                        {/* Hidden canvas for jsQR capture */}
+                                        <canvas ref={canvasRef} className="hidden" />
+
+                                        {/* Targeting box */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div className="w-56 sm:w-64 h-56 sm:h-64 border-2 border-dashed border-primary/80 rounded-2xl animate-pulse" />
+                                        </div>
+
+                                        {(isProcessing || workersLoading) && (
+                                            <div className="absolute inset-0 bg-black/60 backdrop-blur-2xs flex flex-col items-center justify-center gap-2">
+                                                <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                                                <span className="text-xs font-bold text-white tracking-wide">Processing Scan...</span>
+                                            </div>
+                                        )}
+
+                                        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse pointer-events-none" />
+
+                                        {devices.length > 1 && (
+                                            <div className="absolute bottom-3 right-3">
+                                                <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/80" onClick={handleSwitchCamera}>
+                                                    <SwitchCamera className="h-4 w-4" />
+                                                    <span className="sr-only">Switch Camera</span>
+                                                </Button>
+                                            </div>
                                         )}
                                     </div>
-                                </div>
 
-                                {/* Worker Name & Role */}
-                                <h2 className="text-lg font-headline font-bold text-foreground">
-                                    {scanResult.worker.firstName} {scanResult.worker.lastName}
-                                </h2>
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">
-                                    {scanResult.worker.roleId || scanResult.worker.employmentType || 'Personnel'}
-                                </p>
-
-                                {/* Action & Status Card */}
-                                <div className={`w-full rounded-xl p-3 border mb-3 flex flex-col items-center gap-1 shadow-sm ${scanResult.action === 'Clock In'
-                                        ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
-                                        : scanResult.action === 'Clock Out'
-                                            ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
-                                            : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
-                                    }`}>
-                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${scanResult.action === 'Clock In'
-                                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
-                                            : scanResult.action === 'Clock Out'
-                                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
-                                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
-                                        }`}>
-                                        {scanResult.action === 'Clock In' ? '✓ TIMED IN' : scanResult.action === 'Clock Out' ? '✓ TIMED OUT' : '⚠ COOLDOWN ACTIVE'}
-                                    </span>
-
-                                    <span className="text-2xl font-extrabold font-mono tracking-tight text-foreground my-0.5">
-                                        {scanResult.time ? new Date(scanResult.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : ''}
-                                    </span>
-
-                                    <div className="flex items-center gap-1.5">
-                                        <Badge variant={
-                                            scanResult.status === 'On Time' || scanResult.status === 'Shift Completed'
-                                                ? 'success'
-                                                : scanResult.status === 'Late' || scanResult.status === 'Undertime'
-                                                    ? 'warning'
-                                                    : 'secondary'
-                                        }>
-                                            {scanResult.status || 'Recorded'}
-                                        </Badge>
-                                    </div>
-
-                                    <p className="text-[11px] text-muted-foreground mt-0.5 px-2 text-center leading-relaxed">
-                                        {scanResult.message}
-                                    </p>
-                                </div>
-
-                                {/* Auto-reset indicator */}
-                                <div className="w-full flex flex-col items-center gap-1.5">
-                                    <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                                        <div
-                                            className="bg-primary h-full transition-all duration-1000 ease-linear"
-                                            style={{ width: `${(countdown / 5) * 100}%` }}
-                                        />
-                                    </div>
-                                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                                        <RefreshCw className="h-3 w-3 animate-spin text-primary" /> Auto-resetting in {countdown}s...
-                                    </p>
-                                    <Button variant="ghost" size="sm" onClick={resetScanner} className="text-xs text-primary hover:underline h-6 mt-0.5">
-                                        Scan next worker now →
-                                    </Button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="w-full flex flex-col items-center justify-center">
-                                <div className="relative w-full max-w-[260px] sm:max-w-xs aspect-square mx-auto bg-black rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center">
-                                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                                    {/* Hidden canvas for jsQR frame capture */}
-                                    <canvas ref={canvasRef} className="hidden" />
-
-                                    {/* Viewfinder matching Image 2 right side: dashed square with rounded corners and glowing red laser line */}
-                                    <div className="absolute inset-0 flex items-center justify-center p-5 pointer-events-none">
-                                        <div className="w-full h-full border-2 border-dashed border-white/70 rounded-3xl relative flex items-center justify-center">
-                                            {/* Confined red laser scanning line with pulsing glow */}
-                                            <div className="w-[90%] h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse" />
-                                        </div>
-                                    </div>
-                                    {(isProcessing || workersLoading) && (
-                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                            <LoaderCircle className="h-8 w-8 animate-spin text-white" />
-                                        </div>
-                                    )}
-                                    {devices.length > 1 && (
-                                        <div className="absolute bottom-3 right-3">
-                                            <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/80" onClick={handleSwitchCamera}>
-                                                <SwitchCamera className="h-4 w-4" />
-                                                <span className="sr-only">Switch Camera</span>
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="mt-3 w-full max-w-xs">
                                     {hasCameraPermission === false && (
-                                        <Alert variant="destructive">
+                                        <Alert variant="destructive" className="rounded-xl">
                                             <AlertTitle>Camera Access Required</AlertTitle>
                                             <AlertDescription className="space-y-2 mt-1">
-                                                <p>Please allow camera access to use this feature.</p>
+                                                <p>Please allow camera permissions in your browser to scan.</p>
                                                 <Button
                                                     type="button"
                                                     variant="outline"
@@ -733,37 +745,51 @@ export default function QRScannerPage() {
                                         </Alert>
                                     )}
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 
-                <Card className="flex flex-col">
-                    <CardHeader>
-                        <CardTitle className="text-xl flex items-center gap-2 font-headline">
-                            <History className="h-5 w-5" /> Recent Scans
+                {/* Recent Scans Card */}
+                <Card className="flex flex-col rounded-2xl border border-border/80 shadow-xs overflow-hidden">
+                    <CardHeader className="pb-3 border-b border-border/60">
+                        <CardTitle className="text-base flex items-center gap-2 font-headline font-bold">
+                            <History className="h-4 w-4 text-primary" />
+                            <span>Recent Scans</span>
                         </CardTitle>
-                        <CardDescription>A log of the most recent scan events.</CardDescription>
+                        <CardDescription className="text-xs">Real-time log of attendance scans.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow overflow-hidden">
-                        <ScrollArea className="h-full pr-4">
-                            {logsLoading && <div className="flex justify-center items-center h-full"><LoaderCircle className="h-6 w-6 animate-spin" /></div>}
-                            {!logsLoading && (!scanLogs || scanLogs.length === 0) && (
-                                <p className="text-sm text-center text-muted-foreground py-4">No recent scans.</p>
+                    <CardContent className="flex-grow overflow-hidden p-4">
+                        <ScrollArea className="h-[360px] sm:h-[460px] pr-3">
+                            {logsLoading ? (
+                                <div className="flex justify-center items-center h-32"><LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                            ) : (!scanLogs || scanLogs.length === 0) ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                                    <ScanLine className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                                    <p className="text-xs font-semibold">No recent scans yet</p>
+                                    <p className="text-[11px]">Scanned worker attendance will show here.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {scanLogs.map(log => {
+                                        const logTime = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp);
+                                        return (
+                                            <div
+                                                key={log.id}
+                                                className="p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors flex items-start gap-2.5"
+                                            >
+                                                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-emerald-500" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-xs text-foreground leading-snug">{log.details}</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                        {log.scannerName} &bull; {logTime ? formatDistanceToNow(logTime, { addSuffix: true }) : 'Just now'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             )}
-                            <div className="space-y-4">
-                                {scanLogs?.map(log => {
-                                    const logTime = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp);
-                                    return (
-                                        <div key={log.id} className="text-sm border-b pb-2 last:border-0">
-                                            <p className="font-medium">{log.details}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                By {log.scannerName} &bull; {logTime ? formatDistanceToNow(logTime, { addSuffix: true }) : 'Just now'}
-                                            </p>
-                                        </div>
-                                    );
-                                })}
-                            </div>
                         </ScrollArea>
                     </CardContent>
                 </Card>
