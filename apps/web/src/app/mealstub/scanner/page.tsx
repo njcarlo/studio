@@ -8,8 +8,9 @@ import { ScanLine, LoaderCircle, SwitchCamera, History, CheckCircle2, XCircle, A
 import { Alert, AlertTitle, AlertDescription } from "@studio/ui";
 import { ScrollArea } from "@studio/ui";
 import { formatDistanceToNow, isToday, format } from "date-fns";
-import { getMealStubs, updateMealStub, createScanLog, getWorkerByIdOrWorkerId } from "@/actions/db";
+import { getMealStubs, updateMealStub, getWorkerByIdOrWorkerId } from "@/actions/db";
 import { useWorkers } from "@/hooks/use-workers";
+import { useScanLogs } from "@/hooks/use-scan-logs";
 import jsQR from "jsqr";
 
 type ScanLogEntry = {
@@ -39,6 +40,7 @@ export default function QRScannerPage() {
     } | null>(null);
 
     const { workers } = useWorkers({ limit: 10000, unrestricted: true });
+    const { scanLogs: dbScanLogs, createScanLog: createScanLogSql, isLoading: logsLoading } = useScanLogs(50, 'Meal Stub');
     const animFrameRef = useRef<number>(0);
     const streamRef = useRef<MediaStream | null>(null);
 
@@ -236,7 +238,7 @@ export default function QRScannerPage() {
                 addLog(details, 'success');
 
                 try {
-                    await createScanLog({
+                    await createScanLogSql({
                         scanType: 'Meal Stub',
                         details,
                         mealStubId: validStub.id,
@@ -557,11 +559,13 @@ export default function QRScannerPage() {
                             <History className="h-4 w-4 text-primary" />
                             <span>Recent Scans</span>
                         </CardTitle>
-                        <CardDescription className="text-xs">Real-time log of scanned meal stubs during this session.</CardDescription>
+                        <CardDescription className="text-xs">Real-time log of scanned meal stubs.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow overflow-hidden p-4">
                         <ScrollArea className="h-[360px] sm:h-[440px] pr-3">
-                            {scanLogs.length === 0 ? (
+                            {logsLoading ? (
+                                <div className="flex justify-center items-center h-32"><LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                            ) : (!dbScanLogs || dbScanLogs.length === 0) ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
                                     <ScanLine className="h-8 w-8 text-muted-foreground/30 mb-2" />
                                     <p className="text-xs font-semibold">No recent scans yet</p>
@@ -569,27 +573,23 @@ export default function QRScannerPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-2.5">
-                                    {scanLogs.map(log => (
-                                        <div
-                                            key={log.id}
-                                            className="p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors flex items-start gap-2.5"
-                                        >
+                                    {dbScanLogs.map(log => {
+                                        const logTime = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp);
+                                        return (
                                             <div
-                                                className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${log.status === 'success'
-                                                        ? 'bg-emerald-500'
-                                                        : log.status === 'warning'
-                                                            ? 'bg-amber-500'
-                                                            : 'bg-rose-500'
-                                                    }`}
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-xs text-foreground leading-snug">{log.details}</p>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                    {log.scannerName} &bull; {formatDistanceToNow(log.timestamp, { addSuffix: true })}
-                                                </p>
+                                                key={log.id}
+                                                className="p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors flex items-start gap-2.5"
+                                            >
+                                                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-emerald-500" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-xs text-foreground leading-snug">{log.details}</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                        {log.scannerName} &bull; {formatDistanceToNow(logTime, { addSuffix: true })}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </ScrollArea>

@@ -53,6 +53,7 @@ export default function NewReservationPage() {
   const router = useRouter();
 
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedStatus, setSubmittedStatus] = useState("Pending Ministry Approval");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedRequestId, setGeneratedRequestId] = useState("");
 
@@ -543,6 +544,7 @@ export default function NewReservationPage() {
       }
 
       if (res?.booking?.id) {
+        setSubmittedStatus(initialStatus);
         setIsSubmitted(true);
       }
     } catch (error: any) {
@@ -589,7 +591,9 @@ export default function NewReservationPage() {
                 Request Submitted!
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-                Your room reservation request has been submitted successfully and is now waiting for administrative review.
+                {submittedStatus === "Pending Ministry Approval"
+                  ? "Your room reservation request has been submitted successfully and is now waiting for Ministry Head review."
+                  : "Your room reservation request has been submitted successfully and is now waiting for administrative review."}
               </p>
             </div>
 
@@ -597,10 +601,17 @@ export default function NewReservationPage() {
             <div className="bg-slate-50 dark:bg-muted/30 rounded-2xl p-4 sm:p-5 border border-slate-100 dark:border-border/60 text-left space-y-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between gap-2">
                 <span className="truncate">Reservation Details</span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 whitespace-nowrap shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                  Pending Approval
-                </span>
+                {submittedStatus === "Pending Ministry Approval" ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40 whitespace-nowrap shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                    Pending Ministry Head
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 whitespace-nowrap shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                    Pending Admin Approval
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs pt-1">
@@ -870,15 +881,24 @@ export default function NewReservationPage() {
                       <SelectValue placeholder="Start" />
                     </SelectTrigger>
                     <SelectContent>
-                      {timeSlots
-                        .filter((slot) => {
+                      {(() => {
+                        const available = timeSlots.filter((slot) => {
                           const slotMin = timeToMinutes(slot.value);
                           if (slotMin >= 20 * 60) return false;
                           const passed = isSlotInPast(slot.value);
                           if (passed) return false;
                           return true;
-                        })
-                        .map((slot) => {
+                        });
+
+                        if (available.length === 0) {
+                          return (
+                            <div className="py-3 px-3 text-center text-xs text-muted-foreground font-medium">
+                              All time slots have passed for today. Please pick a future date.
+                            </div>
+                          );
+                        }
+
+                        return available.map((slot) => {
                           const slotMin = timeToMinutes(slot.value);
                           const isBooked = bookedRanges.some(
                             (r) => slotMin >= r.startMin && slotMin < r.endMin
@@ -896,7 +916,8 @@ export default function NewReservationPage() {
                               {slot.display} {isBooked ? " (Reserved)" : ""}
                             </SelectItem>
                           );
-                        })}
+                        });
+                      })()}
                     </SelectContent>
                   </Select>
                   {isTimeInPast && (
@@ -916,8 +937,8 @@ export default function NewReservationPage() {
                       <SelectValue placeholder="End" />
                     </SelectTrigger>
                     <SelectContent>
-                      {timeSlots
-                        .filter((slot) => {
+                      {(() => {
+                        const available = timeSlots.filter((slot) => {
                           const passed = isSlotInPast(slot.value);
                           if (passed) return false;
                           const slotMin = timeToMinutes(slot.value);
@@ -926,8 +947,17 @@ export default function NewReservationPage() {
                             if (slotMin <= startMin) return false;
                           }
                           return true;
-                        })
-                        .map((slot) => {
+                        });
+
+                        if (available.length === 0) {
+                          return (
+                            <div className="py-3 px-3 text-center text-xs text-muted-foreground font-medium">
+                              {startTime ? "No valid end time slots available" : "Select start time first"}
+                            </div>
+                          );
+                        }
+
+                        return available.map((slot) => {
                           const slotMin = timeToMinutes(slot.value);
                           let isConflict = false;
                           if (startTime) {
@@ -954,7 +984,8 @@ export default function NewReservationPage() {
                               {slot.display} {isConflict ? " (Conflict)" : ""}
                             </SelectItem>
                           );
-                        })}
+                        });
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>

@@ -106,7 +106,9 @@ export function ReservationDetailsSheet({
                       isApproved
                         ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                         : isPending
-                        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                        ? (booking.status === "Pending Ministry Approval" || booking.status === "Pending Ministry Head"
+                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800")
                         : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800"
                     )}
                   >
@@ -116,11 +118,13 @@ export function ReservationDetailsSheet({
                         isApproved
                           ? "bg-emerald-500"
                           : isPending
-                          ? "bg-amber-500 animate-pulse"
+                          ? (booking.status === "Pending Ministry Approval" || booking.status === "Pending Ministry Head"
+                              ? "bg-blue-500 animate-pulse"
+                              : "bg-amber-500 animate-pulse")
                           : "bg-rose-500"
                       )}
                     />
-                    {booking.status}
+                    {booking.status === "Pending Ministry Approval" ? "Pending Ministry Head" : booking.status}
                   </span>
                 </SheetTitle>
                 <SheetDescription className="text-xs text-muted-foreground line-clamp-2 mt-0.5">

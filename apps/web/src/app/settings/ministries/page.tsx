@@ -58,6 +58,7 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
   const set = (field: keyof Ministry, value: string | number) => setFormData(p => ({ ...p, [field]: value }));
   const sorted = [...workers].sort((a, b) => a.firstName.localeCompare(b.firstName));
   const selectedHead = workers.find(w => w.id === formData.headId);
+  const [confirmClearHead, setConfirmClearHead] = useState(false);
 
   return (
     <div className="flex flex-col h-full max-h-[90vh] overflow-hidden">
@@ -154,7 +155,7 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
               <SelectTrigger className="h-10 rounded-xl border-slate-200/90 dark:border-border text-xs bg-background shadow-2xs focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
                 <SelectValue placeholder="Select a ministry head" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border border-border shadow-xl max-h-56">
+              <SelectContent side="bottom" align="start" avoidCollisions={false} className="rounded-xl border border-border shadow-xl max-h-56">
                 <SelectItem value="none" className="text-xs font-medium cursor-pointer text-muted-foreground">
                   None (Unassigned)
                 </SelectItem>
@@ -189,7 +190,7 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => set("headId", "")}
+                  onClick={() => setConfirmClearHead(true)}
                   className="h-7 px-2 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer shrink-0"
                 >
                   Clear
@@ -198,6 +199,24 @@ function MinistryForm({ ministry, workers, departments, onSave, onClose }: {
             )}
           </div>
         </div>
+
+        {/* Clear Head Confirmation Dialog */}
+        <DeleteConfirmationDialog
+          isOpen={confirmClearHead}
+          onClose={() => setConfirmClearHead(false)}
+          onConfirm={() => {
+            set("headId", "");
+            setConfirmClearHead(false);
+          }}
+          title="Clear Ministry Head?"
+          itemName={selectedHead ? `${selectedHead.firstName} ${selectedHead.lastName}` : undefined}
+          confirmLabel="Clear Head"
+          description={
+            <p className="text-xs text-muted-foreground leading-relaxed text-center">
+              Are you sure you want to remove <strong className="font-bold text-foreground">{selectedHead?.firstName} {selectedHead?.lastName}</strong> as ministry head?
+            </p>
+          }
+        />
       </div>
 
       {/* ── MODAL FOOTER ── */}
@@ -588,7 +607,7 @@ export default function MinistryManagementPage() {
         description={
           <div className="space-y-3 pt-1">
             <p className="text-xs text-muted-foreground leading-relaxed text-center">
-              Are you sure you want to delete <strong className="font-bold text-foreground underline decoration-rose-300 underline-offset-2">{deleteTarget?.name}</strong>? This action is permanent and cannot be undone.
+              Are you sure you want to delete <strong className="font-bold text-foreground">{deleteTarget?.name}</strong>? This action is permanent and cannot be undone.
             </p>
             <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20 p-2.5 text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2 text-left">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />

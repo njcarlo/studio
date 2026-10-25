@@ -229,8 +229,8 @@ export default function WorkersPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMode, setSearchMode] = useState<"workerId" | "name">("name");
-  const [sortField, setSortField] = useState("workerId");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
@@ -584,15 +584,26 @@ export default function WorkersPage() {
   };
 
   const getWorkerRoleLabel = (worker: Worker) => {
+    let baseRole = "Worker";
     if ((worker as any).roles?.length > 0) {
-      return (worker as any).roles
+      baseRole = (worker as any).roles
         .map((wr: any) => {
           const n = wr.role?.name ?? wr.roleId;
           return n?.toLowerCase() === "super admin" ? "Admin" : n;
         })
         .join(", ");
+    } else {
+      baseRole = getRoleName(worker.roleId);
     }
-    return getRoleName(worker.roleId);
+    if (baseRole.toLowerCase() === "super admin") baseRole = "Admin";
+
+    if (worker.isSeniorPastor) {
+      return `${baseRole} (Senior Pastor)`;
+    }
+    if (worker.isPastor) {
+      return `${baseRole} (Pastor)`;
+    }
+    return baseRole;
   };
 
   // Stats
@@ -1100,7 +1111,9 @@ export default function WorkersPage() {
                       <th className="px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white cursor-pointer select-none whitespace-nowrap" onClick={() => handleSort("status")}>
                         Status {sortField === "status" ? (sortDir === "asc" ? "↑" : "↓") : ""}
                       </th>
-                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Registered</th>
+                      <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-white cursor-pointer select-none whitespace-nowrap" onClick={() => handleSort("createdAt")}>
+                        Registered {sortField === "createdAt" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+                      </th>
                       <th className="w-32 min-w-[130px] pl-4 pr-8 sm:pr-10 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-white whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>

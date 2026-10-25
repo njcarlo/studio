@@ -40,7 +40,8 @@ import {
   Type,
   SunMoon,
 } from "lucide-react";
-import { useAuthStore } from "@studio/store";
+import { useAuthStore, usePermissionsStore } from "@studio/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@studio/database";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ function MySettingsContent() {
   const { workerProfile } = useUserRole();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const rawTab = searchParams.get("tab");
   const activeTab: SettingTab =
@@ -72,6 +74,8 @@ function MySettingsContent() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; email?: string }>({});
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false);
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
 
   useEffect(() => {
     if (workerProfile) {
@@ -188,7 +192,8 @@ function MySettingsContent() {
   };
 
   const executeSaveProfile = async () => {
-    if (!workerProfile?.id) {
+    const targetId = workerProfile?.id || user?.uid;
+    if (!targetId) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -200,7 +205,7 @@ function MySettingsContent() {
 
     setIsSavingProfile(true);
     try {
-      const res = await updateWorkerProfileSettings(workerProfile.id, {
+      const res = await updateWorkerProfileSettings(targetId, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
@@ -218,6 +223,41 @@ function MySettingsContent() {
       if (res.remainingChanges !== undefined) {
         setRemainingEmailChanges(res.remainingChanges);
       }
+
+      // Immediately sync with Zustand permissions store so header, user-nav, and dashboard update in real-time
+      if (res.worker) {
+        setFirstName(res.worker.firstName || "");
+        setLastName(res.worker.lastName || "");
+        setEmail(res.worker.email || "");
+
+        const currentPerms = usePermissionsStore.getState();
+        usePermissionsStore.getState()._setPermissions({
+          ...currentPerms,
+          workerProfile: {
+            ...currentPerms.workerProfile,
+            ...res.worker,
+          },
+        });
+      }
+
+      // Invalidate React Query worker caches
+      await queryClient.invalidateQueries({ queryKey: ["worker"] });
+      await queryClient.invalidateQueries({ queryKey: ["workers"] });
+      await queryClient.invalidateQueries({ queryKey: ["worker-view-as"] });
+
+      // Update local Supabase Auth metadata
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+          },
+        });
+      } catch {
+        // ignore
+      }
+
+      router.refresh();
 
       toast({
         title: "Profile Updated",
@@ -330,31 +370,6 @@ function MySettingsContent() {
         </div>
       </div>
 
-      {/* Tab Navigation Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-        {[
-          { id: "profile", label: "Profile & Name" },
-          { id: "appearance", label: "Display & Font Size" },
-          { id: "password", label: "Change Password" },
-          { id: "security", label: "Login Security" },
-          { id: "support", label: "Help & Support" },
-          { id: "report", label: "Report a Problem" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => handleTabChange(tab.id as SettingTab)}
-            className={cn(
-              "px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all cursor-pointer",
-              activeTab === tab.id
-                ? "bg-sidebar text-white shadow-xs"
-                : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {/* Main Container Card */}
       <div className="bg-white dark:bg-card rounded-2xl border border-border/60 shadow-card-dark p-6 sm:p-8 md:p-10 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -883,12 +898,70 @@ function MySettingsContent() {
                 </p>
                 <Button
                   variant="destructive"
-                  onClick={handleLogoutAllDevices}
+                  onClick={() => setShowLogoutAllConfirm(true)}
                   className="w-full text-sm font-bold h-12 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Logout from All Devices</span>
                 </Button>
+
+                {/* Confirmation Dialog on Logout All Devices */}
+                <AlertDialog open={showLogoutAllConfirm} onOpenChange={setShowLogoutAllConfirm}>
+                  <AlertDialogContent className="max-w-md rounded-2xl bg-white dark:bg-card border border-border/80 shadow-2xl p-6">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2.5 text-lg font-bold text-foreground">
+                        <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                          <LogOut className="h-5 w-5" />
+                        </div>
+                        Terminate All Sessions?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="space-y-3 pt-2 text-sm text-foreground">
+                          <p className="text-muted-foreground text-xs leading-relaxed">
+                            Are you sure you want to sign out from all devices? This will invalidate all active session tokens globally across all computers, tablets, and kiosks.
+                          </p>
+                          <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded-xl p-3 text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2.5">
+                            <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                            <div className="leading-relaxed">
+                              You and any active sessions on other devices will be required to log in again with your credentials.
+                            </div>
+                          </div>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4 gap-2 sm:gap-2">
+                      <AlertDialogCancel
+                        disabled={isLoggingOutAll}
+                        className="rounded-xl border-border/60 hover:bg-muted text-xs font-semibold cursor-pointer"
+                      >
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          setIsLoggingOutAll(true);
+                          try {
+                            await handleLogoutAllDevices();
+                          } finally {
+                            setIsLoggingOutAll(false);
+                            setShowLogoutAllConfirm(false);
+                          }
+                        }}
+                        disabled={isLoggingOutAll}
+                        className="rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-bold cursor-pointer"
+                      >
+                        {isLoggingOutAll ? (
+                          <>
+                            <LoaderCircle className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                            Logging out...
+                          </>
+                        ) : (
+                          "Logout from All Devices"
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
 

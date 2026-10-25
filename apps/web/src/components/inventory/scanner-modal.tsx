@@ -135,7 +135,7 @@ export function ScannerModal({ isOpen = true, onClose, onScan }: ScannerModalPro
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="h-8 w-8 p-0 rounded-full border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer shrink-0 -mt-1 -mr-1"
+            className="h-8 w-8 p-0 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer shrink-0 -mt-1 -mr-1"
             title="Close modal"
           >
             <X className="h-4 w-4" />

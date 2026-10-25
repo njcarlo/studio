@@ -24,6 +24,7 @@ import { supabase } from "@studio/database";
 import { useToast } from "@/hooks/use-toast";
 import { isValidEmail } from "@/lib/validation";
 import { requestPasswordReset } from "@/actions/auth";
+import { DeleteConfirmationDialog } from "@/components/common/delete-confirmation-dialog";
 
 interface MySettingsDialogProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function MySettingsDialog({ open, onOpenChange }: MySettingsDialogProps) 
   
   const [activeTab, setActiveTab] = useState("password");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false);
   const [issueTitle, setIssueTitle] = useState("");
   const [issueDescription, setIssueDescription] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -242,12 +244,21 @@ export function MySettingsDialog({ open, onOpenChange }: MySettingsDialogProps) 
                   </p>
                   <Button
                     variant="destructive"
-                    onClick={handleLogoutAllDevices}
+                    onClick={() => setShowLogoutAllConfirm(true)}
                     className="w-full text-sm font-semibold h-11 rounded-xl shadow-xs"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
                     Logout All Devices
                   </Button>
+
+                  <DeleteConfirmationDialog
+                    isOpen={showLogoutAllConfirm}
+                    onClose={() => setShowLogoutAllConfirm(false)}
+                    onConfirm={handleLogoutAllDevices}
+                    title="Logout from All Devices?"
+                    confirmLabel="Logout All Devices"
+                    description="Are you sure you want to sign out from all devices? All active sessions across computers, tablets, and kiosks will be invalidated."
+                  />
                 </div>
 
                 {/* Security Tip */}

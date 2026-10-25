@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@studio/database';
 import { useAuthStore } from '@studio/store';
 import { isNativeMobileApp } from '@/lib/native-app';
@@ -14,15 +14,21 @@ const THROTTLE_MS = 2000; // Throttle activity updates to once every 2 seconds
 /**
  * WebIdleTimeout:
  * Automatically logs out the user after 10 minutes of inactivity on the WEB platform.
- * Bypassed completely when running as a native mobile APK (Capacitor).
+ * Bypassed completely when running as a native mobile APK (Capacitor), or when on auth/recovery pages.
  */
 export function WebIdleTimeout() {
   const { user } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
   const lastWriteRef = useRef<number>(0);
   const isLoggingOutRef = useRef<boolean>(false);
 
   useEffect(() => {
+    // 0. Do NOT auto-logout on auth, password recovery, or login routes
+    if (pathname?.startsWith('/auth') || pathname === '/login' || pathname === '/signup') {
+      return;
+    }
+
     // 1. Only track if user is authenticated
     if (!user) {
       if (typeof window !== 'undefined') {

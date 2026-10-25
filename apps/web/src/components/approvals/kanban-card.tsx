@@ -52,7 +52,7 @@ export function KanbanCard({
   return (
     <>
       <AlertDialog open={confirmApproveOpen} onOpenChange={setConfirmApproveOpen}>
-        <AlertDialogContent className="relative max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
           <button
             type="button"
             onClick={() => setConfirmApproveOpen(false)}
@@ -86,7 +86,7 @@ export function KanbanCard({
       </AlertDialog>
 
       <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
-        <AlertDialogContent className="relative max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
           <button
             type="button"
             onClick={() => setConfirmRejectOpen(false)}
@@ -153,7 +153,7 @@ export function KanbanCard({
           <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mt-1 italic">
             "{request.details}"
           </p>
-          {request.type === "Room Booking" && request.status === "Pending Ministry Approval" && !canManage && (
+          {request.type === "Room Booking" && (request.status === "Pending Ministry Approval" || (request.status as string) === "Pending Ministry Head" || (request.status as string) === "Pending Ministry") && !canManage && (
             <div className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md px-2 py-1">
               <Clock className="h-3 w-3 shrink-0" />
               Waiting for Ministry Head Approval

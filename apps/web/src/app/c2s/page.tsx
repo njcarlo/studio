@@ -655,7 +655,8 @@ const DevotionForm = ({
   };
 
   return (
-    <div className="space-y-5 py-1">
+    <div className="flex flex-col flex-1 min-h-0 h-full">
+      <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
       {/* ── NO MENTEES WARNING ── */}
       {menteeOptions.length === 0 && (
         <div className="p-3.5 rounded-2xl border border-amber-200/90 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5 shadow-2xs">
@@ -766,7 +767,7 @@ const DevotionForm = ({
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Select Module</Label>
             <Select value={selectedModule} onValueChange={handleModuleChange}>
-              <SelectTrigger className="h-10 rounded-xl border border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs font-medium focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
+              <SelectTrigger className="h-10 rounded-xl border border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs font-semibold text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
                 <SelectValue placeholder="Select Module" />
               </SelectTrigger>
               <SelectContent className="max-h-60 rounded-xl border border-border shadow-xl">
@@ -790,7 +791,7 @@ const DevotionForm = ({
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Select Lesson</Label>
             <Select value={selectedLesson} onValueChange={handleLessonChange}>
-              <SelectTrigger className="h-10 rounded-xl border border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs font-medium focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
+              <SelectTrigger className="h-10 rounded-xl border border-slate-200/90 dark:border-border text-xs bg-white dark:bg-background shadow-2xs font-semibold text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar cursor-pointer">
                 <SelectValue placeholder="Select Lesson" />
               </SelectTrigger>
               <SelectContent className="max-h-60 rounded-xl border border-border shadow-xl">
@@ -908,8 +909,8 @@ const DevotionForm = ({
         )}
       </div>
 
-      {/* ── ROW 6: FOOTER ACTIONS ── */}
-      <div className="pt-3 border-t border-border/40 flex items-center justify-end gap-2.5">
+      {/* ── STICKY FOOTER ACTIONS (ALWAYS FIXED AT BOTTOM) ── */}
+      <div className="p-3.5 sm:p-4 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex items-center justify-end gap-2.5 sticky bottom-0 z-10 shadow-xs">
         <Button
           type="button"
           variant="outline"
@@ -3130,10 +3131,10 @@ const C2SAnalytics = ({
       <Separator className="bg-slate-200 dark:bg-slate-700/80 h-[1px]" />
 
       {/* ── FILTER & ACTION TOOLBAR (Consistent with Devotions & Mentees Tabs) ── */}
-      <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-white dark:bg-card p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-border shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 w-full lg:w-auto">
-          {/* Dynamic Cluster/Sub-Ministry Filter: Only shown for Ministry Head / Admin */}
-          {(isSuperAdmin || isMinistryHead || isHeadOrAdmin) && (
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between bg-white dark:bg-card p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-border shadow-xs">
+        {/* Dynamic Cluster/Sub-Ministry Filter: Only shown for Ministry Head / Admin */}
+        {(isSuperAdmin || isMinistryHead || isHeadOrAdmin) && (
+          <div className="w-full sm:w-auto">
             <Select
               value={selectedCluster}
               onValueChange={(val) => setSelectedCluster(val)}
@@ -3177,19 +3178,20 @@ const C2SAnalytics = ({
                 )}
               </SelectContent>
             </Select>
-          )}
+          </div>
+        )}
 
-          <Badge variant="outline" className="text-xs font-semibold h-10 px-3.5 rounded-2xl border-slate-200/80 dark:border-border bg-slate-50 dark:bg-muted/30">
+        {/* Second Row on mobile / Right side on desktop: Badge & Export Excel button KA-ROW! */}
+        <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
+          <Badge variant="outline" className="text-xs font-semibold h-10 px-3.5 rounded-2xl border-slate-200/80 dark:border-border bg-slate-50 dark:bg-muted/30 shrink-0">
             {filteredDevotions.length} Logged Devotions
           </Badge>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowExportConfirm(true)}
-            className="h-10 px-4 text-xs font-semibold rounded-2xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
+            className="h-10 px-4 text-xs font-semibold rounded-2xl border border-slate-200/90 dark:border-border bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted text-slate-700 dark:text-slate-200 shadow-2xs inline-flex items-center gap-1.5 cursor-pointer shrink-0"
           >
             <Download className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
             <span>Export Excel</span>
@@ -5109,7 +5111,7 @@ function C2SPageContent() {
                           <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                           <span>with {attendeesString}</span>
                         </div>
-                        <div className="text-xs font-semibold text-sidebar dark:text-blue-400 pt-0.5">
+                        <div className="text-xs font-bold text-slate-900 dark:text-slate-100 pt-0.5">
                           {record.lessonName || record.topic}
                         </div>
                       </div>
@@ -6035,9 +6037,9 @@ function C2SPageContent() {
 
       {/* ── Submit / Edit Devotion Record Sheet ── */}
       <Sheet open={isDevotionSheetOpen} onOpenChange={setIsDevotionSheetOpen}>
-        <SheetContent className="sm:max-w-2xl max-h-[92vh] flex flex-col p-0 overflow-y-auto rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
+        <SheetContent className="sm:max-w-2xl h-[92dvh] sm:h-[90vh] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
           {/* ── MODAL HEADER (Matches Admin Form Style) ── */}
-          <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
+          <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md shrink-0 sticky top-0 z-10">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
                 <div className="h-11 w-11 rounded-2xl bg-sidebar/10 border border-sidebar/20 text-sidebar dark:text-sky-400 flex items-center justify-center shrink-0 shadow-xs">
@@ -6069,7 +6071,7 @@ function C2SPageContent() {
             </div>
           </div>
 
-          <div className="p-5 sm:p-6">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <DevotionForm
               key={editingDevotion?.id || (isDevotionSheetOpen ? "open-new" : "closed")}
               devotion={editingDevotion}

@@ -121,27 +121,45 @@ function ManageDepartmentDialog({ departmentName, departmentData, workers, onSav
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">
+              <Label className="text-xs sm:text-sm font-bold text-foreground">
                 Weekday Pool
               </Label>
               <Input
                 type="number"
                 min="0"
                 value={weekdayAlloc}
-                onChange={(e) => setWeekdayAlloc(parseInt(e.target.value) || 0)}
-                className="h-10 rounded-xl border-slate-200/90 dark:border-border text-base font-semibold bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (!raw) {
+                    setWeekdayAlloc(0);
+                    return;
+                  }
+                  const parsed = parseInt(raw, 10);
+                  setWeekdayAlloc(isNaN(parsed) ? 0 : parsed);
+                }}
+                className="h-11 rounded-xl border-slate-200/90 dark:border-border text-base font-bold text-foreground bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">
+              <Label className="text-xs sm:text-sm font-bold text-foreground">
                 Sunday Pool
               </Label>
               <Input
                 type="number"
                 min="0"
                 value={sundayAlloc}
-                onChange={(e) => setSundayAlloc(parseInt(e.target.value) || 0)}
-                className="h-10 rounded-xl border-slate-200/90 dark:border-border text-base font-semibold bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (!raw) {
+                    setSundayAlloc(0);
+                    return;
+                  }
+                  const parsed = parseInt(raw, 10);
+                  setSundayAlloc(isNaN(parsed) ? 0 : parsed);
+                }}
+                className="h-11 rounded-xl border-slate-200/90 dark:border-border text-base font-bold text-foreground bg-background shadow-2xs focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar"
               />
             </div>
           </div>

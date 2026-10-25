@@ -18,6 +18,7 @@ import {
   SelectContent,
   SelectItem,
   Badge,
+  DatePicker,
 } from '@studio/ui';
 import {
   Boxes,
@@ -443,7 +444,12 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     type="number"
                     min="0"
                     value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value, 10) || 0 })}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const cleaned = raw.length > 1 && raw.startsWith("0") ? raw.replace(/^0+/, "") : raw;
+                      setFormData({ ...formData, stock: cleaned === "" ? 0 : parseInt(cleaned, 10) || 0 });
+                    }}
                     className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
@@ -457,7 +463,12 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                     type="number"
                     min="0"
                     value={formData.minStock}
-                    onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value, 10) || 0 })}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const cleaned = raw.length > 1 && raw.startsWith("0") ? raw.replace(/^0+/, "") : raw;
+                      setFormData({ ...formData, minStock: cleaned === "" ? 0 : parseInt(cleaned, 10) || 0 });
+                    }}
                     className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 font-medium text-foreground focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>
@@ -506,11 +517,10 @@ export function ItemModal({ isOpen, onClose, item, onSaved }: ItemModalProps) {
                   <Label htmlFor="maintenance-date" className="text-xs font-semibold text-foreground/85">
                     Next Maintenance (PMS)
                   </Label>
-                  <Input
-                    id="maintenance-date"
-                    type="date"
+                  <DatePicker
                     value={formData.nextMaintenanceDate}
-                    onChange={(e) => setFormData({ ...formData, nextMaintenanceDate: e.target.value })}
+                    onChange={(date) => setFormData({ ...formData, nextMaintenanceDate: date })}
+                    placeholder="dd/mm/yyyy"
                     className="w-full min-w-0 h-9 px-3 text-xs rounded-xl bg-background border border-border/70 text-foreground font-medium focus-visible:ring-1 focus-visible:ring-sidebar/40 focus-visible:border-sidebar transition-all"
                   />
                 </div>

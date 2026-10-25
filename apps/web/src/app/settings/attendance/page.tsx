@@ -8,7 +8,8 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useToast } from "@/hooks/use-toast";
 import { useAttendanceSettings } from "@/hooks/use-attendance-settings";
 import { DEFAULT_ATTENDANCE_SETTINGS, type AttendanceShiftSettings } from "@/lib/attendance-config";
-import { Button, Badge } from "@studio/ui";
+import { Button, Badge, Popover, PopoverContent, PopoverTrigger } from "@studio/ui";
+import { cn } from "@/lib/utils";
 
 function formatTime12(time24: string) {
     if (!time24) return "";
@@ -29,6 +30,160 @@ function addMinutesToTime(time24: string, minutesToAdd: number) {
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
     return `${h}:${m} ${ampm}`;
+}
+
+interface StyledTimePickerProps {
+    value: string;
+    onChange: (val: string) => void;
+    id?: string;
+}
+
+function StyledTimePicker({ value, onChange, id }: StyledTimePickerProps) {
+    const [open, setOpen] = useState(false);
+
+    const [hStr, mStr] = (value || "09:00").split(":");
+    let rawH = parseInt(hStr, 10);
+    if (isNaN(rawH)) rawH = 9;
+    const isPM = rawH >= 12;
+    const h12 = rawH % 12 || 12;
+    let m = parseInt(mStr, 10);
+    if (isNaN(m)) m = 0;
+
+    const displayTime = `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${isPM ? "pm" : "am"}`;
+
+    const setHour = (newH12: number) => {
+        let finalH = newH12 % 12;
+        if (isPM) finalH += 12;
+        onChange(`${String(finalH).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    };
+
+    const setMinute = (newM: number) => {
+        let finalH = h12 % 12;
+        if (isPM) finalH += 12;
+        onChange(`${String(finalH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`);
+    };
+
+    const toggleAmPm = (newIsPM: boolean) => {
+        let finalH = h12 % 12;
+        if (newIsPM) finalH += 12;
+        onChange(`${String(finalH).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    };
+
+    const hours = Array.from({ length: 12 }, (_, i) => i + 1);
+    const minutes = Array.from({ length: 60 }, (_, i) => i);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button
+                    id={id}
+                    type="button"
+                    className="h-9 w-full rounded-xl border border-border/70 bg-muted/[0.15] hover:bg-background focus:bg-background px-3 text-xs sm:text-sm font-medium tabular-nums focus:border-sidebar/60 focus:ring-2 focus:ring-sidebar/20 transition-all text-foreground flex items-center justify-between cursor-pointer"
+                >
+                    <span>{displayTime}</span>
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3 rounded-2xl border border-border/80 shadow-xl bg-popover" align="start">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/50 px-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Select Time</span>
+                    <span className="text-xs font-bold text-foreground tabular-nums">{displayTime}</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-xs">
+                    {/* Hours column */}
+                    <div className="flex flex-col items-center">
+                        <span className="text-[10px] font-semibold text-muted-foreground mb-1 uppercase">Hour</span>
+                        <div className="h-44 w-12 overflow-y-auto space-y-1 p-0.5 rounded-lg border border-border/40 scrollbar-thin">
+                            {hours.map((h) => {
+                                const isSelected = h === h12;
+                                return (
+                                    <button
+                                        key={h}
+                                        type="button"
+                                        onClick={() => setHour(h)}
+                                        className={cn(
+                                            "w-full h-7 rounded-md text-xs font-semibold tabular-nums transition-colors flex items-center justify-center cursor-pointer",
+                                            isSelected
+                                                ? "bg-sidebar text-white shadow-2xs font-bold"
+                                                : "text-foreground hover:bg-muted"
+                                        )}
+                                    >
+                                        {String(h).padStart(2, "0")}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="text-muted-foreground font-bold pt-6">:</div>
+
+                    {/* Minutes column */}
+                    <div className="flex flex-col items-center">
+                        <span className="text-[10px] font-semibold text-muted-foreground mb-1 uppercase">Min</span>
+                        <div className="h-44 w-12 overflow-y-auto space-y-1 p-0.5 rounded-lg border border-border/40 scrollbar-thin">
+                            {minutes.map((minute) => {
+                                const isSelected = minute === m;
+                                return (
+                                    <button
+                                        key={minute}
+                                        type="button"
+                                        onClick={() => setMinute(minute)}
+                                        className={cn(
+                                            "w-full h-7 rounded-md text-xs font-semibold tabular-nums transition-colors flex items-center justify-center cursor-pointer",
+                                            isSelected
+                                                ? "bg-sidebar text-white shadow-2xs font-bold"
+                                                : "text-foreground hover:bg-muted"
+                                        )}
+                                    >
+                                        {String(minute).padStart(2, "0")}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* AM / PM column */}
+                    <div className="flex flex-col items-center ml-1">
+                        <span className="text-[10px] font-semibold text-muted-foreground mb-1 uppercase">Period</span>
+                        <div className="space-y-1 w-12 pt-0.5">
+                            <button
+                                type="button"
+                                onClick={() => toggleAmPm(false)}
+                                className={cn(
+                                    "w-full h-8 rounded-lg text-xs font-bold transition-colors flex items-center justify-center cursor-pointer",
+                                    !isPM
+                                        ? "bg-sidebar text-white shadow-2xs"
+                                        : "text-foreground hover:bg-muted border border-border/50"
+                                )}
+                            >
+                                AM
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleAmPm(true)}
+                                className={cn(
+                                    "w-full h-8 rounded-lg text-xs font-bold transition-colors flex items-center justify-center cursor-pointer",
+                                    isPM
+                                        ? "bg-sidebar text-white shadow-2xs"
+                                        : "text-foreground hover:bg-muted border border-border/50"
+                                )}
+                            >
+                                PM
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <Button
+                    type="button"
+                    size="sm"
+                    className="w-full h-7 text-xs bg-sidebar text-white hover:bg-sidebar/90 mt-2 font-medium"
+                    onClick={() => setOpen(false)}
+                >
+                    Done
+                </Button>
+            </PopoverContent>
+        </Popover>
+    );
 }
 
 export default function AttendanceSettingsPage() {
@@ -140,12 +295,10 @@ export default function AttendanceSettingsPage() {
                                     <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                                         <Clock className="h-3.5 w-3.5 text-primary" /> Shift Start Time (Time In)
                                     </label>
-                                    <input
-                                        type="time"
+                                    <StyledTimePicker
+                                        id="shiftStartTime"
                                         value={form.shiftStartTime}
-                                        onChange={(e) => setForm((prev) => ({ ...prev, shiftStartTime: e.target.value }))}
-                                        required
-                                        className="h-9 w-full rounded-xl border border-border/70 bg-muted/[0.15] focus:bg-background px-3 text-xs sm:text-sm font-mono focus:border-sidebar/60 focus:ring-2 focus:ring-sidebar/20 transition-all text-foreground"
+                                        onChange={(val) => setForm((prev) => ({ ...prev, shiftStartTime: val }))}
                                     />
                                     <p className="text-[11px] text-muted-foreground">
                                         Official start of work. Displays as <strong>{startFormatted}</strong>.
@@ -176,12 +329,10 @@ export default function AttendanceSettingsPage() {
                                     <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                                         <Clock className="h-3.5 w-3.5 text-blue-500" /> Shift End Time (Time Out)
                                     </label>
-                                    <input
-                                        type="time"
+                                    <StyledTimePicker
+                                        id="shiftEndTime"
                                         value={form.shiftEndTime}
-                                        onChange={(e) => setForm((prev) => ({ ...prev, shiftEndTime: e.target.value }))}
-                                        required
-                                        className="h-9 w-full rounded-xl border border-border/70 bg-muted/[0.15] focus:bg-background px-3 text-xs sm:text-sm font-mono focus:border-sidebar/60 focus:ring-2 focus:ring-sidebar/20 transition-all text-foreground"
+                                        onChange={(val) => setForm((prev) => ({ ...prev, shiftEndTime: val }))}
                                     />
                                     <p className="text-[11px] text-muted-foreground">
                                         Official dismissal time. Displays as <strong>{endFormatted}</strong>.

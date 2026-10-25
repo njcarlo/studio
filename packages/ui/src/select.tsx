@@ -191,7 +191,7 @@ const SelectTrigger = React.forwardRef<
         aria-haspopup="listbox"
         data-radix-select-trigger=""
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-white dark:bg-card px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30 focus:border-primary/60 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+          "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-white dark:bg-card px-3 py-2 text-xs text-foreground ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30 focus:border-primary/60 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
           className
         )}
         {...props}
@@ -237,7 +237,7 @@ const SelectContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
     position?: "item-aligned" | "popper"
   }
->(({ className, children, position = "popper", side = "bottom", align = "start", sideOffset = 4, avoidCollisions = true, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+>(({ className, children, position = "popper", side = "bottom", align = "start", sideOffset = 4, avoidCollisions = true, collisionPadding = 12, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -246,6 +246,7 @@ const SelectContent = React.forwardRef<
         align={align}
         sideOffset={sideOffset}
         avoidCollisions={avoidCollisions}
+        collisionPadding={collisionPadding}
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           onOpenAutoFocus?.(e);
@@ -255,8 +256,8 @@ const SelectContent = React.forwardRef<
           onCloseAutoFocus?.(e);
         }}
         className={cn(
-          "relative z-[100] max-h-60 min-w-[8rem] overflow-y-auto rounded-xl border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 p-1",
-          position === "popper" && "min-w-[var(--radix-popover-trigger-width)] w-auto max-w-[min(calc(100vw-32px),360px)]",
+          "relative z-[100] max-h-[min(18rem,var(--radix-popover-content-available-height,18rem))] min-w-[8rem] overflow-y-auto rounded-xl border bg-popover text-popover-foreground shadow-lg outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 p-1",
+          position === "popper" && "w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)]",
           className
         )}
         {...props}

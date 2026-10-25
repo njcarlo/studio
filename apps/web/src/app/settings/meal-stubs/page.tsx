@@ -99,11 +99,26 @@ export default function MealStubAllocationPage() {
   const totalRemaining = Math.max(0, totalPool - totalAllocated);
   const restrictedDays = (globalSettings as any)?.disabledVolunteerDays?.length ?? 2;
 
-  const handleDeptEdit = (dept: string, value: string) => { const n = parseInt(value) || 0; if (n >= 0) setDeptEdits(p => ({ ...p, [dept]: n })); };
-  const handleMinistryEdit = (id: string, value: string) => { const n = parseInt(value) || 0; if (n >= 0) setMinistryEdits(p => ({ ...p, [id]: n })); };
+  const handleDeptEdit = (dept: string, value: string) => {
+    if (value === "") {
+      setDeptEdits(p => ({ ...p, [dept]: "" as any }));
+      return;
+    }
+    const n = parseInt(value, 10);
+    if (!isNaN(n) && n >= 0) setDeptEdits(p => ({ ...p, [dept]: n }));
+  };
+  const handleMinistryEdit = (id: string, value: string) => {
+    if (value === "") {
+      setMinistryEdits(p => ({ ...p, [id]: "" as any }));
+      return;
+    }
+    const n = parseInt(value, 10);
+    if (!isNaN(n) && n >= 0) setMinistryEdits(p => ({ ...p, [id]: n }));
+  };
 
   const handleSaveDeptPool = async (dept: string) => {
-    const value = deptEdits[dept]; if (value === undefined) return;
+    const rawValue = deptEdits[dept]; if (rawValue === undefined) return;
+    const value = Math.max(0, parseInt(String(rawValue), 10) || 0);
     setSaving(`dept-${dept}`);
     try {
       await upsertDepartment({ id: dept, data: { mealStubWeekdayAllocation: value } });
@@ -114,7 +129,8 @@ export default function MealStubAllocationPage() {
   };
 
   const handleSaveMinistry = async (ministry: any) => {
-    const value = ministryEdits[ministry.id]; if (value === undefined) return;
+    const rawValue = ministryEdits[ministry.id]; if (rawValue === undefined) return;
+    const value = Math.max(0, parseInt(String(rawValue), 10) || 0);
     setSaving(ministry.id);
     try {
       await updateMinistry({ id: ministry.id, data: { mealStubWeeklyLimit: value } });
@@ -243,8 +259,15 @@ export default function MealStubAllocationPage() {
                     <div className="flex items-end justify-between gap-4 bg-muted/30 rounded-xl p-4">
                       <div>
                         <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Department Weekly Pool</p>
-                        <input type="number" min="0" value={pool} onChange={e => handleDeptEdit(dept, e.target.value)}
-                          className="w-32 h-10 rounded-xl border border-border/70 bg-background px-3 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs" />
+                        <input
+                          type="number"
+                          min="0"
+                          value={deptEdits[dept] !== undefined ? deptEdits[dept] : pool}
+                          onChange={e => handleDeptEdit(dept, e.target.value)}
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                          onFocus={(e) => e.target.select()}
+                          className="w-32 h-10 rounded-xl border border-border/70 bg-background px-3 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
+                        />
                       </div>
                       <button onClick={() => handleSaveDeptPool(dept)} disabled={!hasDeptEdits || saving === `dept-${dept}`}
                         className={cn("h-10 px-4 flex items-center gap-1.5 rounded-xl text-[11px] font-bold transition-colors",
@@ -272,8 +295,15 @@ export default function MealStubAllocationPage() {
                                   <p className="text-xs font-semibold text-foreground">{m.name}</p>
                                   <div className="flex items-center gap-2.5 shrink-0">
                                     <p className="text-[10px] font-semibold text-muted-foreground">Limit</p>
-                                    <input type="number" min="0" value={current} onChange={e => handleMinistryEdit(m.id, e.target.value)}
-                                      className="w-24 h-9 rounded-xl border border-border/70 bg-background px-2 text-xs font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs transition-all" />
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={editVal !== undefined ? editVal : current}
+                                      onChange={e => handleMinistryEdit(m.id, e.target.value)}
+                                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                                      onFocus={(e) => e.target.select()}
+                                      className="w-24 h-9 rounded-xl border border-border/70 bg-background px-2 text-xs font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs transition-all"
+                                    />
                                     <button onClick={() => handleSaveMinistry(m)} disabled={!changed || saving === m.id}
                                       className={cn("h-9 w-9 flex items-center justify-center rounded-xl transition-colors shrink-0",
                                         changed ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-border/60 text-muted-foreground cursor-not-allowed")}>

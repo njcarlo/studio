@@ -122,6 +122,7 @@ interface ApprovalDetailsDialogProps {
   onReject?: (id: string) => void;
   canManage?: boolean;
   isAdmin?: boolean;
+  isMinistryHead?: boolean;
 }
 
 export function ApprovalDetailsDialog({
@@ -133,6 +134,7 @@ export function ApprovalDetailsDialog({
   onReject,
   canManage = false,
   isAdmin = false,
+  isMinistryHead = false,
 }: ApprovalDetailsDialogProps) {
   if (!request) return null;
 
@@ -146,7 +148,7 @@ export function ApprovalDetailsDialog({
         <DialogTitle className="sr-only">{request.type} Request Details</DialogTitle>
 
         {/* Modal Header */}
-        <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="p-5 pr-12 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div
@@ -300,7 +302,9 @@ export function ApprovalDetailsDialog({
                 statusStr === "Pending Ministry Head" ||
                 statusStr.toLowerCase().includes("ministry")
               );
-            const isActionDisabled = Boolean(isAdmin && isWaitingForMinistryHead);
+            // Admins cannot approve until Ministry Head gives initial approval.
+            // But Ministry Heads can approve requests waiting for Ministry Head approval!
+            const isActionDisabled = Boolean(isAdmin && !isMinistryHead && isWaitingForMinistryHead);
 
             return (
               <div className="pt-1 grid grid-cols-2 gap-3">

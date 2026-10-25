@@ -687,18 +687,6 @@ export function InventoryTable({
                 <Plus className="h-4 w-4 shrink-0" />
                 <span className="whitespace-nowrap">Add Item</span>
               </Button>
-
-              {onActivityFeedClick && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onActivityFeedClick}
-                  className="h-9 px-3 sm:px-3.5 text-xs font-semibold rounded-xl gap-1.5 border-border/80 shadow-2xs cursor-pointer hover:bg-muted/40 flex-1 sm:flex-initial justify-center"
-                >
-                  <Activity className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="whitespace-nowrap">Activity Feed</span>
-                </Button>
-              )}
             </div>
 
             {/* Right: Low Stock · X items */}
@@ -745,15 +733,15 @@ export function InventoryTable({
                   <span>item(s) selected</span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 rounded-lg" onClick={handleBatchQR}>
+                <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap justify-end">
+                  <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 px-2.5 rounded-lg shrink-0" onClick={handleBatchQR}>
                     <QrCode className="h-3 w-3" />
                     Batch QR
                   </Button>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="outline" className="text-xs h-7 rounded-lg">
+                      <Button size="sm" variant="outline" className="text-xs h-7 px-2.5 rounded-lg shrink-0">
                         Mark Status
                       </Button>
                     </DropdownMenuTrigger>
@@ -773,7 +761,7 @@ export function InventoryTable({
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="gap-1.5 text-xs h-7 rounded-lg"
+                    className="gap-1.5 text-xs h-7 px-2.5 rounded-lg shrink-0 whitespace-nowrap"
                     onClick={() => setBulkDeleteConfirm(true)}
                   >
                     <Trash2 className="h-3 w-3" />
@@ -1406,7 +1394,7 @@ export function InventoryTable({
                     <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs">
                       <Boxes className="h-5 w-5" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 space-y-1">
                       <DialogTitle className="text-base sm:text-lg font-bold font-headline tracking-tight text-foreground flex items-center gap-2 flex-wrap">
                         <span>Adjust Stock Quantity</span>
                         {stockAdjustItem.inventoryCode && (
@@ -1415,8 +1403,15 @@ export function InventoryTable({
                           </span>
                         )}
                       </DialogTitle>
-                      <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                        Update inventory levels for <strong className="text-foreground">{stockAdjustItem.name}</strong>. Current level: <strong className="text-foreground font-semibold">{stockAdjustItem.stock} {stockAdjustItem.unit || 'pcs'}</strong>
+                      <DialogDescription asChild>
+                        <div className="text-xs text-muted-foreground leading-relaxed space-y-0.5">
+                          <p>
+                            Update inventory levels for <strong className="text-foreground">{stockAdjustItem.name}</strong>.
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Current level: <strong className="text-foreground font-semibold">{stockAdjustItem.stock} {stockAdjustItem.unit || 'pcs'}</strong>
+                          </p>
+                        </div>
                       </DialogDescription>
                     </div>
                   </div>
@@ -1626,7 +1621,7 @@ export function InventoryTable({
                   setDeleteConfirmId(null);
                   setDeleteConfirmName('');
                 }}
-                className="absolute top-4 right-4 h-8 w-8 p-0 rounded-full border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors"
+                className="absolute top-4 right-4 h-8 w-8 p-0 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors"
                 title="Close"
               >
                 <X className="h-4 w-4" />
@@ -1674,7 +1669,7 @@ export function InventoryTable({
                 variant="ghost"
                 size="sm"
                 onClick={() => setBulkDeleteConfirm(false)}
-                className="absolute top-4 right-4 h-8 w-8 p-0 rounded-full border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors"
+                className="absolute top-4 right-4 h-8 w-8 p-0 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors"
                 title="Close"
               >
                 <X className="h-4 w-4" />

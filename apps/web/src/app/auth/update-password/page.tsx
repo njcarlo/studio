@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -22,9 +22,13 @@ export default function UpdatePasswordPage() {
   const [sessionReady, setSessionReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const hasAttemptedRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
+    try {
+      localStorage.setItem('cog_last_activity_time', Date.now().toString());
+    } catch {}
 
     const initRecovery = async () => {
       if (typeof window === "undefined") return;
@@ -43,6 +47,17 @@ export default function UpdatePasswordPage() {
         }
 
         if (tokenHash) {
+          if (hasAttemptedRef.current) {
+            const { data: currentSession } = await supabase.auth.getSession();
+            if (currentSession?.session) {
+              setSessionReady(true);
+              setErrorMessage(null);
+            }
+            setVerifying(false);
+            return;
+          }
+
+          hasAttemptedRef.current = true;
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: (type as any) || "recovery",
@@ -50,9 +65,20 @@ export default function UpdatePasswordPage() {
 
           if (error) {
             console.error("verifyOtp error:", error);
-            setErrorMessage(error.message || "This password reset link is invalid or has expired.");
+            const { data: currentSession } = await supabase.auth.getSession();
+            if (currentSession?.session) {
+              setSessionReady(true);
+              setErrorMessage(null);
+            } else {
+              setErrorMessage(error.message || "This password reset link is invalid or has expired.");
+            }
           } else if (data?.session || data?.user) {
             setSessionReady(true);
+            setErrorMessage(null);
+            try {
+              window.history.replaceState({}, '', window.location.pathname);
+              localStorage.setItem('cog_last_activity_time', Date.now().toString());
+            } catch {}
           }
           setVerifying(false);
           return;
@@ -81,6 +107,11 @@ export default function UpdatePasswordPage() {
               setErrorMessage(error.message || "Failed to establish security session.");
             } else if (data?.session) {
               setSessionReady(true);
+              setErrorMessage(null);
+              try {
+                window.history.replaceState({}, '', window.location.pathname);
+                localStorage.setItem('cog_last_activity_time', Date.now().toString());
+              } catch {}
             }
             setVerifying(false);
             return;

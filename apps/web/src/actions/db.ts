@@ -215,9 +215,20 @@ export async function getActorMinistryAccess(actorId?: string): Promise<{
             deptCodes.add((actor as any).department);
         }
 
-        if (deptCodes.size === 0) {
-            deptCodes.add('O');
-            deptCodes.add('Outreach');
+        // Infer department from actor email, role, or assigned ministries if not explicitly tagged
+        const actorStr = `${actor.email || ''} ${actor.firstName || ''} ${actor.lastName || ''} ${actor.role?.name || ''}`.toLowerCase();
+        const hasIdPrefix = (prefix: string) => Array.from(ministryIds).some(id => id.toUpperCase().startsWith(prefix));
+
+        if (actorStr.includes('worship') || hasIdPrefix('W-')) {
+            deptCodes.add('W'); deptCodes.add('Worship');
+        } else if (actorStr.includes('relationship') || hasIdPrefix('R-')) {
+            deptCodes.add('R'); deptCodes.add('Relationship');
+        } else if (actorStr.includes('discipleship') || hasIdPrefix('D-')) {
+            deptCodes.add('D'); deptCodes.add('Discipleship');
+        } else if (actorStr.includes('admin') || hasIdPrefix('A-')) {
+            deptCodes.add('A'); deptCodes.add('Administration');
+        } else if (actorStr.includes('outreach') || hasIdPrefix('O-') || deptCodes.size === 0) {
+            deptCodes.add('O'); deptCodes.add('Outreach');
         }
 
         if (deptCodes.size > 0) {
@@ -509,6 +520,8 @@ export async function getPaginatedWorkers(
         orderByClause = `"firstName" ${sortDir.toUpperCase()}, "lastName" ${sortDir.toUpperCase()}`;
     } else if (sortField === 'status') {
         orderByClause = `"status" ${sortDir.toUpperCase()}`;
+    } else if (sortField === 'createdAt') {
+        orderByClause = `"createdAt" ${sortDir.toUpperCase()}`;
     } else {
         orderByClause = `"createdAt" DESC`;
     }
@@ -551,7 +564,7 @@ export async function getPaginatedWorkers(
         prisma.$queryRawUnsafe<any[]>(
             `SELECT id, "workerId", "firstName", "lastName", email, phone, "roleId", status,
                     "avatarUrl", "majorMinistryId", "minorMinistryId", "assignedMinistryIds", "employmentType",
-                    "passwordChangeRequired", "qrToken", "createdAt"
+                    "passwordChangeRequired", "qrToken", "isSeniorPastor", "isPastor", "createdAt"
              FROM "Worker"
              ${whereClause}
              ORDER BY ${orderByClause}
@@ -900,6 +913,7 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
     }
 
     // Look up role name
+    // Look up role name
     let roleName = "Worker";
     const primaryRoleId = (roleIds && roleIds.length > 0) ? roleIds[0] : data.roleId;
     if (primaryRoleId) {
@@ -914,6 +928,26 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
             console.error("Failed to fetch role info for welcome email:", e);
         }
     }
+
+    // Role display formatting: if Super Admin -> Admin
+    if (roleName.toLowerCase() === "super admin") {
+        roleName = "Admin";
+    }
+
+    const isSenior = Boolean(data.isSeniorPastor);
+    const isPastor = Boolean(data.isPastor);
+    const isPastoral = isSenior || isPastor;
+
+    let assignedRoleDisplay = roleName;
+    if (isSenior) {
+        assignedRoleDisplay = `${roleName} (Senior Pastor)`;
+    } else if (isPastor) {
+        assignedRoleDisplay = `${roleName} (Pastor)`;
+    }
+
+    const welcomeGreeting = isPastoral
+        ? `Welcome to Pastoral, ${data.firstName}!`
+        : `Welcome to the ${ministryName}, ${data.firstName}!`;
 
     // Look up registeredBy user if assignedBy is provided
     let registeredByName = "";
@@ -995,7 +1029,7 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
           <tr>
             <td style="padding: 32px 32px 24px;">
               <h2 style="margin: 0 0 12px; color: #0f172a; font-size: 20px; font-weight: 700;">
-                Welcome to the ${ministryName}, ${data.firstName}!
+                ${welcomeGreeting}
               </h2>
               <p style="margin: 0 0 24px; color: #475569; font-size: 14px; line-height: 1.6;">
                 Your worker account has been created by your Ministry Head / Administrator in the COG App portal. Below are your account login credentials and registered profile details.
@@ -1009,12 +1043,6 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
                       Your Login Credentials
                     </div>
                     <table role="presentation" width="100%" style="font-size: 14px; border-collapse: collapse;">
-                      <tr>
-                        <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 150px; white-space: nowrap; vertical-align: middle;">Login Portal:</td>
-                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">
-                          <a href="${loginUrl}" style="color: #2563eb; text-decoration: underline;">${loginUrl}</a>
-                        </td>
-                      </tr>
                       <tr>
                         <td style="padding: 6px 0; color: #64748b; font-weight: 500; width: 150px; white-space: nowrap; vertical-align: middle;">Email:</td>
                         <td style="padding: 6px 0; color: #0f172a; font-weight: 600; font-family: monospace; vertical-align: middle;">${data.email}</td>
@@ -1055,8 +1083,13 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
                 </tr>
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                   <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Assigned Role</td>
-                  <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">${roleName}</td>
+                  <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">${assignedRoleDisplay}</td>
                 </tr>
+                ${isPastoral ? `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Designation</td>
+                  <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">${isSenior ? 'Senior Pastor' : 'Pastor'}</td>
+                </tr>` : ''}
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                   <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Ministry</td>
                   <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">${ministryName}</td>
@@ -1143,25 +1176,26 @@ export async function createWorkerWithAuth(data: any, roleIds: string[], assigne
             text: `
 Welcome to Church of God Dasmariñas!
 
+${welcomeGreeting}
+
 Your worker account has been created in COG App.
 
 LOGIN CREDENTIALS:
-- Portal URL: ${loginUrl}
 - Email: ${data.email}
 - Worker ID: ${worker.workerId || 'Pending'}
 - Default Password: ${defaultPassword}
 
 REGISTERED INFORMATION:
 - Name: ${data.firstName} ${data.lastName}
-- Role: ${roleName}
-- Ministry: ${ministryName}${departmentName ? ` (${departmentName})` : ''}
+- Role: ${assignedRoleDisplay}
+${isPastoral ? `- Designation: ${isSenior ? 'Senior Pastor' : 'Pastor'}\n` : ''}- Ministry: ${ministryName}${departmentName ? ` (${departmentName})` : ''}
 - Worker Type: ${data.employmentType || 'Volunteer'}
 - Mobile: ${data.phone || 'N/A'}
 ${data.birthDate ? `- Birth Date: ${data.birthDate}\n` : ''}${data.address ? `- Address: ${data.address}\n` : ''}${startDate ? `- Start Date: ${startDate}\n` : ''}${(emergencyName || emergencyPhone) ? `- Emergency Contact: ${emergencyName || 'N/A'}${emergencyPhone ? ` (${emergencyPhone})` : ''}\n` : ''}- Status: ${data.status || 'Pending Approval'}
 ${registeredByName ? `- Registered By: ${registeredByName}\n` : ''}
 
 Next Steps:
-1. Log in at ${loginUrl} using your email and default password: ${defaultPassword}
+1. Log in using your email and default password: ${defaultPassword}
 2. Coordinate with your Ministry Head for orientation and schedules.
             `.trim(),
         });
@@ -1284,9 +1318,14 @@ export async function updateWorkerProfileSettings(workerId: string, data: {
         return { success: false, error: 'Worker profile ID is required.' };
     }
 
-    const worker = await prisma.worker.findUnique({
+    let worker = await prisma.worker.findUnique({
         where: { id: workerId },
     });
+    if (!worker && data.email) {
+        worker = await prisma.worker.findFirst({
+            where: { email: { equals: data.email.trim().toLowerCase(), mode: 'insensitive' } },
+        });
+    }
     if (!worker) {
         return { success: false, error: 'Worker profile not found.' };
     }
@@ -1304,7 +1343,7 @@ export async function updateWorkerProfileSettings(workerId: string, data: {
         const conflict = await prisma.worker.findFirst({
             where: {
                 email: { equals: trimmedEmail, mode: 'insensitive' },
-                id: { not: workerId },
+                id: { not: worker.id },
             },
         });
         if (conflict) {
@@ -1347,7 +1386,7 @@ export async function updateWorkerProfileSettings(workerId: string, data: {
     if (isEmailChanging) updatePayload.email = newEmail;
 
     const updatedWorker = await prisma.worker.update({
-        where: { id: workerId },
+        where: { id: worker.id },
         data: updatePayload,
     });
 
@@ -1355,7 +1394,7 @@ export async function updateWorkerProfileSettings(workerId: string, data: {
         const supabaseAdmin = getSupabaseAdminClient();
         const { data: authList } = await supabaseAdmin.auth.admin.listUsers();
         const existingAuth = authList?.users?.find(
-            (u) => u.email?.toLowerCase() === worker.email.toLowerCase() || u.id === worker.id
+            (u) => u.email?.toLowerCase() === worker.email.toLowerCase() || u.id === worker.id || u.id === workerId
         );
         if (existingAuth) {
             const authUpdatePayload: any = {
@@ -1377,11 +1416,13 @@ export async function updateWorkerProfileSettings(workerId: string, data: {
 
     invalidateServerCache('workers');
     invalidateServerCache('worker_stats');
+    revalidatePath('/', 'layout');
+    revalidatePath('/dashboard');
     revalidatePath('/workers');
     revalidatePath('/my-settings');
     revalidatePath('/profile');
 
-    const status = await getEmailChangeStatus(workerId);
+    const status = await getEmailChangeStatus(worker.id);
 
     return {
         success: true,
@@ -1645,6 +1686,21 @@ export async function updateApproval(id: string, data: any, actorId?: string) {
         emailNotificationSent,
         emailNotificationError,
     };
+}
+
+export async function deleteApprovalRequest(id: string) {
+    const approval = await prisma.approvalRequest.findUnique({ where: { id } });
+    if (!approval) return { success: false };
+
+    if (approval.reservationId) {
+        await prisma.booking.delete({ where: { id: approval.reservationId } }).catch(() => {});
+    }
+    await prisma.approvalRequest.delete({ where: { id } });
+
+    revalidatePath('/approvals');
+    revalidatePath('/dashboard');
+    revalidatePath('/reservations');
+    return { success: true };
 }
 
 // --- Ministries ---
@@ -2336,10 +2392,29 @@ export async function seedAttendanceData() {
     return { count: inserted };
 }
 
-export async function createAttendanceRecord(data: { workerProfileId: string; type: string }) {
+export async function createAttendanceRecord(data: { workerProfileId: string; type: string; allowPastShift?: boolean }) {
+    if (data.type === 'Clock In' && !data.allowPastShift) {
+        const settings = await getAttendanceSettings();
+        const [endHStr, endMStr] = (settings.shiftEndTime || "17:00").split(':');
+        const shiftEndHour = parseInt(endHStr, 10) || 17;
+        const shiftEndMin = parseInt(endMStr, 10) || 0;
+        const endCutoffTotalMinutes = shiftEndHour * 60 + shiftEndMin;
+
+        const now = new Date();
+        const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+
+        if (currentTotalMinutes >= endCutoffTotalMinutes) {
+            const h = shiftEndHour % 12 || 12;
+            const ampm = shiftEndHour >= 12 ? 'PM' : 'AM';
+            const m = String(shiftEndMin).padStart(2, '0');
+            throw new Error(`Hindi na maaaring mag-time in dahil lagpas na sa working hours (${h}:${m} ${ampm}).`);
+        }
+    }
+
     const record = await prisma.attendanceRecord.create({
         data: {
-            ...data,
+            workerProfileId: data.workerProfileId,
+            type: data.type,
             time: new Date(),
         },
     });
@@ -2725,8 +2800,9 @@ export async function deleteBranch(id: string) {
 
 // --- Scan Logs ---
 
-export async function getScanLogs(limit: number = 100) {
+export async function getScanLogs(limit: number = 100, scanType?: string) {
     return await prisma.scanLog.findMany({
+        where: scanType ? { scanType } : undefined,
         take: limit,
         orderBy: {
             timestamp: 'desc',

@@ -51,21 +51,9 @@ export function ThemeToggle({
             )}
           </div>
           <div>
-            <div className="flex items-center gap-2">
               <span className="text-sm sm:text-base font-bold font-headline text-foreground">
                 Color Theme
               </span>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border",
-                  isDark
-                    ? "bg-sky-950/60 text-sky-300 border-sky-800/60"
-                    : "bg-amber-50 text-amber-700 border-amber-200"
-                )}
-              >
-                {isDark ? "Dark Mode Active" : "Light Mode Active"}
-              </span>
-            </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Switch between clear high-contrast light mode and comfortable eye-friendly dark mode.
             </p>

@@ -1031,8 +1031,12 @@ function AttendanceContent() {
                               </button>
                               <button
                                 type="button"
+                                disabled={!timeInStr}
                                 onClick={() => setAttendanceConfirm({ worker: w, type: "Clock Out", status: ws })}
-                                className="h-9 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                                className={cn(
+                                  "h-9 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer",
+                                  !timeInStr && "opacity-40 cursor-not-allowed pointer-events-none"
+                                )}
                               >
                                 <LogOut className="h-3.5 w-3.5" /> Time Out
                               </button>
@@ -1197,10 +1201,10 @@ function AttendanceContent() {
                   </div>
 
                   {/* Right Controls: Ministry + Role + Range + Status Dropdown */}
-                  <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
                     {/* Ministry */}
                     <Select value={recordsMinistryFilter} onValueChange={setRecordsMinistryFilter}>
-                      <SelectTrigger className="h-10 w-[140px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                      <SelectTrigger className="h-10 w-full sm:w-[140px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                         <SelectValue placeholder="All Ministries" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
@@ -1214,7 +1218,7 @@ function AttendanceContent() {
                     {/* Role */}
                     {!isMinistryHeadOnly && (
                       <Select value={recordsRoleFilter} onValueChange={setRecordsRoleFilter}>
-                        <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                        <SelectTrigger className="h-10 w-full sm:w-[130px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                           <SelectValue placeholder="All Roles" />
                         </SelectTrigger>
                         <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover max-h-72">
@@ -1228,7 +1232,7 @@ function AttendanceContent() {
 
                     {/* Range */}
                     <Select value={recordsRange} onValueChange={(val: any) => setRecordsRange(val)}>
-                      <SelectTrigger className="h-10 w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                      <SelectTrigger className="h-10 w-full sm:w-[125px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                         <SelectValue placeholder="Range" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
@@ -1242,7 +1246,7 @@ function AttendanceContent() {
 
                     {/* Status */}
                     <Select value={recordsStatusFilter} onValueChange={setRecordsStatusFilter}>
-                      <SelectTrigger className="h-10 w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
+                      <SelectTrigger className="h-10 w-full sm:w-[165px] text-xs rounded-2xl border-slate-200/90 dark:border-border bg-white dark:bg-muted/30 font-medium shadow-2xs px-3.5 focus:ring-1 focus:ring-sidebar/40 focus:border-sidebar transition-all cursor-pointer">
                         <SelectValue placeholder="All Statuses" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border border-border shadow-lg bg-popover">
@@ -1265,32 +1269,132 @@ function AttendanceContent() {
                 {/* Table Container */}
                 <div className="border border-border/60 rounded-2xl overflow-hidden flex flex-col bg-card">
 
-                  {/* ── Mobile card view ── */}
-                  <div className="md:hidden divide-y divide-border/30">
+                  {/* ── Mobile card view (Enhanced to match reference design) ── */}
+                  <div className="md:hidden p-3.5 sm:p-4 space-y-3 bg-muted/20">
                     {recordsLoading ? (
                       <div className="py-12 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin text-sidebar" /></div>
                     ) : filteredRecordRows.length === 0 ? (
                       <div className="py-14 text-center text-xs font-medium text-muted-foreground">No records found.</div>
                     ) : filteredRecordRows.map((row, i) => {
                       const ministry = (ministries as any[]).find(m => m.id === row.worker.majorMinistryId);
+                      const initials = (() => {
+                        const parts = `${row.worker.firstName} ${row.worker.lastName}`.trim().split(/\s+/);
+                        return parts.length >= 2
+                          ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                          : `${row.worker.firstName}`.slice(0, 2).toUpperCase();
+                      })();
+                      const dateStr = format(row.date, "MMM d, yyyy");
+                      const timeInStr = row.timeIn ? format(row.timeIn, "h:mm a") : "";
+                      const timeOutStr = row.timeOut ? format(row.timeOut, "h:mm a") : "";
+                      const workerIdFmt = row.worker.workerId ? String(row.worker.workerId).replace(/^COG-?/i, "").padStart(6, "0") : "——";
+
                       return (
-                        <div key={i} className="p-4 flex items-center justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2.5 mb-1.5">
-                              <WorkerInitials name={`${row.worker.firstName} ${row.worker.lastName}`} />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-foreground leading-tight truncate">{row.worker.firstName} {row.worker.lastName}</p>
-                                <p className="text-[11px] text-muted-foreground truncate">{ministry?.name || "—"} · {format(row.date, "MMM d, yyyy")}</p>
+                        <div
+                          key={i}
+                          className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xs hover:shadow-xs transition-shadow flex flex-col"
+                        >
+                          {/* Blue header: Avatar + Worker Name + Ministry + Status Badge */}
+                          <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-sidebar text-white">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="w-8 h-8 rounded-full bg-white/20 text-white text-xs font-bold flex items-center justify-center shrink-0 border border-white/25">
+                                {initials}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-xs sm:text-sm font-bold font-headline text-white leading-tight truncate">
+                                  {row.worker.firstName} {row.worker.lastName}
+                                </p>
+                                <p className="text-[10px] text-white/70 truncate">
+                                  {ministry?.name || "No Ministry"}
+                                </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
-                              <span>In: <strong className="text-foreground">{row.timeIn ? format(row.timeIn, "h:mm a") : "——"}</strong></span>
-                              <span>Out: <strong className="text-foreground">{row.timeOut ? format(row.timeOut, "h:mm a") : "——"}</strong></span>
-                              <span>{formatHours(row.hours)}</span>
-                              {row.status === "present" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Present</span>}
-                              {row.status === "late" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Late</span>}
-                              {row.status === "absent" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">Absent</span>}
-                              {row.status === "incomplete" && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Incomplete</span>}
+
+                            {/* Status Badge in Header */}
+                            <div className="shrink-0">
+                              {row.status === "present" && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-400/20 text-emerald-100 border border-emerald-400/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                  Present
+                                </span>
+                              )}
+                              {row.status === "late" && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-400/20 text-amber-100 border border-amber-400/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                  Late
+                                </span>
+                              )}
+                              {row.status === "absent" && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-400/20 text-rose-100 border border-rose-400/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                                  Absent
+                                </span>
+                              )}
+                              {row.status === "incomplete" && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-400/20 text-blue-100 border border-blue-400/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                                  Incomplete
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Body: Details Grid */}
+                          <div className="p-4 space-y-3">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-slate-50/70 dark:bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Date
+                                </p>
+                                <p className="font-semibold text-foreground truncate">
+                                  {dateStr}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Worker ID
+                                </p>
+                                <p className="font-mono text-xs text-muted-foreground truncate">
+                                  {workerIdFmt}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Time In
+                                </p>
+                                <p className="font-semibold text-foreground truncate">
+                                  {timeInStr || "——"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                  Time Out
+                                </p>
+                                <p className="font-semibold text-foreground truncate">
+                                  {timeOutStr || "——"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons at the Bottom */}
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setAttendanceConfirm({ worker: row.worker, type: "Clock In" })}
+                                className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                              >
+                                <LogIn className="h-3.5 w-3.5" /> Time In
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!timeInStr}
+                                onClick={() => setAttendanceConfirm({ worker: row.worker, type: "Clock Out" })}
+                                className={cn(
+                                  "h-9 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer",
+                                  !timeInStr && "opacity-40 cursor-not-allowed pointer-events-none"
+                                )}
+                              >
+                                <LogOut className="h-3.5 w-3.5" /> Time Out
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1395,21 +1499,38 @@ function AttendanceContent() {
 
       {/* Confirmation & Validation Dialog for Time In / Time Out */}
       <AlertDialog open={!!attendanceConfirm} onOpenChange={(open) => !open && !isSubmittingAttendance && setAttendanceConfirm(null)}>
-        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-              {attendanceConfirm?.type === "Clock In" ? (
-                <>
-                  <LogIn className="h-5 w-5 text-emerald-600" /> Confirm Time In
-                </>
-              ) : (
-                <>
-                  <LogOut className="h-5 w-5 text-blue-600" /> Confirm Time Out
-                </>
-              )}
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-3xl p-6 text-center border-border/80 shadow-2xl relative">
+          <button
+            type="button"
+            disabled={isSubmittingAttendance}
+            onClick={() => setAttendanceConfirm(null)}
+            className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground/80 hover:text-foreground hover:bg-muted transition-colors cursor-pointer disabled:pointer-events-none"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+
+          <div
+            className={cn(
+              "w-14 h-14 rounded-full mx-auto flex items-center justify-center mb-3 border shadow-xs",
+              attendanceConfirm?.type === "Clock In"
+                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
+                : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+            )}
+          >
+            {attendanceConfirm?.type === "Clock In" ? (
+              <LogIn className="h-7 w-7 stroke-[2]" />
+            ) : (
+              <LogOut className="h-7 w-7 stroke-[2]" />
+            )}
+          </div>
+
+          <AlertDialogHeader className="space-y-1.5 text-center">
+            <AlertDialogTitle className="text-lg font-bold text-center text-foreground font-headline">
+              {attendanceConfirm?.type === "Clock In" ? "Confirm Time In" : "Confirm Time Out"}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="text-xs sm:text-sm text-muted-foreground mt-2 space-y-2">
+              <div className="text-xs sm:text-sm text-center text-muted-foreground leading-relaxed">
                 <p>
                   Are you sure you want to record{" "}
                   <strong className="text-foreground font-semibold">
@@ -1421,46 +1542,67 @@ function AttendanceContent() {
                   </strong>
                   ?
                 </p>
-                {attendanceConfirm?.type === "Clock In" && attendanceConfirm?.status?.timeIn && (
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2 mt-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
-                    <span>Notice: This worker already timed in today at {format(attendanceConfirm.status.timeIn, "h:mm a")}.</span>
-                  </div>
-                )}
-                {attendanceConfirm?.type === "Clock Out" && !attendanceConfirm?.status?.timeIn && (
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2 mt-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
-                    <span>Notice: This worker has no recorded Time In today.</span>
-                  </div>
-                )}
+                {(() => {
+                  const ws = attendanceConfirm ? (attendanceConfirm.status || workerStatusMap[attendanceConfirm.worker?.id]) : null;
+                  const hasTimeIn = Boolean(ws?.timeIn);
+
+                  return (
+                    <>
+                      {attendanceConfirm?.type === "Clock In" && hasTimeIn && (
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2 mt-2.5 text-left">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                          <span>Notice: This worker already timed in today at {ws?.timeIn ? format(ws.timeIn, "h:mm a") : ""}.</span>
+                        </div>
+                      )}
+                      {attendanceConfirm?.type === "Clock Out" && !hasTimeIn && (
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2 mt-2.5 text-left">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                          <span>Notice: This worker has no recorded Time In today.</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row items-center justify-end gap-2 mt-4">
+
+          <AlertDialogFooter className="flex flex-row gap-2.5 sm:justify-center mt-5">
             <AlertDialogCancel
               disabled={isSubmittingAttendance}
-              className="rounded-xl h-9 text-xs font-semibold m-0"
+              className="flex-1 rounded-xl h-10 text-xs font-semibold cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted mt-0"
             >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isSubmittingAttendance}
-              onClick={(e) => {
-                e.preventDefault();
-                handleConfirmAttendance();
-              }}
-              className={cn(
-                "rounded-xl h-9 text-xs font-semibold text-white",
-                attendanceConfirm?.type === "Clock In"
-                  ? "bg-emerald-600 hover:bg-emerald-700"
-                  : "bg-blue-600 hover:bg-blue-700"
-              )}
-            >
-              {isSubmittingAttendance ? (
-                <LoaderCircle className="h-3.5 w-3.5 animate-spin mr-1.5" />
-              ) : null}
-              Confirm {attendanceConfirm?.type === "Clock In" ? "Time In" : "Time Out"}
-            </AlertDialogAction>
+            {(() => {
+              const ws = attendanceConfirm ? (attendanceConfirm.status || workerStatusMap[attendanceConfirm.worker?.id]) : null;
+              const hasTimeIn = Boolean(ws?.timeIn);
+              const isTimeOutBlocked = attendanceConfirm?.type === "Clock Out" && !hasTimeIn;
+
+              return (
+                <AlertDialogAction
+                  disabled={isSubmittingAttendance || isTimeOutBlocked}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!isTimeOutBlocked) {
+                      handleConfirmAttendance();
+                    }
+                  }}
+                  className={cn(
+                    "flex-1 rounded-xl h-10 text-xs font-bold text-white shadow-xs cursor-pointer transition-all mt-0",
+                    attendanceConfirm?.type === "Clock In"
+                      ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                      : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500",
+                    isTimeOutBlocked && "opacity-40 cursor-not-allowed pointer-events-none"
+                  )}
+                >
+                  {isSubmittingAttendance ? (
+                    <LoaderCircle className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : null}
+                  Confirm {attendanceConfirm?.type === "Clock In" ? "Time In" : "Time Out"}
+                </AlertDialogAction>
+              );
+            })()}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

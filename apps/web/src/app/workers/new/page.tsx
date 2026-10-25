@@ -652,7 +652,12 @@ export default function NewWorkerPage() {
                         {/* Toggle switch */}
                         <button
                           type="button"
-                          onClick={() => item.set(!item.value)}
+                          onClick={() => {
+                            const next = !item.value;
+                            item.set(next);
+                            if (next && item.label === "Senior Pastor") setIsPastor(false);
+                            if (next && item.label === "Pastor") setIsSeniorPastor(false);
+                          }}
                           className={cn(
                             "relative w-11 h-6 rounded-full transition-colors shrink-0",
                             item.value ? "bg-primary" : "bg-muted-foreground/25"
@@ -726,7 +731,13 @@ export default function NewWorkerPage() {
                       ["First Name", firstName], ["Last Name", lastName],
                       ["Email", email], ["Phone", phone],
                       ["Birth Date", birthDate || "—"], ["Address", address || "—"],
-                      ["Role", roles.find(r => r.id === roleId)?.name || "—"],
+                      ["Role", (() => {
+                        const rName = roles.find(r => r.id === roleId)?.name || "—";
+                        const base = rName.toLowerCase() === "super admin" ? "Admin" : rName;
+                        if (isSeniorPastor) return `${base} (Senior Pastor)`;
+                        if (isPastor) return `${base} (Pastor)`;
+                        return base;
+                      })()],
                       ["Ministry", isAdminRole || !majorMinistryId ? "General / All Ministries (Admin)" : (DEPT_OPTIONS.includes(majorMinistryId) ? majorMinistryId : (ministries.find(m => m.id === majorMinistryId)?.name || majorMinistryId || "—"))],
                       ["Worker Type", employmentType], ["Start Date", startDate || "—"],
                       ["Emergency Contact", emergencyName ? `${emergencyName}${emergencyPhone ? ` (${emergencyPhone})` : ''}` : "—"],

@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, Suspense } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 import {
   SidebarProvider,
   Sidebar,
@@ -24,6 +26,7 @@ import {
   QrCode,
   Package,
   HeartHandshake,
+  UserCheck,
 } from "lucide-react";
 import Image from "next/image";
 import { useAuthStore } from "@studio/store";
@@ -121,6 +124,7 @@ const ImpersonationBanner = () => {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
   const { isSuperAdmin, isMinistryHead } = useUserRole();
@@ -133,12 +137,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, router]);
 
-  // Always reset scroll to the top of the page when pathname changes
+  // Always reset scroll to the top of the page when pathname or searchParams (tabs) change
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTo({ top: 0, behavior: "instant" });
     }
-  }, [currentPathname]);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [currentPathname, searchParams?.toString()]);
 
   // Listen for tab switch events or clicks on tab elements
   useEffect(() => {
@@ -171,9 +176,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       // Only scroll to top if clicking an actual tab switch button in a tab list
       const isActualTab =
-        target.closest('[role="tablist"] [role="tab"]') ||
+        target.closest('[role="tab"]') ||
         target.closest('.tab-trigger') ||
-        target.closest('button[data-tab]');
+        target.closest('button[data-tab]') ||
+        target.closest('a[href*="tab="]') ||
+        target.closest('button[aria-selected]') ||
+        target.closest('[data-state="active"]');
 
       if (isActualTab) {
         setTimeout(() => {
@@ -237,7 +245,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
 
     // 2. Ministry Head Account:
-    // Add C2S tab to existing mobile navigation
+    // Add Attendance (linking to Attendance record) and C2S tab to mobile navigation
     if (isMinistryHead) {
       return [
         {
@@ -253,6 +261,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           icon: QrCode,
           href: "/workers/my-qr",
           isActive: currentPathname.startsWith("/workers/my-qr"),
+        },
+        {
+          id: "attendance",
+          label: "Attendance",
+          icon: UserCheck,
+          href: "/attendance?tab=records",
+          isActive: currentPathname.startsWith("/attendance"),
         },
         {
           id: "rooms",
@@ -401,14 +416,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {mobileNavTabs.map((tab) => {
             const Icon = tab.icon;
             return (
-              <Button
+              <Link
                 key={tab.id}
-                variant="ghost"
-                className="flex-1 min-w-[56px] h-full flex flex-col justify-center items-center gap-1 px-1 rounded-none text-muted-foreground hover:text-foreground data-[active=true]:text-primary active:scale-95 transition-all"
+                href={tab.href}
+                prefetch={true}
+                className={cn(
+                  "flex-1 min-w-[56px] h-full flex flex-col justify-center items-center gap-1 px-1 rounded-none text-muted-foreground hover:text-foreground active:scale-95 transition-all select-none cursor-pointer",
+                  tab.isActive ? "text-primary font-bold" : "hover:text-foreground"
+                )}
                 data-active={tab.isActive}
-                onClick={() => router.push(tab.href)}
               >
-                <Icon className="h-5 w-5 shrink-0" />
+                <Icon className={cn("h-5 w-5 shrink-0", tab.isActive && "text-primary")} />
                 <span className="text-[10px] font-semibold leading-[1.15] text-center max-w-full px-0.5">
                   {tab.id === 'stock' ? (
                     <>
@@ -419,7 +437,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <span className="truncate block max-w-full leading-none">{tab.label}</span>
                   )}
                 </span>
-              </Button>
+              </Link>
             );
           })}
         </div>

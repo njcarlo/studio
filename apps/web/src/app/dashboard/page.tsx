@@ -681,13 +681,6 @@ function AdminDashboard() {
               <CardTitle className="text-base font-bold text-foreground">
                 Recent Activities
               </CardTitle>
-              <Link
-                href="/reports"
-                className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-              >
-                <span>View All</span>
-                <ArrowUpRight className="h-3 w-3" />
-              </Link>
             </div>
           </CardHeader>
 

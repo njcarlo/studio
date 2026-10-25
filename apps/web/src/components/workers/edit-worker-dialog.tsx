@@ -300,16 +300,16 @@ export function EditWorkerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
+      <DialogContent className="sm:max-w-2xl h-[90dvh] sm:h-[86vh] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border-border/80 shadow-2xl gap-0 bg-background [&>button:last-child]:hidden">
         <DialogTitle className="sr-only">
           Edit Worker - {worker.firstName} {worker.lastName}
         </DialogTitle>
 
         {/* ── MODAL HEADER ── */}
-        <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="p-5 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3.5 min-w-0 flex-1">
-              <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs">
+            <div className="flex items-start gap-3.5 min-w-0 flex-1">
+              <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-xs mt-0.5">
                 <UserCog className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -370,25 +370,25 @@ export function EditWorkerDialog({
           </div>
 
           {/* Segmented Tabs */}
-          <div className="flex items-center gap-1.5 mt-4 p-1 rounded-xl bg-muted/60 border border-border/50">
+          <div className="grid grid-cols-2 gap-1.5 mt-4 p-1 rounded-xl bg-muted/60 border border-border/50 h-10 items-center">
             <button
               type="button"
               onClick={() => setActiveTab("details")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer",
+                "h-8 flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer",
                 activeTab === "details"
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               <User className="h-3.5 w-3.5 shrink-0" />
-              <span className="whitespace-nowrap">Profile & Assignments</span>
+              <span className="whitespace-nowrap">Profile &amp; Assignments</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("activity")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer",
+                "h-8 flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer",
                 activeTab === "activity"
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"

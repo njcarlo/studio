@@ -28,6 +28,7 @@ vi.mock("lucide-react", () => ({
   CheckCircle2: () => <svg />,
   Clock: () => <svg data-testid="empty-clock" />,
   ChevronRight: () => <svg />,
+  X: () => <svg />,
 }));
 
 vi.mock("@/lib/utils", () => ({

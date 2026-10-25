@@ -221,11 +221,17 @@ export default function ApprovalsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<{ action: "Approved" | "Rejected"; ids: string[] } | null>(null);
 
-  const isAdmin = Boolean(
+  const isActualAdmin = Boolean(
     isSuperAdmin ||
-    canApproveAllRequests ||
     (workerProfile as any)?.role === "Administrator" ||
-    (workerProfile as any)?.role === "Super Admin"
+    (workerProfile as any)?.role === "Super Admin" ||
+    (workerProfile as any)?.role?.name?.toLowerCase().includes("admin") ||
+    (workerProfile as any)?.role?.isSuperAdmin
+  );
+
+  const isAdmin = Boolean(
+    isActualAdmin ||
+    canApproveAllRequests
   );
 
   // Only Room Booking requests belong in Approvals
@@ -303,7 +309,6 @@ export default function ApprovalsPage() {
   };
 
   const checkCanManage = (request: ApprovalRequest) => {
-    if (isSuperAdmin) return true;
     if (request.type === "Ministry Change") {
       if (!workerProfile) return false;
       if (request.status === "Pending Outgoing Approval") {
@@ -320,26 +325,66 @@ export default function ApprovalsPage() {
       }
     }
     if (request.type === "Room Booking") {
-      if (request.status === "Pending Admin Approval") return isSuperAdmin;
-      if (request.status === "Pending Ministry Approval" || request.status === "Pending") {
-        const effectiveDept = getWorkerDepartment(workerProfile, allMinistries || ministries, (workerProfile as any)?.department);
-        return isRequestInDepartment(request, effectiveDept, allMinistries || ministries || [], bookings || [], workers || []);
+      const isPendingMH =
+        request.status === "Pending Ministry Approval" ||
+        request.status === "Pending" ||
+        (request.status as string) === "Pending Ministry Head" ||
+        (request.status as string) === "Pending Ministry" ||
+        (typeof request.status === "string" && request.status.toLowerCase().includes("ministry"));
+
+      if (isPendingMH) {
+        // Pure Admin CANNOT approve while waiting for Ministry Head approval
+        if (isActualAdmin && !userIsMinistryHead) {
+          return false;
+        }
+
+        // Ministry Head CAN approve requests within their department or assigned ministries
+        if (userIsMinistryHead) {
+          if (userRoleMinistryIds && userRoleMinistryIds.length > 0) {
+            const booking = bookings?.find((b) => b.id === request.reservationId);
+            const worker = workers?.find((w) => w.id === request.workerId) || (request as any).worker;
+            const reqMinIds = [booking?.ministryId, worker?.majorMinistryId, worker?.minorMinistryId].filter(Boolean) as string[];
+            if (reqMinIds.some(id => userRoleMinistryIds.includes(id))) {
+              return true;
+            }
+          }
+          const effectiveDept = getWorkerDepartment(workerProfile, allMinistries || ministries, (workerProfile as any)?.department);
+          return isRequestInDepartment(request, effectiveDept, allMinistries || ministries || [], bookings || [], workers || []);
+        }
+
+        return checkIsApprover(request);
       }
-      return checkIsApprover(request);
+
+      if (request.status === "Pending Admin Approval") {
+        // Once MH approves, Admin gives final approval
+        return isSuperAdmin || isActualAdmin || canApproveAllRequests;
+      }
+
+      return isSuperAdmin || checkIsApprover(request);
     }
+    if (isSuperAdmin) return true;
     return checkIsApprover(request);
   };
 
   const handleUpdateRequestStatus = (request: ApprovalRequest, status: "Approved" | "Rejected") => {
     if (!request.id || !checkCanManage(request)) return;
     if (request.type === "Room Booking" && status === "Approved") {
-      if (request.status === "Pending Ministry Approval" || request.status === "Pending") {
-        updateStatus({ request, status: "Pending Admin Approval" }); return;
+      const isPendingMH =
+        request.status === "Pending Ministry Approval" ||
+        request.status === "Pending" ||
+        (request.status as string) === "Pending Ministry Head" ||
+        (request.status as string) === "Pending Ministry" ||
+        (typeof request.status === "string" && request.status.toLowerCase().includes("ministry"));
+
+      if (isPendingMH) {
+        updateStatus({ request, status: "Pending Admin Approval" });
+        return;
       }
     }
     if (request.type === "Ministry Change" && status === "Approved") {
       if (request.status === "Pending Outgoing Approval") {
-        updateStatus({ request, status: "Pending Incoming Approval", options: { outgoingApproved: true } }); return;
+        updateStatus({ request, status: "Pending Incoming Approval", options: { outgoingApproved: true } });
+        return;
       }
     }
     updateStatus({ request, status });
@@ -1046,7 +1091,7 @@ export default function ApprovalsPage() {
 
       {/* Confirm dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={open => !open && setConfirmAction(null)}>
-        <AlertDialogContent className="relative max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
+        <AlertDialogContent className="max-w-sm rounded-2xl p-6 text-center border-border/80 shadow-2xl">
           <button
             type="button"
             onClick={() => setConfirmAction(null)}
@@ -1108,14 +1153,19 @@ export default function ApprovalsPage() {
         requesterWorker={workers?.find(w => w.id === selectedRequest?.workerId)}
         onOpenChange={open => { if (!open) setSelectedRequest(null); }}
         canManage={selectedRequest ? checkCanManage(selectedRequest) : false}
-        isAdmin={isAdmin}
+        isAdmin={isActualAdmin}
+        isMinistryHead={userIsMinistryHead}
         onApprove={(id) => {
           setSelectedRequest(null);
-          setConfirmAction({ action: "Approved", ids: [id] });
+          setTimeout(() => {
+            setConfirmAction({ action: "Approved", ids: [id] });
+          }, 50);
         }}
         onReject={(id) => {
           setSelectedRequest(null);
-          setConfirmAction({ action: "Rejected", ids: [id] });
+          setTimeout(() => {
+            setConfirmAction({ action: "Rejected", ids: [id] });
+          }, 50);
         }}
       />
     </AppLayout>

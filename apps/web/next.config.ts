@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ["@apollo/server"],
   experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "date-fns",
+      "recharts",
+      "@studio/ui",
+      "@studio/database",
+    ],
     serverActions: {
       bodySizeLimit: '50mb',
     },
@@ -47,6 +54,7 @@ const nextConfig: NextConfig = {
   },
   images: {
     unoptimized: true,
+    qualities: [75, 90, 95],
     remotePatterns: [
       {
         protocol: 'https',

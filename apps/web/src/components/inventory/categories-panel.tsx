@@ -224,8 +224,8 @@ export function CategoriesPanel() {
             )}
           </div>
 
-          {/* Add Category Button (Left side on mobile, right side on desktop) */}
-          <div className="flex items-center gap-2 justify-start sm:justify-end shrink-0">
+          {/* Add Category Button (Right side on both mobile and desktop) */}
+          <div className="flex items-center gap-2 justify-end shrink-0">
             <Button
               size="sm"
               className="gap-1.5 h-9 rounded-xl bg-sidebar hover:bg-sidebar/90 text-white font-bold text-xs shadow-xs cursor-pointer px-4"

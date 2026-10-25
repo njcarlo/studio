@@ -34,6 +34,7 @@ import {
   Pencil,
   Save,
   LoaderCircle,
+  Lock,
 } from 'lucide-react';
 import {
   Table,
@@ -68,6 +69,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DatePicker,
 } from '@studio/ui';
 import { useInventory, type InventoryBorrowing } from '@/hooks/use-inventory';
 import { useWorkers } from '@/hooks/use-workers';
@@ -191,6 +193,19 @@ export function BorrowingsPanel() {
 
   const handleSaveDetails = async () => {
     if (!detailsBorrowing) return;
+
+    const isReturned = detailsBorrowing.status === 'RETURNED';
+    const cond = (detailsBorrowing.returnCondition || '').toLowerCase();
+    const isDamaged = cond.includes('damag') || cond.includes('repair') || cond.includes('replac') || cond.includes('sira') || cond.includes('ayos');
+    if (isReturned && !isDamaged) {
+      toast({
+        variant: 'destructive',
+        title: 'Record Locked',
+        description: 'Returned equipment records cannot be edited unless marked as damaged.',
+      });
+      return;
+    }
+
     setIsSavingDetails(true);
     try {
       const res = await fetch(`/api/borrowings/${detailsBorrowing.id}`, {
@@ -292,7 +307,15 @@ export function BorrowingsPanel() {
 
   const checkoutTemplate = checklistTemplates.find((t) => t.type === 'checkout');
   const returnTemplate = checklistTemplates.find((t) => t.type === 'return');
-
+  const returnTemplateItems = (returnTemplate?.items && returnTemplate.items.length > 0)
+    ? returnTemplate.items
+    : [
+        { id: '1', label: 'Item returned complete (no missing parts)' },
+        { id: '2', label: 'No new physical damage or dents' },
+        { id: '3', label: 'Cleaned before return' },
+        { id: '4', label: 'Power level acceptable' },
+      ];
+  const isReturnChecklistComplete = returnTemplateItems.every((item: any) => Boolean(returnChecklist[item.id]));
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -362,6 +385,15 @@ export function BorrowingsPanel() {
         variant: 'destructive',
         title: 'Photo Evidence Required',
         description: 'Please upload or capture a damage evidence photo before submitting a damaged return.',
+      });
+      return;
+    }
+
+    if (!isDamagedItem && !isReturnChecklistComplete) {
+      toast({
+        variant: 'destructive',
+        title: 'Checklist Required',
+        description: 'Please complete all items in the Return Inspection Checklist before completing the return.',
       });
       return;
     }
@@ -1177,10 +1209,10 @@ export function BorrowingsPanel() {
                   <Label className="text-xs font-bold text-foreground">Expected Return Date</Label>
                   <span className="text-[10px] text-muted-foreground">Optional</span>
                 </div>
-                <Input
-                  type="date"
+                <DatePicker
                   value={checkoutDueDate}
-                  onChange={(e) => setCheckoutDueDate(e.target.value)}
+                  onChange={(date) => setCheckoutDueDate(date)}
+                  placeholder="dd/mm/yyyy"
                   className="h-9 text-xs rounded-xl"
                 />
               </div>
@@ -1464,14 +1496,21 @@ export function BorrowingsPanel() {
                 )}
 
                 {/* Return Checklist */}
-                {returnTemplate?.items && returnTemplate.items.length > 0 && (
+                {returnTemplateItems.length > 0 && (
                   <div className="space-y-2 p-3 bg-muted/30 border border-border/70 rounded-xl">
-                    <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                      Return Inspection Checklist
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        Return Inspection Checklist
+                      </Label>
+                      {returnCondition !== 'Damaged' && (
+                        <span className="text-[10px] text-destructive font-bold uppercase tracking-wider bg-destructive/10 px-2 py-0.5 rounded-md">
+                          Required *
+                        </span>
+                      )}
+                    </div>
                     <div className="space-y-1.5 pt-1">
-                      {returnTemplate.items.map((item: any) => (
+                      {returnTemplateItems.map((item: any) => (
                         <label key={item.id} className="flex items-center gap-2 cursor-pointer text-xs hover:text-foreground">
                           <Checkbox
                             checked={returnChecklist[item.id] || false}
@@ -1511,14 +1550,19 @@ export function BorrowingsPanel() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={submittingReturn || (returnCondition === 'Damaged' && !returnDamagePhoto)}
+                    disabled={
+                      submittingReturn ||
+                      (returnCondition === 'Damaged' ? !returnDamagePhoto : !isReturnChecklistComplete)
+                    }
                     className={cn(
                       "min-h-[2.25rem] sm:min-h-[2.5rem] h-9 sm:h-10 px-4 sm:px-5 text-xs sm:text-sm font-bold rounded-xl shadow-xs cursor-pointer flex-1 sm:flex-initial",
                       returnCondition === 'Damaged'
                         ? (!returnDamagePhoto
                             ? "bg-amber-600/60 hover:bg-amber-600/60 text-white cursor-not-allowed opacity-80"
                             : "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20")
-                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                        : (!isReturnChecklistComplete
+                            ? "bg-emerald-600/60 hover:bg-emerald-600/60 text-white cursor-not-allowed opacity-80"
+                            : "bg-emerald-600 hover:bg-emerald-700 text-white")
                     )}
                   >
                     {submittingReturn
@@ -1527,7 +1571,9 @@ export function BorrowingsPanel() {
                       ? (!returnDamagePhoto
                           ? 'Photo Required'
                           : 'Flag as Damaged')
-                      : 'Complete Return'}
+                      : (!isReturnChecklistComplete
+                          ? 'Checklist Required'
+                          : 'Complete Return')}
                   </Button>
                 </DialogFooter>
               </form>
@@ -1651,15 +1697,28 @@ export function BorrowingsPanel() {
                       Condition &amp; Notes
                     </span>
                     {!isEditingDetails && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsEditingDetails(true)}
-                        className="h-7 px-2.5 text-[11px] font-semibold text-primary hover:text-primary hover:bg-primary/10 rounded-lg cursor-pointer"
-                      >
-                        <Pencil className="h-3 w-3 mr-1" /> Edit Status / Notes
-                      </Button>
+                      (() => {
+                        const isReturned = detailsBorrowing.status === 'RETURNED';
+                        const cond = (detailsBorrowing.returnCondition || '').toLowerCase();
+                        const isDamaged = cond.includes('damag') || cond.includes('repair') || cond.includes('replac') || cond.includes('sira') || cond.includes('ayos');
+                        const canEdit = !isReturned || isDamaged;
+
+                        return canEdit ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsEditingDetails(true)}
+                            className="h-7 px-2.5 text-[11px] font-semibold text-primary hover:text-primary hover:bg-primary/10 rounded-lg cursor-pointer"
+                          >
+                            <Pencil className="h-3 w-3 mr-1" /> Edit Status / Notes
+                          </Button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80 bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
+                            <Lock className="h-3 w-3" /> Returned (Locked)
+                          </span>
+                        );
+                      })()
                     )}
                   </div>
 

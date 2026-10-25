@@ -30,6 +30,7 @@ vi.mock("lucide-react", () => ({
   CheckCircle2: () => <svg data-testid="icon-check" />,
   Clock: () => <svg data-testid="icon-clock" />,
   ChevronRight: () => <svg data-testid="icon-chevron" />,
+  X: () => <svg data-testid="icon-x" />,
 }));
 
 vi.mock("@/lib/utils", () => ({
@@ -111,7 +112,7 @@ describe("KanbanCard", () => {
       <KanbanCard request={request} onUpdateStatus={onUpdateStatus} canManage={true} onClick={onClick} isUpdating={false} />,
     );
     fireEvent.click(screen.getByText("Approve"));
-    fireEvent.click(screen.getByText("Yes, Approve"));
+    fireEvent.click(screen.getByText("Yes"));
     expect(onUpdateStatus).toHaveBeenCalledWith(request, "Approved");
     // clicking action buttons should NOT bubble up to card onClick
     expect(onClick).not.toHaveBeenCalled();
@@ -123,7 +124,7 @@ describe("KanbanCard", () => {
       <KanbanCard request={request} onUpdateStatus={onUpdateStatus} canManage={true} onClick={onClick} isUpdating={false} />,
     );
     fireEvent.click(screen.getByText("Reject"));
-    fireEvent.click(screen.getByText("Yes, Reject"));
+    fireEvent.click(screen.getByText("Yes"));
     expect(onUpdateStatus).toHaveBeenCalledWith(request, "Rejected");
   });
 
