@@ -122,9 +122,28 @@ const ImpersonationBanner = () => {
 };
 
 
+function ScrollReset({
+  mainRef,
+  currentPathname,
+}: {
+  mainRef: React.RefObject<HTMLElement | null>;
+  currentPathname: string;
+}) {
+  const searchParams = useSearchParams();
+
+  // Always reset scroll to the top of the page when pathname or searchParams (tabs) change
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, behavior: "instant" });
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [currentPathname, searchParams?.toString(), mainRef]);
+
+  return null;
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isUserLoading } = useAuthStore();
   const { isSuperAdmin, isMinistryHead } = useUserRole();
@@ -136,14 +155,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       router.push("/login");
     }
   }, [user, isUserLoading, router]);
-
-  // Always reset scroll to the top of the page when pathname or searchParams (tabs) change
-  useEffect(() => {
-    if (mainRef.current) {
-      mainRef.current.scrollTo({ top: 0, behavior: "instant" });
-    }
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }, [currentPathname, searchParams?.toString()]);
 
   // Listen for tab switch events or clicks on tab elements
   useEffect(() => {
@@ -337,6 +348,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      <Suspense fallback={null}>
+        <ScrollReset mainRef={mainRef} currentPathname={currentPathname} />
+      </Suspense>
       <Sidebar collapsible="icon" className="border-r-0 border-none">
         <SidebarHeader className="pb-1.5 px-3 pt-2.5 sticky top-0 z-10 bg-sidebar">
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">

@@ -908,6 +908,7 @@ const DevotionForm = ({
           </div>
         )}
       </div>
+      </div>
 
       {/* ── STICKY FOOTER ACTIONS (ALWAYS FIXED AT BOTTOM) ── */}
       <div className="p-3.5 sm:p-4 border-t border-border/70 bg-card/95 backdrop-blur-md shrink-0 flex items-center justify-end gap-2.5 sticky bottom-0 z-10 shadow-xs">
