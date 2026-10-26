@@ -126,9 +126,8 @@ export async function getActorMinistryAccess(actorId?: string): Promise<{
         actor.roles?.some(r => r.role?.isSuperAdmin === true) ||
         actor.roleId === 'admin' ||
         actor.role?.id === 'admin' ||
-        actor.role?.name?.toLowerCase() === 'admin' ||
-        actor.role?.name?.toLowerCase() === 'super admin' ||
-        actor.roles?.some(r => r.role?.name?.toLowerCase() === 'admin' || r.role?.name?.toLowerCase() === 'super admin');
+        actor.role?.name?.toLowerCase().includes('admin') ||
+        actor.roles?.some(r => r.role?.name?.toLowerCase().includes('admin'));
 
     if (isSuperAdmin) {
         const adminResult = { isSuperAdmin: true, isMinistryHead: false, allowedMinistryIds: null };

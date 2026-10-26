@@ -69,6 +69,10 @@ function checkCanManage(
   // 1. Ministry Head gives initial approval (room not yet reserved)
   // 2. Admin gives final approval (room officially reserved)
   if (request.type === "Room Booking") {
+    // 1. MH cannot approve their own room booking request
+    if (workerProfile?.id && request.workerId === workerProfile.id && !isSuperAdmin && !canApproveAllRequests) {
+      return false;
+    }
     if (request.status === "Pending Ministry Approval") {
       // Ministry Head/Approver can give initial approval
       return isApprover;
@@ -240,6 +244,18 @@ describe("checkCanManage", () => {
       type: "Room Booking", 
       status: "Pending Ministry Approval",
       workerId: "worker-1"
+    });
+    expect(checkCanManage(request, profile, [targetWorker], [ministry], false, false, false)).toBe(false);
+  });
+
+  it("Room Booking — returns false when Ministry Head tries to approve their own request", () => {
+    const profile = makeWorker({ id: "head-1" });
+    const targetWorker = makeWorker({ id: "head-1", majorMinistryId: "ministry-1" });
+    const ministry = makeMinistry({ id: "ministry-1", headId: "head-1" });
+    const request = makeApproval({
+      type: "Room Booking",
+      status: "Pending Ministry Approval",
+      workerId: "head-1",
     });
     expect(checkCanManage(request, profile, [targetWorker], [ministry], false, false, false)).toBe(false);
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Dialog, DialogContent, DialogTitle, Button } from "@studio/ui";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, Button } from "@studio/ui";
 import {
   Info,
   UserPlus,
@@ -124,6 +124,7 @@ interface ApprovalDetailsDialogProps {
   isAdmin?: boolean;
   isMinistryHead?: boolean;
   currentWorkerId?: string;
+  currentWorkerName?: string;
 }
 
 export function ApprovalDetailsDialog({
@@ -137,6 +138,7 @@ export function ApprovalDetailsDialog({
   isAdmin = false,
   isMinistryHead = false,
   currentWorkerId,
+  currentWorkerName,
 }: ApprovalDetailsDialogProps) {
   if (!request) return null;
 
@@ -144,10 +146,48 @@ export function ApprovalDetailsDialog({
   const typeTheme = getTypeTheme(request.type);
   const IconComponent = typeTheme.icon;
 
+  const isRequesterAdmin = Boolean(
+    (requesterWorker as any)?.role === "Administrator" ||
+    (requesterWorker as any)?.role === "Super Admin" ||
+    (requesterWorker as any)?.role?.name?.toLowerCase().includes("admin") ||
+    (requesterWorker as any)?.role?.isSuperAdmin ||
+    request.requester?.toLowerCase().includes("admin")
+  );
+
+  const isRequesterMH = Boolean(
+    !isRequesterAdmin &&
+    ((requesterWorker as any)?.role === "Ministry Head" ||
+      (requesterWorker as any)?.role?.name?.toLowerCase().includes("head") ||
+      (requesterWorker as any)?.isMinistryHead)
+  );
+
+  const isSelfRequested = Boolean(
+    (currentWorkerId && (request.workerId === currentWorkerId || requesterWorker?.id === currentWorkerId)) ||
+    (currentWorkerName && request.requester?.trim().toLowerCase() === currentWorkerName.toLowerCase()) ||
+    (requesterWorker && `${requesterWorker.firstName || ""} ${requesterWorker.lastName || ""}`.trim().toLowerCase() === request.requester?.trim().toLowerCase())
+  );
+
+  const contextDescription = (() => {
+    if (request.type === "Room Booking") {
+      if (request.status === "Pending Admin Approval") {
+        if (isRequesterAdmin) {
+          return "Submitted by Admin. Admin confirmation required to officially reserve the room (bypasses Ministry Head).";
+        }
+        if (isRequesterMH) {
+          return "Submitted by Ministry Head. Awaiting final approval from Admin to officially reserve the room.";
+        }
+        return "Ministry Head approved. Awaiting final approval from Admin to officially reserve the room.";
+      }
+      return getStatusDescription(request.type, request.status);
+    }
+    return getStatusDescription(request.type, request.status);
+  })();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border-border/80 shadow-2xl gap-0">
         <DialogTitle className="sr-only">{request.type} Request Details</DialogTitle>
+        <DialogDescription className="sr-only">Approval request details and submission overview</DialogDescription>
 
         {/* Modal Header */}
         <div className="p-5 pr-12 pb-4 border-b border-border/70 bg-card/80 backdrop-blur-md sticky top-0 z-10">
@@ -194,11 +234,21 @@ export function ApprovalDetailsDialog({
           </div>
 
           {/* 2. Context Alert Banner */}
-          {getStatusDescription(request.type, request.status) && (
+          {contextDescription && (
             <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-200/70 dark:border-blue-900/40 text-blue-900 dark:text-blue-200 text-xs leading-relaxed flex items-start gap-2.5 shadow-2xs">
               <Info className="h-4 w-4 mt-0.5 text-blue-600 dark:text-blue-400 shrink-0" />
               <span className="font-medium">
-                {getStatusDescription(request.type, request.status)}
+                {contextDescription}
+              </span>
+            </div>
+          )}
+
+          {/* 2b. Alert when non-admin Ministry Head views self-submitted booking */}
+          {request.type === "Room Booking" && !isAdmin && isMinistryHead && isSelfRequested && (
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200/70 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 text-xs leading-relaxed flex items-start gap-2.5 shadow-2xs">
+              <Info className="h-4 w-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-medium">
+                You submitted this room reservation request. Only an Admin can approve it.
               </span>
             </div>
           )}
@@ -210,17 +260,43 @@ export function ApprovalDetailsDialog({
                 Approval Progress
               </p>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2.5 flex-1 p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 leading-tight">
-                      Ministry Head
-                    </p>
-                    <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                      Approved
-                    </p>
+                {isRequesterAdmin ? (
+                  <div className="flex items-center gap-2.5 flex-1 p-2.5 rounded-xl bg-purple-50/90 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/60 shadow-2xs">
+                    <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-purple-900 dark:text-purple-200 leading-tight">
+                        Admin Submission
+                      </p>
+                      <p className="text-[10px] font-semibold text-purple-700 dark:text-purple-400">
+                        Direct (No MH needed)
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : isRequesterMH ? (
+                  <div className="flex items-center gap-2.5 flex-1 p-2.5 rounded-xl bg-blue-50/90 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60 shadow-2xs">
+                    <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-blue-900 dark:text-blue-200 leading-tight">
+                        Ministry Head
+                      </p>
+                      <p className="text-[10px] font-semibold text-blue-700 dark:text-blue-400">
+                        Submitted
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5 flex-1 p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 leading-tight">
+                        Ministry Head
+                      </p>
+                      <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                        Approved
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="h-0.5 w-3 bg-border shrink-0 rounded-full" />
                 <div className="flex items-center gap-2.5 flex-1 p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 shadow-2xs">
                   <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -293,7 +369,7 @@ export function ApprovalDetailsDialog({
           )}
 
           {/* 5. Approve / Reject Actions */}
-          {canManage && request.status.startsWith("Pending") && (onApprove || onReject) && (() => {
+          {canManage && request.status.startsWith("Pending") && (onApprove || onReject) && !(!isAdmin && isSelfRequested) && !(!isAdmin && request.type === "Room Booking" && request.status === "Pending Admin Approval") && (() => {
             const statusStr = request.status as string;
             const isWaitingForMinistryHead =
               request.type === "Room Booking" &&
@@ -308,6 +384,7 @@ export function ApprovalDetailsDialog({
             // But Ministry Heads can approve requests waiting for Ministry Head approval!
             const isReservedBySelfMH =
               request.type === "Room Booking" &&
+              !isAdmin &&
               Boolean(
                 isMinistryHead &&
                 currentWorkerId &&
@@ -345,10 +422,10 @@ export function ApprovalDetailsDialog({
                     )}
                     title={
                       isReservedBySelfMH
-                        ? "Automatic approve na sa MH. Awaiting Admin final approval."
+                        ? "Only an Admin can approve this request. Ministry Heads cannot approve their own requests."
                         : isActionDisabled
-                        ? "Awaiting Ministry Head response"
-                        : undefined
+                          ? "Awaiting Ministry Head response"
+                          : undefined
                     }
                   >
                     Reject
@@ -371,13 +448,13 @@ export function ApprovalDetailsDialog({
                     )}
                     title={
                       isReservedBySelfMH
-                        ? "Automatic approve na sa MH. Awaiting Admin final approval."
+                        ? "Only an Admin can approve this request. Ministry Heads cannot approve their own requests."
                         : isActionDisabled
-                        ? "Awaiting Ministry Head response"
-                        : undefined
+                          ? "Awaiting Ministry Head response"
+                          : undefined
                     }
                   >
-                    Yes
+                    Approve
                   </button>
                 )}
               </div>

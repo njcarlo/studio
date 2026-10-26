@@ -495,7 +495,14 @@ export default function NewReservationPage() {
         workerProfile?.id || "worker-system-admin";
 
       // If user is Admin or Ministry Head, skip Ministry approval and go directly to Admin approval
-      const isPrivileged = Boolean(isSuperAdmin || isMinistryHead);
+      const isAdminUser = Boolean(
+        isSuperAdmin ||
+        (workerProfile as any)?.role === "Administrator" ||
+        (workerProfile as any)?.role === "Super Admin" ||
+        (workerProfile as any)?.role?.name?.toLowerCase().includes("admin") ||
+        (workerProfile as any)?.role?.isSuperAdmin
+      );
+      const isPrivileged = Boolean(isAdminUser || isMinistryHead);
       const initialStatus = isPrivileged
         ? "Pending Admin Approval"
         : "Pending Ministry Approval";

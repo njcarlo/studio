@@ -124,8 +124,8 @@ describe("KanbanCard", () => {
       <KanbanCard request={request} onUpdateStatus={onUpdateStatus} canManage={true} onClick={onClick} isUpdating={false} />,
     );
     fireEvent.click(screen.getByText("Reject"));
-    fireEvent.click(screen.getByText("Yes"));
-    expect(onUpdateStatus).toHaveBeenCalledWith(request, "Rejected");
+    fireEvent.click(screen.getByText(/Yes/));
+    expect(onUpdateStatus).toHaveBeenCalledWith(request, "Rejected", "");
   });
 
   it("disables buttons when isUpdating is true", () => {

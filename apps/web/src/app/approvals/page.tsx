@@ -230,10 +230,7 @@ export default function ApprovalsPage() {
     (workerProfile as any)?.role?.isSuperAdmin
   );
 
-  const isAdmin = Boolean(
-    isActualAdmin ||
-    canApproveAllRequests
-  );
+  const isAdmin = isActualAdmin;
 
   // Only Room Booking requests belong in Approvals
   const roomBookingRequests = useMemo(() => {
@@ -326,17 +323,64 @@ export default function ApprovalsPage() {
       }
     }
     if (request.type === "Room Booking") {
-      // Ministry Head cannot approve or reject their own room reservation because it's automatically approved by MH
-      if (
-        userIsMinistryHead &&
-        !isSuperAdmin &&
-        (request.workerId === workerProfile?.id ||
-          (request.reservationId &&
-            bookings?.find((b) => b.id === request.reservationId)?.workerProfileId === workerProfile?.id))
-      ) {
+      const requesterWorker = workers?.find((w) => w.id === request.workerId);
+      const isRequesterAdmin = Boolean(
+        (request.workerId === workerProfile?.id && isAdmin) ||
+        (requesterWorker as any)?.role === "Administrator" ||
+        (requesterWorker as any)?.role === "Super Admin" ||
+        (requesterWorker as any)?.role?.name?.toLowerCase().includes("admin") ||
+        (requesterWorker as any)?.role?.isSuperAdmin ||
+        request.requester?.toLowerCase().includes("admin")
+      );
+
+      const workerFullName = `${workerProfile?.firstName || ""} ${workerProfile?.lastName || ""}`.trim().toLowerCase();
+      const isRequestedBySelf = Boolean(
+        (workerProfile?.id && request.workerId === workerProfile.id) ||
+        (workerProfile?.id && request.reservationId &&
+          bookings?.find((b) => b.id === request.reservationId)?.workerProfileId === workerProfile.id) ||
+        (workerFullName && request.requester?.trim().toLowerCase() === workerFullName) ||
+        (workerProfile && (workerProfile as any)?.name && request.requester?.trim().toLowerCase() === (workerProfile as any).name.trim().toLowerCase())
+      );
+
+      // 1. If requester is a Ministry Head (and NOT Admin):
+      // "pag si mh nag request sa account niya bawal niya approve dapat admin lang kasi mas mataas admin sa hierarchy"
+      if (!isAdmin && isRequestedBySelf) {
         return false;
       }
 
+      // 2. If the request was submitted by an Admin:
+      // "hindi na din dapat dadaan sa Ministry head ung request ni admin"
+      // Ministry Heads cannot approve or manage Admin requests at all — only Admin can!
+      if (isRequesterAdmin && !isAdmin) {
+        return false;
+      }
+
+      // 3. If request is at 'Pending Admin Approval':
+      // ONLY Admin can approve this stage! Ministry Head can NEVER approve Pending Admin Approval!
+      if (request.status === "Pending Admin Approval") {
+        return isAdmin;
+      }
+
+      // 4. If current user is Admin:
+      // Admin can approve Admin's own requests and any room booking ready for Admin approval.
+      if (isAdmin) {
+        const isPendingMH =
+          request.status === "Pending Ministry Approval" ||
+          request.status === "Pending" ||
+          (request.status as string) === "Pending Ministry Head" ||
+          (request.status as string) === "Pending Ministry" ||
+          (typeof request.status === "string" && request.status.toLowerCase().includes("ministry"));
+
+        // If it's a normal worker request still waiting for Ministry Head approval, pure admin waits for MH
+        if (isPendingMH && !isRequesterAdmin && !userIsMinistryHead) {
+          return false;
+        }
+
+        return true;
+      }
+
+      // 5. If current user is Ministry Head (non-admin):
+      // Can ONLY approve other workers' requests within their department that are waiting for MH approval
       const isPendingMH =
         request.status === "Pending Ministry Approval" ||
         request.status === "Pending" ||
@@ -344,35 +388,20 @@ export default function ApprovalsPage() {
         (request.status as string) === "Pending Ministry" ||
         (typeof request.status === "string" && request.status.toLowerCase().includes("ministry"));
 
-      if (isPendingMH) {
-        // Pure Admin CANNOT approve while waiting for Ministry Head approval
-        if (isActualAdmin && !userIsMinistryHead) {
-          return false;
-        }
-
-        // Ministry Head CAN approve requests within their department or assigned ministries
-        if (userIsMinistryHead) {
-          if (userRoleMinistryIds && userRoleMinistryIds.length > 0) {
-            const booking = bookings?.find((b) => b.id === request.reservationId);
-            const worker = workers?.find((w) => w.id === request.workerId) || (request as any).worker;
-            const reqMinIds = [booking?.ministryId, worker?.majorMinistryId, worker?.minorMinistryId].filter(Boolean) as string[];
-            if (reqMinIds.some(id => userRoleMinistryIds.includes(id))) {
-              return true;
-            }
+      if (isPendingMH && userIsMinistryHead && !isRequestedBySelf) {
+        if (userRoleMinistryIds && userRoleMinistryIds.length > 0) {
+          const booking = bookings?.find((b) => b.id === request.reservationId);
+          const worker = workers?.find((w) => w.id === request.workerId) || (request as any).worker;
+          const reqMinIds = [booking?.ministryId, worker?.majorMinistryId, worker?.minorMinistryId].filter(Boolean) as string[];
+          if (reqMinIds.some(id => userRoleMinistryIds.includes(id))) {
+            return true;
           }
-          const effectiveDept = getWorkerDepartment(workerProfile, allMinistries || ministries, (workerProfile as any)?.department);
-          return isRequestInDepartment(request, effectiveDept, allMinistries || ministries || [], bookings || [], workers || []);
         }
-
-        return checkIsApprover(request);
+        const effectiveDept = getWorkerDepartment(workerProfile, allMinistries || ministries, (workerProfile as any)?.department);
+        return isRequestInDepartment(request, effectiveDept, allMinistries || ministries || [], bookings || [], workers || []);
       }
 
-      if (request.status === "Pending Admin Approval") {
-        // Once MH approves, Admin gives final approval
-        return isSuperAdmin || isActualAdmin || canApproveAllRequests;
-      }
-
-      return isSuperAdmin || checkIsApprover(request);
+      return false;
     }
     if (isSuperAdmin) return true;
     return checkIsApprover(request);
@@ -381,6 +410,16 @@ export default function ApprovalsPage() {
   const handleUpdateRequestStatus = (request: ApprovalRequest, status: "Approved" | "Rejected", reason?: string) => {
     if (!request.id || !checkCanManage(request)) return;
     if (request.type === "Room Booking" && status === "Approved") {
+      const requesterWorker = workers?.find((w) => w.id === request.workerId);
+      const isRequesterAdmin = Boolean(
+        (request.workerId === workerProfile?.id && isAdmin) ||
+        requesterWorker?.role === "Administrator" ||
+        requesterWorker?.role === "Super Admin" ||
+        (requesterWorker as any)?.role?.name?.toLowerCase().includes("admin") ||
+        (requesterWorker as any)?.role?.isSuperAdmin ||
+        request.requester?.toLowerCase().includes("admin")
+      );
+
       const isPendingMH =
         request.status === "Pending Ministry Approval" ||
         request.status === "Pending" ||
@@ -388,7 +427,9 @@ export default function ApprovalsPage() {
         (request.status as string) === "Pending Ministry" ||
         (typeof request.status === "string" && request.status.toLowerCase().includes("ministry"));
 
-      if (isPendingMH) {
+      // Only advance to 'Pending Admin Approval' if this was a normal worker request at MH stage.
+      // If it's submitted by an Admin or already at Admin stage, it is APPROVED directly (automatic ma approve na yon)!
+      if (isPendingMH && !isRequesterAdmin && !isAdmin) {
         updateStatus({ request, status: "Pending Admin Approval" });
         return;
       }
@@ -729,7 +770,7 @@ export default function ApprovalsPage() {
                                 onClick={() => setConfirmAction({ action: "Approved", ids: [req.id!] })}
                                 className="flex-1 h-8 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
                               >
-                                Yes
+                                Approve
                               </button>
                             </div>
                           )}
@@ -1191,10 +1232,11 @@ export default function ApprovalsPage() {
         open={!!selectedRequest}
         requesterWorker={workers?.find(w => w.id === selectedRequest?.workerId)}
         onOpenChange={open => { if (!open) setSelectedRequest(null); }}
-        canManage={selectedRequest ? (checkCanManage(selectedRequest) || (userIsMinistryHead && selectedRequest.type === "Room Booking")) : false}
-        isAdmin={isActualAdmin}
+        canManage={selectedRequest ? checkCanManage(selectedRequest) : false}
+        isAdmin={isAdmin}
         isMinistryHead={userIsMinistryHead}
         currentWorkerId={workerProfile?.id}
+        currentWorkerName={`${workerProfile?.firstName || ""} ${workerProfile?.lastName || ""}`.trim()}
         onApprove={(id) => {
           setSelectedRequest(null);
           setTimeout(() => {
