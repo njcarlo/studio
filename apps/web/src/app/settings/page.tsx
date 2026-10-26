@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import {
   LoaderCircle, AlertTriangle, Settings, Shield, Building2,
   Building, Utensils, MapPin, Clock, ArrowRight,
-  Users, UtensilsCrossed,
+  Users, UtensilsCrossed, ScanLine,
 } from "lucide-react";
 import { useAuthStore } from "@studio/store";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -218,6 +218,16 @@ export default function SettingsPage() {
               description="Configure shift hours, grace periods and scanner rules."
               badge="Auto Shift Rules"
             />
+            {canManageRoles && (
+              <ModuleCard
+                href="/settings/scanner"
+                icon={ScanLine}
+                iconBg="bg-sidebar/10 text-sidebar"
+                title="Scanner Configuration"
+                description="Manage scanner master lock passwords and operational security rules."
+                badge="Lock & Security"
+              />
+            )}
             {canManageRoles && (
               <ModuleCard
                 href="/settings/roles"

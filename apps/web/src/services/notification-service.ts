@@ -269,8 +269,7 @@ Status: APPROVED
 You may now use the reserved room on the approved date and time.
 
 Thank you,
-COG APP
-Room Reservation Management System
+Church of God Dasmariñas
 `.trim();
 
         const html = `
@@ -280,11 +279,8 @@ Room Reservation Management System
                     <div style="margin-bottom: 12px;">
                         <img src="cid:coglogo" alt="COG Logo" width="64" height="64" style="display: inline-block; border-radius: 50%; background-color: #ffffff; padding: 2px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);" />
                     </div>` : ''}
-                    <div style="display: inline-block; padding: 6px 14px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 9999px; color: #059669; font-weight: 700; font-size: 12px; margin-bottom: 12px;">
-                        ✓ FINAL APPROVAL CONFIRMED
-                    </div>
                     <h1 style="color: #0f172a; font-size: 22px; font-weight: 800; margin: 0 0 6px 0;">Room Reservation Approved</h1>
-                    <p style="color: #64748b; font-size: 13px; margin: 0;">Church of God Dasmariñas • Room Reservation Management System</p>
+                    <p style="color: #64748b; font-size: 13px; margin: 0;">Church of God Dasmariñas</p>
                 </div>
 
                 <div style="padding: 24px 0;">
@@ -342,14 +338,13 @@ Room Reservation Management System
 
                     <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px; margin-bottom: 24px;">
                         <p style="margin: 0; font-size: 13px; color: #166534; font-weight: 600;">
-                            ✨ You may now use the reserved room on the approved date and time.
+                            You may now use the reserved room on the approved date and time.
                         </p>
                     </div>
 
-                    <p style="font-size: 14px; line-height: 1.5; color: #475569; margin: 0 0 4px 0;">
+                    <p style="font-size: 14px; line-height: 1.5; color: #475569; margin: 0;">
                         Thank you,<br />
-                        <strong>COG APP</strong><br />
-                        <span style="font-size: 12px; color: #94a3b8;">Room Reservation Management System</span>
+                        <strong>Church of God Dasmariñas</strong>
                     </p>
                 </div>
             </div>
@@ -364,6 +359,232 @@ Room Reservation Management System
         });
 
         console.log(`[NotificationService] Room reservation final approval email sent to worker ${recipientEmail} for room "${roomName}" (Request ID: ${requestId})`);
+        return { success: true };
+    }
+
+    /**
+     * Sends the rejection notification email to the worker for a rejected Room Reservation.
+     */
+    static async notifyRoomReservationRejected(approvalId?: string, reservationId?: string, reason?: string) {
+        let approval: any = null;
+        let booking: any = null;
+
+        if (approvalId) {
+            approval = await prisma.approvalRequest.findUnique({
+                where: { id: approvalId },
+                include: { worker: true },
+            });
+        }
+
+        const effectiveBookingId = reservationId || approval?.reservationId;
+        if (effectiveBookingId) {
+            booking = await prisma.booking.findUnique({
+                where: { id: effectiveBookingId },
+                include: {
+                    room: true,
+                    worker: true,
+                },
+            });
+        }
+
+        const worker = booking?.worker || approval?.worker || (approval?.workerId ? await prisma.worker.findUnique({ where: { id: approval.workerId } }) : null);
+        const recipientEmail = worker?.email || booking?.email || booking?.requesterEmail;
+
+        if (!recipientEmail) {
+            console.warn('[NotificationService] No recipient email found for rejected room reservation:', { approvalId, reservationId });
+            return { success: false, error: 'No recipient email found for worker.' };
+        }
+
+        const workerName = worker
+            ? `${worker.firstName} ${worker.lastName}`.trim()
+            : (booking?.name || approval?.requester || 'Worker');
+
+        let roomName = booking?.room?.name;
+        if (!roomName && (approval?.roomId || booking?.roomId)) {
+            const r = await prisma.room.findUnique({
+                where: { id: approval?.roomId || booking?.roomId },
+            });
+            roomName = r?.name;
+        }
+        roomName = roomName || 'Reserved Room';
+
+        const rawReqId = booking?.requestId || approval?.requestId;
+        const fallbackId = (approval?.id || booking?.id || '').slice(-4).toUpperCase();
+        const requestId = rawReqId || (fallbackId ? `REQ-${fallbackId}` : 'N/A');
+
+        const startDate = booking?.start ? new Date(booking.start) : (approval?.date ? new Date(approval.date) : null);
+        const endDate = booking?.end ? new Date(booking.end) : null;
+
+        const reservationDate = startDate ? format(startDate, 'MMMM d, yyyy') : 'N/A';
+        const startTimeStr = startDate ? format(startDate, 'h:mm a') : 'N/A';
+        const endTimeStr = endDate ? format(endDate, 'h:mm a') : 'N/A';
+        const timeStr = `${startTimeStr} – ${endTimeStr}`;
+
+        let ministryName = 'General';
+        let departmentName = 'General';
+        const minId = booking?.ministryId || worker?.majorMinistryId || approval?.newMajorId || approval?.oldMajorId;
+        if (minId) {
+            const ministry = await prisma.ministry.findUnique({
+                where: { id: minId },
+                include: { department: true },
+            });
+            if (ministry) {
+                ministryName = ministry.name;
+                departmentName = ministry.department?.name || 'General';
+            }
+        }
+        if (departmentName === 'General') {
+            if ((worker as any)?.department) {
+                departmentName = (worker as any).department;
+            } else if ((worker as any)?.departmentCode) {
+                const codeMap: Record<string, string> = {
+                    W: 'Worship',
+                    O: 'Outreach',
+                    R: 'Relationship',
+                    D: 'Discipleship',
+                    A: 'Administration',
+                };
+                departmentName = codeMap[(worker as any).departmentCode.toUpperCase()] || 'General';
+            }
+        }
+
+        const purpose = booking?.purpose || booking?.title || approval?.details?.replace(/^"|"$/g, '') || 'Room Reservation';
+        const rejectionReason = reason?.trim() || 'No specific reason provided.';
+
+        const possibleLogoPaths = [
+            path.resolve(process.cwd(), 'public/church-logo.png'),
+            path.resolve(process.cwd(), 'public/cog-logo.png'),
+            path.resolve(process.cwd(), 'apps/web/public/church-logo.png'),
+            path.resolve(process.cwd(), 'apps/web/public/cog-logo.png'),
+        ];
+        const logoPath = possibleLogoPaths.find((p) => fs.existsSync(p));
+        const attachments = logoPath
+            ? [{
+                filename: 'church-logo.png',
+                content: fs.readFileSync(logoPath),
+                contentType: 'image/png',
+                cid: 'coglogo',
+                contentDisposition: 'inline',
+            }]
+            : undefined;
+
+        const subject = `Room Reservation Rejected – ${roomName}`;
+
+        const text = `
+Room Reservation Rejected
+
+Hello ${workerName},
+
+Your room reservation request for ${roomName} has been rejected.
+
+Reason for Rejection:
+${rejectionReason}
+
+Reservation Details
+
+Request ID: ${requestId}
+Room: ${roomName}
+Date: ${reservationDate}
+Time: ${timeStr}
+Ministry: ${ministryName}
+Department: ${departmentName}
+Purpose: ${purpose}
+Status: REJECTED
+
+Thank you,
+Church of God Dasmariñas
+`.trim();
+
+        const html = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+                <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #f1f5f9;">
+                    ${logoPath ? `
+                    <div style="margin-bottom: 12px;">
+                        <img src="cid:coglogo" alt="COG Logo" width="64" height="64" style="display: inline-block; border-radius: 50%; background-color: #ffffff; padding: 2px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);" />
+                    </div>` : ''}
+                    <h1 style="color: #0f172a; font-size: 22px; font-weight: 800; margin: 0 0 6px 0;">Room Reservation Rejected</h1>
+                    <p style="color: #64748b; font-size: 13px; margin: 0;">Church of God Dasmariñas</p>
+                </div>
+
+                <div style="padding: 24px 0;">
+                    <p style="font-size: 15px; line-height: 1.6; margin: 0 0 14px 0;">
+                        Hello <strong>${workerName}</strong>,
+                    </p>
+                    <p style="font-size: 15px; line-height: 1.6; margin: 0 0 20px 0; color: #334155;">
+                        Your room reservation request for <strong>${roomName}</strong> was rejected.
+                    </p>
+
+                    <div style="background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                        <h3 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9f1239; margin: 0 0 6px 0;">
+                            Reason for Rejection
+                        </h3>
+                        <p style="margin: 0; font-size: 14px; color: #881337; line-height: 1.5; font-weight: 500;">
+                            ${rejectionReason}
+                        </p>
+                    </div>
+
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h2 style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; margin: 0 0 14px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                            Reservation Details
+                        </h2>
+                        
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Request ID:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; font-family: monospace; vertical-align: middle;">${requestId}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Room:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; vertical-align: middle;">${roomName}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Date:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${reservationDate}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Time:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${timeStr}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Ministry:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${ministryName}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Department:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${departmentName}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Purpose:</td>
+                                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: middle;">${purpose}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 12px 8px 0; color: #64748b; font-weight: 500; width: 120px; white-space: nowrap; vertical-align: middle;">Status:</td>
+                                <td style="padding: 8px 0; vertical-align: middle;">
+                                    <span style="display: inline-block; background-color: #ffe4e6; color: #e11d48; font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 6px; border: 1px solid #fda4af; text-transform: uppercase;">
+                                        REJECTED
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <p style="font-size: 14px; line-height: 1.5; color: #475569; margin: 0;">
+                        Thank you,<br />
+                        <strong>Church of God Dasmariñas</strong>
+                    </p>
+                </div>
+            </div>
+        `;
+
+        await EmailService.sendEmail({
+            to: recipientEmail,
+            subject,
+            html,
+            text,
+            attachments,
+        });
+
+        console.log(`[NotificationService] Room reservation rejection email sent to worker ${recipientEmail} for room "${roomName}" (Request ID: ${requestId})`);
         return { success: true };
     }
 

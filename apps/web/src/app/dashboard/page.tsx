@@ -89,7 +89,7 @@ export default function DashboardPage() {
 
   const ministryName = (workerProfile as any)?.majorMinistry?.name || null;
 
-  if (userLoading) {
+  if (userLoading && !workerProfile) {
     return (
       <AppLayout>
         <div className="flex justify-center py-20">

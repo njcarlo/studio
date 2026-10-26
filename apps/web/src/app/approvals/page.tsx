@@ -208,18 +208,19 @@ export default function ApprovalsPage() {
 
   const { approvals: requests, isLoading: approvalsLoading } = useApprovals();
   const { bookings, isLoading: bookingsLoading } = useBookings();
-  const { workers, isLoading: workersLoading } = useWorkers();
+  const { workers, isLoading: workersLoading } = useWorkers({ enabled: !isSuperAdmin });
   const { ministries, allMinistries, isLoading: ministriesLoading } = useMinistries();
   const { rooms, areas } = useRooms();
   const { updateStatus, isUpdating } = useApprovalMutations();
 
-  const isLoading = isRoleLoading || approvalsLoading || bookingsLoading || workersLoading || ministriesLoading;
+  const isLoading = (isRoleLoading || approvalsLoading) && !requests;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected" | "completed">("pending");
   const [viewMode, setViewMode] = useState<"table" | "cards" | "kanban">("table");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<{ action: "Approved" | "Rejected"; ids: string[] } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const isActualAdmin = Boolean(
     isSuperAdmin ||
@@ -325,6 +326,17 @@ export default function ApprovalsPage() {
       }
     }
     if (request.type === "Room Booking") {
+      // Ministry Head cannot approve or reject their own room reservation because it's automatically approved by MH
+      if (
+        userIsMinistryHead &&
+        !isSuperAdmin &&
+        (request.workerId === workerProfile?.id ||
+          (request.reservationId &&
+            bookings?.find((b) => b.id === request.reservationId)?.workerProfileId === workerProfile?.id))
+      ) {
+        return false;
+      }
+
       const isPendingMH =
         request.status === "Pending Ministry Approval" ||
         request.status === "Pending" ||
@@ -366,7 +378,7 @@ export default function ApprovalsPage() {
     return checkIsApprover(request);
   };
 
-  const handleUpdateRequestStatus = (request: ApprovalRequest, status: "Approved" | "Rejected") => {
+  const handleUpdateRequestStatus = (request: ApprovalRequest, status: "Approved" | "Rejected", reason?: string) => {
     if (!request.id || !checkCanManage(request)) return;
     if (request.type === "Room Booking" && status === "Approved") {
       const isPendingMH =
@@ -387,23 +399,26 @@ export default function ApprovalsPage() {
         return;
       }
     }
-    updateStatus({ request, status });
+    updateStatus({ request, status, reason });
   };
 
   // Bulk actions
   const handleBulkAction = (action: "Approved" | "Rejected") => {
     const ids = Array.from(selectedIds);
+    setRejectionReason("");
     setConfirmAction({ action, ids });
   };
 
   const executeBulkAction = () => {
     if (!confirmAction) return;
+    const reasonToSend = rejectionReason.trim();
     confirmAction.ids.forEach(id => {
       const req = requests?.find(r => r.id === id);
-      if (req && checkCanManage(req)) handleUpdateRequestStatus(req, confirmAction.action);
+      if (req && checkCanManage(req)) handleUpdateRequestStatus(req, confirmAction.action, reasonToSend);
     });
     setSelectedIds(new Set());
     setConfirmAction(null);
+    setRejectionReason("");
   };
 
   const toggleSelect = (id: string) => {
@@ -1128,16 +1143,40 @@ export default function ApprovalsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
 
+          {confirmAction?.action === "Rejected" && (
+            <div className="mt-3.5 text-left space-y-1.5">
+              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <span>Reason for rejection <span className="text-rose-500 ml-0.5">*</span></span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="State the reason why this request is being rejected..."
+                rows={3}
+                className="w-full rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-muted/40 p-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-rose-500/30 transition-all resize-none shadow-2xs"
+                autoFocus
+              />
+            </div>
+          )}
+
           <AlertDialogFooter className="flex flex-row gap-2 sm:justify-center mt-4">
-            <AlertDialogCancel className="flex-1 rounded-xl text-xs h-9 cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted font-semibold mt-0">
+            <AlertDialogCancel
+              onClick={() => {
+                setConfirmAction(null);
+                setRejectionReason("");
+              }}
+              className="flex-1 rounded-xl text-xs h-9 cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted font-semibold mt-0"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
+              disabled={confirmAction?.action === "Rejected" && !rejectionReason.trim()}
               className={cn(
                 "flex-1 rounded-xl text-xs h-9 font-bold text-white shadow-xs cursor-pointer transition-all mt-0",
                 confirmAction?.action === "Approved"
                   ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
-                  : "bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500"
+                  : "bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500",
+                confirmAction?.action === "Rejected" && !rejectionReason.trim() && "opacity-50 cursor-not-allowed pointer-events-none"
               )}
               onClick={executeBulkAction}
             >
@@ -1152,9 +1191,10 @@ export default function ApprovalsPage() {
         open={!!selectedRequest}
         requesterWorker={workers?.find(w => w.id === selectedRequest?.workerId)}
         onOpenChange={open => { if (!open) setSelectedRequest(null); }}
-        canManage={selectedRequest ? checkCanManage(selectedRequest) : false}
+        canManage={selectedRequest ? (checkCanManage(selectedRequest) || (userIsMinistryHead && selectedRequest.type === "Room Booking")) : false}
         isAdmin={isActualAdmin}
         isMinistryHead={userIsMinistryHead}
+        currentWorkerId={workerProfile?.id}
         onApprove={(id) => {
           setSelectedRequest(null);
           setTimeout(() => {
@@ -1163,6 +1203,7 @@ export default function ApprovalsPage() {
         }}
         onReject={(id) => {
           setSelectedRequest(null);
+          setRejectionReason("");
           setTimeout(() => {
             setConfirmAction({ action: "Rejected", ids: [id] });
           }, 50);

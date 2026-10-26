@@ -32,7 +32,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuthStore } from "@studio/store";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getRooms,
   getAreas,
@@ -51,7 +51,13 @@ export default function NewReservationPage() {
   const { workerProfile, isSuperAdmin, isMinistryHead, myMinistryIds, isLoading: roleLoading } = useUserRole();
   const { toast } = useToast();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
+  // Prefetch destinations immediately on page mount so tab/button click is 0ms
+  useEffect(() => {
+    router.prefetch("/reservations/my");
+    router.prefetch("/reservations/masterview/daily");
+  }, [router]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedStatus, setSubmittedStatus] = useState("Pending Ministry Approval");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -544,6 +550,20 @@ export default function NewReservationPage() {
       }
 
       if (res?.booking?.id) {
+        // Instant in-memory cache update so navigating to "My Reservations" or "Approvals" is 0ms
+        queryClient.setQueriesData({ queryKey: ["bookings"] }, (old: any) => {
+          if (!Array.isArray(old)) return [res.booking];
+          return [res.booking, ...old];
+        });
+        if (res?.approval) {
+          queryClient.setQueriesData({ queryKey: ["approvals"] }, (old: any) => {
+            if (!Array.isArray(old)) return [res.approval];
+            return [res.approval, ...old];
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ["bookings"], refetchType: "none" });
+        queryClient.invalidateQueries({ queryKey: ["approvals"], refetchType: "none" });
+
         setSubmittedStatus(initialStatus);
         setIsSubmitted(true);
       }
@@ -599,19 +619,21 @@ export default function NewReservationPage() {
 
             {/* Reservation Summary Box */}
             <div className="bg-slate-50 dark:bg-muted/30 rounded-2xl p-4 sm:p-5 border border-slate-100 dark:border-border/60 text-left space-y-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between gap-2">
+              <div className="flex flex-row items-center justify-between sm:grid sm:grid-cols-2 gap-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 <span className="truncate">Reservation Details</span>
-                {submittedStatus === "Pending Ministry Approval" ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40 whitespace-nowrap shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
-                    Pending Ministry Head
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 whitespace-nowrap shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                    Pending Admin Approval
-                  </span>
-                )}
+                <div className="flex items-center sm:justify-start justify-end">
+                  {submittedStatus === "Pending Ministry Approval" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40 whitespace-nowrap shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                      Pending Ministry Head
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 whitespace-nowrap shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                      Pending Admin Approval
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs pt-1">
@@ -887,36 +909,30 @@ export default function NewReservationPage() {
                           if (slotMin >= 20 * 60) return false;
                           const passed = isSlotInPast(slot.value);
                           if (passed) return false;
+                          const isBooked = bookedRanges.some(
+                            (r) => slotMin >= r.startMin && slotMin < r.endMin
+                          );
+                          if (isBooked) return false;
                           return true;
                         });
 
                         if (available.length === 0) {
                           return (
                             <div className="py-3 px-3 text-center text-xs text-muted-foreground font-medium">
-                              All time slots have passed for today. Please pick a future date.
+                              No time slots available for this date.
                             </div>
                           );
                         }
 
-                        return available.map((slot) => {
-                          const slotMin = timeToMinutes(slot.value);
-                          const isBooked = bookedRanges.some(
-                            (r) => slotMin >= r.startMin && slotMin < r.endMin
-                          );
-                          return (
-                            <SelectItem
-                              key={`start-${slot.value}`}
-                              value={slot.value}
-                              disabled={isBooked}
-                              className={cn(
-                                "text-xs",
-                                isBooked && "opacity-50 text-red-500 line-through cursor-not-allowed"
-                              )}
-                            >
-                              {slot.display} {isBooked ? " (Reserved)" : ""}
-                            </SelectItem>
-                          );
-                        });
+                        return available.map((slot) => (
+                          <SelectItem
+                            key={`start-${slot.value}`}
+                            value={slot.value}
+                            className="text-xs"
+                          >
+                            {slot.display}
+                          </SelectItem>
+                        ));
                       })()}
                     </SelectContent>
                   </Select>
@@ -945,6 +961,15 @@ export default function NewReservationPage() {
                           if (startTime) {
                             const startMin = timeToMinutes(startTime);
                             if (slotMin <= startMin) return false;
+                            const isConflict = bookedRanges.some(
+                              (r) => startMin < r.endMin && slotMin > r.startMin
+                            );
+                            if (isConflict) return false;
+                          } else {
+                            const isConflict = bookedRanges.some(
+                              (r) => slotMin > r.startMin && slotMin <= r.endMin
+                            );
+                            if (isConflict) return false;
                           }
                           return true;
                         });
@@ -957,34 +982,15 @@ export default function NewReservationPage() {
                           );
                         }
 
-                        return available.map((slot) => {
-                          const slotMin = timeToMinutes(slot.value);
-                          let isConflict = false;
-                          if (startTime) {
-                            const startMin = timeToMinutes(startTime);
-                            isConflict = bookedRanges.some(
-                              (r) => startMin < r.endMin && slotMin > r.startMin
-                            );
-                          } else {
-                            isConflict = bookedRanges.some(
-                              (r) => slotMin > r.startMin && slotMin <= r.endMin
-                            );
-                          }
-
-                          return (
-                            <SelectItem
-                              key={`end-${slot.value}`}
-                              value={slot.value}
-                              disabled={isConflict}
-                              className={cn(
-                                "text-xs",
-                                isConflict && "opacity-50 text-red-500 line-through cursor-not-allowed"
-                              )}
-                            >
-                              {slot.display} {isConflict ? " (Conflict)" : ""}
-                            </SelectItem>
-                          );
-                        });
+                        return available.map((slot) => (
+                          <SelectItem
+                            key={`end-${slot.value}`}
+                            value={slot.value}
+                            className="text-xs"
+                          >
+                            {slot.display}
+                          </SelectItem>
+                        ));
                       })()}
                     </SelectContent>
                   </Select>

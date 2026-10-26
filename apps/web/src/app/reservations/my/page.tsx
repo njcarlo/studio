@@ -104,7 +104,7 @@ export default function MyReservationsPage() {
     queryFn: getMinistries,
   });
 
-  const isLoading = roleLoading || bookingsLoading;
+  const isLoading = (roleLoading || bookingsLoading) && !allBookings;
 
   // Filter bookings belonging to the current user
   const userBookings = useMemo(() => {

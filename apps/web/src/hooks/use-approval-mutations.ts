@@ -20,18 +20,23 @@ export function useApprovalMutations() {
             request,
             status,
             options = {},
+            reason,
         }: {
             request: ApprovalRequest;
             status: string;
             options?: {
                 outgoingApproved?: boolean;
             };
+            reason?: string;
         }) => {
             if (!request.id) throw new Error('Missing request ID');
 
             const updateData: any = { status };
             if (options.outgoingApproved !== undefined) {
                 updateData.outgoingApproved = options.outgoingApproved;
+            }
+            if (reason) {
+                updateData.reason = reason;
             }
 
             return await updateApproval(request.id, updateData, workerProfile?.id);
@@ -56,6 +61,18 @@ export function useApprovalMutations() {
                     toast({
                         title: 'Reservation Approved',
                         description: 'Reservation approved successfully.',
+                    });
+                }
+            } else if (data?.status === 'Rejected' && data?.type === 'Room Booking') {
+                if (data.emailNotificationSent) {
+                    toast({
+                        title: 'Reservation Rejected',
+                        description: 'Reservation has been rejected. The requester has been notified by email.',
+                    });
+                } else {
+                    toast({
+                        title: 'Reservation Rejected',
+                        description: 'Reservation request has been rejected.',
                     });
                 }
             } else if (data?.status === 'Pending Admin Approval') {

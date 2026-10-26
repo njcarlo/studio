@@ -22,7 +22,7 @@ import type { ApprovalRequest, Worker } from "@studio/types";
 
 interface KanbanCardProps {
   request: ApprovalRequest;
-  onUpdateStatus: (request: ApprovalRequest, status: "Approved" | "Rejected") => void;
+  onUpdateStatus: (request: ApprovalRequest, status: "Approved" | "Rejected", reason?: string) => void;
   canManage: boolean;
   onClick: (request: ApprovalRequest) => void;
   requesterWorker?: Worker | null;
@@ -39,12 +39,14 @@ export function KanbanCard({
 }: KanbanCardProps) {
   const [confirmApproveOpen, setConfirmApproveOpen] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const handleUpdateClick = (e: React.MouseEvent, status: "Approved" | "Rejected") => {
     e.stopPropagation();
     if (status === "Approved") {
       setConfirmApproveOpen(true);
     } else {
+      setRejectionReason("");
       setConfirmRejectOpen(true);
     }
   };
@@ -104,16 +106,37 @@ export function KanbanCard({
               Are you sure that you want to reject this request? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {request.type === "Room Booking" && (
+            <div className="mt-3.5 text-left space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">
+                Reason for rejection <span className="text-rose-500 ml-0.5">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="State the reason why this request is being rejected..."
+                rows={3}
+                className="w-full rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-muted/40 p-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-rose-500/30 transition-all resize-none shadow-2xs"
+                autoFocus
+              />
+            </div>
+          )}
+
           <AlertDialogFooter className="flex flex-row gap-2 sm:justify-center mt-4">
             <AlertDialogCancel className="flex-1 rounded-xl text-xs h-9 cursor-pointer border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted font-semibold mt-0">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="flex-1 rounded-xl text-xs h-9 font-bold bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500 text-white shadow-xs cursor-pointer transition-all mt-0"
+              disabled={request.type === "Room Booking" && !rejectionReason.trim()}
+              className={cn(
+                "flex-1 rounded-xl text-xs h-9 font-bold bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500 text-white shadow-xs cursor-pointer transition-all mt-0",
+                request.type === "Room Booking" && !rejectionReason.trim() && "opacity-50 cursor-not-allowed pointer-events-none"
+              )}
               onClick={() => {
                 setConfirmRejectOpen(false);
-                onUpdateStatus(request, "Rejected");
+                onUpdateStatus(request, "Rejected", rejectionReason.trim());
               }}
             >
-              Yes
+              Yes, Reject
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -8,6 +8,7 @@ import { NotificationService } from '@/services/notification-service';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { EmailService } from '@/services/email-service';
 import { type AttendanceShiftSettings, DEFAULT_ATTENDANCE_SETTINGS } from '@/lib/attendance-config';
+import { type ScannerSettings, DEFAULT_SCANNER_SETTINGS } from '@/lib/scanner-config';
 
 const DEPARTMENT_NAME_TO_CODE: Record<string, string> = {
     Worship: 'W',
@@ -1625,10 +1626,14 @@ export async function updateApproval(id: string, data: any, actorId?: string) {
 
     const previousStatus = currentApproval.status;
     const status = data.status;
+    const rejectionReason = data.reason || data.rejectionReason;
+
+    // Clean data of non-schema properties before sending to prisma
+    const { reason: _reason, rejectionReason: _rejectionReason, ...prismaData } = data;
 
     const approval = await prisma.approvalRequest.update({
         where: { id },
-        data,
+        data: prismaData,
     });
 
     // Handle side-effects for Room Bookings
@@ -1673,6 +1678,15 @@ export async function updateApproval(id: string, data: any, actorId?: string) {
         void NotificationService.notifyRoomReservationApproved(approval.id, approval.reservationId || undefined)
             .catch(emailErr => {
                 console.error('[updateApproval] Failed to send final approval email in background:', emailErr);
+            });
+        emailNotificationSent = true;
+    }
+
+    // Send rejection email asynchronously in background when room reservation is rejected
+    if (status === 'Rejected' && previousStatus !== 'Rejected' && approval.type === 'Room Booking') {
+        void NotificationService.notifyRoomReservationRejected(approval.id, approval.reservationId || undefined, rejectionReason)
+            .catch(emailErr => {
+                console.error('[updateApproval] Failed to send rejection email in background:', emailErr);
             });
         emailNotificationSent = true;
     }
@@ -2043,32 +2057,33 @@ export async function submitRoomReservation(data: {
             }
         }
 
-        // 2. Create the booking record
-        const booking = await createBooking(bookingData);
+        // 2. Atomic create in single database transaction
+        const { requesterEmail: _re, dateRequested: _dr, workerProfileId, roomId: _rmId, ...cleanRest } = bookingData;
 
-        // 3. Create the approval request if provided
-        let approval: any = null;
-        if (booking?.id && approvalData) {
-            approval = await prisma.approvalRequest.create({
-                data: {
-                    ...approvalData,
-                    reservationId: booking.id,
-                    date: new Date(),
-                },
+        const [booking, approval] = await prisma.$transaction(async (tx) => {
+            const b = await tx.booking.create({
+                data: { ...cleanRest, workerProfileId, roomId },
             });
+            let a = null;
+            if (approvalData) {
+                a = await tx.approvalRequest.create({
+                    data: {
+                        ...approvalData,
+                        reservationId: b.id,
+                        date: new Date(),
+                    },
+                });
+            }
+            return [b, a];
+        });
 
-            // 4. Fire background email notification asynchronously (non-blocking)
+        // 3. Fire background email notification asynchronously (non-blocking)
+        if (approval) {
             void NotificationService.notifyNewRequest(approval).catch(err => {
                 console.error('[submitRoomReservation] Background notification error:', err);
             });
         }
-
-        try {
-            revalidatePath('/reservations');
-            revalidatePath('/dashboard');
-            revalidatePath('/approvals');
-        } catch { }
-
+        // Return immediately in milliseconds; client query cache handles instant state updates
         return { success: true, booking, approval };
     } catch (err: any) {
         console.error('[submitRoomReservation] Error:', err);
@@ -2488,6 +2503,42 @@ export async function updateAttendanceSettings(data: Partial<AttendanceShiftSett
     revalidatePath('/settings');
     revalidatePath('/settings/attendance');
     revalidatePath('/attendance/scanner');
+    return updated;
+}
+
+export async function getScannerSettings(): Promise<ScannerSettings> {
+    try {
+        const setting = await prisma.setting.findUnique({
+            where: { id: 'scanner_settings' },
+        });
+        if (setting?.data) {
+            const data = typeof setting.data === 'string' ? JSON.parse(setting.data) : setting.data;
+            return {
+                ...DEFAULT_SCANNER_SETTINGS,
+                ...data,
+            };
+        }
+    } catch (e) {
+        console.error("Failed to load scanner settings from DB", e);
+    }
+    return DEFAULT_SCANNER_SETTINGS;
+}
+
+export async function updateScannerSettings(data: Partial<ScannerSettings>) {
+    const current = await getScannerSettings();
+    const updated: ScannerSettings = {
+        ...current,
+        ...data,
+    };
+    await prisma.setting.upsert({
+        where: { id: 'scanner_settings' },
+        update: { data: updated as any },
+        create: { id: 'scanner_settings', data: updated as any },
+    });
+    revalidatePath('/settings');
+    revalidatePath('/settings/scanner');
+    revalidatePath('/attendance/scanner');
+    revalidatePath('/mealstub/scanner');
     return updated;
 }
 

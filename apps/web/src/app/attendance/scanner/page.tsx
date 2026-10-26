@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Badge } from "@studio/ui";
+import { Button, Badge, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@studio/ui";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@studio/ui";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -19,6 +19,8 @@ import { useAttendance } from "@/hooks/use-attendance";
 import { useScanLogs } from "@/hooks/use-scan-logs";
 import { useMealStubs } from "@/hooks/use-meal-stubs";
 import { useAttendanceSettings } from "@/hooks/use-attendance-settings";
+import { useScannerSettings } from "@/hooks/use-scanner-settings";
+import { FALLBACK_SCANNER_PASSWORDS } from "@/lib/scanner-config";
 import { getWorkerByIdOrWorkerId } from "@/actions/db";
 import jsQR from "jsqr";
 
@@ -53,6 +55,45 @@ export default function QRScannerPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+    const [lockPassword, setLockPassword] = useState('');
+    const [lockPasswordError, setLockPasswordError] = useState('');
+    const [showLockPassword, setShowLockPassword] = useState(false);
+
+    const { settings: scannerSettings } = useScannerSettings();
+
+    const isValidPassword = useCallback((input: string) => {
+        const p = input.trim();
+        if (!p) return false;
+        const configured = scannerSettings?.lockPassword || 'CogMain123';
+        if (p === configured) return true;
+        if (scannerSettings?.allowFallbackPasswords !== false) {
+            return FALLBACK_SCANNER_PASSWORDS.includes(p);
+        }
+        return false;
+    }, [scannerSettings]);
+
+    const handleConfirmLock = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isValidPassword(lockPassword)) {
+            setIsAuthenticated(false);
+            setPasswordInput('');
+            setLockPassword('');
+            setLockPasswordError('');
+            setIsLockModalOpen(false);
+            toast({
+                title: 'Scanner Locked',
+                description: 'The scanner session has been locked.',
+            });
+        } else {
+            setLockPasswordError('Incorrect password. Please try again.');
+            toast({
+                variant: 'destructive',
+                title: 'Authentication Failed',
+                description: 'Incorrect scanner password to lock.',
+            });
+        }
+    };
 
     const handleBack = useCallback(() => {
         if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -469,93 +510,77 @@ export default function QRScannerPage() {
 
     if (!isAuthenticated) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-background p-4">
-                <Card className="w-full max-w-sm rounded-2xl border border-border/80 shadow-md">
-                    <CardHeader className="text-center space-y-2 pb-4">
-                        <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+            <div
+                className="relative flex min-h-screen items-center justify-center bg-cover bg-center bg-no-repeat p-4 overflow-y-auto"
+                style={{ backgroundImage: "url('/cog-bg.png')" }}
+            >
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-[3px]" />
+                <Card className="relative z-10 w-full max-w-sm rounded-2xl border border-white/20 bg-card/95 backdrop-blur-md shadow-none p-5 sm:p-7 my-auto animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex flex-col items-center text-center space-y-2 mb-6">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 mb-1">
                             <ScanLine className="h-6 w-6" />
                         </div>
-                        <CardTitle className="font-headline text-2xl font-bold">Attendance Scanner</CardTitle>
-                        <CardDescription className="text-xs">
+                        <h2 className="font-headline text-2xl font-bold tracking-tight text-foreground">
+                            Attendance Scanner
+                        </h2>
+                        <p className="text-xs text-muted-foreground leading-relaxed max-w-[260px]">
                             Enter the scanner password to unlock camera scanning.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const p = passwordInput.trim();
-                                if (p === 'CogMain123' || p === '2026' || p === '1234') {
-                                    setIsAuthenticated(true);
-                                    toast({ title: 'Scanner Unlocked', description: 'Scanner is now active.' });
-                                } else {
-                                    toast({
-                                        variant: 'destructive',
-                                        title: 'Invalid Password',
-                                        description: 'Incorrect scanner password.',
-                                    });
-                                }
-                            }}
-                            className="flex flex-col gap-3.5"
-                        >
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 pr-10 text-sm shadow-2xs focus:outline-none focus:ring-1 focus:ring-ring"
-                                    placeholder="Scanner Password (e.g. CogMain123 or 2026)"
-                                    value={passwordInput}
-                                    onChange={e => setPasswordInput(e.target.value)}
-                                    autoFocus
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                                    tabIndex={-1}
-                                    title={showPassword ? "Hide password" : "Show password"}
-                                >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
-                            </div>
-                            <Button type="submit" className="rounded-xl h-10 font-bold">
-                                Unlock Scanner
-                            </Button>
-                            <Button
+                        </p>
+                    </div>
+
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (isValidPassword(passwordInput)) {
+                                setIsAuthenticated(true);
+                                toast({ title: 'Scanner Unlocked', description: 'Scanner is now active.' });
+                            } else {
+                                toast({
+                                    variant: 'destructive',
+                                    title: 'Invalid Password',
+                                    description: 'Incorrect scanner password.',
+                                });
+                            }
+                        }}
+                        className="flex flex-col gap-3.5"
+                    >
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                className="flex h-11 w-full rounded-xl border border-input/80 bg-background/90 px-3.5 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all font-medium"
+                                value={passwordInput}
+                                onChange={e => setPasswordInput(e.target.value)}
+                                autoFocus
+                            />
+                            <button
                                 type="button"
-                                variant="outline"
-                                onClick={handleBack}
-                                className="flex items-center justify-center gap-2 rounded-xl h-10 text-xs"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                tabIndex={-1}
+                                title={showPassword ? "Hide password" : "Show password"}
                             >
-                                <ArrowLeft className="h-4 w-4" />
-                                Back to Attendance
-                            </Button>
-                        </form>
-                    </CardContent>
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                        <Button type="submit" className="w-full rounded-xl h-11 font-bold text-sm shadow-none hover:shadow-none transition-all cursor-pointer">
+                            Unlock Scanner
+                        </Button>
+                    </form>
                 </Card>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-background overflow-hidden">
-            <header className="flex items-center justify-between border-b px-4 sm:px-6 py-3.5 shrink-0 bg-card/60 backdrop-blur-md">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleBack}
-                        className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer rounded-xl"
-                        title="Back"
-                    >
-                        <ArrowLeft className="h-5 w-5" />
-                        <span className="sr-only">Back</span>
-                    </Button>
-                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2.5 min-w-0">
-                        <h1 className="text-lg sm:text-xl font-headline font-bold tracking-tight text-foreground whitespace-nowrap">
+        <div className="flex flex-col h-screen h-[100dvh] bg-background overflow-hidden">
+            {/* Fixed Header Pinned to Top */}
+            <header className="flex items-center justify-between border-b border-border/80 px-4 sm:px-6 py-2 sm:py-3.5 shrink-0 bg-background/95 backdrop-blur-md z-40">
+                <div className="flex items-center gap-3">
+                    <div>
+                        <h1 className="text-base sm:text-xl font-headline font-bold leading-tight">
                             Attendance Scanner
                         </h1>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-[11px] sm:text-xs text-muted-foreground hidden xs:block">
                             Scan QR codes for automatic attendance.
                         </p>
                     </div>
@@ -579,8 +604,15 @@ export default function QRScannerPage() {
                         size="sm"
                         className="h-8 gap-1.5 rounded-xl text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                         onClick={() => {
-                            setIsAuthenticated(false);
-                            setPasswordInput('');
+                            if (scannerSettings?.requirePasswordToLock === false) {
+                                setIsAuthenticated(false);
+                                setPasswordInput('');
+                                toast({ title: 'Scanner Locked', description: 'The scanner session has been locked.' });
+                            } else {
+                                setLockPassword('');
+                                setLockPasswordError('');
+                                setIsLockModalOpen(true);
+                            }
                         }}
                         title="Lock Scanner"
                     >
@@ -590,20 +622,20 @@ export default function QRScannerPage() {
                 </div>
             </header>
 
-            <main className="grid flex-grow grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <main className="grid flex-1 min-h-0 grid-cols-1 landscape:grid-cols-2 md:grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-6 py-3 sm:py-5 w-full overflow-y-auto">
                 {/* Scanner Viewfinder Card */}
-                <Card className="flex flex-col rounded-2xl border border-border/80 shadow-xs overflow-hidden">
-                    <CardHeader className="text-center pb-3">
+                <Card className="flex flex-col rounded-2xl border border-border/80 shadow-xs h-full">
+                    <CardHeader className="text-center pb-2 pt-3 sm:pt-5 shrink-0">
                         <div className="flex justify-center mb-1">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-xs">
                                 <ScanLine className="h-5 w-5" />
                             </div>
                         </div>
-                        <CardTitle className="font-headline text-xl font-bold">Live Scan</CardTitle>
+                        <CardTitle className="font-headline text-lg sm:text-xl font-bold">Live Scan</CardTitle>
                         <CardDescription className="text-xs">Position the QR code in the frame. System automatically records Time In / Time Out.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-grow items-center justify-center p-4">
-                        <div className="w-full max-w-md space-y-4">
+                    <CardContent className="flex-1 min-h-0 p-3 sm:p-5 flex flex-col items-center justify-center">
+                        <div className="w-full max-w-md lg:max-w-lg mx-auto space-y-3 h-full flex flex-col justify-center">
                             {scanResult ? (
                                 <div className="flex flex-col items-center justify-center p-4 text-center w-full max-w-sm mx-auto animate-in fade-in zoom-in-95 duration-200">
                                     {/* Avatar & Badge Icon */}
@@ -613,10 +645,10 @@ export default function QRScannerPage() {
                                             <AvatarFallback><UserIcon className="h-10 w-10 sm:h-12 sm:w-12" /></AvatarFallback>
                                         </Avatar>
                                         <div className={`absolute -bottom-1 -right-1 p-1.5 rounded-full shadow-lg text-white ${scanResult.action === 'Clock In'
-                                                ? 'bg-emerald-600'
-                                                : scanResult.action === 'Clock Out'
-                                                    ? 'bg-blue-600'
-                                                    : 'bg-amber-600'
+                                            ? 'bg-emerald-600'
+                                            : scanResult.action === 'Clock Out'
+                                                ? 'bg-blue-600'
+                                                : 'bg-amber-600'
                                             }`}>
                                             {scanResult.action === 'Clock In' ? (
                                                 <LogIn className="h-4 w-4" />
@@ -638,16 +670,16 @@ export default function QRScannerPage() {
 
                                     {/* Action & Status Card */}
                                     <div className={`w-full rounded-xl p-3 border mb-3 flex flex-col items-center gap-1 shadow-sm ${scanResult.action === 'Clock In'
-                                            ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
-                                            : scanResult.action === 'Clock Out'
-                                                ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
-                                                : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
+                                        ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
+                                        : scanResult.action === 'Clock Out'
+                                            ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
+                                            : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
                                         }`}>
                                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${scanResult.action === 'Clock In'
-                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
-                                                : scanResult.action === 'Clock Out'
-                                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
-                                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
+                                            : scanResult.action === 'Clock Out'
+                                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
+                                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
                                             }`}>
                                             {scanResult.action === 'Clock In' ? '✓ TIMED IN' : scanResult.action === 'Clock Out' ? '✓ TIMED OUT' : '⚠ COOLDOWN ACTIVE'}
                                         </span>
@@ -690,11 +722,11 @@ export default function QRScannerPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    <div className="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden shadow-inner border border-border/50">
+                                <div className="space-y-3 w-full my-auto">
+                                    <div className="relative w-full aspect-[4/3] max-h-[340px] sm:max-h-[400px] lg:max-h-[460px] bg-slate-950 rounded-2xl overflow-hidden border border-border/60 shadow-inner mx-auto">
                                         <video
                                             ref={videoRef}
-                                            className="w-full h-full object-cover"
+                                            className="absolute inset-0 w-full h-full object-cover"
                                             autoPlay
                                             muted
                                             playsInline
@@ -704,7 +736,7 @@ export default function QRScannerPage() {
 
                                         {/* Targeting box */}
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <div className="w-56 sm:w-64 h-56 sm:h-64 border-2 border-dashed border-primary/80 rounded-2xl animate-pulse" />
+                                            <div className="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 border-2 border-dashed border-primary/80 rounded-2xl animate-pulse" />
                                         </div>
 
                                         {(isProcessing || workersLoading) && (
@@ -717,8 +749,8 @@ export default function QRScannerPage() {
                                         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse pointer-events-none" />
 
                                         {devices.length > 1 && (
-                                            <div className="absolute bottom-3 right-3">
-                                                <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/80" onClick={handleSwitchCamera}>
+                                            <div className="absolute bottom-3 right-3 z-10">
+                                                <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/80 cursor-pointer" onClick={handleSwitchCamera}>
                                                     <SwitchCamera className="h-4 w-4" />
                                                     <span className="sr-only">Switch Camera</span>
                                                 </Button>
@@ -751,16 +783,16 @@ export default function QRScannerPage() {
                 </Card>
 
                 {/* Recent Scans Card */}
-                <Card className="flex flex-col rounded-2xl border border-border/80 shadow-xs overflow-hidden">
-                    <CardHeader className="pb-3 border-b border-border/60">
-                        <CardTitle className="text-base flex items-center gap-2 font-headline font-bold">
+                <Card className="flex flex-col rounded-2xl border border-border/80 shadow-xs h-full">
+                    <CardHeader className="pb-3 pt-3 sm:pt-5 border-b border-border/60 shrink-0">
+                        <CardTitle className="text-base sm:text-lg flex items-center gap-2 font-headline font-bold">
                             <History className="h-4 w-4 text-primary" />
                             <span>Recent Scans</span>
                         </CardTitle>
                         <CardDescription className="text-xs">Real-time log of attendance scans.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow overflow-hidden p-4">
-                        <ScrollArea className="h-[360px] sm:h-[460px] pr-3">
+                    <CardContent className="flex-1 min-h-0 overflow-hidden p-3 sm:p-5">
+                        <ScrollArea className="h-full max-h-[460px] sm:max-h-[520px] pr-3">
                             {logsLoading ? (
                                 <div className="flex justify-center items-center h-32"><LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                             ) : (!scanLogs || scanLogs.length === 0) ? (
@@ -794,6 +826,74 @@ export default function QRScannerPage() {
                     </CardContent>
                 </Card>
             </main>
+
+            {/* Lock Scanner Confirmation Dialog */}
+            <Dialog open={isLockModalOpen} onOpenChange={(open) => {
+                setIsLockModalOpen(open);
+                if (!open) {
+                    setLockPassword('');
+                    setLockPasswordError('');
+                }
+            }}>
+                <DialogContent className="sm:max-w-sm rounded-3xl p-6 border-border/80 shadow-2xl">
+                    <DialogHeader className="text-center space-y-2">
+                        <div className="mx-auto w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center border border-destructive/20 shadow-xs">
+                            <Lock className="h-6 w-6" />
+                        </div>
+                        <DialogTitle className="font-headline text-xl font-bold">Lock Scanner</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Enter a Password to lock the scanner
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleConfirmLock} className="space-y-4 pt-2">
+                        <div className="relative">
+                            <input
+                                type={showLockPassword ? "text" : "password"}
+                                value={lockPassword}
+                                onChange={(e) => {
+                                    setLockPassword(e.target.value);
+                                    setLockPasswordError('');
+                                }}
+                                placeholder="Enter a Password to lock the scanner"
+                                autoFocus
+                                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 pr-10 text-sm shadow-2xs focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowLockPassword(!showLockPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                tabIndex={-1}
+                            >
+                                {showLockPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                        {lockPasswordError && (
+                            <p className="text-xs text-destructive font-medium text-center">{lockPasswordError}</p>
+                        )}
+                        <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-1">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setIsLockModalOpen(false);
+                                    setLockPassword('');
+                                    setLockPasswordError('');
+                                }}
+                                className="w-full sm:w-1/2 rounded-xl h-10 text-xs font-semibold cursor-pointer"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                variant="destructive"
+                                className="w-full sm:w-1/2 rounded-xl h-10 text-xs font-semibold cursor-pointer"
+                            >
+                                Lock Scanner
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

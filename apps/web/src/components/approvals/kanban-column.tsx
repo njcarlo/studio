@@ -10,7 +10,7 @@ import type { ApprovalRequest, Worker } from "@studio/types";
 interface KanbanColumnProps {
   title: string;
   requests: ApprovalRequest[];
-  onUpdateStatus: (request: ApprovalRequest, status: "Approved" | "Rejected") => void;
+  onUpdateStatus: (request: ApprovalRequest, status: "Approved" | "Rejected", reason?: string) => void;
   checkCanManage: (request: ApprovalRequest) => boolean;
   onCardClick: (request: ApprovalRequest) => void;
   icon?: React.ReactNode;

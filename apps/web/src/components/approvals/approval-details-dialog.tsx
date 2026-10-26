@@ -123,6 +123,7 @@ interface ApprovalDetailsDialogProps {
   canManage?: boolean;
   isAdmin?: boolean;
   isMinistryHead?: boolean;
+  currentWorkerId?: string;
 }
 
 export function ApprovalDetailsDialog({
@@ -135,6 +136,7 @@ export function ApprovalDetailsDialog({
   canManage = false,
   isAdmin = false,
   isMinistryHead = false,
+  currentWorkerId,
 }: ApprovalDetailsDialogProps) {
   if (!request) return null;
 
@@ -304,7 +306,25 @@ export function ApprovalDetailsDialog({
               );
             // Admins cannot approve until Ministry Head gives initial approval.
             // But Ministry Heads can approve requests waiting for Ministry Head approval!
-            const isActionDisabled = Boolean(isAdmin && !isMinistryHead && isWaitingForMinistryHead);
+            const isReservedBySelfMH =
+              request.type === "Room Booking" &&
+              Boolean(
+                isMinistryHead &&
+                currentWorkerId &&
+                (request.workerId === currentWorkerId || requesterWorker?.id === currentWorkerId)
+              );
+
+            const isPendingAdminForMH =
+              request.type === "Room Booking" &&
+              request.status === "Pending Admin Approval" &&
+              isMinistryHead &&
+              !isAdmin;
+
+            const isActionDisabled = Boolean(
+              (isAdmin && !isMinistryHead && isWaitingForMinistryHead) ||
+              isReservedBySelfMH ||
+              isPendingAdminForMH
+            );
 
             return (
               <div className="pt-1 grid grid-cols-2 gap-3">
@@ -323,7 +343,13 @@ export function ApprovalDetailsDialog({
                         ? "opacity-50 cursor-not-allowed pointer-events-none"
                         : "hover:bg-rose-100 dark:hover:bg-rose-950/40 active:scale-95 cursor-pointer"
                     )}
-                    title={isActionDisabled ? "Awaiting Ministry Head response" : undefined}
+                    title={
+                      isReservedBySelfMH
+                        ? "Automatic approve na sa MH. Awaiting Admin final approval."
+                        : isActionDisabled
+                        ? "Awaiting Ministry Head response"
+                        : undefined
+                    }
                   >
                     Reject
                   </button>
@@ -343,7 +369,13 @@ export function ApprovalDetailsDialog({
                         ? "opacity-50 cursor-not-allowed pointer-events-none"
                         : "hover:bg-emerald-100 dark:hover:bg-emerald-950/40 active:scale-95 cursor-pointer"
                     )}
-                    title={isActionDisabled ? "Awaiting Ministry Head response" : undefined}
+                    title={
+                      isReservedBySelfMH
+                        ? "Automatic approve na sa MH. Awaiting Admin final approval."
+                        : isActionDisabled
+                        ? "Awaiting Ministry Head response"
+                        : undefined
+                    }
                   >
                     Yes
                   </button>

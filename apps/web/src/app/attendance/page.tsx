@@ -254,7 +254,7 @@ function AttendanceContent() {
     activeTab === "records" && isAssigner ? { dateFrom: recordsDateFrom } : { enabled: false }
   );
 
-  const isLoading = attendanceLoading || isRoleLoading;
+  const isLoading = (attendanceLoading || isRoleLoading) && !allAttendance;
 
   const activeToken = localToken ?? workerProfile?.qrToken ?? workerProfile?.id ?? "";
   const qrData = workerProfile?.id ? `COG_USER:${workerProfile.id}:${activeToken}` : "";

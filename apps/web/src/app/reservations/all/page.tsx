@@ -209,7 +209,7 @@ export default function AllReservationsPage() {
     queryFn: () => getWorkers({ actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }),
   });
 
-  const isLoading = roleLoading || bookingsLoading;
+  const isLoading = (roleLoading || bookingsLoading) && !allBookings;
 
   const getRoom = (roomId: string) => {
     return (rooms as any[])?.find((r: any) => r.id === roomId);
