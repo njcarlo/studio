@@ -143,6 +143,9 @@ export class NotificationService {
             approval = await prisma.approvalRequest.findUnique({
                 where: { id: approvalId },
                 include: { worker: true },
+            }).catch(err => {
+                console.error('[NotificationService] Error querying approval request:', err);
+                return null;
             });
         }
 
@@ -154,15 +157,67 @@ export class NotificationService {
                     room: true,
                     worker: true,
                 },
+            }).catch(err => {
+                console.error('[NotificationService] Error querying booking by id:', err);
+                return null;
             });
         }
 
-        // 1. Resolve Worker and Email recipient (from the worker record associated with reservation)
-        const worker = booking?.worker || approval?.worker || (approval?.workerId ? await prisma.worker.findUnique({ where: { id: approval.workerId } }) : null);
-        const recipientEmail = worker?.email || booking?.email || booking?.requesterEmail;
+        // Secondary lookup: find booking by requestId if not found by ID
+        if (!booking && approval?.requestId) {
+            booking = await prisma.booking.findFirst({
+                where: { requestId: approval.requestId },
+                include: {
+                    room: true,
+                    worker: true,
+                },
+            }).catch(err => {
+                console.error('[NotificationService] Error querying booking by requestId:', err);
+                return null;
+            });
+        }
+
+        // Secondary lookup: find approval by reservationId if not found by approvalId
+        if (!approval && effectiveBookingId) {
+            approval = await prisma.approvalRequest.findFirst({
+                where: { reservationId: effectiveBookingId },
+                include: { worker: true },
+            }).catch(err => {
+                console.error('[NotificationService] Error querying approval by reservationId:', err);
+                return null;
+            });
+        }
+
+        // 1. Resolve Worker and Email recipient
+        let worker = booking?.worker || approval?.worker;
+        if (!worker && approval?.workerId) {
+            worker = await prisma.worker.findUnique({
+                where: { id: approval.workerId },
+            }).catch(() => null);
+        }
+        if (!worker && booking?.workerProfileId) {
+            worker = await prisma.worker.findUnique({
+                where: { id: booking.workerProfileId },
+            }).catch(() => null);
+        }
+
+        let recipientEmail = worker?.email || booking?.email || booking?.requesterEmail;
+        if (!recipientEmail && approval?.requester && approval.requester.includes('@')) {
+            recipientEmail = approval.requester;
+        }
+        if (recipientEmail) {
+            recipientEmail = recipientEmail.trim();
+        }
 
         if (!recipientEmail) {
-            console.warn('[NotificationService] No recipient email found for approved room reservation:', { approvalId, reservationId });
+            console.warn('[NotificationService] No recipient email found for approved room reservation:', {
+                approvalId,
+                reservationId,
+                approvalWorkerId: approval?.workerId,
+                bookingWorkerProfileId: booking?.workerProfileId,
+                bookingEmail: booking?.email,
+                approvalRequester: approval?.requester,
+            });
             return { success: false, error: 'No recipient email found for worker.' };
         }
 
@@ -176,7 +231,7 @@ export class NotificationService {
         if (!roomName && (approval?.roomId || booking?.roomId)) {
             const r = await prisma.room.findUnique({
                 where: { id: approval?.roomId || booking?.roomId },
-            });
+            }).catch(() => null);
             roomName = r?.name;
         }
         roomName = roomName || 'Reserved Room';
@@ -203,7 +258,7 @@ export class NotificationService {
             const ministry = await prisma.ministry.findUnique({
                 where: { id: minId },
                 include: { department: true },
-            });
+            }).catch(() => null);
             if (ministry) {
                 ministryName = ministry.name;
                 departmentName = ministry.department?.name || 'General';
@@ -227,23 +282,29 @@ export class NotificationService {
         // 7. Resolve Purpose
         const purpose = booking?.purpose || booking?.title || approval?.details?.replace(/^"|"$/g, '') || 'Room Reservation';
 
-        // Resolve logo attachment
-        const possibleLogoPaths = [
-            path.resolve(process.cwd(), 'public/church-logo.png'),
-            path.resolve(process.cwd(), 'public/cog-logo.png'),
-            path.resolve(process.cwd(), 'apps/web/public/church-logo.png'),
-            path.resolve(process.cwd(), 'apps/web/public/cog-logo.png'),
-        ];
-        const logoPath = possibleLogoPaths.find((p) => fs.existsSync(p));
-        const attachments = logoPath
-            ? [{
-                filename: 'church-logo.png',
-                content: fs.readFileSync(logoPath),
-                contentType: 'image/png',
-                cid: 'coglogo',
-                contentDisposition: 'inline',
-            }]
-            : undefined;
+        // Resolve logo web URL and attachment safely
+        const logoUrl = `${this.APP_URL}/church-logo.png`;
+        let attachments: any[] | undefined = undefined;
+        try {
+            const possibleLogoPaths = [
+                path.resolve(process.cwd(), 'public/church-logo.png'),
+                path.resolve(process.cwd(), 'public/cog-logo.png'),
+                path.resolve(process.cwd(), 'apps/web/public/church-logo.png'),
+                path.resolve(process.cwd(), 'apps/web/public/cog-logo.png'),
+            ];
+            const logoPath = possibleLogoPaths.find((p) => fs.existsSync(p));
+            if (logoPath) {
+                attachments = [{
+                    filename: 'church-logo.png',
+                    content: fs.readFileSync(logoPath),
+                    contentType: 'image/png',
+                    cid: 'coglogo',
+                    contentDisposition: 'inline',
+                }];
+            }
+        } catch (e) {
+            console.warn('[NotificationService] Could not read local logo attachment (will use web URL):', e);
+        }
 
         // 8. Construct Subject & Body
         const subject = `Room Reservation Approved – ${roomName}`;
@@ -275,10 +336,9 @@ Church of God Dasmariñas
         const html = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
                 <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #f1f5f9;">
-                    ${logoPath ? `
                     <div style="margin-bottom: 12px;">
-                        <img src="cid:coglogo" alt="COG Logo" width="64" height="64" style="display: inline-block; border-radius: 50%; background-color: #ffffff; padding: 2px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);" />
-                    </div>` : ''}
+                        <img src="${logoUrl}" alt="COG Logo" width="64" height="64" style="display: inline-block; border-radius: 50%; background-color: #ffffff; padding: 2px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);" />
+                    </div>
                     <h1 style="color: #0f172a; font-size: 22px; font-weight: 800; margin: 0 0 6px 0;">Room Reservation Approved</h1>
                     <p style="color: #64748b; font-size: 13px; margin: 0;">Church of God Dasmariñas</p>
                 </div>
@@ -373,6 +433,9 @@ Church of God Dasmariñas
             approval = await prisma.approvalRequest.findUnique({
                 where: { id: approvalId },
                 include: { worker: true },
+            }).catch(err => {
+                console.error('[NotificationService] Error querying approval request:', err);
+                return null;
             });
         }
 
@@ -384,14 +447,66 @@ Church of God Dasmariñas
                     room: true,
                     worker: true,
                 },
+            }).catch(err => {
+                console.error('[NotificationService] Error querying booking by id:', err);
+                return null;
             });
         }
 
-        const worker = booking?.worker || approval?.worker || (approval?.workerId ? await prisma.worker.findUnique({ where: { id: approval.workerId } }) : null);
-        const recipientEmail = worker?.email || booking?.email || booking?.requesterEmail;
+        // Secondary lookup: find booking by requestId
+        if (!booking && approval?.requestId) {
+            booking = await prisma.booking.findFirst({
+                where: { requestId: approval.requestId },
+                include: {
+                    room: true,
+                    worker: true,
+                },
+            }).catch(err => {
+                console.error('[NotificationService] Error querying booking by requestId:', err);
+                return null;
+            });
+        }
+
+        // Secondary lookup: find approval by reservationId
+        if (!approval && effectiveBookingId) {
+            approval = await prisma.approvalRequest.findFirst({
+                where: { reservationId: effectiveBookingId },
+                include: { worker: true },
+            }).catch(err => {
+                console.error('[NotificationService] Error querying approval by reservationId:', err);
+                return null;
+            });
+        }
+
+        let worker = booking?.worker || approval?.worker;
+        if (!worker && approval?.workerId) {
+            worker = await prisma.worker.findUnique({
+                where: { id: approval.workerId },
+            }).catch(() => null);
+        }
+        if (!worker && booking?.workerProfileId) {
+            worker = await prisma.worker.findUnique({
+                where: { id: booking.workerProfileId },
+            }).catch(() => null);
+        }
+
+        let recipientEmail = worker?.email || booking?.email || booking?.requesterEmail;
+        if (!recipientEmail && approval?.requester && approval.requester.includes('@')) {
+            recipientEmail = approval.requester;
+        }
+        if (recipientEmail) {
+            recipientEmail = recipientEmail.trim();
+        }
 
         if (!recipientEmail) {
-            console.warn('[NotificationService] No recipient email found for rejected room reservation:', { approvalId, reservationId });
+            console.warn('[NotificationService] No recipient email found for rejected room reservation:', {
+                approvalId,
+                reservationId,
+                approvalWorkerId: approval?.workerId,
+                bookingWorkerProfileId: booking?.workerProfileId,
+                bookingEmail: booking?.email,
+                approvalRequester: approval?.requester,
+            });
             return { success: false, error: 'No recipient email found for worker.' };
         }
 
@@ -403,7 +518,7 @@ Church of God Dasmariñas
         if (!roomName && (approval?.roomId || booking?.roomId)) {
             const r = await prisma.room.findUnique({
                 where: { id: approval?.roomId || booking?.roomId },
-            });
+            }).catch(() => null);
             roomName = r?.name;
         }
         roomName = roomName || 'Reserved Room';
@@ -427,7 +542,7 @@ Church of God Dasmariñas
             const ministry = await prisma.ministry.findUnique({
                 where: { id: minId },
                 include: { department: true },
-            });
+            }).catch(() => null);
             if (ministry) {
                 ministryName = ministry.name;
                 departmentName = ministry.department?.name || 'General';
@@ -451,22 +566,28 @@ Church of God Dasmariñas
         const purpose = booking?.purpose || booking?.title || approval?.details?.replace(/^"|"$/g, '') || 'Room Reservation';
         const rejectionReason = reason?.trim() || 'No specific reason provided.';
 
-        const possibleLogoPaths = [
-            path.resolve(process.cwd(), 'public/church-logo.png'),
-            path.resolve(process.cwd(), 'public/cog-logo.png'),
-            path.resolve(process.cwd(), 'apps/web/public/church-logo.png'),
-            path.resolve(process.cwd(), 'apps/web/public/cog-logo.png'),
-        ];
-        const logoPath = possibleLogoPaths.find((p) => fs.existsSync(p));
-        const attachments = logoPath
-            ? [{
-                filename: 'church-logo.png',
-                content: fs.readFileSync(logoPath),
-                contentType: 'image/png',
-                cid: 'coglogo',
-                contentDisposition: 'inline',
-            }]
-            : undefined;
+        const logoUrl = `${this.APP_URL}/church-logo.png`;
+        let attachments: any[] | undefined = undefined;
+        try {
+            const possibleLogoPaths = [
+                path.resolve(process.cwd(), 'public/church-logo.png'),
+                path.resolve(process.cwd(), 'public/cog-logo.png'),
+                path.resolve(process.cwd(), 'apps/web/public/church-logo.png'),
+                path.resolve(process.cwd(), 'apps/web/public/cog-logo.png'),
+            ];
+            const logoPath = possibleLogoPaths.find((p) => fs.existsSync(p));
+            if (logoPath) {
+                attachments = [{
+                    filename: 'church-logo.png',
+                    content: fs.readFileSync(logoPath),
+                    contentType: 'image/png',
+                    cid: 'coglogo',
+                    contentDisposition: 'inline',
+                }];
+            }
+        } catch (e) {
+            console.warn('[NotificationService] Could not read local logo attachment (will use web URL):', e);
+        }
 
         const subject = `Room Reservation Rejected – ${roomName}`;
 
@@ -498,10 +619,9 @@ Church of God Dasmariñas
         const html = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
                 <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #f1f5f9;">
-                    ${logoPath ? `
                     <div style="margin-bottom: 12px;">
-                        <img src="cid:coglogo" alt="COG Logo" width="64" height="64" style="display: inline-block; border-radius: 50%; background-color: #ffffff; padding: 2px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);" />
-                    </div>` : ''}
+                        <img src="${logoUrl}" alt="COG Logo" width="64" height="64" style="display: inline-block; border-radius: 50%; background-color: #ffffff; padding: 2px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);" />
+                    </div>
                     <h1 style="color: #0f172a; font-size: 22px; font-weight: 800; margin: 0 0 6px 0;">Room Reservation Rejected</h1>
                     <p style="color: #64748b; font-size: 13px; margin: 0;">Church of God Dasmariñas</p>
                 </div>

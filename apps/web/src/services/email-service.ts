@@ -35,6 +35,9 @@ export class EmailService {
                         user: this.smtpUser,
                         pass: this.smtpPass.replace(/\s+/g, ''),
                     },
+                    connectionTimeout: 10000,
+                    greetingTimeout: 10000,
+                    socketTimeout: 15000,
                 });
             } catch {
                 console.warn('[EmailService] nodemailer not installed — SMTP unavailable');
@@ -52,6 +55,7 @@ export class EmailService {
 
     /**
      * Sends an email using Gmail SMTP (if configured) or Resend SDK.
+     * Features automatic fallback between providers so deployment email delivery is reliable.
      */
     static async sendEmail({
         to,
@@ -67,6 +71,8 @@ export class EmailService {
         attachments?: any[];
     }) {
         const recipients = Array.isArray(to) ? to.join(', ') : to;
+        const recipientList = (Array.isArray(to) ? to : [to]).map(e => e.trim()).filter(Boolean);
+        let lastError: any = null;
 
         // 1. Prioritize Gmail SMTP / Nodemailer if configured
         if (this.smtpUser && this.smtpPass) {
@@ -91,13 +97,13 @@ export class EmailService {
 
                 console.log(`[EmailService] Sent via Gmail SMTP to ${recipients}:`, info.messageId);
                 return { success: true, messageId: info.messageId, provider: 'smtp' };
-            } catch (error) {
-                console.error('[EmailService] SMTP send error:', error);
-                throw error;
+            } catch (error: any) {
+                console.error('[EmailService] SMTP send error (attempting fallback if available):', error?.message || error);
+                lastError = error;
             }
         }
 
-        // 2. Otherwise use Resend if RESEND_API_KEY is configured
+        // 2. Otherwise use Resend if RESEND_API_KEY is configured (or fallback from failed SMTP)
         if (process.env.RESEND_API_KEY) {
             try {
                 const resend = this.resend;
@@ -105,13 +111,22 @@ export class EmailService {
                     throw new Error('Resend SDK failed to initialize even with API key.');
                 }
 
-                const { data, error } = await resend.emails.send({
+                const resendPayload: any = {
                     from: this.FROM_EMAIL,
-                    to: Array.isArray(to) ? to : [to],
+                    to: recipientList,
                     subject,
                     html: html || (text as string),
                     text: text,
-                });
+                };
+
+                if (attachments && attachments.length > 0) {
+                    resendPayload.attachments = attachments.map((att: any) => ({
+                        filename: att.filename,
+                        content: att.content,
+                    }));
+                }
+
+                const { data, error } = await resend.emails.send(resendPayload);
 
                 if (error) {
                     throw new Error(`Resend SDK error: ${JSON.stringify(error)}`);
@@ -119,10 +134,14 @@ export class EmailService {
 
                 console.log(`[EmailService] Sent via Resend to ${recipients}:`, data?.id);
                 return { ...data, provider: 'resend' };
-            } catch (error) {
-                console.error('[EmailService] Resend send error:', error);
-                throw error;
+            } catch (error: any) {
+                console.error('[EmailService] Resend send error:', error?.message || error);
+                lastError = error;
             }
+        }
+
+        if (lastError) {
+            throw lastError;
         }
 
         // 3. Fallback: Mock log
