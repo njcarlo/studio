@@ -34,6 +34,7 @@ export interface DatePickerProps {
   disabled?: boolean;
   minDate?: Date | string;
   disablePastDates?: boolean;
+  modal?: boolean;
 }
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -48,6 +49,7 @@ export function DatePicker({
   disabled = false,
   minDate,
   disablePastDates = false,
+  modal = true,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -142,7 +144,7 @@ export function DatePicker({
   }, [selectedDate, placeholder]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal={modal} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
         <button
           type="button"
@@ -178,7 +180,11 @@ export function DatePicker({
             <button
               type="button"
               disabled={!canGoPrevMonth}
-              onClick={() => setViewMonth((prev) => subMonths(prev, 1))}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewMonth((prev) => subMonths(prev, 1));
+              }}
               className={cn(
                 "p-1.5 rounded-lg transition-colors",
                 canGoPrevMonth
@@ -191,7 +197,11 @@ export function DatePicker({
             </button>
             <button
               type="button"
-              onClick={() => setViewMonth((prev) => addMonths(prev, 1))}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewMonth((prev) => addMonths(prev, 1));
+              }}
               className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#112e7e] dark:hover:text-white transition-colors cursor-pointer"
               aria-label="Next Month"
             >
@@ -229,7 +239,9 @@ export function DatePicker({
                 type="button"
                 disabled={isDayDisabled}
                 aria-disabled={isDayDisabled}
-                onClick={() => {
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (!isDayDisabled) {
                     handleSelectDay(day);
                   }
@@ -268,6 +280,7 @@ export function DatePicker({
         <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-100 dark:border-border/60">
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={handleClear}
             className="text-xs font-bold text-[#112e7e] dark:text-blue-400 hover:underline cursor-pointer px-1 py-0.5 rounded-sm focus:outline-hidden"
           >
@@ -275,6 +288,7 @@ export function DatePicker({
           </button>
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={handleToday}
             className="text-xs font-bold text-[#112e7e] dark:text-blue-400 hover:underline cursor-pointer px-1 py-0.5 rounded-sm focus:outline-hidden"
           >

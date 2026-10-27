@@ -342,7 +342,7 @@ export function BorrowingsPanel() {
           borrowerName: workerName,
           dueDate: checkoutDueDate || null,
           checkoutNotes,
-          checkoutCondition,
+          checkoutCondition: 'Good Condition',
           checkoutChecklist,
         }),
       });
@@ -362,6 +362,7 @@ export function BorrowingsPanel() {
       setCheckoutWorkerId('');
       setCheckoutDueDate('');
       setCheckoutNotes('');
+      setCheckoutCondition('Good Condition');
       setCheckoutChecklist({});
       loadData();
     } catch (err: any) {
@@ -1213,19 +1214,85 @@ export function BorrowingsPanel() {
                   value={checkoutDueDate}
                   onChange={(date) => setCheckoutDueDate(date)}
                   placeholder="dd/mm/yyyy"
-                  className="h-9 text-xs rounded-xl"
+                  className="w-full h-9 text-xs rounded-xl"
+                  align="start"
                 />
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      setCheckoutDueDate(d.toISOString().slice(0, 10));
+                    }}
+                    className="text-[11px] px-2 py-0.5 rounded-lg border border-border/70 bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 3);
+                      setCheckoutDueDate(d.toISOString().slice(0, 10));
+                    }}
+                    className="text-[11px] px-2 py-0.5 rounded-lg border border-border/70 bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+                  >
+                    +3 Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 7);
+                      setCheckoutDueDate(d.toISOString().slice(0, 10));
+                    }}
+                    className="text-[11px] px-2 py-0.5 rounded-lg border border-border/70 bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+                  >
+                    +1 Week
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 14);
+                      setCheckoutDueDate(d.toISOString().slice(0, 10));
+                    }}
+                    className="text-[11px] px-2 py-0.5 rounded-lg border border-border/70 bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer"
+                  >
+                    +2 Weeks
+                  </button>
+                  {checkoutDueDate && (
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutDueDate('')}
+                      className="text-[11px] px-2 py-0.5 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 font-medium transition-colors cursor-pointer ml-auto"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Condition at Checkout */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-foreground">Condition at Checkout</Label>
-                <Input
-                  value={checkoutCondition}
-                  onChange={(e) => setCheckoutCondition(e.target.value)}
-                  placeholder="e.g. Good Condition, fully tested"
-                  className="h-9 text-xs rounded-xl"
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-foreground">Condition at Checkout</Label>
+                  <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                    <Lock className="h-2.5 w-2.5" />
+                    Fixed
+                  </span>
+                </div>
+                <div className="relative">
+                  <Input
+                    value="Good Condition"
+                    readOnly
+                    tabIndex={-1}
+                    className="h-9 text-xs rounded-xl bg-muted/40 border border-border/70 text-foreground font-medium cursor-not-allowed select-none focus-visible:ring-0 focus-visible:border-border/70 pr-8"
+                  />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 pointer-events-none">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                </div>
               </div>
 
               {/* Checklist items */}
