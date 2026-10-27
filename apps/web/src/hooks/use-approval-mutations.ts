@@ -41,53 +41,53 @@ export function useApprovalMutations() {
 
             return await updateApproval(request.id, updateData, workerProfile?.id);
         },
-        onSuccess: (data: any) => {
+        onMutate: async ({ request, status }) => {
+            await queryClient.cancelQueries({ queryKey: ['approvals'] });
+            const previousApprovals = queryClient.getQueriesData({ queryKey: ['approvals'] });
+
+            // Optimistically update approval status across all approval queries
+            queryClient.setQueriesData({ queryKey: ['approvals'] }, (old: any) => {
+                if (!Array.isArray(old)) return old;
+                return old.map((r: any) => (r.id === request.id ? { ...r, status } : r));
+            });
+
+            return { previousApprovals };
+        },
+        onSuccess: (data: any, variables) => {
             queryClient.invalidateQueries({ queryKey: ['approvals'] });
             queryClient.invalidateQueries({ queryKey: ['bookings'] });
 
-            if (data?.status === 'Approved' && data?.type === 'Room Booking') {
-                if (data.emailNotificationSent) {
-                    toast({
-                        title: 'Reservation Approved',
-                        description: 'Reservation approved successfully. The worker has been notified by email.',
-                    });
-                } else if (data.emailNotificationError) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Reservation Approved',
-                        description: 'Reservation approved successfully, but the notification email could not be sent.',
-                    });
-                } else {
-                    toast({
-                        title: 'Reservation Approved',
-                        description: 'Reservation approved successfully.',
-                    });
-                }
-            } else if (data?.status === 'Rejected' && data?.type === 'Room Booking') {
-                if (data.emailNotificationSent) {
-                    toast({
-                        title: 'Reservation Rejected',
-                        description: 'Reservation has been rejected. The requester has been notified by email.',
-                    });
-                } else {
-                    toast({
-                        title: 'Reservation Rejected',
-                        description: 'Reservation request has been rejected.',
-                    });
-                }
-            } else if (data?.status === 'Pending Admin Approval') {
+            const isRoom = variables?.request?.type === 'Room Booking' || data?.type === 'Room Booking';
+            const status = variables?.status || data?.status;
+
+            if (status === 'Approved' && isRoom) {
+                toast({
+                    title: 'Reservation Approved',
+                    description: 'Room reservation has been successfully approved and reserved.',
+                });
+            } else if (status === 'Rejected' && isRoom) {
+                toast({
+                    title: 'Reservation Rejected',
+                    description: 'Reservation request has been rejected.',
+                });
+            } else if (status === 'Pending Admin Approval') {
                 toast({
                     title: 'Ministry Head Approval Recorded',
                     description: 'Request has been forwarded to System Admin for final approval.',
                 });
             } else {
                 toast({
-                    title: `Request ${data?.status || 'Updated'}`,
+                    title: `Request ${status || 'Updated'}`,
                     description: `Successfully updated the status of the request.`,
                 });
             }
         },
-        onError: (error: any) => {
+        onError: (error: any, _variables, context: any) => {
+            if (context?.previousApprovals) {
+                context.previousApprovals.forEach(([queryKey, data]: [any, any]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
+            }
             console.error('Approval update error:', error);
             toast({
                 variant: 'destructive',

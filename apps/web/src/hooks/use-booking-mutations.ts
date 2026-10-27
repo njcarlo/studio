@@ -26,14 +26,34 @@ export function useBookingMutations() {
             }
             return updateBooking(booking.id, { status: newStatus });
         },
+        onMutate: async ({ booking, newStatus }) => {
+            await queryClient.cancelQueries({ queryKey: ['bookings'] });
+            const previousBookings = queryClient.getQueriesData({ queryKey: ['bookings'] });
+
+            queryClient.setQueriesData({ queryKey: ['bookings'] }, (old: any) => {
+                if (!Array.isArray(old)) return old;
+                return old.map((b: any) => (b.id === booking.id ? { ...b, status: newStatus } : b));
+            });
+
+            return { previousBookings };
+        },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['approvals'] });
+            queryClient.invalidateQueries({ queryKey: ['room-bookings'] });
             toast({
-                title: `Reservation ${variables.newStatus}`,
-                description: `Successfully updated the status to ${variables.newStatus}.`,
+                title: variables.newStatus === 'Approved' ? 'Reservation Approved' : `Reservation ${variables.newStatus}`,
+                description: variables.newStatus === 'Approved'
+                    ? 'Room reservation has been successfully approved and reserved.'
+                    : `Successfully updated the status to ${variables.newStatus}.`,
             });
         },
-        onError: (error) => {
+        onError: (error, _variables, context: any) => {
+            if (context?.previousBookings) {
+                context.previousBookings.forEach(([queryKey, data]: [any, any]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
+            }
             console.error('Status update error:', error);
             toast({
                 variant: 'destructive',

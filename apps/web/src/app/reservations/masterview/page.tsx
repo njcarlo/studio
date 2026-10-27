@@ -77,9 +77,9 @@ export default function MasterviewPage() {
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ["bookings", "masterview"],
     queryFn: () => getBookings(),
-    staleTime: 20_000,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
 

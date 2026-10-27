@@ -1672,49 +1672,47 @@ export async function updateApproval(id: string, data: any, actorId?: string) {
     let emailNotificationSent = false;
     let emailNotificationError: string | null = null;
 
-    // Send final approval email when room reservation is approved
+    // Send final approval email in the background (non-blocking) when room reservation is approved
     const isRoomReservation = approval.type === 'Room Booking' || Boolean(approval.reservationId) || approval.type?.toLowerCase().includes('room');
 
     if (status === 'Approved' && previousStatus !== 'Approved' && isRoomReservation) {
-        try {
-            console.log(`[updateApproval] Sending final approval email for approval ${approval.id}, booking ${approval.reservationId}...`);
-            const emailResult = await NotificationService.notifyRoomReservationApproved(approval.id, approval.reservationId || undefined);
-            if (emailResult && !emailResult.success) {
-                emailNotificationSent = false;
-                emailNotificationError = emailResult.error || 'Failed to send approval email.';
-                console.warn('[updateApproval] notifyRoomReservationApproved failed:', emailResult.error);
-            } else {
-                emailNotificationSent = true;
-                console.log('[updateApproval] notifyRoomReservationApproved succeeded.');
-            }
-        } catch (emailErr: any) {
-            emailNotificationSent = false;
-            emailNotificationError = emailErr?.message || 'Failed to send final approval email.';
-            console.error('[updateApproval] Failed to send final approval email:', emailErr);
-        }
+        console.log(`[updateApproval] Dispatching final approval email in background for approval ${approval.id}, booking ${approval.reservationId}...`);
+        void NotificationService.notifyRoomReservationApproved(approval.id, approval.reservationId || undefined)
+            .then((emailResult) => {
+                if (emailResult && !emailResult.success) {
+                    console.warn('[updateApproval] Background notifyRoomReservationApproved failed:', emailResult.error);
+                } else {
+                    console.log('[updateApproval] Background notifyRoomReservationApproved succeeded.');
+                }
+            })
+            .catch((emailErr) => {
+                console.error('[updateApproval] Failed to send background approval email:', emailErr);
+            });
+        emailNotificationSent = true;
     }
 
-    // Send rejection email when room reservation is rejected
+    // Send rejection email in the background (non-blocking) when room reservation is rejected
     if (status === 'Rejected' && previousStatus !== 'Rejected' && isRoomReservation) {
-        try {
-            console.log(`[updateApproval] Sending rejection email for approval ${approval.id}, booking ${approval.reservationId}...`);
-            const emailResult = await NotificationService.notifyRoomReservationRejected(approval.id, approval.reservationId || undefined, rejectionReason);
-            if (emailResult && !emailResult.success) {
-                emailNotificationSent = false;
-                emailNotificationError = emailResult.error || 'Failed to send rejection email.';
-            } else {
-                emailNotificationSent = true;
-            }
-        } catch (emailErr: any) {
-            emailNotificationSent = false;
-            emailNotificationError = emailErr?.message || 'Failed to send rejection email.';
-            console.error('[updateApproval] Failed to send rejection email:', emailErr);
-        }
+        console.log(`[updateApproval] Dispatching rejection email in background for approval ${approval.id}, booking ${approval.reservationId}...`);
+        void NotificationService.notifyRoomReservationRejected(approval.id, approval.reservationId || undefined, rejectionReason)
+            .then((emailResult) => {
+                if (emailResult && !emailResult.success) {
+                    console.warn('[updateApproval] Background notifyRoomReservationRejected failed:', emailResult.error);
+                } else {
+                    console.log('[updateApproval] Background notifyRoomReservationRejected succeeded.');
+                }
+            })
+            .catch((emailErr) => {
+                console.error('[updateApproval] Failed to send background rejection email:', emailErr);
+            });
+        emailNotificationSent = true;
     }
 
-    revalidatePath('/approvals');
-    revalidatePath('/dashboard');
-    revalidatePath('/reservations');
+    try {
+        revalidatePath('/approvals');
+        revalidatePath('/dashboard');
+        revalidatePath('/reservations');
+    } catch { }
 
     return {
         ...approval,
@@ -2160,22 +2158,20 @@ export async function updateBooking(id: string, data: any, actorId?: string) {
             data: { status: 'Approved' },
         }).catch(err => console.error('Failed to sync approval request status from booking update:', err));
 
-        // Send approval email
-        try {
-            console.log(`[updateBooking] Sending final approval email for booking ${id}...`);
-            const emailResult = await NotificationService.notifyRoomReservationApproved(undefined, id);
-            if (emailResult && !emailResult.success) {
-                emailNotificationSent = false;
-                emailNotificationError = emailResult.error || 'Failed to send approval email.';
-            } else {
-                emailNotificationSent = true;
-                console.log(`[updateBooking] notifyRoomReservationApproved succeeded for booking ${id}.`);
-            }
-        } catch (emailErr: any) {
-            emailNotificationSent = false;
-            emailNotificationError = emailErr?.message || 'Failed to send final approval email.';
-            console.error('[updateBooking] Failed to send final approval email:', emailErr);
-        }
+        // Send approval email in background (non-blocking)
+        console.log(`[updateBooking] Dispatching final approval email in background for booking ${id}...`);
+        void NotificationService.notifyRoomReservationApproved(undefined, id)
+            .then((emailResult) => {
+                if (emailResult && !emailResult.success) {
+                    console.warn('[updateBooking] Background notifyRoomReservationApproved failed:', emailResult.error);
+                } else {
+                    console.log(`[updateBooking] notifyRoomReservationApproved succeeded for booking ${id}.`);
+                }
+            })
+            .catch((emailErr) => {
+                console.error('[updateBooking] Failed to send background approval email:', emailErr);
+            });
+        emailNotificationSent = true;
     }
 
     try {

@@ -23,9 +23,9 @@ export function useApprovals(filters?: { ministryIds?: string[]; actorId?: strin
     const { data, isLoading, error } = useQuery({
         queryKey: ['approvals', actorId, effectiveMinistryIds],
         queryFn: () => getApprovals({ ministryIds: effectiveMinistryIds, actorId }),
-        refetchInterval: 60_000,
-        refetchOnWindowFocus: false,
-        staleTime: 60_000,
+        refetchInterval: 10_000,
+        refetchOnWindowFocus: true,
+        staleTime: 5_000,
         placeholderData: (prev) => prev,
     });
 

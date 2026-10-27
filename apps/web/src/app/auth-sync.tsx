@@ -5,6 +5,7 @@ import { SupabaseProvider, useSupabase } from "@studio/database";
 import { UserRoleSyncerSQL } from "@/store/user-role-syncer-sql";
 import { useAuthStore } from "@studio/store";
 import { WebIdleTimeout } from "@/components/auth/web-idle-timeout";
+import { RealtimeRequestsSync } from "@/components/realtime/realtime-requests-sync";
 
 // Bridge Supabase auth state into the Zustand auth store.
 // Normalizes Supabase User (id) → uid so existing code using user?.uid keeps working.
@@ -25,6 +26,7 @@ export function AuthSync({ children }: { children: ReactNode }) {
             <SupabaseAuthBridge />
             <UserRoleSyncerSQL />
             <WebIdleTimeout />
+            <RealtimeRequestsSync />
             {children}
         </SupabaseProvider>
     );

@@ -32,9 +32,9 @@ export function useBookings(filters: {
     const { data, isLoading, error } = useQuery({
         queryKey: ['bookings', { ...filters, actorId, ministryIds: effectiveMinistryIds }],
         queryFn: () => getBookings({ ...filters, actorId, ministryIds: effectiveMinistryIds }),
-        staleTime: 60_000,
-        refetchInterval: 60_000,
-        refetchOnWindowFocus: false,
+        staleTime: 5_000,
+        refetchInterval: 10_000,
+        refetchOnWindowFocus: true,
         placeholderData: (prev) => prev,
     });
 

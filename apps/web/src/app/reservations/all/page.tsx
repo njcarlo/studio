@@ -178,9 +178,9 @@ export default function AllReservationsPage() {
   const { data: allBookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ["bookings", { actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }],
     queryFn: () => getBookings({ actorId: workerProfile?.id, ministryIds: !isSuperAdmin ? myMinistryIds : undefined }),
-    staleTime: 20_000,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
 

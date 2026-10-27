@@ -78,9 +78,9 @@ export default function MyReservationsPage() {
   const { data: allBookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ["bookings"],
     queryFn: () => getBookings(),
-    staleTime: 20_000,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: false,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
 
