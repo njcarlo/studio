@@ -25,9 +25,16 @@ export default function EditWorkerPage() {
   const [worker, setWorker] = useState<Worker | null>(null);
   const [isFetchingWorker, setIsFetchingWorker] = useState(true);
 
-  const { roles, isLoading: rolesLoading } = useRoles();
+  const { roles: allRoles, isLoading: rolesLoading } = useRoles();
   const { ministries, isLoading: ministriesLoading } = useMinistries();
   const { workerProfile, canManageWorkers, isSuperAdmin, isLoading: userRoleLoading } = useUserRole();
+
+  // Non-super-admins (Ministry Head, Section Head, Cluster Head) may only
+  // assign the "Coor" and "Worker" roles when editing a worker.
+  const MINISTRY_HEAD_ASSIGNABLE_ROLE_NAMES = ['Coor', 'Worker'];
+  const roles = isSuperAdmin
+    ? allRoles
+    : allRoles.filter((r) => MINISTRY_HEAD_ASSIGNABLE_ROLE_NAMES.includes(r.name));
 
   useEffect(() => {
     if (id) {

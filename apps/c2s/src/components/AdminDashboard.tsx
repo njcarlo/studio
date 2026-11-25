@@ -2456,6 +2456,7 @@ function AuditLogsTab({
         rbac_change:   { bg: '#ede9fe', color: '#6741d9', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' },
         worker_id:     { bg: '#ede9fe', color: '#5b50d6', icon: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
         group_change:  { bg: '#fef9c3', color: '#92400e', icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' },
+        church_in:     { bg: '#dcfce7', color: '#15803d', icon: 'M12 3L2 12h3v8h6v-5h2v5h6v-8h3L12 3zm0 2.7L19 12v7h-4v-5H9v5H5v-7l7-6.3z' },
         system:        { bg: '#f3f4f6', color: '#6b7280', icon: 'M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54A.484.484 0 0 0 14 4h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.47.47 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z' },
     };
 
@@ -2471,6 +2472,7 @@ function AuditLogsTab({
         rbac_change:   'RBAC Change',
         worker_id:     'Worker ID',
         group_change:  'Group Change',
+        church_in:     'Church-in',
         system:        'System',
     };
 
@@ -2487,9 +2489,10 @@ function AuditLogsTab({
             <SectionHeader title="Audit Logs" sub="Track all user activity, RBAC changes, assignment history, and system events." />
 
             {/* Summary pills */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
                 {[
                     { label: 'Total Events',  value: logs.length,                                    color: '#5b50d6' },
+                    { label: 'Church-ins',    value: logs.filter(l => l.type === 'church_in').length, color: '#15803d' },
                     { label: 'Critical',      value: logs.filter(l => l.severity === 'critical').length, color: '#5b50d6' },
                     { label: 'Warnings',      value: logs.filter(l => l.severity === 'warning').length,  color: '#e67700' },
                     { label: 'RBAC Changes',  value: logs.filter(l => l.type === 'rbac_change').length,  color: '#6741d9' },
@@ -2503,14 +2506,15 @@ function AuditLogsTab({
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2 mb-5">
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="M21 21l-4.35-4.35"/></svg>
                     <input type="text" placeholder="Search actor, action, target..." value={search} onChange={e => setSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-60 bg-white" />
+                        className="pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5b50d6] w-full sm:w-60 bg-white" />
                 </div>
                 <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)}
                     className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#5b50d6] text-gray-700">
                     <option value="All">All Types</option>
+                    <option value="church_in">Church-in</option>
                     <option value="user_activity">User Activity</option>
                     <option value="assignment">Assignment</option>
                     <option value="rbac_change">Permission Change</option>

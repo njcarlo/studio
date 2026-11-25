@@ -4,45 +4,61 @@
 
 @layer base {
   :root {
-    --background: 240 33% 96%; /* #f3f3f9 - Minia page bg */
-    --foreground: 150 4% 20%; /* #313533 - Minia body text */
+    --background: 240 33% 96%;
+    /* #f3f3f9 - Minia page bg */
+    --foreground: 150 4% 20%;
+    /* #313533 - Minia body text */
     --card: 0 0% 100%;
     --card-foreground: 150 4% 20%;
     --popover: 0 0% 100%;
     --popover-foreground: 150 4% 20%;
-    --primary: 237 46% 53%; /* #5156be - Minia primary */
+    --primary: 237 46% 53%;
+    /* #5156be - Minia primary */
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 16% 93%; /* #e9e9ef */
+    --secondary: 240 16% 93%;
+    /* #e9e9ef */
     --secondary-foreground: 150 4% 20%;
     --muted: 240 16% 93%;
-    --muted-foreground: 230 10% 50%; /* #74788d */
+    --muted-foreground: 230 10% 50%;
+    /* #74788d */
     --accent: 240 16% 93%;
     --accent-foreground: 237 46% 53%;
-    --destructive: 2 97% 68%; /* #fd625e */
+    --destructive: 2 97% 68%;
+    /* #fd625e */
     --destructive-foreground: 0 0% 100%;
-    --border: 240 16% 93%; /* #e9e9ef */
+    --border: 240 16% 93%;
+    /* #e9e9ef */
     --input: 240 16% 93%;
     --ring: 237 46% 53%;
     --radius: 0.25rem;
 
-    --chart-1: 237 46% 53%; /* #5156be */
-    --chart-2: 157 62% 44%; /* #2ab57d */
-    --chart-3: 208 83% 61%; /* #4ba6ef */
-    --chart-4: 40 100% 66%; /* #ffbf53 */
-    --chart-5: 2 97% 68%;   /* #fd625e */
+    --chart-1: 237 46% 53%;
+    /* #5156be */
+    --chart-2: 157 62% 44%;
+    /* #2ab57d */
+    --chart-3: 208 83% 61%;
+    /* #4ba6ef */
+    --chart-4: 40 100% 66%;
+    /* #ffbf53 */
+    --chart-5: 2 97% 68%;
+    /* #fd625e */
 
-    --sidebar-background: 252 100% 99%; /* #fbfaff - Minia sidebar light */
-    --sidebar-foreground: 226 13% 38%; /* #545a6d */
-    --sidebar-primary: 237 46% 53%; /* #5156be */
+    --sidebar-background: 252 100% 99%;
+    /* #fbfaff - Minia sidebar light */
+    --sidebar-foreground: 226 13% 38%;
+    /* #545a6d */
+    --sidebar-primary: 237 46% 53%;
+    /* #5156be */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 33% 96%; /* active item bg */
+    --sidebar-accent: 240 33% 96%;
+    /* active item bg */
     --sidebar-accent-foreground: 237 46% 53%;
     --sidebar-border: 240 16% 93%;
     --sidebar-ring: 237 46% 53%;
   }
 
   .dark {
-    --background: 150 4% 18%; /* #2C302E - Minia dark bg */
+    --background: 150 4% 18%;
     --foreground: 230 10% 70%;
     --card: 150 4% 21%;
     --card-foreground: 230 10% 70%;
@@ -68,8 +84,10 @@
     --chart-4: 40 100% 66%;
     --chart-5: 2 97% 68%;
 
-    --sidebar-background: 150 4% 18%; /* #2C302E - Minia dark sidebar */
-    --sidebar-foreground: 226 12% 62%; /* #898fa9 */
+    --sidebar-background: 150 4% 18%;
+    /* #2C302E - Minia dark sidebar */
+    --sidebar-foreground: 226 12% 62%;
+    /* #898fa9 */
     --sidebar-primary: 237 46% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 150 3% 25%;
@@ -110,23 +128,32 @@
   }
 
   /* Re-enable text selection for form elements */
-  input, textarea, [contenteditable="true"] {
+  input,
+  textarea,
+  [contenteditable="true"] {
     user-select: text;
     -webkit-user-select: text;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 600;
     color: hsl(var(--foreground));
   }
 }
 
 @layer utilities {
+
   /* scrollbar-hide — used by reports page DateRangeToolbar */
   .scrollbar-hide {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }

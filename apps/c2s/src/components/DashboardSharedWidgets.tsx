@@ -37,6 +37,12 @@ export interface DeptGroupRow {
     total: number;
 }
 
+export interface DeptChurchInRow {
+    dept: string;
+    communityTotal: number;
+    churchedIn: number;
+}
+
 export interface DashboardData {
     /** Summary card totals */
     totalWorkers: number;
@@ -56,13 +62,18 @@ export interface DashboardData {
     totalChurch: number;
     totalCommunity: number;
     deptGroups: DeptGroupRow[];
+
+    /** KMI: Community to Church-in summary */
+    totalCommunityPool?: number;
+    totalChurchIn?: number;
+    deptChurchIn?: DeptChurchInRow[];
 }
 
 
 // ─── 1. Summary Cards ─────────────────────────────────────────────────────────
 
-export function DashboardSummaryCards({ data }: { data: DashboardData }) {
-    const cards = [
+export function DashboardSummaryCards({ data, hideWorkers = false }: { data: DashboardData; hideWorkers?: boolean }) {
+    const allCards = [
         {
             label: 'Workers',
             value: data.totalWorkers,
@@ -105,16 +116,18 @@ export function DashboardSummaryCards({ data }: { data: DashboardData }) {
         },
     ];
 
+    const cards = hideWorkers ? allCards.filter((c) => c.label !== 'Workers') : allCards;
+
     return (
-        <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className={`grid gap-4 mb-5 ${hideWorkers ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}>
             {cards.map((s) => (
-                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col justify-between min-h-[160px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 flex flex-col justify-between min-h-[140px] sm:min-h-[160px] min-w-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                     <div className="flex items-start justify-between">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</span>
-                        <span className="opacity-80">{s.icon}</span>
+                        <span className="opacity-80 shrink-0">{s.icon}</span>
                     </div>
                     <div>
-                        <p className="text-[2.6rem] font-normal text-gray-900 leading-none mb-1.5">{s.value.toLocaleString()}</p>
+                        <p className="text-[2rem] sm:text-[2.6rem] font-normal text-gray-900 leading-none mb-1.5">{s.value.toLocaleString()}</p>
                         <p className="text-sm text-gray-400 leading-snug">{s.sub}</p>
                     </div>
                 </div>
@@ -277,8 +290,8 @@ export function MenteesByDepartment({ data }: { data: DashboardData }) {
             </div>
 
             {/* Department table */}
-            <div className="rounded-xl border border-gray-100">
-                <table className="w-full table-fixed">
+            <div className="rounded-xl border border-gray-100 overflow-x-auto">
+                <table className="w-full min-w-[360px]">
                     <colgroup>
                         <col className="w-[40%]" />
                         <col className="w-[20%]" />
@@ -396,18 +409,112 @@ export function C2SGroupsSection({ data }: { data: DashboardData }) {
 }
 
 
+// ─── 4b. KMI: Community to Church-in ──────────────────────────────────────────
+
+export function ChurchInKmiSection({ data }: { data: DashboardData }) {
+    const rows = data.deptChurchIn ?? [];
+    const totalPool = data.totalCommunityPool ?? rows.reduce((s, r) => s + r.communityTotal, 0);
+    const totalChurchIn = data.totalChurchIn ?? rows.reduce((s, r) => s + r.churchedIn, 0);
+    const conversionRate = totalPool > 0 ? Math.round((totalChurchIn / totalPool) * 100) : 0;
+
+    return (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 mb-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <h2 className="font-bold text-gray-900 text-base mb-0.5">KMI: Community to Church-in</h2>
+            <p className="text-xs text-gray-400 mb-6">Mentees who transitioned from community-based groups to church-in.</p>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="rounded-2xl p-4 sm:p-5 flex items-start sm:items-center gap-4 min-w-0" style={{ background: 'var(--bg-highlight)' }}>
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#15803d">
+                            <path d="M12 3L2 12h3v8h6v-5h2v5h6v-8h3L12 3zm0 2.7L19 12v7h-4v-5H9v5H5v-7l7-6.3z"/>
+                        </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-400 mb-0.5">Total Churched-In</p>
+                        <p className="text-[1.6rem] sm:text-[2rem] font-normal text-gray-900 leading-none">{totalChurchIn.toLocaleString()}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 leading-snug">From {totalPool.toLocaleString()} community mentees</p>
+                    </div>
+                </div>
+                <div className="rounded-2xl p-4 sm:p-5 flex items-start sm:items-center gap-4 min-w-0" style={{ background: 'var(--bg-highlight)' }}>
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#0b9b8a">
+                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                        </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-400 mb-0.5">Church-in Conversion Rate</p>
+                        <p className="text-[1.6rem] sm:text-[2rem] font-normal text-gray-900 leading-none">{conversionRate}%</p>
+                        <p className="text-xs text-gray-400 mt-0.5 leading-snug">Community to church-in ratio</p>
+                    </div>
+                </div>
+            </div>
+
+            {rows.length > 0 && (
+                <div className="rounded-xl border border-gray-100 overflow-x-auto">
+                    <table className="w-full min-w-[360px]">
+                        <colgroup>
+                            <col className="w-[40%]" />
+                            <col className="w-[20%]" />
+                            <col className="w-[20%]" />
+                            <col className="w-[20%]" />
+                        </colgroup>
+                        <thead>
+                            <tr className="table-header-row">
+                                <th className="pl-3 pr-2 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department</th>
+                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Community</th>
+                                <th className="px-2 py-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Church-in</th>
+                                <th className="pl-2 pr-4 py-3 text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row) => {
+                                const rate = row.communityTotal > 0 ? Math.round((row.churchedIn / row.communityTotal) * 100) : 0;
+                                return (
+                                    <tr key={row.dept} className="table-body-row">
+                                        <td className="pl-3 pr-2 py-3 text-sm font-semibold text-gray-700">{row.dept}</td>
+                                        <td className="px-2 py-3 text-sm text-gray-500 text-center">{row.communityTotal.toLocaleString()}</td>
+                                        <td className="px-2 py-3 text-sm font-semibold text-[#15803d] text-center">{row.churchedIn.toLocaleString()}</td>
+                                        <td className="pl-2 pr-4 py-3 text-sm text-gray-500 text-right">{rate}%</td>
+                                    </tr>
+                                );
+                            })}
+                            <tr className="table-total-row">
+                                <td className="pl-3 pr-2 py-3 text-sm font-black text-gray-800">Total</td>
+                                <td className="px-2 py-3 text-sm font-bold text-gray-700 text-center">{totalPool.toLocaleString()}</td>
+                                <td className="px-2 py-3 text-sm font-bold text-[#15803d] text-center">{totalChurchIn.toLocaleString()}</td>
+                                <td className="pl-2 pr-4 py-3 text-sm font-bold text-gray-700 text-right">{conversionRate}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
+
+
 // ─── 5. Full Dashboard Tab (all sections in order) ────────────────────────────
 
 /**
  * Drop-in replacement for the "Dashboard" tab content in any role dashboard.
  * Just pass the role-filtered `data` object.
  */
-export function SharedDashboardTab({ data }: { data: DashboardData }) {
+export function SharedDashboardTab({
+    data,
+    hideWorkers = false,
+    showChurchInKmi = false,
+}: {
+    data: DashboardData;
+    hideWorkers?: boolean;
+    showChurchInKmi?: boolean;
+}) {
     return (
         <>
-            <DashboardSummaryCards data={data} />
-            <WorkersByDepartment data={data} />
+            <DashboardSummaryCards data={data} hideWorkers={hideWorkers} />
+            {!hideWorkers && <WorkersByDepartment data={data} />}
             <MenteesByDepartment data={data} />
+            {showChurchInKmi && <ChurchInKmiSection data={data} />}
             <C2SGroupsSection data={data} />
         </>
     );
@@ -447,6 +554,16 @@ export const CHURCH_WIDE_DATA: DashboardData = {
         { dept: 'Relationship',   church: 15, community: 19, total: 34 },
         { dept: 'Discipleship',   church: 24, community: 28, total: 52 },
         { dept: 'Administration', church:  6, community:  7, total: 13 },
+    ],
+
+    totalCommunityPool: 1420,
+    totalChurchIn: 486,
+    deptChurchIn: [
+        { dept: 'Worship',        communityTotal: 240, churchedIn:  84 },
+        { dept: 'Outreach',       communityTotal: 390, churchedIn: 142 },
+        { dept: 'Relationship',   communityTotal: 260, churchedIn:  91 },
+        { dept: 'Discipleship',   communityTotal: 410, churchedIn: 138 },
+        { dept: 'Administration', communityTotal: 120, churchedIn:  31 },
     ],
 };
 

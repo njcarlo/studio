@@ -20,9 +20,16 @@ export default function NewWorkerPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { logAction } = useAuditLog();
-  const { roles, isLoading: rolesLoading } = useRoles();
+  const { roles: allRoles, isLoading: rolesLoading } = useRoles();
   const { ministries, isLoading: ministriesLoading } = useMinistries();
-  const { workerProfile, canManageWorkers, isLoading: userRoleLoading } = useUserRole();
+  const { workerProfile, canManageWorkers, isSuperAdmin, isLoading: userRoleLoading } = useUserRole();
+
+  // Non-super-admins (Ministry Head, Section Head, Cluster Head) may only
+  // assign the "Coor" and "Worker" roles when creating a worker.
+  const MINISTRY_HEAD_ASSIGNABLE_ROLE_NAMES = ['Coor', 'Worker'];
+  const roles = isSuperAdmin
+    ? allRoles
+    : allRoles.filter((r) => MINISTRY_HEAD_ASSIGNABLE_ROLE_NAMES.includes(r.name));
   const { createWorker: createWorkerHook } = useWorkers();
 
   const isLoading = rolesLoading || ministriesLoading || userRoleLoading;

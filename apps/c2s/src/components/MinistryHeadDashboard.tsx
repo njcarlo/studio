@@ -98,7 +98,7 @@ function DashboardTab() {
                 <h1 className="text-2xl font-black text-gray-900">Connect 2 Souls</h1>
                 <p className="text-sm text-gray-400 mt-0.5">Connect, disciple and guide souls on their spiritual journey through meaningful relationships and faithful follow-up.</p>
             </div>
-            <SharedDashboardTab data={CHURCH_WIDE_DATA} />
+            <SharedDashboardTab data={CHURCH_WIDE_DATA} hideWorkers showChurchInKmi />
         </div>
     );
 }
@@ -190,7 +190,7 @@ function ClusterDetailPanel({ cluster, onClose }: { cluster: OutreachCluster; on
                 <MentorProfileView mentor={viewingMentor} cluster={cluster} onClose={() => setViewingMentor(null)} />
             )}
             {/* Header */}
-            <div className="flex items-start justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-black text-gray-900">{cluster.name}</h1>
                     <p className="text-sm text-gray-400 mt-0.5">Led by {cluster.clusterHead}</p>
@@ -886,7 +886,7 @@ function NotificationsTab() {
 
     return (
         <div>
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-6">
                 <div><h1 className="text-[1.6rem] font-semibold text-gray-900 leading-tight">Notifications</h1><p className="text-sm text-gray-400 mt-1">{unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}</p></div>
                 {unreadCount > 0 && <button onClick={() => setNotifs((p) => p.map((n) => ({ ...n, read: true })))} className="text-xs font-semibold text-[#5b50d6] hover:underline">Mark all as read</button>}
             </div>

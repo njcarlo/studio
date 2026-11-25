@@ -129,9 +129,19 @@ export function UserRoleSyncerSQL() {
     return allMinistries.some((m: any) => m.mealStubAssignerId === effectiveProfile.id);
   }, [user, allMinistries, effectiveProfile]);
 
+  // Role names that carry the same privilege level as Ministry Head.
+  const MINISTRY_HEAD_ROLE_NAMES = ['Ministry Head', 'Section Head', 'Cluster Head'];
+
   const isMinistryHead = useMemo(() => {
-    if (!user || !allMinistries || !effectiveProfile) return false;
-    return allMinistries.some((m: any) => m.headId === effectiveProfile.id);
+    if (!user || !effectiveProfile) return false;
+    // 1. Worker is explicitly set as headId in any ministry.
+    const isHeadById =
+      !!allMinistries && allMinistries.some((m: any) => m.headId === effectiveProfile.id);
+    // 2. Worker holds a role whose name is in the Ministry Head privilege group.
+    const hasEquivRole = (effectiveProfile as any).roles?.some((wr: any) =>
+      MINISTRY_HEAD_ROLE_NAMES.includes(wr.role?.name),
+    ) || MINISTRY_HEAD_ROLE_NAMES.includes((effectiveProfile as any).role?.name);
+    return isHeadById || hasEquivRole;
   }, [user, allMinistries, effectiveProfile]);
 
   const isMinistryApprover = useMemo(() => {
