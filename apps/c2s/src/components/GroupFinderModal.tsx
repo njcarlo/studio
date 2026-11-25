@@ -52,22 +52,23 @@ function ChevronDown() {
     );
 }
 
-function Select({ label, value, onChange, options }: {
+function Select({ label, value, onChange, options, className = '' }: {
     label: string; value: string;
-    onChange: (v: string) => void; options: string[];
+    onChange: (v: string) => void; options: string[]; className?: string;
 }) {
     return (
-        <div className="flex flex-col gap-1 min-w-0">
-            <label className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">{label}</label>
+        <div className={`flex flex-col gap-1 min-w-0 ${className}`}>
+            <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold truncate">{label}</label>
             <div className="relative">
                 <select
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2dc7be] pr-8"
+                    style={{ backgroundImage: 'none' }}
+                    className="w-full appearance-none bg-none border border-gray-200 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2dc7be] !pr-8 truncate"
                 >
                     {options.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2"><ChevronDown /></div>
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"><ChevronDown /></div>
             </div>
         </div>
     );
@@ -159,24 +160,24 @@ export default function GroupFinderModal({ onClose }: Props) {
 
     return (
         <div
-            className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-2 sm:p-4"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
-            <div className="rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
+            <div className="relative rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden" style={{ background: 'var(--bg-subtle)' }}>
 
                 {/* ── Header ── */}
-                <div className="bg-white px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
+                <div className="bg-white px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 pr-12 border-b border-gray-100 shrink-0">
                     {/* "Find your community" pill */}
-                    <div className="inline-flex items-center bg-[#0b9b8a] text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                    <div className="inline-flex items-center bg-[#0b9b8a] text-white text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full mb-2 sm:mb-3">
                         Find your community
                     </div>
 
                     {/* c2s logo + "Group Finder" title */}
-                    <div className="flex items-center gap-3 mb-1">
-                        <img src="/c2s.png" alt="C2S" style={{ width: 48, height: 48, objectFit: 'contain' }} />
-                        <h1 className="text-2xl font-black text-gray-900">Group Finder</h1>
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-1">
+                        <img src="/c2s.png" alt="C2S" className="w-9 h-9 sm:w-12 sm:h-12 object-contain shrink-0" />
+                        <h1 className="text-xl sm:text-2xl font-black text-gray-900">Group Finder</h1>
                     </div>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-xs sm:text-sm text-gray-500 leading-snug">
                         Discover a Connect2Souls group near you in Dasmariñas City — built for real friendships,
                         growth in faith, and a place to belong.
                     </p>
@@ -186,33 +187,33 @@ export default function GroupFinderModal({ onClose }: Props) {
                 <div className="flex flex-1 overflow-hidden">
 
                     {/* Left panel */}
-                    <div className="w-full lg:w-[55%] flex flex-col overflow-hidden border-r border-gray-100">
+                    <div className="w-full lg:w-[55%] flex flex-col overflow-hidden lg:border-r border-gray-100">
 
                         {/* Search + filters */}
-                        <div className="bg-white px-4 py-4 border-b border-gray-100 shrink-0">
+                        <div className="bg-white px-4 py-3 sm:py-4 border-b border-gray-100 shrink-0">
                             {/* Search bar */}
-                            <div className="relative mb-3">
+                            <div className="relative mb-2.5 sm:mb-3">
                                 <div className="absolute left-3 top-1/2 -translate-y-1/2"><SearchIcon /></div>
                                 <input
                                     type="text"
                                     placeholder="Search C2S Group, Barangay, or Subdivision"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white"
+                                    className="w-full pl-9 pr-4 py-2 sm:py-2.5 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#2dc7be] bg-white"
                                 />
                             </div>
 
                             {/* Filter dropdowns */}
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 <Select label="Age Group"        value={ageGroup}  onChange={setAgeGroup}  options={AGE_GROUPS} />
                                 <Select label="Meetup Day"       value={meetupDay} onChange={setMeetupDay} options={MEETUP_DAYS} />
-                                <Select label="Barangay/Subdivision" value={barangay}  onChange={setBarangay}
-                                    options={['All', ...BARANGAYS]} />
+                                <Select label="Barangay / Subdivision" value={barangay}  onChange={setBarangay}
+                                    options={['All', ...BARANGAYS]} className="col-span-2 sm:col-span-1" />
                             </div>
                         </div>
 
                         {/* Group cards list */}
-                        <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
+                        <div className="flex-1 overflow-y-auto p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 content-start">
                             {filtered.length > 0 ? filtered.map((g) => (
                                 <GroupCard
                                     key={g.id}
@@ -221,7 +222,7 @@ export default function GroupFinderModal({ onClose }: Props) {
                                     onSelect={() => setSelectedId(g.id === selectedId ? null : g.id)}
                                 />
                             )) : (
-                                <div className="col-span-2 text-center py-16 text-gray-400">
+                                <div className="col-span-1 sm:col-span-2 text-center py-12 sm:py-16 text-gray-400">
                                     <p className="text-3xl mb-2">🔍</p>
                                     <p className="text-sm font-medium">No groups found</p>
                                     <p className="text-xs mt-1">Try adjusting your filters.</p>
@@ -256,7 +257,7 @@ export default function GroupFinderModal({ onClose }: Props) {
                         {/* Legend */}
                         <div className="bg-white px-4 py-2 border-t border-gray-100 flex items-center gap-6 text-xs text-gray-500 shrink-0">
                             <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#e91e8c' }} />
+                                <span className="w-3 h-3 rounded-full inline-block" style={{ background: '#047857' }} />
                                 Available
                             </span>
                             <span className="flex items-center gap-1.5">

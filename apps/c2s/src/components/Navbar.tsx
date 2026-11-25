@@ -36,10 +36,10 @@ export default function Navbar() {
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm" style={{ backgroundColor: 'var(--nav-bg)', borderBottom: '1px solid var(--border)' }}>
             <div className="w-full px-4 sm:px-6">
-                <div className="flex items-center justify-between nav-fixed-h">
+                <div className="flex items-center justify-between gap-2 nav-fixed-h">
                     {/* Logo — pinaka-kaliwa */}
-                    <Link href="/" className="flex items-center gap-2.5 shrink-0">
-                        <div className="w-10 h-10 relative shrink-0">
+                    <Link href="/" className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 relative shrink-0">
                             <Image
                                 src="/logo.png"
                                 alt="Church of God Dasmarinas logo"
@@ -48,9 +48,9 @@ export default function Navbar() {
                                 priority
                             />
                         </div>
-                        <div className="leading-tight">
-                            <p className="text-[13px] font-bold text-gray-800">Church of God Dasmarinas</p>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-widest">CONNECT2SOULS</p>
+                        <div className="leading-tight min-w-0">
+                            <p className="text-[13px] font-bold text-gray-800 truncate">Church of God Dasmarinas</p>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-widest truncate">CONNECT2SOULS</p>
                         </div>
                     </Link>
 

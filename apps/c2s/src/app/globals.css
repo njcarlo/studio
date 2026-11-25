@@ -41,6 +41,33 @@
     margin-top: -1px;
 }
 
+/* Custom C2S hover tooltip style */
+.c2s-tooltip.leaflet-tooltip {
+    background: #ffffff !important;
+    border: 1px solid rgba(4, 120, 87, 0.15) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(4, 120, 87, 0.08) !important;
+    padding: 10px 13px !important;
+    color: #111827 !important;
+    white-space: normal !important;
+    min-width: 215px;
+    max-width: 265px;
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.c2s-tooltip.leaflet-tooltip-top::before {
+    border-top-color: #ffffff !important;
+}
+.c2s-tooltip.leaflet-tooltip-bottom::before {
+    border-bottom-color: #ffffff !important;
+}
+.c2s-tooltip.leaflet-tooltip-left::before {
+    border-left-color: #ffffff !important;
+}
+.c2s-tooltip.leaflet-tooltip-right::before {
+    border-right-color: #ffffff !important;
+}
+
 /* ── Responsive Viewport Fix ───────────────────────────────────── */
 html {
   /* Use dvh where supported so mobile browser chrome is accounted for */
@@ -208,6 +235,7 @@ html {
       font-size: 1rem;
     }
   }
+}
 
   /* ── Force-light pages: never apply dark overrides ───────────────────────── */
   /* Add class="force-light" to any page wrapper that must stay white */
@@ -241,7 +269,7 @@ html {
   /* ── Dark mode global overrides ───────────────────────────────────────────── */
 
   /* Navbar */
-  html.dark nav.bg-white {
+  html.dark nav[class*="bg-white"] {
     background-color: var(--nav-bg) !important;
     border-color: var(--border) !important;
   }
@@ -632,14 +660,12 @@ html {
   html.dark .force-light .text-gray-900,
   html.dark .force-light .text-gray-800,
   html.dark .force-light .text-gray-700,
-  html.dark input.bg-white,
   html.dark input[class*="bg-[#f8fffe]"],
   html.dark input[class*="bg-white"],
   html.dark .bg-white input,
   .force-light input,
   .force-light select,
   .force-light textarea,
-  input.bg-white,
   input[class*="bg-[#f8fffe]"],
   input[class*="bg-white"] {
     color: #111827 !important;
@@ -648,8 +674,8 @@ html {
   /* ── Force white text and high-contrast font on all colored pill badges in dark mode ── */
   html.dark .rounded-full[class*="bg-"],
   html.dark .rounded-xl[class*="bg-"],
-  html.dark span.rounded-full.text-white,
-  html.dark span.rounded-xl.text-white,
+  html.dark span.rounded-full[class*="text-white"],
+  html.dark span.rounded-xl[class*="text-white"],
   html.dark .rounded-full[class*="text-"],
   html.dark .rounded-xl[class*="text-"] {
     color: #ffffff !important;
@@ -687,8 +713,6 @@ html {
   html.dark .md\:hidden.sticky[class*="bg-[#EEF2F7]"] {
     background-color: var(--bg-page) !important;
   }
-
-}
 
 @layer utilities {
   .btn-teal {
